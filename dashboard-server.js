@@ -78,6 +78,148 @@ function requireAuth(req, res, next) {
 }
 
 app.use(express.json());
+
+// ─── GHL Webhook: client onboarding form → auto-add client ───────────────────
+// This route is intentionally registered BEFORE requireAuth so GHL can call it
+// without a Cloudflare Access session. Verified by WEBHOOK_SECRET query param.
+app.post('/api/webhooks/ghl-client-onboard', async (req, res) => {
+  // Verify shared secret
+  const secret = process.env.WEBHOOK_SECRET;
+  if (secret && req.query.secret !== secret) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  try {
+    const body = req.body;
+
+    // GHL sends field values using either the field label or a custom key — normalise both
+    function field(key, ...aliases) {
+      const keys = [key, ...aliases];
+      for (const k of keys) {
+        if (body[k] !== undefined && body[k] !== '') return body[k];
+      }
+      return null;
+    }
+
+    // ── Extract form fields ──────────────────────────────────────────────────
+    const brandName    = field('Brand Name', 'brand_name', 'brandName') || 'New Client';
+    const firstName    = field('First Name', 'first_name', 'firstName') || '';
+    const lastName     = field('Last Name',  'last_name',  'lastName')  || '';
+    const email        = field('Email', 'email')       || '';
+    const phone        = field('Phone', 'phone')       || '';
+    const website      = field('Website', 'website')   || '';
+    const tiktokShop   = field('TikTok Shop Registered', 'tiktok_shop', 'tiktokShopRegistered') || '';
+    const shopify      = field('Shopify Integrated', 'shopify', 'shopifyIntegrated') || '';
+    const sellico      = field('Sellico', 'sellico') || '';
+    const tiktokAM     = field('TikTok Account Manager', 'tiktok_am', 'tiktokAM') || '';
+    const reviewsIo    = field('Reviews.io', 'reviews_io', 'reviewsIo') || '';
+    const fbt          = field('FBT', 'fbt') || '';
+    const brandContent = field('Brand Content', 'brand_content', 'brandContent') || '';
+    const joinBrands   = field('JoinBrands Budget', 'joinbrands_budget', 'joinBrandsBudget') || '';
+
+    // ── Create brand entry ───────────────────────────────────────────────────
+    const brandsData = loadBrands();
+    const brandId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const newBrand = {
+      id:          brandId,
+      createdAt:   new Date().toISOString(),
+      name:        brandName,
+      contactName: `${firstName} ${lastName}`.trim(),
+      email,
+      phone,
+      website,
+      industry:    '',
+      products:    '',
+      audience:    '',
+      voice:       '',
+      contentPillars: '',
+      tiktokHandle: '',
+      cta:         '',
+      source:      'ghl-onboarding-form',
+    };
+    brandsData.clients.push(newBrand);
+    saveBrands(brandsData);
+
+    // ── Pre-check Growth Partners tasks based on form answers ────────────────
+    // Map "yes" / "Yes" / checkbox truthy values
+    const isYes = (v) => v && /^(yes|true|1|on|checked)$/i.test(String(v).trim());
+
+    const gpData = loadGP();
+    if (!gpData.partners) gpData.partners = {};
+    const tasks = {};
+
+    // onboarding
+    tasks['contract_signed']    = false;
+    tasks['brand_brief_filled'] = false;
+    tasks['brand_approved']     = false;
+    tasks['onboarding_call']    = false;
+
+    // unit economics
+    tasks['cogs_provided']      = false;
+    tasks['margins_confirmed']  = false;
+    tasks['commission_set']     = false;
+
+    // shop ops
+    tasks['shop_account']       = isYes(tiktokShop);
+    tasks['shopify']            = isYes(shopify);
+    tasks['sellico']            = isYes(sellico);
+    tasks['whitelisting_eligible'] = isYes(tiktokAM);
+    tasks['reviews']            = isYes(reviewsIo);
+    tasks['fbt']                = isYes(fbt);
+    tasks['product_samples']    = false;
+    tasks['bundles_enabled']    = false;
+
+    // affiliate
+    tasks['ugc_source']         = isYes(joinBrands);
+    tasks['creator_list']       = false;
+    tasks['outreach_started']   = false;
+    tasks['gmv_10k']            = false;
+    tasks['gmv_50k']            = false;
+
+    // video
+    tasks['video_plan']         = isYes(brandContent);
+    tasks['first_batch_live']   = false;
+    tasks['10_videos_live']     = false;
+    tasks['top_performer_id']   = false;
+
+    // paid media
+    tasks['spark_ads_enabled']  = false;
+    tasks['first_campaign']     = false;
+    tasks['roas_positive']      = false;
+
+    // live
+    tasks['live_eligible']      = false;
+    tasks['first_live']         = false;
+    tasks['live_regular']       = false;
+
+    gpData.partners[brandId] = { tasks, updatedAt: new Date().toISOString() };
+    saveGP(gpData);
+
+    console.log(`[webhook] New client onboarded from GHL form: ${brandName} (${brandId})`);
+
+    // ── Optionally trigger Shopify brand import ──────────────────────────────
+    // (non-blocking — we respond success first, then attempt the import)
+    if (website && isYes(shopify)) {
+      const shopDomain = website.replace(/^https?:\/\//i, '').replace(/\/$/, '');
+      setImmediate(async () => {
+        try {
+          await axios.post(`http://localhost:${CFG.port}/api/brands/shopify-import`, {
+            shopDomain,
+            brandId,
+          });
+        } catch (e) {
+          console.warn('[webhook] Shopify import skipped:', e.message);
+        }
+      });
+    }
+
+    res.json({ ok: true, brandId, brandName });
+  } catch (err) {
+    console.error('[webhook] ghl-client-onboard error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.use(requireAuth); // all routes require auth in production
 app.use(express.static(path.join(__dirname, 'dashboard')));
 app.use('/uploads', express.static(UPLOAD_DIR));
