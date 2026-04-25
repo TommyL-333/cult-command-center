@@ -1062,6 +1062,55 @@ app.post('/api/buffer/post', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.response?.data || e.message }); }
 });
 
+// POST /api/buffer/post-to-channels — post to multiple Buffer channels at once
+// Body: { channelIds: string[], text: string, mediaUrl?: string, scheduledAt?: string }
+app.post('/api/buffer/post-to-channels', async (req, res) => {
+  const token = process.env.BUFFER_ACCESS_TOKEN;
+  if (!token) return res.status(400).json({ ok: false, error: 'BUFFER_ACCESS_TOKEN not configured' });
+
+  const { channelIds, text, mediaUrl, scheduledAt } = req.body;
+  if (!channelIds?.length) return res.status(400).json({ error: 'channelIds array is required' });
+
+  const orgId = process.env.BUFFER_ORG_ID || '69d6ddee1fcceb5bb1faa168';
+  const BUFFER_GQL = 'https://api.buffer.com/graphql';
+  const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
+
+  const results = [];
+  for (const channelId of channelIds) {
+    try {
+      const input = {
+        organizationId: orgId,
+        channelIds: [channelId],
+        content: {
+          text: text || '',
+          ...(mediaUrl ? { mediaUrls: [mediaUrl] } : {}),
+        },
+        ...(scheduledAt ? { scheduledAt } : {}),
+      };
+      const { data: gql } = await axios.post(
+        BUFFER_GQL,
+        {
+          query: `mutation CreatePost($input: CreatePostInput!) {
+            createPost(input: $input) { post { id dueAt status channelService } }
+          }`,
+          variables: { input },
+        },
+        { headers }
+      );
+      if (gql.errors) {
+        results.push({ channelId, ok: false, error: gql.errors[0]?.message });
+      } else {
+        results.push({ channelId, ok: true, post: gql.data?.createPost?.post });
+      }
+    } catch (e) {
+      results.push({ channelId, ok: false, error: e.response?.data || e.message });
+    }
+  }
+
+  const allOk = results.every(r => r.ok);
+  res.json({ ok: allOk, results });
+});
+
 // GET /api/buffer/channels — list Buffer channels for posting UI
 app.get('/api/buffer/channels', async (req, res) => {
   const token = process.env.BUFFER_ACCESS_TOKEN;

@@ -84,9 +84,10 @@
     .upload-slot.has-file { border-style:solid; border-color:var(--green); background:rgba(0,210,122,0.04); }
     .upload-slot.drag-over { border-color:var(--teal); background:rgba(0,242,234,0.04); }
     .cal-entry {
-      display:grid; grid-template-columns:1fr auto auto auto; gap:12px; align-items:center;
+      display:grid; grid-template-columns:1fr auto auto; gap:12px; align-items:center;
       padding:14px 16px; border:1px solid var(--border); border-radius:10px; margin-bottom:10px;
     }
+    .cal-post-btns { display:flex; gap:6px; align-items:center; flex-shrink:0; }
     /* ─── Storista modal ─────────────────────────────────────────── */
     .storista-overlay {
       position:fixed;inset:0;background:rgba(0,0,0,0.65);z-index:9000;
@@ -105,6 +106,19 @@
     .storista-status-pill.ready  { background:rgba(0,210,122,0.12);color:var(--green); }
     .storista-status-pill.pending { background:rgba(201,168,76,0.12);color:var(--gold); }
     .storista-status-pill.error  { background:rgba(255,80,80,0.12);color:#f56; }
+    /* ─── Buffer channel picker ──────────────────────────────────── */
+    .buf-channel-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:16px; }
+    .buf-channel-item {
+      display:flex; align-items:center; gap:10px; padding:10px 12px;
+      border:2px solid var(--border); border-radius:10px; cursor:pointer;
+      transition:border-color .15s, background .15s; user-select:none;
+    }
+    .buf-channel-item:hover { border-color:var(--teal); }
+    .buf-channel-item.selected { border-color:var(--teal); background:rgba(0,242,234,0.06); }
+    .buf-channel-item img { width:28px;height:28px;border-radius:50%;object-fit:cover;flex-shrink:0; }
+    .buf-channel-item .buf-ch-icon { width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;background:var(--border);flex-shrink:0; }
+    .buf-channel-item .buf-ch-name { font-size:12px;font-weight:700;line-height:1.3; }
+    .buf-channel-item .buf-ch-svc  { font-size:10px;color:var(--muted);text-transform:capitalize; }
     .field-label { font-size:11px;font-weight:700;letter-spacing:0.05em;color:var(--muted);display:block;margin-bottom:5px;text-transform:uppercase; }
     .prod-tag {
       display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;letter-spacing:0.05em;
@@ -7964,7 +7978,7 @@ function prodBuildCalendar() {
   if (!el) return;
 
   const today = new Date();
-  const PLATFORMS = ['TikTok Shop (Storista)','TikTok Personal','TikTok Brand','Instagram Personal','Instagram Brand','YouTube Shorts'];
+  const PLATFORMS = ['TikTok Personal','TikTok Brand','Instagram Personal','Instagram Brand','YouTube Shorts'];
   const activeScripts = _prodState.scripts.filter(s => !s._removed);
 
   el.innerHTML = activeScripts.map((s, i) => {
@@ -7983,15 +7997,17 @@ function prodBuildCalendar() {
         ${s.hook ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;font-style:italic">"${x(s.hook)}"</div>` : ''}
         ${upload ? `<div style="font-size:11px;color:var(--green);margin-top:2px">✓ ${x(upload.name)}</div>` : '<div style="font-size:11px;color:var(--muted);margin-top:2px">No video uploaded</div>'}
       </div>
-      <select id="calPlatform${realIdx}" class="agent-input" style="width:160px;font-size:11px;padding:5px 8px">
-        ${PLATFORMS.map(p => `<option value="${p}" ${p==='TikTok Personal'?'selected':''}>${p}</option>`).join('')}
-      </select>
       <input type="date" id="calDate${realIdx}" class="agent-input" value="${dateStr}" style="width:140px;font-size:11px;padding:5px 8px" />
-      <button class="btn btn-teal" style="padding:6px 14px;font-size:11px;font-weight:700;white-space:nowrap"
-        onclick="storistaOpenModal(${realIdx})"
-        title="Post to TikTok Shop via Storista">
-        🛍 Post to Shop
-      </button>
+      <div class="cal-post-btns">
+        <button class="btn btn-teal" style="padding:6px 13px;font-size:11px;font-weight:700;white-space:nowrap"
+          onclick="storistaOpenModal(${realIdx})" title="Post to TikTok Shop via Storista">
+          🛍 TikTok Shop
+        </button>
+        <button class="btn" style="padding:6px 13px;font-size:11px;font-weight:700;white-space:nowrap;background:#2e2e3e;color:var(--text);border:1px solid var(--border)"
+          onclick="bufferOpenModal(${realIdx})" title="Post to other socials via Buffer">
+          📱 Other Socials
+        </button>
+      </div>
     </div>`;
   }).join('') +
   `<div style="margin-top:16px;display:flex;gap:10px;align-items:center">
@@ -8027,7 +8043,7 @@ async function prodPushToLark() {
       title:       s.title || `Video ${i+1}`,
       hook:        s.hook || '',
       scriptText,
-      platform:    document.getElementById(`calPlatform${realIdx}`)?.value || 'TikTok Personal',
+      platform:    'TikTok Shop',
       publishDate: document.getElementById(`calDate${realIdx}`)?.value || '',
       status:      _prodState.uploads[realIdx] ? 'Filmed' : 'Scripted',
       videoUrl:    _prodState.uploads[realIdx]?.localUrl || '',
@@ -8227,6 +8243,10 @@ async function storistaPublish(realIdx) {
 
       if (!uploadRes.ok) throw new Error(uploadRes.error || 'Upload failed');
       media_id = uploadRes.media_id;
+      // Store public CDN URL so Buffer can reuse it for other socials
+      if (uploadRes.presign?.public_url && _prodState.uploads[realIdx]) {
+        _prodState.uploads[realIdx].storistaPublicUrl = uploadRes.presign.public_url;
+      }
     } else {
       throw new Error('No video uploaded for this entry. Upload a video in Step 4 first.');
     }
@@ -8285,6 +8305,192 @@ async function storistaPublish(realIdx) {
 function storistaCloseModal() {
   clearInterval(_storista.pollTimer);
   document.getElementById('storistaOverlay')?.remove();
+}
+
+// ─── Buffer — Multi-channel posting ──────────────────────────────────────────
+
+const _buffer = {
+  channels: null,           // [{id, name, service, avatar}]
+  selected: new Set(),      // selected channel ids
+};
+
+const BUFFER_SVC_ICON = {
+  tiktok:    '🎵', instagram: '📸', youtube:   '▶️',
+  twitter:   '𝕏',  linkedin:  '💼', facebook:  '👤',
+  threads:   '🧵', pinterest: '📌', mastodon:  '🐘',
+};
+
+async function bufferOpenModal(realIdx) {
+  document.getElementById('bufferOverlay')?.remove();
+  _buffer.selected = new Set();
+
+  const script  = _prodState.scripts[realIdx] || {};
+  const upload  = _prodState.uploads[realIdx];
+  const caption = [script.hook, script.cta].filter(Boolean).join(' — ') || script.title || '';
+  const calDate = document.getElementById(`calDate${realIdx}`)?.value || '';
+
+  const overlay = document.createElement('div');
+  overlay.id = 'bufferOverlay';
+  overlay.className = 'storista-overlay';
+  overlay.onclick = (e) => { if (e.target === overlay) bufferCloseModal(); };
+  overlay.innerHTML = `
+    <div class="storista-modal" style="max-width:560px">
+      <button onclick="bufferCloseModal()" style="position:absolute;top:16px;right:16px;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer">✕</button>
+      <h2>📱 Post to Other Socials</h2>
+      <div class="sub">via Buffer · ${x(script.title || `Video ${realIdx + 1}`)}</div>
+      <div id="bufferModalBody" style="font-size:13px;color:var(--muted)">Loading channels…</div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  // Fetch channels
+  try {
+    if (!_buffer.channels) {
+      const r = await fetch('/api/buffer/channels').then(r => r.json());
+      _buffer.channels = r.channels || [];
+    }
+    bufferRenderForm(realIdx, caption, calDate, upload);
+  } catch(e) {
+    document.getElementById('bufferModalBody').innerHTML =
+      `<div style="color:#f56">Failed to load channels: ${x(e.message)}</div>`;
+  }
+}
+
+function bufferRenderForm(realIdx, caption, calDate, upload) {
+  const channels = _buffer.channels || [];
+
+  const channelGrid = channels.length ? channels.map(ch => {
+    const icon = BUFFER_SVC_ICON[ch.service?.toLowerCase()] || '📡';
+    const avatar = ch.avatar
+      ? `<img src="${x(ch.avatar)}" alt="" onerror="this.style.display='none';this.nextSibling.style.display='flex'">`
+      : '';
+    return `<div class="buf-channel-item" id="bufch_${x(ch.id)}"
+        onclick="bufferToggleChannel('${x(ch.id)}')">
+        ${avatar}
+        <div class="buf-ch-icon" style="${ch.avatar ? 'display:none' : ''}">${icon}</div>
+        <div>
+          <div class="buf-ch-name">${x(ch.name)}</div>
+          <div class="buf-ch-svc">${x(ch.service || '')}</div>
+        </div>
+      </div>`;
+  }).join('') : `<div style="color:var(--muted);font-size:12px;grid-column:1/-1;padding:12px 0">
+      No Buffer channels found. <a href="https://publish.buffer.com" target="_blank" style="color:var(--teal)">Connect channels in Buffer →</a>
+    </div>`;
+
+  document.getElementById('bufferModalBody').innerHTML = `
+    <div style="display:flex;flex-direction:column;gap:16px">
+
+      <div>
+        <label class="field-label" style="margin-bottom:10px">Select Channels</label>
+        <div class="buf-channel-grid">${channelGrid}</div>
+      </div>
+
+      <div>
+        <label class="field-label">Caption</label>
+        <textarea id="bufCaption" class="agent-input" rows="3"
+          style="width:100%;font-size:13px;resize:vertical">${x(caption)}</textarea>
+      </div>
+
+      ${upload ? `<div style="padding:8px 12px;background:rgba(0,210,122,0.06);border:1px solid rgba(0,210,122,0.15);border-radius:8px;font-size:12px;color:var(--green)">
+        ✓ Video uploaded — will be included in post
+        <div style="color:var(--muted);margin-top:2px;font-size:11px">Public URL via Storista CDN (upload to Storista first if not done)</div>
+      </div>` : `<div style="padding:8px 12px;background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.18);border-radius:8px;font-size:12px;color:var(--gold)">
+        ⚠ No video uploaded — post will be caption only. Upload via 🛍 TikTok Shop first to attach video.
+      </div>`}
+
+      <div style="display:flex;gap:10px;align-items:flex-end">
+        <div style="flex:1">
+          <label class="field-label">Schedule Date &amp; Time <span style="color:var(--muted);font-weight:400;text-transform:none">(optional — blank = add to queue)</span></label>
+          <input id="bufSchedule" type="datetime-local" class="agent-input"
+            style="width:100%;font-size:13px"
+            value="${calDate ? calDate + 'T09:00' : ''}" />
+        </div>
+      </div>
+
+      <div id="bufferResult"></div>
+
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn btn-ghost" style="font-size:13px" onclick="bufferCloseModal()">Cancel</button>
+        <button id="bufPostBtn" class="btn btn-teal" style="font-size:13px;font-weight:700"
+          onclick="bufferPost(${realIdx})">
+          📤 Post to Selected
+        </button>
+      </div>
+    </div>`;
+}
+
+function bufferToggleChannel(channelId) {
+  const el = document.getElementById(`bufch_${channelId}`);
+  if (_buffer.selected.has(channelId)) {
+    _buffer.selected.delete(channelId);
+    el?.classList.remove('selected');
+  } else {
+    _buffer.selected.add(channelId);
+    el?.classList.add('selected');
+  }
+  // Update button label
+  const btn = document.getElementById('bufPostBtn');
+  if (btn) {
+    const n = _buffer.selected.size;
+    btn.textContent = n ? `📤 Post to ${n} Channel${n > 1 ? 's' : ''}` : '📤 Post to Selected';
+  }
+}
+
+async function bufferPost(realIdx) {
+  const btn      = document.getElementById('bufPostBtn');
+  const resultEl = document.getElementById('bufferResult');
+  const channelIds = [..._buffer.selected];
+
+  if (!channelIds.length) {
+    resultEl.innerHTML = `<div style="color:#f56;font-size:12px">Select at least one channel.</div>`;
+    return;
+  }
+
+  const caption    = document.getElementById('bufCaption')?.value || '';
+  const scheduledAt = document.getElementById('bufSchedule')?.value
+    ? new Date(document.getElementById('bufSchedule').value).toISOString()
+    : null;
+
+  // Use Storista CDN URL if available from a prior upload
+  const upload = _prodState.uploads[realIdx];
+  const mediaUrl = upload?.storistaPublicUrl || null;
+
+  btn.disabled = true;
+  btn.textContent = 'Posting…';
+  resultEl.innerHTML = `<div class="storista-status-pill pending">⏳ Sending to Buffer…</div>`;
+
+  try {
+    const r = await fetch('/api/buffer/post-to-channels', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ channelIds, text: caption, mediaUrl, scheduledAt }),
+    }).then(r => r.json());
+
+    const succeeded = r.results?.filter(x => x.ok) || [];
+    const failed    = r.results?.filter(x => !x.ok) || [];
+
+    let html = '';
+    if (succeeded.length) {
+      const label = scheduledAt ? 'Scheduled' : 'Added to queue';
+      html += `<div class="storista-status-pill ready">✅ ${label} on ${succeeded.length} channel${succeeded.length > 1 ? 's' : ''}!</div>`;
+    }
+    if (failed.length) {
+      html += failed.map(f => {
+        const ch = (_buffer.channels||[]).find(c => c.id === f.channelId);
+        return `<div class="storista-status-pill error" style="margin-top:6px">✗ ${x(ch?.name || f.channelId)}: ${x(String(f.error))}</div>`;
+      }).join('');
+    }
+    resultEl.innerHTML = html;
+    btn.disabled = false;
+    btn.textContent = succeeded.length ? '✓ Done' : '📤 Retry';
+  } catch(e) {
+    resultEl.innerHTML = `<div class="storista-status-pill error">✗ ${x(e.message)}</div>`;
+    btn.disabled = false;
+    btn.textContent = '📤 Post to Selected';
+  }
+}
+
+function bufferCloseModal() {
+  document.getElementById('bufferOverlay')?.remove();
 }
 </script>
 </body>
