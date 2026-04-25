@@ -2944,6 +2944,139 @@ app.post('/api/reports/send', async (req, res) => {
   }
 });
 
+// ─── Storista — TikTok Shop Video Publishing ──────────────────────────────────
+const STORISTA_BASE = 'https://api-v2.storista.io';
+
+function storistaClient() {
+  return axios.create({
+    baseURL: STORISTA_BASE,
+    headers: {
+      Authorization: `Bearer ${process.env.STORISTA_API_KEY || ''}`,
+      'Content-Type': 'application/json',
+    },
+    timeout: 30_000,
+  });
+}
+
+// GET /api/storista/accounts — list connected TikTok accounts
+app.get('/api/storista/accounts', async (req, res) => {
+  try {
+    const { data } = await storistaClient().get('/v1/tiktok/accounts');
+    res.json(data);
+  } catch (e) {
+    res.status(e.response?.status || 500).json({ error: e.response?.data || e.message });
+  }
+});
+
+// GET /api/storista/products/:account — list TikTok Shop products for an account
+app.get('/api/storista/products/:account', async (req, res) => {
+  try {
+    const { data } = await storistaClient().get(`/v1/tiktok/${req.params.account}/products`);
+    res.json(data);
+  } catch (e) {
+    res.status(e.response?.status || 500).json({ error: e.response?.data || e.message });
+  }
+});
+
+// POST /api/storista/upload — upload a video file to Storista (pre-sign → S3 PUT → media create)
+// Accepts multipart form: video file OR a localPath pointing to an already-uploaded file
+app.post('/api/storista/upload', upload.single('video'), async (req, res) => {
+  let filePath = null;
+  let tempFile = false;
+
+  try {
+    if (req.file) {
+      filePath = req.file.path;
+      tempFile = true;
+    } else if (req.body.localPath) {
+      // Resolve from UPLOAD_DIR
+      const resolved = path.resolve(UPLOAD_DIR, path.basename(req.body.localPath));
+      if (!fs.existsSync(resolved)) return res.status(400).json({ error: 'File not found' });
+      filePath = resolved;
+    } else {
+      return res.status(400).json({ error: 'Provide a video file or localPath' });
+    }
+
+    const stat = fs.statSync(filePath);
+    const filename = req.body.filename || path.basename(filePath);
+    const s = storistaClient();
+
+    // 1. Pre-sign
+    const { data: presign } = await s.post('/v1/media/pre-sign', {
+      filename,
+      content_type: 'video/mp4',
+      size: stat.size,
+    });
+
+    // 2. Upload to S3
+    const fileBuffer = fs.readFileSync(filePath);
+    await axios.put(presign.upload_url, fileBuffer, {
+      headers: {
+        'Content-Type': 'video/mp4',
+        'Content-Length': stat.size,
+        'x-amz-content-sha256': 'UNSIGNED-PAYLOAD',
+      },
+      maxBodyLength: Infinity,
+      maxContentLength: Infinity,
+      timeout: 120_000,
+    });
+
+    // 3. Create media record
+    const { data: media } = await s.post('/v1/media/', {
+      data: { upload_id: presign.upload_id, name: filename },
+    });
+
+    if (tempFile) fs.unlinkSync(filePath);
+
+    res.json({ ok: true, media_id: media.id || media.upload_id || presign.upload_id, presign, media });
+  } catch (e) {
+    if (tempFile && filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    console.error('[storista] upload error:', e.response?.data || e.message);
+    res.status(e.response?.status || 500).json({ error: e.response?.data || e.message });
+  }
+});
+
+// POST /api/storista/publish — create + publish a TikTok Shop video
+app.post('/api/storista/publish', async (req, res) => {
+  const { account, video_id, product_id, product, product_link, caption } = req.body;
+  if (!account || !video_id) return res.status(400).json({ error: 'account and video_id required' });
+
+  try {
+    const s = storistaClient();
+
+    // 1. Create video record
+    const { data: created } = await s.post(`/v1/tiktok/${account}/videos`, {
+      video_id,
+      product_id: product_id || '',
+      product:    product    || '',
+      product_link: product_link || '',
+      caption:    caption    || '',
+    });
+
+    const vid_id = created.id || created.video_id;
+
+    // 2. Publish it
+    await s.post(`/v1/tiktok/${account}/videos/${vid_id}/publish`);
+
+    res.json({ ok: true, video_id: vid_id, account });
+  } catch (e) {
+    console.error('[storista] publish error:', e.response?.data || e.message);
+    res.status(e.response?.status || 500).json({ error: e.response?.data || e.message });
+  }
+});
+
+// GET /api/storista/status/:account/:videoId — poll publish status
+app.get('/api/storista/status/:account/:videoId', async (req, res) => {
+  try {
+    const { data } = await storistaClient().get(
+      `/v1/tiktok/${req.params.account}/videos/${req.params.videoId}`
+    );
+    res.json(data);
+  } catch (e) {
+    res.status(e.response?.status || 500).json({ error: e.response?.data || e.message });
+  }
+});
+
 // ─── Health ────────────────────────────────────────────────────────────────────
 app.get('/health', (_, res) => res.json({ status: 'ok', service: 'dashboard' }));
 
