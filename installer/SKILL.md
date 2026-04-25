@@ -441,7 +441,7 @@ railway variables set ANTHROPIC_API_KEY="..." STORISTA_API_KEY="..." BUFFER_ACCE
 
 If the user wants to restrict access to specific email domains:
 
-1. Move cultcontent.cc (or their domain) to Cloudflare nameservers
+1. Move your domain to Cloudflare nameservers (free — just change nameservers at your registrar)
 2. In Cloudflare Zero Trust → Access → Applications → Add app
 3. Set the app domain to their Railway URL (via CNAME)
 4. Add a Google OAuth policy allowing `*@theirdomain.com`
