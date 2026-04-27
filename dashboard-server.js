@@ -3126,6 +3126,141 @@ app.get('/api/storista/status/:account/:videoId', async (req, res) => {
   }
 });
 
+// ─── Inventory Forecast Agent ─────────────────────────────────────────────────
+// POST /api/inventory/forecast
+// Runs all 6 stages via Claude and returns structured stage results.
+app.post('/api/inventory/forecast', async (req, res) => {
+  const { sellerData, creatorData, config = {} } = req.body;
+  if (!sellerData) return res.status(400).json({ ok: false, error: 'sellerData is required' });
+
+  const {
+    leadTimeDays   = 90,
+    minMarginPct   = 40,
+    fbtSplitPct    = 60,
+    spikeGrowthPct = 100,
+    decayDropPct   = 40,
+  } = config;
+
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+  const prompt = `You are an expert TikTok Shop inventory forecasting analyst. Analyse the data below and run all 6 stages of the forecasting framework. Return ONLY valid JSON — no markdown fences, no commentary outside the JSON.
+
+CONFIG:
+- Ocean freight lead time: ${leadTimeDays} days
+- Min margin % for air freight bridge: ${minMarginPct}%
+- FBT allocation: ${fbtSplitPct}% of each PO to FBT, ${100 - fbtSplitPct}% to own 3PL
+- Spike flag trigger: daily sales growth ≥${spikeGrowthPct}% over 2 consecutive days OR creator video >100K views in <6h OR sample requests spike >50% above 14-day avg OR add-to-cart growing faster than orders
+- Decay flag trigger: sales drop ≥${decayDropPct}% from peak with no recovery in 3 days OR affiliate post rate <50% of peak weekly videos
+
+SELLER CENTER DATA:
+${sellerData}
+
+CREATOR / AFFILIATE SIGNALS (may be empty):
+${creatorData || '(none provided — skip creator signal analysis, note this in Stage 2)'}
+
+Return this exact JSON structure:
+{
+  "stages": [
+    {
+      "number": 1,
+      "title": "Catalog Snapshot",
+      "summary": "one-line summary of what was found",
+      "narrative": "2-4 sentences of key findings and observations",
+      "alert_count": 0,
+      "gate": false,
+      "skus": [
+        { "SKU": "id", "Name": "name", "Group": "A/B/C", "On Hand": 0, "In Transit": 0, "Days Supply": 0, "Status": "OK/REORDER NOW/OVERSTOCK" }
+      ]
+    },
+    {
+      "number": 2,
+      "title": "Signal Scan",
+      "summary": "...",
+      "narrative": "...",
+      "alert_count": 0,
+      "gate": false,
+      "skus": [
+        { "SKU": "id", "Name": "name", "Spike Probability": "HIGH/MED/LOW", "Signals": "description of what triggered it", "Sales Trend": "2-day change" }
+      ]
+    },
+    {
+      "number": 3,
+      "title": "Spike Response Plan",
+      "summary": "...",
+      "narrative": "...",
+      "alert_count": 0,
+      "gate": true,
+      "gate_number": 1,
+      "skus": [
+        { "SKU": "id", "Name": "name", "Current DoS": "X days", "DoS @ 3x": "X days", "DoS @ 5x": "X days", "Air Units": 0, "Air Est Cost": "$0", "Ocean Units": 0 }
+      ],
+      "decisions": [
+        { "sku_id": "id", "sku_name": "name", "recommendation": "Place air bridge order of X units ($Y est) + ocean PO of Z units", "cost": "$X air + $Y ocean" }
+      ]
+    },
+    {
+      "number": 4,
+      "title": "Decay Detection",
+      "summary": "...",
+      "narrative": "...",
+      "alert_count": 0,
+      "gate": true,
+      "gate_number": 2,
+      "skus": [
+        { "SKU": "id", "Name": "name", "Peak Sales/Day": 0, "Current Sales/Day": 0, "Drop %": "0%", "Overstock Risk": "X units arriving in Y days", "Action": "Cancel PO / Reduce / Hold" }
+      ],
+      "decisions": [
+        { "sku_id": "id", "sku_name": "name", "recommendation": "Cancel/reduce incoming PO of X units. Draft supplier comms attached.", "cost": null }
+      ]
+    },
+    {
+      "number": 5,
+      "title": "Tail Reorder",
+      "summary": "...",
+      "narrative": "...",
+      "alert_count": 0,
+      "gate": false,
+      "skus": [
+        { "SKU": "id", "Name": "name", "Group": "B", "Avg Daily Demand": 0, "Safety Stock": 0, "Reorder Point": 0, "Reorder Qty": 0, "FBT Units": 0, "3PL Units": 0, "Flag": "Auto-reorder / Review trend / Skip" }
+      ]
+    },
+    {
+      "number": 6,
+      "title": "Accuracy Check",
+      "summary": "...",
+      "narrative": "If this is the first run, note that there is no historical forecast data to compare against yet. Recommend thresholds to watch for the next review.",
+      "alert_count": 0,
+      "gate": true,
+      "gate_number": 3,
+      "skus": [],
+      "decisions": [
+        { "sku_id": "threshold_tuning", "sku_name": "Threshold Calibration", "recommendation": "Review spike and decay thresholds based on actuals at next monthly gate. Current settings: spike=${spikeGrowthPct}% growth, decay=${decayDropPct}% drop.", "cost": null }
+      ]
+    }
+  ]
+}
+
+Be precise with numbers. If a field cannot be calculated from the data, use null or a short note. Do not fabricate sales figures — work only from the data provided.`;
+
+  try {
+    const msg = await client.messages.create({
+      model: 'claude-opus-4-5',
+      max_tokens: 8192,
+      messages: [{ role: 'user', content: prompt }],
+    });
+
+    let raw = msg.content[0].text.trim();
+    // Strip markdown fences if model added them
+    raw = raw.replace(/^```json\s*/i, '').replace(/```\s*$/, '').trim();
+
+    const parsed = JSON.parse(raw);
+    res.json({ ok: true, ...parsed });
+  } catch (e) {
+    console.error('[inventory] forecast error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ─── Health ────────────────────────────────────────────────────────────────────
 app.get('/health', (_, res) => res.json({ status: 'ok', service: 'dashboard' }));
 

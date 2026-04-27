@@ -1367,6 +1367,88 @@
     </div>
   </div>
 
+  <!-- ── Inventory Forecast Agent ─────────────────────────── -->
+  <div class="card mb24" id="invForecastCard">
+
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:10px;">
+      <div class="card-label" style="margin-bottom:0;">📦 Inventory Forecast Agent</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span id="invForecastBadge" class="badge b-soon" style="font-size:10px;display:none"></span>
+        <button class="btn btn-ghost" style="font-size:11px;padding:5px 12px" onclick="invToggleSetup()">⚙ Config</button>
+        <button class="btn btn-teal" style="font-size:12px;font-weight:700" onclick="invRunForecast()" id="invRunBtn">▶ Run Forecast</button>
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:20px">6-stage TikTok Shop forecasting: catalog snapshot → creator signal scan → spike response → decay detection → tail reorder → accuracy check. Three human decision gates.</div>
+
+    <!-- Config panel (collapsed by default) -->
+    <div id="invSetupPanel" style="display:none;background:rgba(0,242,234,0.03);border:1px solid rgba(0,242,234,0.15);border-radius:10px;padding:18px;margin-bottom:20px">
+      <div class="agent-section-label" style="margin-bottom:14px">Configuration</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px">
+        <div>
+          <label class="field-label">Lead Time (days)</label>
+          <input id="invLeadTime" class="agent-input" type="number" value="90" style="width:100%;font-size:13px" />
+          <div style="font-size:10px;color:var(--muted);margin-top:4px">Ocean freight default: 90</div>
+        </div>
+        <div>
+          <label class="field-label">Min Margin % for Air</label>
+          <input id="invMinMargin" class="agent-input" type="number" value="40" style="width:100%;font-size:13px" />
+          <div style="font-size:10px;color:var(--muted);margin-top:4px">Air freight break-even threshold</div>
+        </div>
+        <div>
+          <label class="field-label">FBT Split %</label>
+          <input id="invFbtSplit" class="agent-input" type="number" value="60" style="width:100%;font-size:13px" />
+          <div style="font-size:10px;color:var(--muted);margin-top:4px">% of PO allocated to FBT vs own 3PL</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+        <div>
+          <label class="field-label">Spike threshold — sales growth</label>
+          <input id="invSpikeGrowth" class="agent-input" type="number" value="100" style="width:100%;font-size:13px" placeholder="% growth over 2 days" />
+        </div>
+        <div>
+          <label class="field-label">Decay threshold — sales drop %</label>
+          <input id="invDecayDrop" class="agent-input" type="number" value="40" style="width:100%;font-size:13px" placeholder="% drop from peak" />
+        </div>
+      </div>
+      <button class="btn btn-ghost" style="font-size:11px" onclick="invToggleSetup()">Done</button>
+    </div>
+
+    <!-- Data inputs -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div>
+        <label class="field-label">Seller Center Data</label>
+        <textarea id="invSellerData" class="agent-input" rows="7"
+          style="width:100%;resize:vertical;font-size:12px;font-family:monospace;line-height:1.5"
+          placeholder="Paste from Seller Center — SKU list, inventory on hand, units in transit (arrival date), landed cost, price, margin %, 90-day daily sales. Tab-separated or CSV.
+
+Example:
+SKU	Name	On Hand	In Transit	Arrival	Lead Time	Cost	Price	Margin%	D1	D2	D3…"></textarea>
+      </div>
+      <div>
+        <label class="field-label">Creator / Affiliate Signals <span style="font-weight:400;text-transform:none;color:var(--muted)">(optional)</span></label>
+        <textarea id="invCreatorData" class="agent-input" rows="7"
+          style="width:100%;resize:vertical;font-size:12px;font-family:monospace;line-height:1.5"
+          placeholder="Paste from Affiliate Center — daily sample requests, creator video views on tagged content, add-to-cart counts. Tab-separated or CSV.
+
+Example:
+SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
+      </div>
+    </div>
+
+    <!-- Stage progress bar -->
+    <div id="invStageBar" style="display:none;margin-bottom:20px">
+      <div style="display:flex;gap:0;border-radius:8px;overflow:hidden;border:1px solid var(--border)">
+        ${['1 Catalog','2 Signals','3 Spike Plan','4 Decay','5 Tail','6 Accuracy'].map((s,i) => `
+          <div id="invStage${i+1}Btn" style="flex:1;padding:7px 4px;text-align:center;font-size:10px;font-weight:700;color:var(--muted);background:var(--card);border-right:1px solid var(--border);cursor:pointer;transition:all .2s;white-space:nowrap"
+            onclick="invScrollToStage(${i+1})">${s}</div>`).join('')}
+      </div>
+    </div>
+
+    <!-- Results container -->
+    <div id="invResults"></div>
+
+  </div>
+
   <!-- ── Weekly / Monthly Report Generator ──────────────────── -->
   <div class="card mb24" id="reportGeneratorCard">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;flex-wrap:wrap;gap:10px;">
@@ -4643,6 +4725,247 @@ async function sendCommand() {
 // STATE: Add S.shopOps = null to S object in main fetchAll
 
 // ─── Main render ──────────────────────────────────────────────────────────────
+
+// ─── Inventory Forecast Agent ────────────────────────────────────────────────
+
+const _inv = {
+  stages: null,        // last forecast results
+  decisions: {},       // gate decisions keyed by SKU id
+};
+
+function invToggleSetup() {
+  const p = document.getElementById('invSetupPanel');
+  p.style.display = p.style.display === 'none' ? 'block' : 'none';
+}
+
+function invScrollToStage(n) {
+  document.getElementById(`invStageResult${n}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function invSetStageActive(n) {
+  for (let i = 1; i <= 6; i++) {
+    const btn = document.getElementById(`invStage${i}Btn`);
+    if (!btn) continue;
+    btn.style.background = i === n ? 'rgba(0,242,234,0.12)' : 'var(--card)';
+    btn.style.color = i === n ? 'var(--teal)' : (i < n ? 'var(--green)' : 'var(--muted)');
+  }
+}
+
+async function invRunForecast() {
+  const btn = document.getElementById('invRunBtn');
+  const sellerData  = document.getElementById('invSellerData')?.value?.trim();
+  const creatorData = document.getElementById('invCreatorData')?.value?.trim();
+
+  if (!sellerData) {
+    alert('Paste your Seller Center data first.');
+    return;
+  }
+
+  const config = {
+    leadTimeDays:  parseInt(document.getElementById('invLeadTime')?.value  || '90'),
+    minMarginPct:  parseInt(document.getElementById('invMinMargin')?.value || '40'),
+    fbtSplitPct:   parseInt(document.getElementById('invFbtSplit')?.value  || '60'),
+    spikeGrowthPct: parseInt(document.getElementById('invSpikeGrowth')?.value || '100'),
+    decayDropPct:  parseInt(document.getElementById('invDecayDrop')?.value || '40'),
+  };
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Running…';
+  document.getElementById('invStageBar').style.display = 'block';
+  document.getElementById('invResults').innerHTML = invLoadingHTML();
+  _inv.decisions = {};
+
+  try {
+    const r = await fetch('/api/inventory/forecast', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sellerData, creatorData, config }),
+    }).then(r => r.json());
+
+    if (!r.ok) throw new Error(r.error || 'Forecast failed');
+
+    _inv.stages = r.stages;
+    invRenderResults(r.stages, config);
+    document.getElementById('invForecastBadge').style.display = '';
+    document.getElementById('invForecastBadge').className = 'badge b-active';
+    document.getElementById('invForecastBadge').textContent = 'Updated just now';
+  } catch(e) {
+    document.getElementById('invResults').innerHTML =
+      `<div style="color:var(--red);padding:16px;font-size:13px">⚠ ${x(e.message)}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '▶ Run Forecast';
+  }
+}
+
+function invLoadingHTML() {
+  return ['1 Catalog Snapshot','2 Signal Scan','3 Spike Response','4 Decay Detection','5 Tail Reorder','6 Accuracy Check'].map((label, i) => `
+    <div id="invStageResult${i+1}" style="margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:10px;padding:14px 16px;background:var(--card);border:1px solid var(--border);border-radius:10px">
+        <div style="width:20px;height:20px;border-radius:50%;border:2px solid var(--border);border-top-color:var(--teal);animation:spin 1s linear infinite;flex-shrink:0"></div>
+        <div style="font-size:13px;font-weight:700;color:var(--muted)">Stage ${label}…</div>
+      </div>
+    </div>`).join('');
+}
+
+function invRenderResults(stages, config) {
+  const el = document.getElementById('invResults');
+  if (!el) return;
+
+  el.innerHTML = stages.map((stage, i) => {
+    const n = i + 1;
+    invSetStageActive(n);
+
+    const isGate = stage.gate;
+    const headerColor = stage.alert_count > 0 ? 'var(--gold)' : 'var(--green)';
+
+    return `
+    <div id="invStageResult${n}" style="margin-bottom:16px">
+      <div style="background:var(--card);border:1px solid ${isGate ? 'rgba(201,168,76,0.3)' : 'var(--border)'};border-radius:12px;overflow:hidden">
+
+        <!-- Stage header -->
+        <div style="display:flex;align-items:center;gap:12px;padding:14px 18px;border-bottom:1px solid var(--border);cursor:pointer"
+          onclick="invToggleStage(${n})">
+          <div style="width:26px;height:26px;border-radius:50%;background:rgba(0,242,234,0.1);border:1px solid var(--teal);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:900;color:var(--teal);flex-shrink:0">${n}</div>
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:800">${x(stage.title)}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">${x(stage.summary)}</div>
+          </div>
+          ${stage.alert_count > 0 ? `<div style="padding:3px 10px;background:rgba(201,168,76,0.12);border-radius:20px;font-size:11px;font-weight:700;color:var(--gold)">${stage.alert_count} flagged</div>` : ''}
+          ${isGate ? `<div style="padding:3px 10px;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.3);border-radius:20px;font-size:10px;font-weight:700;color:var(--gold)">⏸ GATE ${stage.gate_number}</div>` : ''}
+          <div id="invChev${n}" style="color:var(--muted);font-size:12px;transition:transform .2s">▼</div>
+        </div>
+
+        <!-- Stage body -->
+        <div id="invStageBody${n}" style="padding:16px 18px">
+          ${invRenderStageBody(stage, n, config)}
+        </div>
+      </div>
+    </div>`;
+  }).join('') + `
+  <div style="padding:16px;background:rgba(0,242,234,0.04);border:1px solid rgba(0,242,234,0.15);border-radius:10px;margin-top:4px">
+    <button class="btn btn-teal" style="font-weight:700" onclick="invExportActionPlan()">📋 Export Action Plan</button>
+    <span style="font-size:12px;color:var(--muted);margin-left:14px">Includes your gate decisions + all reorder recommendations</span>
+  </div>`;
+
+  invSetStageActive(6);
+}
+
+function invToggleStage(n) {
+  const body = document.getElementById(`invStageBody${n}`);
+  const chev = document.getElementById(`invChev${n}`);
+  const open = body.style.display !== 'none';
+  body.style.display = open ? 'none' : 'block';
+  chev.style.transform = open ? 'rotate(-90deg)' : '';
+}
+
+function invRenderStageBody(stage, n, config) {
+  let html = '';
+
+  // SKU table if present
+  if (stage.skus?.length) {
+    html += `<div style="overflow-x:auto;margin-bottom:14px">
+      <table class="tbl" style="font-size:12px">
+        <thead><tr>
+          ${Object.keys(stage.skus[0]).map(k => `<th>${x(k)}</th>`).join('')}
+        </tr></thead>
+        <tbody>
+          ${stage.skus.map(sku => `<tr>
+            ${Object.values(sku).map(v => `<td>${x(String(v ?? ''))}</td>`).join('')}
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+  }
+
+  // Narrative
+  if (stage.narrative) {
+    html += `<div style="font-size:12px;color:var(--muted);line-height:1.7;white-space:pre-wrap;margin-bottom:12px">${x(stage.narrative)}</div>`;
+  }
+
+  // Gate decision panel
+  if (stage.gate && stage.decisions?.length) {
+    html += `<div style="border-top:1px solid rgba(201,168,76,0.2);padding-top:14px;margin-top:4px">
+      <div style="font-size:11px;font-weight:700;color:var(--gold);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:12px">⏸ Gate ${stage.gate_number} — Your Decision Required</div>
+      ${stage.decisions.map(d => `
+        <div id="invDecision_${x(d.sku_id)}" style="background:rgba(0,0,0,0.2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px">
+          <div style="display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap">
+            <div style="flex:1;min-width:200px">
+              <div style="font-size:12px;font-weight:800">${x(d.sku_name)}</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:3px">${x(d.recommendation)}</div>
+              ${d.cost ? `<div style="font-size:11px;color:var(--gold);margin-top:3px">Est. cost: ${x(d.cost)}</div>` : ''}
+            </div>
+            <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap">
+              <button class="btn btn-teal" style="font-size:11px;padding:5px 12px"
+                onclick="invDecide('${x(d.sku_id)}','approve',this)">✓ Approve</button>
+              <button class="btn btn-ghost" style="font-size:11px;padding:5px 12px"
+                onclick="invDecide('${x(d.sku_id)}','modify',this)">✎ Modify</button>
+              <button class="btn" style="font-size:11px;padding:5px 12px;background:rgba(255,80,80,0.1);color:#f88;border:1px solid rgba(255,80,80,0.2)"
+                onclick="invDecide('${x(d.sku_id)}','kill',this)">✕ Kill</button>
+            </div>
+          </div>
+          <div id="invModify_${x(d.sku_id)}" style="display:none;margin-top:10px">
+            <input class="agent-input" style="width:100%;font-size:12px" placeholder="Describe your modification (e.g. reduce air order to 200 units)…"
+              id="invModifyNote_${x(d.sku_id)}" />
+          </div>
+        </div>`).join('')}
+    </div>`;
+  }
+
+  return html || `<div style="font-size:12px;color:var(--muted);padding:8px 0">${x(stage.summary)}</div>`;
+}
+
+function invDecide(skuId, decision, btn) {
+  _inv.decisions[skuId] = decision;
+
+  // Visual feedback
+  const panel = document.getElementById(`invDecision_${skuId}`);
+  if (panel) {
+    const colors = { approve: 'rgba(0,210,122,0.08)', modify: 'rgba(201,168,76,0.08)', kill: 'rgba(255,80,80,0.08)' };
+    const borders = { approve: 'rgba(0,210,122,0.3)', modify: 'rgba(201,168,76,0.3)', kill: 'rgba(255,80,80,0.3)' };
+    panel.style.background = colors[decision];
+    panel.style.borderColor = borders[decision];
+  }
+
+  if (decision === 'modify') {
+    document.getElementById(`invModify_${skuId}`)?.style.setProperty('display', 'block');
+  } else {
+    document.getElementById(`invModify_${skuId}`)?.style.setProperty('display', 'none');
+  }
+}
+
+function invExportActionPlan() {
+  if (!_inv.stages) return;
+
+  const lines = ['TikTok Shop Inventory Action Plan', '='.repeat(40), ''];
+
+  _inv.stages.forEach(stage => {
+    lines.push(`STAGE ${stage.number}: ${stage.title}`);
+    lines.push('-'.repeat(30));
+    if (stage.summary) lines.push(stage.summary);
+    if (stage.narrative) lines.push(stage.narrative);
+    if (stage.gate && stage.decisions?.length) {
+      lines.push('');
+      lines.push('Gate Decisions:');
+      stage.decisions.forEach(d => {
+        const dec = _inv.decisions[d.sku_id] || 'pending';
+        const note = document.getElementById(`invModifyNote_${d.sku_id}`)?.value || '';
+        lines.push(`  • ${d.sku_name}: ${dec.toUpperCase()}${note ? ` — ${note}` : ''}`);
+      });
+    }
+    lines.push('');
+  });
+
+  const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `inventory-action-plan-${new Date().toISOString().split('T')[0]}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 function renderShopOps() {
   const d = S.reacher;
