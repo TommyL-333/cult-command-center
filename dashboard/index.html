@@ -411,6 +411,32 @@
     .sv-cfg-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
     .sv-cfg-row label { font-size: 10px; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
     @media (max-width: 900px) { .sv-pipeline-arrow { font-size: 14px; } }
+    /* ─── Short Video — Performance pills ───────────────────────────────────── */
+    .svp-pill {
+      padding: 5px 12px; border-radius: 20px; font-size: 11px; font-weight: 700;
+      border: 1px solid var(--border); background: var(--card); color: var(--muted);
+      cursor: pointer; transition: all .15s;
+    }
+    .svp-pill.active, .svp-pill:hover {
+      background: var(--teal); color: #000; border-color: var(--teal);
+    }
+    /* ─── Short Video — Upload channel cards ─────────────────────────────────── */
+    .svu-channel-card {
+      padding: 10px 12px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--card); cursor: pointer; transition: all .15s;
+      display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600;
+    }
+    .svu-channel-card.selected {
+      border-color: var(--teal); background: rgba(0,242,234,0.08); color: var(--teal);
+    }
+    .svu-channel-card:hover { border-color: var(--teal); }
+    /* ─── Short Video — Hashtag pills ──────────────────────────────────────────── */
+    .svu-tag {
+      padding: 3px 10px; border-radius: 14px; background: rgba(0,242,234,0.1);
+      border: 1px solid rgba(0,242,234,0.25); color: var(--teal); font-size: 11px;
+      font-weight: 700; display: flex; align-items: center; gap: 5px; cursor: default;
+    }
+    .svu-tag-rm { cursor: pointer; opacity: .6; } .svu-tag-rm:hover { opacity: 1; }
 
     /* ─── Performance tab overrides ─────────────────────────── */
     .kpi-row-perf {
@@ -1865,187 +1891,201 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
 
   <!-- Sub-tab nav -->
   <div class="sub-tab-nav">
-    <button class="sub-tab-btn active" data-subtab="sv-agent" onclick="svSubTab('sv-agent')">📊 Agent</button>
-    <button class="sub-tab-btn" data-subtab="sv-pipeline" onclick="svSubTab('sv-pipeline')">🎬 Content Pipeline</button>
+    <button class="sub-tab-btn active" data-subtab="sv-perf"   onclick="svSubTab('sv-perf')">📊 Performance</button>
+    <button class="sub-tab-btn"        data-subtab="sv-upload" onclick="svSubTab('sv-upload')">📤 Upload & Publish</button>
   </div>
 
-  <!-- Agent sub-tab -->
-  <div class="sub-tab-pane active" id="sub-sv-agent">
+  <!-- ══ PERFORMANCE SUB-TAB ══════════════════════════════════════════════════ -->
+  <div class="sub-tab-pane active" id="sub-sv-perf">
 
-  <!-- ── Header + Schedule bar ──────────────────────────────────────────── -->
-  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
-    <h2 class="sec-title" style="margin:0;">Short Video Agent</h2>
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-      <span id="svPipelineStatusBadge" style="font-size:11px;padding:4px 10px;border-radius:20px;font-weight:700;background:rgba(0,210,122,0.1);border:1px solid rgba(0,210,122,0.25);color:var(--green);">● Idle</span>
-      <button class="btn btn-ghost" style="font-size:11px;" onclick="svTogglePause()" id="svPauseBtn">⏸ Pause</button>
-      <button class="btn btn-teal" style="font-size:12px;" onclick="svRunPipeline()" id="svRunBtn">▶ Run Now</button>
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+      <h2 class="sec-title" style="margin:0;">Video Performance</h2>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <span id="svpLastUpdated" style="font-size:11px;color:var(--muted);"></span>
+        <button class="btn btn-ghost" style="font-size:11px;" onclick="svpLoad(true)">↺ Refresh</button>
+      </div>
     </div>
-  </div>
 
-  <!-- Schedule config bar -->
-  <div class="card" style="padding:12px 18px;margin-bottom:18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-    <span style="font-size:10px;font-weight:800;letter-spacing:0.08em;color:var(--muted);">SCHEDULE</span>
-    <select id="svSchedule" class="agent-input" style="width:180px;font-size:12px;" onchange="svSaveConfig()">
-      <option value="manual">Manual only</option>
-      <option value="daily">Daily — 6am</option>
-      <option value="weekly">Weekly — Mon 6am</option>
-      <option value="biweekly">Every 2 weeks</option>
-    </select>
-    <span style="font-size:10px;font-weight:800;letter-spacing:0.08em;color:var(--muted);">POSTS PER RUN</span>
-    <input type="number" id="svPostCount" class="agent-input" value="5" min="1" max="20" style="width:60px;font-size:12px;" onchange="svSaveConfig()" />
-    <span id="svNextRun" style="font-size:11px;color:var(--muted);margin-left:auto;"></span>
-    <span id="svPaused" style="font-size:11px;color:var(--red);font-weight:700;display:none;">⏸ PAUSED</span>
-  </div>
+    <!-- Platform filter pills -->
+    <div id="svpPlatformFilters" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">
+      <button class="svp-pill active" data-platform="all"       onclick="svpFilter('all')">All</button>
+      <button class="svp-pill"        data-platform="tiktok"    onclick="svpFilter('tiktok')">🎵 TikTok</button>
+      <button class="svp-pill"        data-platform="instagram" onclick="svpFilter('instagram')">📸 Instagram</button>
+      <button class="svp-pill"        data-platform="facebook"  onclick="svpFilter('facebook')">👤 Facebook</button>
+      <button class="svp-pill"        data-platform="youtube"   onclick="svpFilter('youtube')">▶️ YouTube</button>
+    </div>
 
-  <!-- ── Pipeline stages ────────────────────────────────────────────────── -->
-  <div class="sv-pipeline-wrap"><div style="display:grid;gap:0;position:relative;" id="svPipelineRow">
+    <!-- Summary stat cards -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:20px;" id="svpStatsRow">
+      <div class="card" style="padding:14px 16px;">
+        <div style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.07em;margin-bottom:4px;">TOTAL VIEWS</div>
+        <div id="svpTotalViews" style="font-size:22px;font-weight:900;color:var(--teal);">—</div>
+      </div>
+      <div class="card" style="padding:14px 16px;">
+        <div style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.07em;margin-bottom:4px;">TOTAL LIKES</div>
+        <div id="svpTotalLikes" style="font-size:22px;font-weight:900;color:var(--gold);">—</div>
+      </div>
+      <div class="card" style="padding:14px 16px;">
+        <div style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.07em;margin-bottom:4px;">VIDEOS TRACKED</div>
+        <div id="svpTotalVideos" style="font-size:22px;font-weight:900;color:var(--text);">—</div>
+      </div>
+      <div class="card" style="padding:14px 16px;">
+        <div style="font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.07em;margin-bottom:4px;">AVG ENGAGEMENT</div>
+        <div id="svpAvgEng" style="font-size:22px;font-weight:900;color:var(--green);">—</div>
+      </div>
+    </div>
 
-    <!-- Stage 1: Analysis -->
-    <div class="sv-stage-card" id="svStage-analysis">
-      <div class="sv-stage-num">1</div>
-      <div class="sv-stage-name">Analysis</div>
-      <select class="agent-input sv-skill-select" onchange="svSetSkill('analysis',this.value);svSaveConfig()">
-        <option value="last7d">Last 7 Days</option>
-        <option value="last30d">Last 30 Days</option>
-        <option value="competitor">Competitor Scan</option>
-        <option value="trending">Trending Topics</option>
-      </select>
-      <div class="sv-skill-config" id="svCfg-analysis">
-        <div class="sv-cfg-row">
-          <label>Source</label>
-          <select class="agent-input" id="svAnalysisSource" style="font-size:11px;" onchange="svSaveConfig()">
-            <option value="arcads">Arcads</option>
-            <option value="buffer">Buffer</option>
+    <!-- Video table -->
+    <div class="card" style="padding:0;overflow:hidden;">
+      <table class="tbl" id="svpVideoTable">
+        <thead>
+          <tr>
+            <th style="width:36px;"></th>
+            <th>Title</th>
+            <th style="width:90px;">Platform</th>
+            <th style="width:80px;text-align:right;">Views</th>
+            <th style="width:70px;text-align:right;">Likes</th>
+            <th style="width:70px;text-align:right;">Comments</th>
+            <th style="width:70px;text-align:right;">Shares</th>
+            <th style="width:100px;">Posted</th>
+          </tr>
+        </thead>
+        <tbody id="svpVideoTbody">
+          <tr class="empty"><td colspan="8" style="text-align:center;padding:40px;color:var(--muted);">Click Refresh to load video stats</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+  </div><!-- end sv-perf -->
+
+  <!-- ══ UPLOAD & PUBLISH SUB-TAB ══════════════════════════════════════════════ -->
+  <div class="sub-tab-pane" id="sub-sv-upload">
+
+    <div style="max-width:720px;">
+
+    <!-- Step 1: Upload -->
+    <div class="card" style="margin-bottom:16px;padding:20px 22px;">
+      <div style="font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--muted);margin-bottom:12px;">① UPLOAD VIDEO</div>
+
+      <!-- Drop zone -->
+      <div id="svuDropZone"
+        style="border:2px dashed var(--border);border-radius:10px;padding:32px 20px;text-align:center;cursor:pointer;transition:border-color .2s;"
+        onclick="document.getElementById('svuFileInput').click()"
+        ondragover="event.preventDefault();this.style.borderColor='var(--teal)'"
+        ondragleave="this.style.borderColor='var(--border)'"
+        ondrop="svuHandleDrop(event)">
+        <div style="font-size:28px;margin-bottom:8px;">🎬</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px;">Drop video here or click to browse</div>
+        <div style="font-size:11px;color:var(--muted);">MP4, MOV, AVI — up to 500MB</div>
+      </div>
+      <input type="file" id="svuFileInput" accept="video/*" style="display:none" onchange="svuHandleFile(this.files[0])">
+
+      <!-- File selected state -->
+      <div id="svuFileInfo" style="display:none;margin-top:12px;display:none;align-items:center;gap:12px;">
+        <video id="svuPreview" style="width:80px;height:56px;object-fit:cover;border-radius:6px;background:#000;" muted></video>
+        <div style="flex:1;min-width:0;">
+          <div id="svuFileName" style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
+          <div id="svuFileSize" style="font-size:11px;color:var(--muted);"></div>
+        </div>
+        <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="svuClearFile()">✕</button>
+      </div>
+
+      <!-- Upload progress -->
+      <div id="svuUploadProgress" style="display:none;margin-top:12px;">
+        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px;">
+          <span id="svuUploadLabel">Uploading…</span>
+          <span id="svuUploadPct">0%</span>
+        </div>
+        <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;">
+          <div id="svuProgressBar" style="height:100%;width:0%;background:var(--teal);transition:width .3s;border-radius:2px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: Transcription -->
+    <div class="card" style="margin-bottom:16px;padding:20px 22px;" id="svuTranscriptCard">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--muted);">② TRANSCRIPTION</div>
+        <div id="svuTranscriptStatus" style="font-size:11px;color:var(--muted);">Waiting for video…</div>
+      </div>
+      <textarea id="svuTranscript" class="agent-input" rows="4"
+        placeholder="Transcription will appear here after upload. You can also paste a transcript manually."
+        style="width:100%;resize:vertical;font-size:12px;line-height:1.5;"
+        oninput="svuTranscriptEdited = true"></textarea>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button class="btn btn-ghost" style="font-size:11px;" onclick="svuRunTranscribe()" id="svuTranscribeBtn">🎤 Re-transcribe</button>
+      </div>
+    </div>
+
+    <!-- Step 3: Caption generation -->
+    <div class="card" style="margin-bottom:16px;padding:20px 22px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--muted);">③ CAPTION & HASHTAGS</div>
+        <div style="display:flex;gap:6px;align-items:center;">
+          <select id="svuCaptionPlatform" class="agent-input" style="font-size:11px;padding:4px 8px;width:130px;" onchange="svuCaptionPlatformChanged()">
+            <option value="tiktok">🎵 TikTok</option>
+            <option value="instagram">📸 Instagram</option>
+            <option value="facebook">👤 Facebook</option>
+            <option value="youtube">▶️ YouTube</option>
+            <option value="linkedin">💼 LinkedIn</option>
+            <option value="twitter">𝕏 Twitter/X</option>
           </select>
+          <button class="btn btn-teal" style="font-size:11px;padding:5px 12px;" onclick="svuGenerateCaption()" id="svuGenCaptionBtn">✨ Generate</button>
         </div>
       </div>
+
+      <!-- Caption -->
+      <div style="font-size:10px;color:var(--muted);margin-bottom:4px;font-weight:700;">CAPTION</div>
+      <textarea id="svuCaption" class="agent-input" rows="3"
+        placeholder="Caption will be generated from your transcript…"
+        style="width:100%;resize:vertical;font-size:12px;line-height:1.5;margin-bottom:10px;"></textarea>
+
+      <!-- Hashtags -->
+      <div style="font-size:10px;color:var(--muted);margin-bottom:6px;font-weight:700;">HASHTAGS</div>
+      <div id="svuHashtagPills" style="display:flex;flex-wrap:wrap;gap:6px;min-height:28px;margin-bottom:8px;"></div>
+      <input type="text" id="svuHashtagInput" class="agent-input" placeholder="Add hashtag and press Enter"
+        style="font-size:11px;padding:5px 10px;width:200px;"
+        onkeydown="if(event.key==='Enter'){svuAddHashtag(this.value);this.value='';event.preventDefault();}">
+
+      <!-- Full post preview -->
+      <div style="font-size:10px;color:var(--muted);margin:10px 0 4px;font-weight:700;">FULL POST PREVIEW</div>
+      <div id="svuFullPost" style="font-size:12px;line-height:1.5;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px 12px;white-space:pre-wrap;color:var(--text);min-height:48px;"></div>
+      <button class="btn btn-ghost" style="font-size:11px;margin-top:6px;" onclick="svuCopyFullPost()">📋 Copy</button>
     </div>
 
-    <!-- Arrow -->
-    <div class="sv-pipeline-arrow">→</div>
+    <!-- Step 4: Publish -->
+    <div class="card" style="margin-bottom:24px;padding:20px 22px;">
+      <div style="font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--muted);margin-bottom:12px;">④ PUBLISH</div>
 
-    <!-- Stage 2: Ideation -->
-    <div class="sv-stage-card" id="svStage-ideation">
-      <div class="sv-stage-num">2</div>
-      <div class="sv-stage-name">Ideation</div>
-      <select class="agent-input sv-skill-select" onchange="svSetSkill('ideation',this.value);svSaveConfig()">
-        <option value="cult-ideator">Cult Ideator</option>
-        <option value="trend-based">Trend-Based</option>
-        <option value="competitor">Competitor-Inspired</option>
-      </select>
-      <div class="sv-skill-config" id="svCfg-ideation">
-        <div class="sv-cfg-row">
-          <label>Style focus</label>
-          <select class="agent-input" id="svIdeationStyle" style="font-size:11px;" onchange="svSaveConfig()">
-            <option value="hooks">Hooks-first</option>
-            <option value="story">Story-driven</option>
-            <option value="product">Product-led</option>
-          </select>
-        </div>
+      <!-- Channel picker -->
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">Select channels:</div>
+      <div id="svuChannelGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:14px;">
+        <div style="color:var(--muted);font-size:11px;padding:8px;">Loading channels…</div>
       </div>
-    </div>
 
-    <!-- Arrow -->
-    <div class="sv-pipeline-arrow">→</div>
-
-    <!-- Stage 3: Scripting -->
-    <div class="sv-stage-card" id="svStage-scripting">
-      <div class="sv-stage-num">3</div>
-      <div class="sv-stage-name">Scripting</div>
-      <select class="agent-input sv-skill-select" onchange="svSetSkill('scripting',this.value);svSaveConfig()">
-        <option value="cult-script-writer">Cult Script Writer</option>
-        <option value="short-hook">Short Hook (15s)</option>
-        <option value="long-form">Long-form (60s)</option>
-      </select>
-      <div class="sv-skill-config" id="svCfg-scripting">
-        <div class="sv-cfg-row">
-          <label>Max length</label>
-          <select class="agent-input" id="svScriptLength" style="font-size:11px;" onchange="svSaveConfig()">
-            <option value="60">60 sec</option>
-            <option value="30">30 sec</option>
-            <option value="15">15 sec</option>
-          </select>
-        </div>
+      <!-- Schedule or post now -->
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+        <label style="font-size:11px;color:var(--muted);font-weight:700;">WHEN</label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:5px;cursor:pointer;">
+          <input type="radio" name="svuWhen" value="now" checked onchange="svuToggleSchedule(this.value)"> Post now
+        </label>
+        <label style="font-size:12px;display:flex;align-items:center;gap:5px;cursor:pointer;">
+          <input type="radio" name="svuWhen" value="schedule" onchange="svuToggleSchedule(this.value)"> Schedule
+        </label>
+        <input type="datetime-local" id="svuScheduleAt" class="agent-input" style="font-size:11px;display:none;padding:5px 8px;">
       </div>
+
+      <button class="btn btn-teal" style="font-size:13px;padding:9px 24px;font-weight:700;" onclick="svuPublish()" id="svuPublishBtn">
+        📤 Post to Selected Channels
+      </button>
+
+      <!-- Publish results -->
+      <div id="svuPublishResults" style="margin-top:12px;display:none;"></div>
     </div>
 
-    <!-- Arrow -->
-    <div class="sv-pipeline-arrow">→</div>
-
-    <!-- Stage 4: Production -->
-    <div class="sv-stage-card" id="svStage-production">
-      <div class="sv-stage-num">4</div>
-      <div class="sv-stage-name">Production</div>
-      <select class="agent-input sv-skill-select" onchange="svSetSkill('production',this.value);svSaveConfig()">
-        <option value="arcads">Arcads</option>
-        <option value="opus-clip">Opus Clip</option>
-        <option value="manual">Manual upload</option>
-      </select>
-      <div class="sv-skill-config" id="svCfg-production">
-        <div class="sv-cfg-row" style="flex-direction:column;align-items:stretch;gap:4px;">
-          <label>Script direction (optional)</label>
-          <textarea id="svArcadsDirection" class="agent-input" rows="2"
-            placeholder="e.g. upbeat tone, show product in first 3 seconds…"
-            style="font-size:11px;resize:none;width:100%;"
-            onchange="svSaveConfig()"></textarea>
-        </div>
-      </div>
-    </div>
-
-    <!-- Arrow -->
-    <div class="sv-pipeline-arrow">→</div>
-
-    <!-- Stage 5: Publishing -->
-    <div class="sv-stage-card" id="svStage-publishing">
-      <div class="sv-stage-num">5</div>
-      <div class="sv-stage-name">Publishing</div>
-      <select class="agent-input sv-skill-select" onchange="svSetSkill('publishing',this.value);svSaveConfig()">
-        <option value="buffer-tiktok">Buffer → TikTok</option>
-        <option value="buffer-instagram">Buffer → Instagram</option>
-        <option value="buffer-queue">Buffer (add to queue)</option>
-        <option value="ideas-only">Save as Buffer Ideas</option>
-      </select>
-      <div class="sv-skill-config" id="svCfg-publishing">
-        <div class="sv-cfg-row">
-          <label>Review before post</label>
-          <input type="checkbox" id="svReviewMode" onchange="svSaveConfig()" style="margin-left:auto;" />
-        </div>
-      </div>
-    </div>
-
-  </div></div>
-
-  <!-- ── Live log ────────────────────────────────────────────────────────── -->
-  <div id="svPipelineLog" style="display:none;font-size:11px;font-family:'JetBrains Mono',monospace;background:var(--dark);color:rgba(255,255,255,0.75);padding:12px 14px;border-radius:8px;margin-bottom:16px;min-height:60px;max-height:200px;overflow-y:auto;white-space:pre-wrap;"></div>
-
-  <!-- ── Last run summary ────────────────────────────────────────────────── -->
-  <div id="svLastRunPanel" style="display:none;" class="card" style="margin-bottom:16px;">
-    <div style="font-size:10px;font-weight:800;letter-spacing:0.08em;color:var(--muted);margin-bottom:10px;">LAST RUN</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;">
-      <div><div style="font-size:10px;color:var(--muted);">Ran at</div><div style="font-size:12px;font-weight:700;" id="svLastAt">—</div></div>
-      <div><div style="font-size:10px;color:var(--muted);">Analyzed</div><div style="font-size:13px;font-weight:700;color:var(--teal);" id="svLastAnalyzed">—</div></div>
-      <div><div style="font-size:10px;color:var(--muted);">Ideas</div><div style="font-size:13px;font-weight:700;color:var(--gold);" id="svLastIdeas">—</div></div>
-      <div><div style="font-size:10px;color:var(--muted);">Scripts</div><div style="font-size:13px;font-weight:700;color:var(--teal);" id="svLastScripts">—</div></div>
-      <div><div style="font-size:10px;color:var(--muted);">Published</div><div style="font-size:13px;font-weight:700;color:var(--green);" id="svLastPublished">—</div></div>
-    </div>
-  </div>
-
-  <!-- ── Run history ─────────────────────────────────────────────────────── -->
-  <div class="agent-section-label">📋 Run History</div>
-  <div class="card" style="margin-bottom:24px;">
-    <table class="tbl">
-      <thead><tr><th>Date</th><th>Analysis</th><th>Ideation</th><th>Scripting</th><th>Production</th><th>Published</th><th>Status</th></tr></thead>
-      <tbody id="svHistoryTbl"><tr class="empty"><td colspan="7">No runs yet</td></tr></tbody>
-    </table>
-  </div>
-
-  </div><!-- end sub-sv-agent -->
-
-  <!-- Content Pipeline sub-tab -->
-  <div class="sub-tab-pane" id="sub-sv-pipeline">
-    <!-- Production pipeline is rendered here — reusing tab-production content -->
-    <div id="svPipelineMount"></div>
-  </div>
+    </div><!-- max-width wrapper -->
+  </div><!-- end sv-upload -->
 
 </section>
 
@@ -2118,7 +2158,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.classList.add('active');
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
     // Lazy-init tab-specific data
-    if (btn.dataset.tab === 'shortvideo')  { svInitActors(); svLoopInit(); }
+    if (btn.dataset.tab === 'shortvideo')  { svpLoad(); svuLoadChannels(); }
     if (btn.dataset.tab === 'paidmedia')   loadPaidMedia();
     if (btn.dataset.tab === 'affiliates')  loadAffiliate();
     if (btn.dataset.tab === 'pipeline')    renderPerformance();
@@ -6079,1188 +6119,342 @@ function pmExportReport() {
 }
 
 
-// ─── Short Video Agent ─────────────────────────────────────────────────────────────────
-// ─── Short Video Agent — functions.js ────────────────────────────────────────
-// Call svInitActors() and renderShortVideo() on tab init.
-//
-// IMPORTANT: This file MUST be loaded after the main dashboard JS.
-// It reuses all existing globals: _arcadsActors, _arcadsJobs, _arcadsFolders,
-// _bufferChannels, queueFromArcads(), loadBufferChannels(), x(), fmtDate(), el()
-// ─────────────────────────────────────────────────────────────────────────────
+// ─── Short Video — Performance ────────────────────────────────────────────────
+const _svp = { videos: [], filtered: [], platform: 'all' };
 
-// ── New globals for Short Video Agent ────────────────────────────────────────
-let _svActors     = [];          // separate copy fetched for this tab's grid
-let _svSelectedId = null;        // currently selected actor ID in SV tab
-let _svHooks      = JSON.parse(localStorage.getItem('svHooks') || '[]');
-let _svScripts    = [];          // cached from /api/arcads/stats for performance table
-
-// ─── SECTION 1: Stats ────────────────────────────────────────────────────────
-
-async function svLoadStats() {
-  try {
-    const stats = await fetch('/api/arcads/stats').then(r => r.json());
-    if (!stats.connected) return;
-    const done    = document.getElementById('svStatDone');
-    const pending = document.getElementById('svStatPending');
-    const scripts = document.getElementById('svStatScripts');
-    if (done)    done.textContent    = stats.totals.done;
-    if (pending) pending.textContent = stats.totals.pending;
-    if (scripts) scripts.textContent = stats.totals.scripts;
-    // cache for script table
-    _svScripts = stats.scripts || [];
-    svRenderScriptTable(_svScripts);
-  } catch(e) { console.error('svLoadStats:', e); }
+function svpFilter(platform) {
+  _svp.platform = platform;
+  document.querySelectorAll('.svp-pill').forEach(p => p.classList.toggle('active', p.dataset.platform === platform));
+  _svp.filtered = platform === 'all' ? _svp.videos : _svp.videos.filter(v => v.platform === platform);
+  svpRenderTable();
+  svpRenderStats();
 }
 
-// ─── SECTION 2: Actor Browser ────────────────────────────────────────────────
-
-async function svInitActors() {
-  try {
-    const [actorsRes, scriptsRes] = await Promise.all([
-      fetch('/api/arcads/actors').then(r => r.json()),
-      fetch('/api/arcads/scripts').then(r => r.json()),
-    ]);
-
-    if (!actorsRes.connected) {
-      const grid = document.getElementById('svActorGrid');
-      if (grid) grid.innerHTML = '<div style="font-size:12px;color:var(--muted);font-style:italic;grid-column:1/-1;padding:12px 0">Arcads not connected.</div>';
-      return;
-    }
-
-    _svActors = actorsRes.items || [];
-
-    // Populate folder select
-    const sel = document.getElementById('svFolderSel');
-    const folders = scriptsRes.folders || [];
-    if (sel && folders.length) {
-      sel.innerHTML = folders.map(f => `<option value="${f.id}">${x(f.name)}</option>`).join('');
-    } else if (sel) {
-      sel.innerHTML = '<option value="">No folders found</option>';
-    }
-
-    svRenderActorGrid('');
-  } catch(e) {
-    console.error('svInitActors:', e);
-    const grid = document.getElementById('svActorGrid');
-    if (grid) grid.innerHTML = '<div style="font-size:12px;color:var(--red);grid-column:1/-1;padding:8px 0">Failed to load actors.</div>';
-  }
+function svpRenderStats() {
+  const vids = _svp.filtered;
+  const totalViews = vids.reduce((s, v) => s + (v.views || 0), 0);
+  const totalLikes = vids.reduce((s, v) => s + (v.likes || 0), 0);
+  const avgEng = vids.length ? ((vids.reduce((s,v) => s + (v.likes||0) + (v.comments||0) + (v.shares||0), 0) / Math.max(totalViews, 1)) * 100).toFixed(1) + '%' : '—';
+  document.getElementById('svpTotalViews').textContent  = totalViews.toLocaleString();
+  document.getElementById('svpTotalLikes').textContent  = totalLikes.toLocaleString();
+  document.getElementById('svpTotalVideos').textContent = vids.length;
+  document.getElementById('svpAvgEng').textContent      = avgEng;
 }
 
-// Filter button click handler — clears active state, re-renders
-function svFilterActors(btn, gender) {
-  document.querySelectorAll('#svActorFilters .actor-filter').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  svRenderActorGrid(gender);
-}
+const SVP_ICON = { tiktok:'🎵', instagram:'📸', facebook:'👤', youtube:'▶️', linkedin:'💼', twitter:'𝕏', threads:'🧵' };
 
-function svRenderActorGrid(genderFilter) {
-  const grid = document.getElementById('svActorGrid');
-  if (!grid) return;
-  const actors = _svActors
-    .filter(a => !genderFilter || a.actor?.gender === genderFilter)
-    .filter(a => a.talkingActorEnabled !== false)
-    .slice(0, 24);
-
-  if (!actors.length) {
-    grid.innerHTML = '<div style="font-size:12px;color:var(--muted);font-style:italic;grid-column:1/-1;padding:8px 0">No actors found.</div>';
+function svpRenderTable() {
+  const tbody = document.getElementById('svpVideoTbody');
+  if (!_svp.filtered.length) {
+    tbody.innerHTML = `<tr class="empty"><td colspan="8" style="text-align:center;padding:40px;color:var(--muted);">No videos found for this platform</td></tr>`;
     return;
   }
-
-  grid.innerHTML = actors.map(a => {
-    const sel     = _svSelectedId === a.id;
-    const emotion = (a.emotions || [])[0] || '';
-    const tag     = (a.tags || [])[0] || '';
-    return `<div class="actor-card ${sel ? 'selected' : ''}" onclick="svSelectActor('${a.id}','${x(a.actor?.name || 'Actor')}')">
-      <div class="actor-card-name">${x(a.actor?.name || 'Actor')} <span style="font-size:10px;color:var(--muted)">${a.actor?.gender || ''}</span></div>
-      <div class="actor-card-tags">${emotion}${tag ? ' · ' + tag : ''}</div>
-    </div>`;
-  }).join('');
-}
-
-function svSelectActor(id, name) {
-  _svSelectedId = id;
-  const label = document.getElementById('svActorSelLabel');
-  const btn   = document.getElementById('svGenerateBtn');
-  if (label) label.textContent = '✓ Selected: ' + name;
-  if (btn)   btn.disabled = false;
-  svRenderActorGrid(
-    document.querySelector('#svActorFilters .actor-filter.active')?.dataset.gender || ''
-  );
-}
-
-// ─── SECTION 2: Script Editor + Generate ─────────────────────────────────────
-
-function svShowGenerateMsg(msg, color) {
-  const el = document.getElementById('svGenerateResult');
-  if (!el) return;
-  el.style.display = 'block';
-  el.style.color   = color || 'var(--teal)';
-  el.textContent   = msg;
-}
-
-async function svGenerate() {
-  const name     = document.getElementById('svScriptName')?.value.trim();
-  const text     = document.getElementById('svScriptText')?.value.trim();
-  const folderId = document.getElementById('svFolderSel')?.value;
-  const btn      = document.getElementById('svGenerateBtn');
-
-  if (!name || !text)   { svShowGenerateMsg('Script name and text are required.', 'var(--red)'); return; }
-  if (!_svSelectedId)   { svShowGenerateMsg('Select an actor first.', 'var(--red)'); return; }
-
-  btn.disabled     = true;
-  btn.textContent  = '⏳ Creating script…';
-  const resEl = document.getElementById('svGenerateResult');
-  if (resEl) resEl.style.display = 'none';
-
-  try {
-    // Step 1: create script
-    const createRes = await fetch('/api/arcads/scripts', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, text, situationIds: [_svSelectedId], folderId }),
-    }).then(r => r.json());
-
-    if (!createRes.ok) {
-      svShowGenerateMsg('✗ ' + (createRes.error?.message || JSON.stringify(createRes.error)), 'var(--red)');
-      btn.disabled = false; btn.textContent = '🎬 Generate Video';
-      return;
-    }
-
-    const scriptId = createRes.script?.id;
-    btn.textContent = '⏳ Triggering generation…';
-
-    // Step 2: trigger generation
-    await fetch(`/api/arcads/scripts/${scriptId}/generate`, { method: 'POST' }).then(r => r.json());
-
-    // Step 3: add to the SHARED _arcadsJobs so pollArcadsJob works
-    const job = {
-      scriptId,
-      name,
-      actorId: _svSelectedId,
-      createdAt: new Date().toISOString(),
-      status: 'pending',
-    };
-    _arcadsJobs.unshift(job);
-    if (_arcadsJobs.length > 20) _arcadsJobs.splice(20);
-    localStorage.setItem('arcadsJobs', JSON.stringify(_arcadsJobs));
-
-    svShowGenerateMsg('✓ Generation started! Polling for completion…', 'var(--green)');
-
-    // Clear form
-    const nameEl = document.getElementById('svScriptName');
-    const textEl = document.getElementById('svScriptText');
-    if (nameEl) nameEl.value = '';
-    if (textEl) textEl.value = '';
-
-    svRenderJobs();
-
-    // Reuse existing poll function — it updates _arcadsJobs and calls renderArcadsJobs()
-    // We also hook renderArcadsJobs to trigger svRenderJobs via the shared data
-    pollArcadsJob(scriptId);
-
-  } catch(e) {
-    svShowGenerateMsg('✗ ' + e.message, 'var(--red)');
-  }
-
-  btn.disabled    = false;
-  btn.textContent = '🎬 Generate Video';
-}
-
-// ─── SECTION 3: Hook Library ──────────────────────────────────────────────────
-
-function svToggleSaveHookForm() {
-  const form = document.getElementById('svSaveHookForm');
-  if (!form) return;
-  const isHidden = form.style.display === 'none';
-  form.style.display = isHidden ? 'block' : 'none';
-
-  // Pre-fill from script editor when opening
-  if (isHidden) {
-    const name = document.getElementById('svScriptName')?.value.trim();
-    const nameEl = document.getElementById('svHookName');
-    if (nameEl && name) nameEl.value = name;
-    const note = document.getElementById('svHookNote');
-    if (note) note.value = '';
-    const msgEl = document.getElementById('svSaveHookMsg');
-    if (msgEl) msgEl.style.display = 'none';
-  }
-}
-
-function svSaveHook() {
-  const name = document.getElementById('svHookName')?.value.trim();
-  const tag  = document.getElementById('svHookTag')?.value || 'Hook';
-  const note = document.getElementById('svHookNote')?.value.trim() || '';
-  const text = document.getElementById('svScriptText')?.value.trim() || '';
-  const msg  = document.getElementById('svSaveHookMsg');
-
-  if (!name) {
-    if (msg) { msg.style.display = 'inline'; msg.style.color = 'var(--red)'; msg.textContent = 'Hook name is required.'; }
-    return;
-  }
-  if (!text) {
-    if (msg) { msg.style.display = 'inline'; msg.style.color = 'var(--red)'; msg.textContent = 'Script text is empty — write a script first.'; }
-    return;
-  }
-
-  const hook = {
-    id:        'h_' + Date.now(),
-    name,
-    tag,
-    text,
-    note,
-    createdAt: new Date().toISOString(),
-  };
-
-  _svHooks.unshift(hook);
-  localStorage.setItem('svHooks', JSON.stringify(_svHooks));
-
-  if (msg) { msg.style.display = 'inline'; msg.style.color = 'var(--green)'; msg.textContent = '✓ Saved!'; }
-
-  svRenderHookLibrary();
-  svPopulateHookSelect();
-
-  // Close form after a beat
-  setTimeout(() => svToggleSaveHookForm(), 1200);
-}
-
-function svLoadHook(id) {
-  const hook = _svHooks.find(h => h.id === id);
-  if (!hook) return;
-  const nameEl = document.getElementById('svScriptName');
-  const textEl = document.getElementById('svScriptText');
-  if (nameEl) nameEl.value = hook.name;
-  if (textEl) textEl.value = hook.text;
-  // Reset hook select back to placeholder
-  const sel = document.getElementById('svHookSelect');
-  if (sel) sel.value = '';
-}
-
-function svDeleteHook(id) {
-  _svHooks = _svHooks.filter(h => h.id !== id);
-  localStorage.setItem('svHooks', JSON.stringify(_svHooks));
-  svRenderHookLibrary();
-  svPopulateHookSelect();
-}
-
-// Quick-load from the dropdown in the script editor
-function svQuickLoadHook(id) {
-  if (!id) return;
-  svLoadHook(id);
-}
-
-function svPopulateHookSelect() {
-  const sel = document.getElementById('svHookSelect');
-  if (!sel) return;
-  if (!_svHooks.length) {
-    sel.innerHTML = '<option value="">💡 Load from Hook Library…</option>';
-    return;
-  }
-  sel.innerHTML =
-    '<option value="">💡 Load from Hook Library…</option>' +
-    _svHooks.map(h => `<option value="${h.id}">[${h.tag}] ${x(h.name)}</option>`).join('');
-}
-
-const SV_TAG_COLOR = {
-  Hook:        'rgba(0,242,234,0.12)',
-  CTA:         'rgba(255,0,80,0.10)',
-  Story:       'rgba(201,168,76,0.12)',
-  Educational: 'rgba(0,210,122,0.10)',
-  Promo:       'rgba(0,0,0,0.06)',
-};
-const SV_TAG_TEXT = {
-  Hook:        'var(--teal)',
-  CTA:         'var(--pink)',
-  Story:       'var(--gold)',
-  Educational: 'var(--green)',
-  Promo:       'var(--muted)',
-};
-
-function svRenderHookLibrary() {
-  const grid = document.getElementById('svHookGrid');
-  if (!grid) return;
-
-  if (!_svHooks.length) {
-    grid.innerHTML = '<div style="font-size:12px;color:var(--muted);font-style:italic;grid-column:1/-1;padding:12px 0;text-align:center;">No saved hooks yet. Generate a video and save the script.</div>';
-    return;
-  }
-
-  grid.innerHTML = _svHooks.map(h => {
-    const preview = h.text.length > 60 ? h.text.slice(0, 60) + '…' : h.text;
-    const bg   = SV_TAG_COLOR[h.tag] || 'rgba(0,0,0,0.06)';
-    const clr  = SV_TAG_TEXT[h.tag]  || 'var(--muted)';
-    const date = new Date(h.createdAt).toLocaleDateString();
-    return `<div style="border:1px solid var(--border);border-radius:10px;padding:14px;background:rgba(255,255,255,0.6);">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-        <span style="font-weight:700;font-size:13px;">${x(h.name)}</span>
-        <span style="font-size:9px;font-weight:800;padding:2px 8px;border-radius:20px;background:${bg};color:${clr};text-transform:uppercase;letter-spacing:0.05em;">${h.tag}</span>
-      </div>
-      <div style="font-size:11px;color:var(--soft);line-height:1.5;margin-bottom:8px;">${x(preview)}</div>
-      ${h.note ? `<div style="font-size:10px;color:var(--muted);font-style:italic;margin-bottom:8px;">${x(h.note)}</div>` : ''}
-      <div style="display:flex;align-items:center;justify-content:space-between;">
-        <span style="font-size:10px;color:var(--muted);font-family:'JetBrains Mono',monospace;">${date}</span>
-        <div style="display:flex;gap:6px;">
-          <button class="btn btn-teal" style="font-size:10px;padding:3px 9px;" onclick="svLoadHook('${h.id}')">Load</button>
-          <button class="btn btn-ghost" style="font-size:10px;padding:3px 8px;color:var(--red);" onclick="svDeleteHook('${h.id}')">✕</button>
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-}
-
-// ─── SECTION 4: Active Jobs ───────────────────────────────────────────────────
-
-function svRenderJobs() {
-  const el = document.getElementById('svJobsList');
-  if (!el) return;
-
-  if (!_arcadsJobs.length) {
-    el.innerHTML = '<div style="font-size:12px;color:var(--muted);font-style:italic;">No active jobs this session.</div>';
-    return;
-  }
-
-  el.innerHTML = _arcadsJobs.slice(0, 10).map(j => `
-    <div class="gen-job">
-      <span class="gen-status ${j.status}">${j.status}</span>
-      <div style="flex:1;min-width:0;">
-        <div style="font-weight:700;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${x(j.name)}</div>
-        <div style="font-size:10px;color:var(--muted);">${new Date(j.createdAt).toLocaleString()}</div>
-      </div>
-      <div style="display:flex;gap:6px;flex-shrink:0;">
-        ${j.downloadUrl
-          ? `<a href="${j.downloadUrl}" target="_blank" class="btn btn-ghost" style="font-size:11px;padding:4px 8px;">⬇ Download</a>`
-          : ''}
-        ${j.downloadUrl
-          ? `<button class="btn btn-teal" style="font-size:11px;padding:4px 8px;" onclick="queueFromArcads('${j.scriptId}','${x(j.name)}','${j.downloadUrl}')">+ Queue</button>`
-          : ''}
-      </div>
-    </div>`).join('');
-}
-
-function svClearDoneJobs() {
-  // Remove completed jobs from the shared _arcadsJobs array
-  const before = _arcadsJobs.length;
-  // Reassign — _arcadsJobs is a let in the parent scope; we splice in place to preserve reference
-  const remaining = _arcadsJobs.filter(j => j.status !== 'done');
-  _arcadsJobs.splice(0, _arcadsJobs.length, ...remaining);
-  localStorage.setItem('arcadsJobs', JSON.stringify(_arcadsJobs));
-  svRenderJobs();
-  // Also refresh the Agents & Ops tab tracker if it's rendered
-  if (typeof renderArcadsJobs === 'function') renderArcadsJobs();
-}
-
-// ─── SECTION 4: Script Performance Table ─────────────────────────────────────
-
-let _svCurrentSort = 'done';
-
-function svSortScripts(sortBy) {
-  _svCurrentSort = sortBy;
-  svRenderScriptTable(_svScripts);
-}
-
-function svRenderScriptTable(scripts) {
-  const tbody = document.getElementById('svScriptTableBody');
-  if (!tbody) return;
-
-  if (!scripts || !scripts.length) {
-    tbody.innerHTML = '<tr class="empty"><td colspan="6">No scripts found.</td></tr>';
-    return;
-  }
-
-  const sorted = [...scripts].sort((a, b) => {
-    if (_svCurrentSort === 'name') return a.name.localeCompare(b.name);
-    return b.done - a.done; // default: most done
-  });
-
-  tbody.innerHTML = sorted.map(s => {
-    const statusDot = s.done > 0
-      ? `<span style="color:var(--green)">●</span>`
-      : s.pending > 0
-        ? `<span style="color:var(--yellow)">●</span>`
-        : `<span style="color:var(--muted)">○</span>`;
-    const actions = s.firstUrl
-      ? `<div style="display:flex;gap:4px;">
-           <a href="${s.firstUrl}" target="_blank" class="btn btn-ghost" style="font-size:10px;padding:3px 7px;">▶ Watch</a>
-           <button class="btn btn-teal" style="font-size:10px;padding:3px 7px;" onclick="queueFromArcads('${s.id}','${x(s.name)}','${s.firstUrl}')">+ Queue</button>
-         </div>`
-      : '<span style="font-size:11px;color:var(--muted);">—</span>';
-
+  tbody.innerHTML = _svp.filtered.map(v => {
+    const icon = SVP_ICON[v.platform] || '📹';
+    const date = v.postedAt ? new Date(v.postedAt).toLocaleDateString() : '—';
+    const thumb = v.thumbnail
+      ? `<img src="${v.thumbnail}" style="width:36px;height:28px;object-fit:cover;border-radius:4px;" loading="lazy">`
+      : `<div style="width:36px;height:28px;background:var(--border);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:14px;">${icon}</div>`;
+    const title = v.url ? `<a href="${v.url}" target="_blank" style="color:var(--text);text-decoration:none;" title="${v.title}">${v.title.slice(0,55)}${v.title.length>55?'…':''}</a>` : v.title.slice(0,55);
     return `<tr>
-      <td><span style="font-size:12px;font-weight:700;">${statusDot} ${x(s.name)}</span></td>
-      <td><span class="muted" style="font-size:11px;">${x(s.folderName || '—')}</span></td>
-      <td style="text-align:center;color:var(--green);font-weight:800;">${s.done}</td>
-      <td style="text-align:center;color:var(--gold);font-weight:800;">${s.pending}</td>
-      <td style="text-align:center;color:var(--red);font-weight:800;">${s.failed}</td>
-      <td>${actions}</td>
+      <td style="padding:8px 10px;">${thumb}</td>
+      <td style="font-size:12px;">${title}</td>
+      <td style="font-size:12px;">${icon} ${v.account || v.platform}</td>
+      <td style="text-align:right;font-size:12px;font-weight:700;color:var(--teal);">${(v.views||0).toLocaleString()}</td>
+      <td style="text-align:right;font-size:12px;color:var(--gold);">${(v.likes||0).toLocaleString()}</td>
+      <td style="text-align:right;font-size:12px;color:var(--muted);">${(v.comments||0).toLocaleString()}</td>
+      <td style="text-align:right;font-size:12px;color:var(--muted);">${(v.shares||0).toLocaleString()}</td>
+      <td style="font-size:11px;color:var(--muted);">${date}</td>
     </tr>`;
   }).join('');
 }
 
-// ─── SECTION 5: Upload Queue (sv-prefixed) ────────────────────────────────────
-// These mirror initUpload / submitUpload / cancelUpload / renderUploadQueue
-// but use svDropZone, svFileInput, svUploadForm, etc.
-
-let _svPendingFile = null;
-
-function svInitUpload() {
-  const zone  = document.getElementById('svDropZone');
-  const input = document.getElementById('svFileInput');
-  if (!zone || !input) return;
-
-  zone.onclick = () => input.click();
-  zone.ondragover  = (e) => { e.preventDefault(); zone.classList.add('drag-over'); };
-  zone.ondragleave = ()  => zone.classList.remove('drag-over');
-  zone.ondrop = (e) => {
-    e.preventDefault();
-    zone.classList.remove('drag-over');
-    const f = e.dataTransfer.files[0];
-    if (f) svShowUploadForm(f);
-  };
-  input.onchange = () => { if (input.files[0]) svShowUploadForm(input.files[0]); };
-}
-
-function svShowUploadForm(file) {
-  _svPendingFile = file;
-  const fname = document.getElementById('svUploadFileName');
-  const title = document.getElementById('svUploadTitle');
-  const form  = document.getElementById('svUploadForm');
-  const zone  = document.getElementById('svDropZone');
-
-  if (fname) fname.textContent = `${file.name}  (${(file.size / 1024 / 1024).toFixed(1)} MB)`;
-  if (title) title.value = file.name.replace(/\.[^.]+$/, '').replace(/[_-]/g, ' ');
-  if (form)  form.style.display = 'block';
-  if (zone)  zone.style.display = 'none';
-}
-
-function svCancelUpload() {
-  _svPendingFile = null;
-  const form  = document.getElementById('svUploadForm');
-  const zone  = document.getElementById('svDropZone');
-  const input = document.getElementById('svFileInput');
-  if (form)  form.style.display  = 'none';
-  if (zone)  zone.style.display  = 'block';
-  if (input) input.value         = '';
-}
-
-async function svSubmitUpload() {
-  if (!_svPendingFile) return;
-  const btn = document.getElementById('svUploadSubmitBtn');
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Uploading…'; }
-
-  const platforms = [...document.querySelectorAll('#svPlatformCheckboxes input:checked')]
-    .map(i => i.value).join(',');
-
-  const fd = new FormData();
-  fd.append('video',       _svPendingFile);
-  fd.append('title',       document.getElementById('svUploadTitle')?.value.trim() || '');
-  fd.append('description', document.getElementById('svUploadDesc')?.value.trim() || '');
-  fd.append('platforms',   platforms);
-
+async function svpLoad(force = false) {
+  const btn = document.querySelector('[onclick="svpLoad(true)"]');
+  if (btn) { btn.disabled = true; btn.textContent = '↺ Loading…'; }
   try {
-    const r    = await fetch('/api/upload/video', { method: 'POST', body: fd });
+    const r = await fetch('/api/video/cross-platform-stats');
     const data = await r.json();
-    if (data.ok) {
-      svCancelUpload();
-      svRenderUploadQueue();
-      // Also refresh the original upload queue in Content Studio tab if visible
-      if (typeof renderUploadQueue === 'function') renderUploadQueue();
-    } else {
-      alert('Upload failed: ' + (data.error || 'Unknown error'));
-    }
-  } catch(e) {
-    alert('Upload error: ' + e.message);
+    _svp.videos = data.videos || [];
+    document.getElementById('svpLastUpdated').textContent = `Updated ${new Date(data.lastUpdated).toLocaleTimeString()}`;
+    svpFilter(_svp.platform);
+  } catch (e) {
+    console.error('svpLoad:', e);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = '↺ Refresh'; }
   }
-
-  if (btn) { btn.disabled = false; btn.textContent = '📤 Add to Queue'; }
 }
 
-async function svRenderUploadQueue() {
-  const el = document.getElementById('svUploadQueue');
-  if (!el) return;
+// ─── Short Video — Upload & Publish ─────────────────────────────────────────
+const _svu = {
+  file: null, uploadedUrl: null, uploadedId: null,
+  hashtags: [], channels: [], selectedChannels: new Set(),
+  transcriptEdited: false,
+};
+let svuTranscriptEdited = false;
 
-  // Ensure buffer channels are loaded (reuse shared global + loader)
-  if (!_bufferChannels.length && typeof loadBufferChannels === 'function') {
-    await loadBufferChannels();
-  }
+function svuHandleDrop(e) {
+  e.preventDefault();
+  document.getElementById('svuDropZone').style.borderColor = 'var(--border)';
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('video/')) svuHandleFile(file);
+}
+
+function svuHandleFile(file) {
+  if (!file) return;
+  _svu.file = file;
+  // Show file info
+  const info = document.getElementById('svuFileInfo');
+  info.style.display = 'flex';
+  document.getElementById('svuFileName').textContent = file.name;
+  document.getElementById('svuFileSize').textContent = (file.size / 1024 / 1024).toFixed(1) + ' MB';
+  // Preview
+  const preview = document.getElementById('svuPreview');
+  preview.src = URL.createObjectURL(file);
+  // Auto-upload
+  svuUpload();
+}
+
+function svuClearFile() {
+  _svu.file = null; _svu.uploadedUrl = null; _svu.uploadedId = null;
+  document.getElementById('svuFileInfo').style.display = 'none';
+  document.getElementById('svuUploadProgress').style.display = 'none';
+  document.getElementById('svuFileInput').value = '';
+  document.getElementById('svuTranscript').value = '';
+  document.getElementById('svuTranscriptStatus').textContent = 'Waiting for video…';
+}
+
+async function svuUpload() {
+  if (!_svu.file) return;
+  const prog = document.getElementById('svuUploadProgress');
+  const bar  = document.getElementById('svuProgressBar');
+  const pct  = document.getElementById('svuUploadPct');
+  const lbl  = document.getElementById('svuUploadLabel');
+  prog.style.display = 'block';
+  bar.style.width = '10%'; pct.textContent = '10%'; lbl.textContent = 'Uploading…';
 
   try {
-    const q = await fetch('/api/upload/queue').then(r => r.json());
-    if (!q.length) {
-      el.innerHTML = '<div class="muted" style="font-size:12px;font-style:italic;">No videos staged yet.</div>';
-      return;
-    }
+    const fd = new FormData();
+    fd.append('video', _svu.file);
+    fd.append('title', _svu.file.name.replace(/\.[^.]+$/, ''));
 
-    const SICONS = { tiktok: '♪', instagram: '📸', youtube: '▶', twitter: '𝕏', linkedin: 'in', facebook: 'f' };
-
-    el.innerHTML = q.map(v => {
-      const videoUrl   = v.arcadsUrl || (v.localUrl ? `http://localhost:${location.port || 3457}${v.localUrl}` : '');
-      const displayUrl = v.arcadsUrl || v.localUrl || '';
-      const channelOpts = _bufferChannels.map(c =>
-        `<option value="${c.id}">${SICONS[c.service] || '○'} ${x(c.name)}</option>`
-      ).join('');
-
-      return `
-      <div class="upload-item" id="svqi-${v.id}">
-        <div style="font-size:22px;flex-shrink:0;">${v.source === 'arcads' ? '🎬' : '🎥'}</div>
-        <div style="flex:1;min-width:0;">
-          <div style="font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${x(v.title)}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px;">
-            ${(v.platforms || []).map(p => `<span>${SICONS[p] || p}</span>`).join(' ')} ·
-            ${v.source === 'arcads' ? 'Arcads AI' : 'Upload'} ·
-            ${new Date(v.uploadedAt).toLocaleDateString()}
-          </div>
-          ${displayUrl ? `<div style="margin-top:4px;display:flex;align-items:center;gap:4px;">
-            <span style="font-size:10px;font-family:'JetBrains Mono',monospace;color:var(--teal);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px;">${displayUrl.replace(/^https?:\/\/[^/]+/, '')}</span>
-            <button class="btn btn-ghost" style="font-size:10px;padding:2px 6px;flex-shrink:0;" onclick="navigator.clipboard.writeText('${encodeURIComponent(videoUrl)}')">Copy</button>
-          </div>` : ''}
-        </div>
-        <span class="upload-status ${v.status}">${v.status}</span>
-        <div style="display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;">
-          ${videoUrl ? `<a href="${videoUrl}" target="_blank" class="btn btn-ghost" style="font-size:11px;padding:4px 8px;">⬇</a>` : ''}
-          ${v.status === 'staged' && _bufferChannels.length ? `
-            <select id="svBufChan-${v.id}" class="agent-input" style="width:130px;padding:3px 6px;font-size:11px;">
-              <option value="">Pick channel…</option>${channelOpts}
-            </select>
-            <button class="btn btn-teal" style="font-size:11px;padding:4px 8px;" onclick="svPostToBuffer('${v.id}','${encodeURIComponent(videoUrl || '')}','${encodeURIComponent(v.title || '')}')">Post ↗</button>
-          ` : ''}
-          ${v.status === 'staged' ? `<button class="btn btn-ghost" style="font-size:11px;padding:4px 8px;" onclick="markPublished('${v.id}');svRenderUploadQueue();">✓</button>` : ''}
-          <button class="btn btn-ghost" style="font-size:11px;padding:4px 8px;color:var(--red);" onclick="removeUpload('${v.id}');svRenderUploadQueue();">✕</button>
-        </div>
-      </div>`;
-    }).join('');
-
-  } catch(e) {
-    el.innerHTML = '<div class="muted" style="font-size:12px;">Could not load queue.</div>';
-  }
-}
-
-// Buffer post helper scoped to svUploadQueue (reads svBufChan- selects)
-async function svPostToBuffer(videoId, encodedUrl, encodedTitle) {
-  const chanEl = document.getElementById(`svBufChan-${videoId}`);
-  if (!chanEl || !chanEl.value) { alert('Pick a Buffer channel first.'); return; }
-  // Delegate to the shared postToBuffer function (same API surface)
-  if (typeof postToBuffer === 'function') {
-    // Temporarily copy the channel select value so postToBuffer can read bufChan-{id}
-    // The cleanest approach: call the API directly here
-    const channelId   = chanEl.value;
-    const videoUrl    = decodeURIComponent(encodedUrl);
-    const title       = decodeURIComponent(encodedTitle);
-    try {
-      const r = await fetch('/api/buffer/post', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ channelId, text: title, mediaUrl: videoUrl }),
-      });
-      const data = await r.json();
-      if (data.ok || data.data) {
-        await fetch('/api/upload/queue/' + videoId, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: 'published' }),
-        });
-        svRenderUploadQueue();
-        if (typeof renderUploadQueue === 'function') renderUploadQueue();
-      } else {
-        alert('Buffer post failed: ' + (data.error || JSON.stringify(data)));
+    const xhr = new XMLHttpRequest();
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        const p = Math.round(e.loaded / e.total * 80);
+        bar.style.width = p + '%'; pct.textContent = p + '%';
       }
-    } catch(e) { alert('Buffer error: ' + e.message); }
+    };
+    const result = await new Promise((resolve, reject) => {
+      xhr.onload = () => {
+        if (xhr.status === 200) resolve(JSON.parse(xhr.responseText));
+        else reject(new Error(xhr.statusText));
+      };
+      xhr.onerror = reject;
+      xhr.open('POST', '/api/upload/video');
+      xhr.send(fd);
+    });
+
+    bar.style.width = '90%'; pct.textContent = '90%'; lbl.textContent = 'Processing…';
+    _svu.uploadedUrl = result.url || `/uploads/${result.filename}`;
+    _svu.uploadedId  = result.id;
+
+    bar.style.width = '100%'; pct.textContent = '100%'; lbl.textContent = '✓ Uploaded';
+    setTimeout(() => { prog.style.display = 'none'; }, 1500);
+
+    // Auto-transcribe
+    document.getElementById('svuTranscriptStatus').textContent = '🎤 Transcribing…';
+    await svuRunTranscribe();
+  } catch (e) {
+    lbl.textContent = '✗ Upload failed: ' + e.message;
+    bar.style.background = 'var(--red)';
   }
 }
 
-// ─── Main render ──────────────────────────────────────────────────────────────
-
-async function renderShortVideo() {
-  svLoadStats();        // fetches stats + renders performance table
-  svRenderJobs();       // reads _arcadsJobs (shared global)
-  svRenderHookLibrary();
-  svPopulateHookSelect();
-  svRenderUploadQueue();
-}
-
-// ─── Tab init (called by tab-switcher when shortvideo tab is activated) ────────
-// Wire this up in the tab-btn click handler:
-//
-//   case 'shortvideo':
-//     svInitActors();      // fetch actors once
-//     renderShortVideo();  // stats, jobs, hooks, queue
-//     break;
-//
-// Or add to the existing initArcads() / page-load block:
-//   svInitActors().then(() => renderShortVideo());
-
-
-// ─── Agent Manager ───────────────────────────────────────────────────────────
-const AM_SCHED_LABELS = { '0':'On-demand','900000':'Every 15 min','3600000':'Hourly','21600000':'Every 6h','86400000':'Daily','604800000':'Weekly' };
-const AM_TYPE_COLOR   = { webhook:'var(--teal)', command:'var(--gold)', 'ghl-workflow':'var(--pink)' };
-const AM_TYPE_LABEL   = { webhook:'Webhook', command:'Command', 'ghl-workflow':'GHL Workflow' };
-
-async function renderAgentManager() {
-  const listEl  = document.getElementById('agentListPanel');
-  const countEl = document.getElementById('agentCount');
-  if (!listEl) return;
-  try {
-    const data   = await fetch('/api/agents').then(r => r.json());
-    const agents = data.agents || [];
-    if (countEl) countEl.textContent = `${agents.length} agent${agents.length !== 1 ? 's' : ''}`;
-    if (!agents.length) {
-      listEl.innerHTML = '<div style="color:var(--muted);font-style:italic;font-size:12px;padding:8px 0;">No agents yet — click "+ New Agent" to create one.</div>';
-      return;
-    }
-    listEl.innerHTML = agents.map(a => {
-      const enabled    = a.enabled !== false;
-      const typeColor  = AM_TYPE_COLOR[a.type]  || 'var(--muted)';
-      const typeLabel  = AM_TYPE_LABEL[a.type]  || a.type;
-      const schedLabel = AM_SCHED_LABELS[String(a.scheduleIntervalMs || 0)] || 'Custom';
-      const lastRunTxt = a.lastRunAt ? fmtDate(a.lastRunAt) : 'Never';
-      const runColor   = a.lastRunStatus === 'error' ? 'var(--red)' : a.lastRunStatus === 'ok' ? 'var(--green)' : 'var(--muted)';
-      const tags       = (a.tags || []).filter(Boolean);
-      return `<div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;border-bottom:1px solid var(--border);" id="agent-row-${a.id}">
-        <div style="margin-top:4px;flex-shrink:0;"><span class="dot ${enabled ? 'on' : 'idle'}"></span></div>
-        <div style="flex:1;min-width:0;">
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-            <span style="font-weight:700;font-size:13px;">${x(a.name)}</span>
-            <span style="font-size:10px;font-weight:700;color:${typeColor};background:${typeColor}22;padding:2px 7px;border-radius:4px;">${typeLabel}</span>
-            ${schedLabel !== 'On-demand' ? `<span style="font-size:10px;color:var(--muted);font-weight:700;">⏱ ${schedLabel}</span>` : ''}
-            ${tags.map(t => `<span class="badge b-new" style="font-size:9px;">${x(t)}</span>`).join('')}
-          </div>
-          ${a.description ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;">${x(a.description)}</div>` : ''}
-          <div style="font-size:10px;margin-top:4px;display:flex;gap:12px;flex-wrap:wrap;">
-            <span style="color:var(--muted);">Last run: <span style="color:${runColor};font-weight:700;">${lastRunTxt}${a.lastRunStatus ? ' · ' + a.lastRunStatus : ''}</span></span>
-            ${a.runCount > 0 ? `<span style="color:var(--muted);">${a.runCount} run${a.runCount !== 1 ? 's' : ''}</span>` : ''}
-          </div>
-        </div>
-        <div style="display:flex;gap:5px;flex-shrink:0;align-items:center;flex-wrap:wrap;">
-          ${a.type !== 'ghl-workflow' ? `<button class="btn btn-teal" id="run-btn-${a.id}" style="font-size:10px;padding:3px 9px;" onclick="runAgentNow('${a.id}')">▶ Run</button>` : ''}
-          <button class="btn btn-ghost" style="font-size:10px;padding:3px 9px;" onclick="editAgent('${a.id}')">Edit</button>
-          <button class="btn btn-ghost" style="font-size:10px;padding:3px 9px;color:var(--red);" onclick="deleteAgent('${a.id}')">✕</button>
-        </div>
-      </div>`;
-    }).join('');
-  } catch(e) {
-    if (listEl) listEl.innerHTML = '<div style="color:var(--muted);font-size:12px;">Could not load agents.</div>';
-  }
-}
-
-function openAgentForm(agent) {
-  const card = document.getElementById('agentFormCard');
-  if (!card) return;
-  document.getElementById('afEditId').value   = agent?.id || '';
-  document.getElementById('afName').value     = agent?.name || '';
-  document.getElementById('afDesc').value     = agent?.description || '';
-  document.getElementById('afType').value     = agent?.type || 'webhook';
-  document.getElementById('afSchedule').value = String(agent?.scheduleIntervalMs || 0);
-  document.getElementById('afTags').value     = (agent?.tags || []).join(', ');
-  document.getElementById('afEnabled').checked = agent ? agent.enabled !== false : true;
-  document.getElementById('afResult').style.display = 'none';
-  document.getElementById('afSaveBtn').textContent  = 'Save Agent';
-  document.getElementById('agentFormTitle').textContent = agent ? 'Edit Agent' : 'New Agent';
-  onAgentTypeChange(agent?.action || {});
-  card.style.display = 'block';
-  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-}
-
-function closeAgentForm() {
-  const card = document.getElementById('agentFormCard');
-  if (card) card.style.display = 'none';
-}
-
-function onAgentTypeChange(prefill) {
-  const type = document.getElementById('afType')?.value;
-  const el   = document.getElementById('afActionFields');
-  if (!el || !type) return;
-  const pf = (typeof prefill === 'object' && prefill !== null) ? prefill : {};
-  if (type === 'webhook') {
-    el.innerHTML = `
-      <div style="display:grid;grid-template-columns:100px 1fr;gap:8px;align-items:end;margin-bottom:8px;">
-        <div>
-          <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:0.06em;margin-bottom:5px;">METHOD</div>
-          <select class="agent-input" id="afMethod" style="width:100%;">
-            <option value="POST" ${(pf.method||'POST')==='POST'?'selected':''}>POST</option>
-            <option value="GET"  ${pf.method==='GET'?'selected':''}>GET</option>
-          </select>
-        </div>
-        <div>
-          <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:0.06em;margin-bottom:5px;">WEBHOOK URL</div>
-          <input class="agent-input" id="afWebhookUrl" type="url" placeholder="https://…" value="${x(pf.webhookUrl||'')}" style="width:100%;box-sizing:border-box;" />
-        </div>
-      </div>
-      <div>
-        <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:0.06em;margin-bottom:5px;">JSON PAYLOAD <span style="font-weight:400;">(optional)</span></div>
-        <textarea class="agent-input" id="afPayload" rows="3" placeholder='{"key":"value"}' style="width:100%;box-sizing:border-box;font-family:JetBrains Mono,monospace;font-size:11px;resize:vertical;">${x(pf.payload||'')}</textarea>
-      </div>`;
-  } else if (type === 'command') {
-    el.innerHTML = `
-      <div>
-        <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:0.06em;margin-bottom:5px;">MESSAGE TO SEND TO LARK</div>
-        <input class="agent-input" id="afCommandText" type="text" placeholder="e.g. Daily pipeline report is ready" value="${x(pf.commandText||'')}" style="width:100%;box-sizing:border-box;" />
-      </div>`;
-  } else if (type === 'ghl-workflow') {
-    el.innerHTML = `
-      <div>
-        <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:0.06em;margin-bottom:5px;">GHL WORKFLOW ID</div>
-        <input class="agent-input" id="afWorkflowId" type="text" placeholder="Paste workflow ID from GHL" value="${x(pf.workflowId||'')}" style="width:100%;box-sizing:border-box;" />
-        <div style="font-size:10px;color:var(--muted);margin-top:5px;">GHL workflows are triggered via contact enrollment. Stored here as a reference — manage them in GHL directly.</div>
-      </div>`;
-  }
-}
-
-async function saveAgentForm() {
-  const btn    = document.getElementById('afSaveBtn');
-  const editId = document.getElementById('afEditId')?.value;
-  const type   = document.getElementById('afType')?.value;
-  const name   = document.getElementById('afName')?.value?.trim();
-  const desc   = document.getElementById('afDesc')?.value?.trim();
-  const schedMs = parseInt(document.getElementById('afSchedule')?.value || '0');
-  const tags   = (document.getElementById('afTags')?.value || '').split(',').map(t => t.trim()).filter(Boolean);
-  const enabled = document.getElementById('afEnabled')?.checked !== false;
-  if (!name) { showAfMsg('Name is required.', 'var(--red)'); return; }
-  let action = {};
-  if (type === 'webhook') {
-    const url = document.getElementById('afWebhookUrl')?.value?.trim();
-    if (!url) { showAfMsg('Webhook URL is required.', 'var(--red)'); return; }
-    action = { webhookUrl: url, method: document.getElementById('afMethod')?.value || 'POST', payload: document.getElementById('afPayload')?.value?.trim() || '' };
-  } else if (type === 'command') {
-    const cmd = document.getElementById('afCommandText')?.value?.trim();
-    if (!cmd) { showAfMsg('Command message is required.', 'var(--red)'); return; }
-    action = { commandText: cmd };
-  } else if (type === 'ghl-workflow') {
-    action = { workflowId: document.getElementById('afWorkflowId')?.value?.trim() || '' };
-  }
-  btn.disabled = true; btn.textContent = 'Saving…';
-  try {
-    const body   = { name, description: desc, type, enabled, scheduleIntervalMs: schedMs, action, tags };
-    const url    = editId ? `/api/agents/${editId}` : '/api/agents';
-    const method = editId ? 'PUT' : 'POST';
-    const r = await fetch(url, { method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) }).then(r => r.json());
-    if (r.ok) { closeAgentForm(); renderAgentManager(); }
-    else showAfMsg('Error: ' + (r.error || 'Unknown'), 'var(--red)');
-  } catch(e) { showAfMsg('Network error: ' + e.message, 'var(--red)'); }
-  btn.disabled = false; btn.textContent = 'Save Agent';
-}
-
-function showAfMsg(msg, color) {
-  const el = document.getElementById('afResult');
-  if (!el) return;
-  el.style.display = 'inline'; el.style.color = color; el.textContent = msg;
-}
-
-async function editAgent(id) {
-  try {
-    const data  = await fetch('/api/agents').then(r => r.json());
-    const agent = (data.agents || []).find(a => a.id === id);
-    if (agent) openAgentForm(agent);
-  } catch(e) { alert('Could not load agent: ' + e.message); }
-}
-
-async function deleteAgent(id) {
-  if (!confirm('Delete this agent?')) return;
-  try {
-    const r = await fetch(`/api/agents/${id}`, { method: 'DELETE' }).then(r => r.json());
-    if (r.ok) renderAgentManager();
-    else alert('Delete failed: ' + (r.error || 'Unknown'));
-  } catch(e) { alert('Error: ' + e.message); }
-}
-
-async function runAgentNow(id) {
-  const btn = document.getElementById(`run-btn-${id}`);
-  if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
-  try {
-    const r = await fetch(`/api/agents/${id}/run`, { method: 'POST' }).then(res => res.json());
-    if (btn) { btn.disabled = false; btn.textContent = '▶ Run'; }
-    if (r.ok) {
-      const row = document.getElementById(`agent-row-${id}`);
-      if (row) { row.style.background = 'rgba(0,210,122,0.07)'; setTimeout(() => row.style.background = '', 2000); }
-    } else {
-      alert('Run failed: ' + (r.error || 'Unknown error'));
-    }
-    renderAgentManager();
-  } catch(e) {
-    if (btn) { btn.disabled = false; btn.textContent = '▶ Run'; }
-    alert('Error: ' + e.message);
-  }
-}
-
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-function x(s) {
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-}
-function fmtNum(n) { return Number(n).toLocaleString(); }
-function fmtMoney(n) {
-  const v = Number(n);
-  if (isNaN(v) || v === 0) return '$0';
-  if (v >= 1000000) return '$' + (v/1000000).toFixed(1) + 'M';
-  if (v >= 1000)    return '$' + (v/1000).toFixed(1) + 'k';
-  return '$' + v.toFixed(0);
-}
-function fmtDate(ts) {
-  if (!ts) return '—';
-  const d = new Date(typeof ts === 'number' && ts < 1e12 ? ts * 1000 : ts);
-  if (isNaN(d)) return '—';
-  const diff = Date.now() - d;
-  if (diff < 0) return d.toLocaleDateString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
-  if (diff < 60000)   return 'just now';
-  if (diff < 3600000) return Math.floor(diff/60000) + 'm ago';
-  if (diff < 86400000)return Math.floor(diff/3600000) + 'h ago';
-  if (diff < 604800000)return Math.floor(diff/86400000) + 'd ago';
-  return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});
-}
-function isToday(ts) {
-  if (!ts) return false;
-  const d = new Date(typeof ts === 'number' && ts < 1e12 ? ts * 1000 : ts);
-  const n = new Date();
-  return d.getFullYear()===n.getFullYear() && d.getMonth()===n.getMonth() && d.getDate()===n.getDate();
-}
-function badge(status) {
-  if (!status) return '<span class="muted">—</span>';
-  const s = status.toLowerCase().replace(/\s+/g,'');
-  const cls = s==='open'?'b-open':s==='won'?'b-won':s==='lost'?'b-lost':
-    (s==='confirmed'||s==='showed'||s==='published'||s==='active')?'b-active':
-    (s==='cancelled'||s==='noshow')?'b-cancelled':'b-open';
-  return `<span class="badge ${cls}">${x(status)}</span>`;
-}
-function stageChip(name, priority) {
-  if (!name || name === 'Unknown') return '<span class="muted">—</span>';
-  const p = priority || 0;
-  const color = p >= 8 ? 'var(--green)' : p >= 5 ? 'var(--teal)' : p >= 3 ? 'var(--gold)' : 'var(--muted)';
-  return `<span style="font-size:11px;font-weight:700;color:${color};white-space:nowrap">${x(name)}</span>`;
-}
-
-// ─── Refresh ──────────────────────────────────────────────────────────────────
-async function refresh(clearCache = false) {
-  const btn = document.getElementById('btnRefresh');
-  btn.disabled = true;
-  btn.textContent = '↺ Loading…';
-  if (clearCache) await fetch('/api/clear-cache', { method: 'POST' }).catch(()=>{});
-  await fetchAll();
-  renderAll();
-  btn.disabled = false;
-  btn.textContent = '↺ Refresh';
-  countdown = 60;
-}
-
-async function manualRefresh() { await refresh(true); }
-
-async function pingServer() {
-  const el = document.getElementById('agentServerStatus');
-  el.innerHTML = '<div class="status-row idle"><span class="dot idle"></span>Pinging…</div>';
-  const d = await fetch('/api/railway/health').then(r=>r.json()).catch(()=>({status:'offline'}));
-  el.innerHTML = d.status === 'online'
-    ? '<div class="status-row on"><span class="dot on"></span>Online</div>'
-    : '<div class="status-row off"><span class="dot off"></span>Offline</div>';
-}
-
-// ─── Autonomous Content Loop ──────────────────────────────────────────────────
-const _loopHistory = JSON.parse(localStorage.getItem('svLoopHistory') || '[]');
-
-function renderLoopHistory() {
-  const tbl = document.getElementById('loopHistoryTbl');
-  if (!tbl) return;
-  if (!_loopHistory.length) {
-    tbl.innerHTML = '<tr class="empty"><td colspan="6">No runs yet</td></tr>';
+async function svuRunTranscribe() {
+  if (!_svu.file && !_svu.uploadedUrl) {
+    document.getElementById('svuTranscriptStatus').textContent = 'No file to transcribe';
     return;
   }
-  tbl.innerHTML = [..._loopHistory].reverse().map(r => `
-    <tr>
-      <td>${r.at}</td>
-      <td>${r.analyzed ?? '—'}</td>
-      <td>${r.ideas ?? '—'}</td>
-      <td>${r.scripts ?? '—'}</td>
-      <td>${r.scheduled ?? '—'}</td>
-      <td><span style="color:${r.ok ? 'var(--green)' : 'var(--red)'};font-weight:700;">${r.ok ? '✓ Done' : '✗ Error'}</span></td>
-    </tr>`).join('');
-}
-
-function svLoopLog(msg) {
-  const el = document.getElementById('loopLog');
-  if (!el) return;
-  el.style.display = 'block';
-  el.textContent += '[' + new Date().toLocaleTimeString() + '] ' + msg + '\n';
-  el.scrollTop = el.scrollHeight;
-}
-
-async function runContentLoop() {
-  const btn = document.getElementById('loopRunBtn');
-  const badge = document.getElementById('loopStatusBadge');
-  const log = document.getElementById('loopLog');
-  if (btn) btn.disabled = true;
-  if (badge) { badge.textContent = '● Running'; badge.style.background = 'rgba(201,168,76,0.12)'; badge.style.borderColor = 'rgba(201,168,76,0.3)'; badge.style.color = 'var(--gold)'; }
-  if (log) { log.style.display = 'block'; log.textContent = ''; }
-
-  svLoopLog('Starting content loop…');
-  const postCount = parseInt(document.getElementById('loopPostCount')?.value || '5');
-
+  document.getElementById('svuTranscriptStatus').textContent = '🎤 Transcribing…';
+  document.getElementById('svuTranscribeBtn').disabled = true;
   try {
-    svLoopLog('Fetching last 7 days of video performance…');
-    const res = await fetch('/api/shortvideo/loop/run', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ postCount })
-    });
-    const data = await res.json();
-
-    if (!data.ok) throw new Error(data.error || 'Loop failed');
-
-    svLoopLog(`✓ Analyzed ${data.analyzed} videos`);
-    svLoopLog(`✓ Generated ${data.ideas} content ideas`);
-    svLoopLog(`✓ Wrote ${data.scripts} scripts`);
-    svLoopLog(`✓ Saved ${data.scheduled} ideas to Buffer for review`);
-    svLoopLog('Loop complete.');
-
-    // Update last run panel
-    const lastRun = document.getElementById('loopLastRun');
-    if (lastRun) lastRun.style.display = 'block';
-    const at = new Date().toLocaleString();
-    document.getElementById('loopLastAt').textContent        = at;
-    document.getElementById('loopLastAnalyzed').textContent  = data.analyzed;
-    document.getElementById('loopLastIdeas').textContent     = data.ideas;
-    document.getElementById('loopLastScheduled').textContent = data.scheduled;
-
-    // Save to history
-    _loopHistory.push({ at, analyzed: data.analyzed, ideas: data.ideas, scripts: data.scripts, scheduled: data.scheduled, ok: true });
-    localStorage.setItem('svLoopHistory', JSON.stringify(_loopHistory.slice(-50)));
-    renderLoopHistory();
-
-    if (badge) { badge.textContent = '● Idle'; badge.style.background = 'rgba(0,210,122,0.1)'; badge.style.borderColor = 'rgba(0,210,122,0.25)'; badge.style.color = 'var(--green)'; }
-  } catch (e) {
-    svLoopLog('✗ Error: ' + e.message);
-    _loopHistory.push({ at: new Date().toLocaleString(), ok: false, error: e.message });
-    localStorage.setItem('svLoopHistory', JSON.stringify(_loopHistory.slice(-50)));
-    renderLoopHistory();
-    if (badge) { badge.textContent = '● Error'; badge.style.background = 'rgba(255,59,48,0.1)'; badge.style.borderColor = 'rgba(255,59,48,0.25)'; badge.style.color = 'var(--red)'; }
-  } finally {
-    if (btn) btn.disabled = false;
-  }
-}
-
-function saveLoopConfig() {
-  const cadence   = document.getElementById('loopCadence')?.value;
-  const postCount = document.getElementById('loopPostCount')?.value;
-  localStorage.setItem('svLoopCadence', cadence);
-  localStorage.setItem('svLoopPostCount', postCount);
-  const st = document.getElementById('loopConfigStatus');
-  if (st) { st.textContent = 'Saved'; st.style.color = 'var(--green)'; setTimeout(() => st.textContent = '', 2000); }
-}
-
-// ─── Short Video Pipeline ─────────────────────────────────────────────────────
-
-const SV_PIPELINE_KEY = 'svPipelineConfig';
-let _svPaused = false;
-
-function svLoopInit() {
-  const cfg = JSON.parse(localStorage.getItem(SV_PIPELINE_KEY) || '{}');
-
-  // Restore schedule
-  if (cfg.schedule) { const el = document.getElementById('svSchedule');   if (el) el.value = cfg.schedule; }
-  if (cfg.postCount){ const el = document.getElementById('svPostCount');  if (el) el.value = cfg.postCount; }
-  _svPaused = !!cfg.paused;
-  svUpdatePauseUI();
-
-  // Restore skill selectors
-  const stages = ['analysis','ideation','scripting','production','publishing'];
-  stages.forEach(s => {
-    const sel = document.querySelector(`#svStage-${s} .sv-skill-select`);
-    if (sel && cfg[s]?.skill) sel.value = cfg[s].skill;
-  });
-
-  // Restore stage-specific inputs
-  if (cfg.analysis?.source)        { const el = document.getElementById('svAnalysisSource');  if (el) el.value = cfg.analysis.source; }
-  if (cfg.ideation?.style)         { const el = document.getElementById('svIdeationStyle');   if (el) el.value = cfg.ideation.style; }
-  if (cfg.scripting?.length)       { const el = document.getElementById('svScriptLength');    if (el) el.value = cfg.scripting.length; }
-  if (cfg.production?.direction)   { const el = document.getElementById('svArcadsDirection'); if (el) el.value = cfg.production.direction; }
-  if (cfg.publishing?.reviewMode)  { const el = document.getElementById('svReviewMode');      if (el) el.checked = cfg.publishing.reviewMode; }
-
-  svUpdateNextRun(cfg.schedule);
-  svRenderHistory();
-}
-
-function svSaveConfig() {
-  const cfg = {
-    schedule:  document.getElementById('svSchedule')?.value,
-    postCount: document.getElementById('svPostCount')?.value,
-    paused:    _svPaused,
-    analysis: {
-      skill:  document.querySelector('#svStage-analysis .sv-skill-select')?.value,
-      source: document.getElementById('svAnalysisSource')?.value,
-    },
-    ideation: {
-      skill:  document.querySelector('#svStage-ideation .sv-skill-select')?.value,
-      style:  document.getElementById('svIdeationStyle')?.value,
-    },
-    scripting: {
-      skill:   document.querySelector('#svStage-scripting .sv-skill-select')?.value,
-      length:  document.getElementById('svScriptLength')?.value,
-    },
-    production: {
-      skill:     document.querySelector('#svStage-production .sv-skill-select')?.value,
-      direction: document.getElementById('svArcadsDirection')?.value,
-    },
-    publishing: {
-      skill:       document.querySelector('#svStage-publishing .sv-skill-select')?.value,
-      reviewMode:  document.getElementById('svReviewMode')?.checked,
+    const fd = new FormData();
+    fd.append('audio', _svu.file);
+    const r = await fetch('/api/whisper-transcribe', { method: 'POST', body: fd });
+    const data = await r.json();
+    if (data.text) {
+      document.getElementById('svuTranscript').value = data.text;
+      document.getElementById('svuTranscriptStatus').textContent = '✓ Transcribed';
+      svuTranscriptEdited = false;
+      // Auto-generate caption
+      await svuGenerateCaption();
+    } else {
+      document.getElementById('svuTranscriptStatus').textContent = '⚠ No transcript returned';
     }
-  };
-  localStorage.setItem(SV_PIPELINE_KEY, JSON.stringify(cfg));
-  svUpdateNextRun(cfg.schedule);
-}
-
-function svSetSkill(stage, value) {
-  // Future: show/hide stage-specific config based on skill
-  svSaveConfig();
-}
-
-function svTogglePause() {
-  _svPaused = !_svPaused;
-  svSaveConfig();
-  svUpdatePauseUI();
-}
-
-function svUpdatePauseUI() {
-  const btn    = document.getElementById('svPauseBtn');
-  const badge  = document.getElementById('svPipelineStatusBadge');
-  const paused = document.getElementById('svPaused');
-  if (btn)    btn.textContent = _svPaused ? '▶ Resume' : '⏸ Pause';
-  if (paused) paused.style.display = _svPaused ? 'inline' : 'none';
-  if (badge && _svPaused) { badge.textContent = '⏸ Paused'; badge.style.color = 'var(--muted)'; badge.style.background = 'rgba(122,114,104,0.1)'; badge.style.borderColor = 'rgba(122,114,104,0.2)'; }
-  else if (badge) { badge.textContent = '● Idle'; badge.style.color = 'var(--green)'; badge.style.background = 'rgba(0,210,122,0.1)'; badge.style.borderColor = 'rgba(0,210,122,0.25)'; }
-}
-
-function svUpdateNextRun(schedule) {
-  const el = document.getElementById('svNextRun');
-  if (!el) return;
-  if (!schedule || schedule === 'manual') { el.textContent = ''; return; }
-  const now = new Date();
-  let next;
-  if (schedule === 'daily') {
-    next = new Date(now); next.setDate(next.getDate() + (now.getHours() >= 6 ? 1 : 0)); next.setHours(6,0,0,0);
-  } else if (schedule === 'weekly') {
-    const daysUntilMon = (8 - now.getDay()) % 7 || 7;
-    next = new Date(now); next.setDate(next.getDate() + daysUntilMon); next.setHours(6,0,0,0);
-  } else if (schedule === 'biweekly') {
-    next = new Date(now); next.setDate(next.getDate() + 14); next.setHours(6,0,0,0);
+  } catch (e) {
+    document.getElementById('svuTranscriptStatus').textContent = '✗ ' + e.message;
+  } finally {
+    document.getElementById('svuTranscribeBtn').disabled = false;
   }
-  if (next) el.textContent = 'Next run: ' + next.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' }) + ' 6am';
 }
 
-function svPipelineLog(msg) {
-  const el = document.getElementById('svPipelineLog');
-  if (!el) return;
-  el.style.display = 'block';
-  el.textContent += '[' + new Date().toLocaleTimeString() + '] ' + msg + '\n';
-  el.scrollTop = el.scrollHeight;
-}
-
-function svSetStageState(stage, state) {
-  // state: 'idle' | 'running' | 'done'
-  const card = document.getElementById('svStage-' + stage);
-  if (!card) return;
-  card.classList.remove('sv-running','sv-done');
-  if (state === 'running') card.classList.add('sv-running');
-  if (state === 'done')    card.classList.add('sv-done');
-}
-
-async function svRunPipeline() {
-  if (_svPaused) return;
-  const btn   = document.getElementById('svRunBtn');
-  const badge = document.getElementById('svPipelineStatusBadge');
-  const log   = document.getElementById('svPipelineLog');
-  if (btn) btn.disabled = true;
-  if (log) { log.style.display = 'block'; log.textContent = ''; }
-  if (badge) { badge.textContent = '● Running'; badge.style.color = 'var(--gold)'; badge.style.background = 'rgba(201,168,76,0.12)'; badge.style.borderColor = 'rgba(201,168,76,0.3)'; }
-
-  const cfg = JSON.parse(localStorage.getItem(SV_PIPELINE_KEY) || '{}');
-  const postCount = parseInt(document.getElementById('svPostCount')?.value || '5');
-  const direction = document.getElementById('svArcadsDirection')?.value || '';
-
-  const stages = ['analysis','ideation','scripting','production','publishing'];
-  stages.forEach(s => svSetStageState(s, 'idle'));
-
-  svPipelineLog('Starting pipeline…');
-  svPipelineLog('Skills: ' + [
-    cfg.analysis?.skill || 'last7d',
-    cfg.ideation?.skill || 'cult-ideator',
-    cfg.scripting?.skill || 'cult-script-writer',
-    cfg.production?.skill || 'arcads',
-    cfg.publishing?.skill || 'ideas-only'
-  ].join(' → '));
-
+async function svuGenerateCaption() {
+  const transcript = document.getElementById('svuTranscript').value.trim();
+  if (!transcript) { alert('Add a transcript first'); return; }
+  const platform = document.getElementById('svuCaptionPlatform').value;
+  const btn = document.getElementById('svuGenCaptionBtn');
+  btn.disabled = true; btn.textContent = '⏳ Generating…';
   try {
-    svSetStageState('analysis', 'running');
-    svPipelineLog('Running analysis…');
-    await new Promise(r => setTimeout(r, 300));
-
-    svSetStageState('analysis', 'done');
-    svSetStageState('ideation', 'running');
-    svPipelineLog('Running ideation (' + (cfg.ideation?.skill || 'cult-ideator') + ')…');
-
-    svSetStageState('ideation', 'done');
-    svSetStageState('scripting', 'running');
-    svPipelineLog('Writing scripts (' + (cfg.scripting?.skill || 'cult-script-writer') + ')…');
-
-    svSetStageState('scripting', 'done');
-    svSetStageState('production', 'running');
-    svPipelineLog('Sending to production (' + (cfg.production?.skill || 'arcads') + ')' + (direction ? ' with direction: "' + direction + '"' : '') + '…');
-
-    svSetStageState('production', 'done');
-    svSetStageState('publishing', 'running');
-    svPipelineLog('Publishing via ' + (cfg.publishing?.skill || 'ideas-only') + '…');
-
-    // Call the actual loop API
-    const res  = await fetch('/api/shortvideo/loop/run', {
+    const r = await fetch('/api/video/generate-caption', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ postCount, direction, pipeline: cfg })
+      body: JSON.stringify({ transcript, platform }),
     });
-    const data = await res.json();
-    if (!data.ok) throw new Error(data.error || 'Pipeline failed');
-
-    svSetStageState('publishing', 'done');
-    svPipelineLog(`✓ Analyzed ${data.analyzed} videos`);
-    svPipelineLog(`✓ Generated ${data.ideas} ideas`);
-    svPipelineLog(`✓ Wrote ${data.scripts} scripts`);
-    svPipelineLog(`✓ Published ${data.scheduled} → Buffer`);
-    svPipelineLog('Pipeline complete.');
-
-    // Update last run panel
-    const at = new Date().toLocaleString();
-    document.getElementById('svLastRunPanel').style.display = 'block';
-    document.getElementById('svLastAt').textContent        = at;
-    document.getElementById('svLastAnalyzed').textContent  = data.analyzed;
-    document.getElementById('svLastIdeas').textContent     = data.ideas;
-    document.getElementById('svLastScripts').textContent   = data.scripts;
-    document.getElementById('svLastPublished').textContent = data.scheduled;
-
-    // Save to history
-    const hist = JSON.parse(localStorage.getItem('svPipelineHistory') || '[]');
-    hist.push({ at, ...data, skills: [cfg.analysis?.skill, cfg.ideation?.skill, cfg.scripting?.skill, cfg.production?.skill, cfg.publishing?.skill], ok: true });
-    localStorage.setItem('svPipelineHistory', JSON.stringify(hist.slice(-50)));
-    svRenderHistory();
-
-    if (badge) { badge.textContent = '● Idle'; badge.style.color = 'var(--green)'; badge.style.background = 'rgba(0,210,122,0.1)'; badge.style.borderColor = 'rgba(0,210,122,0.25)'; }
-  } catch(e) {
-    svPipelineLog('✗ Error: ' + e.message);
-    stages.forEach(s => svSetStageState(s, 'idle'));
-    if (badge) { badge.textContent = '● Error'; badge.style.color = 'var(--red)'; }
+    const data = await r.json();
+    if (data.ok) {
+      document.getElementById('svuCaption').value = data.caption || '';
+      _svu.hashtags = data.hashtags || [];
+      svuRenderHashtags();
+      svuUpdateFullPost();
+    }
+  } catch (e) {
+    console.error('generate-caption:', e);
   } finally {
-    if (btn) btn.disabled = false;
+    btn.disabled = false; btn.textContent = '✨ Generate';
   }
 }
 
-function svRenderHistory() {
-  const tbl  = document.getElementById('svHistoryTbl');
-  if (!tbl) return;
-  const hist = JSON.parse(localStorage.getItem('svPipelineHistory') || '[]');
-  if (!hist.length) { tbl.innerHTML = '<tr class="empty"><td colspan="7">No runs yet</td></tr>'; return; }
-  tbl.innerHTML = [...hist].reverse().map(r => `
-    <tr>
-      <td style="white-space:nowrap;">${r.at}</td>
-      <td>${r.analyzed ?? '—'}</td>
-      <td>${r.ideas ?? '—'}</td>
-      <td>${r.scripts ?? '—'}</td>
-      <td>${r.scheduled ?? '—'}</td>
-      <td>${r.scheduled ?? '—'}</td>
-      <td><span style="color:${r.ok?'var(--green)':'var(--red)'};font-weight:700;">${r.ok?'✓':'✗'}</span></td>
-    </tr>`).join('');
+function svuCaptionPlatformChanged() {
+  svuUpdateFullPost();
 }
 
+function svuRenderHashtags() {
+  const el = document.getElementById('svuHashtagPills');
+  el.innerHTML = _svu.hashtags.map((t, i) =>
+    `<span class="svu-tag">#${t.replace(/^#/,'')}<span class="svu-tag-rm" onclick="svuRemoveTag(${i})">✕</span></span>`
+  ).join('');
+}
+
+function svuAddHashtag(val) {
+  const tag = val.trim().replace(/^#/, '');
+  if (!tag || _svu.hashtags.includes(tag)) return;
+  _svu.hashtags.push(tag);
+  svuRenderHashtags();
+  svuUpdateFullPost();
+}
+
+function svuRemoveTag(i) {
+  _svu.hashtags.splice(i, 1);
+  svuRenderHashtags();
+  svuUpdateFullPost();
+}
+
+function svuUpdateFullPost() {
+  const caption   = document.getElementById('svuCaption').value.trim();
+  const hashStr   = _svu.hashtags.map(t => '#' + t.replace(/^#/,'')).join(' ');
+  const full      = caption + (hashStr ? '\n\n' + hashStr : '');
+  document.getElementById('svuFullPost').textContent = full;
+}
+
+document.getElementById('svuCaption')?.addEventListener('input', svuUpdateFullPost);
+
+function svuCopyFullPost() {
+  const text = document.getElementById('svuFullPost').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = document.querySelector('[onclick="svuCopyFullPost()"]');
+    if (btn) { btn.textContent = '✓ Copied!'; setTimeout(() => btn.textContent = '📋 Copy', 1500); }
+  });
+}
+
+function svuToggleSchedule(val) {
+  document.getElementById('svuScheduleAt').style.display = val === 'schedule' ? 'block' : 'none';
+}
+
+async function svuLoadChannels() {
+  const grid = document.getElementById('svuChannelGrid');
+  try {
+    const r = await fetch('/api/buffer/channels');
+    const data = await r.json();
+    _svu.channels = data.channels || [];
+    if (!_svu.channels.length) {
+      grid.innerHTML = `<div style="font-size:12px;color:var(--muted);">No Buffer channels connected. <a href="https://publish.buffer.com" target="_blank" style="color:var(--teal);">Connect in Buffer →</a></div>`;
+      return;
+    }
+    const icons = { tiktok:'🎵', instagram:'📸', youtube:'▶️', twitter:'𝕏', linkedin:'💼', facebook:'👤', threads:'🧵' };
+    grid.innerHTML = _svu.channels.map(ch =>
+      `<div class="svu-channel-card" id="svuCh_${ch.id}" onclick="svuToggleChannel('${ch.id}')">
+        <span style="font-size:16px;">${icons[ch.service?.toLowerCase()] || '📱'}</span>
+        <span style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${ch.name || ch.service}</span>
+      </div>`
+    ).join('');
+  } catch (e) {
+    grid.innerHTML = `<div style="font-size:12px;color:var(--red);">Failed to load channels</div>`;
+  }
+}
+
+function svuToggleChannel(id) {
+  if (_svu.selectedChannels.has(id)) _svu.selectedChannels.delete(id);
+  else _svu.selectedChannels.add(id);
+  document.querySelectorAll('[id^="svuCh_"]').forEach(el => {
+    const chId = el.id.replace('svuCh_', '');
+    el.classList.toggle('selected', _svu.selectedChannels.has(chId));
+  });
+  const n = _svu.selectedChannels.size;
+  document.getElementById('svuPublishBtn').textContent = n > 0 ? `📤 Post to ${n} Channel${n>1?'s':''}` : '📤 Post to Selected Channels';
+}
+
+async function svuPublish() {
+  if (!_svu.selectedChannels.size) { alert('Select at least one channel'); return; }
+  const caption   = document.getElementById('svuCaption').value.trim();
+  const hashStr   = _svu.hashtags.map(t => '#' + t.replace(/^#/,'')).join(' ');
+  const text      = caption + (hashStr ? '\n\n' + hashStr : '');
+  if (!text) { alert('Add a caption first'); return; }
+
+  const schedWhen  = document.querySelector('[name="svuWhen"]:checked')?.value;
+  const schedAt    = document.getElementById('svuScheduleAt').value;
+  const scheduledAt = schedWhen === 'schedule' && schedAt ? new Date(schedAt).toISOString() : null;
+
+  const btn = document.getElementById('svuPublishBtn');
+  btn.disabled = true; btn.textContent = '⏳ Posting…';
+
+  try {
+    const r = await fetch('/api/buffer/post-to-channels', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        channelIds:  Array.from(_svu.selectedChannels),
+        text,
+        mediaUrl:    _svu.uploadedUrl || undefined,
+        scheduledAt: scheduledAt || undefined,
+      }),
+    });
+    const data = await r.json();
+    const results = document.getElementById('svuPublishResults');
+    results.style.display = 'block';
+    if (Array.isArray(data)) {
+      results.innerHTML = data.map(r =>
+        `<div style="font-size:12px;padding:6px 10px;border-radius:6px;margin-bottom:4px;background:${r.ok?'rgba(0,210,122,.08)':'rgba(255,80,80,.08)'};border:1px solid ${r.ok?'rgba(0,210,122,.2)':'rgba(255,80,80,.2)'};">
+          ${r.ok ? '✓' : '✗'} <strong>${r.channel}</strong> — ${r.ok ? (scheduledAt ? 'Scheduled' : 'Posted!') : r.error || 'Failed'}
+        </div>`
+      ).join('');
+    }
+  } catch (e) {
+    alert('Post failed: ' + e.message);
+  } finally {
+    btn.disabled = false;
+    const n = _svu.selectedChannels.size;
+    btn.textContent = n > 0 ? `📤 Post to ${n} Channel${n>1?'s':''}` : '📤 Post to Selected Channels';
+  }
+}
+
+// ─── Short Video sub-tab switcher ────────────────────────────────────────────
+function svSubTab(id) {
+  document.querySelectorAll('#tab-shortvideo .sub-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.subtab === id));
+  document.querySelectorAll('#tab-shortvideo .sub-tab-pane').forEach(p => p.classList.toggle('active', p.id === 'sub-' + id));
+  if (id === 'sv-perf' && !_svp.videos.length) svpLoad();
+  if (id === 'sv-upload' && !_svu.channels.length) svuLoadChannels();
+}
 // ─── Countdown + auto-refresh ─────────────────────────────────────────────────
 timer = setInterval(() => {
   countdown--;
@@ -7289,8 +6483,6 @@ renderArcadsStats();
 loadConsultantStats();
 loadTikTokStatus();
 renderAgentManager();
-svInitActors();
-svLoopInit();
 loadPaidMedia();
 gpInit();
 

@@ -3715,6 +3715,139 @@ app.post('/api/tiktokshop/webhook', express.raw({ type: '*/*' }), (req, res) => 
   }
 });
 
+// ─── Video — Cross-platform stats ─────────────────────────────────────────────
+app.get('/api/video/cross-platform-stats', async (req, res) => {
+  const force = req.query.force === '1';
+  if (force) cache.delete('video_cross_platform_stats');
+  try {
+    const data = await cached('video_cross_platform_stats', 600_000, async () => {
+      const videos = [];
+
+      // 1. TikTok Display API — personal + brand
+      for (const account of ['personal', 'brand']) {
+        const token = getTikTokToken(account);
+        if (!token) continue;
+        try {
+          const { data: r } = await axios.post(`${TIKTOK_API_BASE}/video/list/`,
+            { max_count: 20 },
+            {
+              headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+              params:  { fields: 'id,create_time,title,cover_image_url,share_url,like_count,comment_count,share_count,view_count,duration' },
+            }
+          );
+          if (r.error?.code === 'ok') {
+            for (const v of (r.data?.videos || [])) {
+              videos.push({
+                id:           `tiktok_${v.id}`,
+                platform:     'tiktok',
+                channelName:  account === 'brand' ? 'TikTok Brand' : 'TikTok Personal',
+                title:        v.title || '',
+                views:        v.view_count    || 0,
+                likes:        v.like_count    || 0,
+                comments:     v.comment_count || 0,
+                shares:       v.share_count   || 0,
+                engagements:  (v.like_count || 0) + (v.comment_count || 0) + (v.share_count || 0),
+                date:         v.create_time ? new Date(v.create_time * 1000).toISOString() : null,
+                thumbnailUrl: v.cover_image_url || null,
+                videoUrl:     v.share_url || null,
+              });
+            }
+          }
+        } catch(e) { console.warn(`[cross-platform-stats] TikTok ${account}:`, e.message); }
+      }
+
+      // 2. Buffer published posts
+      const bufferToken = process.env.BUFFER_ACCESS_TOKEN;
+      if (bufferToken) {
+        try {
+          const gql = `{
+            channels(first: 50) {
+              edges {
+                node {
+                  id service name avatar
+                  posts(first: 20, filter: { status: SENT }) {
+                    edges {
+                      node {
+                        id text createdAt
+                        statistics { impressions reach engagements clicks }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }`;
+          const { data: bufResp } = await axios.post('https://api.bufferapp.com/graphql',
+            { query: gql },
+            { headers: { Authorization: `Bearer ${bufferToken}`, 'Content-Type': 'application/json' } }
+          );
+          const channels = bufResp?.data?.channels?.edges || [];
+          for (const { node: ch } of channels) {
+            for (const { node: post } of (ch.posts?.edges || [])) {
+              const stats = post.statistics || {};
+              videos.push({
+                id:           `buffer_${post.id}`,
+                platform:     (ch.service || 'social').toLowerCase(),
+                channelName:  ch.name || ch.service || '',
+                title:        (post.text || '').slice(0, 120),
+                views:        stats.impressions  || 0,
+                likes:        0,
+                comments:     0,
+                shares:       0,
+                engagements:  stats.engagements  || 0,
+                date:         post.createdAt || null,
+                thumbnailUrl: null,
+                videoUrl:     null,
+              });
+            }
+          }
+        } catch(e) { console.warn('[cross-platform-stats] Buffer:', e.message); }
+      }
+
+      // Sort by views descending
+      videos.sort((a, b) => (b.views || 0) - (a.views || 0));
+      return { videos };
+    });
+
+    res.json(data);
+  } catch(e) {
+    console.error('[cross-platform-stats]', e.message);
+    res.json({ videos: [], error: e.message });
+  }
+});
+
+// ─── Video — Generate caption ──────────────────────────────────────────────────
+app.post('/api/video/generate-caption', async (req, res) => {
+  const { transcript, platform = 'tiktok', tone = 'casual' } = req.body || {};
+  if (!transcript) return res.status(400).json({ ok: false, error: 'transcript required' });
+  if (!process.env.ANTHROPIC_API_KEY) return res.status(400).json({ ok: false, error: 'ANTHROPIC_API_KEY not configured' });
+
+  try {
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const systemPrompt = `You are a social media expert. Given a video transcript, write an engaging caption optimised for ${platform}.
+Return ONLY valid JSON: {"caption": "...", "hashtags": ["tag1", "tag2", ...]}
+- caption: punchy, platform-native tone. TikTok/Instagram: conversational, hooks-first, max 150 chars. LinkedIn: professional, max 300 chars. YouTube: descriptive, includes keywords.
+- hashtags: 5-8 relevant hashtags WITHOUT the # symbol
+- tone: ${tone} (casual | professional | educational | humorous)`;
+
+    const msg = await client.messages.create({
+      model:      'claude-haiku-4-5',
+      max_tokens: 512,
+      system:     systemPrompt,
+      messages:   [{ role: 'user', content: `Transcript:\n${transcript}` }],
+    });
+
+    let raw = msg.content?.[0]?.text || '';
+    // Strip markdown fences
+    raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+    const parsed = JSON.parse(raw);
+    res.json({ ok: true, caption: parsed.caption || '', hashtags: parsed.hashtags || [] });
+  } catch(e) {
+    console.error('[generate-caption]', e.message);
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 // ─── Health ────────────────────────────────────────────────────────────────────
 app.get('/health', (_, res) => res.json({ status: 'ok', service: 'dashboard' }));
 
