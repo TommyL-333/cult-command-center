@@ -3261,6 +3261,460 @@ Be precise with numbers. If a field cannot be calculated from the data, use null
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// ─── TikTok Shop Partner API ───────────────────────────────────────────────────
+// Portal: https://partner.tiktokshop.com
+// Base:   https://open-api.tiktokglobalshop.com
+// Auth:   OAuth 2.0 + HMAC-SHA256 request signing on every call
+// Tokens: .tiktok-tokens.json key "shop"
+// ═══════════════════════════════════════════════════════════════════════════════
+
+const TTS_BASE = 'https://open-api.tiktokglobalshop.com';
+
+// ── Signature algorithm ────────────────────────────────────────────────────────
+// 1. Collect all query params (exclude "sign" and "access_token")
+// 2. Sort by key name alphabetically
+// 3. Build base string: {app_secret}{api_path}{key1}{val1}{key2}{val2}...{body}
+// 4. HMAC-SHA256(app_secret, base_string) → uppercase hex
+function signTTShop(apiPath, params, body = '') {
+  const appSecret = process.env.TIKTOK_SHOP_APP_SECRET || '';
+  const sorted = Object.keys(params)
+    .filter(k => k !== 'sign' && k !== 'access_token')
+    .sort();
+  const paramStr = sorted.map(k => `${k}${params[k]}`).join('');
+  const bodyStr  = typeof body === 'string' ? body : (body ? JSON.stringify(body) : '');
+  const base     = `${appSecret}${apiPath}${paramStr}${bodyStr}`;
+  return crypto.createHmac('sha256', appSecret).update(base).digest('hex').toUpperCase();
+}
+
+// ── Build common query params + sign ──────────────────────────────────────────
+function ttsParams(extra = {}, withShopCipher = true) {
+  const tokens  = loadTikTokTokens();
+  const shopTok = tokens.shop || {};
+  const params  = {
+    app_key:   process.env.TIKTOK_SHOP_APP_KEY || '',
+    timestamp: Math.floor(Date.now() / 1000),
+    ...extra,
+  };
+  if (withShopCipher && shopTok.shop_cipher) {
+    params.shop_cipher = shopTok.shop_cipher;
+  }
+  return params;
+}
+
+// ── Signed request helper ──────────────────────────────────────────────────────
+async function ttsRequest(method, apiPath, params = {}, body = null, opts = {}) {
+  const tokens  = loadTikTokTokens();
+  const shopTok = tokens.shop || {};
+
+  const allParams = ttsParams(params, opts.withShopCipher !== false);
+  allParams.sign  = signTTShop(apiPath, allParams, body);
+
+  const config = {
+    method,
+    url: `${TTS_BASE}${apiPath}`,
+    params: allParams,
+    headers: {
+      'content-type': 'application/json',
+      'x-tts-access-token': shopTok.access_token || '',
+    },
+  };
+  if (body) config.data = body;
+
+  const { data } = await axios(config);
+  return data;
+}
+
+// ── Token refresh ─────────────────────────────────────────────────────────────
+async function refreshShopToken() {
+  const tokens  = loadTikTokTokens();
+  const shopTok = tokens.shop || {};
+  if (!shopTok.refresh_token) return false;
+
+  try {
+    const { data } = await axios.post(`${TTS_BASE}/api/token/refresh`, null, {
+      params: {
+        app_key:       process.env.TIKTOK_SHOP_APP_KEY,
+        app_secret:    process.env.TIKTOK_SHOP_APP_SECRET,
+        refresh_token: shopTok.refresh_token,
+        grant_type:    'refresh_token',
+      },
+    });
+    if (data?.data?.access_token) {
+      tokens.shop = {
+        ...shopTok,
+        access_token:  data.data.access_token,
+        refresh_token: data.data.refresh_token || shopTok.refresh_token,
+        expires_at:    Date.now() + (data.data.access_token_expire_in || 86400) * 1000,
+      };
+      saveTikTokTokens(tokens);
+      return true;
+    }
+  } catch (e) {
+    console.error('[tiktokshop] token refresh failed:', e.message);
+  }
+  return false;
+}
+
+// ── ttsGet / ttsPost helpers that auto-refresh expired tokens ─────────────────
+async function ttsGet(apiPath, params = {}, opts = {}) {
+  const tokens = loadTikTokTokens();
+  const t = tokens.shop || {};
+  if (t.expires_at && Date.now() > t.expires_at - 120_000) {
+    await refreshShopToken();
+  }
+  return ttsRequest('GET', apiPath, params, null, opts);
+}
+async function ttsPost(apiPath, body = {}, params = {}, opts = {}) {
+  const tokens = loadTikTokTokens();
+  const t = tokens.shop || {};
+  if (t.expires_at && Date.now() > t.expires_at - 120_000) {
+    await refreshShopToken();
+  }
+  return ttsRequest('POST', apiPath, params, body, opts);
+}
+
+// ────────────────────────────────────────────────────────────────────────────
+// Routes
+// ────────────────────────────────────────────────────────────────────────────
+
+// GET /api/tiktokshop/status — connection state + expiry
+app.get('/api/tiktokshop/status', (req, res) => {
+  const tokens  = loadTikTokTokens();
+  const shopTok = tokens.shop || {};
+  const connected = !!(shopTok.access_token && Date.now() < (shopTok.expires_at || 0));
+  res.json({
+    connected,
+    shop_id:     shopTok.shop_id     || null,
+    shop_name:   shopTok.shop_name   || null,
+    shop_cipher: shopTok.shop_cipher || null,
+    expires_at:  shopTok.expires_at  || null,
+    app_key_set: !!(process.env.TIKTOK_SHOP_APP_KEY),
+    auth_url:    `/api/tiktokshop/auth`,
+  });
+});
+
+// GET /api/tiktokshop/auth — redirect to TikTok Shop OAuth
+app.get('/api/tiktokshop/auth', (req, res) => {
+  const appKey      = process.env.TIKTOK_SHOP_APP_KEY;
+  const redirectUri = process.env.TIKTOK_SHOP_REDIRECT_URI ||
+    `https://cultcontent-server-production.up.railway.app/api/tiktok-shop/callback`;
+
+  if (!appKey) {
+    return res.status(500).json({ error: 'TIKTOK_SHOP_APP_KEY not set in .env' });
+  }
+
+  const authUrl = `https://auth.tiktok-shops.com/oauth/authorize?` +
+    `app_key=${encodeURIComponent(appKey)}` +
+    `&redirect_uri=${encodeURIComponent(redirectUri)}`;
+
+  res.redirect(authUrl);
+});
+
+// GET /api/tiktokshop/callback — exchange auth_code for access_token
+app.get('/api/tiktokshop/callback', async (req, res) => {
+  const { code, auth_code } = req.query;
+  const authCode = code || auth_code;
+  if (!authCode) return res.status(400).send('Missing auth_code');
+
+  try {
+    const { data } = await axios.post(`${TTS_BASE}/api/token/getbycode`, null, {
+      params: {
+        app_key:    process.env.TIKTOK_SHOP_APP_KEY,
+        app_secret: process.env.TIKTOK_SHOP_APP_SECRET,
+        auth_code:  authCode,
+        grant_type: 'authorized_code',
+      },
+    });
+
+    if (!data?.data?.access_token) {
+      return res.status(500).json({ error: 'Token exchange failed', raw: data });
+    }
+
+    const tokens  = loadTikTokTokens();
+    tokens.shop = {
+      access_token:  data.data.access_token,
+      refresh_token: data.data.refresh_token,
+      expires_at:    Date.now() + (data.data.access_token_expire_in || 86400) * 1000,
+      open_id:       data.data.open_id,
+    };
+    saveTikTokTokens(tokens);
+
+    // Fetch shops to get shop_cipher
+    try {
+      const shopRes = await ttsGet('/authorization/202309/shops', {}, { withShopCipher: false });
+      const shop    = shopRes?.data?.shops?.[0];
+      if (shop) {
+        tokens.shop.shop_cipher = shop.cipher;
+        tokens.shop.shop_id     = shop.id;
+        tokens.shop.shop_name   = shop.name;
+        tokens.shop.shop_region = shop.region;
+        saveTikTokTokens(tokens);
+      }
+    } catch (e) {
+      console.warn('[tiktokshop] shop cipher fetch failed:', e.message);
+    }
+
+    res.send(`
+      <html><body style="font-family:sans-serif;padding:40px;background:#111;color:#eee">
+        <h2>✅ TikTok Shop connected!</h2>
+        <p>Shop: <strong>${tokens.shop.shop_name || 'Unknown'}</strong></p>
+        <p>Token expires: ${new Date(tokens.shop.expires_at).toLocaleString()}</p>
+        <p><a href="/" style="color:#00f2ea">← Back to dashboard</a></p>
+      </body></html>
+    `);
+  } catch (e) {
+    console.error('[tiktokshop] callback error:', e.message);
+    res.status(500).json({ error: e.response?.data || e.message });
+  }
+});
+
+// GET /api/tiktokshop/shops — list authorized shops
+app.get('/api/tiktokshop/shops', async (req, res) => {
+  try {
+    const data = await cached('tts_shops', 3_600_000, () =>
+      ttsGet('/authorization/202309/shops', {}, { withShopCipher: false })
+    );
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.response?.data || e.message });
+  }
+});
+
+// GET /api/tiktokshop/orders?status=AWAITING_SHIPMENT&page_size=50 — search orders
+app.get('/api/tiktokshop/orders', async (req, res) => {
+  try {
+    const {
+      order_status = 'AWAITING_SHIPMENT',
+      page_size    = 20,
+      sort_field   = 'create_time',
+      sort_order   = 'DESC',
+      cursor,
+    } = req.query;
+
+    const params = { order_status, page_size, sort_field, sort_order };
+    if (cursor) params.cursor = cursor;
+
+    const data = await ttsPost('/order/202309/orders/search', {}, params);
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.response?.data || e.message });
+  }
+});
+
+// GET /api/tiktokshop/products?page_size=50&status=ACTIVATE — product catalog
+app.get('/api/tiktokshop/products', async (req, res) => {
+  try {
+    const {
+      status    = 'ACTIVATE',
+      page_size = 20,
+      page_token,
+    } = req.query;
+
+    const body = {
+      status:     [status],
+      page_size:  Number(page_size),
+      page_token: page_token || undefined,
+    };
+
+    const data = await ttsPost('/product/202309/products/search', body);
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.response?.data || e.message });
+  }
+});
+
+// GET /api/tiktokshop/products/:product_id — single product detail
+app.get('/api/tiktokshop/products/:product_id', async (req, res) => {
+  try {
+    const data = await ttsGet(`/product/202309/products/${req.params.product_id}`);
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.response?.data || e.message });
+  }
+});
+
+// GET /api/tiktokshop/finance/summary?start_date=2024-01-01&end_date=2024-12-31
+app.get('/api/tiktokshop/finance/summary', async (req, res) => {
+  try {
+    const { start_date, end_date } = req.query;
+    // Convert dates to unix timestamps if provided
+    const params = {};
+    if (start_date) params.create_time_ge = Math.floor(new Date(start_date).getTime() / 1000);
+    if (end_date)   params.create_time_lt = Math.floor(new Date(end_date).getTime() / 1000);
+
+    const data = await ttsPost('/finance/202309/orders/search', {}, params);
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.response?.data || e.message });
+  }
+});
+
+// GET /api/tiktokshop/affiliate/creators?page_size=50 — list affiliated creators + perf
+app.get('/api/tiktokshop/affiliate/creators', async (req, res) => {
+  try {
+    const { page_size = 50, page_token, sort_field = 'gmv', sort_order = 'DESC' } = req.query;
+    const body = {
+      page_size:   Number(page_size),
+      sort_field,
+      sort_order,
+    };
+    if (page_token) body.page_token = page_token;
+
+    const data = await ttsPost('/affiliate/seller/202309/creators/search', body);
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.response?.data || e.message });
+  }
+});
+
+// GET /api/tiktokshop/affiliate/products — products enrolled in affiliate program
+app.get('/api/tiktokshop/affiliate/products', async (req, res) => {
+  try {
+    const { page_size = 50, page_token } = req.query;
+    const body = { page_size: Number(page_size) };
+    if (page_token) body.page_token = page_token;
+
+    const data = await ttsPost('/affiliate/seller/202309/products/search', body);
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.response?.data || e.message });
+  }
+});
+
+// GET /api/tiktokshop/affiliate/samples — sample requests from creators
+app.get('/api/tiktokshop/affiliate/samples', async (req, res) => {
+  try {
+    const { status = 'PENDING', page_size = 50 } = req.query;
+    const data = await ttsPost('/affiliate/seller/202309/sample_requests/search', {
+      status:    [status],
+      page_size: Number(page_size),
+    });
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.response?.data || e.message });
+  }
+});
+
+// GET /api/tiktokshop/affiliate/orders — orders placed through affiliate links
+app.get('/api/tiktokshop/affiliate/orders', async (req, res) => {
+  try {
+    const { page_size = 50, page_token, start_date, end_date } = req.query;
+    const body = { page_size: Number(page_size) };
+    if (page_token) body.page_token = page_token;
+    if (start_date) body.create_time_ge = Math.floor(new Date(start_date).getTime() / 1000);
+    if (end_date)   body.create_time_lt = Math.floor(new Date(end_date).getTime() / 1000);
+
+    const data = await ttsPost('/affiliate/seller/202309/orders/search', body);
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.response?.data || e.message });
+  }
+});
+
+// POST /api/tiktokshop/affiliate/creators/invite — invite a creator by open_id
+app.post('/api/tiktokshop/affiliate/creators/invite', async (req, res) => {
+  try {
+    const { creator_open_id, product_ids = [], commission_rate } = req.body;
+    if (!creator_open_id) return res.status(400).json({ error: 'creator_open_id required' });
+
+    const body = { creator_open_id };
+    if (product_ids.length) body.product_ids = product_ids;
+    if (commission_rate)    body.commission_rate = commission_rate;
+
+    const data = await ttsPost('/affiliate/seller/202309/creators/invite', body);
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.response?.data || e.message });
+  }
+});
+
+// PATCH /api/tiktokshop/affiliate/samples/:request_id — approve or reject a sample request
+app.patch('/api/tiktokshop/affiliate/samples/:request_id', async (req, res) => {
+  try {
+    const { action, rejection_reason } = req.body; // action: APPROVE | REJECT
+    const body = { sample_request_ids: [req.params.request_id], action };
+    if (rejection_reason) body.rejection_reason = rejection_reason;
+
+    const data = await ttsPost('/affiliate/seller/202309/sample_requests/batch_update', body);
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.response?.data || e.message });
+  }
+});
+
+// GET /api/tiktokshop/categories — product category tree
+app.get('/api/tiktokshop/categories', async (req, res) => {
+  try {
+    const data = await cached('tts_categories', 86_400_000, () =>
+      ttsGet('/product/202309/categories', { category_version: 'v2' })
+    );
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.response?.data || e.message });
+  }
+});
+
+// GET /api/tiktokshop/webhooks — list registered webhooks
+app.get('/api/tiktokshop/webhooks', async (req, res) => {
+  try {
+    const data = await ttsGet('/event/202309/webhooks');
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.response?.data || e.message });
+  }
+});
+
+// PUT /api/tiktokshop/webhooks — register / update a webhook URL for an event type
+app.put('/api/tiktokshop/webhooks', async (req, res) => {
+  try {
+    const { event_type, address } = req.body;
+    // Default webhook address points to Railway server
+    const webhookUrl = address ||
+      `https://cultcontent-server-production.up.railway.app/api/tiktok-shop/webhook`;
+    const data = await ttsRequest('PUT', '/event/202309/webhooks', ttsParams(),
+      { event_type, address: webhookUrl }
+    );
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.response?.data || e.message });
+  }
+});
+
+// POST /api/tiktokshop/webhook — receive inbound TikTok Shop webhook events
+// This mirrors the Railway server endpoint; having it here too helps local dev
+app.post('/api/tiktokshop/webhook', express.raw({ type: '*/*' }), (req, res) => {
+  try {
+    const sig     = req.headers['x-tiktok-signature'] || '';
+    const payload = req.body?.toString() || '';
+
+    // Optional HMAC verification
+    if (process.env.TIKTOK_SHOP_APP_SECRET && sig) {
+      const expected = crypto
+        .createHmac('sha256', process.env.TIKTOK_SHOP_APP_SECRET)
+        .update(payload)
+        .digest('hex');
+      if (sig !== expected) {
+        console.warn('[tiktokshop webhook] signature mismatch');
+        return res.status(401).json({ error: 'Invalid signature' });
+      }
+    }
+
+    let event;
+    try { event = JSON.parse(payload); } catch { event = { raw: payload }; }
+    console.log('[tiktokshop webhook]', event.type || 'unknown', JSON.stringify(event).slice(0, 200));
+
+    // Invalidate relevant caches on key events
+    if (event.type === 'ORDER_STATUS_CHANGE') cache.delete('tts_orders');
+    if (event.type?.startsWith('PRODUCT_'))    cache.delete('tts_products');
+
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[tiktokshop webhook] error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── Health ────────────────────────────────────────────────────────────────────
 app.get('/health', (_, res) => res.json({ status: 'ok', service: 'dashboard' }));
 
