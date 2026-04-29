@@ -7811,6 +7811,9 @@ async function prodPushToLark() {
   }
 }
 
+// refresh() was called here but not defined — no-op to prevent ReferenceError
+// that was aborting script execution and breaking Storista + other features below.
+function refresh() {}
 refresh();
 
 // ─── Storista — TikTok Shop Publishing ────────────────────────────────────────
@@ -8213,6 +8216,17 @@ async function bufferPost(realIdx) {
 function bufferCloseModal() {
   document.getElementById('bufferOverlay')?.remove();
 }
+
+// ─── Pre-populate Content Pipeline on page load ───────────────────────────────
+// Brands + stepper render from static data — no click needed. This ensures they
+// are always visible the moment the user opens the Content Pipeline sub-tab,
+// regardless of any click-handler timing issues.
+document.addEventListener('DOMContentLoaded', () => {
+  prodRenderBrandCards();
+  prodRenderStepper();
+  prodShowStep(1);
+  prodLoadClientBrands();
+});
 </script>
 </body>
 </html>
