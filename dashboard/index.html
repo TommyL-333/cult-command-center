@@ -6656,9 +6656,13 @@ function svSubTab(id) {
   if (id === 'sv-pipeline') {
     const mount = document.getElementById('svPipelineMount');
     const prod  = document.getElementById('tab-production');
-    if (prod && mount && !mount.contains(prod)) { prod.style.display = 'block'; mount.appendChild(prod); }
-    else if (prod) prod.style.display = 'block';
-    prodInit();
+    if (prod) {
+      // Strip tab-pane class so the global .tab-pane{display:none} rule can't fight us
+      prod.classList.remove('tab-pane');
+      prod.style.display = 'block';
+      if (mount && !mount.contains(prod)) mount.appendChild(prod);
+      prodInit();
+    }
   }
   if (id === 'sv-perf')   { svpLoadAccountBanner(); if (!_svp.videos.length) svpLoad(); }
   if (id === 'sv-upload') { if (!_svu.channels.length) svuLoadChannels(); }
