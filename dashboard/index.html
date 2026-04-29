@@ -1760,7 +1760,7 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:28px">
       <div>
         <h2 style="font-size:22px;font-weight:900;letter-spacing:-0.5px">🎬 Video Production</h2>
-        <div style="font-size:13px;color:var(--muted);margin-top:4px">Analysis → Ideas → Scripts → Upload → Calendar</div>
+        <div style="font-size:13px;color:var(--muted);margin-top:4px">Analysis → Ideas → Scripts → Production → Scheduler</div>
       </div>
       <button class="btn btn-ghost" style="font-size:12px;padding:6px 14px" onclick="prodReset()">↺ Start Over</button>
     </div>
@@ -2028,7 +2028,7 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
           </div>
           <div id="arcadsScriptSlots"></div>
           <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:12px">
-            <button class="btn btn-ghost" style="padding:7px 18px;font-size:12px" onclick="prodGoToCalendar()">Skip →</button>
+            <button class="btn btn-ghost" style="padding:7px 18px;font-size:12px" onclick="prodGoToCalendar()">Skip to Scheduler →</button>
             <button id="arcadsGenerateBtn" class="btn btn-teal" style="padding:9px 24px;font-weight:700" onclick="prodGenerateArcads()">Generate Videos →</button>
           </div>
         </div>
@@ -2037,13 +2037,11 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
 
     <div id="prodStep6" class="prod-step" style="display:none">
       <div class="card" style="padding:28px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <div style="font-size:16px;font-weight:800">Step 5 — Content Calendar</div>
-          <button class="btn btn-teal" style="padding:7px 18px;font-weight:700" onclick="prodPushToLark()">Push to Lark →</button>
+        <div style="margin-bottom:6px">
+          <div style="font-size:16px;font-weight:800">Step 6 — Scheduler</div>
         </div>
-        <div style="font-size:13px;color:var(--muted);margin-bottom:24px">Set a publish date and platform for each video, then push to your Lark content calendar.</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:24px">Pick a date for each video, then post to TikTok Shop via <strong style="color:var(--text)">Storista</strong> or schedule to other platforms via <strong style="color:var(--text)">Buffer</strong>.</div>
         <div id="calendarEntries"></div>
-        <div id="larkPushResult" style="margin-top:20px"></div>
       </div>
     </div>
 
@@ -6724,7 +6722,7 @@ gpInit();
 _arcadsJobs.filter(j=>j.status==='pending').forEach(j=>pollArcadsJob(j.scriptId));
 
 // ─── 🎬 Video Production Pipeline ────────────────────────────────────────────
-const PROD_STEPS = ['Brand','Analysis','Ideas','Scripts','Production','Calendar'];
+const PROD_STEPS = ['Brand','Analysis','Ideas','Scripts','Production','Scheduler'];
 
 const PROD_BRANDS = {
   cultcontent: {
@@ -7682,7 +7680,7 @@ function prodBuildUploadSlots() {
     <button class="btn btn-ghost" style="padding:7px 18px;font-size:12px" onclick="prodAddUploadSlot()">+ Add Video</button>
     <div style="display:flex;gap:8px">
       <button class="btn btn-ghost" style="padding:7px 18px;font-size:12px" onclick="prodJumpToStep(6)">Skip →</button>
-      <button class="btn btn-teal" style="padding:9px 24px;font-weight:700" onclick="prodGoToCalendar()">Continue to Calendar →</button>
+      <button class="btn btn-teal" style="padding:9px 24px;font-weight:700" onclick="prodGoToCalendar()">Continue to Scheduler →</button>
     </div>
   </div>`;
 }
