@@ -221,6 +221,21 @@ app.post('/api/webhooks/ghl-client-onboard', async (req, res) => {
 });
 
 app.use(requireAuth); // all routes require auth in production
+
+// Serve index.html with no-cache to prevent Cloudflare/browser serving stale versions
+app.get('/', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'dashboard', 'index.html'));
+});
+app.get('/index.html', (req, res) => {
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.sendFile(path.join(__dirname, 'dashboard', 'index.html'));
+});
+
 app.use(express.static(path.join(__dirname, 'dashboard')));
 app.use('/uploads', express.static(UPLOAD_DIR));
 app.use('/tools', express.static(path.join(__dirname)));
