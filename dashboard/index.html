@@ -1590,11 +1590,171 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
 ────────────────────────────────────────────────────────────────────────── -->
 
 
-<!-- ═══════════════════════════════════════════════════════════════════════ -->
-<!-- 🎬 PRODUCTION TAB                                                      -->
-<!-- ═══════════════════════════════════════════════════════════════════════ -->
-<section class="tab-pane" id="tab-production">
-  <div style="max-width:860px;margin:0 auto;padding:28px 0 60px">
+<!-- 🎬 PRODUCTION TAB — content moved into #sub-sv-pipeline (Short Video tab) -->
+<!-- <section id="tab-production-removed"> -->
+
+<!-- NAV BUTTON: <button class="tab-btn" data-tab="shortvideo">Short Video Agent</button> -->
+
+<section class="tab-pane" id="tab-shortvideo">
+
+  <!-- Sub-tab nav -->
+  <div class="sub-tab-nav">
+    <button class="sub-tab-btn active" data-subtab="sv-agent"    onclick="svSubTab('sv-agent')">🤖 Agent</button>
+    <button class="sub-tab-btn"        data-subtab="sv-pipeline" onclick="svSubTab('sv-pipeline')">🎬 Content Pipeline</button>
+    <button class="sub-tab-btn"        data-subtab="sv-perf"     onclick="svSubTab('sv-perf')">📊 Performance</button>
+    <button class="sub-tab-btn"        data-subtab="sv-upload"   onclick="svSubTab('sv-upload')">📤 Upload & Publish</button>
+  </div>
+
+  <!-- ══ AGENT SUB-TAB (restored) ══════════════════════════════════════════════ -->
+  <div class="sub-tab-pane active" id="sub-sv-agent">
+
+  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
+    <h2 class="sec-title" style="margin:0;">Short Video Agent</h2>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <span id="svPipelineStatusBadge" style="font-size:11px;padding:4px 10px;border-radius:20px;font-weight:700;background:rgba(0,210,122,0.1);border:1px solid rgba(0,210,122,0.25);color:var(--green);">● Idle</span>
+      <button class="btn btn-ghost" style="font-size:11px;" onclick="svTogglePause()" id="svPauseBtn">⏸ Pause</button>
+      <button class="btn btn-teal" style="font-size:12px;" onclick="svRunPipeline()" id="svRunBtn">▶ Run Now</button>
+    </div>
+  </div>
+
+  <div class="card" style="padding:12px 18px;margin-bottom:18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+    <span style="font-size:10px;font-weight:800;letter-spacing:0.08em;color:var(--muted);">SCHEDULE</span>
+    <select id="svSchedule" class="agent-input" style="width:180px;font-size:12px;" onchange="svSaveConfig()">
+      <option value="manual">Manual only</option>
+      <option value="daily">Daily — 6am</option>
+      <option value="weekly">Weekly — Mon 6am</option>
+      <option value="biweekly">Every 2 weeks</option>
+    </select>
+    <span style="font-size:10px;font-weight:800;letter-spacing:0.08em;color:var(--muted);">POSTS PER RUN</span>
+    <input type="number" id="svPostCount" class="agent-input" value="5" min="1" max="20" style="width:60px;font-size:12px;" onchange="svSaveConfig()" />
+    <span id="svNextRun" style="font-size:11px;color:var(--muted);margin-left:auto;"></span>
+    <span id="svPaused" style="font-size:11px;color:var(--red);font-weight:700;display:none;">⏸ PAUSED</span>
+  </div>
+
+  <div class="sv-pipeline-wrap"><div style="display:grid;gap:0;position:relative;" id="svPipelineRow">
+    <div class="sv-stage-card" id="svStage-analysis">
+      <div class="sv-stage-num">1</div>
+      <div class="sv-stage-name">Analysis</div>
+      <select class="agent-input sv-skill-select" onchange="svSetSkill('analysis',this.value);svSaveConfig()">
+        <option value="last7d">Last 7 Days</option>
+        <option value="last30d">Last 30 Days</option>
+        <option value="competitor">Competitor Scan</option>
+        <option value="trending">Trending Topics</option>
+      </select>
+      <div class="sv-skill-config" id="svCfg-analysis">
+        <div class="sv-cfg-row">
+          <label>Source</label>
+          <select class="agent-input" id="svAnalysisSource" style="font-size:11px;" onchange="svSaveConfig()">
+            <option value="arcads">Arcads</option>
+            <option value="buffer">Buffer</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="sv-pipeline-arrow">→</div>
+    <div class="sv-stage-card" id="svStage-ideation">
+      <div class="sv-stage-num">2</div>
+      <div class="sv-stage-name">Ideation</div>
+      <select class="agent-input sv-skill-select" onchange="svSetSkill('ideation',this.value);svSaveConfig()">
+        <option value="cult-ideator">Cult Ideator</option>
+        <option value="trend-based">Trend-Based</option>
+        <option value="competitor">Competitor-Inspired</option>
+      </select>
+      <div class="sv-skill-config" id="svCfg-ideation">
+        <div class="sv-cfg-row">
+          <label>Style focus</label>
+          <select class="agent-input" id="svIdeationStyle" style="font-size:11px;" onchange="svSaveConfig()">
+            <option value="hooks">Hooks-first</option>
+            <option value="story">Story-driven</option>
+            <option value="product">Product-led</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="sv-pipeline-arrow">→</div>
+    <div class="sv-stage-card" id="svStage-scripting">
+      <div class="sv-stage-num">3</div>
+      <div class="sv-stage-name">Scripting</div>
+      <select class="agent-input sv-skill-select" onchange="svSetSkill('scripting',this.value);svSaveConfig()">
+        <option value="cult-script-writer">Cult Script Writer</option>
+        <option value="short-hook">Short Hook (15s)</option>
+        <option value="long-form">Long-form (60s)</option>
+      </select>
+      <div class="sv-skill-config" id="svCfg-scripting">
+        <div class="sv-cfg-row">
+          <label>Max length</label>
+          <select class="agent-input" id="svScriptLength" style="font-size:11px;" onchange="svSaveConfig()">
+            <option value="60">60 sec</option>
+            <option value="30">30 sec</option>
+            <option value="15">15 sec</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="sv-pipeline-arrow">→</div>
+    <div class="sv-stage-card" id="svStage-production">
+      <div class="sv-stage-num">4</div>
+      <div class="sv-stage-name">Production</div>
+      <select class="agent-input sv-skill-select" onchange="svSetSkill('production',this.value);svSaveConfig()">
+        <option value="arcads">Arcads</option>
+        <option value="opus-clip">Opus Clip</option>
+        <option value="manual">Manual upload</option>
+      </select>
+      <div class="sv-skill-config" id="svCfg-production">
+        <div class="sv-cfg-row" style="flex-direction:column;align-items:stretch;gap:4px;">
+          <label>Script direction (optional)</label>
+          <textarea id="svArcadsDirection" class="agent-input" rows="2"
+            placeholder="e.g. upbeat tone, show product in first 3 seconds…"
+            style="font-size:11px;resize:none;width:100%;"
+            onchange="svSaveConfig()"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="sv-pipeline-arrow">→</div>
+    <div class="sv-stage-card" id="svStage-publishing">
+      <div class="sv-stage-num">5</div>
+      <div class="sv-stage-name">Publishing</div>
+      <select class="agent-input sv-skill-select" onchange="svSetSkill('publishing',this.value);svSaveConfig()">
+        <option value="buffer-tiktok">Buffer → TikTok</option>
+        <option value="buffer-instagram">Buffer → Instagram</option>
+        <option value="buffer-queue">Buffer (add to queue)</option>
+        <option value="ideas-only">Save as Buffer Ideas</option>
+      </select>
+      <div class="sv-skill-config" id="svCfg-publishing">
+        <div class="sv-cfg-row">
+          <label>Review before post</label>
+          <input type="checkbox" id="svReviewMode" onchange="svSaveConfig()" style="margin-left:auto;" />
+        </div>
+      </div>
+    </div>
+  </div></div>
+
+  <div id="svPipelineLog" style="display:none;font-size:11px;font-family:'JetBrains Mono',monospace;background:var(--dark);color:rgba(255,255,255,0.75);padding:12px 14px;border-radius:8px;margin-bottom:16px;min-height:60px;max-height:200px;overflow-y:auto;white-space:pre-wrap;"></div>
+
+  <div id="svLastRunPanel" style="display:none;" class="card" style="margin-bottom:16px;">
+    <div style="font-size:10px;font-weight:800;letter-spacing:0.08em;color:var(--muted);margin-bottom:10px;">LAST RUN</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;">
+      <div><div style="font-size:10px;color:var(--muted);">Ran at</div><div style="font-size:12px;font-weight:700;" id="svLastAt">—</div></div>
+      <div><div style="font-size:10px;color:var(--muted);">Analyzed</div><div style="font-size:13px;font-weight:700;color:var(--teal);" id="svLastAnalyzed">—</div></div>
+      <div><div style="font-size:10px;color:var(--muted);">Ideas</div><div style="font-size:13px;font-weight:700;color:var(--gold);" id="svLastIdeas">—</div></div>
+      <div><div style="font-size:10px;color:var(--muted);">Scripts</div><div style="font-size:13px;font-weight:700;color:var(--teal);" id="svLastScripts">—</div></div>
+      <div><div style="font-size:10px;color:var(--muted);">Published</div><div style="font-size:13px;font-weight:700;color:var(--green);" id="svLastPublished">—</div></div>
+    </div>
+  </div>
+
+  <div class="agent-section-label">📋 Run History</div>
+  <div class="card" style="margin-bottom:24px;">
+    <table class="tbl">
+      <thead><tr><th>Date</th><th>Analysis</th><th>Ideation</th><th>Scripting</th><th>Production</th><th>Published</th><th>Status</th></tr></thead>
+      <tbody id="svHistoryTbl"><tr class="empty"><td colspan="7">No runs yet</td></tr></tbody>
+    </table>
+  </div>
+
+  </div><!-- end sub-sv-agent -->
+
+  <!-- ══ CONTENT PIPELINE SUB-TAB ══════════════════════════════════════════════ -->
+  <div class="sub-tab-pane" id="sub-sv-pipeline">
+    <div style="max-width:860px;margin:0 auto;padding:28px 0 60px">
 
     <!-- Header -->
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:28px">
@@ -1887,171 +2047,7 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
       </div>
     </div>
 
-  </div>
-</section>
-
-<!-- NAV BUTTON: <button class="tab-btn" data-tab="shortvideo">Short Video Agent</button> -->
-
-<section class="tab-pane" id="tab-shortvideo">
-
-  <!-- Sub-tab nav -->
-  <div class="sub-tab-nav">
-    <button class="sub-tab-btn active" data-subtab="sv-agent"    onclick="svSubTab('sv-agent')">🤖 Agent</button>
-    <button class="sub-tab-btn"        data-subtab="sv-pipeline" onclick="svSubTab('sv-pipeline')">🎬 Content Pipeline</button>
-    <button class="sub-tab-btn"        data-subtab="sv-perf"     onclick="svSubTab('sv-perf')">📊 Performance</button>
-    <button class="sub-tab-btn"        data-subtab="sv-upload"   onclick="svSubTab('sv-upload')">📤 Upload & Publish</button>
-  </div>
-
-  <!-- ══ AGENT SUB-TAB (restored) ══════════════════════════════════════════════ -->
-  <div class="sub-tab-pane active" id="sub-sv-agent">
-
-  <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:16px;">
-    <h2 class="sec-title" style="margin:0;">Short Video Agent</h2>
-    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-      <span id="svPipelineStatusBadge" style="font-size:11px;padding:4px 10px;border-radius:20px;font-weight:700;background:rgba(0,210,122,0.1);border:1px solid rgba(0,210,122,0.25);color:var(--green);">● Idle</span>
-      <button class="btn btn-ghost" style="font-size:11px;" onclick="svTogglePause()" id="svPauseBtn">⏸ Pause</button>
-      <button class="btn btn-teal" style="font-size:12px;" onclick="svRunPipeline()" id="svRunBtn">▶ Run Now</button>
     </div>
-  </div>
-
-  <div class="card" style="padding:12px 18px;margin-bottom:18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
-    <span style="font-size:10px;font-weight:800;letter-spacing:0.08em;color:var(--muted);">SCHEDULE</span>
-    <select id="svSchedule" class="agent-input" style="width:180px;font-size:12px;" onchange="svSaveConfig()">
-      <option value="manual">Manual only</option>
-      <option value="daily">Daily — 6am</option>
-      <option value="weekly">Weekly — Mon 6am</option>
-      <option value="biweekly">Every 2 weeks</option>
-    </select>
-    <span style="font-size:10px;font-weight:800;letter-spacing:0.08em;color:var(--muted);">POSTS PER RUN</span>
-    <input type="number" id="svPostCount" class="agent-input" value="5" min="1" max="20" style="width:60px;font-size:12px;" onchange="svSaveConfig()" />
-    <span id="svNextRun" style="font-size:11px;color:var(--muted);margin-left:auto;"></span>
-    <span id="svPaused" style="font-size:11px;color:var(--red);font-weight:700;display:none;">⏸ PAUSED</span>
-  </div>
-
-  <div class="sv-pipeline-wrap"><div style="display:grid;gap:0;position:relative;" id="svPipelineRow">
-    <div class="sv-stage-card" id="svStage-analysis">
-      <div class="sv-stage-num">1</div>
-      <div class="sv-stage-name">Analysis</div>
-      <select class="agent-input sv-skill-select" onchange="svSetSkill('analysis',this.value);svSaveConfig()">
-        <option value="last7d">Last 7 Days</option>
-        <option value="last30d">Last 30 Days</option>
-        <option value="competitor">Competitor Scan</option>
-        <option value="trending">Trending Topics</option>
-      </select>
-      <div class="sv-skill-config" id="svCfg-analysis">
-        <div class="sv-cfg-row">
-          <label>Source</label>
-          <select class="agent-input" id="svAnalysisSource" style="font-size:11px;" onchange="svSaveConfig()">
-            <option value="arcads">Arcads</option>
-            <option value="buffer">Buffer</option>
-          </select>
-        </div>
-      </div>
-    </div>
-    <div class="sv-pipeline-arrow">→</div>
-    <div class="sv-stage-card" id="svStage-ideation">
-      <div class="sv-stage-num">2</div>
-      <div class="sv-stage-name">Ideation</div>
-      <select class="agent-input sv-skill-select" onchange="svSetSkill('ideation',this.value);svSaveConfig()">
-        <option value="cult-ideator">Cult Ideator</option>
-        <option value="trend-based">Trend-Based</option>
-        <option value="competitor">Competitor-Inspired</option>
-      </select>
-      <div class="sv-skill-config" id="svCfg-ideation">
-        <div class="sv-cfg-row">
-          <label>Style focus</label>
-          <select class="agent-input" id="svIdeationStyle" style="font-size:11px;" onchange="svSaveConfig()">
-            <option value="hooks">Hooks-first</option>
-            <option value="story">Story-driven</option>
-            <option value="product">Product-led</option>
-          </select>
-        </div>
-      </div>
-    </div>
-    <div class="sv-pipeline-arrow">→</div>
-    <div class="sv-stage-card" id="svStage-scripting">
-      <div class="sv-stage-num">3</div>
-      <div class="sv-stage-name">Scripting</div>
-      <select class="agent-input sv-skill-select" onchange="svSetSkill('scripting',this.value);svSaveConfig()">
-        <option value="cult-script-writer">Cult Script Writer</option>
-        <option value="short-hook">Short Hook (15s)</option>
-        <option value="long-form">Long-form (60s)</option>
-      </select>
-      <div class="sv-skill-config" id="svCfg-scripting">
-        <div class="sv-cfg-row">
-          <label>Max length</label>
-          <select class="agent-input" id="svScriptLength" style="font-size:11px;" onchange="svSaveConfig()">
-            <option value="60">60 sec</option>
-            <option value="30">30 sec</option>
-            <option value="15">15 sec</option>
-          </select>
-        </div>
-      </div>
-    </div>
-    <div class="sv-pipeline-arrow">→</div>
-    <div class="sv-stage-card" id="svStage-production">
-      <div class="sv-stage-num">4</div>
-      <div class="sv-stage-name">Production</div>
-      <select class="agent-input sv-skill-select" onchange="svSetSkill('production',this.value);svSaveConfig()">
-        <option value="arcads">Arcads</option>
-        <option value="opus-clip">Opus Clip</option>
-        <option value="manual">Manual upload</option>
-      </select>
-      <div class="sv-skill-config" id="svCfg-production">
-        <div class="sv-cfg-row" style="flex-direction:column;align-items:stretch;gap:4px;">
-          <label>Script direction (optional)</label>
-          <textarea id="svArcadsDirection" class="agent-input" rows="2"
-            placeholder="e.g. upbeat tone, show product in first 3 seconds…"
-            style="font-size:11px;resize:none;width:100%;"
-            onchange="svSaveConfig()"></textarea>
-        </div>
-      </div>
-    </div>
-    <div class="sv-pipeline-arrow">→</div>
-    <div class="sv-stage-card" id="svStage-publishing">
-      <div class="sv-stage-num">5</div>
-      <div class="sv-stage-name">Publishing</div>
-      <select class="agent-input sv-skill-select" onchange="svSetSkill('publishing',this.value);svSaveConfig()">
-        <option value="buffer-tiktok">Buffer → TikTok</option>
-        <option value="buffer-instagram">Buffer → Instagram</option>
-        <option value="buffer-queue">Buffer (add to queue)</option>
-        <option value="ideas-only">Save as Buffer Ideas</option>
-      </select>
-      <div class="sv-skill-config" id="svCfg-publishing">
-        <div class="sv-cfg-row">
-          <label>Review before post</label>
-          <input type="checkbox" id="svReviewMode" onchange="svSaveConfig()" style="margin-left:auto;" />
-        </div>
-      </div>
-    </div>
-  </div></div>
-
-  <div id="svPipelineLog" style="display:none;font-size:11px;font-family:'JetBrains Mono',monospace;background:var(--dark);color:rgba(255,255,255,0.75);padding:12px 14px;border-radius:8px;margin-bottom:16px;min-height:60px;max-height:200px;overflow-y:auto;white-space:pre-wrap;"></div>
-
-  <div id="svLastRunPanel" style="display:none;" class="card" style="margin-bottom:16px;">
-    <div style="font-size:10px;font-weight:800;letter-spacing:0.08em;color:var(--muted);margin-bottom:10px;">LAST RUN</div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;">
-      <div><div style="font-size:10px;color:var(--muted);">Ran at</div><div style="font-size:12px;font-weight:700;" id="svLastAt">—</div></div>
-      <div><div style="font-size:10px;color:var(--muted);">Analyzed</div><div style="font-size:13px;font-weight:700;color:var(--teal);" id="svLastAnalyzed">—</div></div>
-      <div><div style="font-size:10px;color:var(--muted);">Ideas</div><div style="font-size:13px;font-weight:700;color:var(--gold);" id="svLastIdeas">—</div></div>
-      <div><div style="font-size:10px;color:var(--muted);">Scripts</div><div style="font-size:13px;font-weight:700;color:var(--teal);" id="svLastScripts">—</div></div>
-      <div><div style="font-size:10px;color:var(--muted);">Published</div><div style="font-size:13px;font-weight:700;color:var(--green);" id="svLastPublished">—</div></div>
-    </div>
-  </div>
-
-  <div class="agent-section-label">📋 Run History</div>
-  <div class="card" style="margin-bottom:24px;">
-    <table class="tbl">
-      <thead><tr><th>Date</th><th>Analysis</th><th>Ideation</th><th>Scripting</th><th>Production</th><th>Published</th><th>Status</th></tr></thead>
-      <tbody id="svHistoryTbl"><tr class="empty"><td colspan="7">No runs yet</td></tr></tbody>
-    </table>
-  </div>
-
-  </div><!-- end sub-sv-agent -->
-
-  <!-- ══ CONTENT PIPELINE SUB-TAB ══════════════════════════════════════════════ -->
-  <div class="sub-tab-pane" id="sub-sv-pipeline">
-    <div id="svPipelineMount"></div>
   </div>
 
   <!-- ══ PERFORMANCE SUB-TAB ══════════════════════════════════════════════════ -->
@@ -6661,17 +6657,7 @@ function svLoopInit()     {}
 function svSubTab(id) {
   document.querySelectorAll('#tab-shortvideo .sub-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.subtab === id));
   document.querySelectorAll('#tab-shortvideo .sub-tab-pane').forEach(p => p.classList.toggle('active', p.id === 'sub-' + id));
-  if (id === 'sv-pipeline') {
-    const mount = document.getElementById('svPipelineMount');
-    const prod  = document.getElementById('tab-production');
-    if (prod) {
-      // Strip tab-pane class so the global .tab-pane{display:none} rule can't fight us
-      prod.classList.remove('tab-pane');
-      prod.style.display = 'block';
-      if (mount && !mount.contains(prod)) mount.appendChild(prod);
-      prodInit();
-    }
-  }
+  if (id === 'sv-pipeline') { prodInit(); }
   if (id === 'sv-perf')   { svpLoadAccountBanner(); if (!_svp.videos.length) svpLoad(); }
   if (id === 'sv-upload') { if (!_svu.channels.length) svuLoadChannels(); }
 }
