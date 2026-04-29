@@ -6668,6 +6668,34 @@ timer = setInterval(() => {
   if (countdown <= 0) { countdown = 60; refresh(); }
 }, 1000);
 
+// ─── Agent Manager ───────────────────────────────────────────────────────────
+async function renderAgentManager() {
+  const listEl  = document.getElementById('agentListPanel');
+  const countEl = document.getElementById('agentCount');
+  if (!listEl) return;
+  try {
+    const data = await fetch('/api/agents').then(r => r.json());
+    const agents = data.agents || [];
+    if (countEl) countEl.textContent = `${agents.length} agent${agents.length !== 1 ? 's' : ''}`;
+    if (!agents.length) {
+      listEl.innerHTML = '<div style="color:var(--muted);font-style:italic;font-size:12px;padding:8px 0">No custom agents yet.</div>';
+      return;
+    }
+    listEl.innerHTML = agents.map(a => `
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">
+        <span class="dot ${a.enabled ? 'on' : 'idle'}" style="flex-shrink:0"></span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${x(a.name)}</div>
+          <div style="font-size:10px;color:var(--muted)">${x(a.description || a.type || '')}</div>
+        </div>
+        <div style="font-size:10px;color:var(--muted);flex-shrink:0">${a.lastRunAt ? new Date(a.lastRunAt).toLocaleDateString() : 'never run'}</div>
+      </div>`).join('');
+  } catch(e) {
+    if (listEl) listEl.innerHTML = '<div style="color:var(--muted);font-style:italic;font-size:12px;padding:8px 0">Could not load agents.</div>';
+    if (countEl) countEl.textContent = '';
+  }
+}
+
 // ─── Boot ─────────────────────────────────────────────────────────────────────
 const CFG_RAILWAY_URL = 'cultcontent-server-production.up.railway.app';
 
