@@ -2320,7 +2320,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.classList.add('active');
     document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
     // Lazy-init tab-specific data
-    if (btn.dataset.tab === 'shortvideo')  { svInitActors(); svLoopInit(); svuLoadChannels(); }
+    if (btn.dataset.tab === 'shortvideo')  { svuLoadChannels(); }
     if (btn.dataset.tab === 'paidmedia')   loadPaidMedia();
     if (btn.dataset.tab === 'affiliates')  loadAffiliate();
     if (btn.dataset.tab === 'pipeline')    renderPerformance();
@@ -6648,6 +6648,14 @@ async function svuPublish() {
     btn.textContent = n > 0 ? `📤 Post to ${n} Channel${n>1?'s':''}` : '📤 Post to Selected Channels';
   }
 }
+
+// ─── Short Video Agent sub-tab stubs (HTML kept for layout; logic TBD) ───────
+function svRunPipeline()  { console.log('svRunPipeline: not yet implemented'); }
+function svTogglePause()  { console.log('svTogglePause: not yet implemented'); }
+function svSaveConfig()   {}
+function svSetSkill(a,b)  {}
+function svInitActors()   {}
+function svLoopInit()     {}
 
 // ─── Short Video sub-tab switcher ────────────────────────────────────────────
 function svSubTab(id) {
