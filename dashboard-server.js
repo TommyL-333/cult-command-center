@@ -2585,22 +2585,57 @@ app.post('/api/whisper-transcribe', upload.single('audio'), async (req, res) => 
 
   const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
   if (!OPENAI_API_KEY) {
-    // Cleanup file and return helpful error
     try { fs.unlinkSync(req.file.path); } catch(_) {}
-    return res.json({ ok: false, error: 'OPENAI_API_KEY not set in .env — add it to enable Whisper fallback', text: '' });
+    return res.json({ ok: false, error: 'OPENAI_API_KEY not set — add it in Railway Variables to enable transcription', text: '' });
   }
 
+  const WHISPER_LIMIT = 24 * 1024 * 1024; // 24 MB (Whisper hard limit is 25 MB)
+  let filePath = req.file.path;
+  let audioPath = null; // set if we extracted audio via ffmpeg
+
   try {
+    // If file is over the Whisper limit, try to extract audio-only via ffmpeg
+    if (req.file.size > WHISPER_LIMIT) {
+      audioPath = filePath + '.mp3';
+      try {
+        await new Promise((resolve, reject) => {
+          const { spawn } = require('child_process');
+          const ff = spawn('ffmpeg', [
+            '-i', filePath,
+            '-vn',            // no video
+            '-ar', '16000',   // 16kHz sample rate (Whisper-optimal)
+            '-ac', '1',       // mono
+            '-b:a', '32k',    // low bitrate — keeps file small
+            '-f', 'mp3',
+            '-y',             // overwrite
+            audioPath
+          ]);
+          ff.on('close', code => code === 0 ? resolve() : reject(new Error(`ffmpeg exited ${code}`)));
+          ff.on('error', reject);
+        });
+        filePath = audioPath; // use extracted audio
+      } catch (ffErr) {
+        // ffmpeg not available or failed — surface a clear error
+        return res.json({
+          ok: false,
+          text: '',
+          error: `Video is ${(req.file.size / 1024 / 1024).toFixed(0)} MB — Whisper limit is 25 MB. Could not extract audio (${ffErr.message}). Try exporting audio-only from your editor, or compress the video below 25 MB.`
+        });
+      }
+    }
+
     const FormData = require('form-data');
     const fd = new FormData();
-    fd.append('file', fs.createReadStream(req.file.path), {
-      filename: req.file.originalname || 'recording.webm',
-      contentType: req.file.mimetype || 'audio/webm'
+    fd.append('file', fs.createReadStream(filePath), {
+      filename: path.basename(filePath),
+      contentType: filePath.endsWith('.mp3') ? 'audio/mpeg' : (req.file.mimetype || 'audio/webm')
     });
     fd.append('model', 'whisper-1');
 
     const whisperRes = await axios.post('https://api.openai.com/v1/audio/transcriptions', fd, {
-      headers: { ...fd.getHeaders(), Authorization: `Bearer ${OPENAI_API_KEY}` }
+      headers: { ...fd.getHeaders(), Authorization: `Bearer ${OPENAI_API_KEY}` },
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity,
     });
 
     res.json({ ok: true, text: whisperRes.data.text || '' });
@@ -2608,6 +2643,7 @@ app.post('/api/whisper-transcribe', upload.single('audio'), async (req, res) => 
     res.json({ ok: false, error: e.response?.data?.error?.message || e.message, text: '' });
   } finally {
     try { fs.unlinkSync(req.file.path); } catch(_) {}
+    if (audioPath) { try { fs.unlinkSync(audioPath); } catch(_) {} }
   }
 });
 

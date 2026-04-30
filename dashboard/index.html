@@ -6511,7 +6511,8 @@ async function svuRunTranscribe() {
       // Auto-generate caption
       await svuGenerateCaption();
     } else {
-      document.getElementById('svuTranscriptStatus').textContent = '⚠ No transcript returned';
+      const msg = data.error || 'No transcript returned';
+      document.getElementById('svuTranscriptStatus').textContent = '⚠ ' + msg;
     }
   } catch (e) {
     document.getElementById('svuTranscriptStatus').textContent = '✗ ' + e.message;
