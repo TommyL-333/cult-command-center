@@ -221,7 +221,15 @@ app.post('/api/webhooks/ghl-client-onboard', async (req, res) => {
 });
 
 // Public: uploaded videos need to be reachable by Buffer/social platforms (no auth)
-app.use('/uploads', express.static(UPLOAD_DIR));
+app.use('/uploads', (req, res, next) => {
+  const filePath = path.join(UPLOAD_DIR, path.basename(req.path));
+  const exists = fs.existsSync(filePath);
+  console.log('[uploads]', req.method, req.path, '| exists:', exists, '| UA:', (req.headers['user-agent'] || '').slice(0, 60));
+  if (!exists) return res.status(404).json({ error: 'File not found' });
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  res.setHeader('Content-Type', req.path.endsWith('.mp4') ? 'video/mp4' : 'application/octet-stream');
+  res.sendFile(filePath);
+});
 
 app.use(requireAuth); // all routes require auth in production
 
@@ -1107,23 +1115,37 @@ async function getPublicVideoUrl(mediaUrl) {
   }
   try {
     const fileBuffer = fs.readFileSync(localPath);
-    console.log('[buffer] uploading to transfer.sh, size:', fileBuffer.length);
-    const resp = await fetch(`https://transfer.sh/${encodeURIComponent(filename)}`, {
-      method: 'PUT',
-      body: fileBuffer,
-      headers: { 'Content-Type': 'video/mp4', 'Max-Days': '1' },
-      signal: AbortSignal.timeout(300_000),
+    console.log('[buffer] uploading to 0x0.st, size:', fileBuffer.length);
+    // 0x0.st accepts cloud provider IPs; returns a direct file URL
+    const { default: FormDataNode } = await import('node:stream').then(() => ({ default: null })).catch(() => ({ default: null }));
+    const { Readable } = require('stream');
+    // Use multipart via axios with a manual boundary
+    const boundary = '----VideoUploadBoundary' + Date.now();
+    const CRLF = '\r\n';
+    const preamble = Buffer.from(
+      `--${boundary}${CRLF}Content-Disposition: form-data; name="file"; filename="${filename}"${CRLF}Content-Type: video/mp4${CRLF}${CRLF}`
+    );
+    const epilogue = Buffer.from(`${CRLF}--${boundary}--${CRLF}`);
+    const body = Buffer.concat([preamble, fileBuffer, epilogue]);
+    const { data: url0x0 } = await axios.post('https://0x0.st', body, {
+      headers: {
+        'Content-Type': `multipart/form-data; boundary=${boundary}`,
+        'Content-Length': body.length,
+      },
+      maxContentLength: Infinity,
+      maxBodyLength: Infinity,
+      timeout: 300_000,
     });
-    const url = (await resp.text()).trim();
+    const url = (url0x0 || '').trim();
     if (url.startsWith('https://')) {
-      console.log('[buffer] transfer.sh url:', url);
+      console.log('[buffer] 0x0.st url:', url);
       return url;
     }
-    console.warn('[buffer] transfer.sh unexpected response:', url.slice(0, 200));
+    console.warn('[buffer] 0x0.st unexpected response:', String(url).slice(0, 200));
     return mediaUrl;
   } catch (e) {
-    console.error('[buffer] transfer.sh upload failed:', e.message);
-    return mediaUrl; // fallback
+    console.error('[buffer] 0x0.st upload failed:', e.message);
+    return mediaUrl; // fallback — will log if it's still html
   }
 }
 
