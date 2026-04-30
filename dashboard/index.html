@@ -6652,14 +6652,19 @@ async function svuPublish() {
       }),
     });
     const data = await r.json();
-    const results = document.getElementById('svuPublishResults');
-    results.style.display = 'block';
-    if (Array.isArray(data)) {
-      results.innerHTML = data.map(r =>
-        `<div style="font-size:12px;padding:6px 10px;border-radius:6px;margin-bottom:4px;background:${r.ok?'rgba(0,210,122,.08)':'rgba(255,80,80,.08)'};border:1px solid ${r.ok?'rgba(0,210,122,.2)':'rgba(255,80,80,.2)'};">
-          ${r.ok ? '✓' : '✗'} <strong>${r.channel}</strong> — ${r.ok ? (scheduledAt ? 'Scheduled' : 'Posted!') : r.error || 'Failed'}
+    const resultsEl = document.getElementById('svuPublishResults');
+    resultsEl.style.display = 'block';
+    const rows = data.results || data;
+    if (Array.isArray(rows)) {
+      // build a quick id→name lookup from loaded channels
+      const chMap = Object.fromEntries((_svu.channels || []).map(c => [c.id, c.name || c.service]));
+      resultsEl.innerHTML = rows.map(row =>
+        `<div style="font-size:12px;padding:6px 10px;border-radius:6px;margin-bottom:4px;background:${row.ok?'rgba(0,210,122,.08)':'rgba(255,80,80,.08)'};border:1px solid ${row.ok?'rgba(0,210,122,.2)':'rgba(255,80,80,.2)'};">
+          ${row.ok ? '✓' : '✗'} <strong>${chMap[row.channelId] || row.channelId}</strong> — ${row.ok ? (scheduledAt ? '📅 Scheduled!' : '🚀 Posted!') : (typeof row.error === 'object' ? JSON.stringify(row.error) : row.error || 'Failed')}
         </div>`
       ).join('');
+    } else if (data.error) {
+      resultsEl.innerHTML = `<div style="font-size:12px;color:var(--red);">✗ ${data.error}</div>`;
     }
   } catch (e) {
     alert('Post failed: ' + e.message);

@@ -1090,6 +1090,17 @@ app.post('/api/buffer/post-to-channels', async (req, res) => {
   const BUFFER_GQL = 'https://api.buffer.com/graphql';
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 
+  // Build a quick id→name map from channels list
+  let channelNames = {};
+  try {
+    const { data: chGql } = await axios.post(
+      BUFFER_GQL,
+      { query: `{ channels(input:{organizationId:"${orgId}"}) { id name service } }` },
+      { headers }
+    );
+    (chGql.data?.channels || []).forEach(c => { channelNames[c.id] = c.name || c.service; });
+  } catch (_) {}
+
   const results = [];
   for (const channelId of channelIds) {
     try {
@@ -1100,7 +1111,7 @@ app.post('/api/buffer/post-to-channels', async (req, res) => {
           text: text || '',
           ...(mediaUrl ? { mediaUrls: [mediaUrl] } : {}),
         },
-        ...(scheduledAt ? { scheduledAt } : {}),
+        ...(scheduledAt ? { scheduledAt } : { dueAt: null }),
       };
       const { data: gql } = await axios.post(
         BUFFER_GQL,
@@ -1113,12 +1124,12 @@ app.post('/api/buffer/post-to-channels', async (req, res) => {
         { headers }
       );
       if (gql.errors) {
-        results.push({ channelId, ok: false, error: gql.errors[0]?.message });
+        results.push({ channelId, channel: channelNames[channelId] || channelId, ok: false, error: gql.errors[0]?.message });
       } else {
-        results.push({ channelId, ok: true, post: gql.data?.createPost?.post });
+        results.push({ channelId, channel: channelNames[channelId] || channelId, ok: true, post: gql.data?.createPost?.post });
       }
     } catch (e) {
-      results.push({ channelId, ok: false, error: e.response?.data || e.message });
+      results.push({ channelId, channel: channelNames[channelId] || channelId, ok: false, error: e.response?.data || e.message });
     }
   }
 
