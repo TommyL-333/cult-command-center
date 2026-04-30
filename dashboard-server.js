@@ -1052,15 +1052,14 @@ app.post('/api/buffer/post', async (req, res) => {
   try {
     const { channelId, text, mediaUrl, scheduledAt } = req.body;
     if (!channelId) return res.status(400).json({ error: 'channelId is required' });
-    const orgId = process.env.BUFFER_ORG_ID || '69d6ddee1fcceb5bb1faa168';
+    const isScheduled = !!scheduledAt;
     const input = {
-      organizationId: orgId,
-      channelIds: [channelId],
-      content: {
-        text: text || '',
-        ...(mediaUrl ? { mediaUrls: [mediaUrl] } : {}),
-      },
-      ...(scheduledAt ? { scheduledAt } : { dueAt: null }),
+      channelId,
+      schedulingType: 'automatic',
+      mode: isScheduled ? 'customScheduled' : 'addToQueue',
+      text: text || '',
+      ...(isScheduled ? { dueAt: scheduledAt } : {}),
+      ...(mediaUrl ? { assets: { videos: [{ url: mediaUrl }] } } : {}),
     };
     const { data: gql } = await axios.post(
       'https://api.buffer.com/graphql',
@@ -1068,6 +1067,10 @@ app.post('/api/buffer/post', async (req, res) => {
         query: `mutation CreatePost($input: CreatePostInput!) {
           createPost(input: $input) {
             ... on PostActionSuccess { post { id dueAt status channelService } }
+            ... on InvalidInputError { message }
+            ... on UnexpectedError   { message }
+            ... on LimitReachedError { message }
+            ... on RestProxyError    { message }
           }
         }`,
         variables: { input },
@@ -1076,7 +1079,8 @@ app.post('/api/buffer/post', async (req, res) => {
     );
     if (gql.errors) return res.json({ ok: false, error: gql.errors[0]?.message });
     const payload = gql.data?.createPost;
-    res.json({ ok: !!payload?.post, post: payload?.post });
+    if (payload?.post) return res.json({ ok: true, post: payload.post });
+    res.json({ ok: false, error: payload?.message || 'Post not created' });
   } catch (e) { res.status(500).json({ ok: false, error: e.response?.data || e.message }); }
 });
 
@@ -1104,17 +1108,21 @@ app.post('/api/buffer/post-to-channels', async (req, res) => {
     (chGql.data?.channels || []).forEach(c => { channelNames[c.id] = c.name || c.service; });
   } catch (_) {}
 
+  // Determine scheduling mode
+  const isScheduled = !!scheduledAt;
+  const mode      = isScheduled ? 'customScheduled' : 'addToQueue';
+  const schedType = 'automatic';
+
   const results = [];
   for (const channelId of channelIds) {
     try {
       const input = {
-        organizationId: orgId,
-        channelIds: [channelId],
-        content: {
-          text: text || '',
-          ...(mediaUrl ? { mediaUrls: [mediaUrl] } : {}),
-        },
-        ...(scheduledAt ? { scheduledAt } : { dueAt: null }),
+        channelId,
+        schedulingType: schedType,
+        mode,
+        text: text || '',
+        ...(isScheduled ? { dueAt: scheduledAt } : {}),
+        ...(mediaUrl ? { assets: { videos: [{ url: mediaUrl }] } } : {}),
       };
       const { data: gql } = await axios.post(
         BUFFER_GQL,
@@ -1122,6 +1130,10 @@ app.post('/api/buffer/post-to-channels', async (req, res) => {
           query: `mutation CreatePost($input: CreatePostInput!) {
             createPost(input: $input) {
               ... on PostActionSuccess { post { id dueAt status channelService } }
+              ... on InvalidInputError { message }
+              ... on UnexpectedError   { message }
+              ... on LimitReachedError { message }
+              ... on RestProxyError    { message }
             }
           }`,
           variables: { input },
@@ -1129,10 +1141,14 @@ app.post('/api/buffer/post-to-channels', async (req, res) => {
         { headers }
       );
       if (gql.errors) {
-        results.push({ channelId, channel: channelNames[channelId] || channelId, ok: false, error: gql.errors[0]?.message });
+        results.push({ channelId, channel: channelNames[channelId] || channelId, ok: false, error: gql.errors.map(e => e.message).join('; ') });
       } else {
         const payload = gql.data?.createPost;
-        results.push({ channelId, channel: channelNames[channelId] || channelId, ok: !!payload?.post, post: payload?.post });
+        if (payload?.post) {
+          results.push({ channelId, channel: channelNames[channelId] || channelId, ok: true, post: payload.post });
+        } else {
+          results.push({ channelId, channel: channelNames[channelId] || channelId, ok: false, error: payload?.message || 'Unknown error' });
+        }
       }
     } catch (e) {
       results.push({ channelId, channel: channelNames[channelId] || channelId, ok: false, error: e.response?.data || e.message });
