@@ -1107,22 +1107,22 @@ async function getPublicVideoUrl(mediaUrl) {
   }
   try {
     const fileBuffer = fs.readFileSync(localPath);
-    const form = new FormData(); // native Node 20+ FormData
-    form.append('reqtype', 'fileupload');
-    form.append('fileToUpload', new Blob([fileBuffer], { type: 'video/mp4' }), filename);
-    const resp = await fetch('https://catbox.moe/user/api.php', {
-      method: 'POST', body: form,
-      signal: AbortSignal.timeout(180_000),
+    console.log('[buffer] uploading to transfer.sh, size:', fileBuffer.length);
+    const resp = await fetch(`https://transfer.sh/${encodeURIComponent(filename)}`, {
+      method: 'PUT',
+      body: fileBuffer,
+      headers: { 'Content-Type': 'video/mp4', 'Max-Days': '1' },
+      signal: AbortSignal.timeout(300_000),
     });
     const url = (await resp.text()).trim();
     if (url.startsWith('https://')) {
-      console.log('[buffer] uploaded to catbox.moe:', url);
+      console.log('[buffer] transfer.sh url:', url);
       return url;
     }
-    console.warn('[buffer] catbox.moe unexpected response:', url);
+    console.warn('[buffer] transfer.sh unexpected response:', url.slice(0, 200));
     return mediaUrl;
   } catch (e) {
-    console.error('[buffer] catbox.moe upload failed:', e.message);
+    console.error('[buffer] transfer.sh upload failed:', e.message);
     return mediaUrl; // fallback
   }
 }
