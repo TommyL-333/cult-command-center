@@ -870,7 +870,7 @@ const upload = multer({
 app.post('/api/upload/video', upload.single('video'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file received' });
   const localPath = `/uploads/${req.file.filename}`;
-  const baseUrl   = process.env.DASHBOARD_URL || `${req.protocol}://${req.get('host')}`;
+  const baseUrl   = process.env.UPLOAD_BASE_URL || process.env.DASHBOARD_URL || `${req.protocol}://${req.get('host')}`;
   const publicUrl = `${baseUrl}${localPath}`;
   const meta = {
     id:          req.file.filename,
@@ -1101,11 +1101,13 @@ app.post('/api/buffer/post', async (req, res) => {
 // Helper: upload a local video file to catbox.moe for a public URL Buffer can fetch
 async function getPublicVideoUrl(mediaUrl) {
   if (!mediaUrl) return null;
-  // If it's already an external URL (not our domain), use it directly
-  const dashboardBase = process.env.DASHBOARD_URL || '';
-  if (!mediaUrl.startsWith(dashboardBase + '/uploads/') && !mediaUrl.startsWith('/uploads/')) {
-    return mediaUrl;
-  }
+  // If it's already an external URL (not our server), use it directly
+  const knownBases = [
+    process.env.UPLOAD_BASE_URL,
+    process.env.DASHBOARD_URL,
+  ].filter(Boolean);
+  const isLocal = mediaUrl.startsWith('/uploads/') || knownBases.some(b => mediaUrl.startsWith(b + '/uploads/'));
+  if (!isLocal) return mediaUrl;
   // Extract filename and find the local file
   const filename = path.basename(mediaUrl.split('?')[0]);
   const localPath = path.join(UPLOAD_DIR, filename);
