@@ -858,7 +858,9 @@ const upload = multer({
 // POST /api/upload/video
 app.post('/api/upload/video', upload.single('video'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file received' });
-  const localUrl = `/uploads/${req.file.filename}`;
+  const localPath = `/uploads/${req.file.filename}`;
+  const baseUrl   = process.env.DASHBOARD_URL || `${req.protocol}://${req.get('host')}`;
+  const publicUrl = `${baseUrl}${localPath}`;
   const meta = {
     id:          req.file.filename,
     originalName: req.file.originalname,
@@ -870,12 +872,13 @@ app.post('/api/upload/video', upload.single('video'), (req, res) => {
     status:      'staged',
     uploadedAt:  new Date().toISOString(),
     path:        req.file.path,
-    localUrl,
+    localUrl:    localPath,
+    url:         publicUrl,
   };
   const q = loadQueue();
   q.unshift(meta);
   saveQueue(q);
-  res.json({ ok: true, video: meta });
+  res.json({ ok: true, url: publicUrl, filename: req.file.filename, id: req.file.filename, video: meta });
 });
 
 // GET /api/upload/queue
@@ -1097,15 +1100,15 @@ app.post('/api/buffer/post-to-channels', async (req, res) => {
   const BUFFER_GQL = 'https://api.buffer.com/graphql';
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 
-  // Build a quick id→name map from channels list
-  let channelNames = {};
+  // Build a quick id→{name,service} map from channels list
+  let channelMeta = {};
   try {
     const { data: chGql } = await axios.post(
       BUFFER_GQL,
       { query: `{ channels(input:{organizationId:"${orgId}"}) { id name service } }` },
       { headers }
     );
-    (chGql.data?.channels || []).forEach(c => { channelNames[c.id] = c.name || c.service; });
+    (chGql.data?.channels || []).forEach(c => { channelMeta[c.id] = { name: c.name || c.service, service: c.service }; });
   } catch (_) {}
 
   // Determine scheduling mode
@@ -1113,8 +1116,25 @@ app.post('/api/buffer/post-to-channels', async (req, res) => {
   const mode      = isScheduled ? 'customScheduled' : 'addToQueue';
   const schedType = 'automatic';
 
+  // Helper: build platform-specific metadata for channels that require it
+  function buildMetadata(service, hasVideo, title) {
+    const svc = (service || '').toLowerCase();
+    if (svc === 'instagram') {
+      return { instagram: { type: hasVideo ? 'reel' : 'post', shouldShareToFeed: true } };
+    }
+    if (svc === 'facebook') {
+      return { facebook: { type: hasVideo ? 'reel' : 'post' } };
+    }
+    if (svc === 'youtube') {
+      return { youtube: { title: title || 'New Video', categoryId: '22' } }; // 22 = People & Blogs
+    }
+    return null;
+  }
+
   const results = [];
   for (const channelId of channelIds) {
+    const ch = channelMeta[channelId] || {};
+    const meta = buildMetadata(ch.service, !!mediaUrl, text?.slice(0, 100));
     try {
       const input = {
         channelId,
@@ -1123,6 +1143,7 @@ app.post('/api/buffer/post-to-channels', async (req, res) => {
         text: text || '',
         ...(isScheduled ? { dueAt: scheduledAt } : {}),
         ...(mediaUrl ? { assets: { videos: [{ url: mediaUrl }] } } : {}),
+        ...(meta ? { metadata: meta } : {}),
       };
       const { data: gql } = await axios.post(
         BUFFER_GQL,
@@ -1141,17 +1162,17 @@ app.post('/api/buffer/post-to-channels', async (req, res) => {
         { headers }
       );
       if (gql.errors) {
-        results.push({ channelId, channel: channelNames[channelId] || channelId, ok: false, error: gql.errors.map(e => e.message).join('; ') });
+        results.push({ channelId, channel: ch.name || channelId, ok: false, error: gql.errors.map(e => e.message).join('; ') });
       } else {
         const payload = gql.data?.createPost;
         if (payload?.post) {
-          results.push({ channelId, channel: channelNames[channelId] || channelId, ok: true, post: payload.post });
+          results.push({ channelId, channel: ch.name || channelId, ok: true, post: payload.post });
         } else {
-          results.push({ channelId, channel: channelNames[channelId] || channelId, ok: false, error: payload?.message || 'Unknown error' });
+          results.push({ channelId, channel: ch.name || channelId, ok: false, error: payload?.message || 'Unknown error' });
         }
       }
     } catch (e) {
-      results.push({ channelId, channel: channelNames[channelId] || channelId, ok: false, error: e.response?.data || e.message });
+      results.push({ channelId, channel: ch.name || channelId, ok: false, error: e.response?.data || e.message });
     }
   }
 
