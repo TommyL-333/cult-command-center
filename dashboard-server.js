@@ -2600,7 +2600,8 @@ app.post('/api/whisper-transcribe', upload.single('audio'), async (req, res) => 
       try {
         await new Promise((resolve, reject) => {
           const { spawn } = require('child_process');
-          const ff = spawn('ffmpeg', [
+          const ffmpegBin = (() => { try { return require('ffmpeg-static'); } catch(_) { return 'ffmpeg'; } })();
+          const ff = spawn(ffmpegBin, [
             '-i', filePath,
             '-vn',            // no video
             '-ar', '16000',   // 16kHz sample rate (Whisper-optimal)
