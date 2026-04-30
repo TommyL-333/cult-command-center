@@ -1066,14 +1066,19 @@ app.post('/api/buffer/post', async (req, res) => {
       'https://api.buffer.com/graphql',
       {
         query: `mutation CreatePost($input: CreatePostInput!) {
-          createPost(input: $input) { post { id dueAt status channelService } }
+          createPost(input: $input) {
+            ... on PostActionSuccess { post { id dueAt status channelService } }
+            ... on PostActionError   { message }
+          }
         }`,
         variables: { input },
       },
       { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
     );
     if (gql.errors) return res.json({ ok: false, error: gql.errors[0]?.message });
-    res.json({ ok: true, post: gql.data?.createPost?.post });
+    const payload = gql.data?.createPost;
+    if (payload?.message) return res.json({ ok: false, error: payload.message });
+    res.json({ ok: true, post: payload?.post });
   } catch (e) { res.status(500).json({ ok: false, error: e.response?.data || e.message }); }
 });
 
@@ -1117,7 +1122,10 @@ app.post('/api/buffer/post-to-channels', async (req, res) => {
         BUFFER_GQL,
         {
           query: `mutation CreatePost($input: CreatePostInput!) {
-            createPost(input: $input) { post { id dueAt status channelService } }
+            createPost(input: $input) {
+              ... on PostActionSuccess { post { id dueAt status channelService } }
+              ... on PostActionError   { message }
+            }
           }`,
           variables: { input },
         },
@@ -1126,7 +1134,13 @@ app.post('/api/buffer/post-to-channels', async (req, res) => {
       if (gql.errors) {
         results.push({ channelId, channel: channelNames[channelId] || channelId, ok: false, error: gql.errors[0]?.message });
       } else {
-        results.push({ channelId, channel: channelNames[channelId] || channelId, ok: true, post: gql.data?.createPost?.post });
+        const payload = gql.data?.createPost;
+        const errMsg  = payload?.message; // PostActionError has .message
+        if (errMsg) {
+          results.push({ channelId, channel: channelNames[channelId] || channelId, ok: false, error: errMsg });
+        } else {
+          results.push({ channelId, channel: channelNames[channelId] || channelId, ok: true, post: payload?.post });
+        }
       }
     } catch (e) {
       results.push({ channelId, channel: channelNames[channelId] || channelId, ok: false, error: e.response?.data || e.message });
