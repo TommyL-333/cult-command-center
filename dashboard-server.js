@@ -1090,14 +1090,58 @@ app.post('/api/buffer/post', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.response?.data || e.message }); }
 });
 
+// Helper: upload a local video file to catbox.moe for a public URL Buffer can fetch
+async function getPublicVideoUrl(mediaUrl) {
+  if (!mediaUrl) return null;
+  // If it's already an external URL (not our domain), use it directly
+  const dashboardBase = process.env.DASHBOARD_URL || '';
+  if (!mediaUrl.startsWith(dashboardBase + '/uploads/') && !mediaUrl.startsWith('/uploads/')) {
+    return mediaUrl;
+  }
+  // Extract filename and find the local file
+  const filename = path.basename(mediaUrl.split('?')[0]);
+  const localPath = path.join(UPLOAD_DIR, filename);
+  if (!fs.existsSync(localPath)) {
+    console.warn('[buffer] local video not found:', localPath);
+    return mediaUrl; // fallback — try the original URL
+  }
+  try {
+    const fileBuffer = fs.readFileSync(localPath);
+    const form = new FormData(); // native Node 20+ FormData
+    form.append('reqtype', 'fileupload');
+    form.append('fileToUpload', new Blob([fileBuffer], { type: 'video/mp4' }), filename);
+    const resp = await fetch('https://catbox.moe/user/api.php', {
+      method: 'POST', body: form,
+      signal: AbortSignal.timeout(180_000),
+    });
+    const url = (await resp.text()).trim();
+    if (url.startsWith('https://')) {
+      console.log('[buffer] uploaded to catbox.moe:', url);
+      return url;
+    }
+    console.warn('[buffer] catbox.moe unexpected response:', url);
+    return mediaUrl;
+  } catch (e) {
+    console.error('[buffer] catbox.moe upload failed:', e.message);
+    return mediaUrl; // fallback
+  }
+}
+
 // POST /api/buffer/post-to-channels — post to multiple Buffer channels at once
 // Body: { channelIds: string[], text: string, mediaUrl?: string, scheduledAt?: string }
 app.post('/api/buffer/post-to-channels', async (req, res) => {
   const token = process.env.BUFFER_ACCESS_TOKEN;
   if (!token) return res.status(400).json({ ok: false, error: 'BUFFER_ACCESS_TOKEN not configured' });
 
-  const { channelIds, text, mediaUrl, scheduledAt } = req.body;
+  const { channelIds, text, scheduledAt } = req.body;
+  let { mediaUrl } = req.body;
   if (!channelIds?.length) return res.status(400).json({ error: 'channelIds array is required' });
+
+  // Re-host video on a public CDN so Buffer's servers can fetch it
+  // (the dashboard domain is behind Cloudflare Access auth)
+  if (mediaUrl) {
+    mediaUrl = await getPublicVideoUrl(mediaUrl);
+  }
 
   const orgId = process.env.BUFFER_ORG_ID || '69d6ddee1fcceb5bb1faa168';
   const BUFFER_GQL = 'https://api.buffer.com/graphql';
