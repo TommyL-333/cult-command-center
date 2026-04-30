@@ -2118,13 +2118,11 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
   <!-- ══ UPLOAD & PUBLISH SUB-TAB ══════════════════════════════════════════════ -->
   <div class="sub-tab-pane" id="sub-sv-upload">
 
-    <div style="max-width:720px;">
+    <div style="max-width:820px;">
 
     <!-- Step 1: Upload -->
     <div class="card" style="margin-bottom:16px;padding:20px 22px;">
-      <div style="font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--muted);margin-bottom:12px;">① UPLOAD VIDEO</div>
-
-      <!-- Drop zone -->
+      <div style="font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--muted);margin-bottom:12px;">① UPLOAD VIDEOS</div>
       <div id="svuDropZone"
         style="border:2px dashed var(--border);border-radius:10px;padding:32px 20px;text-align:center;cursor:pointer;transition:border-color .2s;"
         onclick="document.getElementById('svuFileInput').click()"
@@ -2132,87 +2130,19 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
         ondragleave="this.style.borderColor='var(--border)'"
         ondrop="svuHandleDrop(event)">
         <div style="font-size:28px;margin-bottom:8px;">🎬</div>
-        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px;">Drop video here or click to browse</div>
-        <div style="font-size:11px;color:var(--muted);">MP4, MOV, AVI — up to 500MB</div>
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px;">Drop videos here or click to browse</div>
+        <div style="font-size:11px;color:var(--muted);">MP4, MOV, AVI — multiple files supported</div>
       </div>
-      <input type="file" id="svuFileInput" accept="video/*" style="display:none" onchange="svuHandleFile(this.files[0])">
-
-      <!-- File selected state -->
-      <div id="svuFileInfo" style="display:none;margin-top:12px;display:none;align-items:center;gap:12px;">
-        <video id="svuPreview" style="width:80px;height:56px;object-fit:cover;border-radius:6px;background:#000;" muted></video>
-        <div style="flex:1;min-width:0;">
-          <div id="svuFileName" style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;"></div>
-          <div id="svuFileSize" style="font-size:11px;color:var(--muted);"></div>
-        </div>
-        <button class="btn btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="svuClearFile()">✕</button>
-      </div>
-
-      <!-- Upload progress -->
-      <div id="svuUploadProgress" style="display:none;margin-top:12px;">
-        <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px;">
-          <span id="svuUploadLabel">Uploading…</span>
-          <span id="svuUploadPct">0%</span>
-        </div>
-        <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;">
-          <div id="svuProgressBar" style="height:100%;width:0%;background:var(--teal);transition:width .3s;border-radius:2px;"></div>
-        </div>
-      </div>
+      <input type="file" id="svuFileInput" accept="video/*" multiple style="display:none" onchange="svuHandleFiles(this)">
     </div>
 
-    <!-- Step 2: Transcription -->
-    <div class="card" style="margin-bottom:16px;padding:20px 22px;" id="svuTranscriptCard">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-        <div style="font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--muted);">② TRANSCRIPTION</div>
-        <div id="svuTranscriptStatus" style="font-size:11px;color:var(--muted);">Waiting for video…</div>
-      </div>
-      <textarea id="svuTranscript" class="agent-input" rows="4"
-        placeholder="Transcription will appear here after upload. You can also paste a transcript manually."
-        style="width:100%;resize:vertical;font-size:12px;line-height:1.5;"
-        oninput="svuTranscriptEdited = true"></textarea>
-      <div style="display:flex;gap:8px;margin-top:8px;">
-        <button class="btn btn-ghost" style="font-size:11px;" onclick="svuRunTranscribe()" id="svuTranscribeBtn">🎤 Re-transcribe</button>
-      </div>
-    </div>
+    <!-- Video cards -->
+    <div id="svuVideoList"></div>
+    <div id="svuEmptyState" style="text-align:center;padding:16px;color:var(--muted);font-size:12px;">Drop videos above to get started</div>
 
-    <!-- Step 3: Caption generation -->
-    <div class="card" style="margin-bottom:16px;padding:20px 22px;">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-        <div style="font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--muted);">③ CAPTION & HASHTAGS</div>
-        <div style="display:flex;gap:6px;align-items:center;">
-          <select id="svuCaptionPlatform" class="agent-input" style="font-size:11px;padding:4px 8px;width:130px;" onchange="svuCaptionPlatformChanged()">
-            <option value="tiktok">🎵 TikTok</option>
-            <option value="instagram">📸 Instagram</option>
-            <option value="facebook">👤 Facebook</option>
-            <option value="youtube">▶️ YouTube</option>
-            <option value="linkedin">💼 LinkedIn</option>
-            <option value="twitter">𝕏 Twitter/X</option>
-          </select>
-          <button class="btn btn-teal" style="font-size:11px;padding:5px 12px;" onclick="svuGenerateCaption()" id="svuGenCaptionBtn">✨ Generate</button>
-        </div>
-      </div>
-
-      <!-- Caption -->
-      <div style="font-size:10px;color:var(--muted);margin-bottom:4px;font-weight:700;">CAPTION</div>
-      <textarea id="svuCaption" class="agent-input" rows="3"
-        placeholder="Caption will be generated from your transcript…"
-        style="width:100%;resize:vertical;font-size:12px;line-height:1.5;margin-bottom:10px;"></textarea>
-
-      <!-- Hashtags -->
-      <div style="font-size:10px;color:var(--muted);margin-bottom:6px;font-weight:700;">HASHTAGS</div>
-      <div id="svuHashtagPills" style="display:flex;flex-wrap:wrap;gap:6px;min-height:28px;margin-bottom:8px;"></div>
-      <input type="text" id="svuHashtagInput" class="agent-input" placeholder="Add hashtag and press Enter"
-        style="font-size:11px;padding:5px 10px;width:200px;"
-        onkeydown="if(event.key==='Enter'){svuAddHashtag(this.value);this.value='';event.preventDefault();}">
-
-      <!-- Full post preview -->
-      <div style="font-size:10px;color:var(--muted);margin:10px 0 4px;font-weight:700;">FULL POST PREVIEW</div>
-      <div id="svuFullPost" style="font-size:12px;line-height:1.5;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px 12px;white-space:pre-wrap;color:var(--text);min-height:48px;"></div>
-      <button class="btn btn-ghost" style="font-size:11px;margin-top:6px;" onclick="svuCopyFullPost()">📋 Copy</button>
-    </div>
-
-    <!-- Step 4: Publish -->
+    <!-- Step 2: Publish -->
     <div class="card" style="margin-bottom:24px;padding:20px 22px;">
-      <div style="font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--muted);margin-bottom:12px;">④ PUBLISH</div>
+      <div style="font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--muted);margin-bottom:12px;">② PUBLISH</div>
 
       <!-- Channel picker -->
       <div style="font-size:11px;color:var(--muted);margin-bottom:8px;">Select channels:</div>
@@ -2220,16 +2150,26 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
         <div style="color:var(--muted);font-size:11px;padding:8px;">Loading channels…</div>
       </div>
 
-      <!-- Schedule or post now -->
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px;">
+      <!-- Timing -->
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px;">
         <label style="font-size:11px;color:var(--muted);font-weight:700;">WHEN</label>
         <label style="font-size:12px;display:flex;align-items:center;gap:5px;cursor:pointer;">
           <input type="radio" name="svuWhen" value="now" checked onchange="svuToggleSchedule(this.value)"> Post now
         </label>
         <label style="font-size:12px;display:flex;align-items:center;gap:5px;cursor:pointer;">
-          <input type="radio" name="svuWhen" value="schedule" onchange="svuToggleSchedule(this.value)"> Schedule
+          <input type="radio" name="svuWhen" value="schedule" onchange="svuToggleSchedule(this.value)"> Schedule all
         </label>
-        <input type="datetime-local" id="svuScheduleAt" class="agent-input" style="font-size:11px;display:none;padding:5px 8px;">
+        <label style="font-size:12px;display:flex;align-items:center;gap:5px;cursor:pointer;">
+          <input type="radio" name="svuWhen" value="space" onchange="svuToggleSchedule(this.value)"> Space out
+        </label>
+      </div>
+      <input type="datetime-local" id="svuScheduleAt" class="agent-input" style="font-size:11px;display:none;padding:5px 8px;margin-bottom:8px;">
+      <div id="svuSpaceRow" style="display:none;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap;">
+        <span style="font-size:12px;color:var(--muted);">Start:</span>
+        <input type="datetime-local" id="svuSpaceStart" class="agent-input" style="font-size:11px;padding:5px 8px;">
+        <span style="font-size:12px;color:var(--muted);">then every</span>
+        <input type="number" id="svuSpaceHours" class="agent-input" value="2" min="0.5" step="0.5" style="font-size:11px;padding:5px 8px;width:60px;">
+        <span style="font-size:12px;color:var(--muted);">hours</span>
       </div>
 
       <button class="btn btn-teal" style="font-size:13px;padding:9px 24px;font-weight:700;" onclick="svuPublish()" id="svuPublishBtn">
@@ -6408,125 +6348,188 @@ async function svpLoad(force = false) {
 
 // ─── Short Video — Upload & Publish ─────────────────────────────────────────
 const _svu = {
-  file: null, uploadedUrl: null, uploadedId: null,
-  hashtags: [], channels: [], selectedChannels: new Set(),
-  transcriptEdited: false,
+  videos: [],          // [{id, file, objectUrl, uploadedUrl, transcript, caption, hashtags, status}]
+  channels: [],
+  selectedChannels: new Set(),
+  _nextId: 1,
 };
-let svuTranscriptEdited = false;
+
+function svuMakeId() { return 'v' + (_svu._nextId++); }
 
 function svuHandleDrop(e) {
   e.preventDefault();
   document.getElementById('svuDropZone').style.borderColor = 'var(--border)';
-  const file = e.dataTransfer.files[0];
-  if (file && file.type.startsWith('video/')) svuHandleFile(file);
+  const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('video/'));
+  svuAddFiles(files);
 }
 
-function svuHandleFile(file) {
-  if (!file) return;
-  _svu.file = file;
-  // Show file info
-  const info = document.getElementById('svuFileInfo');
-  info.style.display = 'flex';
-  document.getElementById('svuFileName').textContent = file.name;
-  document.getElementById('svuFileSize').textContent = (file.size / 1024 / 1024).toFixed(1) + ' MB';
-  // Preview
-  const preview = document.getElementById('svuPreview');
-  preview.src = URL.createObjectURL(file);
-  // Auto-upload
-  svuUpload();
+function svuHandleFiles(input) {
+  const files = Array.from(input.files).filter(f => f.type.startsWith('video/'));
+  svuAddFiles(files);
+  input.value = '';
 }
 
-function svuClearFile() {
-  _svu.file = null; _svu.uploadedUrl = null; _svu.uploadedId = null;
-  document.getElementById('svuFileInfo').style.display = 'none';
-  document.getElementById('svuUploadProgress').style.display = 'none';
-  document.getElementById('svuFileInput').value = '';
-  document.getElementById('svuTranscript').value = '';
-  document.getElementById('svuTranscriptStatus').textContent = 'Waiting for video…';
+function svuAddFiles(files) {
+  for (const file of files) {
+    const v = { id: svuMakeId(), file, objectUrl: URL.createObjectURL(file), uploadedUrl: null, transcript: '', caption: '', hashtags: [], status: 'pending' };
+    _svu.videos.push(v);
+    svuRenderCard(v);
+    svuProcessVideo(v);
+  }
+  svuUpdatePublishBtn();
+  document.getElementById('svuEmptyState').style.display = _svu.videos.length ? 'none' : 'block';
 }
 
-async function svuUpload() {
-  if (!_svu.file) return;
-  const prog = document.getElementById('svuUploadProgress');
-  const bar  = document.getElementById('svuProgressBar');
-  const pct  = document.getElementById('svuUploadPct');
-  const lbl  = document.getElementById('svuUploadLabel');
-  prog.style.display = 'block';
-  bar.style.width = '10%'; pct.textContent = '10%'; lbl.textContent = 'Uploading…';
+function svuRenderCard(v) {
+  const list = document.getElementById('svuVideoList');
+  const card = document.createElement('div');
+  card.className = 'card';
+  card.id = 'svuCard_' + v.id;
+  card.style.cssText = 'margin-bottom:12px;padding:16px 18px;';
+  card.innerHTML = `
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+      <video src="${v.objectUrl}" style="width:64px;height:44px;object-fit:cover;border-radius:6px;background:#000;flex-shrink:0;" muted></video>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${v.file.name}</div>
+        <div style="font-size:11px;color:var(--muted);">${(v.file.size/1024/1024).toFixed(1)} MB</div>
+      </div>
+      <div id="svuStatus_${v.id}" style="font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0;">⏳ Pending</div>
+      <button class="btn btn-ghost" style="font-size:11px;padding:4px 8px;flex-shrink:0;" onclick="svuRemoveVideo('${v.id}')">✕</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div>
+        <div style="font-size:10px;font-weight:800;color:var(--muted);margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;">
+          TRANSCRIPT
+          <button class="btn btn-ghost" style="font-size:10px;padding:2px 7px;" onclick="svuRetranscribe('${v.id}')">🎤 Re-transcribe</button>
+        </div>
+        <textarea id="svuTranscript_${v.id}" class="agent-input" rows="5"
+          style="width:100%;resize:vertical;font-size:12px;line-height:1.5;"
+          placeholder="Transcription will appear here…"
+          oninput="_svu.videos.find(x=>x.id==='${v.id}').transcript=this.value"></textarea>
+      </div>
+      <div>
+        <div style="font-size:10px;font-weight:800;color:var(--muted);margin-bottom:4px;display:flex;justify-content:space-between;align-items:center;">
+          CAPTION
+          <div style="display:flex;gap:4px;align-items:center;">
+            <select id="svuPlatform_${v.id}" class="agent-input" style="font-size:10px;padding:2px 5px;">
+              <option value="tiktok">🎵 TikTok</option>
+              <option value="instagram">📸 Instagram</option>
+              <option value="linkedin">💼 LinkedIn</option>
+              <option value="youtube">▶️ YouTube</option>
+              <option value="twitter">𝕏 Twitter</option>
+              <option value="facebook">👤 Facebook</option>
+            </select>
+            <button class="btn btn-teal" style="font-size:10px;padding:2px 8px;" onclick="svuGenCaption('${v.id}')">✨ Gen</button>
+          </div>
+        </div>
+        <textarea id="svuCaption_${v.id}" class="agent-input" rows="5"
+          style="width:100%;resize:vertical;font-size:12px;line-height:1.5;"
+          placeholder="Caption will be generated…"
+          oninput="svuUpdatePreview('${v.id}')"></textarea>
+      </div>
+    </div>
+    <div style="margin-top:8px;">
+      <div style="font-size:10px;font-weight:800;color:var(--muted);margin-bottom:4px;">HASHTAGS</div>
+      <div id="svuTags_${v.id}" style="display:flex;flex-wrap:wrap;gap:5px;min-height:24px;margin-bottom:6px;"></div>
+      <input class="agent-input" placeholder="Add hashtag + Enter" style="font-size:11px;padding:4px 8px;width:180px;"
+        onkeydown="if(event.key==='Enter'){svuAddTag('${v.id}',this.value);this.value='';event.preventDefault();}">
+    </div>
+    <div id="svuPreview_${v.id}" style="margin-top:8px;font-size:11px;line-height:1.5;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;white-space:pre-wrap;color:var(--muted);display:none;"></div>`;
+  list.appendChild(card);
+}
 
+function svuSetStatus(v, status, msg) {
+  v.status = status;
+  const el = document.getElementById('svuStatus_' + v.id);
+  if (!el) return;
+  const colors = { uploading:'var(--teal)', transcribing:'var(--yellow)', captioning:'var(--gold)', ready:'var(--green)', error:'var(--red)', posting:'var(--teal)', done:'var(--green)' };
+  el.style.color = colors[status] || 'var(--muted)';
+  el.textContent = msg;
+}
+
+async function svuProcessVideo(v) {
+  // 1. Upload
+  svuSetStatus(v, 'uploading', '⬆ Uploading…');
   try {
     const fd = new FormData();
-    fd.append('video', _svu.file);
-    fd.append('title', _svu.file.name.replace(/\.[^.]+$/, ''));
-
-    const xhr = new XMLHttpRequest();
-    xhr.upload.onprogress = (e) => {
-      if (e.lengthComputable) {
-        const p = Math.round(e.loaded / e.total * 80);
-        bar.style.width = p + '%'; pct.textContent = p + '%';
-      }
-    };
-    const result = await new Promise((resolve, reject) => {
-      xhr.onload = () => {
-        if (xhr.status === 200) resolve(JSON.parse(xhr.responseText));
-        else reject(new Error(xhr.statusText));
-      };
-      xhr.onerror = reject;
-      xhr.open('POST', '/api/upload/video');
-      xhr.send(fd);
-    });
-
-    bar.style.width = '90%'; pct.textContent = '90%'; lbl.textContent = 'Processing…';
-    _svu.uploadedUrl = result.url || `/uploads/${result.filename}`;
-    _svu.uploadedId  = result.id;
-
-    bar.style.width = '100%'; pct.textContent = '100%'; lbl.textContent = '✓ Uploaded';
-    setTimeout(() => { prog.style.display = 'none'; }, 1500);
-
-    // Auto-transcribe
-    document.getElementById('svuTranscriptStatus').textContent = '🎤 Transcribing…';
-    await svuRunTranscribe();
+    fd.append('video', v.file);
+    fd.append('title', v.file.name.replace(/\.[^.]+$/, ''));
+    const r = await fetch('/api/upload/video', { method: 'POST', body: fd });
+    const data = await r.json();
+    v.uploadedUrl = data.url || `/uploads/${data.filename}`;
   } catch (e) {
-    lbl.textContent = '✗ Upload failed: ' + e.message;
-    bar.style.background = 'var(--red)';
+    svuSetStatus(v, 'error', '✗ Upload failed'); return;
   }
-}
-
-async function svuRunTranscribe() {
-  if (!_svu.file && !_svu.uploadedUrl) {
-    document.getElementById('svuTranscriptStatus').textContent = 'No file to transcribe';
-    return;
-  }
-  document.getElementById('svuTranscriptStatus').textContent = '🎤 Transcribing…';
-  document.getElementById('svuTranscribeBtn').disabled = true;
+  // 2. Transcribe
+  svuSetStatus(v, 'transcribing', '🎤 Transcribing…');
   try {
     const fd = new FormData();
-    fd.append('audio', _svu.file);
+    fd.append('audio', v.file);
     const r = await fetch('/api/whisper-transcribe', { method: 'POST', body: fd });
     const data = await r.json();
     if (data.text) {
-      document.getElementById('svuTranscript').value = data.text;
-      document.getElementById('svuTranscriptStatus').textContent = '✓ Transcribed';
-      svuTranscriptEdited = false;
-      // Auto-generate caption
-      await svuGenerateCaption();
+      v.transcript = data.text;
+      const ta = document.getElementById('svuTranscript_' + v.id);
+      if (ta) ta.value = data.text;
     } else {
-      const msg = data.error || 'No transcript returned';
-      document.getElementById('svuTranscriptStatus').textContent = '⚠ ' + msg;
+      svuSetStatus(v, 'ready', '⚠ Transcribe failed — add manually'); return;
     }
   } catch (e) {
-    document.getElementById('svuTranscriptStatus').textContent = '✗ ' + e.message;
-  } finally {
-    document.getElementById('svuTranscribeBtn').disabled = false;
+    svuSetStatus(v, 'ready', '⚠ Transcribe failed — add manually'); return;
+  }
+  // 3. Generate caption
+  svuSetStatus(v, 'captioning', '✨ Generating caption…');
+  try {
+    const platform = document.getElementById('svuPlatform_' + v.id)?.value || 'tiktok';
+    const r = await fetch('/api/video/generate-caption', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ transcript: v.transcript, platform }),
+    });
+    const data = await r.json();
+    if (data.ok) {
+      v.caption = data.caption || '';
+      v.hashtags = data.hashtags || [];
+      const ca = document.getElementById('svuCaption_' + v.id);
+      if (ca) ca.value = v.caption;
+      svuRenderTags(v);
+      svuUpdatePreview(v.id);
+      svuSetStatus(v, 'ready', '✓ Ready');
+    } else {
+      svuSetStatus(v, 'ready', '⚠ Caption failed — edit manually');
+    }
+  } catch (e) {
+    svuSetStatus(v, 'ready', '⚠ Caption failed — edit manually');
   }
 }
 
-async function svuGenerateCaption() {
-  const transcript = document.getElementById('svuTranscript').value.trim();
+async function svuRetranscribe(id) {
+  const v = _svu.videos.find(x => x.id === id);
+  if (!v) return;
+  svuSetStatus(v, 'transcribing', '🎤 Transcribing…');
+  try {
+    const fd = new FormData();
+    fd.append('audio', v.file);
+    const r = await fetch('/api/whisper-transcribe', { method: 'POST', body: fd });
+    const data = await r.json();
+    if (data.text) {
+      v.transcript = data.text;
+      const ta = document.getElementById('svuTranscript_' + id);
+      if (ta) ta.value = data.text;
+      svuSetStatus(v, 'ready', '✓ Transcribed');
+    } else {
+      svuSetStatus(v, 'ready', '⚠ Transcribe failed');
+    }
+  } catch (e) { svuSetStatus(v, 'error', '✗ ' + e.message); }
+}
+
+async function svuGenCaption(id) {
+  const v = _svu.videos.find(x => x.id === id);
+  if (!v) return;
+  const transcript = document.getElementById('svuTranscript_' + id)?.value.trim();
   if (!transcript) { alert('Add a transcript first'); return; }
-  const platform = document.getElementById('svuCaptionPlatform').value;
-  const btn = document.getElementById('svuGenCaptionBtn');
-  btn.disabled = true; btn.textContent = '⏳ Generating…';
+  const platform = document.getElementById('svuPlatform_' + id)?.value || 'tiktok';
+  svuSetStatus(v, 'captioning', '✨ Generating…');
   try {
     const r = await fetch('/api/video/generate-caption', {
       method: 'POST',
@@ -6535,62 +6538,73 @@ async function svuGenerateCaption() {
     });
     const data = await r.json();
     if (data.ok) {
-      document.getElementById('svuCaption').value = data.caption || '';
-      _svu.hashtags = data.hashtags || [];
-      svuRenderHashtags();
-      svuUpdateFullPost();
-    }
-  } catch (e) {
-    console.error('generate-caption:', e);
-  } finally {
-    btn.disabled = false; btn.textContent = '✨ Generate';
-  }
+      v.caption = data.caption || '';
+      v.hashtags = data.hashtags || [];
+      const ca = document.getElementById('svuCaption_' + id);
+      if (ca) ca.value = v.caption;
+      svuRenderTags(v);
+      svuUpdatePreview(id);
+      svuSetStatus(v, 'ready', '✓ Ready');
+    } else { svuSetStatus(v, 'ready', '⚠ Failed'); }
+  } catch (e) { svuSetStatus(v, 'error', '✗ ' + e.message); }
 }
 
-function svuCaptionPlatformChanged() {
-  svuUpdateFullPost();
-}
-
-function svuRenderHashtags() {
-  const el = document.getElementById('svuHashtagPills');
-  el.innerHTML = _svu.hashtags.map((t, i) =>
-    `<span class="svu-tag">#${t.replace(/^#/,'')}<span class="svu-tag-rm" onclick="svuRemoveTag(${i})">✕</span></span>`
+function svuRenderTags(v) {
+  const el = document.getElementById('svuTags_' + v.id);
+  if (!el) return;
+  el.innerHTML = v.hashtags.map((t, i) =>
+    `<span class="svu-tag">#${t.replace(/^#/,'')}<span class="svu-tag-rm" onclick="svuRemoveTag('${v.id}',${i})">✕</span></span>`
   ).join('');
 }
 
-function svuAddHashtag(val) {
+function svuAddTag(id, val) {
+  const v = _svu.videos.find(x => x.id === id);
+  if (!v) return;
   const tag = val.trim().replace(/^#/, '');
-  if (!tag || _svu.hashtags.includes(tag)) return;
-  _svu.hashtags.push(tag);
-  svuRenderHashtags();
-  svuUpdateFullPost();
+  if (!tag || v.hashtags.includes(tag)) return;
+  v.hashtags.push(tag); svuRenderTags(v); svuUpdatePreview(id);
 }
 
-function svuRemoveTag(i) {
-  _svu.hashtags.splice(i, 1);
-  svuRenderHashtags();
-  svuUpdateFullPost();
+function svuRemoveTag(id, i) {
+  const v = _svu.videos.find(x => x.id === id);
+  if (!v) return;
+  v.hashtags.splice(i, 1); svuRenderTags(v); svuUpdatePreview(id);
 }
 
-function svuUpdateFullPost() {
-  const caption   = document.getElementById('svuCaption').value.trim();
-  const hashStr   = _svu.hashtags.map(t => '#' + t.replace(/^#/,'')).join(' ');
-  const full      = caption + (hashStr ? '\n\n' + hashStr : '');
-  document.getElementById('svuFullPost').textContent = full;
+function svuUpdatePreview(id) {
+  const v = _svu.videos.find(x => x.id === id);
+  const el = document.getElementById('svuPreview_' + id);
+  if (!v || !el) return;
+  const caption = document.getElementById('svuCaption_' + id)?.value.trim() || '';
+  const hashStr = v.hashtags.map(t => '#' + t.replace(/^#/, '')).join(' ');
+  const full = caption + (hashStr ? '\n\n' + hashStr : '');
+  el.style.display = full ? 'block' : 'none';
+  el.textContent = full;
 }
 
-document.getElementById('svuCaption')?.addEventListener('input', svuUpdateFullPost);
-
-function svuCopyFullPost() {
-  const text = document.getElementById('svuFullPost').textContent;
-  navigator.clipboard.writeText(text).then(() => {
-    const btn = document.querySelector('[onclick="svuCopyFullPost()"]');
-    if (btn) { btn.textContent = '✓ Copied!'; setTimeout(() => btn.textContent = '📋 Copy', 1500); }
-  });
+function svuRemoveVideo(id) {
+  const idx = _svu.videos.findIndex(x => x.id === id);
+  if (idx === -1) return;
+  const v = _svu.videos[idx];
+  if (v.objectUrl) URL.revokeObjectURL(v.objectUrl);
+  _svu.videos.splice(idx, 1);
+  document.getElementById('svuCard_' + id)?.remove();
+  svuUpdatePublishBtn();
+  document.getElementById('svuEmptyState').style.display = _svu.videos.length ? 'none' : 'block';
 }
 
 function svuToggleSchedule(val) {
   document.getElementById('svuScheduleAt').style.display = val === 'schedule' ? 'block' : 'none';
+  document.getElementById('svuSpaceRow').style.display = val === 'space' ? 'flex' : 'none';
+}
+
+function svuUpdatePublishBtn() {
+  const nV = _svu.videos.length, nC = _svu.selectedChannels.size;
+  const btn = document.getElementById('svuPublishBtn');
+  if (!btn) return;
+  btn.textContent = (nV > 0 && nC > 0)
+    ? `📤 Post ${nV} Video${nV>1?'s':''} to ${nC} Channel${nC>1?'s':''}`
+    : '📤 Post to Selected Channels';
 }
 
 async function svuLoadChannels() {
@@ -6619,60 +6633,77 @@ function svuToggleChannel(id) {
   if (_svu.selectedChannels.has(id)) _svu.selectedChannels.delete(id);
   else _svu.selectedChannels.add(id);
   document.querySelectorAll('[id^="svuCh_"]').forEach(el => {
-    const chId = el.id.replace('svuCh_', '');
-    el.classList.toggle('selected', _svu.selectedChannels.has(chId));
+    el.classList.toggle('selected', _svu.selectedChannels.has(el.id.replace('svuCh_', '')));
   });
-  const n = _svu.selectedChannels.size;
-  document.getElementById('svuPublishBtn').textContent = n > 0 ? `📤 Post to ${n} Channel${n>1?'s':''}` : '📤 Post to Selected Channels';
+  svuUpdatePublishBtn();
 }
 
 async function svuPublish() {
+  const ready = _svu.videos.filter(v => v.uploadedUrl);
+  if (!ready.length) { alert('No uploaded videos yet — wait for uploads to finish'); return; }
   if (!_svu.selectedChannels.size) { alert('Select at least one channel'); return; }
-  const caption   = document.getElementById('svuCaption').value.trim();
-  const hashStr   = _svu.hashtags.map(t => '#' + t.replace(/^#/,'')).join(' ');
-  const text      = caption + (hashStr ? '\n\n' + hashStr : '');
-  if (!text) { alert('Add a caption first'); return; }
 
   const schedWhen  = document.querySelector('[name="svuWhen"]:checked')?.value;
-  const schedAt    = document.getElementById('svuScheduleAt').value;
-  const scheduledAt = schedWhen === 'schedule' && schedAt ? new Date(schedAt).toISOString() : null;
+  const schedAt    = document.getElementById('svuScheduleAt')?.value;
+  const spaceStart = document.getElementById('svuSpaceStart')?.value;
+  const spaceHours = parseFloat(document.getElementById('svuSpaceHours')?.value) || 2;
 
   const btn = document.getElementById('svuPublishBtn');
   btn.disabled = true; btn.textContent = '⏳ Posting…';
 
-  try {
-    const r = await fetch('/api/buffer/post-to-channels', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        channelIds:  Array.from(_svu.selectedChannels),
-        text,
-        mediaUrl:    _svu.uploadedUrl || undefined,
-        scheduledAt: scheduledAt || undefined,
-      }),
-    });
-    const data = await r.json();
-    const resultsEl = document.getElementById('svuPublishResults');
-    resultsEl.style.display = 'block';
-    const rows = data.results || data;
-    if (Array.isArray(rows)) {
-      // build a quick id→name lookup from loaded channels
-      const chMap = Object.fromEntries((_svu.channels || []).map(c => [c.id, c.name || c.service]));
-      resultsEl.innerHTML = rows.map(row =>
-        `<div style="font-size:12px;padding:6px 10px;border-radius:6px;margin-bottom:4px;background:${row.ok?'rgba(0,210,122,.08)':'rgba(255,80,80,.08)'};border:1px solid ${row.ok?'rgba(0,210,122,.2)':'rgba(255,80,80,.2)'};">
-          ${row.ok ? '✓' : '✗'} <strong>${chMap[row.channelId] || row.channelId}</strong> — ${row.ok ? (scheduledAt ? '📅 Scheduled!' : '🚀 Posted!') : (typeof row.error === 'object' ? JSON.stringify(row.error) : row.error || 'Failed')}
-        </div>`
-      ).join('');
-    } else if (data.error) {
-      resultsEl.innerHTML = `<div style="font-size:12px;color:var(--red);">✗ ${data.error}</div>`;
+  const resultsEl = document.getElementById('svuPublishResults');
+  resultsEl.style.display = 'block';
+  resultsEl.innerHTML = '';
+
+  const channelIds = Array.from(_svu.selectedChannels);
+  const chMap = Object.fromEntries((_svu.channels || []).map(c => [c.id, c.name || c.service]));
+
+  for (let i = 0; i < ready.length; i++) {
+    const v = ready[i];
+    svuSetStatus(v, 'posting', `⏳ Posting (${i+1}/${ready.length})…`);
+
+    let scheduledAt = null;
+    if (schedWhen === 'schedule' && schedAt) {
+      scheduledAt = new Date(schedAt).toISOString();
+    } else if (schedWhen === 'space' && spaceStart) {
+      const base = new Date(spaceStart);
+      base.setTime(base.getTime() + i * spaceHours * 3600000);
+      scheduledAt = base.toISOString();
     }
-  } catch (e) {
-    alert('Post failed: ' + e.message);
-  } finally {
-    btn.disabled = false;
-    const n = _svu.selectedChannels.size;
-    btn.textContent = n > 0 ? `📤 Post to ${n} Channel${n>1?'s':''}` : '📤 Post to Selected Channels';
+
+    const caption = document.getElementById('svuCaption_' + v.id)?.value.trim() || v.caption;
+    const hashStr = v.hashtags.map(t => '#' + t.replace(/^#/, '')).join(' ');
+    const text    = caption + (hashStr ? '\n\n' + hashStr : '');
+
+    try {
+      const r = await fetch('/api/buffer/post-to-channels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channelIds, text, mediaUrl: v.uploadedUrl, scheduledAt: scheduledAt || undefined }),
+      });
+      const data = await r.json();
+      const rows = data.results || [];
+      const failCount = rows.filter(r => !r.ok).length;
+      svuSetStatus(v, failCount ? 'error' : 'done', failCount ? `⚠ ${failCount} failed` : '✓ Posted');
+
+      const label = v.file.name.replace(/\.[^.]+$/, '');
+      const timeLabel = scheduledAt ? `📅 ${new Date(scheduledAt).toLocaleString()}` : '🚀 Now';
+      resultsEl.innerHTML += `
+        <div style="margin-bottom:8px;border:1px solid var(--border);border-radius:8px;padding:10px 12px;">
+          <div style="font-size:12px;font-weight:700;margin-bottom:6px;">${label} — ${timeLabel}</div>
+          ${rows.map(row =>
+            `<div style="font-size:11px;padding:2px 0;color:${row.ok?'var(--green)':'var(--red)'};">
+              ${row.ok?'✓':'✗'} ${chMap[row.channelId]||row.channelId}${!row.ok?' — '+(typeof row.error==='object'?JSON.stringify(row.error):row.error||'Failed'):''}
+            </div>`
+          ).join('')}
+        </div>`;
+    } catch (e) {
+      svuSetStatus(v, 'error', '✗ ' + e.message);
+      resultsEl.innerHTML += `<div style="font-size:12px;color:var(--red);padding:6px 0;">✗ ${v.file.name}: ${e.message}</div>`;
+    }
   }
+
+  btn.disabled = false; svuUpdatePublishBtn();
 }
 
 // ─── Short Video Agent sub-tab stubs (HTML kept for layout; logic TBD) ───────
