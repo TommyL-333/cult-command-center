@@ -220,6 +220,9 @@ app.post('/api/webhooks/ghl-client-onboard', async (req, res) => {
   }
 });
 
+// Public: uploaded videos need to be reachable by Buffer/social platforms (no auth)
+app.use('/uploads', express.static(UPLOAD_DIR));
+
 app.use(requireAuth); // all routes require auth in production
 
 // Serve index.html with no-cache to prevent Cloudflare/browser serving stale versions
