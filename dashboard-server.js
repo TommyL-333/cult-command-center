@@ -1068,7 +1068,6 @@ app.post('/api/buffer/post', async (req, res) => {
         query: `mutation CreatePost($input: CreatePostInput!) {
           createPost(input: $input) {
             ... on PostActionSuccess { post { id dueAt status channelService } }
-            ... on PostActionError   { message }
           }
         }`,
         variables: { input },
@@ -1077,8 +1076,7 @@ app.post('/api/buffer/post', async (req, res) => {
     );
     if (gql.errors) return res.json({ ok: false, error: gql.errors[0]?.message });
     const payload = gql.data?.createPost;
-    if (payload?.message) return res.json({ ok: false, error: payload.message });
-    res.json({ ok: true, post: payload?.post });
+    res.json({ ok: !!payload?.post, post: payload?.post });
   } catch (e) { res.status(500).json({ ok: false, error: e.response?.data || e.message }); }
 });
 
@@ -1124,7 +1122,6 @@ app.post('/api/buffer/post-to-channels', async (req, res) => {
           query: `mutation CreatePost($input: CreatePostInput!) {
             createPost(input: $input) {
               ... on PostActionSuccess { post { id dueAt status channelService } }
-              ... on PostActionError   { message }
             }
           }`,
           variables: { input },
@@ -1135,12 +1132,7 @@ app.post('/api/buffer/post-to-channels', async (req, res) => {
         results.push({ channelId, channel: channelNames[channelId] || channelId, ok: false, error: gql.errors[0]?.message });
       } else {
         const payload = gql.data?.createPost;
-        const errMsg  = payload?.message; // PostActionError has .message
-        if (errMsg) {
-          results.push({ channelId, channel: channelNames[channelId] || channelId, ok: false, error: errMsg });
-        } else {
-          results.push({ channelId, channel: channelNames[channelId] || channelId, ok: true, post: payload?.post });
-        }
+        results.push({ channelId, channel: channelNames[channelId] || channelId, ok: !!payload?.post, post: payload?.post });
       }
     } catch (e) {
       results.push({ channelId, channel: channelNames[channelId] || channelId, ok: false, error: e.response?.data || e.message });
