@@ -1184,7 +1184,7 @@ app.post('/api/buffer/post-to-channels', async (req, res) => {
 
   // Determine scheduling mode
   const isScheduled = !!scheduledAt;
-  const mode      = isScheduled ? 'customScheduled' : 'addToQueue';
+  const mode      = isScheduled ? 'customScheduled' : 'shareNow';
   const schedType = 'automatic';
 
   // Helper: build platform-specific metadata for channels that require it
