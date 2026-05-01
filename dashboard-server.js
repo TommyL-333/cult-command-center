@@ -969,7 +969,7 @@ app.post('/api/consultant/trigger', async (req, res) => {
 const ARCADS_BASE = 'https://external-api.arcads.ai';
 function arcadsClient() {
   const tok = 'Basic ' + Buffer.from(
-    `${process.env.ARCADS_CLIENT_ID}:${process.env.ARCADS_CLIENT_SECRET}`
+    `${process.env.ARCADS_CLIENT_ID}:${process.env.ARCADS_API_KEY}`
   ).toString('base64');
   return axios.create({ baseURL: ARCADS_BASE, headers: { Authorization: tok, 'Content-Type': 'application/json' } });
 }
@@ -979,7 +979,7 @@ app.get('/api/arcads/actors', async (req, res) => {
   try {
     if (!process.env.ARCADS_CLIENT_ID) return res.json({ connected: false });
     const data = await cached('arcads_actors', 3_600_000, async () => {
-      const { data } = await arcadsClient().get('/v1/situations?limit=100');
+      const { data } = await arcadsClient().get('/v1/situations?limit=500');
       return data;
     });
     res.json({ connected: true, ...data });
