@@ -7771,11 +7771,24 @@ async function prodUploadFile(file, i) {
 
   try {
     const r = await fetch('/api/upload/video', { method:'POST', body: formData }).then(res => res.json());
-    _prodState.uploads[i] = { name: file.name, localUrl: r.localUrl, videoId: r.id };
+    _prodState.uploads[i] = { name: file.name, url: r.url, videoId: r.id };
     prodBuildUploadSlots();
   } catch(err) {
     if (slot) slot.innerHTML = `<div style="color:var(--red);padding:16px">Upload failed: ${x(err.message)}</div>`;
   }
+}
+
+// Returns the best available video for a script slot: manual upload first, then first completed Arcads video
+function prodGetVideo(realIdx) {
+  const upload = _prodState.uploads[realIdx];
+  if (upload?.url) return { url: upload.url, name: upload.name, source: 'upload' };
+  const job = _prodState.arcadsJobs[realIdx];
+  if (job?.videos?.length) {
+    const v = job.videos[0];
+    const actor = _prodState.arcadsActors.find(a => a.id === v.situationId);
+    return { url: v.videoUrl, name: actor?.actor?.name || 'Arcads video', source: 'arcads' };
+  }
+  return null;
 }
 
 function prodGoToCalendar() {
@@ -7795,7 +7808,9 @@ function prodBuildCalendar() {
     const realIdx = _prodState.scripts.indexOf(s);
     const defaultDate = new Date(today.getTime() + i * 86_400_000);
     const dateStr = defaultDate.toISOString().split('T')[0];
-    const upload = _prodState.uploads[realIdx];
+    const video = prodGetVideo(realIdx);
+    const job = _prodState.arcadsJobs[realIdx];
+    const arcadsStatus = job ? (job.status === 'done' ? null : job.status) : null;
     return `
     <div class="cal-entry">
       <div style="flex:1;min-width:0">
@@ -7805,7 +7820,11 @@ function prodBuildCalendar() {
               oninput="_prodState.scripts[${realIdx}].title=this.value">`
           : `<div style="font-weight:700;font-size:13px">${x(s.title||`Video ${i+1}`)}</div>`}
         ${s.hook ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;font-style:italic">"${x(s.hook)}"</div>` : ''}
-        ${upload ? `<div style="font-size:11px;color:var(--green);margin-top:2px">✓ ${x(upload.name)}</div>` : '<div style="font-size:11px;color:var(--muted);margin-top:2px">No video uploaded</div>'}
+        ${video
+          ? `<div style="font-size:11px;color:var(--green);margin-top:2px">✓ ${video.source === 'arcads' ? '🤖 ' : ''}${x(video.name)}</div>`
+          : arcadsStatus
+            ? `<div style="font-size:11px;color:var(--yellow);margin-top:2px">⏳ Arcads: ${x(arcadsStatus)}</div>`
+            : '<div style="font-size:11px;color:var(--muted);margin-top:2px">No video yet</div>'}
       </div>
       <input type="date" id="calDate${realIdx}" class="agent-input" value="${dateStr}" style="width:140px;font-size:11px;padding:5px 8px" />
       <div class="cal-post-btns">
@@ -7856,7 +7875,7 @@ async function prodPushToLark() {
       platform:    'TikTok Shop',
       publishDate: document.getElementById(`calDate${realIdx}`)?.value || '',
       status:      _prodState.uploads[realIdx] ? 'Filmed' : 'Scripted',
-      videoUrl:    _prodState.uploads[realIdx]?.localUrl || '',
+      videoUrl:    prodGetVideo(realIdx)?.url || '',
       notes:       s.bRollNotes || '',
     };
   });
@@ -7919,7 +7938,8 @@ async function storistaOpenModal(realIdx) {
   document.getElementById('storistaOverlay')?.remove();
 
   const script  = _prodState.scripts[realIdx] || {};
-  const upload  = _prodState.uploads[realIdx];
+  const video   = prodGetVideo(realIdx);
+  const upload  = video ? { url: video.url, name: video.name } : null;
   const caption = [script.hook, script.cta].filter(Boolean).join(' — ') || script.title || '';
 
   // Build skeleton modal while we fetch data
@@ -8043,12 +8063,14 @@ async function storistaPublish(realIdx) {
     const upload = _prodState.uploads[realIdx];
     let media_id = null;
 
-    if (upload?.localUrl) {
-      // localUrl is like /uploads/filename.mp4
-      const localPath = upload.filename || upload.id;
+    if (upload?.url) {
+      // url could be a full URL (/uploads/... or https://...)
       const formData = new FormData();
-      formData.append('localPath', upload.localUrl.replace('/uploads/', ''));
-      formData.append('filename', upload.originalName || upload.filename || 'video.mp4');
+      // For local uploads, strip to just the filename for Storista
+      const urlPath = upload.url.replace(/^https?:\/\/[^/]+/, '');
+      formData.append('localPath', urlPath.replace('/uploads/', ''));
+      formData.append('filename', upload.name || 'video.mp4');
+      formData.append('videoUrl', upload.url); // also pass full URL as fallback
 
       const uploadRes = await fetch('/api/storista/upload', {
         method: 'POST', body: formData
@@ -8138,7 +8160,8 @@ async function bufferOpenModal(realIdx) {
   _buffer.selected = new Set();
 
   const script  = _prodState.scripts[realIdx] || {};
-  const upload  = _prodState.uploads[realIdx];
+  const video   = prodGetVideo(realIdx);
+  const upload  = video ? { url: video.url, name: video.name } : null;
   const caption = [script.hook, script.cta].filter(Boolean).join(' — ') || script.title || '';
   const calDate = document.getElementById(`calDate${realIdx}`)?.value || '';
 
@@ -8203,12 +8226,18 @@ function bufferRenderForm(realIdx, caption, calDate, upload) {
           style="width:100%;font-size:13px;resize:vertical">${x(caption)}</textarea>
       </div>
 
-      ${upload ? `<div style="padding:8px 12px;background:rgba(0,210,122,0.06);border:1px solid rgba(0,210,122,0.15);border-radius:8px;font-size:12px;color:var(--green)">
-        ✓ Video uploaded — will be included in post
-        <div style="color:var(--muted);margin-top:2px;font-size:11px">Public URL via Storista CDN (upload to Storista first if not done)</div>
-      </div>` : `<div style="padding:8px 12px;background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.18);border-radius:8px;font-size:12px;color:var(--gold)">
-        ⚠ No video uploaded — post will be caption only. Upload via 🛍 TikTok Shop first to attach video.
-      </div>`}
+      ${upload?.storistaPublicUrl
+        ? `<div style="padding:8px 12px;background:rgba(0,210,122,0.06);border:1px solid rgba(0,210,122,0.15);border-radius:8px;font-size:12px;color:var(--green)">
+            ✓ Video ready — Storista CDN URL will be used
+          </div>`
+        : upload?.url
+          ? `<div style="padding:8px 12px;background:rgba(0,210,122,0.06);border:1px solid rgba(0,210,122,0.15);border-radius:8px;font-size:12px;color:var(--green)">
+              ✓ ${upload.name} — video URL will be attached
+            </div>`
+          : `<div style="padding:8px 12px;background:rgba(201,168,76,0.06);border:1px solid rgba(201,168,76,0.18);border-radius:8px;font-size:12px;color:var(--gold)">
+              ⚠ No video ready yet — post will be caption only
+            </div>`
+      }
 
       <div style="display:flex;gap:10px;align-items:flex-end">
         <div style="flex:1">
@@ -8263,9 +8292,10 @@ async function bufferPost(realIdx) {
     ? new Date(document.getElementById('bufSchedule').value).toISOString()
     : null;
 
-  // Use Storista CDN URL if available from a prior upload
+  // Use Storista CDN URL if available, otherwise fall back to direct video URL (works for Arcads CDN URLs)
   const upload = _prodState.uploads[realIdx];
-  const mediaUrl = upload?.storistaPublicUrl || null;
+  const video  = prodGetVideo(realIdx);
+  const mediaUrl = upload?.storistaPublicUrl || video?.url || null;
 
   btn.disabled = true;
   btn.textContent = 'Posting…';
