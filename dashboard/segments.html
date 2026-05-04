@@ -649,7 +649,9 @@ main{max-width:1400px;margin:0 auto;padding:24px 20px;}
 </main>
 
 <script>
-const BASE = 'http://localhost:3457';
+const BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+  ? 'http://localhost:3457'
+  : '';
 const state = {
   affiliates: null,
   skool: null,
