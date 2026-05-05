@@ -312,8 +312,8 @@ main{max-width:1400px;margin:0 auto;padding:24px 20px;}
   <div class="pm-modal">
     <div class="pm-topbar">
       <div style="display:flex;align-items:center;gap:12px">
-        <img src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png" style="height:28px;width:auto;object-fit:contain" alt="Cult Content">
-        <img src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/6978e226d119a5154347af54.png" style="height:24px;width:auto;object-fit:contain" alt="TikTok Shop Partner Agency">
+        <img src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png" style="height:36px;width:auto;object-fit:contain" alt="Cult Content">
+        <img src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/6978e226d119a5154347af54.png" style="height:30px;width:auto;object-fit:contain" alt="TikTok Shop Partner Agency">
         <span style="font-size:.7rem;color:#4a4565;font-weight:600" id="pm-topbar-brand"></span>
       </div>
       <div class="pm-topbar-actions">
@@ -1566,6 +1566,24 @@ function closeCQ(e) {
   document.getElementById('cq-overlay').classList.remove('open');
 }
 
+async function tryGetBrandLogo(contextText) {
+  // Extract domain from email addresses in the context/notes
+  const emailMatch = contextText.match(/[a-zA-Z0-9._%+\-]+@([a-zA-Z0-9.\-]+\.[a-zA-Z]{2,})/);
+  if (!emailMatch) return null;
+  const domain = emailMatch[1].toLowerCase();
+  // Skip personal/generic email providers
+  const skipDomains = ['gmail.com','yahoo.com','hotmail.com','outlook.com','icloud.com','aol.com','protonmail.com','live.com'];
+  if (skipDomains.includes(domain)) return null;
+  // Use Clearbit logo API — returns 200 with logo or 404 if not found
+  const url = `https://logo.clearbit.com/${domain}`;
+  try {
+    const r = await fetch(url, { method: 'HEAD' });
+    return r.ok ? url : null;
+  } catch {
+    return null;
+  }
+}
+
 function toggleMetricsPanel() {
   const panel = document.getElementById('metrics-panel');
   const btn = event.target;
@@ -1879,7 +1897,9 @@ async function generateProposal() {
     });
     const d = await r.json();
     if (d.error) throw new Error(d.error);
-    lastProposalData = { ...d.proposal, _metrics: metrics };
+    // Try to find brand logo from contact's email domain
+    const brandLogoUrl = await tryGetBrandLogo(input);
+    lastProposalData = { ...d.proposal, _metrics: metrics, _brandLogoUrl: brandLogoUrl };
     openProposalModal(lastProposalData);
     populateContactSelector();
     populatePmContactSel();
@@ -2073,9 +2093,10 @@ function buildProposalHTML(p) {
   return `
     <!-- Hero -->
     <div class="pm-hero">
-      <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
-        <img src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png" style="height:36px;width:auto" alt="Cult Content">
-        <img src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/6978e226d119a5154347af54.png" style="height:30px;width:auto" alt="TikTok Shop Partner Agency">
+      <div style="display:flex;align-items:center;gap:20px;margin-bottom:20px;flex-wrap:wrap">
+        <img src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png" style="height:52px;width:auto" alt="Cult Content">
+        <img src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/6978e226d119a5154347af54.png" style="height:44px;width:auto" alt="TikTok Shop Partner Agency">
+        ${p._brandLogoUrl ? `<img src="${p._brandLogoUrl}" style="height:44px;width:auto;object-fit:contain;background:#fff;border-radius:6px;padding:4px 8px" alt="${esc(p.brandName)}" onerror="this.style.display='none'">` : ''}
       </div>
       <div class="pm-hero-brand">${esc(p.brandName)} × Cult Content</div>
       <div class="pm-hero-tagline">"${esc(p.tagline)}"</div>
@@ -2151,6 +2172,51 @@ function buildProposalHTML(p) {
       </div>
     </div>
 
+    <!-- Pricing Model -->
+    <div class="pm-section">
+      <div class="pm-section-label">Pricing Model</div>
+      <div class="pm-section-title">Choose Your Commitment Level</div>
+      <p class="pm-body-text">The retainer and GMV share move inversely. Higher retainer means lower performance fee — and more skin in the game from us. Month-to-month. No contracts that outlast results.</p>
+      <div class="pm-calc" style="margin-top:16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-size:.72rem;color:#a78bfa;font-weight:700">Retainer</span>
+          <span style="font-size:.72rem;color:#a78bfa;font-weight:700">GMV Share</span>
+        </div>
+        <div class="pm-calc-row" style="margin-bottom:6px">
+          <span class="pm-calc-val" id="pm-pricing-ret-val" style="min-width:80px;text-align:left;font-size:1rem;color:#fff">${fmt$(m.teamFee)}/mo</span>
+          <input type="range" class="pm-calc-slider" id="pm-pricing-slider" min="1500" max="5000" step="100" value="${m.teamFee}" oninput="updatePricingSlider()">
+          <span class="pm-calc-val" id="pm-pricing-gmv-val" style="min-width:60px;font-size:1rem;color:#10b981">${fmtPct(m.revSharePct)}</span>
+        </div>
+        <div style="display:flex;justify-content:space-between;font-size:.65rem;color:#4a4565;margin-bottom:16px">
+          <span>$1,500/mo · 10% GMV</span>
+          <span>$5,000/mo · 3% GMV</span>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px" id="pm-pricing-cards">
+          <div style="background:#0d0b14;border:1px solid #2a2742;border-radius:10px;padding:14px;text-align:center">
+            <div style="font-size:.6rem;color:#64748b;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Launch</div>
+            <div style="font-size:1.1rem;font-weight:800;color:#fff">$1,500<span style="font-size:.65rem;color:#64748b">/mo</span></div>
+            <div style="font-size:.8rem;color:#10b981;font-weight:700;margin:4px 0">+ 10% GMV</div>
+            <div style="font-size:.65rem;color:#64748b;line-height:1.4;margin-top:6px">Best when you're testing. Lower upfront, higher share as GMV builds.</div>
+          </div>
+          <div style="background:#1a0a3a;border:1px solid #7c3aed66;border-radius:10px;padding:14px;text-align:center">
+            <div style="font-size:.6rem;color:#a78bfa;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Growth</div>
+            <div style="font-size:1.1rem;font-weight:800;color:#fff">$2,500<span style="font-size:.65rem;color:#64748b">/mo</span></div>
+            <div style="font-size:.8rem;color:#10b981;font-weight:700;margin:4px 0">+ 6.5% GMV</div>
+            <div style="font-size:.65rem;color:#64748b;line-height:1.4;margin-top:6px">Most popular. Balanced incentives. Right for brands past proof-of-concept.</div>
+          </div>
+          <div style="background:#0d0b14;border:1px solid #2a2742;border-radius:10px;padding:14px;text-align:center">
+            <div style="font-size:.6rem;color:#64748b;text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px">Scale</div>
+            <div style="font-size:1.1rem;font-weight:800;color:#fff">$5,000<span style="font-size:.65rem;color:#64748b">/mo</span></div>
+            <div style="font-size:.8rem;color:#10b981;font-weight:700;margin:4px 0">+ 3% GMV</div>
+            <div style="font-size:.65rem;color:#64748b;line-height:1.4;margin-top:6px">For brands at volume. Lower GMV share means more profit stays with you.</div>
+          </div>
+        </div>
+        <div style="margin-top:14px;padding:12px 16px;background:#0d1a12;border:1px solid #166534;border-radius:8px;font-size:.75rem;color:#86efac;line-height:1.6">
+          <strong style="color:#4ade80">Month-to-month.</strong> Cancel with 30 days notice. No lock-in. As your GMV grows, you can move up the retainer tier to reduce your performance fee — keeping more margin at scale.
+        </div>
+      </div>
+    </div>
+
     <!-- Execution Plan -->
     <div class="pm-section">
       <div class="pm-section-label">Execution Plan</div>
@@ -2184,7 +2250,7 @@ function buildProposalHTML(p) {
         <img src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/6978e226d119a5154347af54.png" style="height:22px;width:auto;opacity:.7" alt="TikTok Shop Partner Agency">
       </div>
       <div style="font-size:1rem;font-weight:700;color:#e2e8f0;margin-bottom:6px">Ready to move forward?</div>
-      <a href="https://cultcontent.cc/book" target="_blank" style="display:inline-block;background:#7c3aed;color:#fff;padding:10px 28px;border-radius:8px;font-size:.85rem;font-weight:600;text-decoration:none;margin-bottom:16px">Book a Call →</a>
+      <a href="https://cultcontent.cc/book-with-tommy" target="_blank" style="display:inline-block;background:#7c3aed;color:#fff;padding:10px 28px;border-radius:8px;font-size:.85rem;font-weight:600;text-decoration:none;margin-bottom:16px">Book a Call →</a>
       <div>Tommy Lynch · <a href="mailto:tommy@cultcontent.cc">tommy@cultcontent.cc</a> · cultcontent.cc</div>
       <div style="margin-top:6px;color:#2a2742">Confidential — prepared exclusively for ${esc(p.brandName)}</div>
     </div>
@@ -2308,6 +2374,18 @@ function renderProjChart(p) {
       },
     },
   });
+}
+
+function updatePricingSlider() {
+  const slider = document.getElementById('pm-pricing-slider');
+  if (!slider) return;
+  const retainer = parseInt(slider.value);
+  const t = (retainer - 1500) / (5000 - 1500);
+  const gmvPct = (10 - t * 7).toFixed(1);
+  const retEl = document.getElementById('pm-pricing-ret-val');
+  const gmvEl = document.getElementById('pm-pricing-gmv-val');
+  if (retEl) retEl.textContent = '$' + retainer.toLocaleString() + '/mo';
+  if (gmvEl) gmvEl.textContent = gmvPct + '%';
 }
 
 function updateProjChart() {
