@@ -7,7 +7,7 @@
 <style>
 :root{
   --bg:#0a0a0f;--surface:#13131a;--card:#1a1a24;--border:#2a2a3a;
-  --accent:#7c3aed;--accent2:#06b6d4;--green:#10b981;--yellow:#f59e0b;
+  --accent:#20d5c4;--accent2:#06b6d4;--green:#10b981;--yellow:#f59e0b;
   --red:#ef4444;--orange:#f97316;--blue:#3b82f6;--pink:#ec4899;
   --purple:#a855f7;--teal:#14b8a6;
   --text:#e2e8f0;--muted:#64748b;--radius:12px;
@@ -43,7 +43,7 @@ main{max-width:1400px;margin:0 auto;padding:24px 20px;}
 .btn{padding:7px 14px;border-radius:8px;border:none;cursor:pointer;font-size:.8rem;font-weight:600;transition:all .15s;white-space:nowrap;}
 .btn:disabled{opacity:.4;cursor:not-allowed;}
 .btn-primary{background:var(--accent);color:#fff;}
-.btn-primary:hover:not(:disabled){background:#6d28d9;}
+.btn-primary:hover:not(:disabled){background:#0891b2;}
 .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--border);}
 .btn-ghost:hover{color:var(--text);border-color:var(--muted);}
 .btn-green{background:var(--green);color:#fff;}
@@ -60,7 +60,7 @@ main{max-width:1400px;margin:0 auto;padding:24px 20px;}
 .stat-label{font-size:.7rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;}
 .stat-val{font-size:1.6rem;font-weight:800;line-height:1;}
 .stat-sub{font-size:.7rem;color:var(--muted);margin-top:4px;}
-.stat-card.accent{border-color:rgba(124,58,237,.3);background:rgba(124,58,237,.06);}
+.stat-card.accent{border-color:rgba(124,58,237,.3);background:rgba(32,213,196,.06);}
 .stat-card.green{border-color:rgba(16,185,129,.3);background:rgba(16,185,129,.06);}
 .stat-card.blue{border-color:rgba(59,130,246,.3);background:rgba(59,130,246,.06);}
 .stat-card.orange{border-color:rgba(249,115,22,.3);background:rgba(249,115,22,.06);}
@@ -125,7 +125,7 @@ main{max-width:1400px;margin:0 auto;padding:24px 20px;}
 .stripe-banner{background:rgba(99,91,255,.08);border:1px solid rgba(99,91,255,.25);border-radius:10px;padding:14px 18px;display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;}
 .stripe-banner-text{font-size:.8rem;color:var(--muted);}
 .stripe-banner-text strong{color:var(--text);}
-.stripe-badge{font-size:.68rem;background:rgba(99,91,255,.15);color:#a78bfa;border-radius:6px;padding:2px 8px;font-weight:700;}
+.stripe-badge{font-size:.68rem;background:rgba(32,213,196,.15);color:#5eead4;border-radius:6px;padding:2px 8px;font-weight:700;}
 
 /* ── Detail panel ── */
 .detail-panel{background:rgba(124,58,237,.04);border:1px solid rgba(124,58,237,.15);border-radius:10px;padding:16px 20px;margin-top:-1px;display:none;}
@@ -161,49 +161,49 @@ main{max-width:1400px;margin:0 auto;padding:24px 20px;}
 /* ── Proposal Modal ── */
 .pm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:2000;display:flex;align-items:stretch;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;}
 .pm-overlay.open{opacity:1;pointer-events:all;}
-.pm-modal{background:#0d0b14;width:100%;max-width:860px;display:flex;flex-direction:column;height:100vh;overflow:hidden;}
-.pm-topbar{background:#13111e;border-bottom:1px solid #2a2742;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.pm-modal{background:#050e0f;width:100%;max-width:860px;display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+.pm-topbar{background:#091819;border-bottom:1px solid #0f3035;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
 .pm-topbar-brand{font-size:.88rem;font-weight:700;color:#e2e8f0;}
 .pm-topbar-actions{display:flex;gap:8px;align-items:center;}
 .pm-body{flex:1;overflow-y:auto;padding:0 32px 60px;scroll-behavior:smooth;}
 .pm-body::-webkit-scrollbar{width:4px;}
-.pm-body::-webkit-scrollbar-thumb{background:#2a2742;border-radius:2px;}
+.pm-body::-webkit-scrollbar-thumb{background:#0f3035;border-radius:2px;}
 /* Hero */
-.pm-hero{padding:48px 0 32px;border-bottom:1px solid #1e1c30;}
+.pm-hero{padding:48px 0 32px;border-bottom:1px solid #0b2528;}
 .pm-hero-brand{font-size:2rem;font-weight:800;color:#fff;letter-spacing:-.02em;margin-bottom:6px;}
-.pm-hero-tagline{font-size:1rem;color:#a78bfa;font-style:italic;margin-bottom:20px;line-height:1.5;}
+.pm-hero-tagline{font-size:1rem;color:#5eead4;font-style:italic;margin-bottom:20px;line-height:1.5;}
 .pm-hero-meta{display:flex;gap:16px;font-size:.72rem;color:#64748b;}
 .pm-hero-meta span{display:flex;align-items:center;gap:4px;}
 /* Sections */
-.pm-section{padding:32px 0;border-bottom:1px solid #1e1c30;}
+.pm-section{padding:32px 0;border-bottom:1px solid #0b2528;}
 .pm-section:last-child{border-bottom:none;}
-.pm-section-label{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#7c5cbf;margin-bottom:12px;}
+.pm-section-label{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#0d9488;margin-bottom:12px;}
 .pm-section-title{font-size:1.1rem;font-weight:700;color:#e2e8f0;margin-bottom:12px;}
 .pm-body-text{font-size:.85rem;color:#94a3b8;line-height:1.7;margin-bottom:10px;}
 /* Metric chips */
 .pm-metrics{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0;}
-.pm-metric{background:#13111e;border:1px solid #2a2742;border-radius:10px;padding:12px 18px;}
+.pm-metric{background:#091819;border:1px solid #0f3035;border-radius:10px;padding:12px 18px;}
 .pm-metric-val{font-size:1.4rem;font-weight:800;color:#fff;}
 .pm-metric-label{font-size:.65rem;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-top:2px;}
 /* Financial breakdown */
 .pm-fin-table{width:100%;border-collapse:collapse;font-size:.82rem;margin:12px 0;}
-.pm-fin-table td{padding:9px 14px;border-bottom:1px solid #1e1c30;color:#94a3b8;}
+.pm-fin-table td{padding:9px 14px;border-bottom:1px solid #0b2528;color:#94a3b8;}
 .pm-fin-table td:first-child{color:#e2e8f0;font-weight:600;width:55%;}
 .pm-fin-table tr:last-child td{border-bottom:none;color:#10b981;font-size:.9rem;font-weight:700;}
-.pm-fin-box{background:#13111e;border:1px solid #2a2742;border-radius:10px;overflow:hidden;}
+.pm-fin-box{background:#091819;border:1px solid #0f3035;border-radius:10px;overflow:hidden;}
 /* Roadmap */
 .pm-roadmap{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:12px 0;}
-.pm-phase{background:#13111e;border:1px solid #2a2742;border-radius:10px;padding:16px;}
-.pm-phase-label{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#7c5cbf;margin-bottom:4px;}
+.pm-phase{background:#091819;border:1px solid #0f3035;border-radius:10px;padding:16px;}
+.pm-phase-label{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#0d9488;margin-bottom:4px;}
 .pm-phase-title{font-size:.82rem;font-weight:700;color:#e2e8f0;margin-bottom:10px;}
 .pm-phase ul{list-style:none;padding:0;}
-.pm-phase ul li{font-size:.74rem;color:#94a3b8;padding:4px 0;border-bottom:1px solid #1e1c3022;line-height:1.4;}
-.pm-phase ul li::before{content:"→ ";color:#7c5cbf;font-weight:700;}
+.pm-phase ul li{font-size:.74rem;color:#94a3b8;padding:4px 0;border-bottom:1px solid #0b252822;line-height:1.4;}
+.pm-phase ul li::before{content:"→ ";color:#0d9488;font-weight:700;}
 /* Projections calculator */
-.pm-calc{background:#13111e;border:1px solid #2a2742;border-radius:12px;padding:20px;margin:12px 0;}
+.pm-calc{background:#091819;border:1px solid #0f3035;border-radius:12px;padding:20px;margin:12px 0;}
 .pm-calc-row{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
 .pm-calc-label{font-size:.73rem;color:#94a3b8;min-width:160px;}
-.pm-calc-slider{flex:1;accent-color:#7c3aed;}
+.pm-calc-slider{flex:1;accent-color:#20d5c4;}
 .pm-calc-val{font-size:.8rem;font-weight:700;color:#e2e8f0;min-width:70px;text-align:right;}
 .pm-chart-wrap{position:relative;height:220px;margin-top:12px;}
 .pm-breakeven-callout{display:flex;align-items:center;gap:12px;background:#0f1e15;border:1px solid #166534;border-radius:10px;padding:14px 18px;margin-top:14px;}
@@ -211,27 +211,27 @@ main{max-width:1400px;margin:0 auto;padding:24px 20px;}
 .pm-breakeven-callout .be-text{font-size:.78rem;color:#86efac;line-height:1.5;}
 .pm-breakeven-callout .be-text strong{color:#4ade80;font-size:.9rem;}
 /* Pricing card */
-.pm-pricing-card{background:#13111e;border:1px solid #7c3aed44;border-radius:12px;padding:24px;text-align:center;margin:12px 0;}
+.pm-pricing-card{background:#091819;border:1px solid #20d5c444;border-radius:12px;padding:24px;text-align:center;margin:12px 0;}
 .pm-pricing-retainer{font-size:2.4rem;font-weight:900;color:#fff;letter-spacing:-.03em;}
-.pm-pricing-sub{font-size:.78rem;color:#7c5cbf;margin-bottom:16px;}
-.pm-pricing-gmv{font-size:1.1rem;font-weight:700;color:#a78bfa;margin-bottom:20px;}
+.pm-pricing-sub{font-size:.78rem;color:#0d9488;margin-bottom:16px;}
+.pm-pricing-gmv{font-size:1.1rem;font-weight:700;color:#5eead4;margin-bottom:20px;}
 .pm-pricing-features{list-style:none;padding:0;text-align:left;}
-.pm-pricing-features li{font-size:.78rem;color:#94a3b8;padding:6px 0;border-bottom:1px solid #1e1c30;display:flex;align-items:center;gap:8px;}
+.pm-pricing-features li{font-size:.78rem;color:#94a3b8;padding:6px 0;border-bottom:1px solid #0b2528;display:flex;align-items:center;gap:8px;}
 .pm-pricing-features li::before{content:"✓";color:#10b981;font-weight:700;}
 /* Why CC */
 .pm-why-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:12px 0;}
-.pm-why-item{background:#13111e;border:1px solid #2a2742;border-radius:10px;padding:14px 16px;}
+.pm-why-item{background:#091819;border:1px solid #0f3035;border-radius:10px;padding:14px 16px;}
 .pm-why-title{font-size:.8rem;font-weight:700;color:#e2e8f0;margin-bottom:4px;}
 .pm-why-desc{font-size:.73rem;color:#64748b;line-height:1.5;}
 /* Next steps */
 .pm-steps{list-style:none;padding:0;}
-.pm-steps li{display:flex;align-items:flex-start;gap:14px;padding:12px 0;border-bottom:1px solid #1e1c30;}
+.pm-steps li{display:flex;align-items:flex-start;gap:14px;padding:12px 0;border-bottom:1px solid #0b2528;}
 .pm-steps li:last-child{border-bottom:none;}
-.pm-step-num{width:26px;height:26px;border-radius:50%;background:#7c3aed22;border:1px solid #7c3aed66;color:#a78bfa;font-size:.72rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.pm-step-num{width:26px;height:26px;border-radius:50%;background:#20d5c422;border:1px solid #20d5c466;color:#5eead4;font-size:.72rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .pm-step-text{font-size:.82rem;color:#94a3b8;line-height:1.5;padding-top:3px;}
 /* Footer */
-.pm-footer{padding:32px 0;text-align:center;border-top:1px solid #1e1c30;color:#64748b;font-size:.75rem;}
-.pm-footer a{color:#7c3aed;text-decoration:none;}
+.pm-footer{padding:32px 0;text-align:center;border-top:1px solid #0b2528;color:#64748b;font-size:.75rem;}
+.pm-footer a{color:#20d5c4;text-decoration:none;}
 @media print {
   .pm-topbar .pm-topbar-actions{display:none;}
   .pm-modal{height:auto;max-width:100%;}
@@ -314,10 +314,10 @@ main{max-width:1400px;margin:0 auto;padding:24px 20px;}
       <div style="display:flex;align-items:center;gap:12px">
         <img src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png" style="height:36px;width:auto;object-fit:contain" alt="Cult Content">
         <img src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/6978e226d119a5154347af54.png" style="height:30px;width:auto;object-fit:contain" alt="TikTok Shop Partner Agency">
-        <span style="font-size:.7rem;color:#4a4565;font-weight:600" id="pm-topbar-brand"></span>
+        <span style="font-size:.7rem;color:#1a5a60;font-weight:600" id="pm-topbar-brand"></span>
       </div>
       <div class="pm-topbar-actions">
-        <select id="pm-contact-sel" style="background:#1e1c30;border:1px solid #2a2742;border-radius:8px;padding:5px 10px;color:#e2e8f0;font-size:.75rem;outline:none">
+        <select id="pm-contact-sel" style="background:#0b2528;border:1px solid #0f3035;border-radius:8px;padding:5px 10px;color:#e2e8f0;font-size:.75rem;outline:none">
           <option value="">Link to contact…</option>
         </select>
         <button class="btn btn-ghost btn-sm" onclick="markProposalSentFromModal()">→ Mark Sent</button>
@@ -1995,7 +1995,7 @@ function exportProposalHTML() {
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"><\/script>
 <style>
 ${css}
-body{background:#0d0b14;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;}
+body{background:#050e0f;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;}
 .pm-body{padding:0 32px 60px;max-width:860px;margin:0 auto;}
 </style>
 </head>
@@ -2047,7 +2047,7 @@ function _renderChart(p) {
     data: {
       labels,
       datasets: [
-        { label: 'Monthly GMV', data: gmvData, backgroundColor: 'rgba(124,58,237,.25)', borderColor: '#7c3aed', borderWidth: 1, borderRadius: 3, yAxisID: 'y' },
+        { label: 'Monthly GMV', data: gmvData, backgroundColor: 'rgba(32,213,196,.25)', borderColor: '#20d5c4', borderWidth: 1, borderRadius: 3, yAxisID: 'y' },
         { label: 'Net Profit (after all costs)', data: netData, type: 'line', borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,.06)', borderWidth: 2, pointRadius: 3, pointBackgroundColor: netData.map(v => v >= 0 ? '#10b981' : '#ef4444'), tension: .35, fill: true, yAxisID: 'y' },
         { label: 'Break-even', data: Array(12).fill(0), type: 'line', borderColor: '#f59e0b', borderWidth: 1, borderDash: [5,3], pointRadius: 0, yAxisID: 'y' },
       ],
@@ -2157,7 +2157,7 @@ function buildProposalHTML(p) {
   const kpiTableHtml = `
     <div class="pm-fin-box" style="margin-top:16px">
       <table class="pm-fin-table">
-        <tr style="background:#13111e"><td style="color:#a78bfa;font-weight:800">Phase</td><td style="color:#a78bfa">Creators</td><td style="color:#a78bfa">Impressions/mo</td><td style="color:#a78bfa">Purchases/mo</td><td style="color:#a78bfa">Est. GMV/mo</td></tr>
+        <tr style="background:#091819"><td style="color:#5eead4;font-weight:800">Phase</td><td style="color:#5eead4">Creators</td><td style="color:#5eead4">Impressions/mo</td><td style="color:#5eead4">Purchases/mo</td><td style="color:#5eead4">Est. GMV/mo</td></tr>
         ${phases.map((ph, i) => {
           const d = phaseData[i];
           return `<tr><td style="font-weight:700;color:#e2e8f0">${ph.label}</td><td>${d.c.toLocaleString()}</td><td>${d.imp.toLocaleString()}</td><td>${d.purch.toLocaleString()}</td><td style="color:#10b981;font-weight:700">${fmtK(d.gmv)}</td></tr>`;
@@ -2169,7 +2169,7 @@ function buildProposalHTML(p) {
   const scaled = phaseData[2];
   const waterfallRows = [
     { label: 'Gross Revenue (GMV)', val: scaled.gmv, pct: 1, color: '#e2e8f0', bold: true },
-    { label: 'Gross Profit from Sales', val: scaled.gross, pct: scaled.gross/scaled.gmv, color: '#a78bfa', bold: false },
+    { label: 'Gross Profit from Sales', val: scaled.gross, pct: scaled.gross/scaled.gmv, color: '#5eead4', bold: false },
     { label: '− Team Fee', val: -m.teamFee, pct: -m.teamFee/scaled.gmv, color: '#ef4444', bold: false },
     { label: `− GMV Rev Share (${fmtPct(m.revSharePct)})`, val: -(m.revSharePct * scaled.gmv), pct: -m.revSharePct, color: '#ef4444', bold: false },
     { label: `− Sample Cost (${m.monthlySamples} units)`, val: -m.sampleCost, pct: -m.sampleCost/scaled.gmv, color: '#f59e0b', bold: false },
@@ -2316,24 +2316,24 @@ function buildProposalHTML(p) {
       <p class="pm-body-text">We don't lock brands into fixed contracts. The retainer and GMV share are inversely linked — slide to whatever balance makes sense for your margin structure. Every configuration is month-to-month. You stay because results compound, not because a contract forces you to.</p>
       <div class="pm-calc" style="margin-top:16px">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-          <span style="font-size:.72rem;color:#a78bfa;font-weight:700">Monthly Retainer</span>
-          <span style="font-size:.72rem;color:#a78bfa;font-weight:700">GMV Revenue Share</span>
+          <span style="font-size:.72rem;color:#5eead4;font-weight:700">Monthly Retainer</span>
+          <span style="font-size:.72rem;color:#5eead4;font-weight:700">GMV Revenue Share</span>
         </div>
         <div class="pm-calc-row" style="margin-bottom:8px;gap:16px">
           <span id="pm-pricing-ret-val" style="min-width:100px;font-size:1.5rem;font-weight:800;color:#fff;white-space:nowrap">${fmt$(m.teamFee)}<span style="font-size:.7rem;color:#64748b;font-weight:400">/mo</span></span>
           <input type="range" class="pm-calc-slider" id="pm-pricing-slider" min="1500" max="5000" step="100" value="${m.teamFee}" oninput="updatePricingSlider()" style="flex:1">
           <span id="pm-pricing-gmv-val" style="min-width:70px;font-size:1.5rem;font-weight:800;color:#10b981;text-align:right">${((10 - ((m.teamFee - 1500) / 3500) * 7)).toFixed(1)}%</span>
         </div>
-        <div style="display:flex;justify-content:space-between;font-size:.65rem;color:#4a4565;margin-bottom:20px">
+        <div style="display:flex;justify-content:space-between;font-size:.65rem;color:#1a5a60;margin-bottom:20px">
           <span>$1,500/mo · 10% GMV</span>
           <span>$5,000/mo · 3% GMV</span>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div style="background:#13111e;border:1px solid #2a2742;border-radius:10px;padding:16px">
-            <div style="font-size:.65rem;color:#a78bfa;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Lower retainer</div>
+          <div style="background:#091819;border:1px solid #0f3035;border-radius:10px;padding:16px">
+            <div style="font-size:.65rem;color:#5eead4;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Lower retainer</div>
             <div style="font-size:.8rem;color:#94a3b8;line-height:1.5">Higher GMV share means we're fully aligned with your growth. The more you sell, the more we earn — so we have every reason to push hard from day one.</div>
           </div>
-          <div style="background:#13111e;border:1px solid #2a2742;border-radius:10px;padding:16px">
+          <div style="background:#091819;border:1px solid #0f3035;border-radius:10px;padding:16px">
             <div style="font-size:.65rem;color:#10b981;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Higher retainer</div>
             <div style="font-size:.8rem;color:#94a3b8;line-height:1.5">Lower GMV share protects your margin at scale. As your channel matures, shifting the balance means more profit stays with you — without renegotiating the whole relationship.</div>
           </div>
@@ -2377,9 +2377,9 @@ function buildProposalHTML(p) {
         <img src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/6978e226d119a5154347af54.png" style="height:22px;width:auto;opacity:.7" alt="TikTok Shop Partner Agency">
       </div>
       <div style="font-size:1rem;font-weight:700;color:#e2e8f0;margin-bottom:6px">Ready to move forward?</div>
-      <a href="https://cultcontent.cc/book-with-tommy" target="_blank" style="display:inline-block;background:#7c3aed;color:#fff;padding:10px 28px;border-radius:8px;font-size:.85rem;font-weight:600;text-decoration:none;margin-bottom:16px">Book a Call →</a>
+      <a href="https://cultcontent.cc/book-with-tommy" target="_blank" style="display:inline-block;background:#ee1d52;color:#fff;padding:10px 28px;border-radius:8px;font-size:.85rem;font-weight:600;text-decoration:none;margin-bottom:16px">Book a Call →</a>
       <div>Tommy Lynch · <a href="mailto:tommy@cultcontent.cc">tommy@cultcontent.cc</a> · cultcontent.cc</div>
-      <div style="margin-top:6px;color:#2a2742">Confidential — prepared exclusively for ${esc(p.brandName)}</div>
+      <div style="margin-top:6px;color:#2a5a60">Confidential — prepared exclusively for ${esc(p.brandName)}</div>
     </div>
   `;
 }
@@ -2443,8 +2443,8 @@ function renderProjChart(p) {
         {
           label: 'Monthly GMV',
           data: gmvData,
-          backgroundColor: 'rgba(124,58,237,.25)',
-          borderColor: '#7c3aed',
+          backgroundColor: 'rgba(32,213,196,.25)',
+          borderColor: '#20d5c4',
           borderWidth: 1,
           borderRadius: 3,
           yAxisID: 'y',
