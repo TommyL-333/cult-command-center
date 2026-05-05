@@ -4213,7 +4213,7 @@ STYLE RULES:
 - Confident assertions: "This will" not "this should"
 - Reference specific details from the notes — product, price point, pain points
 - Never be generic. Every sentence should only make sense for THIS brand.
-- For currentStateMetrics: include things like AOV, product count, current GMV if known, platform presence
+- For currentStateMetrics: ONLY include values explicitly stated in the meeting notes. Do NOT infer, estimate, or fabricate values. If a number isn't mentioned, omit that metric entirely. Use the exact figures from the notes — no parenthetical qualifiers, no "(NAD)", no made-up abbreviations. Examples of valid entries: {"label":"Active SKUs","value":"2"}, {"label":"AOV","value":"$74"}.
 - For monthlyGMVGoals: realistic 12-month ramp. Month 1-2 slow (testing), Month 3-6 growing, Month 7-12 scaled. Base on AOV and product type.`;
 
     const msg = await client.messages.create({
