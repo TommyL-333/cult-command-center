@@ -1963,29 +1963,21 @@ function closeProposalModal() {
 
 function exportProposalHTML() {
   const pmBody = document.getElementById('pm-body');
-  if (!pmBody) return;
+  if (!pmBody || !_lastProjData) return;
 
-  // Capture chart canvas as base64 image so it renders in standalone file
-  const canvasEls = pmBody.querySelectorAll('canvas');
-  canvasEls.forEach(c => {
-    try {
-      const img = document.createElement('img');
-      img.src = c.toDataURL('image/png');
-      img.style.cssText = c.style.cssText || '';
-      img.width = c.width; img.height = c.height;
-      img.style.width = '100%'; img.style.height = 'auto';
-      c.parentNode.replaceChild(img, c);
-    } catch(e) {}
-  });
+  // Snapshot the current DOM — keep canvas as-is (Chart.js will re-render in the export)
+  const bodyContent = pmBody.innerHTML;
+  const brandName = (document.getElementById('pm-topbar-brand')?.textContent || 'Proposal').replace(' × Cult Content','').trim();
+  const p = JSON.stringify(_lastProjData);
 
-  // Grab the inline styles from the page for pm-* and related rules
+  // Extract all pm-* CSS from the live stylesheets
   let css = '';
   try {
     for (const sheet of document.styleSheets) {
       try {
         for (const rule of sheet.cssRules) {
           const t = rule.cssText || '';
-          if (t.includes('.pm-') || t.includes('@media print') || t.includes(':root') ||
+          if (t.includes('.pm-') || t.includes(':root') ||
               t.includes('*{') || t.includes('body{') || t.includes('@keyframes')) {
             css += rule.cssText + '\n';
           }
@@ -1994,15 +1986,13 @@ function exportProposalHTML() {
     }
   } catch(e) {}
 
-  const brandName = (document.getElementById('pm-topbar-brand')?.textContent || 'Proposal').replace(' × Cult Content','').trim();
-  const bodyContent = pmBody.innerHTML;
-
   const html = `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>${brandName} × Cult Content</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"><\/script>
 <style>
 ${css}
 body{background:#0d0b14;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;}
@@ -2011,6 +2001,95 @@ body{background:#0d0b14;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFo
 </head>
 <body>
 <div class="pm-body">${bodyContent}</div>
+<script>
+// ── Embedded proposal data & interactive functions ──────────────────────────
+const _p = ${p};
+let _chartInst = null;
+
+function _renderChart(p) {
+  const canvas = document.getElementById('proj-chart');
+  if (!canvas || typeof Chart === 'undefined') return;
+  if (_chartInst) { _chartInst.destroy(); _chartInst = null; }
+  const m = p._metrics || {};
+  const pr = p.pricing || {};
+
+  const affCommPct = (parseFloat(document.getElementById('pm-affcomm-s')?.value || (m.affCommPct||0)*100)) / 100;
+  const cogsVal    = parseFloat(document.getElementById('pm-cogs-s')?.value    || m.cogs  || 0);
+  const samplesVal = parseFloat(document.getElementById('pm-samples-s')?.value || m.monthlySamples || 0);
+
+  const sel = m.sellingPrice || 0;
+  const affComm = sel * affCommPct;
+  const tikTokFee = sel * 0.06;
+  const adspend = sel * (m.adspendPct || 0);
+  const totalCost = (m.shipping||0) + cogsVal + affComm + tikTokFee + adspend;
+  const gpp = sel - totalCost;
+  const sampleCost = ((m.shipping||0) + cogsVal) * samplesVal;
+  const revSharePct = pr.gmvPct != null ? pr.gmvPct / 100 : (m.revSharePct || 0);
+  const teamFee = pr.retainer != null ? pr.retainer : (m.teamFee || 0);
+  const affRetainers = m.affiliateRetainers || 0;
+
+  const ramp = [0.1,0.2,0.3,0.45,0.55,0.65,0.75,0.82,0.88,0.93,0.97,1.0];
+  const labels = ['M1','M2','M3','M4','M5','M6','M7','M8','M9','M10','M11','M12'];
+  const gmvData = ramp.map(r => {
+    const c = Math.round((m.creators||0) * r);
+    const imp = c * (m.videosPerCreator||0) * (m.avgViews||0);
+    const purch = Math.round(imp * (m.ctr||0) * (m.cvr||0));
+    return Math.round(purch * sel);
+  });
+  const netData = gmvData.map(gmv => {
+    const purch = gmv / (sel || 1);
+    const gross = gpp * purch;
+    return Math.round(gross - teamFee - (revSharePct * gmv) - sampleCost - affRetainers - gmv * 0.02);
+  });
+
+  _chartInst = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label: 'Monthly GMV', data: gmvData, backgroundColor: 'rgba(124,58,237,.25)', borderColor: '#7c3aed', borderWidth: 1, borderRadius: 3, yAxisID: 'y' },
+        { label: 'Net Profit (after all costs)', data: netData, type: 'line', borderColor: '#10b981', backgroundColor: 'rgba(16,185,129,.06)', borderWidth: 2, pointRadius: 3, pointBackgroundColor: netData.map(v => v >= 0 ? '#10b981' : '#ef4444'), tension: .35, fill: true, yAxisID: 'y' },
+        { label: 'Break-even', data: Array(12).fill(0), type: 'line', borderColor: '#f59e0b', borderWidth: 1, borderDash: [5,3], pointRadius: 0, yAxisID: 'y' },
+      ],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#64748b', font: { size: 11 }, boxWidth: 12 } },
+        tooltip: { callbacks: { label: ctx => { const v = ctx.raw; return ' ' + ctx.dataset.label + ': ' + (v<0?'(':'') + '$' + Math.abs(v).toLocaleString() + (v<0?')':''); } } }
+      },
+      scales: {
+        x: { grid: { color: '#1a1830' }, ticks: { color: '#64748b', font: { size: 10 } } },
+        y: { grid: { color: '#1a1830' }, ticks: { color: '#64748b', font: { size: 10 }, callback: v => (v<0?'(':'') + '$' + (Math.abs(v)>=1000?(Math.abs(v)/1000).toFixed(0)+'k':Math.abs(v)) + (v<0?')':'') } }
+      },
+    },
+  });
+}
+
+function updateProjChart() {
+  const ac = document.getElementById('pm-affcomm-s');
+  const cc = document.getElementById('pm-cogs-s');
+  const sc = document.getElementById('pm-samples-s');
+  if (ac) document.getElementById('pm-affcomm-s-val').textContent = ac.value + '%';
+  if (cc) document.getElementById('pm-cogs-s-val').textContent = '$' + cc.value;
+  if (sc) document.getElementById('pm-samples-s-val').textContent = sc.value;
+  _renderChart(_p);
+}
+
+function updatePricingSlider() {
+  const slider = document.getElementById('pm-pricing-slider');
+  if (!slider) return;
+  const retainer = parseInt(slider.value);
+  const t = (retainer - 1500) / (5000 - 1500);
+  const gmvPct = (10 - t * 7).toFixed(1);
+  const retEl = document.getElementById('pm-pricing-ret-val');
+  const gmvEl = document.getElementById('pm-pricing-gmv-val');
+  if (retEl) retEl.textContent = '$' + retainer.toLocaleString() + '/mo';
+  if (gmvEl) gmvEl.textContent = gmvPct + '%';
+}
+
+document.addEventListener('DOMContentLoaded', () => _renderChart(_p));
+<\/script>
 </body>
 </html>`;
 
