@@ -158,6 +158,86 @@ main{max-width:1400px;margin:0 auto;padding:24px 20px;}
 .pricing-result-label{font-size:.78rem;color:var(--muted);}
 .pricing-result-val{font-size:.88rem;font-weight:700;}
 
+/* ── Proposal Modal ── */
+.pm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:2000;display:flex;align-items:stretch;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s;}
+.pm-overlay.open{opacity:1;pointer-events:all;}
+.pm-modal{background:#0d0b14;width:100%;max-width:860px;display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+.pm-topbar{background:#13111e;border-bottom:1px solid #2a2742;padding:12px 24px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.pm-topbar-brand{font-size:.88rem;font-weight:700;color:#e2e8f0;}
+.pm-topbar-actions{display:flex;gap:8px;align-items:center;}
+.pm-body{flex:1;overflow-y:auto;padding:0 32px 60px;scroll-behavior:smooth;}
+.pm-body::-webkit-scrollbar{width:4px;}
+.pm-body::-webkit-scrollbar-thumb{background:#2a2742;border-radius:2px;}
+/* Hero */
+.pm-hero{padding:48px 0 32px;border-bottom:1px solid #1e1c30;}
+.pm-hero-brand{font-size:2rem;font-weight:800;color:#fff;letter-spacing:-.02em;margin-bottom:6px;}
+.pm-hero-tagline{font-size:1rem;color:#a78bfa;font-style:italic;margin-bottom:20px;line-height:1.5;}
+.pm-hero-meta{display:flex;gap:16px;font-size:.72rem;color:#64748b;}
+.pm-hero-meta span{display:flex;align-items:center;gap:4px;}
+/* Sections */
+.pm-section{padding:32px 0;border-bottom:1px solid #1e1c30;}
+.pm-section:last-child{border-bottom:none;}
+.pm-section-label{font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#7c5cbf;margin-bottom:12px;}
+.pm-section-title{font-size:1.1rem;font-weight:700;color:#e2e8f0;margin-bottom:12px;}
+.pm-body-text{font-size:.85rem;color:#94a3b8;line-height:1.7;margin-bottom:10px;}
+/* Metric chips */
+.pm-metrics{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0;}
+.pm-metric{background:#13111e;border:1px solid #2a2742;border-radius:10px;padding:12px 18px;}
+.pm-metric-val{font-size:1.4rem;font-weight:800;color:#fff;}
+.pm-metric-label{font-size:.65rem;color:#64748b;text-transform:uppercase;letter-spacing:.05em;margin-top:2px;}
+/* Financial breakdown */
+.pm-fin-table{width:100%;border-collapse:collapse;font-size:.82rem;margin:12px 0;}
+.pm-fin-table td{padding:9px 14px;border-bottom:1px solid #1e1c30;color:#94a3b8;}
+.pm-fin-table td:first-child{color:#e2e8f0;font-weight:600;width:55%;}
+.pm-fin-table tr:last-child td{border-bottom:none;color:#10b981;font-size:.9rem;font-weight:700;}
+.pm-fin-box{background:#13111e;border:1px solid #2a2742;border-radius:10px;overflow:hidden;}
+/* Roadmap */
+.pm-roadmap{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:12px 0;}
+.pm-phase{background:#13111e;border:1px solid #2a2742;border-radius:10px;padding:16px;}
+.pm-phase-label{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#7c5cbf;margin-bottom:4px;}
+.pm-phase-title{font-size:.82rem;font-weight:700;color:#e2e8f0;margin-bottom:10px;}
+.pm-phase ul{list-style:none;padding:0;}
+.pm-phase ul li{font-size:.74rem;color:#94a3b8;padding:4px 0;border-bottom:1px solid #1e1c3022;line-height:1.4;}
+.pm-phase ul li::before{content:"→ ";color:#7c5cbf;font-weight:700;}
+/* Projections calculator */
+.pm-calc{background:#13111e;border:1px solid #2a2742;border-radius:12px;padding:20px;margin:12px 0;}
+.pm-calc-row{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+.pm-calc-label{font-size:.73rem;color:#94a3b8;min-width:160px;}
+.pm-calc-slider{flex:1;accent-color:#7c3aed;}
+.pm-calc-val{font-size:.8rem;font-weight:700;color:#e2e8f0;min-width:70px;text-align:right;}
+.pm-chart-wrap{position:relative;height:220px;margin-top:12px;}
+.pm-breakeven-callout{display:flex;align-items:center;gap:12px;background:#0f1e15;border:1px solid #166534;border-radius:10px;padding:14px 18px;margin-top:14px;}
+.pm-breakeven-callout .be-icon{font-size:1.4rem;}
+.pm-breakeven-callout .be-text{font-size:.78rem;color:#86efac;line-height:1.5;}
+.pm-breakeven-callout .be-text strong{color:#4ade80;font-size:.9rem;}
+/* Pricing card */
+.pm-pricing-card{background:#13111e;border:1px solid #7c3aed44;border-radius:12px;padding:24px;text-align:center;margin:12px 0;}
+.pm-pricing-retainer{font-size:2.4rem;font-weight:900;color:#fff;letter-spacing:-.03em;}
+.pm-pricing-sub{font-size:.78rem;color:#7c5cbf;margin-bottom:16px;}
+.pm-pricing-gmv{font-size:1.1rem;font-weight:700;color:#a78bfa;margin-bottom:20px;}
+.pm-pricing-features{list-style:none;padding:0;text-align:left;}
+.pm-pricing-features li{font-size:.78rem;color:#94a3b8;padding:6px 0;border-bottom:1px solid #1e1c30;display:flex;align-items:center;gap:8px;}
+.pm-pricing-features li::before{content:"✓";color:#10b981;font-weight:700;}
+/* Why CC */
+.pm-why-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:12px 0;}
+.pm-why-item{background:#13111e;border:1px solid #2a2742;border-radius:10px;padding:14px 16px;}
+.pm-why-title{font-size:.8rem;font-weight:700;color:#e2e8f0;margin-bottom:4px;}
+.pm-why-desc{font-size:.73rem;color:#64748b;line-height:1.5;}
+/* Next steps */
+.pm-steps{list-style:none;padding:0;}
+.pm-steps li{display:flex;align-items:flex-start;gap:14px;padding:12px 0;border-bottom:1px solid #1e1c30;}
+.pm-steps li:last-child{border-bottom:none;}
+.pm-step-num{width:26px;height:26px;border-radius:50%;background:#7c3aed22;border:1px solid #7c3aed66;color:#a78bfa;font-size:.72rem;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.pm-step-text{font-size:.82rem;color:#94a3b8;line-height:1.5;padding-top:3px;}
+/* Footer */
+.pm-footer{padding:32px 0;text-align:center;border-top:1px solid #1e1c30;color:#64748b;font-size:.75rem;}
+.pm-footer a{color:#7c3aed;text-decoration:none;}
+@media print {
+  .pm-topbar .pm-topbar-actions{display:none;}
+  .pm-modal{height:auto;max-width:100%;}
+  .pm-body{overflow:visible;}
+}
+
 /* ── Proposal generator ── */
 .proposal-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;}
 .proposal-title{font-size:.88rem;font-weight:700;margin-bottom:14px;}
@@ -212,10 +292,29 @@ main{max-width:1400px;margin:0 auto;padding:24px 20px;}
 .consultant-rank{font-size:.85rem;font-weight:800;color:var(--muted);min-width:28px;}
 .consultant-rank.top{color:var(--yellow);}
 </style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
 
 <!-- Contact quick-view modal -->
+<!-- ── Proposal Modal ── -->
+<div class="pm-overlay" id="pm-overlay">
+  <div class="pm-modal">
+    <div class="pm-topbar">
+      <span class="pm-topbar-brand" id="pm-topbar-brand">Cult Content</span>
+      <div class="pm-topbar-actions">
+        <select id="pm-contact-sel" style="background:#1e1c30;border:1px solid #2a2742;border-radius:8px;padding:5px 10px;color:#e2e8f0;font-size:.75rem;outline:none">
+          <option value="">Link to contact…</option>
+        </select>
+        <button class="btn btn-ghost btn-sm" onclick="markProposalSentFromModal()">→ Mark Sent</button>
+        <button class="btn btn-ghost btn-sm" onclick="window.print()">🖨 PDF</button>
+        <button class="btn btn-ghost btn-sm" onclick="closeProposalModal()">✕</button>
+      </div>
+    </div>
+    <div class="pm-body" id="pm-body"></div>
+  </div>
+</div>
+
 <div class="cq-overlay" id="cq-overlay" onclick="closeCQ(event)">
   <div class="cq-modal" id="cq-modal">
     <button class="cq-close" onclick="closeCQ()">✕</button>
@@ -1036,7 +1135,7 @@ function renderKanban(elId, byStage, stageConfig, tagsById, countOverrides = {})
       ? `<div style="margin-top:4px;font-size:.63rem;color:var(--blue)">✓ Onboarded</div>`
       : '';
     return `
-      <div class="kanban-card" onclick="openCQ('${o.id}')"
+      <div class="kanban-card" onclick="openCQ('${o.id}')">
         <div class="kanban-card-name">${esc(o.contact.name || o.name)}</div>
         <div class="kanban-card-email">${esc(o.contact.email)}</div>
         ${discordLine}
@@ -1400,7 +1499,8 @@ function openCQ(oppId) {
   const ghlUrl = `https://app.profitibull.com/v2/location/c216j58Vx9XxYa7WYMiA/contacts`;
   document.getElementById('cq-actions').innerHTML = `
     <a href="${ghlUrl}" target="_blank" class="btn btn-ghost btn-sm">Open in GHL ↗</a>
-    <button class="btn btn-primary btn-sm" onclick="closeCQ();document.getElementById('proposal-input')&&switchSeg('growth-partners',document.querySelector('[onclick*=growth-partners]'))">✨ Generate Proposal</button>
+    <button class="btn btn-ghost btn-sm" onclick="markDiscoveryCall('${o.id}',this)">📞 Discovery Call</button>
+    <button class="btn btn-primary btn-sm" onclick="closeCQ();switchSeg('growth-partners',document.querySelector('[data-seg=growth-partners]'))">✨ Proposal</button>
   `;
 
   document.getElementById('cq-overlay').classList.add('open');
@@ -1411,8 +1511,26 @@ function closeCQ(e) {
   document.getElementById('cq-overlay').classList.remove('open');
 }
 
-// close on Escape
-document.addEventListener('keydown', e => { if (e.key === 'Escape') document.getElementById('cq-overlay')?.classList.remove('open'); });
+async function markDiscoveryCall(oppId, btn) {
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = '⏳…';
+  try {
+    const r = await fetch(`${BASE}/api/pipeline/growth-partners/${oppId}/stage`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stageId: '4c3cdb15-21e6-4c16-a892-8b419c0a45d9' }),
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error);
+    btn.textContent = '✓ Moved';
+    state['growth-partners'] = null;
+    loadSegment('growth-partners');
+    setTimeout(() => closeProposalModal(), 1200);
+  } catch(e) {
+    alert('Error: ' + e.message);
+    btn.textContent = orig; btn.disabled = false;
+  }
+}
 
 // Populate the contact dropdowns from GP pipeline state
 function populateContactSelector() {
@@ -1610,13 +1728,14 @@ async function sendGmvInvoice() {
   }
 }
 
+let lastProposalData = null;
+let projChart = null;
+
 async function generateProposal() {
   const input = document.getElementById('proposal-input').value.trim();
   if (!input) { alert('Add some conversation notes first'); return; }
   const btn = document.getElementById('gen-btn');
-  const out = document.getElementById('proposal-output');
   btn.disabled = true; btn.textContent = '⏳ Generating…';
-  out.innerHTML = ''; out.classList.add('show');
 
   const { retainer, gmv } = getProposalPricing();
 
@@ -1627,30 +1746,364 @@ async function generateProposal() {
       body: JSON.stringify({ context: input, retainer, gmv }),
     });
     const d = await r.json();
-    const md = d.text || d.error || 'Error generating proposal';
-    lastProposalMarkdown = md;
-    out.innerHTML = renderMarkdown(md);
-    // Show "mark proposal sent" row and refresh contact selectors
-    const sentRow = document.getElementById('proposal-sent-row');
-    if (sentRow) sentRow.style.display = 'flex';
+    if (d.error) throw new Error(d.error);
+    lastProposalData = d.proposal;
+    openProposalModal(d.proposal);
     populateContactSelector();
+    populatePmContactSel();
   } catch(e) {
-    out.innerHTML = '<p style="color:var(--red)">Error: ' + e.message + '</p>';
-    lastProposalMarkdown = '';
+    alert('Error generating proposal: ' + e.message);
   }
-  btn.disabled = false; btn.textContent = '✨ Generate Proposal';
+  btn.disabled = false; btn.textContent = '✨ Generate';
+}
+
+function populatePmContactSel() {
+  const opps = state['growth-partners']?.opportunities || [];
+  const sel = document.getElementById('pm-contact-sel');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Link to contact…</option>';
+  opps.forEach(o => {
+    const opt = document.createElement('option');
+    opt.value = o.id;
+    opt.dataset.contactId = o.contact.id;
+    opt.dataset.name = o.contact.name || o.name;
+    opt.textContent = `${o.contact.name || o.name}${o.contact.email ? ' — ' + o.contact.email : ''} (${o.stageName})`;
+    sel.appendChild(opt);
+  });
+}
+
+async function markProposalSentFromModal() {
+  const sel = document.getElementById('pm-contact-sel');
+  const oppId = sel?.value;
+  if (!oppId) { alert('Select a contact to link this proposal to'); return; }
+  const btn = event.target;
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = '⏳…';
+  try {
+    const r = await fetch(`${BASE}/api/pipeline/growth-partners/${oppId}/stage`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ stageId: '7e6bf560-11d6-442a-b64f-3bf12f136d5a' }),
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error);
+    btn.textContent = '✓ Marked Sent';
+    state['growth-partners'] = null;
+    loadSegment('growth-partners');
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2500);
+  } catch(e) {
+    alert('Error: ' + e.message);
+    btn.textContent = orig; btn.disabled = false;
+  }
+}
+
+function openProposalModal(p) {
+  document.getElementById('pm-topbar-brand').textContent = `Cult Content × ${p.brandName}`;
+  document.getElementById('pm-body').innerHTML = buildProposalHTML(p);
+  document.getElementById('pm-overlay').classList.add('open');
+  // Render chart after DOM is ready
+  setTimeout(() => renderProjChart(p), 50);
+}
+
+function closeProposalModal() {
+  document.getElementById('pm-overlay').classList.remove('open');
+}
+
+function buildProposalHTML(p) {
+  const pr = p.pricing || {};
+  const proj = p.projections || {};
+  const retainerFmt = '$' + (pr.retainer || 0).toLocaleString();
+  const gmvPct = pr.gmvPct || 5;
+  const breakEven = pr.breakEvenGMV || Math.round((pr.retainer || 2500) / (gmvPct / 100));
+  const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+  // Metrics
+  const metricsHtml = (p.currentStateMetrics || []).map(m =>
+    `<div class="pm-metric"><div class="pm-metric-val">${esc(m.value)}</div><div class="pm-metric-label">${esc(m.label)}</div></div>`
+  ).join('');
+
+  // Financial table
+  const fd = p.financialBreakdown || {};
+  const hasFinancials = fd.sellingPrice || fd.cogsPercent;
+  const finHtml = hasFinancials ? `
+    <div class="pm-fin-box">
+      <table class="pm-fin-table">
+        ${fd.sellingPrice ? `<tr><td>Selling Price</td><td>$${fd.sellingPrice.toLocaleString()}</td></tr>` : ''}
+        ${fd.tikTokFeePercent ? `<tr><td>TikTok Platform Fee</td><td>−${fd.tikTokFeePercent}%</td></tr>` : ''}
+        ${fd.affiliateCommissionPercent ? `<tr><td>Creator Commission</td><td>−${fd.affiliateCommissionPercent}%</td></tr>` : ''}
+        ${fd.cogsPercent ? `<tr><td>COGS</td><td>−${fd.cogsPercent}%</td></tr>` : ''}
+        ${fd.contributionMarginPercent ? `<tr><td>Contribution Margin</td><td>${fd.contributionMarginPercent}%</td></tr>` : ''}
+      </table>
+    </div>
+    ${fd.narrativeLine ? `<p class="pm-body-text" style="margin-top:12px">${esc(fd.narrativeLine)}</p>` : ''}
+  ` : `<p class="pm-body-text">${esc(fd.narrativeLine || 'All spend is governed by contribution margin. We do not scale what is not profitable.')}</p>`;
+
+  // Roadmap
+  const rm = p.roadmap || {};
+  const roadmapHtml = `
+    <div class="pm-roadmap">
+      <div class="pm-phase">
+        <div class="pm-phase-label">Phase 1</div>
+        <div class="pm-phase-title">Month 1 — Foundation</div>
+        <ul>${(rm.month1Bullets || []).map(b => `<li>${esc(b)}</li>`).join('')}</ul>
+      </div>
+      <div class="pm-phase">
+        <div class="pm-phase-label">Phase 2</div>
+        <div class="pm-phase-title">Months 1–2 — Launch</div>
+        <ul>${(rm.months12Bullets || []).map(b => `<li>${esc(b)}</li>`).join('')}</ul>
+      </div>
+      <div class="pm-phase">
+        <div class="pm-phase-label">Phase 3</div>
+        <div class="pm-phase-title">Month 3+ — Scale</div>
+        <ul>${(rm.month3plusBullets || []).map(b => `<li>${esc(b)}</li>`).join('')}</ul>
+      </div>
+    </div>`;
+
+  // Next steps
+  const stepsHtml = `<ol class="pm-steps">${(p.nextSteps || []).map((s, i) =>
+    `<li><div class="pm-step-num">${i + 1}</div><div class="pm-step-text">${esc(s)}</div></li>`
+  ).join('')}</ol>`;
+
+  return `
+    <!-- Hero -->
+    <div class="pm-hero">
+      <div class="pm-hero-brand">${esc(p.brandName)} × Cult Content</div>
+      <div class="pm-hero-tagline">"${esc(p.tagline)}"</div>
+      <div class="pm-hero-meta">
+        <span>📅 ${today}</span>
+        <span>🔒 Confidential</span>
+        <span>🌐 cultcontent.cc</span>
+      </div>
+    </div>
+
+    <!-- Strategic Question -->
+    <div class="pm-section">
+      <div class="pm-section-label">The Opportunity</div>
+      <p class="pm-body-text" style="font-size:.95rem;color:#c4b5fd;font-style:italic;line-height:1.7">${esc(p.strategicQuestion)}</p>
+      ${metricsHtml ? `<div class="pm-metrics">${metricsHtml}</div>` : ''}
+    </div>
+
+    <!-- Financial Clarity -->
+    <div class="pm-section">
+      <div class="pm-section-label">Financial Clarity</div>
+      <div class="pm-section-title">Unit Economics</div>
+      ${finHtml}
+    </div>
+
+    <!-- Roadmap -->
+    <div class="pm-section">
+      <div class="pm-section-label">Execution Plan</div>
+      <div class="pm-section-title">What We'll Build</div>
+      ${roadmapHtml}
+    </div>
+
+    <!-- Projections -->
+    <div class="pm-section">
+      <div class="pm-section-label">Financial Projections</div>
+      <div class="pm-section-title">12-Month GMV Model</div>
+      <div class="pm-calc">
+        <div class="pm-calc-row">
+          <span class="pm-calc-label">Avg Order Value (AOV)</span>
+          <input type="range" class="pm-calc-slider" id="pm-aov" min="20" max="300" step="5" value="${proj.aov || 65}" oninput="updateProjChart()">
+          <span class="pm-calc-val" id="pm-aov-val">$${proj.aov || 65}</span>
+        </div>
+        <div class="pm-calc-row">
+          <span class="pm-calc-label">COGS %</span>
+          <input type="range" class="pm-calc-slider" id="pm-cogs" min="10" max="70" step="5" value="${proj.cogsPercent || 40}" oninput="updateProjChart()">
+          <span class="pm-calc-val" id="pm-cogs-val">${proj.cogsPercent || 40}%</span>
+        </div>
+        <div class="pm-calc-row">
+          <span class="pm-calc-label">Creator Commission %</span>
+          <input type="range" class="pm-calc-slider" id="pm-comm" min="5" max="25" step="1" value="${proj.creatorCommissionPct || 12}" oninput="updateProjChart()">
+          <span class="pm-calc-val" id="pm-comm-val">${proj.creatorCommissionPct || 12}%</span>
+        </div>
+      </div>
+      <div class="pm-chart-wrap">
+        <canvas id="proj-chart"></canvas>
+      </div>
+      <div class="pm-breakeven-callout">
+        <div class="be-icon">📊</div>
+        <div class="be-text" id="pm-breakeven-text">
+          At <strong>$${breakEven.toLocaleString()}/mo GMV</strong>, the ${gmvPct}% performance fee covers the full retainer. Everything above that is pure upside.
+        </div>
+      </div>
+    </div>
+
+    <!-- Investment -->
+    <div class="pm-section">
+      <div class="pm-section-label">Investment</div>
+      <div class="pm-pricing-card">
+        <div class="pm-pricing-retainer">${retainerFmt}</div>
+        <div class="pm-pricing-sub">per month · month-to-month</div>
+        <div class="pm-pricing-gmv">+ ${gmvPct}% of TikTok Shop GMV</div>
+        <ul class="pm-pricing-features">
+          <li>Dedicated affiliate manager + shop manager</li>
+          <li>AI content system — creative briefs, hooks, scripts</li>
+          <li>Creator recruitment, sampling & compliance</li>
+          <li>GMV Max paid amplification strategy</li>
+          <li>Weekly performance reporting + bi-weekly syncs</li>
+          <li>Cancel with 30 days notice — no lock-in</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Why Cult Content -->
+    <div class="pm-section">
+      <div class="pm-section-label">Why Cult Content</div>
+      <div class="pm-why-grid">
+        <div class="pm-why-item"><div class="pm-why-title">Founder-Led Execution</div><div class="pm-why-desc">Tommy Lynch runs your account directly. Not a junior account manager. Not a team you'll never meet.</div></div>
+        <div class="pm-why-item"><div class="pm-why-title">AI Content System</div><div class="pm-why-desc">Faster creative iteration at a fraction of traditional production cost. Volume without bloated budgets.</div></div>
+        <div class="pm-why-item"><div class="pm-why-title">GMV Max Expertise</div><div class="pm-why-desc">We don't run ads until organic is converting. Then we amplify what's already working. No wasted ad spend.</div></div>
+        <div class="pm-why-item"><div class="pm-why-title">Full-Stack Shop Management</div><div class="pm-why-desc">Affiliate recruitment, compliance, listing optimization, creator briefing, and reporting — all under one roof.</div></div>
+        <div class="pm-why-item"><div class="pm-why-title">Aligned Incentives</div><div class="pm-why-desc">The performance fee means we only win when you do. No retainer-padding. No inflated deliverables.</div></div>
+        <div class="pm-why-item"><div class="pm-why-title">Proven at Scale</div><div class="pm-why-desc">100M+ views generated. $1M+ in GMV driven. We know what works on TikTok Shop and what doesn't.</div></div>
+      </div>
+    </div>
+
+    <!-- Next Steps -->
+    <div class="pm-section">
+      <div class="pm-section-label">Next Steps</div>
+      ${stepsHtml}
+    </div>
+
+    <!-- Footer -->
+    <div class="pm-footer">
+      <div style="font-size:1rem;font-weight:700;color:#e2e8f0;margin-bottom:6px">Ready to move forward?</div>
+      <a href="https://cultcontent.cc/book" target="_blank" style="display:inline-block;background:#7c3aed;color:#fff;padding:10px 28px;border-radius:8px;font-size:.85rem;font-weight:600;text-decoration:none;margin-bottom:16px">Book a Call →</a>
+      <div>Tommy Lynch · <a href="mailto:tommy@cultcontent.cc">tommy@cultcontent.cc</a> · cultcontent.cc</div>
+      <div style="margin-top:6px;color:#2a2742">Confidential — prepared exclusively for ${esc(p.brandName)}</div>
+    </div>
+  `;
+}
+
+let _projChartInstance = null;
+let _lastProjData = null;
+
+function renderProjChart(p) {
+  _lastProjData = p;
+  const canvas = document.getElementById('proj-chart');
+  if (!canvas || typeof Chart === 'undefined') return;
+  if (_projChartInstance) { _projChartInstance.destroy(); _projChartInstance = null; }
+
+  const proj = p.projections || {};
+  const goals = proj.monthlyGMVGoals || [5000,12000,22000,38000,58000,82000,110000,140000,175000,210000,255000,300000];
+  const labels = ['M1','M2','M3','M4','M5','M6','M7','M8','M9','M10','M11','M12'];
+  const pr = p.pricing || {};
+  const retainer = pr.retainer || 2500;
+  const gmvPct = pr.gmvPct || 5;
+
+  const aov = parseInt(document.getElementById('pm-aov')?.value || proj.aov || 65);
+  const cogs = parseInt(document.getElementById('pm-cogs')?.value || proj.cogsPercent || 40);
+  const comm = parseInt(document.getElementById('pm-comm')?.value || proj.creatorCommissionPct || 12);
+
+  const tikTokFee = 6;
+  const contribPct = (100 - cogs - tikTokFee - comm) / 100;
+  const breakEven = Math.round(retainer / (gmvPct / 100));
+
+  // Net brand profit per month (GMV * contribPct - retainer - GMV * gmvPct/100)
+  const brandProfit = goals.map(g => Math.round(g * contribPct - retainer - g * gmvPct / 100));
+  const breakEvenLine = Array(12).fill(0);
+
+  _projChartInstance = new Chart(canvas, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Monthly GMV',
+          data: goals,
+          backgroundColor: 'rgba(124,58,237,.35)',
+          borderColor: '#7c3aed',
+          borderWidth: 1,
+          borderRadius: 4,
+          yAxisID: 'y',
+        },
+        {
+          label: 'Brand Net Profit',
+          data: brandProfit,
+          type: 'line',
+          borderColor: '#10b981',
+          backgroundColor: 'rgba(16,185,129,.08)',
+          borderWidth: 2,
+          pointRadius: 3,
+          tension: .35,
+          fill: true,
+          yAxisID: 'y',
+        },
+        {
+          label: 'Break-even Line',
+          data: breakEvenLine,
+          type: 'line',
+          borderColor: '#f59e0b',
+          borderWidth: 1,
+          borderDash: [6,3],
+          pointRadius: 0,
+          yAxisID: 'y',
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#64748b', font: { size: 11 } } },
+        tooltip: {
+          callbacks: {
+            label: ctx => {
+              const v = ctx.raw;
+              return ` ${ctx.dataset.label}: $${Math.abs(v).toLocaleString()}${v < 0 ? ' (pre-profit)' : ''}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: { grid: { color: '#1e1c30' }, ticks: { color: '#64748b', font: { size: 10 } } },
+        y: {
+          grid: { color: '#1e1c30' },
+          ticks: {
+            color: '#64748b',
+            font: { size: 10 },
+            callback: v => '$' + (Math.abs(v) >= 1000 ? (v/1000).toFixed(0) + 'k' : v)
+          }
+        },
+      },
+    },
+  });
+
+  // Update breakeven callout
+  const beText = document.getElementById('pm-breakeven-text');
+  if (beText) {
+    beText.innerHTML = `At <strong>$${breakEven.toLocaleString()}/mo GMV</strong>, the ${gmvPct}% performance fee covers the full retainer. Your contribution margin on top of that is <strong>${Math.round(contribPct * 100)}%</strong> of every additional dollar.`;
+  }
+}
+
+function updateProjChart() {
+  const aov = document.getElementById('pm-aov');
+  const cogs = document.getElementById('pm-cogs');
+  const comm = document.getElementById('pm-comm');
+  if (aov) document.getElementById('pm-aov-val').textContent = '$' + aov.value;
+  if (cogs) document.getElementById('pm-cogs-val').textContent = cogs.value + '%';
+  if (comm) document.getElementById('pm-comm-val').textContent = comm.value + '%';
+  if (_lastProjData) renderProjChart(_lastProjData);
 }
 
 function copyProposalMd() {
-  const md = lastProposalMarkdown || document.getElementById('proposal-output').innerText;
-  if (!md) return;
-  navigator.clipboard.writeText(md).then(() => {
+  if (!lastProposalData) return;
+  const text = `${lastProposalData.brandName} × Cult Content\n\n${lastProposalData.tagline}\n\n${lastProposalData.strategicQuestion}`;
+  navigator.clipboard.writeText(text).then(() => {
     const btn = event.target;
     const orig = btn.textContent;
     btn.textContent = '✓ Copied';
     setTimeout(() => btn.textContent = orig, 1500);
   });
 }
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.getElementById('pm-overlay')?.classList.remove('open');
+    document.getElementById('cq-overlay')?.classList.remove('open');
+  }
+});
 
 // ── Shopify Prospector ─────────────────────────────────────────────────────────
 let shopifyProfile = null;

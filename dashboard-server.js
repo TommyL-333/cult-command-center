@@ -4016,7 +4016,7 @@ app.get('/api/pipeline/:segment', async (req, res) => {
       // Annotate each opp with resolved stage name + contact
       const opps = raw.map(o => ({
         ...o,
-        stageName: SEGMENT_STAGE_NAMES[o.pipelineStageId] || o.pipelineStage?.name || 'Unknown',
+        stageName: SEGMENT_STAGE_NAMES[o.pipelineStageId] || o.pipelineStage?.name || 'Lead',
         contact: {
           id:    o.contact?.id    || o.contactId || '',
           name:  o.contact?.name  || o.contactName || o.name || '',
@@ -4035,7 +4035,6 @@ app.get('/api/pipeline/:segment', async (req, res) => {
       });
 
       const byStage = Object.entries(stageMap)
-        .filter(([, opps]) => opps.length > 0 || ORDER.includes(opps))
         .map(([name, opportunities]) => ({ name, opportunities }));
 
       return { total: opps.length, byStage, opportunities: opps };
@@ -4171,98 +4170,77 @@ app.post('/api/ai/propose', async (req, res) => {
     if (!context) return res.status(400).json({ error: 'context required' });
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
+    const retainerNum = parseInt(String(retainer || '2500').replace(/[^0-9]/g, '')) || 2500;
+    const gmvNum = parseFloat(String(gmv || '5').replace(/[^0-9.]/g, '')) || 5;
+    const breakEvenGMV = Math.round(retainerNum / (gmvNum / 100));
+
     const SYSTEM = `You are Tommy Lynch, founder of Cult Content (cultcontent.cc), a TikTok Shop social commerce agency. You write proposals for potential brand clients.
 
-STYLE RULES — non-negotiable:
-- Short, punchy sentences. One idea per sentence. No sentence over 20 words.
-- Zero filler. Cut "we're excited to", "we believe", "we look forward to", "we're confident", "we'd love to". All of it.
-- Confident assertions. "This will" not "this should". "The channel is" not "we think the channel may be".
-- Use "This is not X. This is Y." constructions to sharpen framing. Use them often.
-- Reference specific details from the notes — product, price point, budget, pain points, competitor names. Never be generic.
-- Prose for strategy. Bullets for deliverables and criteria.
-- Every section opens with a one-line framing statement, then detail.
-- The closing is built on math, not pitch.
+Output ONLY a valid JSON object — no markdown, no code blocks, no explanation. Return raw JSON only.
 
-TEMPLATE — follow this structure exactly:
+Schema (follow exactly):
+{
+  "brandName": "string — extract carefully from notes. Use exact brand name.",
+  "tagline": "string — one sharp sentence: the core business opportunity or question. Frame as a business decision.",
+  "strategicQuestion": "string — 2-3 punchy sentences. What decision does this brand face re: TikTok Shop? What does success/failure mean for them? Reference their specific situation.",
+  "currentStateMetrics": [
+    {"label": "string", "value": "string"}
+  ],
+  "financialBreakdown": {
+    "sellingPrice": number or null,
+    "tikTokFeePercent": 6,
+    "affiliateCommissionPercent": 12,
+    "cogsPercent": number or null,
+    "contributionMarginPercent": number or null,
+    "narrativeLine": "string — 1-2 sentences on what the math means for this brand"
+  },
+  "roadmap": {
+    "month1Bullets": ["string"],
+    "months12Bullets": ["string"],
+    "month3plusBullets": ["string"]
+  },
+  "nextSteps": ["string", "string", "string"],
+  "projections": {
+    "aov": number,
+    "cogsPercent": number,
+    "creatorCommissionPct": number,
+    "monthlyGMVGoals": [number, number, number, number, number, number, number, number, number, number, number, number]
+  }
+}
 
-## [Brand Name] × Cult Content
-
-**[One sharp sentence: the core question or opportunity this pilot answers. Frame it as a business decision, not a pitch.]**
-
----
-
-## The Strategic Question
-
-[2–3 sentences. What is the actual decision this brand needs to make about TikTok Shop? What does success or failure on this channel mean for them? Reference their specific situation — budget, current agency frustration, product type, competitor landscape if known. Make it feel like you've done your homework.]
-
----
-
-## Financial Clarity
-
-[If any numbers were mentioned — budget, price point, COGS, margins — model them here. Show: selling price, key cost deductions (TikTok fee %, affiliate commission %, shipping if known), and estimated contribution margin. If budget or GMV targets were discussed, reference them. If no numbers were given, keep this section brief: "All spend is adjustable and governed by contribution margin. We don't scale what isn't profitable." Do not invent numbers that weren't mentioned.]
-
----
-
-## What We'll Do
-
-### Month 1 — Foundation
-[Bullet list of setup work. Pull from the notes — what does THIS brand specifically need? Include: TikTok Shop account setup / audit, listing architecture, affiliate resource kit, compliance setup, creator outreach begins. Be specific to their product and situation.]
-
-### Months 1–2 — Launch
-[Bullet list. Creator activation, sampling, first campaigns, early GMV target if inferable from notes. Be specific to this brand — what kinds of creators fit, what content angles to test first, what early success looks like.]
-
-### Month 3+ — Scale
-[Bullet list. Paid amplification via GMV Max, retainer creators, new content angles, review density, algorithmic momentum. Only scale what's converting.]
-
----
-
-## Investment
-
-**Retainer:** ${retainer || '[retainer]'}
-**Performance Fee:** ${gmv || '[gmv]'} of TikTok Shop GMV
-**Terms:** Month-to-month. Cancel with 30 days notice. No long-term lock-in.
-
-[One sentence on what's covered: dedicated affiliate manager, shop manager, content strategy, weekly reporting, bi-weekly syncs.]
-
----
-
-## Why Cult Content
-
-- **Founder-led execution** — Tommy Lynch runs your account directly. Not a junior account manager. Not a team you'll never meet.
-- **AI content system** — faster creative iteration at a fraction of traditional production cost. Volume without bloated production budgets.
-- **GMV Max expertise** — we don't run ads until organic is converting. Then we amplify what's already working. No wasted ad spend.
-- **Full-stack shop management** — affiliate recruitment, compliance, listing optimization, creator briefing, and reporting under one roof.
-- **Aligned incentives** — the performance fee means we only win when you do. No retainer-padding, no inflated deliverables.
-
----
-
-## Next Steps
-
-1. [Specific first action based on the notes — e.g. "Send product samples for creator review" or "Complete TikTok Shop account audit"]
-2. Share AI content examples and case studies within 24 hours
-3. Book a call when ready → cultcontent.cc/book
-
----
-
-*This is a controlled test. Clear inputs. Clear outputs. Clear decision.*`;
+STYLE RULES:
+- Short, punchy sentences. Zero filler words.
+- Confident assertions: "This will" not "this should"
+- Reference specific details from the notes — product, price point, pain points
+- Never be generic. Every sentence should only make sense for THIS brand.
+- For currentStateMetrics: include things like AOV, product count, current GMV if known, platform presence
+- For monthlyGMVGoals: realistic 12-month ramp. Month 1-2 slow (testing), Month 3-6 growing, Month 7-12 scaled. Base on AOV and product type.`;
 
     const msg = await client.messages.create({
       model: 'claude-opus-4-5',
-      max_tokens: 2000,
+      max_tokens: 2500,
       system: SYSTEM,
-      messages: [{ role: 'user', content: `Write a proposal using the structure and style above.
+      messages: [{ role: 'user', content: `Generate a proposal for this brand.
 
 Meeting notes / context:
 ${context}
 
-Pricing to use:
-Retainer: ${retainer}
-GMV share: ${gmv}
+Pricing:
+Retainer: $${retainerNum.toLocaleString()}/mo
+GMV share: ${gmvNum}%
+Break-even GMV (when GMV fee covers retainer): $${breakEvenGMV.toLocaleString()}
 
-Extract the brand name carefully from the notes — use the exact name mentioned, do not abbreviate or alter it. If the brand name is unclear, use whatever label appears most often in the notes. Extract product details, specific numbers, and pain points. Be specific to this brand — never write a generic proposal.` }],
+Return ONLY valid JSON. No other text.` }],
     });
-    res.json({ text: msg.content[0].text });
+
+    const raw = msg.content[0].text.trim();
+    // Strip any accidental markdown code fences
+    const jsonStr = raw.replace(/^```json?\s*/i, '').replace(/\s*```$/i, '').trim();
+    const proposal = JSON.parse(jsonStr);
+    proposal.pricing = { retainer: retainerNum, gmvPct: gmvNum, breakEvenGMV };
+    res.json({ proposal });
   } catch (err) {
+    console.error('propose:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
