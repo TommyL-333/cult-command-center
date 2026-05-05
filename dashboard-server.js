@@ -220,7 +220,10 @@ app.post('/api/webhooks/ghl-client-onboard', async (req, res) => {
   }
 });
 
-app.use(requireAuth); // all routes require auth in production
+// Public routes — registered BEFORE requireAuth so no login needed
+app.use('/uploads', express.static(UPLOAD_DIR));
+
+app.use(requireAuth); // all other routes require auth in production
 
 // Serve index.html with no-cache to prevent Cloudflare/browser serving stale versions
 app.get('/', (req, res) => {
@@ -237,7 +240,6 @@ app.get('/index.html', (req, res) => {
 });
 
 app.use(express.static(path.join(__dirname, 'dashboard')));
-app.use('/uploads', express.static(UPLOAD_DIR));
 app.use('/tools', express.static(path.join(__dirname)));
 
 const CFG = {
