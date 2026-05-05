@@ -2093,9 +2093,42 @@ document.addEventListener('DOMContentLoaded', () => _renderChart(_p));
 </body>
 </html>`;
 
-  const blob = new Blob([html], { type: 'text/html' });
-  const url = URL.createObjectURL(blob);
-  window.open(url, '_blank');
+  // Upload to server (served via /uploads/* which has CF Access bypass — public link)
+  const exportBtn = document.querySelector('.pm-topbar-actions button[onclick="exportProposalHTML()"]');
+  const origText = exportBtn?.textContent;
+  if (exportBtn) { exportBtn.textContent = '⏳ Generating…'; exportBtn.disabled = true; }
+
+  fetch(`${BASE}/api/proposals/publish`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ html }),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (!data.url) throw new Error(data.error || 'Unknown error');
+    // Show shareable link modal
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:9999;display:flex;align-items:center;justify-content:center';
+    overlay.innerHTML = `
+      <div style="background:#091819;border:1px solid #0f3035;border-radius:14px;padding:28px 32px;max-width:520px;width:90%;text-align:center">
+        <div style="font-size:1.1rem;font-weight:700;color:#e2e8f0;margin-bottom:6px">✅ Proposal ready to share</div>
+        <div style="font-size:.78rem;color:#5eead4;margin-bottom:18px">Anyone with this link can view it — no login required</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input id="share-url-input" readonly value="${data.url}" style="flex:1;background:#050e0f;border:1px solid #0f3035;border-radius:8px;padding:9px 12px;color:#e2e8f0;font-size:.78rem;outline:none;font-family:monospace">
+          <button onclick="navigator.clipboard.writeText('${data.url}').then(()=>{this.textContent='✓ Copied';setTimeout(()=>this.textContent='Copy',1500)})" style="background:#20d5c4;color:#050e0f;border:none;border-radius:8px;padding:9px 16px;font-size:.78rem;font-weight:700;cursor:pointer;white-space:nowrap">Copy</button>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:16px;justify-content:center">
+          <button onclick="window.open('${data.url}','_blank')" style="background:#0f3035;color:#5eead4;border:1px solid #20d5c4;border-radius:8px;padding:8px 20px;font-size:.78rem;font-weight:600;cursor:pointer">Open Preview →</button>
+          <button onclick="this.closest('div[style*=fixed]').remove()" style="background:transparent;color:#64748b;border:1px solid #0f3035;border-radius:8px;padding:8px 20px;font-size:.78rem;cursor:pointer">Close</button>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+    overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  })
+  .catch(err => alert('Export failed: ' + err.message))
+  .finally(() => {
+    if (exportBtn) { exportBtn.textContent = origText; exportBtn.disabled = false; }
+  });
 }
 
 function buildProposalHTML(p) {
