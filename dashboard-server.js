@@ -863,7 +863,8 @@ app.post('/api/proposals/publish', express.json({ limit: '5mb' }), (req, res) =>
     const id = require('crypto').randomBytes(12).toString('hex');
     const filename = `proposal-${id}.html`;
     fs.writeFileSync(path.join(UPLOAD_DIR, filename), html, 'utf8');
-    const baseUrl = process.env.UPLOAD_BASE_URL || process.env.DASHBOARD_URL || 'https://manifest.cultcontent.cc';
+    // Use the Railway raw URL — bypasses Cloudflare Access so prospects can view without auth
+    const baseUrl = 'https://cult-command-center-production.up.railway.app';
     res.json({ ok: true, url: `${baseUrl}/uploads/${filename}` });
   } catch (e) {
     res.status(500).json({ error: e.message });
