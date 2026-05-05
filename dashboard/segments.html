@@ -238,6 +238,16 @@ main{max-width:1400px;margin:0 auto;padding:24px 20px;}
   .pm-body{overflow:visible;}
 }
 
+/* ── Metrics Input Panel ── */
+.metrics-panel{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;}
+.metrics-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;}
+.metrics-col-title{font-size:.6rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border);}
+.metric-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;}
+.metric-row label{font-size:.7rem;color:var(--muted);flex:1;}
+.metric-row input{width:80px;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:3px 8px;color:var(--text);font-size:.75rem;text-align:right;outline:none;}
+.metric-row input:focus{border-color:var(--accent);}
+.metrics-toggle{font-size:.7rem;color:var(--accent);cursor:pointer;background:none;border:none;padding:0;text-decoration:underline;}
+
 /* ── Proposal generator ── */
 .proposal-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:24px;}
 .proposal-title{font-size:.88rem;font-weight:700;margin-bottom:14px;}
@@ -301,7 +311,11 @@ main{max-width:1400px;margin:0 auto;padding:24px 20px;}
 <div class="pm-overlay" id="pm-overlay">
   <div class="pm-modal">
     <div class="pm-topbar">
-      <span class="pm-topbar-brand" id="pm-topbar-brand">Cult Content</span>
+      <div style="display:flex;align-items:center;gap:12px">
+        <img src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png" style="height:28px;width:auto;object-fit:contain" alt="Cult Content">
+        <img src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/6978e226d119a5154347af54.png" style="height:24px;width:auto;object-fit:contain" alt="TikTok Shop Partner Agency">
+        <span style="font-size:.7rem;color:#4a4565;font-weight:600" id="pm-topbar-brand"></span>
+      </div>
       <div class="pm-topbar-actions">
         <select id="pm-contact-sel" style="background:#1e1c30;border:1px solid #2a2742;border-radius:8px;padding:5px 10px;color:#e2e8f0;font-size:.75rem;outline:none">
           <option value="">Link to contact…</option>
@@ -573,6 +587,47 @@ main{max-width:1400px;margin:0 auto;padding:24px 20px;}
           </div>
         </div>
         <textarea class="proposal-textarea" id="proposal-input" placeholder="Select a meeting above, or paste notes here. E.g. Spoke with Sarah from GreenBrand — eco water bottles, ~$80 AOV, 40% margins, flexible budget…"></textarea>
+
+        <!-- Metrics toggle -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;margin-bottom:4px">
+          <span style="font-size:.7rem;color:var(--muted)">Channel economics & KPIs for projections</span>
+          <button class="metrics-toggle" onclick="toggleMetricsPanel()">▸ Edit metrics</button>
+        </div>
+
+        <!-- Metrics panel (hidden by default) -->
+        <div class="metrics-panel" id="metrics-panel" style="display:none">
+          <div class="metrics-grid">
+            <!-- Creator KPIs -->
+            <div>
+              <div class="metrics-col-title">👥 Creator KPIs</div>
+              <div class="metric-row"><label>Active Creators</label><input type="number" id="m-creators" value="500"></div>
+              <div class="metric-row"><label>Videos / creator / mo</label><input type="number" id="m-videos" value="4"></div>
+              <div class="metric-row"><label>Avg Views / video</label><input type="number" id="m-views" value="1500"></div>
+              <div class="metric-row"><label>CTR %</label><input type="number" id="m-ctr" value="3" step="0.1"></div>
+              <div class="metric-row"><label>CVR %</label><input type="number" id="m-cvr" value="1.5" step="0.1"></div>
+            </div>
+            <!-- Unit Economics -->
+            <div>
+              <div class="metrics-col-title">💰 Unit Economics</div>
+              <div class="metric-row"><label>List Price ($)</label><input type="number" id="m-price" value="79"></div>
+              <div class="metric-row"><label>Promo Discount %</label><input type="number" id="m-promo" value="15" step="1"></div>
+              <div class="metric-row"><label>Shipping ($/unit)</label><input type="number" id="m-shipping" value="6" step="0.5"></div>
+              <div class="metric-row"><label>COGS ($/unit)</label><input type="number" id="m-cogs-unit" value="10"></div>
+              <div class="metric-row"><label>Affiliate Commission %</label><input type="number" id="m-affcomm" value="20" step="1"></div>
+              <div class="metric-row"><label>Adspend %</label><input type="number" id="m-adspend" value="0" step="1"></div>
+            </div>
+            <!-- Channel Costs -->
+            <div>
+              <div class="metrics-col-title">📦 Monthly Channel Costs</div>
+              <div class="metric-row"><label>Monthly Samples (units)</label><input type="number" id="m-samples" value="100"></div>
+              <div class="metric-row"><label>Affiliate Retainers ($)</label><input type="number" id="m-retainers" value="1000"></div>
+              <div style="margin-top:10px;padding:8px;background:var(--card);border-radius:6px;font-size:.68rem;color:var(--muted);line-height:1.5">
+                <strong style="color:var(--text)">Team Fee + GMV %</strong> pulled from pricing slider above
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
           <div style="display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:5px 10px;flex:1">
             <span style="font-size:.68rem;color:var(--muted);font-weight:700;white-space:nowrap">$/mo</span>
@@ -1511,6 +1566,82 @@ function closeCQ(e) {
   document.getElementById('cq-overlay').classList.remove('open');
 }
 
+function toggleMetricsPanel() {
+  const panel = document.getElementById('metrics-panel');
+  const btn = event.target;
+  if (panel.style.display === 'none') {
+    panel.style.display = 'block';
+    btn.textContent = '▾ Hide metrics';
+  } else {
+    panel.style.display = 'none';
+    btn.textContent = '▸ Edit metrics';
+  }
+}
+
+function getMetrics() {
+  const v = id => parseFloat(document.getElementById(id)?.value || 0);
+  const sl = document.getElementById('pricing-slider');
+  const teamFee = parseInt(sl?.dataset.retainer || sl?.value || 2500);
+  const revSharePct = parseFloat(sl?.dataset.gmv || 6.5) / 100;
+
+  const listPrice = v('m-price') || 79;
+  const promoPct = v('m-promo') / 100 || 0.15;
+  const sellingPrice = listPrice * (1 - promoPct);
+  const shipping = v('m-shipping') || 6;
+  const cogs = v('m-cogs-unit') || 10;
+  const affCommPct = v('m-affcomm') / 100 || 0.20;
+  const adspendPct = v('m-adspend') / 100;
+  const tikTokFeePct = 0.06;
+
+  const affComm = sellingPrice * affCommPct;
+  const tikTokFee = sellingPrice * tikTokFeePct;
+  const adspend = sellingPrice * adspendPct;
+  const totalCostPerOrder = shipping + cogs + affComm + tikTokFee + adspend;
+  const grossProfitPerOrder = sellingPrice - totalCostPerOrder;
+  const grossMarginPct = grossProfitPerOrder / sellingPrice;
+
+  const creators = v('m-creators') || 500;
+  const videosPerCreator = v('m-videos') || 4;
+  const avgViews = v('m-views') || 1500;
+  const ctr = v('m-ctr') / 100 || 0.03;
+  const cvr = v('m-cvr') / 100 || 0.015;
+
+  const impressions = creators * videosPerCreator * avgViews;
+  const purchases = Math.round(impressions * ctr * cvr);
+  const monthlyGMV = purchases * sellingPrice;
+  const grossMonthlyProfit = grossProfitPerOrder * purchases;
+
+  const monthlySamples = v('m-samples') || 100;
+  const affiliateRetainers = v('m-retainers') || 1000;
+  const teamCost = teamFee + (revSharePct * monthlyGMV);
+  const sampleCost = (shipping + cogs) * monthlySamples;
+  const returns = monthlyGMV * 0.02;
+  const netMonthlyProfit = grossMonthlyProfit - teamCost - sampleCost - affiliateRetainers - returns;
+
+  // Break-even GMV: solve for GMV where net profit = 0
+  // netProfit = GMV * grossMarginPct - teamFee - GMV*revSharePct - sampleCost - affiliateRetainers - GMV*0.02
+  // 0 = GMV*(grossMarginPct - revSharePct - 0.02) - (teamFee + sampleCost + affiliateRetainers)
+  const fixedCosts = teamFee + sampleCost + affiliateRetainers;
+  const netMarginRate = grossMarginPct - revSharePct - 0.02;
+  const breakEvenGMV = netMarginRate > 0 ? fixedCosts / netMarginRate : null;
+
+  return {
+    // Inputs
+    listPrice, promoPct, sellingPrice, shipping, cogs,
+    affCommPct, adspendPct, tikTokFeePct,
+    creators, videosPerCreator, avgViews, ctr, cvr,
+    monthlySamples, affiliateRetainers, teamFee, revSharePct,
+    // Per-order
+    affComm, tikTokFee, adspend, totalCostPerOrder, grossProfitPerOrder, grossMarginPct,
+    // Monthly
+    impressions, purchases, monthlyGMV, grossMonthlyProfit,
+    // All-in
+    teamCost, sampleCost, returns, netMonthlyProfit,
+    // Analysis
+    fixedCosts, netMarginRate, breakEvenGMV,
+  };
+}
+
 async function markDiscoveryCall(oppId, btn) {
   const orig = btn.textContent;
   btn.disabled = true; btn.textContent = '⏳…';
@@ -1738,17 +1869,18 @@ async function generateProposal() {
   btn.disabled = true; btn.textContent = '⏳ Generating…';
 
   const { retainer, gmv } = getProposalPricing();
+  const metrics = getMetrics();
 
   try {
     const r = await fetch(`${BASE}/api/ai/propose`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ context: input, retainer, gmv }),
+      body: JSON.stringify({ context: input, retainer, gmv, metrics }),
     });
     const d = await r.json();
     if (d.error) throw new Error(d.error);
-    lastProposalData = d.proposal;
-    openProposalModal(d.proposal);
+    lastProposalData = { ...d.proposal, _metrics: metrics };
+    openProposalModal(lastProposalData);
     populateContactSelector();
     populatePmContactSel();
   } catch(e) {
@@ -1811,32 +1943,107 @@ function closeProposalModal() {
 
 function buildProposalHTML(p) {
   const pr = p.pricing || {};
-  const proj = p.projections || {};
-  const retainerFmt = '$' + (pr.retainer || 0).toLocaleString();
-  const gmvPct = pr.gmvPct || 5;
-  const breakEven = pr.breakEvenGMV || Math.round((pr.retainer || 2500) / (gmvPct / 100));
+  const m = p._metrics || getMetrics();
   const today = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
-  // Metrics
-  const metricsHtml = (p.currentStateMetrics || []).map(m =>
-    `<div class="pm-metric"><div class="pm-metric-val">${esc(m.value)}</div><div class="pm-metric-label">${esc(m.label)}</div></div>`
+  const fmt$ = n => '$' + Math.round(n).toLocaleString();
+  const fmtPct = n => (n * 100).toFixed(1) + '%';
+  const fmtK = n => n >= 1000 ? '$' + (n/1000).toFixed(0) + 'k' : fmt$(n);
+
+  // KPI ramp: 3 phases using the base month multiplied
+  const phases = [
+    { label: 'Month 1–3', cMult: 0.3, vMult: 0.8 },
+    { label: 'Month 4–6', cMult: 0.7, vMult: 1.0 },
+    { label: 'Month 7–12', cMult: 1.0, vMult: 1.2 },
+  ];
+
+  const phaseCalc = ph => {
+    const c = Math.round(m.creators * ph.cMult);
+    const imp = c * m.videosPerCreator * m.avgViews * ph.vMult;
+    const purch = Math.round(imp * m.ctr * m.cvr);
+    const gmv = purch * m.sellingPrice;
+    const gross = m.grossProfitPerOrder * purch;
+    const teamC = m.teamFee + (m.revSharePct * gmv);
+    const sampC = m.sampleCost;
+    const ret = gmv * 0.02;
+    const net = gross - teamC - sampC - m.affiliateRetainers - ret;
+    return { c, imp: Math.round(imp), purch, gmv, gross, teamC, net };
+  };
+  const phaseData = phases.map(phaseCalc);
+
+  // Metrics chips
+  const metricsHtml = (p.currentStateMetrics || []).map(m2 =>
+    `<div class="pm-metric"><div class="pm-metric-val">${esc(m2.value)}</div><div class="pm-metric-label">${esc(m2.label)}</div></div>`
   ).join('');
 
-  // Financial table
-  const fd = p.financialBreakdown || {};
-  const hasFinancials = fd.sellingPrice || fd.cogsPercent;
-  const finHtml = hasFinancials ? `
+  // Unit economics rows
+  const unitRows = [
+    ['List Price', fmt$(m.listPrice), '100%'],
+    ['Promo Discount', `−${fmtPct(m.promoPct)}`, `−${fmtPct(m.promoPct)}`],
+    ['Selling Price', fmt$(m.sellingPrice), '100%'],
+    ['— Shipping', `−${fmt$(m.shipping)}`, `−${fmtPct(m.shipping/m.sellingPrice)}`],
+    ['— COGS', `−${fmt$(m.cogs)}`, `−${fmtPct(m.cogs/m.sellingPrice)}`],
+    ['— Affiliate Commission', `−${fmt$(m.affComm)}`, `−${fmtPct(m.affCommPct)}`],
+    ['— TikTok Fee (6%)', `−${fmt$(m.tikTokFee)}`, '−6.0%'],
+    m.adspendPct > 0 ? ['— Adspend', `−${fmt$(m.adspend)}`, `−${fmtPct(m.adspendPct)}`] : null,
+    ['Gross Profit / Order', fmt$(m.grossProfitPerOrder), fmtPct(m.grossMarginPct)],
+  ].filter(Boolean);
+
+  const unitTableHtml = `
     <div class="pm-fin-box">
       <table class="pm-fin-table">
-        ${fd.sellingPrice ? `<tr><td>Selling Price</td><td>$${fd.sellingPrice.toLocaleString()}</td></tr>` : ''}
-        ${fd.tikTokFeePercent ? `<tr><td>TikTok Platform Fee</td><td>−${fd.tikTokFeePercent}%</td></tr>` : ''}
-        ${fd.affiliateCommissionPercent ? `<tr><td>Creator Commission</td><td>−${fd.affiliateCommissionPercent}%</td></tr>` : ''}
-        ${fd.cogsPercent ? `<tr><td>COGS</td><td>−${fd.cogsPercent}%</td></tr>` : ''}
-        ${fd.contributionMarginPercent ? `<tr><td>Contribution Margin</td><td>${fd.contributionMarginPercent}%</td></tr>` : ''}
+        ${unitRows.map((r, i) => `<tr style="${i === unitRows.length-1 ? 'background:#0d1a12' : ''}"><td>${r[0]}</td><td>${r[1]}</td><td style="color:#64748b;font-size:.7rem">${r[2]}</td></tr>`).join('')}
       </table>
-    </div>
-    ${fd.narrativeLine ? `<p class="pm-body-text" style="margin-top:12px">${esc(fd.narrativeLine)}</p>` : ''}
-  ` : `<p class="pm-body-text">${esc(fd.narrativeLine || 'All spend is governed by contribution margin. We do not scale what is not profitable.')}</p>`;
+    </div>`;
+
+  // KPI projection table
+  const kpiTableHtml = `
+    <div class="pm-fin-box" style="margin-top:16px">
+      <table class="pm-fin-table">
+        <tr style="background:#13111e"><td style="color:#a78bfa;font-weight:800">Phase</td><td style="color:#a78bfa">Creators</td><td style="color:#a78bfa">Impressions/mo</td><td style="color:#a78bfa">Purchases/mo</td><td style="color:#a78bfa">Est. GMV/mo</td></tr>
+        ${phases.map((ph, i) => {
+          const d = phaseData[i];
+          return `<tr><td style="font-weight:700;color:#e2e8f0">${ph.label}</td><td>${d.c.toLocaleString()}</td><td>${d.imp.toLocaleString()}</td><td>${d.purch.toLocaleString()}</td><td style="color:#10b981;font-weight:700">${fmtK(d.gmv)}</td></tr>`;
+        }).join('')}
+      </table>
+    </div>`;
+
+  // All-in cost waterfall at Month 7-12 run rate
+  const scaled = phaseData[2];
+  const waterfallRows = [
+    { label: 'Gross Revenue (GMV)', val: scaled.gmv, pct: 1, color: '#e2e8f0', bold: true },
+    { label: 'Gross Profit from Sales', val: scaled.gross, pct: scaled.gross/scaled.gmv, color: '#a78bfa', bold: false },
+    { label: '− Team Fee', val: -m.teamFee, pct: -m.teamFee/scaled.gmv, color: '#ef4444', bold: false },
+    { label: `− GMV Rev Share (${fmtPct(m.revSharePct)})`, val: -(m.revSharePct * scaled.gmv), pct: -m.revSharePct, color: '#ef4444', bold: false },
+    { label: `− Sample Cost (${m.monthlySamples} units)`, val: -m.sampleCost, pct: -m.sampleCost/scaled.gmv, color: '#f59e0b', bold: false },
+    { label: '− Affiliate Retainers', val: -m.affiliateRetainers, pct: -m.affiliateRetainers/scaled.gmv, color: '#f59e0b', bold: false },
+    { label: '− Returns & Refunds (2%)', val: -(scaled.gmv * 0.02), pct: -0.02, color: '#64748b', bold: false },
+    { label: 'Net Monthly Profit', val: scaled.net, pct: scaled.net/scaled.gmv, color: scaled.net >= 0 ? '#10b981' : '#ef4444', bold: true },
+  ];
+
+  const waterfallHtml = `
+    <div class="pm-section-label" style="margin-top:24px">All-In Cost Waterfall — Month 7–12 Run Rate</div>
+    <div class="pm-fin-box">
+      <table class="pm-fin-table">
+        ${waterfallRows.map(r => `
+          <tr style="${r.bold ? 'background:#0d1a12' : ''}">
+            <td style="color:${r.bold ? r.color : '#94a3b8'};font-weight:${r.bold ? '800' : '400'}">${r.label}</td>
+            <td style="color:${r.color};font-weight:${r.bold ? '800' : '600'}">${r.val >= 0 ? fmt$(r.val) : '(' + fmt$(Math.abs(r.val)) + ')'}</td>
+            <td style="color:#64748b;font-size:.7rem">${(r.pct * 100).toFixed(1)}%</td>
+          </tr>`).join('')}
+      </table>
+    </div>`;
+
+  // Break-even callout
+  const beHtml = m.breakEvenGMV
+    ? `<div class="pm-breakeven-callout">
+        <div class="be-icon">📊</div>
+        <div class="be-text">
+          Break-even at <strong>${fmtK(m.breakEvenGMV)}/mo GMV</strong> — the channel covers all costs.
+          At ${fmtK(scaled.gmv)}/mo (Month 7–12 run rate), net profit is <strong style="color:${scaled.net >= 0 ? '#4ade80' : '#f87171'}">${fmt$(scaled.net)}/mo</strong>.
+        </div>
+      </div>`
+    : '';
 
   // Roadmap
   const rm = p.roadmap || {};
@@ -1859,7 +2066,6 @@ function buildProposalHTML(p) {
       </div>
     </div>`;
 
-  // Next steps
   const stepsHtml = `<ol class="pm-steps">${(p.nextSteps || []).map((s, i) =>
     `<li><div class="pm-step-num">${i + 1}</div><div class="pm-step-text">${esc(s)}</div></li>`
   ).join('')}</ol>`;
@@ -1867,6 +2073,10 @@ function buildProposalHTML(p) {
   return `
     <!-- Hero -->
     <div class="pm-hero">
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+        <img src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png" style="height:36px;width:auto" alt="Cult Content">
+        <img src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/6978e226d119a5154347af54.png" style="height:30px;width:auto" alt="TikTok Shop Partner Agency">
+      </div>
       <div class="pm-hero-brand">${esc(p.brandName)} × Cult Content</div>
       <div class="pm-hero-tagline">"${esc(p.tagline)}"</div>
       <div class="pm-hero-meta">
@@ -1883,49 +2093,43 @@ function buildProposalHTML(p) {
       ${metricsHtml ? `<div class="pm-metrics">${metricsHtml}</div>` : ''}
     </div>
 
-    <!-- Financial Clarity -->
+    <!-- Channel Economics -->
     <div class="pm-section">
-      <div class="pm-section-label">Financial Clarity</div>
-      <div class="pm-section-title">Unit Economics</div>
-      ${finHtml}
+      <div class="pm-section-label">Channel Economics</div>
+      <div class="pm-section-title">Unit Economics — Per Order</div>
+      <p class="pm-body-text">Every dollar of GMV carries this cost structure. These numbers drive the projections below.</p>
+      ${unitTableHtml}
+
+      <div class="pm-section-title" style="margin-top:24px">KPI Projections — Creator-to-GMV Model</div>
+      <p class="pm-body-text">Based on ${m.creators.toLocaleString()} active creators at steady state, ${m.videosPerCreator} videos/creator/mo, ${m.avgViews.toLocaleString()} avg views, ${(m.ctr*100).toFixed(1)}% CTR, ${(m.cvr*100).toFixed(1)}% CVR.</p>
+      ${kpiTableHtml}
+      ${waterfallHtml}
+      ${beHtml}
     </div>
 
-    <!-- Roadmap -->
-    <div class="pm-section">
-      <div class="pm-section-label">Execution Plan</div>
-      <div class="pm-section-title">What We'll Build</div>
-      ${roadmapHtml}
-    </div>
-
-    <!-- Projections -->
+    <!-- 12-Month Projection Chart -->
     <div class="pm-section">
       <div class="pm-section-label">Financial Projections</div>
-      <div class="pm-section-title">12-Month GMV Model</div>
+      <div class="pm-section-title">12-Month P&L Model</div>
       <div class="pm-calc">
         <div class="pm-calc-row">
-          <span class="pm-calc-label">Avg Order Value (AOV)</span>
-          <input type="range" class="pm-calc-slider" id="pm-aov" min="20" max="300" step="5" value="${proj.aov || 65}" oninput="updateProjChart()">
-          <span class="pm-calc-val" id="pm-aov-val">$${proj.aov || 65}</span>
+          <span class="pm-calc-label">Affiliate Commission %</span>
+          <input type="range" class="pm-calc-slider" id="pm-affcomm-s" min="5" max="30" step="1" value="${Math.round(m.affCommPct*100)}" oninput="updateProjChart()">
+          <span class="pm-calc-val" id="pm-affcomm-s-val">${Math.round(m.affCommPct*100)}%</span>
         </div>
         <div class="pm-calc-row">
-          <span class="pm-calc-label">COGS %</span>
-          <input type="range" class="pm-calc-slider" id="pm-cogs" min="10" max="70" step="5" value="${proj.cogsPercent || 40}" oninput="updateProjChart()">
-          <span class="pm-calc-val" id="pm-cogs-val">${proj.cogsPercent || 40}%</span>
+          <span class="pm-calc-label">COGS ($/unit)</span>
+          <input type="range" class="pm-calc-slider" id="pm-cogs-s" min="1" max="100" step="1" value="${Math.round(m.cogs)}" oninput="updateProjChart()">
+          <span class="pm-calc-val" id="pm-cogs-s-val">${fmt$(m.cogs)}</span>
         </div>
         <div class="pm-calc-row">
-          <span class="pm-calc-label">Creator Commission %</span>
-          <input type="range" class="pm-calc-slider" id="pm-comm" min="5" max="25" step="1" value="${proj.creatorCommissionPct || 12}" oninput="updateProjChart()">
-          <span class="pm-calc-val" id="pm-comm-val">${proj.creatorCommissionPct || 12}%</span>
+          <span class="pm-calc-label">Monthly Samples</span>
+          <input type="range" class="pm-calc-slider" id="pm-samples-s" min="0" max="1000" step="50" value="${m.monthlySamples}" oninput="updateProjChart()">
+          <span class="pm-calc-val" id="pm-samples-s-val">${m.monthlySamples}</span>
         </div>
       </div>
       <div class="pm-chart-wrap">
         <canvas id="proj-chart"></canvas>
-      </div>
-      <div class="pm-breakeven-callout">
-        <div class="be-icon">📊</div>
-        <div class="be-text" id="pm-breakeven-text">
-          At <strong>$${breakEven.toLocaleString()}/mo GMV</strong>, the ${gmvPct}% performance fee covers the full retainer. Everything above that is pure upside.
-        </div>
       </div>
     </div>
 
@@ -1933,9 +2137,9 @@ function buildProposalHTML(p) {
     <div class="pm-section">
       <div class="pm-section-label">Investment</div>
       <div class="pm-pricing-card">
-        <div class="pm-pricing-retainer">${retainerFmt}</div>
+        <div class="pm-pricing-retainer">${fmt$(m.teamFee)}</div>
         <div class="pm-pricing-sub">per month · month-to-month</div>
-        <div class="pm-pricing-gmv">+ ${gmvPct}% of TikTok Shop GMV</div>
+        <div class="pm-pricing-gmv">+ ${fmtPct(m.revSharePct)} of TikTok Shop GMV</div>
         <ul class="pm-pricing-features">
           <li>Dedicated affiliate manager + shop manager</li>
           <li>AI content system — creative briefs, hooks, scripts</li>
@@ -1945,6 +2149,13 @@ function buildProposalHTML(p) {
           <li>Cancel with 30 days notice — no lock-in</li>
         </ul>
       </div>
+    </div>
+
+    <!-- Execution Plan -->
+    <div class="pm-section">
+      <div class="pm-section-label">Execution Plan</div>
+      <div class="pm-section-title">What We'll Build</div>
+      ${roadmapHtml}
     </div>
 
     <!-- Why Cult Content -->
@@ -1968,6 +2179,10 @@ function buildProposalHTML(p) {
 
     <!-- Footer -->
     <div class="pm-footer">
+      <div style="display:flex;align-items:center;justify-content:center;gap:16px;margin-bottom:16px">
+        <img src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png" style="height:28px;width:auto;opacity:.7" alt="Cult Content">
+        <img src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/6978e226d119a5154347af54.png" style="height:22px;width:auto;opacity:.7" alt="TikTok Shop Partner Agency">
+      </div>
       <div style="font-size:1rem;font-weight:700;color:#e2e8f0;margin-bottom:6px">Ready to move forward?</div>
       <a href="https://cultcontent.cc/book" target="_blank" style="display:inline-block;background:#7c3aed;color:#fff;padding:10px 28px;border-radius:8px;font-size:.85rem;font-weight:600;text-decoration:none;margin-bottom:16px">Book a Call →</a>
       <div>Tommy Lynch · <a href="mailto:tommy@cultcontent.cc">tommy@cultcontent.cc</a> · cultcontent.cc</div>
@@ -1985,23 +2200,46 @@ function renderProjChart(p) {
   if (!canvas || typeof Chart === 'undefined') return;
   if (_projChartInstance) { _projChartInstance.destroy(); _projChartInstance = null; }
 
-  const proj = p.projections || {};
-  const goals = proj.monthlyGMVGoals || [5000,12000,22000,38000,58000,82000,110000,140000,175000,210000,255000,300000];
-  const labels = ['M1','M2','M3','M4','M5','M6','M7','M8','M9','M10','M11','M12'];
+  const m = p._metrics || getMetrics();
   const pr = p.pricing || {};
-  const retainer = pr.retainer || 2500;
-  const gmvPct = pr.gmvPct || 5;
 
-  const aov = parseInt(document.getElementById('pm-aov')?.value || proj.aov || 65);
-  const cogs = parseInt(document.getElementById('pm-cogs')?.value || proj.cogsPercent || 40);
-  const comm = parseInt(document.getElementById('pm-comm')?.value || proj.creatorCommissionPct || 12);
+  // Get slider overrides if present
+  const affCommPct = (parseFloat(document.getElementById('pm-affcomm-s')?.value || m.affCommPct*100)) / 100;
+  const cogsVal = parseFloat(document.getElementById('pm-cogs-s')?.value || m.cogs);
+  const samplesVal = parseFloat(document.getElementById('pm-samples-s')?.value || m.monthlySamples);
 
-  const tikTokFee = 6;
-  const contribPct = (100 - cogs - tikTokFee - comm) / 100;
-  const breakEven = Math.round(retainer / (gmvPct / 100));
+  // Recalculate with slider values
+  const sellingPrice = m.sellingPrice;
+  const affComm = sellingPrice * affCommPct;
+  const tikTokFee = sellingPrice * 0.06;
+  const adspend = sellingPrice * m.adspendPct;
+  const totalCost = m.shipping + cogsVal + affComm + tikTokFee + adspend;
+  const grossProfitPerOrder = sellingPrice - totalCost;
+  const grossMarginPct = grossProfitPerOrder / sellingPrice;
+  const sampleCost = (m.shipping + cogsVal) * samplesVal;
+  const revSharePct = m.revSharePct;
+  const teamFee = m.teamFee;
+  const affiliateRetainers = m.affiliateRetainers;
 
-  // Net brand profit per month (GMV * contribPct - retainer - GMV * gmvPct/100)
-  const brandProfit = goals.map(g => Math.round(g * contribPct - retainer - g * gmvPct / 100));
+  // Build 12-month ramp: creators ramp from 15% to 100% over 12 months
+  const creatorRamp = [0.1, 0.2, 0.3, 0.45, 0.55, 0.65, 0.75, 0.82, 0.88, 0.93, 0.97, 1.0];
+  const labels = ['M1','M2','M3','M4','M5','M6','M7','M8','M9','M10','M11','M12'];
+
+  const gmvData = creatorRamp.map(r => {
+    const c = Math.round(m.creators * r);
+    const imp = c * m.videosPerCreator * m.avgViews;
+    const purch = Math.round(imp * m.ctr * m.cvr);
+    return Math.round(purch * sellingPrice);
+  });
+
+  const netProfitData = gmvData.map(gmv => {
+    const purchases = gmv / sellingPrice;
+    const gross = grossProfitPerOrder * purchases;
+    const teamC = teamFee + (revSharePct * gmv);
+    const ret = gmv * 0.02;
+    return Math.round(gross - teamC - sampleCost - affiliateRetainers - ret);
+  });
+
   const breakEvenLine = Array(12).fill(0);
 
   _projChartInstance = new Chart(canvas, {
@@ -2011,32 +2249,33 @@ function renderProjChart(p) {
       datasets: [
         {
           label: 'Monthly GMV',
-          data: goals,
-          backgroundColor: 'rgba(124,58,237,.35)',
+          data: gmvData,
+          backgroundColor: 'rgba(124,58,237,.25)',
           borderColor: '#7c3aed',
           borderWidth: 1,
-          borderRadius: 4,
+          borderRadius: 3,
           yAxisID: 'y',
         },
         {
-          label: 'Brand Net Profit',
-          data: brandProfit,
+          label: 'Net Profit (after all costs)',
+          data: netProfitData,
           type: 'line',
           borderColor: '#10b981',
-          backgroundColor: 'rgba(16,185,129,.08)',
+          backgroundColor: 'rgba(16,185,129,.06)',
           borderWidth: 2,
           pointRadius: 3,
+          pointBackgroundColor: netProfitData.map(v => v >= 0 ? '#10b981' : '#ef4444'),
           tension: .35,
           fill: true,
           yAxisID: 'y',
         },
         {
-          label: 'Break-even Line',
+          label: 'Break-even',
           data: breakEvenLine,
           type: 'line',
           borderColor: '#f59e0b',
           borderWidth: 1,
-          borderDash: [6,3],
+          borderDash: [5,3],
           pointRadius: 0,
           yAxisID: 'y',
         },
@@ -2046,44 +2285,38 @@ function renderProjChart(p) {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: { labels: { color: '#64748b', font: { size: 11 } } },
+        legend: { labels: { color: '#64748b', font: { size: 11 }, boxWidth: 12 } },
         tooltip: {
           callbacks: {
             label: ctx => {
               const v = ctx.raw;
-              return ` ${ctx.dataset.label}: $${Math.abs(v).toLocaleString()}${v < 0 ? ' (pre-profit)' : ''}`;
+              const prefix = ctx.datasetIndex === 1 && v < 0 ? ' ' : ' ';
+              return ` ${ctx.dataset.label}: ${v < 0 ? '(' : ''}$${Math.abs(v).toLocaleString()}${v < 0 ? ')' : ''}`;
             }
           }
         }
       },
       scales: {
-        x: { grid: { color: '#1e1c30' }, ticks: { color: '#64748b', font: { size: 10 } } },
+        x: { grid: { color: '#1a1830' }, ticks: { color: '#64748b', font: { size: 10 } } },
         y: {
-          grid: { color: '#1e1c30' },
+          grid: { color: '#1a1830' },
           ticks: {
-            color: '#64748b',
-            font: { size: 10 },
-            callback: v => '$' + (Math.abs(v) >= 1000 ? (v/1000).toFixed(0) + 'k' : v)
+            color: '#64748b', font: { size: 10 },
+            callback: v => (v < 0 ? '(' : '') + '$' + (Math.abs(v) >= 1000 ? (Math.abs(v)/1000).toFixed(0) + 'k' : Math.abs(v)) + (v < 0 ? ')' : '')
           }
         },
       },
     },
   });
-
-  // Update breakeven callout
-  const beText = document.getElementById('pm-breakeven-text');
-  if (beText) {
-    beText.innerHTML = `At <strong>$${breakEven.toLocaleString()}/mo GMV</strong>, the ${gmvPct}% performance fee covers the full retainer. Your contribution margin on top of that is <strong>${Math.round(contribPct * 100)}%</strong> of every additional dollar.`;
-  }
 }
 
 function updateProjChart() {
-  const aov = document.getElementById('pm-aov');
-  const cogs = document.getElementById('pm-cogs');
-  const comm = document.getElementById('pm-comm');
-  if (aov) document.getElementById('pm-aov-val').textContent = '$' + aov.value;
-  if (cogs) document.getElementById('pm-cogs-val').textContent = cogs.value + '%';
-  if (comm) document.getElementById('pm-comm-val').textContent = comm.value + '%';
+  const ac = document.getElementById('pm-affcomm-s');
+  const cc = document.getElementById('pm-cogs-s');
+  const sc = document.getElementById('pm-samples-s');
+  if (ac) document.getElementById('pm-affcomm-s-val').textContent = ac.value + '%';
+  if (cc) document.getElementById('pm-cogs-s-val').textContent = '$' + cc.value;
+  if (sc) document.getElementById('pm-samples-s-val').textContent = sc.value;
   if (_lastProjData) renderProjChart(_lastProjData);
 }
 
