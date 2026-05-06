@@ -1897,9 +1897,29 @@ async function generateProposal() {
     });
     const d = await r.json();
     if (d.error) throw new Error(d.error);
+
+    // Auto-fill metrics inputs from AI suggestions, then re-read getMetrics()
+    const sm = d.proposal.suggestedMetrics || {};
+    const setField = (id, val) => { if (val != null) { const el = document.getElementById(id); if (el) el.value = val; } };
+    setField('m-price',     sm.listPrice);
+    setField('m-promo',     sm.promoPct);
+    setField('m-shipping',  sm.shippingPerUnit);
+    setField('m-cogs-unit', sm.cogsPerUnit);
+    setField('m-affcomm',   sm.affiliateCommPct);
+    setField('m-creators',  sm.activeCreators);
+    setField('m-videos',    sm.videosPerCreator);
+    setField('m-views',     sm.avgViews);
+    setField('m-ctr',       sm.ctr);
+    setField('m-cvr',       sm.cvr);
+    setField('m-samples',   sm.monthlySamples);
+    setField('m-retainers', sm.affiliateRetainers);
+
+    // Re-read metrics after auto-fill so the proposal uses the updated values
+    const filledMetrics = getMetrics();
+
     // Try to find brand logo from contact's email domain
     const brandLogoUrl = await tryGetBrandLogo(input);
-    lastProposalData = { ...d.proposal, _metrics: metrics, _brandLogoUrl: brandLogoUrl };
+    lastProposalData = { ...d.proposal, _metrics: filledMetrics, _brandLogoUrl: brandLogoUrl };
     openProposalModal(lastProposalData);
     populateContactSelector();
     populatePmContactSel();

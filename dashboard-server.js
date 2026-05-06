@@ -4223,6 +4223,20 @@ Schema (follow exactly):
     "cogsPercent": number,
     "creatorCommissionPct": number,
     "monthlyGMVGoals": [number, number, number, number, number, number, number, number, number, number, number, number]
+  },
+  "suggestedMetrics": {
+    "listPrice": number or null,
+    "promoPct": number or null,
+    "shippingPerUnit": number or null,
+    "cogsPerUnit": number or null,
+    "affiliateCommPct": number or null,
+    "activeCreators": number or null,
+    "videosPerCreator": number or null,
+    "avgViews": number or null,
+    "ctr": number or null,
+    "cvr": number or null,
+    "monthlySamples": number or null,
+    "affiliateRetainers": number or null
   }
 }
 
@@ -4232,6 +4246,7 @@ STYLE RULES:
 - Reference specific details from the notes — product, price point, pain points
 - Never be generic. Every sentence should only make sense for THIS brand.
 - For currentStateMetrics: ONLY include values explicitly stated in the meeting notes. Do NOT infer, estimate, or fabricate values. If a number isn't mentioned, omit that metric entirely. Use the exact figures from the notes — no parenthetical qualifiers, no "(NAD)", no made-up abbreviations. Examples of valid entries: {"label":"Active SKUs","value":"2"}, {"label":"AOV","value":"$74"}.
+- For suggestedMetrics: extract ONLY values explicitly stated in the notes (price, COGS, shipping, etc.). Leave as null if not mentioned — do NOT guess. promoPct and ctr and cvr should be expressed as whole numbers (e.g. 15 for 15%, 3 for 3%).
 - For monthlyGMVGoals: realistic 12-month ramp. Month 1-2 slow (testing), Month 3-6 growing, Month 7-12 scaled. Base on AOV and product type.`;
 
     const msg = await client.messages.create({
