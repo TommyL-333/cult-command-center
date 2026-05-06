@@ -4210,11 +4210,12 @@ async function scrapeShopifyProducts(context) {
           const comparePrices = p.variants.map(v => parseFloat(v.compare_at_price || 0)).filter(x => x > 0);
           const minPrice = prices.length ? Math.min(...prices) : 0;
           const maxPrice = prices.length ? Math.max(...prices) : 0;
+          const avgPrice = prices.length ? Math.round(prices.reduce((a, b) => a + b, 0) / prices.length * 100) / 100 : 0;
           const compareAtPrice = comparePrices.length ? Math.max(...comparePrices) : null;
           return {
             title: p.title,
             priceRange: minPrice === maxPrice ? `$${minPrice}` : `$${minPrice}–$${maxPrice}`,
-            typicalPrice: maxPrice, // use highest variant as default (most likely to be the hero product)
+            typicalPrice: avgPrice, // average across all variants = best AOV estimate
             compareAtPrice: compareAtPrice,
             variantCount: p.variants?.length || 1,
           };
