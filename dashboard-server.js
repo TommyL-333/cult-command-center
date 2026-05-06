@@ -4181,6 +4181,43 @@ app.post('/api/ghl/send-gmv-invoice', async (req, res) => {
   }
 });
 
+// ─── Shopify product scraper (public /products.json — no auth needed) ─────────
+async function scrapeShopifyProducts(context) {
+  // 1. Pull any URLs from the context
+  const urlMatches = [...(context.matchAll(/https?:\/\/([a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,})/g))];
+  const domains = urlMatches.map(m => m[1].replace(/^www\./, ''));
+
+  // 2. Try to extract brand name for domain guessing
+  const brandMatch = context.match(/brand[:\s]+([A-Za-z0-9 &]+)/i) ||
+                     context.match(/company[:\s]+([A-Za-z0-9 &]+)/i);
+  if (brandMatch) {
+    const slug = brandMatch[1].trim().toLowerCase().replace(/[^a-z0-9]/g, '');
+    domains.push(`${slug}.com`, `shop${slug}.com`, `${slug}.myshopify.com`, `try${slug}.com`);
+  }
+
+  for (const domain of [...new Set(domains)]) {
+    // Skip obviously non-brand domains
+    if (/google|gmail|zoom|calendly|meet\.|loom|slack|notion|drive\.|docs\.|youtube|instagram|tiktok|linkedin|twitter|facebook/.test(domain)) continue;
+    try {
+      const { data } = await axios.get(`https://${domain}/products.json?limit=10`, {
+        timeout: 6000,
+        headers: { 'User-Agent': 'Mozilla/5.0 (compatible; research bot)' },
+      });
+      if (data?.products?.length > 0) {
+        const products = data.products.slice(0, 8).map(p => ({
+          title: p.title,
+          price: parseFloat(p.variants?.[0]?.price || 0),
+          compareAtPrice: parseFloat(p.variants?.[0]?.compare_at_price || 0) || null,
+          variantCount: p.variants?.length || 1,
+        }));
+        console.log(`[shopify] found ${products.length} products on ${domain}`);
+        return { domain, products };
+      }
+    } catch (e) { /* try next */ }
+  }
+  return null;
+}
+
 // ─── AI Proposal generator ────────────────────────────────────────────────────
 app.post('/api/ai/propose', async (req, res) => {
   try {
@@ -4191,6 +4228,9 @@ app.post('/api/ai/propose', async (req, res) => {
     const retainerNum = parseInt(String(retainer || '2500').replace(/[^0-9]/g, '')) || 2500;
     const gmvNum = parseFloat(String(gmv || '5').replace(/[^0-9.]/g, '')) || 5;
     const breakEvenGMV = Math.round(retainerNum / (gmvNum / 100));
+
+    // Try to pull live product data from Shopify before sending to AI
+    const shopifyData = await scrapeShopifyProducts(context);
 
     const SYSTEM = `You are Tommy Lynch, founder of Cult Content (cultcontent.cc), a TikTok Shop social commerce agency. You write proposals for potential brand clients.
 
@@ -4246,7 +4286,7 @@ STYLE RULES:
 - Reference specific details from the notes — product, price point, pain points
 - Never be generic. Every sentence should only make sense for THIS brand.
 - For currentStateMetrics: ONLY include values explicitly stated in the meeting notes. Do NOT infer, estimate, or fabricate values. If a number isn't mentioned, omit that metric entirely. Use the exact figures from the notes — no parenthetical qualifiers, no "(NAD)", no made-up abbreviations. Examples of valid entries: {"label":"Active SKUs","value":"2"}, {"label":"AOV","value":"$74"}.
-- For suggestedMetrics: extract ONLY values explicitly stated in the notes (price, COGS, shipping, etc.). Leave as null if not mentioned — do NOT guess. promoPct and ctr and cvr should be expressed as whole numbers (e.g. 15 for 15%, 3 for 3%).
+- For suggestedMetrics: use Shopify product data (if provided below) as the primary source for listPrice — pick the product most relevant to the conversation. Values in notes override Shopify. Leave as null if unknown — do NOT guess. promoPct and ctr and cvr should be expressed as whole numbers (e.g. 15 for 15%, 3 for 3%). If a compare_at_price exists and is higher than price, calculate promoPct as round((1 - price/compareAtPrice)*100).
 - For monthlyGMVGoals: realistic 12-month ramp. Month 1-2 slow (testing), Month 3-6 growing, Month 7-12 scaled. Base on AOV and product type.`;
 
     const msg = await client.messages.create({
@@ -4257,6 +4297,11 @@ STYLE RULES:
 
 Meeting notes / context:
 ${context}
+${shopifyData ? `
+LIVE SHOPIFY PRODUCT DATA (scraped from ${shopifyData.domain}):
+${shopifyData.products.map(p => `- ${p.title}: $${p.price}${p.compareAtPrice ? ` (compare at $${p.compareAtPrice})` : ''}${p.variantCount > 1 ? ` — ${p.variantCount} variants` : ''}`).join('\n')}
+
+Use this data to populate suggestedMetrics.listPrice with the most relevant product's price. If a compare_at_price is higher than the sale price, set promoPct accordingly.` : ''}
 
 Pricing:
 Retainer: $${retainerNum.toLocaleString()}/mo
@@ -4271,7 +4316,7 @@ Return ONLY valid JSON. No other text.` }],
     const jsonStr = raw.replace(/^```json?\s*/i, '').replace(/\s*```$/i, '').trim();
     const proposal = JSON.parse(jsonStr);
     proposal.pricing = { retainer: retainerNum, gmvPct: gmvNum, breakEvenGMV };
-    res.json({ proposal });
+    res.json({ proposal, shopifyData: shopifyData || null });
   } catch (err) {
     console.error('propose:', err.message);
     res.status(500).json({ error: err.message });

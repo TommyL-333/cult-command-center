@@ -1898,6 +1898,15 @@ async function generateProposal() {
     const d = await r.json();
     if (d.error) throw new Error(d.error);
 
+    // Show Shopify scrape notice if data was found
+    if (d.shopifyData) {
+      const notice = document.createElement('div');
+      notice.style.cssText = 'font-size:.7rem;color:#20d5c4;margin-top:6px;padding:4px 8px;background:#091819;border-radius:6px;border:1px solid #0f3035';
+      notice.textContent = `🛍 Shopify prices pulled from ${d.shopifyData.domain} (${d.shopifyData.products.length} products)`;
+      btn.parentNode.insertBefore(notice, btn.nextSibling);
+      setTimeout(() => notice.remove(), 8000);
+    }
+
     // Auto-fill metrics inputs from AI suggestions, then re-read getMetrics()
     const sm = d.proposal.suggestedMetrics || {};
     const setField = (id, val) => { if (val != null) { const el = document.getElementById(id); if (el) el.value = val; } };
