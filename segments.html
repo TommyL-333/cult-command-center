@@ -1742,10 +1742,15 @@ async function loadContractTemplates() {
       sel.innerHTML = '<option value="">No templates found in GHL</option>';
       return;
     }
-    // Show only the main contract template first, then others
-    const sorted = [...r.templates].sort((a,b) => (b.published ? 1 : 0) - (a.published ? 1 : 0));
+    const DEFAULT_TEMPLATE_ID = '69fbae875bceba21370ca11d';
+    // Put default template first, then others
+    const sorted = [...r.templates].sort((a, b) => {
+      if (a.id === DEFAULT_TEMPLATE_ID) return -1;
+      if (b.id === DEFAULT_TEMPLATE_ID) return 1;
+      return (b.published ? 1 : 0) - (a.published ? 1 : 0);
+    });
     sel.innerHTML = sorted.map(t =>
-      `<option value="${t.id}">${t.name}</option>`
+      `<option value="${t.id}"${t.id === DEFAULT_TEMPLATE_ID ? ' selected' : ''}>${t.name}</option>`
     ).join('');
     ghlTemplatesLoaded = true;
   } catch(e) {
