@@ -1931,14 +1931,16 @@ async function generateProposal() {
     lastProposalData = { ...d.proposal, _metrics: filledMetrics, _brandLogoUrl: brandLogoUrl };
     openProposalModal(lastProposalData);
     populateContactSelector();
-    populatePmContactSel();
+    // Extract email + brand name from context to auto-select the right contact
+    const ctxEmail = (input.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/) || [])[0]?.toLowerCase();
+    populatePmContactSel(ctxEmail, d.proposal.brandName);
   } catch(e) {
     alert('Error generating proposal: ' + e.message);
   }
   btn.disabled = false; btn.textContent = '✨ Generate';
 }
 
-function populatePmContactSel() {
+function populatePmContactSel(autoEmail, autoBrand) {
   const opps = state['growth-partners']?.opportunities || [];
   const sel = document.getElementById('pm-contact-sel');
   if (!sel) return;
@@ -1951,6 +1953,19 @@ function populatePmContactSel() {
     opt.textContent = `${o.contact.name || o.name}${o.contact.email ? ' — ' + o.contact.email : ''} (${o.stageName})`;
     sel.appendChild(opt);
   });
+
+  // Auto-select: try email match first, then brand name fuzzy match
+  if (autoEmail || autoBrand) {
+    const brand = (autoBrand || '').toLowerCase();
+    let bestOpt = null;
+    for (const o of opps) {
+      const email = (o.contact.email || '').toLowerCase();
+      const name  = (o.contact.name || o.name || '').toLowerCase();
+      if (autoEmail && email === autoEmail) { bestOpt = o; break; }
+      if (brand && (name.includes(brand) || brand.includes(name.split(' ')[0]))) bestOpt = o;
+    }
+    if (bestOpt) sel.value = bestOpt.id;
+  }
 }
 
 async function markProposalSentFromModal() {
