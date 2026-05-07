@@ -1643,6 +1643,21 @@ function getMetrics() {
   const netMarginRate = grossMarginPct - revSharePct - 0.02;
   const breakEvenGMV = netMarginRate > 0 ? fixedCosts / netMarginRate : null;
 
+  // Profitability analysis
+  // Min viable selling price: where gross profit/order = 0
+  // 0 = price - COGS - shipping - price*(affComm% + tikTok% + adspend%)
+  // price*(1 - affComm% - tikTok% - adspend%) = COGS + shipping
+  const variableRateCosts = affCommPct + tikTokFeePct + adspendPct;
+  const minViablePrice = variableRateCosts < 1 ? (cogs + shipping) / (1 - variableRateCosts) : null;
+  // Target AOV for 35% gross margin (sustainable business)
+  const targetGrossMargin = 0.35;
+  const targetAOV = variableRateCosts < (1 - targetGrossMargin)
+    ? (cogs + shipping) / (1 - variableRateCosts - targetGrossMargin)
+    : null;
+  // Target gross profit per order at targetAOV
+  const targetGrossProfitPerOrder = targetAOV ? targetAOV * targetGrossMargin : null;
+  const isUnprofitable = grossMarginPct < 0.10; // flag when < 10% gross margin
+
   return {
     // Inputs
     listPrice, promoPct, sellingPrice, shipping, cogs,
@@ -1657,6 +1672,7 @@ function getMetrics() {
     teamCost, sampleCost, returns, netMonthlyProfit,
     // Analysis
     fixedCosts, netMarginRate, breakEvenGMV,
+    minViablePrice, targetAOV, targetGrossProfitPerOrder, isUnprofitable,
   };
 }
 
@@ -2295,6 +2311,69 @@ function buildProposalHTML(p) {
       </div>
     </div>`;
 
+  // ── Profitability Alert + Fix ──────────────────────────────────────────────
+  const pf = p.profitabilityFix || {};
+  let profitabilityHtml = '';
+  if (m.isUnprofitable) {
+    const fmt2 = n => n != null ? '$' + n.toFixed(2) : '—';
+    const targetGM = m.targetAOV ? Math.round((1 - (m.cogs + m.shipping) / m.targetAOV - (m.affCommPct + m.tikTokFeePct + m.adspendPct)) * 100) : 35;
+
+    // Target scenario waterfall (at targetAOV)
+    const tPrice = m.targetAOV || 0;
+    const tGross = m.targetGrossProfitPerOrder || 0;
+    const tGMV = tPrice * phaseData[2].purch; // same purchase volume
+    const tGmvShare = gmvTaperRates[2] * tGMV;
+    const tNet = (tGross * phaseData[2].purch) - m.teamFee - tGmvShare - m.sampleCost - m.affiliateRetainers - (tGMV * 0.02);
+
+    profitabilityHtml = `
+    <div style="margin:32px 0;border:1.5px solid #ef4444;border-radius:12px;overflow:hidden">
+      <div style="background:#2d0a0a;padding:16px 20px;display:flex;align-items:center;gap:12px">
+        <span style="font-size:1.4rem">⚠️</span>
+        <div>
+          <div style="font-size:.95rem;font-weight:800;color:#f87171">Unit Economics Problem Detected</div>
+          <div style="font-size:.75rem;color:#fca5a5;margin-top:2px">At the current hero SKU price, every sale loses money before our fees are counted.</div>
+        </div>
+      </div>
+      <div style="padding:20px;background:#1a0808">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
+          <div>
+            <div style="font-size:.7rem;color:#ef4444;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">❌ Current State</div>
+            <table style="width:100%;border-collapse:collapse;font-size:.78rem">
+              <tr><td style="color:#94a3b8;padding:4px 0">Selling Price</td><td style="text-align:right;color:#e2e8f0;font-weight:700">${fmt$(m.sellingPrice)}</td></tr>
+              <tr><td style="color:#94a3b8;padding:4px 0">COGS + Shipping</td><td style="text-align:right;color:#ef4444">−${fmt$(m.cogs + m.shipping)}</td></tr>
+              <tr><td style="color:#94a3b8;padding:4px 0">Commissions (${Math.round((m.affCommPct + m.tikTokFeePct)*100)}%)</td><td style="text-align:right;color:#ef4444">−${fmt$(m.affComm + m.tikTokFee)}</td></tr>
+              <tr style="border-top:1px solid #3d1515"><td style="color:#f87171;font-weight:700;padding:6px 0 2px">Gross Profit/Order</td><td style="text-align:right;color:#ef4444;font-weight:800">${fmt$(m.grossProfitPerOrder)}</td></tr>
+              <tr><td style="color:#f87171;font-weight:700">Gross Margin</td><td style="text-align:right;color:#ef4444;font-weight:800">${(m.grossMarginPct * 100).toFixed(1)}%</td></tr>
+            </table>
+          </div>
+          <div>
+            <div style="font-size:.7rem;color:#10b981;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">✅ Target State (${fmt2(m.targetAOV)} AOV)</div>
+            <table style="width:100%;border-collapse:collapse;font-size:.78rem">
+              <tr><td style="color:#94a3b8;padding:4px 0">Selling Price</td><td style="text-align:right;color:#e2e8f0;font-weight:700">${fmt2(m.targetAOV)}</td></tr>
+              <tr><td style="color:#94a3b8;padding:4px 0">COGS + Shipping</td><td style="text-align:right;color:#f59e0b">−${fmt$(m.cogs + m.shipping)}</td></tr>
+              <tr><td style="color:#94a3b8;padding:4px 0">Commissions (${Math.round((m.affCommPct + m.tikTokFeePct)*100)}%)</td><td style="text-align:right;color:#f59e0b">−${m.targetAOV ? fmt$((m.affCommPct + m.tikTokFeePct) * m.targetAOV) : '—'}</td></tr>
+              <tr style="border-top:1px solid #0d2d1a"><td style="color:#4ade80;font-weight:700;padding:6px 0 2px">Gross Profit/Order</td><td style="text-align:right;color:#10b981;font-weight:800">${fmt2(m.targetGrossProfitPerOrder)}</td></tr>
+              <tr><td style="color:#4ade80;font-weight:700">Gross Margin</td><td style="text-align:right;color:#10b981;font-weight:800">~${targetGM}%</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <div style="background:#0d1a12;border-radius:8px;padding:14px 16px;margin-bottom:16px">
+          <div style="font-size:.72rem;color:#5eead4;font-weight:700;margin-bottom:6px">💡 MINIMUM VIABLE AOV</div>
+          <div style="font-size:.85rem;color:#e2e8f0">Break-even per unit requires a selling price of at least <strong style="color:#f59e0b">${m.minViablePrice ? '$' + m.minViablePrice.toFixed(2) : '—'}</strong> given current COGS + shipping. At ${fmt2(m.targetAOV)} AOV you reach ~${targetGM}% gross margin — enough to cover team costs and generate profit.</div>
+          ${tNet > 0 && m.targetAOV ? `<div style="margin-top:8px;font-size:.82rem;color:#4ade80;font-weight:700">At ${fmt2(m.targetAOV)} AOV: estimated <strong>${fmt$(tNet)}/mo net profit</strong> at Month 7–12 run rate.</div>` : ''}
+        </div>
+
+        ${pf.primaryIssue || pf.bundleIdea || (pf.strategySteps || []).length > 0 ? `
+        <div style="font-size:.72rem;color:#fbbf24;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">🎯 The Fix: AOV Growth Strategy</div>
+        ${pf.primaryIssue ? `<div style="font-size:.8rem;color:#94a3b8;margin-bottom:12px">${esc(pf.primaryIssue)}</div>` : ''}
+        ${pf.bundleIdea ? `<div style="background:#1c1828;border-left:3px solid #fbbf24;padding:10px 14px;border-radius:0 6px 6px 0;margin-bottom:12px;font-size:.82rem;color:#e2e8f0"><strong style="color:#fbbf24">Recommended Bundle:</strong> ${esc(pf.bundleIdea)}</div>` : ''}
+        ${(pf.strategySteps || []).length > 0 ? `<ol style="margin:0;padding-left:18px">${pf.strategySteps.map(s => `<li style="font-size:.8rem;color:#94a3b8;margin-bottom:6px">${esc(s)}</li>`).join('')}</ol>` : ''}
+        ` : ''}
+      </div>
+    </div>`;
+  }
+
   // Roadmap
   const rm = p.roadmap || {};
   const roadmapHtml = `
@@ -2356,6 +2435,7 @@ function buildProposalHTML(p) {
       ${kpiTableHtml}
       ${waterfallHtml}
       ${beHtml}
+      ${profitabilityHtml}
     </div>
 
     <!-- 12-Month Projection Chart -->

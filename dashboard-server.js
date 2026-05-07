@@ -4267,6 +4267,14 @@ Schema (follow exactly):
     "month3plusBullets": ["string"]
   },
   "nextSteps": ["string", "string", "string"],
+  "profitabilityFix": {
+    "isUnprofitable": boolean,
+    "primaryIssue": "string — one sharp sentence on the core unit economics problem",
+    "targetAOV": number or null,
+    "targetProduct": "string — specific product or SKU to push as hero",
+    "bundleIdea": "string — concrete bundle recommendation with products and price point",
+    "strategySteps": ["string", "string", "string"]
+  },
   "projections": {
     "aov": number,
     "cogsPercent": number,
@@ -4296,7 +4304,8 @@ STYLE RULES:
 - Never be generic. Every sentence should only make sense for THIS brand.
 - For currentStateMetrics: ONLY include values explicitly stated in the meeting notes. Do NOT infer, estimate, or fabricate values. If a number isn't mentioned, omit that metric entirely. Use the exact figures from the notes — no parenthetical qualifiers, no "(NAD)", no made-up abbreviations. Examples of valid entries: {"label":"Active SKUs","value":"2"}, {"label":"AOV","value":"$74"}.
 - For suggestedMetrics: use Shopify product data (if provided below) as the primary source for listPrice — pick the product most relevant to the conversation. Use typicalPrice (the max/hero variant price) as listPrice. Values in notes override Shopify. Leave as null if unknown — do NOT guess. promoPct and ctr and cvr should be expressed as whole numbers (e.g. 15 for 15%, 3 for 3%). If a compare_at_price exists and is higher than typicalPrice, calculate promoPct as round((1 - typicalPrice/compareAtPrice)*100).
-- For monthlyGMVGoals: realistic 12-month ramp. Month 1-2 slow (testing), Month 3-6 growing, Month 7-12 scaled. Base on AOV and product type.`;
+- For monthlyGMVGoals: realistic 12-month ramp. Month 1-2 slow (testing), Month 3-6 growing, Month 7-12 scaled. Base on AOV and product type.
+- For profitabilityFix: analyze whether the brand's hero product has viable unit economics (i.e. selling price clearly exceeds COGS + shipping + commissions). If the hero product has thin or negative margins, set isUnprofitable=true and provide a concrete AOV strategy. targetAOV should be a specific price point that generates ~35% gross margin. bundleIdea must be a concrete, named bundle using their actual products (e.g. "Soap + Serum 3-pack — $34.99"). strategySteps should be 3 actionable steps to shift the product mix. If unit economics are healthy, set isUnprofitable=false and leave other fields null.`;
 
     const msg = await client.messages.create({
       model: 'claude-opus-4-5',
