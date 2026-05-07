@@ -4110,33 +4110,47 @@ app.post('/api/ghl/send-contract', async (req, res) => {
   }
 });
 
+// ─── GHL Invoice helpers ──────────────────────────────────────────────────────
+const GHL_BUSINESS = {
+  name: 'Cult Content', email: 'tommy@cultcontent.cc', phone: '(703) 851-3599', logoUrl: '',
+  address: [{ line1: '5830 Wessex Lane', city: 'Alexandria', state: 'VA', postalCode: '22310', country: 'US' }],
+};
+
+async function ghlCreateAndSendInvoice({ contactId, contactName, contactEmail, name, items }) {
+  const numRes = await ghl.get('/invoices/generate-invoice-number', { params: { altId: CFG.locationId, altType: 'location' } });
+  const invoiceNumber = numRes.data?.invoiceNumber;
+  const due = new Date(); due.setDate(due.getDate() + 7);
+  const createRes = await ghl.post('/invoices/', {
+    altId: CFG.locationId, altType: 'location',
+    name, invoiceNumber, currency: 'USD',
+    issueDate: new Date().toISOString().split('T')[0],
+    dueDate: due.toISOString().split('T')[0],
+    businessDetails: GHL_BUSINESS,
+    contactDetails: { id: contactId, name: contactName || '', email: contactEmail || '' },
+    discount: { type: 'percentage', value: 0 },
+    items: items.map(i => ({ ...i, taxes: [], taxInclusive: false })),
+  });
+  const invoiceId = createRes.data?._id || createRes.data?.invoice?._id;
+  if (!invoiceId) throw new Error('Invoice created but no ID returned — ' + JSON.stringify(createRes.data).slice(0, 200));
+  await ghl.post(`/invoices/${invoiceId}/send`, {
+    altId: CFG.locationId, altType: 'location',
+    action: 'email', liveMode: true, userId: GHL_TOMMY_USER_ID,
+  });
+  return { invoiceId, invoiceNumber };
+}
+
 // ─── GHL Invoices — retainer (auto-sends with contract) ──────────────────────
 app.post('/api/ghl/send-retainer-invoice', async (req, res) => {
-  const { contactId, retainerAmount, contactName } = req.body || {};
+  const { contactId, retainerAmount, contactName, contactEmail } = req.body || {};
   if (!contactId || !retainerAmount) return res.status(400).json({ ok: false, error: 'contactId and retainerAmount required' });
   const amount = parseFloat(String(retainerAmount).replace(/[^0-9.]/g, ''));
   if (!amount || isNaN(amount)) return res.status(400).json({ ok: false, error: 'Invalid retainer amount' });
-
-  const due = new Date(); due.setDate(due.getDate() + 7);
   try {
-    const createRes = await ghl.post('/invoices/', {
-      locationId: CFG.locationId,
-      contactId,
-      issueDate: new Date().toISOString().split('T')[0],
-      dueDate:   due.toISOString().split('T')[0],
-      currency:  'USD',
-      title:     `Monthly Retainer — ${contactName || 'Client'}`,
-      lineItems: [{
-        name:        'Monthly Management Retainer',
-        description: 'TikTok Shop affiliate management, content strategy, weekly reporting, bi-weekly syncs.',
-        quantity:    1,
-        unitPrice:   amount,
-        currency:    'USD',
-      }],
+    const { invoiceId } = await ghlCreateAndSendInvoice({
+      contactId, contactName, contactEmail,
+      name: `Monthly Retainer — ${contactName || 'Client'}`,
+      items: [{ name: 'Monthly Management Retainer', description: 'TikTok Shop affiliate management, content strategy, weekly reporting, bi-weekly syncs.', qty: 1, amount, currency: 'USD' }],
     });
-    const invoiceId = createRes.data?.invoice?.id || createRes.data?.id;
-    if (!invoiceId) throw new Error('Invoice created but no ID returned');
-    await ghl.post(`/invoices/${invoiceId}/send`, { userId: GHL_TOMMY_USER_ID });
     res.json({ ok: true, invoiceId, amount });
   } catch (err) {
     console.error('send-retainer-invoice:', err.response?.data || err.message);
@@ -4146,34 +4160,19 @@ app.post('/api/ghl/send-retainer-invoice', async (req, res) => {
 
 // ─── GHL Invoices — monthly GMV performance fee ───────────────────────────────
 app.post('/api/ghl/send-gmv-invoice', async (req, res) => {
-  const { contactId, contactName, gmvAmount, gmvPercent, month } = req.body || {};
+  const { contactId, contactName, contactEmail, gmvAmount, gmvPercent, month } = req.body || {};
   if (!contactId || !gmvAmount || !gmvPercent) return res.status(400).json({ ok: false, error: 'contactId, gmvAmount, gmvPercent required' });
-  const gmv  = parseFloat(String(gmvAmount).replace(/[^0-9.]/g, ''));
-  const pct  = parseFloat(String(gmvPercent).replace(/[^0-9.]/g, ''));
-  const fee  = Math.round(gmv * (pct / 100) * 100) / 100;
+  const gmv = parseFloat(String(gmvAmount).replace(/[^0-9.]/g, ''));
+  const pct = parseFloat(String(gmvPercent).replace(/[^0-9.]/g, ''));
+  const fee = Math.round(gmv * (pct / 100) * 100) / 100;
   if (!fee || isNaN(fee)) return res.status(400).json({ ok: false, error: 'Invalid GMV or percent' });
-
   const label = month || new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
-  const due   = new Date(); due.setDate(due.getDate() + 7);
   try {
-    const createRes = await ghl.post('/invoices/', {
-      locationId: CFG.locationId,
-      contactId,
-      issueDate: new Date().toISOString().split('T')[0],
-      dueDate:   due.toISOString().split('T')[0],
-      currency:  'USD',
-      title:     `GMV Performance Fee — ${label}`,
-      lineItems: [{
-        name:        `${pct}% GMV Performance Fee — ${label}`,
-        description: `${pct}% of $${gmv.toLocaleString()} TikTok Shop GMV generated in ${label}.`,
-        quantity:    1,
-        unitPrice:   fee,
-        currency:    'USD',
-      }],
+    const { invoiceId } = await ghlCreateAndSendInvoice({
+      contactId, contactName, contactEmail,
+      name: `GMV Performance Fee — ${label}`,
+      items: [{ name: `${pct}% GMV Performance Fee — ${label}`, description: `${pct}% of $${gmv.toLocaleString()} TikTok Shop GMV generated in ${label}.`, qty: 1, amount: fee, currency: 'USD' }],
     });
-    const invoiceId = createRes.data?.invoice?.id || createRes.data?.id;
-    if (!invoiceId) throw new Error('Invoice created but no ID returned');
-    await ghl.post(`/invoices/${invoiceId}/send`, { userId: GHL_TOMMY_USER_ID });
     res.json({ ok: true, invoiceId, gmv, pct, fee });
   } catch (err) {
     console.error('send-gmv-invoice:', err.response?.data || err.message);

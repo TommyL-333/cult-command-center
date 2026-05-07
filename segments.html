@@ -1777,6 +1777,7 @@ async function sendGHLContract() {
   const contactOpt = contactSel?.options[contactSel.selectedIndex];
   const contactId = contactOpt?.dataset.contactId || contactOpt?.value;
   const contactName = contactOpt?.dataset.name || '';
+  const contactEmail = contactOpt?.dataset.email || '';
   const templateId = templateSel?.value;
   const retainerRaw = retainerInput?.value.trim();
   const status = document.getElementById('contract-status');
@@ -1806,7 +1807,7 @@ async function sendGHLContract() {
     const inv = await fetch(`${BASE}/api/ghl/send-retainer-invoice`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contactId, retainerAmount: retainerRaw, contactName }),
+      body: JSON.stringify({ contactId, retainerAmount: retainerRaw, contactName, contactEmail }),
     });
     const invD = await inv.json();
     if (!invD.ok) {
@@ -1844,6 +1845,7 @@ async function sendGmvInvoice() {
   const contactOpt = contactSel?.options[contactSel.selectedIndex];
   const contactId = contactOpt?.dataset.contactId || contactOpt?.value;
   const contactName = contactOpt?.dataset.name || '';
+  const contactEmail = contactOpt?.dataset.email || '';
   const gmvAmount = document.getElementById('gmv-invoice-amount')?.value.trim();
   const gmvPercent = document.getElementById('gmv-invoice-pct')?.value.trim();
   const status = document.getElementById('gmv-invoice-status');
@@ -1865,7 +1867,7 @@ async function sendGmvInvoice() {
     const r = await fetch(`${BASE}/api/ghl/send-gmv-invoice`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contactId, contactName, gmvAmount, gmvPercent, month }),
+      body: JSON.stringify({ contactId, contactName, contactEmail, gmvAmount, gmvPercent, month }),
     });
     const d = await r.json();
     if (!d.ok) throw new Error(d.error || 'Send failed');
