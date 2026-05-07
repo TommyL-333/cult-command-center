@@ -2260,6 +2260,18 @@ function buildProposalHTML(p) {
     </div>`;
 
   // KPI projection table
+  // Calculate break-even creator count (how many creators to reach break-even GMV)
+  const taperNetMarginCalc = m.grossMarginPct - gmvTaperRates[2] - 0.02;
+  const beGMV = taperNetMarginCalc > 0
+    ? Math.round((m.teamFee + m.sampleCost + m.affiliateRetainers) / taperNetMarginCalc)
+    : null;
+  const beCreators = beGMV
+    ? Math.ceil(beGMV / (m.sellingPrice * m.videosPerCreator * m.avgViews * m.ctr * m.cvr))
+    : null;
+  const bePhaseGMV = beCreators
+    ? Math.round(beCreators * m.videosPerCreator * m.avgViews * m.ctr * m.cvr * m.sellingPrice)
+    : null;
+
   const kpiTableHtml = `
     <div class="pm-fin-box" style="margin-top:16px">
       <table class="pm-fin-table">
@@ -2268,6 +2280,14 @@ function buildProposalHTML(p) {
           const d = phaseData[i];
           return `<tr><td style="font-weight:700;color:#e2e8f0">${ph.label}</td><td>${d.c.toLocaleString()}</td><td>${d.imp.toLocaleString()}</td><td>${d.purch.toLocaleString()}</td><td style="color:#10b981;font-weight:700">${fmtK(d.gmv)}</td></tr>`;
         }).join('')}
+        ${beCreators && beCreators > phases[2].cMult * m.creators ? `
+        <tr style="background:#0d1a0d;border-top:1px dashed #166534">
+          <td style="font-weight:700;color:#4ade80">🎯 Break-Even Scale</td>
+          <td style="color:#4ade80;font-weight:700">${beCreators}</td>
+          <td style="color:#4ade80">${(beCreators * m.videosPerCreator * m.avgViews).toLocaleString()}</td>
+          <td style="color:#4ade80">${Math.round(beGMV / m.sellingPrice).toLocaleString()}</td>
+          <td style="color:#4ade80;font-weight:700">${fmtK(beGMV)}</td>
+        </tr>` : ''}
       </table>
     </div>`;
 
@@ -2300,20 +2320,61 @@ function buildProposalHTML(p) {
 
   // Break-even using tapered Phase 3 GMV rate
   const taperNetMargin = m.grossMarginPct - scaledGmvRate - 0.02;
-  const taperBreakEven = taperNetMargin > 0
-    ? Math.round((m.teamFee + m.sampleCost + m.affiliateRetainers) / taperNetMargin)
-    : null;
-  const beHtml = `<div class="pm-breakeven-callout">
+  const taperBreakEven = taperNetMarginCalc > 0 ? beGMV : null;
+  const channelProfitable = scaled.net >= 0;
+
+  let beHtml;
+  if (channelProfitable) {
+    // Already profitable at steady state — just show the callout
+    beHtml = `<div class="pm-breakeven-callout">
       <div class="be-icon">📊</div>
       <div class="be-text">
         GMV share tapers: <strong>${fmtPct(gmvTaperRates[0])} → ${fmtPct(gmvTaperRates[1])} → ${fmtPct(gmvTaperRates[2])}</strong> as the channel scales.
-        ${taperBreakEven
-          ? `Break-even at <strong>${fmtK(taperBreakEven)}/mo GMV</strong> (Phase 3 rate).
-             At ${fmtK(scaled.gmv)}/mo run rate, net profit is <strong style="color:${scaled.net >= 0 ? '#4ade80' : '#f87171'}">${fmt$(scaled.net)}/mo</strong>.`
-          : `At ${fmtK(scaled.gmv)}/mo run rate, net profit is <strong style="color:${scaled.net >= 0 ? '#4ade80' : '#f87171'}">${fmt$(scaled.net)}/mo</strong>.`
-        }
+        Break-even at <strong>${fmtK(taperBreakEven)}/mo GMV</strong>.
+        At ${fmtK(scaled.gmv)}/mo run rate, net profit is <strong style="color:#4ade80">${fmt$(scaled.net)}/mo</strong>.
       </div>
     </div>`;
+  } else if (taperBreakEven && beCreators) {
+    // Negative at steady state but achievable — show the path
+    beHtml = `<div class="pm-breakeven-callout" style="background:#0f1a0f;border-color:#166534;flex-direction:column;align-items:flex-start;gap:10px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="be-icon">🎯</div>
+        <div class="be-text">
+          GMV share tapers: <strong>${fmtPct(gmvTaperRates[0])} → ${fmtPct(gmvTaperRates[1])} → ${fmtPct(gmvTaperRates[2])}</strong> as the channel scales.
+          Month 7–12 run rate (<strong>${fmtK(scaled.gmv)}/mo</strong>) is below break-even — the channel covers its costs at
+          <strong style="color:#4ade80">${fmtK(taperBreakEven)}/mo GMV</strong>.
+        </div>
+      </div>
+      <table style="width:100%;font-size:.75rem;border-collapse:collapse">
+        <tr>
+          <td style="color:#64748b;padding:4px 0">Current projection (15 creators)</td>
+          <td style="text-align:right;color:#f87171;font-weight:700">${fmtK(scaled.gmv)}/mo</td>
+          <td style="text-align:right;color:#f87171;padding-left:16px">${fmt$(scaled.net)}/mo net</td>
+        </tr>
+        <tr>
+          <td style="color:#4ade80;font-weight:700;padding:4px 0">🎯 Break-even (${beCreators} creators)</td>
+          <td style="text-align:right;color:#4ade80;font-weight:700">${fmtK(taperBreakEven)}/mo</td>
+          <td style="text-align:right;color:#4ade80;padding-left:16px">$0/mo net</td>
+        </tr>
+        <tr>
+          <td style="color:#86efac;padding:4px 0">Scale target (${beCreators * 2}+ creators)</td>
+          <td style="text-align:right;color:#86efac;font-weight:700">${fmtK(taperBreakEven * 2)}/mo</td>
+          <td style="text-align:right;color:#86efac;padding-left:16px">~${fmt$(Math.round(taperBreakEven * taperNetMarginCalc))}/mo net</td>
+        </tr>
+      </table>
+      <div style="font-size:.72rem;color:#64748b">The channel turns profitable as the creator roster scales past ${beCreators}. Month 7–12 projections reflect a conservative ramp — the roadmap targets ${beCreators}+ creators by Month 6.</div>
+    </div>`;
+  } else {
+    // No break-even achievable (negative unit economics — handled by profitabilityHtml)
+    beHtml = `<div class="pm-breakeven-callout">
+      <div class="be-icon">📊</div>
+      <div class="be-text">
+        GMV share tapers: <strong>${fmtPct(gmvTaperRates[0])} → ${fmtPct(gmvTaperRates[1])} → ${fmtPct(gmvTaperRates[2])}</strong> as the channel scales.
+        At ${fmtK(scaled.gmv)}/mo run rate, net profit is <strong style="color:#f87171">${fmt$(scaled.net)}/mo</strong>.
+        See AOV strategy below.
+      </div>
+    </div>`;
+  }
 
   // ── Profitability Alert + Fix ──────────────────────────────────────────────
   const pf = p.profitabilityFix || {};
