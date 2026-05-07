@@ -3922,21 +3922,44 @@ Return ONLY valid JSON: {"caption": "...", "hashtags": ["tag1", "tag2", ...]}
 
 // ─── Fireflies.ai — recent meeting list ──────────────────────────────────────
 app.get('/api/fireflies/meetings', async (req, res) => {
-  const key = process.env.FIREFLIES_API_KEY;
-  if (!key) return res.json({ connected: false, error: 'FIREFLIES_API_KEY not set' });
-  try {
-    const query = `query {
-      transcripts(limit: 20) {
-        id title date participants
-        summary { short_summary action_items }
-      }
-    }`;
+  const keys = [process.env.FIREFLIES_API_KEY, process.env.FIREFLIES_API_KEY_2].filter(Boolean);
+  if (!keys.length) return res.json({ connected: false, error: 'FIREFLIES_API_KEY not set' });
+
+  const fromDate = new Date();
+  fromDate.setDate(fromDate.getDate() - 7);
+  const fromDateStr = fromDate.toISOString().split('T')[0]; // YYYY-MM-DD
+
+  const query = `query {
+    transcripts(limit: 50, fromDate: "${fromDateStr}") {
+      id title date participants
+      summary { short_summary action_items }
+    }
+  }`;
+
+  const fetchFromKey = async (key) => {
     const r = await axios.post('https://api.fireflies.ai/graphql',
       { query },
       { headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' } }
     );
-    const raw = r.data?.data?.transcripts || [];
-    const meetings = raw.map((t, i) => ({
+    return r.data?.data?.transcripts || [];
+  };
+
+  try {
+    // Fetch from all configured Fireflies accounts in parallel
+    const results = await Promise.allSettled(keys.map(fetchFromKey));
+    const seen = new Set();
+    const allMeetings = [];
+    for (const result of results) {
+      if (result.status !== 'fulfilled') continue;
+      for (const t of result.value) {
+        if (seen.has(t.id)) continue; // dedupe across accounts
+        seen.add(t.id);
+        allMeetings.push(t);
+      }
+    }
+    // Sort newest first
+    allMeetings.sort((a, b) => (b.date || 0) - (a.date || 0));
+    const meetings = allMeetings.map((t, i) => ({
       _idx:         i,
       id:           t.id,
       title:        t.title || 'Untitled Meeting',
@@ -3944,7 +3967,7 @@ app.get('/api/fireflies/meetings', async (req, res) => {
       participants: t.participants || [],
       summary:      t.summary || {},
     }));
-    res.json({ connected: true, meetings });
+    res.json({ connected: true, meetings, fromDate: fromDateStr, accountCount: keys.length });
   } catch (err) {
     console.error('fireflies:', err.response?.data || err.message);
     res.json({ connected: false, error: err.response?.data?.message || err.message });
@@ -3953,36 +3976,38 @@ app.get('/api/fireflies/meetings', async (req, res) => {
 
 // ─── Fireflies.ai — full transcript for one meeting ──────────────────────────
 app.get('/api/fireflies/transcript/:id', async (req, res) => {
-  const key = process.env.FIREFLIES_API_KEY;
-  if (!key) return res.status(400).json({ error: 'FIREFLIES_API_KEY not set' });
-  try {
-    const query = `query Transcript($id: String!) {
-      transcript(id: $id) {
-        id title date participants
-        summary { short_summary action_items keywords }
-        sentences {
-          speaker_name
-          text
-          start_time
-        }
-      }
-    }`;
+  const keys = [process.env.FIREFLIES_API_KEY, process.env.FIREFLIES_API_KEY_2].filter(Boolean);
+  if (!keys.length) return res.status(400).json({ error: 'FIREFLIES_API_KEY not set' });
+  const query = `query Transcript($id: String!) {
+    transcript(id: $id) {
+      id title date participants
+      summary { short_summary action_items keywords }
+      sentences { speaker_name text start_time }
+    }
+  }`;
+  const tryFetch = async (key) => {
     const r = await axios.post('https://api.fireflies.ai/graphql',
       { query, variables: { id: req.params.id } },
       { headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' } }
     );
-    const t = r.data?.data?.transcript;
-    if (!t) return res.status(404).json({ error: 'Transcript not found' });
-
-    // Build readable transcript text: "Speaker: sentence"
+    return r.data?.data?.transcript || null;
+  };
+  try {
+    // Try all accounts — transcript may live on any of them
+    let t = null;
+    for (const key of keys) {
+      t = await tryFetch(key).catch(() => null);
+      if (t?.sentences?.length) break; // found it
+    }
+    if (!t) return res.status(404).json({ error: 'Transcript not found on any connected account' });
     const lines = (t.sentences || []).map(s => `${s.speaker_name || 'Unknown'}: ${s.text}`);
     res.json({
-      id:           t.id,
-      title:        t.title,
-      date:         t.date,
-      participants: t.participants || [],
-      summary:      t.summary || {},
-      transcript:   lines.join('\n'),
+      id:            t.id,
+      title:         t.title,
+      date:          t.date,
+      participants:  t.participants || [],
+      summary:       t.summary || {},
+      transcript:    lines.join('\n'),
       sentenceCount: lines.length,
     });
   } catch (err) {

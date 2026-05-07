@@ -1370,8 +1370,12 @@ function renderFirefliesList() {
     return;
   }
   const meetings = m.meetings || [];
-  if (!meetings.length) { inner.innerHTML = '<div style="font-size:.75rem;color:var(--muted);padding:4px">No recent meetings found.</div>'; return; }
-  inner.innerHTML = meetings.map(mt => {
+  if (!meetings.length) { inner.innerHTML = '<div style="font-size:.75rem;color:var(--muted);padding:4px">No meetings in the last 7 days.</div>'; return; }
+  const headerLabel = `<div style="font-size:.65rem;color:var(--muted2);padding:4px 10px 6px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between">
+    <span>Last 7 days${m.accountCount > 1 ? ` · ${m.accountCount} accounts` : ''}</span>
+    <span>${meetings.length} meeting${meetings.length !== 1 ? 's' : ''}</span>
+  </div>`;
+  inner.innerHTML = headerLabel + meetings.map(mt => {
     const date = mt.date ? new Date(mt.date).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
     const attendees = (mt.participants || []).filter(e => !e.includes('cultcontent')).slice(0,2).join(', ');
     return `<div style="padding:7px 10px;border-radius:6px;cursor:pointer;transition:.1s;font-size:.75rem"
