@@ -4207,11 +4207,17 @@ app.post('/api/ghl/send-gmv-invoice', async (req, res) => {
 
 // ─── Shopify product scraper (public /products.json — no auth needed) ─────────
 async function scrapeShopifyProducts(context) {
-  // 1. Pull any URLs from the context
-  const urlMatches = [...(context.matchAll(/https?:\/\/([a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,})/g))];
-  const domains = urlMatches.map(m => m[1].replace(/^www\./, ''));
+  const domains = [];
 
-  // 2. Try to extract brand name for domain guessing
+  // 1. Pull domains from any https:// URLs in the context
+  const urlMatches = [...(context.matchAll(/https?:\/\/(?:www\.)?([a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,})/g))];
+  domains.push(...urlMatches.map(m => m[1]));
+
+  // 2. Pull domains from email addresses (e.g. john@orionbrand.com → orionbrand.com)
+  const emailMatches = [...(context.matchAll(/[a-zA-Z0-9._%+\-]+@([a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,})/g))];
+  domains.push(...emailMatches.map(m => m[1]));
+
+  // 3. Try to extract brand name for domain guessing
   const brandMatch = context.match(/brand[:\s]+([A-Za-z0-9 &]+)/i) ||
                      context.match(/company[:\s]+([A-Za-z0-9 &]+)/i);
   if (brandMatch) {
