@@ -253,6 +253,19 @@ main{max-width:1400px;margin:0 auto;padding:24px 20px;}
 .proposal-title{font-size:.88rem;font-weight:700;margin-bottom:14px;}
 .proposal-textarea{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;color:var(--text);font-size:.8rem;resize:vertical;min-height:100px;font-family:inherit;outline:none;}
 .proposal-textarea:focus{border-color:var(--accent);}
+/* ── Metrics Review (Step 2) ── */
+.review-row{display:flex;align-items:center;gap:6px;margin-bottom:6px;}
+.review-row label{font-size:.68rem;color:var(--muted);flex:1;min-width:0;}
+.review-row input{width:72px;background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:3px 7px;color:var(--text);font-size:.74rem;text-align:right;outline:none;flex-shrink:0;}
+.review-row input:focus{border-color:var(--accent);}
+.review-row input.missing{border-color:var(--red);background:#1a0808;}
+.source-badge{font-size:.58rem;font-weight:700;white-space:nowrap;flex-shrink:0;min-width:52px;text-align:right;}
+.economics-live{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-top:12px;}
+.economics-live-title{font-size:.6rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;}
+.econ-row{display:flex;justify-content:space-between;font-size:.74rem;padding:2px 0;}
+.econ-row.total{border-top:1px solid var(--border);margin-top:6px;padding-top:6px;font-weight:700;}
+.selected-meeting-badge{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:7px 11px;font-size:.74rem;display:flex;align-items:center;justify-content:space-between;margin-top:8px;}
+.req-star{color:var(--red);margin-left:2px;}
 .proposal-output{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px 20px;margin-top:12px;font-size:.82rem;line-height:1.7;display:none;max-height:500px;overflow-y:auto;}
 .proposal-output.show{display:block;}
 .proposal-output h1,.proposal-output h2{font-size:1rem;font-weight:800;color:var(--text);margin:18px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border);}
@@ -575,60 +588,158 @@ main{max-width:1400px;margin:0 auto;padding:24px 20px;}
 
       <!-- Proposal Generator -->
       <div class="proposal-wrap">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <!-- Header -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
           <div class="proposal-title" style="margin:0">📄 Proposal</div>
-          <button class="btn btn-ghost btn-sm" onclick="toggleFirefliesPicker()" id="ff-btn">🎙 Load meeting</button>
+          <div id="proposal-breadcrumb" style="font-size:.68rem;color:var(--muted)">Step 1 — Select meeting</div>
         </div>
-        <div style="font-size:.71rem;color:var(--muted);margin-bottom:12px">AI-generated strategy doc — share before they've committed</div>
-        <!-- Fireflies meeting list -->
-        <div id="ff-picker" style="display:none;margin-bottom:12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden">
-          <div id="ff-picker-inner" style="padding:8px;max-height:220px;overflow-y:auto">
-            <div style="font-size:.75rem;color:var(--muted);padding:4px">Loading meetings…</div>
+
+        <!-- Hidden transcript store + hidden m- fields (used by getMetrics / buildProposalHTML) -->
+        <textarea id="proposal-input" style="display:none"></textarea>
+        <input type="number" id="m-price" style="display:none">
+        <input type="number" id="m-promo" style="display:none" value="0">
+        <input type="number" id="m-shipping" style="display:none" value="6">
+        <input type="number" id="m-cogs-unit" style="display:none" value="0">
+        <input type="number" id="m-affcomm" style="display:none" value="15">
+        <input type="number" id="m-adspend" style="display:none" value="0">
+        <input type="number" id="m-creators" style="display:none">
+        <input type="number" id="m-videos" style="display:none" value="2">
+        <input type="number" id="m-views" style="display:none" value="1500">
+        <input type="number" id="m-ctr" style="display:none" value="3">
+        <input type="number" id="m-cvr" style="display:none" value="2">
+        <input type="number" id="m-samples" style="display:none" value="75">
+        <input type="number" id="m-retainers" style="display:none" value="1000">
+
+        <!-- ── STEP 1: Select Meeting ── -->
+        <div id="proposal-step1">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <span style="font-size:.72rem;color:var(--muted)">Select a Fireflies meeting — metrics auto-extracted</span>
+            <button class="btn btn-ghost btn-sm" onclick="toggleFirefliesPicker()" id="ff-btn">🎙 Load meeting</button>
           </div>
-        </div>
-        <textarea class="proposal-textarea" id="proposal-input" placeholder="Select a meeting above, or paste notes here. E.g. Spoke with Sarah from GreenBrand — eco water bottles, ~$80 AOV, 40% margins, flexible budget…"></textarea>
-
-        <!-- Metrics toggle -->
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;margin-bottom:4px">
-          <span style="font-size:.7rem;color:var(--muted)">Channel economics & KPIs for projections</span>
-          <button class="metrics-toggle" onclick="toggleMetricsPanel()">▸ Edit metrics</button>
-        </div>
-
-        <!-- Metrics panel (hidden by default) -->
-        <div class="metrics-panel" id="metrics-panel" style="display:none">
-          <div class="metrics-grid">
-            <!-- Creator KPIs -->
-            <div>
-              <div class="metrics-col-title">👥 Creator KPIs</div>
-              <div class="metric-row"><label>Active Creators</label><input type="number" id="m-creators" value="500"></div>
-              <div class="metric-row"><label>Videos / creator / mo</label><input type="number" id="m-videos" value="4"></div>
-              <div class="metric-row"><label>Avg Views / video</label><input type="number" id="m-views" value="1500"></div>
-              <div class="metric-row"><label>CTR %</label><input type="number" id="m-ctr" value="3" step="0.1"></div>
-              <div class="metric-row"><label>CVR %</label><input type="number" id="m-cvr" value="1.5" step="0.1"></div>
+          <!-- Fireflies picker dropdown -->
+          <div id="ff-picker" style="display:none;margin-bottom:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden">
+            <div id="ff-picker-inner" style="padding:8px;max-height:220px;overflow-y:auto">
+              <div style="font-size:.75rem;color:var(--muted);padding:4px">Loading meetings…</div>
             </div>
-            <!-- Unit Economics -->
+          </div>
+          <!-- Selected meeting badge -->
+          <div id="selected-meeting-row" style="display:none" class="selected-meeting-badge">
             <div>
-              <div class="metrics-col-title">💰 Unit Economics</div>
-              <div class="metric-row"><label>List Price ($)</label><input type="number" id="m-price" value="79"></div>
-              <div class="metric-row"><label>Promo Discount %</label><input type="number" id="m-promo" value="15" step="1"></div>
-              <div class="metric-row"><label>Shipping ($/unit)</label><input type="number" id="m-shipping" value="6" step="0.5"></div>
-              <div class="metric-row"><label>COGS ($/unit)</label><input type="number" id="m-cogs-unit" value="10"></div>
-              <div class="metric-row"><label>Affiliate Commission %</label><input type="number" id="m-affcomm" value="20" step="1"></div>
-              <div class="metric-row"><label>Adspend %</label><input type="number" id="m-adspend" value="0" step="1"></div>
+              <div id="selected-meeting-title" style="font-weight:600;color:var(--text)"></div>
+              <div id="selected-meeting-meta" style="font-size:.65rem;color:var(--muted);margin-top:2px"></div>
             </div>
-            <!-- Channel Costs -->
+            <button onclick="clearSelectedMeeting()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:0 4px">✕</button>
+          </div>
+          <!-- Optional extra context -->
+          <div style="margin-top:8px">
+            <button onclick="toggleExtraContext()" id="extra-ctx-toggle-btn" style="font-size:.68rem;color:var(--muted);background:none;border:none;cursor:pointer;text-decoration:underline;padding:0">+ Add context or notes</button>
+            <textarea id="extra-context-input" class="proposal-textarea" style="display:none;margin-top:6px;min-height:60px" placeholder="Optional: paste additional brand context, pricing info, or notes here…"></textarea>
+          </div>
+          <!-- Analyze button -->
+          <button id="analyze-btn" class="btn btn-primary" style="width:100%;margin-top:12px" onclick="extractMetrics()" disabled>
+            📊 Analyze &amp; Extract Metrics
+          </button>
+        </div>
+
+        <!-- ── STEP 2: Metrics Review ── -->
+        <div id="proposal-step2" style="display:none">
+          <!-- Back + brand header -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <button onclick="goBackToStep1()" class="btn btn-ghost btn-sm" style="font-size:.7rem;padding:4px 10px">← Back</button>
+            <div style="text-align:center">
+              <div id="review-brand-name" style="font-weight:700;font-size:.88rem;color:var(--text)"></div>
+              <div id="review-hero-product" style="font-size:.65rem;color:var(--muted);margin-top:1px"></div>
+            </div>
+            <div style="width:60px"></div>
+          </div>
+          <!-- Shopify source notice -->
+          <div id="review-shopify-notice" style="display:none;font-size:.68rem;color:var(--green);background:#0a1f14;border:1px solid #166534;border-radius:6px;padding:5px 10px;margin-bottom:10px"></div>
+
+          <!-- Metrics review grid -->
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:4px">
+            <!-- Pricing -->
             <div>
-              <div class="metrics-col-title">📦 Monthly Channel Costs</div>
-              <div class="metric-row"><label>Monthly Samples (units)</label><input type="number" id="m-samples" value="100"></div>
-              <div class="metric-row"><label>Affiliate Retainers ($)</label><input type="number" id="m-retainers" value="1000"></div>
-              <div style="margin-top:10px;padding:8px;background:var(--card);border-radius:6px;font-size:.68rem;color:var(--muted);line-height:1.5">
-                <strong style="color:var(--text)">Team Fee + GMV %</strong> pulled from pricing slider above
+              <div class="metrics-col-title">💰 Pricing</div>
+              <div class="review-row">
+                <label>List Price ($)<span class="req-star">*</span></label>
+                <input type="number" id="rv-price" oninput="onReviewEdit('rv-price')">
+                <span id="badge-rv-price" class="source-badge"></span>
+              </div>
+              <div class="review-row">
+                <label>Promo Discount %</label>
+                <input type="number" id="rv-promo" oninput="onReviewEdit('rv-promo')">
+                <span id="badge-rv-promo" class="source-badge"></span>
+              </div>
+              <div class="review-row" style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border)">
+                <label style="color:var(--text);font-weight:600">Selling Price</label>
+                <span id="rv-selling-price" style="font-size:.78rem;font-weight:700;color:var(--accent)">—</span>
+                <span style="min-width:52px"></span>
+              </div>
+            </div>
+            <!-- Unit Costs -->
+            <div>
+              <div class="metrics-col-title">📦 Unit Costs</div>
+              <div class="review-row">
+                <label>COGS / unit ($)<span class="req-star">*</span></label>
+                <input type="number" id="rv-cogs" oninput="onReviewEdit('rv-cogs')">
+                <span id="badge-rv-cogs" class="source-badge"></span>
+              </div>
+              <div class="review-row">
+                <label>Shipping / unit ($)</label>
+                <input type="number" id="rv-shipping" oninput="onReviewEdit('rv-shipping')">
+                <span id="badge-rv-shipping" class="source-badge"></span>
+              </div>
+              <div class="review-row">
+                <label>Aff. Commission %</label>
+                <input type="number" id="rv-affcomm" oninput="onReviewEdit('rv-affcomm')">
+                <span id="badge-rv-affcomm" class="source-badge"></span>
+              </div>
+            </div>
+            <!-- Channel -->
+            <div>
+              <div class="metrics-col-title">👥 Channel</div>
+              <div class="review-row">
+                <label>Monthly Samples</label>
+                <input type="number" id="rv-samples" oninput="onReviewEdit('rv-samples')">
+                <span id="badge-rv-samples" class="source-badge"></span>
+              </div>
+              <div class="review-row">
+                <label>Aff. Retainers ($)</label>
+                <input type="number" id="rv-retainers" oninput="onReviewEdit('rv-retainers')">
+                <span id="badge-rv-retainers" class="source-badge"></span>
+              </div>
+              <div class="review-row">
+                <label>Videos/creator/mo</label>
+                <input type="number" id="rv-videos" oninput="onReviewEdit('rv-videos')">
+                <span id="badge-rv-videos" class="source-badge"></span>
+              </div>
+              <div class="review-row">
+                <label>Avg Views/video</label>
+                <input type="number" id="rv-views" oninput="onReviewEdit('rv-views')">
+                <span id="badge-rv-views" class="source-badge"></span>
               </div>
             </div>
           </div>
+
+          <!-- Live unit economics -->
+          <div class="economics-live">
+            <div class="economics-live-title">Unit Economics</div>
+            <div id="economics-live-body">
+              <div style="color:var(--muted);font-size:.74rem;text-align:center;padding:8px">Enter list price to see unit economics</div>
+            </div>
+          </div>
+
+          <!-- Gate status -->
+          <div id="review-gate" style="margin-top:10px"></div>
+
+          <!-- Confirm & Generate -->
+          <button id="confirm-gen-btn" class="btn btn-primary" style="width:100%;margin-top:12px" onclick="confirmAndGenerate()" disabled>
+            ✅ Confirm &amp; Generate Proposal
+          </button>
         </div>
 
-        <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
+        <!-- Pricing inputs (always visible) -->
+        <div style="display:flex;gap:8px;margin-top:14px;align-items:center">
           <div style="display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:5px 10px;flex:1">
             <span style="font-size:.68rem;color:var(--muted);font-weight:700;white-space:nowrap">$/mo</span>
             <input type="text" id="proposal-retainer" placeholder="from slider" style="background:transparent;border:none;color:var(--text);font-size:.8rem;font-weight:700;width:70px;outline:none" oninput="syncPricingFromProposal()"/>
@@ -637,7 +748,6 @@ main{max-width:1400px;margin:0 auto;padding:24px 20px;}
             <span style="font-size:.68rem;color:var(--muted);font-weight:700;white-space:nowrap">GMV %</span>
             <input type="text" id="proposal-gmv" placeholder="from slider" style="background:transparent;border:none;color:var(--text);font-size:.8rem;font-weight:700;width:50px;outline:none" oninput="syncPricingFromProposal()"/>
           </div>
-          <button class="btn btn-primary" style="flex:2" onclick="generateProposal()" id="gen-btn">✨ Generate</button>
           <button class="btn btn-ghost btn-sm" onclick="copyProposalMd()">Copy</button>
         </div>
         <div class="proposal-output" id="proposal-output"></div>
@@ -1370,8 +1480,12 @@ function renderFirefliesList() {
     return;
   }
   const meetings = m.meetings || [];
-  if (!meetings.length) { inner.innerHTML = '<div style="font-size:.75rem;color:var(--muted);padding:4px">No recent meetings found.</div>'; return; }
-  inner.innerHTML = meetings.map(mt => {
+  if (!meetings.length) { inner.innerHTML = '<div style="font-size:.75rem;color:var(--muted);padding:4px">No meetings in the last 7 days.</div>'; return; }
+  const headerLabel = `<div style="font-size:.65rem;color:var(--muted2);padding:4px 10px 6px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between">
+    <span>Last 7 days${m.accountCount > 1 ? ` · ${m.accountCount} accounts` : ''}</span>
+    <span>${meetings.length} meeting${meetings.length !== 1 ? 's' : ''}</span>
+  </div>`;
+  inner.innerHTML = headerLabel + meetings.map(mt => {
     const date = mt.date ? new Date(mt.date).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
     const attendees = (mt.participants || []).filter(e => !e.includes('cultcontent')).slice(0,2).join(', ');
     return `<div style="padding:7px 10px;border-radius:6px;cursor:pointer;transition:.1s;font-size:.75rem"
@@ -1394,14 +1508,20 @@ async function selectFirefliesMeeting(idx) {
   const mt = (ffMeetings?.meetings || [])[idx];
   if (!mt) return;
 
-  // Close picker, show loading state in textarea
   document.getElementById('ff-picker').style.display = 'none';
-  const ta = document.getElementById('proposal-input');
-  ta.value = '⏳ Loading full transcript…';
-  ta.disabled = true;
 
+  // Show selected meeting badge in step 1
   const attendees = (mt.participants || []).filter(e => !e.includes('cultcontent')).join(', ');
   const date = mt.date ? new Date(mt.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+  document.getElementById('selected-meeting-title').textContent = mt.title;
+  document.getElementById('selected-meeting-meta').textContent = [date, attendees].filter(Boolean).join(' · ');
+  document.getElementById('selected-meeting-row').style.display = 'flex';
+
+  // Show loading state on analyze button
+  const analyzeBtn = document.getElementById('analyze-btn');
+  analyzeBtn.disabled = true;
+  analyzeBtn.textContent = '⏳ Loading transcript…';
+
   const header = [
     `Meeting: ${mt.title} (${date})`,
     attendees ? `With: ${attendees}` : '',
@@ -1415,24 +1535,21 @@ async function selectFirefliesMeeting(idx) {
 
     const parts = [header];
     if (d.transcript) parts.push(d.transcript);
-    // Append summary at the end as context for the AI
     if (d.summary?.short_summary) parts.push(`\n--- Summary ---\n${d.summary.short_summary}`);
     if (d.summary?.action_items)  parts.push(`\n--- Action Items ---\n${d.summary.action_items}`);
 
-    ta.value = parts.join('\n').trim();
+    document.getElementById('proposal-input').value = parts.join('\n').trim();
   } catch(e) {
-    // Fall back to summary if transcript fetch fails
     const summary = mt.summary?.short_summary || '';
     const actions = mt.summary?.action_items  || '';
-    ta.value = [
-      header,
-      summary,
-      actions ? `\nAction items:\n${actions}` : '',
-    ].filter(Boolean).join('\n').trim();
+    document.getElementById('proposal-input').value = [header, summary, actions ? `\nAction items:\n${actions}` : ''].filter(Boolean).join('\n').trim();
     console.warn('Full transcript unavailable, using summary:', e.message);
-  } finally {
-    ta.disabled = false;
   }
+
+  // Auto-trigger extraction now that transcript is ready
+  analyzeBtn.textContent = '📊 Analyze & Extract Metrics';
+  analyzeBtn.disabled = false;
+  extractMetrics();
 }
 
 // ── Proposal generator ─────────────────────────────────────────────────────────
@@ -1602,7 +1719,7 @@ function getMetrics() {
   const teamFee = parseInt(sl?.dataset.retainer || sl?.value || 2500);
   const revSharePct = parseFloat(sl?.dataset.gmv || 6.5) / 100;
 
-  const listPrice = v('m-price') || 79;
+  const listPrice = v('m-price') || 0;
   const promoPct = v('m-promo') / 100 || 0.15;
   const sellingPrice = listPrice * (1 - promoPct);
   const shipping = v('m-shipping') || 6;
@@ -1618,7 +1735,14 @@ function getMetrics() {
   const grossProfitPerOrder = sellingPrice - totalCostPerOrder;
   const grossMarginPct = grossProfitPerOrder / sellingPrice;
 
-  const creators = v('m-creators') || 500;
+  const monthlySamples = v('m-samples') || 0;
+  const ACTIVATION_RATE = 0.5;
+  const AVG_ACTIVE_MONTHS = 3; // avg months a creator stays active after receiving samples
+  // Derive steady-state creator count from sampling logic: samples × 50% activation × 3mo tenure
+  const sampleDerivedCreators = monthlySamples > 0 ? Math.round(monthlySamples * ACTIVATION_RATE * AVG_ACTIVE_MONTHS) : 0;
+  const manualCreators = v('m-creators') || 0;
+  const creators = manualCreators || sampleDerivedCreators || 150;
+
   const videosPerCreator = v('m-videos') || 4;
   const avgViews = v('m-views') || 1500;
   const ctr = v('m-ctr') / 100 || 0.03;
@@ -1628,8 +1752,6 @@ function getMetrics() {
   const purchases = Math.round(impressions * ctr * cvr);
   const monthlyGMV = purchases * sellingPrice;
   const grossMonthlyProfit = grossProfitPerOrder * purchases;
-
-  const monthlySamples = v('m-samples') || 100;
   const affiliateRetainers = v('m-retainers') || 1000;
   const teamCost = teamFee + (revSharePct * monthlyGMV);
   const sampleCost = (shipping + cogs) * monthlySamples;
@@ -1643,12 +1765,27 @@ function getMetrics() {
   const netMarginRate = grossMarginPct - revSharePct - 0.02;
   const breakEvenGMV = netMarginRate > 0 ? fixedCosts / netMarginRate : null;
 
+  // Profitability analysis
+  // Min viable selling price: where gross profit/order = 0
+  // 0 = price - COGS - shipping - price*(affComm% + tikTok% + adspend%)
+  // price*(1 - affComm% - tikTok% - adspend%) = COGS + shipping
+  const variableRateCosts = affCommPct + tikTokFeePct + adspendPct;
+  const minViablePrice = variableRateCosts < 1 ? (cogs + shipping) / (1 - variableRateCosts) : null;
+  // Target AOV for 35% gross margin (sustainable business)
+  const targetGrossMargin = 0.35;
+  const targetAOV = variableRateCosts < (1 - targetGrossMargin)
+    ? (cogs + shipping) / (1 - variableRateCosts - targetGrossMargin)
+    : null;
+  // Target gross profit per order at targetAOV
+  const targetGrossProfitPerOrder = targetAOV ? targetAOV * targetGrossMargin : null;
+  const isUnprofitable = grossMarginPct < 0.10; // flag when < 10% gross margin
+
   return {
     // Inputs
     listPrice, promoPct, sellingPrice, shipping, cogs,
     affCommPct, adspendPct, tikTokFeePct,
     creators, videosPerCreator, avgViews, ctr, cvr,
-    monthlySamples, affiliateRetainers, teamFee, revSharePct,
+    monthlySamples, sampleDerivedCreators, affiliateRetainers, teamFee, revSharePct,
     // Per-order
     affComm, tikTokFee, adspend, totalCostPerOrder, grossProfitPerOrder, grossMarginPct,
     // Monthly
@@ -1657,6 +1794,7 @@ function getMetrics() {
     teamCost, sampleCost, returns, netMonthlyProfit,
     // Analysis
     fixedCosts, netMarginRate, breakEvenGMV,
+    minViablePrice, targetAOV, targetGrossProfitPerOrder, isUnprofitable,
   };
 }
 
@@ -1742,10 +1880,15 @@ async function loadContractTemplates() {
       sel.innerHTML = '<option value="">No templates found in GHL</option>';
       return;
     }
-    // Show only the main contract template first, then others
-    const sorted = [...r.templates].sort((a,b) => (b.published ? 1 : 0) - (a.published ? 1 : 0));
+    const DEFAULT_TEMPLATE_ID = '69fbae875bceba21370ca11d';
+    // Put default template first, then others
+    const sorted = [...r.templates].sort((a, b) => {
+      if (a.id === DEFAULT_TEMPLATE_ID) return -1;
+      if (b.id === DEFAULT_TEMPLATE_ID) return 1;
+      return (b.published ? 1 : 0) - (a.published ? 1 : 0);
+    });
     sel.innerHTML = sorted.map(t =>
-      `<option value="${t.id}">${t.name}</option>`
+      `<option value="${t.id}"${t.id === DEFAULT_TEMPLATE_ID ? ' selected' : ''}>${t.name}</option>`
     ).join('');
     ghlTemplatesLoaded = true;
   } catch(e) {
@@ -1772,6 +1915,7 @@ async function sendGHLContract() {
   const contactOpt = contactSel?.options[contactSel.selectedIndex];
   const contactId = contactOpt?.dataset.contactId || contactOpt?.value;
   const contactName = contactOpt?.dataset.name || '';
+  const contactEmail = contactOpt?.dataset.email || '';
   const templateId = templateSel?.value;
   const retainerRaw = retainerInput?.value.trim();
   const status = document.getElementById('contract-status');
@@ -1801,7 +1945,7 @@ async function sendGHLContract() {
     const inv = await fetch(`${BASE}/api/ghl/send-retainer-invoice`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contactId, retainerAmount: retainerRaw, contactName }),
+      body: JSON.stringify({ contactId, retainerAmount: retainerRaw, contactName, contactEmail }),
     });
     const invD = await inv.json();
     if (!invD.ok) {
@@ -1839,6 +1983,7 @@ async function sendGmvInvoice() {
   const contactOpt = contactSel?.options[contactSel.selectedIndex];
   const contactId = contactOpt?.dataset.contactId || contactOpt?.value;
   const contactName = contactOpt?.dataset.name || '';
+  const contactEmail = contactOpt?.dataset.email || '';
   const gmvAmount = document.getElementById('gmv-invoice-amount')?.value.trim();
   const gmvPercent = document.getElementById('gmv-invoice-pct')?.value.trim();
   const status = document.getElementById('gmv-invoice-status');
@@ -1860,7 +2005,7 @@ async function sendGmvInvoice() {
     const r = await fetch(`${BASE}/api/ghl/send-gmv-invoice`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contactId, contactName, gmvAmount, gmvPercent, month }),
+      body: JSON.stringify({ contactId, contactName, contactEmail, gmvAmount, gmvPercent, month }),
     });
     const d = await r.json();
     if (!d.ok) throw new Error(d.error || 'Send failed');
@@ -1880,64 +2025,272 @@ async function sendGmvInvoice() {
 let lastProposalData = null;
 let projChart = null;
 
-async function generateProposal() {
-  const input = document.getElementById('proposal-input').value.trim();
-  if (!input) { alert('Add some conversation notes first'); return; }
-  const btn = document.getElementById('gen-btn');
-  btn.disabled = true; btn.textContent = '⏳ Generating…';
+// ── Two-step proposal flow ─────────────────────────────────────────────────────
 
+function showProposalStep(n, msg) {
+  document.getElementById('proposal-step1').style.display = n === 1 ? 'block' : 'none';
+  document.getElementById('proposal-step2').style.display = n === 2 ? 'block' : 'none';
+  document.getElementById('proposal-breadcrumb').textContent =
+    n === 1 ? 'Step 1 — Select meeting' : (msg || 'Step 2 — Review metrics');
+}
+
+function goBackToStep1() { showProposalStep(1); }
+
+function clearSelectedMeeting() {
+  document.getElementById('proposal-input').value = '';
+  document.getElementById('selected-meeting-row').style.display = 'none';
+  document.getElementById('analyze-btn').disabled = true;
+  document.getElementById('analyze-btn').textContent = '📊 Analyze & Extract Metrics';
+  showProposalStep(1);
+}
+
+function toggleExtraContext() {
+  const ta = document.getElementById('extra-context-input');
+  const btn = document.getElementById('extra-ctx-toggle-btn');
+  const open = ta.style.display === 'none';
+  ta.style.display = open ? 'block' : 'none';
+  btn.textContent = open ? '− Hide context' : '+ Add context or notes';
+  // Enable analyze button if there's content in the extra context
+  if (open) ta.addEventListener('input', () => {
+    document.getElementById('analyze-btn').disabled = !ta.value.trim() && !document.getElementById('proposal-input').value.trim();
+  }, { once: false });
+}
+
+// STEP 1 → STEP 2: Call extract-metrics API
+async function extractMetrics() {
+  const transcript = document.getElementById('proposal-input').value.trim();
+  const extra = document.getElementById('extra-context-input')?.value.trim() || '';
+  const fullContext = [transcript, extra].filter(Boolean).join('\n\n');
+  if (!fullContext) { alert('Select a meeting or add context first.'); return; }
+
+  const analyzeBtn = document.getElementById('analyze-btn');
+  analyzeBtn.disabled = true;
+  analyzeBtn.textContent = '⏳ Analyzing…';
+  showProposalStep(2, 'Analyzing meeting…');
+
+  try {
+    const r = await fetch(`${BASE}/api/ai/extract-metrics`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ context: fullContext }),
+    });
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    renderMetricsReview(d);
+    showProposalStep(2, 'Step 2 — Review & confirm metrics');
+  } catch(e) {
+    showProposalStep(1);
+    alert('Error analyzing meeting: ' + e.message);
+  } finally {
+    analyzeBtn.disabled = false;
+    analyzeBtn.textContent = '📊 Analyze & Extract Metrics';
+  }
+}
+
+// Source badge helper
+function getSourceLabel(src) {
+  return { shopify: '🛍 shopify', transcript: '💬 transcript', ai: '🤖 estimated', user: '✏️ edited', missing: '⚠ needed' }[src] || src;
+}
+function getSourceColor(src) {
+  return { shopify: '#10b981', transcript: '#3b82f6', ai: '#8b5cf6', user: '#0d9488', missing: '#ef4444' }[src] || '#64748b';
+}
+function setBadge(badgeId, src) {
+  const el = document.getElementById(badgeId);
+  if (!el) return;
+  el.textContent = getSourceLabel(src);
+  el.style.color = getSourceColor(src);
+}
+
+// Called whenever user edits a review field
+function onReviewEdit(inputId) {
+  const el = document.getElementById(inputId);
+  if (el) el.dataset.source = 'user';
+  setBadge('badge-' + inputId, 'user');
+  updateEconomicsLive();
+}
+
+// Render the Step 2 review card from extraction results
+function renderMetricsReview(data) {
+  document.getElementById('review-brand-name').textContent = data.brandName || '';
+  document.getElementById('review-hero-product').textContent = data.heroProduct ? `Hero: ${data.heroProduct}` : '';
+
+  if (data.shopifyData) {
+    const n = document.getElementById('review-shopify-notice');
+    n.style.display = 'block';
+    n.textContent = `🛍 Shopify data from ${data.shopifyData.domain} (${data.shopifyData.products.length} products)`;
+  } else {
+    document.getElementById('review-shopify-notice').style.display = 'none';
+  }
+
+  const m = data.metrics || {};
+  const s = data.sources || {};
+
+  const setRV = (rvId, key) => {
+    const el = document.getElementById(rvId);
+    if (!el) return;
+    const src = s[key] || (m[key] != null ? 'ai' : 'missing');
+    el.value = m[key] != null ? m[key] : '';
+    el.dataset.source = src;
+    el.classList.toggle('missing', src === 'missing');
+    setBadge('badge-' + rvId, src);
+  };
+
+  setRV('rv-price',    'listPrice');
+  setRV('rv-promo',    'promoPct');
+  setRV('rv-cogs',     'cogsPerUnit');
+  setRV('rv-shipping', 'shippingPerUnit');
+  setRV('rv-affcomm',  'affiliateCommPct');
+  setRV('rv-samples',  'monthlySamples');
+  setRV('rv-retainers','affiliateRetainers');
+  setRV('rv-videos',   'videosPerCreator');
+  setRV('rv-views',    'avgViews');
+
+  updateEconomicsLive();
+}
+
+// Live unit economics recalculation
+function updateEconomicsLive() {
+  const v = id => parseFloat(document.getElementById(id)?.value || 0) || 0;
+  const listPrice  = v('rv-price');
+  const promoPct   = v('rv-promo');
+  const cogs       = v('rv-cogs');
+  const shipping   = v('rv-shipping');
+  const affCommPct = v('rv-affcomm') / 100 || 0.15;
+  const sellingPrice = listPrice > 0 ? listPrice * (1 - promoPct / 100) : 0;
+
+  // Update selling price display
+  const spEl = document.getElementById('rv-selling-price');
+  if (spEl) spEl.textContent = sellingPrice > 0 ? `$${sellingPrice.toFixed(2)}` : '—';
+
+  const affComm   = sellingPrice * affCommPct;
+  const tikTokFee = sellingPrice * 0.06;
+  const grossProfit = sellingPrice - shipping - cogs - affComm - tikTokFee;
+  const grossMarginPct = sellingPrice > 0 ? grossProfit / sellingPrice : null;
+
+  const liveEl = document.getElementById('economics-live-body');
+  if (liveEl) {
+    if (!listPrice) {
+      liveEl.innerHTML = `<div style="color:var(--muted);font-size:.74rem;text-align:center;padding:8px">Enter list price to see unit economics</div>`;
+    } else {
+      const hasCOGS = cogs > 0;
+      const marginColor = grossMarginPct === null ? '#64748b' : grossMarginPct >= 0.20 ? '#10b981' : grossMarginPct >= 0.05 ? '#f59e0b' : '#ef4444';
+      const marginNote = grossMarginPct === null ? '' : grossMarginPct >= 0.20 ? ' ✅ Healthy' : grossMarginPct >= 0.05 ? ' ⚠ Thin' : grossMarginPct < 0 ? ' ⛔ Negative' : '';
+      liveEl.innerHTML = `
+        <div class="econ-row"><span>Selling price</span><span style="font-weight:600">$${sellingPrice.toFixed(2)}</span></div>
+        <div class="econ-row" style="color:var(--muted)"><span>− Shipping / unit</span><span>${shipping > 0 ? `-$${shipping.toFixed(2)}` : '<span style="color:#f59e0b">⚠ needed</span>'}</span></div>
+        <div class="econ-row" style="color:var(--muted)"><span>− COGS / unit</span><span>${hasCOGS ? `-$${cogs.toFixed(2)}` : '<span style="color:#ef4444">⚠ required</span>'}</span></div>
+        <div class="econ-row" style="color:var(--muted)"><span>− Aff. commission (${(affCommPct*100).toFixed(0)}%)</span><span>-$${affComm.toFixed(2)}</span></div>
+        <div class="econ-row" style="color:var(--muted)"><span>− TikTok fee (6%)</span><span>-$${tikTokFee.toFixed(2)}</span></div>
+        <div class="econ-row total" style="color:${marginColor}">
+          <span>Gross profit / order</span>
+          <span>${hasCOGS ? `$${grossProfit.toFixed(2)} (${(grossMarginPct*100).toFixed(1)}%)${marginNote}` : '—'}</span>
+        </div>`;
+    }
+  }
+
+  updateReviewGate(listPrice, cogs, shipping, grossMarginPct);
+}
+
+// Gate: block confirm button if required fields missing or economics broken
+function updateReviewGate(listPrice, cogs, shipping, grossMarginPct) {
+  const gate = document.getElementById('review-gate');
+  const btn  = document.getElementById('confirm-gen-btn');
+  if (!gate || !btn) return;
+
+  const blockers = [], warnings = [];
+  if (!listPrice)    blockers.push('List price is required');
+  if (!cogs)         blockers.push('COGS / unit required — enter your product cost');
+  if (!shipping)     warnings.push('Shipping cost not set — will default to $6/unit in projections');
+
+  const isNegative = listPrice && cogs && grossMarginPct !== null && grossMarginPct < 0;
+  const isThin     = listPrice && cogs && grossMarginPct !== null && grossMarginPct >= 0 && grossMarginPct < 0.10;
+  if (isNegative) {
+    const minViable = (cogs + (shipping||6)) / (1 - 0.15 - 0.06);
+    blockers.push(`Negative gross margin (${(grossMarginPct*100).toFixed(1)}%) — selling price must be at least $${minViable.toFixed(2)} to break even on variable costs`);
+  }
+
+  let html = '';
+  blockers.forEach(b => { html += `<div style="background:#1a0808;border:1px solid #7f1d1d;border-radius:6px;padding:8px 12px;font-size:.72rem;color:#fca5a5;margin-top:6px">⛔ ${b}</div>`; });
+  warnings.forEach(w => { html += `<div style="background:#1a1200;border:1px solid #78350f;border-radius:6px;padding:8px 12px;font-size:.72rem;color:#fcd34d;margin-top:6px">⚠ ${w}</div>`; });
+
+  if (!blockers.length && !warnings.length && listPrice && cogs) {
+    const color = grossMarginPct >= 0.20 ? '#0d1f16' : '#1a1200';
+    const border = grossMarginPct >= 0.20 ? '#166534' : '#78350f';
+    const text   = grossMarginPct >= 0.20 ? '#86efac' : '#fcd34d';
+    const msg    = grossMarginPct >= 0.20 ? '✅ Unit economics look healthy — ready to generate'
+                 : isThin ? '⚠ Thin margins — proposal will include AOV optimization recommendations' : '';
+    if (msg) html += `<div style="background:${color};border:1px solid ${border};border-radius:6px;padding:8px 12px;font-size:.72rem;color:${text};margin-top:6px">${msg}</div>`;
+  }
+
+  // Diagnostic override for negative margin
+  if (isNegative) {
+    html += `<button onclick="confirmAndGenerate(true)" class="btn btn-ghost btn-sm" style="width:100%;margin-top:8px;font-size:.72rem;border-color:#7f1d1d;color:#fca5a5">Generate Diagnostic Proposal (show path to profitability) →</button>`;
+  }
+
+  gate.innerHTML = html;
+  btn.disabled = blockers.length > 0;
+  btn.textContent = isNegative ? '⛔ Fix economics above to generate' : '✅ Confirm & Generate Proposal';
+}
+
+// STEP 2 → Proposal: sync rv- fields to m- fields, then call propose API
+async function confirmAndGenerate(forceDiagnostic = false) {
+  const v = id => parseFloat(document.getElementById(id)?.value || 0) || 0;
+
+  const confirmedMetrics = {
+    listPrice:        v('rv-price') || null,
+    promoPct:         v('rv-promo'),
+    shippingPerUnit:  v('rv-shipping') || 6,
+    cogsPerUnit:      v('rv-cogs') || null,
+    affiliateCommPct: v('rv-affcomm') || 15,
+    monthlySamples:   v('rv-samples') || 75,
+    affiliateRetainers: v('rv-retainers') || 1000,
+    videosPerCreator: v('rv-videos') || 2,
+    avgViews:         v('rv-views') || null,
+  };
+
+  // Sync confirmed values into hidden m- fields so getMetrics() + buildProposalHTML() work
+  const setM = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
+  setM('m-price',     confirmedMetrics.listPrice);
+  setM('m-promo',     confirmedMetrics.promoPct);
+  setM('m-shipping',  confirmedMetrics.shippingPerUnit);
+  setM('m-cogs-unit', confirmedMetrics.cogsPerUnit);
+  setM('m-affcomm',   confirmedMetrics.affiliateCommPct);
+  setM('m-samples',   confirmedMetrics.monthlySamples);
+  setM('m-retainers', confirmedMetrics.affiliateRetainers);
+  setM('m-videos',    confirmedMetrics.videosPerCreator);
+  setM('m-views',     confirmedMetrics.avgViews || 1500);
+  setM('m-ctr',       3);
+  setM('m-cvr',       2);
+
+  const btn = document.getElementById('confirm-gen-btn');
+  btn.disabled = true; btn.textContent = '⏳ Generating proposal…';
+
+  const transcript = document.getElementById('proposal-input').value.trim();
+  const extra = document.getElementById('extra-context-input')?.value.trim() || '';
+  const fullContext = [transcript, extra].filter(Boolean).join('\n\n');
   const { retainer, gmv } = getProposalPricing();
-  const metrics = getMetrics();
 
   try {
     const r = await fetch(`${BASE}/api/ai/propose`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ context: input, retainer, gmv, metrics }),
+      body: JSON.stringify({ context: fullContext, retainer, gmv, confirmedMetrics }),
     });
     const d = await r.json();
     if (d.error) throw new Error(d.error);
 
-    // Show Shopify scrape notice if data was found
-    if (d.shopifyData) {
-      const notice = document.createElement('div');
-      notice.style.cssText = 'font-size:.7rem;color:#20d5c4;margin-top:6px;padding:4px 8px;background:#091819;border-radius:6px;border:1px solid #0f3035';
-      notice.textContent = `🛍 Shopify prices pulled from ${d.shopifyData.domain} (${d.shopifyData.products.length} products)`;
-      btn.parentNode.insertBefore(notice, btn.nextSibling);
-      setTimeout(() => notice.remove(), 8000);
-    }
-
-    // Auto-fill metrics inputs from AI suggestions, then re-read getMetrics()
-    const sm = d.proposal.suggestedMetrics || {};
-    const setField = (id, val) => { if (val != null) { const el = document.getElementById(id); if (el) el.value = val; } };
-    setField('m-price',     sm.listPrice);
-    setField('m-promo',     sm.promoPct);
-    setField('m-shipping',  sm.shippingPerUnit);
-    setField('m-cogs-unit', sm.cogsPerUnit);
-    setField('m-affcomm',   sm.affiliateCommPct);
-    setField('m-creators',  sm.activeCreators);
-    setField('m-videos',    sm.videosPerCreator);
-    setField('m-views',     sm.avgViews);
-    setField('m-ctr',       sm.ctr);
-    setField('m-cvr',       sm.cvr);
-    setField('m-samples',   sm.monthlySamples);
-    setField('m-retainers', sm.affiliateRetainers);
-
-    // Re-read metrics after auto-fill so the proposal uses the updated values
     const filledMetrics = getMetrics();
-
-    // Try to find brand logo from contact's email domain
-    const brandLogoUrl = await tryGetBrandLogo(input);
+    const brandLogoUrl = await tryGetBrandLogo(fullContext);
     lastProposalData = { ...d.proposal, _metrics: filledMetrics, _brandLogoUrl: brandLogoUrl };
     openProposalModal(lastProposalData);
     populateContactSelector();
-    // Extract email + brand name from context to auto-select the right contact
-    const ctxEmail = (input.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/) || [])[0]?.toLowerCase();
+    const ctxEmail = (fullContext.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/) || [])[0]?.toLowerCase();
     populatePmContactSel(ctxEmail, d.proposal.brandName);
   } catch(e) {
     alert('Error generating proposal: ' + e.message);
   }
-  btn.disabled = false; btn.textContent = '✨ Generate';
+
+  btn.disabled = false; btn.textContent = '✅ Confirm & Generate Proposal';
 }
 
 function populatePmContactSel(autoEmail, autoBrand) {
@@ -1954,17 +2307,15 @@ function populatePmContactSel(autoEmail, autoBrand) {
     sel.appendChild(opt);
   });
 
-  // Auto-select: try email match first, then brand name fuzzy match
-  if (autoEmail || autoBrand) {
-    const brand = (autoBrand || '').toLowerCase();
-    let bestOpt = null;
+  // Auto-select by exact email match only — no fuzzy matching to avoid wrong contacts
+  if (autoEmail) {
+    const emails = Array.isArray(autoEmail) ? autoEmail : [autoEmail];
     for (const o of opps) {
-      const email = (o.contact.email || '').toLowerCase();
-      const name  = (o.contact.name || o.name || '').toLowerCase();
-      if (autoEmail && email === autoEmail) { bestOpt = o; break; }
-      if (brand && (name.includes(brand) || brand.includes(name.split(' ')[0]))) bestOpt = o;
+      if (emails.includes((o.contact.email || '').toLowerCase())) {
+        sel.value = o.id;
+        break;
+      }
     }
-    if (bestOpt) sel.value = bestOpt.id;
   }
 }
 
@@ -2068,7 +2419,8 @@ function _renderChart(p) {
   const totalCost = (m.shipping||0) + cogsVal + affComm + tikTokFee + adspend;
   const gpp = sel - totalCost;
   const sampleCost = ((m.shipping||0) + cogsVal) * samplesVal;
-  const revSharePct = pr.gmvPct != null ? pr.gmvPct / 100 : (m.revSharePct || 0);
+  const baseRevShare = pr.gmvPct != null ? pr.gmvPct / 100 : (m.revSharePct || 0);
+  const exportTaperRates = [baseRevShare, baseRevShare * 0.8, baseRevShare * 0.6];
   const teamFee = pr.retainer != null ? pr.retainer : (m.teamFee || 0);
   const affRetainers = m.affiliateRetainers || 0;
 
@@ -2080,10 +2432,11 @@ function _renderChart(p) {
     const purch = Math.round(imp * (m.ctr||0) * (m.cvr||0));
     return Math.round(purch * sel);
   });
-  const netData = gmvData.map(gmv => {
+  const netData = gmvData.map((gmv, i) => {
+    const rate = i < 3 ? exportTaperRates[0] : i < 6 ? exportTaperRates[1] : exportTaperRates[2];
     const purch = gmv / (sel || 1);
     const gross = gpp * purch;
-    return Math.round(gross - teamFee - (revSharePct * gmv) - sampleCost - affRetainers - gmv * 0.02);
+    return Math.round(gross - teamFee - (rate * gmv) - sampleCost - affRetainers - gmv * 0.02);
   });
 
   _chartInst = new Chart(canvas, {
@@ -2184,24 +2537,37 @@ function buildProposalHTML(p) {
   const fmtPct = n => (n * 100).toFixed(1) + '%';
   const fmtK = n => n >= 1000 ? '$' + (n/1000).toFixed(0) + 'k' : fmt$(n);
 
-  // KPI ramp: 3 phases using the base month multiplied
+  // KPI ramp: 3 phases — creator counts derived from sampling logic (50% activation per cohort)
+  // Each month N samples sent → N×50% activate → at 3mo steady state = N×50%×3 active creators
+  const baseGmvRate = m.revSharePct;
+  const gmvTaperRates = [baseGmvRate, baseGmvRate * 0.8, baseGmvRate * 0.6];
+  const ACTIVATION_RATE = 0.5;
+  const useSampleLogic = m.monthlySamples > 0;
+  // Per-phase creator counts: either sample-derived (accumulating cohorts) or manual-multiplier fallback
+  const phaseCreatorCounts = useSampleLogic
+    ? [
+        Math.round(m.monthlySamples * ACTIVATION_RATE * 1), // Phase 1: 1 month of activations
+        Math.round(m.monthlySamples * ACTIVATION_RATE * 2), // Phase 2: 2 months cumulative
+        Math.round(m.monthlySamples * ACTIVATION_RATE * 3), // Phase 3: 3 months = steady state
+      ]
+    : [Math.round(m.creators * 0.3), Math.round(m.creators * 0.7), m.creators];
+
   const phases = [
-    { label: 'Month 1–3', cMult: 0.3, vMult: 0.8 },
-    { label: 'Month 4–6', cMult: 0.7, vMult: 1.0 },
-    { label: 'Month 7–12', cMult: 1.0, vMult: 1.2 },
+    { label: 'Month 1–3',  c: phaseCreatorCounts[0], vMult: 0.8,  gmvRate: gmvTaperRates[0] },
+    { label: 'Month 4–6',  c: phaseCreatorCounts[1], vMult: 1.0,  gmvRate: gmvTaperRates[1] },
+    { label: 'Month 7–12', c: phaseCreatorCounts[2], vMult: 1.2,  gmvRate: gmvTaperRates[2] },
   ];
 
   const phaseCalc = ph => {
-    const c = Math.round(m.creators * ph.cMult);
-    const imp = c * m.videosPerCreator * m.avgViews * ph.vMult;
+    const imp = ph.c * m.videosPerCreator * m.avgViews * ph.vMult;
     const purch = Math.round(imp * m.ctr * m.cvr);
     const gmv = purch * m.sellingPrice;
     const gross = m.grossProfitPerOrder * purch;
-    const teamC = m.teamFee + (m.revSharePct * gmv);
+    const teamC = m.teamFee + (ph.gmvRate * gmv);
     const sampC = m.sampleCost;
     const ret = gmv * 0.02;
     const net = gross - teamC - sampC - m.affiliateRetainers - ret;
-    return { c, imp: Math.round(imp), purch, gmv, gross, teamC, net };
+    return { c: ph.c, imp: Math.round(imp), purch, gmv, gross, teamC, net, gmvRate: ph.gmvRate };
   };
   const phaseData = phases.map(phaseCalc);
 
@@ -2231,6 +2597,22 @@ function buildProposalHTML(p) {
     </div>`;
 
   // KPI projection table
+  // Calculate break-even creator count (how many creators to reach break-even GMV)
+  const taperNetMarginCalc = m.grossMarginPct - gmvTaperRates[2] - 0.02;
+  const beGMV = taperNetMarginCalc > 0
+    ? Math.round((m.teamFee + m.sampleCost + m.affiliateRetainers) / taperNetMarginCalc)
+    : null;
+  const beCreators = beGMV
+    ? Math.ceil(beGMV / (m.sellingPrice * m.videosPerCreator * m.avgViews * 1.2 * m.ctr * m.cvr))
+    : null; // uses Phase 3 vMult=1.2
+  // Break-even in terms of monthly samples needed (more actionable than raw creator count)
+  const beSamples = beCreators && useSampleLogic
+    ? Math.ceil(beCreators / (ACTIVATION_RATE * 3)) // reverse of: creators = samples × 0.5 × 3
+    : null;
+  const bePhaseGMV = beCreators
+    ? Math.round(beCreators * m.videosPerCreator * m.avgViews * 1.2 * m.ctr * m.cvr * m.sellingPrice)
+    : null;
+
   const kpiTableHtml = `
     <div class="pm-fin-box" style="margin-top:16px">
       <table class="pm-fin-table">
@@ -2239,16 +2621,25 @@ function buildProposalHTML(p) {
           const d = phaseData[i];
           return `<tr><td style="font-weight:700;color:#e2e8f0">${ph.label}</td><td>${d.c.toLocaleString()}</td><td>${d.imp.toLocaleString()}</td><td>${d.purch.toLocaleString()}</td><td style="color:#10b981;font-weight:700">${fmtK(d.gmv)}</td></tr>`;
         }).join('')}
+        ${beCreators && beCreators > phaseCreatorCounts[2] ? `
+        <tr style="background:#0d1a0d;border-top:1px dashed #166534">
+          <td style="font-weight:700;color:#4ade80">🎯 Break-Even Scale</td>
+          <td style="color:#4ade80;font-weight:700">${beCreators}</td>
+          <td style="color:#4ade80">${(beCreators * m.videosPerCreator * m.avgViews).toLocaleString()}</td>
+          <td style="color:#4ade80">${Math.round(beGMV / m.sellingPrice).toLocaleString()}</td>
+          <td style="color:#4ade80;font-weight:700">${fmtK(beGMV)}</td>
+        </tr>` : ''}
       </table>
     </div>`;
 
-  // All-in cost waterfall at Month 7-12 run rate
+  // All-in cost waterfall at Month 7-12 run rate (uses tapered GMV rate)
   const scaled = phaseData[2];
+  const scaledGmvRate = gmvTaperRates[2];
   const waterfallRows = [
     { label: 'Gross Revenue (GMV)', val: scaled.gmv, pct: 1, color: '#e2e8f0', bold: true },
     { label: 'Gross Profit from Sales', val: scaled.gross, pct: scaled.gross/scaled.gmv, color: '#5eead4', bold: false },
     { label: '− Team Fee', val: -m.teamFee, pct: -m.teamFee/scaled.gmv, color: '#ef4444', bold: false },
-    { label: `− GMV Rev Share (${fmtPct(m.revSharePct)})`, val: -(m.revSharePct * scaled.gmv), pct: -m.revSharePct, color: '#ef4444', bold: false },
+    { label: `− GMV Rev Share (${fmtPct(scaledGmvRate)} · tapered)`, val: -(scaledGmvRate * scaled.gmv), pct: -scaledGmvRate, color: '#ef4444', bold: false },
     { label: `− Sample Cost (${m.monthlySamples} units)`, val: -m.sampleCost, pct: -m.sampleCost/scaled.gmv, color: '#f59e0b', bold: false },
     { label: '− Affiliate Retainers', val: -m.affiliateRetainers, pct: -m.affiliateRetainers/scaled.gmv, color: '#f59e0b', bold: false },
     { label: '− Returns & Refunds (2%)', val: -(scaled.gmv * 0.02), pct: -0.02, color: '#64748b', bold: false },
@@ -2268,16 +2659,126 @@ function buildProposalHTML(p) {
       </table>
     </div>`;
 
-  // Break-even callout
-  const beHtml = m.breakEvenGMV
-    ? `<div class="pm-breakeven-callout">
-        <div class="be-icon">📊</div>
+  // Break-even using tapered Phase 3 GMV rate
+  const taperNetMargin = m.grossMarginPct - scaledGmvRate - 0.02;
+  const taperBreakEven = taperNetMarginCalc > 0 ? beGMV : null;
+  const channelProfitable = scaled.net >= 0;
+
+  let beHtml;
+  if (channelProfitable) {
+    // Already profitable at steady state — just show the callout
+    beHtml = `<div class="pm-breakeven-callout">
+      <div class="be-icon">📊</div>
+      <div class="be-text">
+        GMV share tapers: <strong>${fmtPct(gmvTaperRates[0])} → ${fmtPct(gmvTaperRates[1])} → ${fmtPct(gmvTaperRates[2])}</strong> as the channel scales.
+        Break-even at <strong>${fmtK(taperBreakEven)}/mo GMV</strong>.
+        At ${fmtK(scaled.gmv)}/mo run rate, net profit is <strong style="color:#4ade80">${fmt$(scaled.net)}/mo</strong>.
+      </div>
+    </div>`;
+  } else if (taperBreakEven && beCreators) {
+    // Negative at steady state but achievable — show the path
+    beHtml = `<div class="pm-breakeven-callout" style="background:#0f1a0f;border-color:#166534;flex-direction:column;align-items:flex-start;gap:10px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="be-icon">🎯</div>
         <div class="be-text">
-          Break-even at <strong>${fmtK(m.breakEvenGMV)}/mo GMV</strong> — the channel covers all costs.
-          At ${fmtK(scaled.gmv)}/mo (Month 7–12 run rate), net profit is <strong style="color:${scaled.net >= 0 ? '#4ade80' : '#f87171'}">${fmt$(scaled.net)}/mo</strong>.
+          GMV share tapers: <strong>${fmtPct(gmvTaperRates[0])} → ${fmtPct(gmvTaperRates[1])} → ${fmtPct(gmvTaperRates[2])}</strong> as the channel scales.
+          Month 7–12 run rate (<strong>${fmtK(scaled.gmv)}/mo</strong>) is below break-even — the channel covers its costs at
+          <strong style="color:#4ade80">${fmtK(taperBreakEven)}/mo GMV</strong>.
         </div>
-      </div>`
-    : '';
+      </div>
+      <table style="width:100%;font-size:.75rem;border-collapse:collapse">
+        <tr>
+          <td style="color:#64748b;padding:4px 0">Current projection (${phaseCreatorCounts[2]} creators${useSampleLogic ? ` — ${m.monthlySamples} samples/mo` : ''})</td>
+          <td style="text-align:right;color:#f87171;font-weight:700">${fmtK(scaled.gmv)}/mo</td>
+          <td style="text-align:right;color:#f87171;padding-left:16px">${fmt$(scaled.net)}/mo net</td>
+        </tr>
+        <tr>
+          <td style="color:#4ade80;font-weight:700;padding:4px 0">🎯 Break-even (${beCreators} creators${beSamples ? ` — ${beSamples} samples/mo` : ''})</td>
+          <td style="text-align:right;color:#4ade80;font-weight:700">${fmtK(taperBreakEven)}/mo</td>
+          <td style="text-align:right;color:#4ade80;padding-left:16px">$0/mo net</td>
+        </tr>
+        <tr>
+          <td style="color:#86efac;padding:4px 0">Scale target (${beCreators * 2}+ creators${beSamples ? ` — ${beSamples * 2} samples/mo` : ''})</td>
+          <td style="text-align:right;color:#86efac;font-weight:700">${fmtK(taperBreakEven * 2)}/mo</td>
+          <td style="text-align:right;color:#86efac;padding-left:16px">~${fmt$(Math.round(taperBreakEven * taperNetMarginCalc))}/mo net</td>
+        </tr>
+      </table>
+      <div style="font-size:.72rem;color:#64748b">The channel turns profitable as the creator roster scales past ${beCreators}${beSamples ? ` (requires ${beSamples} samples/mo outreach)` : ''}. Month 7–12 projections reflect a conservative ramp — the roadmap targets ${beCreators}+ creators by Month 6.</div>
+    </div>`;
+  } else {
+    // No break-even achievable (negative unit economics — handled by profitabilityHtml)
+    beHtml = `<div class="pm-breakeven-callout">
+      <div class="be-icon">📊</div>
+      <div class="be-text">
+        GMV share tapers: <strong>${fmtPct(gmvTaperRates[0])} → ${fmtPct(gmvTaperRates[1])} → ${fmtPct(gmvTaperRates[2])}</strong> as the channel scales.
+        At ${fmtK(scaled.gmv)}/mo run rate, net profit is <strong style="color:#f87171">${fmt$(scaled.net)}/mo</strong>.
+        See AOV strategy below.
+      </div>
+    </div>`;
+  }
+
+  // ── Profitability Alert + Fix ──────────────────────────────────────────────
+  const pf = p.profitabilityFix || {};
+  let profitabilityHtml = '';
+  if (m.isUnprofitable) {
+    const fmt2 = n => n != null ? '$' + n.toFixed(2) : '—';
+    const targetGM = m.targetAOV ? Math.round((1 - (m.cogs + m.shipping) / m.targetAOV - (m.affCommPct + m.tikTokFeePct + m.adspendPct)) * 100) : 35;
+
+    // Target scenario waterfall (at targetAOV)
+    const tPrice = m.targetAOV || 0;
+    const tGross = m.targetGrossProfitPerOrder || 0;
+    const tGMV = tPrice * phaseData[2].purch; // same purchase volume
+    const tGmvShare = gmvTaperRates[2] * tGMV;
+    const tNet = (tGross * phaseData[2].purch) - m.teamFee - tGmvShare - m.sampleCost - m.affiliateRetainers - (tGMV * 0.02);
+
+    profitabilityHtml = `
+    <div style="margin:32px 0;border:1.5px solid #ef4444;border-radius:12px;overflow:hidden">
+      <div style="background:#2d0a0a;padding:16px 20px;display:flex;align-items:center;gap:12px">
+        <span style="font-size:1.4rem">⚠️</span>
+        <div>
+          <div style="font-size:.95rem;font-weight:800;color:#f87171">Unit Economics Problem Detected</div>
+          <div style="font-size:.75rem;color:#fca5a5;margin-top:2px">At the current hero SKU price, every sale loses money before our fees are counted.</div>
+        </div>
+      </div>
+      <div style="padding:20px;background:#1a0808">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px">
+          <div>
+            <div style="font-size:.7rem;color:#ef4444;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">❌ Current State</div>
+            <table style="width:100%;border-collapse:collapse;font-size:.78rem">
+              <tr><td style="color:#94a3b8;padding:4px 0">Selling Price</td><td style="text-align:right;color:#e2e8f0;font-weight:700">${fmt$(m.sellingPrice)}</td></tr>
+              <tr><td style="color:#94a3b8;padding:4px 0">COGS + Shipping</td><td style="text-align:right;color:#ef4444">−${fmt$(m.cogs + m.shipping)}</td></tr>
+              <tr><td style="color:#94a3b8;padding:4px 0">Commissions (${Math.round((m.affCommPct + m.tikTokFeePct)*100)}%)</td><td style="text-align:right;color:#ef4444">−${fmt$(m.affComm + m.tikTokFee)}</td></tr>
+              <tr style="border-top:1px solid #3d1515"><td style="color:#f87171;font-weight:700;padding:6px 0 2px">Gross Profit/Order</td><td style="text-align:right;color:#ef4444;font-weight:800">${fmt$(m.grossProfitPerOrder)}</td></tr>
+              <tr><td style="color:#f87171;font-weight:700">Gross Margin</td><td style="text-align:right;color:#ef4444;font-weight:800">${(m.grossMarginPct * 100).toFixed(1)}%</td></tr>
+            </table>
+          </div>
+          <div>
+            <div style="font-size:.7rem;color:#10b981;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">✅ Target State (${fmt2(m.targetAOV)} AOV)</div>
+            <table style="width:100%;border-collapse:collapse;font-size:.78rem">
+              <tr><td style="color:#94a3b8;padding:4px 0">Selling Price</td><td style="text-align:right;color:#e2e8f0;font-weight:700">${fmt2(m.targetAOV)}</td></tr>
+              <tr><td style="color:#94a3b8;padding:4px 0">COGS + Shipping</td><td style="text-align:right;color:#f59e0b">−${fmt$(m.cogs + m.shipping)}</td></tr>
+              <tr><td style="color:#94a3b8;padding:4px 0">Commissions (${Math.round((m.affCommPct + m.tikTokFeePct)*100)}%)</td><td style="text-align:right;color:#f59e0b">−${m.targetAOV ? fmt$((m.affCommPct + m.tikTokFeePct) * m.targetAOV) : '—'}</td></tr>
+              <tr style="border-top:1px solid #0d2d1a"><td style="color:#4ade80;font-weight:700;padding:6px 0 2px">Gross Profit/Order</td><td style="text-align:right;color:#10b981;font-weight:800">${fmt2(m.targetGrossProfitPerOrder)}</td></tr>
+              <tr><td style="color:#4ade80;font-weight:700">Gross Margin</td><td style="text-align:right;color:#10b981;font-weight:800">~${targetGM}%</td></tr>
+            </table>
+          </div>
+        </div>
+
+        <div style="background:#0d1a12;border-radius:8px;padding:14px 16px;margin-bottom:16px">
+          <div style="font-size:.72rem;color:#5eead4;font-weight:700;margin-bottom:6px">💡 MINIMUM VIABLE AOV</div>
+          <div style="font-size:.85rem;color:#e2e8f0">Break-even per unit requires a selling price of at least <strong style="color:#f59e0b">${m.minViablePrice ? '$' + m.minViablePrice.toFixed(2) : '—'}</strong> given current COGS + shipping. At ${fmt2(m.targetAOV)} AOV you reach ~${targetGM}% gross margin — enough to cover team costs and generate profit.</div>
+          ${tNet > 0 && m.targetAOV ? `<div style="margin-top:8px;font-size:.82rem;color:#4ade80;font-weight:700">At ${fmt2(m.targetAOV)} AOV: estimated <strong>${fmt$(tNet)}/mo net profit</strong> at Month 7–12 run rate.</div>` : ''}
+        </div>
+
+        ${pf.primaryIssue || pf.bundleIdea || (pf.strategySteps || []).length > 0 ? `
+        <div style="font-size:.72rem;color:#fbbf24;font-weight:700;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px">🎯 The Fix: AOV Growth Strategy</div>
+        ${pf.primaryIssue ? `<div style="font-size:.8rem;color:#94a3b8;margin-bottom:12px">${esc(pf.primaryIssue)}</div>` : ''}
+        ${pf.bundleIdea ? `<div style="background:#1c1828;border-left:3px solid #fbbf24;padding:10px 14px;border-radius:0 6px 6px 0;margin-bottom:12px;font-size:.82rem;color:#e2e8f0"><strong style="color:#fbbf24">Recommended Bundle:</strong> ${esc(pf.bundleIdea)}</div>` : ''}
+        ${(pf.strategySteps || []).length > 0 ? `<ol style="margin:0;padding-left:18px">${pf.strategySteps.map(s => `<li style="font-size:.8rem;color:#94a3b8;margin-bottom:6px">${esc(s)}</li>`).join('')}</ol>` : ''}
+        ` : ''}
+      </div>
+    </div>`;
+  }
 
   // Roadmap
   const rm = p.roadmap || {};
@@ -2336,10 +2837,14 @@ function buildProposalHTML(p) {
       ${unitTableHtml}
 
       <div class="pm-section-title" style="margin-top:24px">KPI Projections — Creator-to-GMV Model</div>
-      <p class="pm-body-text">Based on ${m.creators.toLocaleString()} active creators at steady state, ${m.videosPerCreator} videos/creator/mo, ${m.avgViews.toLocaleString()} avg views, ${(m.ctr*100).toFixed(1)}% CTR, ${(m.cvr*100).toFixed(1)}% CVR.</p>
+      <p class="pm-body-text">${useSampleLogic
+        ? `Based on ${m.monthlySamples} samples/mo × 50% activation rate — creator roster accumulates each month. ${m.videosPerCreator} videos/creator/mo, ${m.avgViews.toLocaleString()} avg views, ${(m.ctr*100).toFixed(1)}% CTR, ${(m.cvr*100).toFixed(1)}% CVR.`
+        : `Based on ${m.creators.toLocaleString()} active creators at steady state, ${m.videosPerCreator} videos/creator/mo, ${m.avgViews.toLocaleString()} avg views, ${(m.ctr*100).toFixed(1)}% CTR, ${(m.cvr*100).toFixed(1)}% CVR.`
+      }</p>
       ${kpiTableHtml}
       ${waterfallHtml}
       ${beHtml}
+      ${profitabilityHtml}
     </div>
 
     <!-- 12-Month Projection Chart -->
@@ -2374,7 +2879,7 @@ function buildProposalHTML(p) {
       <div class="pm-pricing-card">
         <div class="pm-pricing-retainer">${fmt$(m.teamFee)}</div>
         <div class="pm-pricing-sub">per month · month-to-month</div>
-        <div class="pm-pricing-gmv">+ ${fmtPct(m.revSharePct)} of TikTok Shop GMV</div>
+        <div class="pm-pricing-gmv">+ ${fmtPct(gmvTaperRates[0])} → ${fmtPct(gmvTaperRates[1])} → ${fmtPct(gmvTaperRates[2])} GMV share (tapers as you scale)</div>
         <ul class="pm-pricing-features">
           <li>Dedicated affiliate manager + shop manager</li>
           <li>AI content system — creative briefs, hooks, scripts</li>
@@ -2487,13 +2992,15 @@ function renderProjChart(p) {
   const grossProfitPerOrder = sellingPrice - totalCost;
   const grossMarginPct = grossProfitPerOrder / sellingPrice;
   const sampleCost = (m.shipping + cogsVal) * samplesVal;
-  const revSharePct = m.revSharePct;
+  const baseRevSharePct = m.revSharePct;
+  const taperRates = [baseRevSharePct, baseRevSharePct * 0.8, baseRevSharePct * 0.6];
   const teamFee = m.teamFee;
   const affiliateRetainers = m.affiliateRetainers;
 
-  // Build 12-month ramp: creators ramp from 15% to 100% over 12 months
+  // Build 12-month ramp with tapering GMV share per phase
   const creatorRamp = [0.1, 0.2, 0.3, 0.45, 0.55, 0.65, 0.75, 0.82, 0.88, 0.93, 0.97, 1.0];
   const labels = ['M1','M2','M3','M4','M5','M6','M7','M8','M9','M10','M11','M12'];
+  const getMonthGmvRate = i => i < 3 ? taperRates[0] : i < 6 ? taperRates[1] : taperRates[2];
 
   const gmvData = creatorRamp.map(r => {
     const c = Math.round(m.creators * r);
@@ -2502,10 +3009,10 @@ function renderProjChart(p) {
     return Math.round(purch * sellingPrice);
   });
 
-  const netProfitData = gmvData.map(gmv => {
+  const netProfitData = gmvData.map((gmv, i) => {
     const purchases = gmv / sellingPrice;
     const gross = grossProfitPerOrder * purchases;
-    const teamC = teamFee + (revSharePct * gmv);
+    const teamC = teamFee + (getMonthGmvRate(i) * gmv);
     const ret = gmv * 0.02;
     return Math.round(gross - teamC - sampleCost - affiliateRetainers - ret);
   });
