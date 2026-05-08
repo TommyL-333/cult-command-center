@@ -603,6 +603,7 @@ main{max-width:1400px;margin:0 auto;padding:24px 20px;}
         <input type="number" id="m-affcomm" style="display:none" value="25">
         <input type="number" id="m-adspend" style="display:none" value="0">
         <input type="number" id="m-creators" style="display:none">
+        <input type="number" id="m-videos" style="display:none" value="4">
         <input type="number" id="m-views" style="display:none" value="2000">
         <input type="number" id="m-ctr" style="display:none" value="3">
         <input type="number" id="m-cvr" style="display:none" value="2">
@@ -1737,11 +1738,12 @@ function getMetrics() {
   const manualCreators = v('m-creators') || 0;
   const creators = manualCreators || sampleDerivedCreators || 150;
 
+  const videosPerCreator = v('m-videos') || 4;
   const avgViews = v('m-views') || 2000;
   const ctr = v('m-ctr') / 100 || 0.03;
   const cvr = v('m-cvr') / 100 || 0.015;
 
-  const impressions = creators * avgViews;
+  const impressions = creators * videosPerCreator * avgViews;
   const purchases = Math.round(impressions * ctr * cvr);
   const monthlyGMV = purchases * sellingPrice;
   const grossMonthlyProfit = grossProfitPerOrder * purchases;
@@ -1777,7 +1779,7 @@ function getMetrics() {
     // Inputs
     listPrice, promoPct, sellingPrice, shipping, cogs,
     affCommPct, adspendPct, tikTokFeePct,
-    creators, avgViews, ctr, cvr,
+    creators, videosPerCreator, avgViews, ctr, cvr,
     monthlySamples, sampleDerivedCreators, affiliateRetainers, teamFee, revSharePct,
     // Per-order
     affComm, tikTokFee, adspend, totalCostPerOrder, grossProfitPerOrder, grossMarginPct,
@@ -2248,6 +2250,7 @@ async function confirmAndGenerate(forceDiagnostic = false) {
   setM('m-affcomm',   confirmedMetrics.affiliateCommPct);
   setM('m-samples',   confirmedMetrics.monthlySamples);
   setM('m-retainers', confirmedMetrics.affiliateRetainers);
+  setM('m-videos',    4);
   setM('m-views',     confirmedMetrics.avgViews || 2000);
   setM('m-ctr',       3);
   setM('m-cvr',       2);
@@ -2417,7 +2420,7 @@ function _renderChart(p) {
   const labels = ['M1','M2','M3','M4','M5','M6','M7','M8','M9','M10','M11','M12'];
   const gmvData = ramp.map(r => {
     const c = Math.round((m.creators||0) * r);
-    const imp = c * (m.avgViews||0);
+    const imp = c * (m.videosPerCreator||4) * (m.avgViews||0);
     const purch = Math.round(imp * (m.ctr||0) * (m.cvr||0));
     return Math.round(purch * sel);
   });
@@ -2553,7 +2556,7 @@ function buildProposalHTML(p) {
   ];
 
   const phaseCalc = ph => {
-    const imp = ph.c * m.avgViews;
+    const imp = ph.c * m.videosPerCreator * m.avgViews;
     const purch = Math.round(imp * m.ctr * m.cvr);
     const gmv = purch * m.sellingPrice;
     const gross = m.grossProfitPerOrder * purch;
@@ -2598,14 +2601,14 @@ function buildProposalHTML(p) {
     ? Math.round((m.teamFee + steadyStateSampleCost + m.affiliateRetainers) / flatNetMarginCalc)
     : null;
   const beCreators = beGMV
-    ? Math.ceil(beGMV / (m.sellingPrice * m.avgViews * m.ctr * m.cvr))
+    ? Math.ceil(beGMV / (m.sellingPrice * m.videosPerCreator * m.avgViews * m.ctr * m.cvr))
     : null;
   // Break-even in terms of monthly samples needed (more actionable than raw creator count)
   const beSamples = beCreators && useSampleLogic
     ? Math.ceil(beCreators / (ACTIVATION_RATE * 3)) // reverse of: creators = samples × 0.5 × 3
     : null;
   const bePhaseGMV = beCreators
-    ? Math.round(beCreators * m.avgViews * m.ctr * m.cvr * m.sellingPrice)
+    ? Math.round(beCreators * m.videosPerCreator * m.avgViews * m.ctr * m.cvr * m.sellingPrice)
     : null;
 
   const kpiTableHtml = `
@@ -2620,7 +2623,7 @@ function buildProposalHTML(p) {
         <tr style="background:#0d1a0d;border-top:1px dashed #166534">
           <td style="font-weight:700;color:#4ade80">🎯 Break-Even Scale</td>
           <td style="color:#4ade80;font-weight:700">${beCreators}</td>
-          <td style="color:#4ade80">${(beCreators * m.avgViews).toLocaleString()}</td>
+          <td style="color:#4ade80">${(beCreators * m.videosPerCreator * m.avgViews).toLocaleString()}</td>
           <td style="color:#4ade80">${Math.round(beGMV / m.sellingPrice).toLocaleString()}</td>
           <td style="color:#4ade80;font-weight:700">${fmtK(beGMV)}</td>
         </tr>` : ''}
@@ -2835,8 +2838,8 @@ function buildProposalHTML(p) {
 
       <div class="pm-section-title" style="margin-top:24px">KPI Projections — Creator-to-GMV Model</div>
       <p class="pm-body-text">${useSampleLogic
-        ? `Based on ${m.monthlySamples} samples/mo × 50% activation rate — creator roster accumulates each month. ${m.avgViews.toLocaleString()} avg monthly views/creator, ${(m.ctr*100).toFixed(1)}% CTR, ${(m.cvr*100).toFixed(1)}% CVR.`
-        : `Based on ${m.creators.toLocaleString()} active creators at steady state, ${m.avgViews.toLocaleString()} avg monthly views/creator, ${(m.ctr*100).toFixed(1)}% CTR, ${(m.cvr*100).toFixed(1)}% CVR.`
+        ? `Based on ${m.monthlySamples} samples/mo × 50% activation rate — creator roster accumulates each month. ${m.videosPerCreator} videos/creator/mo × ${m.avgViews.toLocaleString()} avg views, ${(m.ctr*100).toFixed(1)}% CTR, ${(m.cvr*100).toFixed(1)}% CVR.`
+        : `Based on ${m.creators.toLocaleString()} active creators at steady state. ${m.videosPerCreator} videos/creator/mo × ${m.avgViews.toLocaleString()} avg views, ${(m.ctr*100).toFixed(1)}% CTR, ${(m.cvr*100).toFixed(1)}% CVR.`
       }</p>
       ${kpiTableHtml}
       ${waterfallHtml}
@@ -2999,7 +3002,7 @@ function renderProjChart(p) {
 
   const gmvData = creatorRamp.map(r => {
     const c = Math.round(m.creators * r);
-    const imp = c * m.avgViews;
+    const imp = c * (m.videosPerCreator||4) * m.avgViews;
     const purch = Math.round(imp * m.ctr * m.cvr);
     return Math.round(purch * sellingPrice);
   });
