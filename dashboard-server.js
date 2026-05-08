@@ -4260,7 +4260,7 @@ async function scrapeShopifyProducts(context) {
 
 // ─── AI Proposal generator ────────────────────────────────────────────────────
 // ── Step 1: Extract metrics from transcript + Shopify ─────────────────────────
-app.post('/api/ai/extract-metrics', cfAccessMiddleware, async (req, res) => {
+app.post('/api/ai/extract-metrics', async (req, res) => {
   try {
     const { context } = req.body;
     if (!context) return res.status(400).json({ error: 'context required' });
