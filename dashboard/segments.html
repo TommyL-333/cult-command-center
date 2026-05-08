@@ -600,7 +600,7 @@ main{max-width:1400px;margin:0 auto;padding:24px 20px;}
         <input type="number" id="m-promo" style="display:none" value="0">
         <input type="number" id="m-shipping" style="display:none" value="6">
         <input type="number" id="m-cogs-unit" style="display:none" value="0">
-        <input type="number" id="m-affcomm" style="display:none" value="15">
+        <input type="number" id="m-affcomm" style="display:none" value="25">
         <input type="number" id="m-adspend" style="display:none" value="0">
         <input type="number" id="m-creators" style="display:none">
         <input type="number" id="m-views" style="display:none" value="2000">
@@ -1718,7 +1718,7 @@ function getMetrics() {
   const sellingPrice = listPrice * (1 - promoPct);
   const shipping = v('m-shipping') || 6;
   const cogs = v('m-cogs-unit') || 10;
-  const affCommPct = v('m-affcomm') / 100 || 0.20;
+  const affCommPct = v('m-affcomm') / 100 || 0.25;
   const adspendPct = v('m-adspend') / 100;
   const tikTokFeePct = 0.06;
 
@@ -2147,7 +2147,7 @@ function updateEconomicsLive() {
   const promoPct   = v('rv-promo');
   const cogs       = v('rv-cogs');
   const shipping   = v('rv-shipping');
-  const affCommPct = v('rv-affcomm') / 100 || 0.15;
+  const affCommPct = v('rv-affcomm') / 100 || 0.25;
   const sellingPrice = listPrice > 0 ? listPrice * (1 - promoPct / 100) : 0;
 
   // Update selling price display
@@ -2197,7 +2197,7 @@ function updateReviewGate(listPrice, cogs, shipping, grossMarginPct) {
   const isNegative = listPrice && cogs && grossMarginPct !== null && grossMarginPct < 0;
   const isThin     = listPrice && cogs && grossMarginPct !== null && grossMarginPct >= 0 && grossMarginPct < 0.10;
   if (isNegative) {
-    const minViable = (cogs + (shipping||6)) / (1 - 0.15 - 0.06);
+    const minViable = (cogs + (shipping||6)) / (1 - 0.25 - 0.06);
     blockers.push(`Negative gross margin (${(grossMarginPct*100).toFixed(1)}%) — selling price must be at least $${minViable.toFixed(2)} to break even on variable costs`);
   }
 
@@ -2233,7 +2233,7 @@ async function confirmAndGenerate(forceDiagnostic = false) {
     promoPct:         v('rv-promo'),
     shippingPerUnit:  v('rv-shipping') || 6,
     cogsPerUnit:      v('rv-cogs') || null,
-    affiliateCommPct: v('rv-affcomm') || 15,
+    affiliateCommPct: v('rv-affcomm') || 25,
     monthlySamples:   v('rv-samples') || 75,
     affiliateRetainers: v('rv-retainers') || 1000,
     avgViews:         v('rv-views') || null,

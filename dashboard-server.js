@@ -4309,7 +4309,7 @@ listPrice: Shopify typicalPrice of most relevant product → source "shopify". I
 promoPct (whole number): If Shopify compareAtPrice > typicalPrice → promoPct = round((1 - typicalPrice/compareAtPrice)*100), source "shopify". If discount mentioned in transcript → "transcript". If no info → 0, source "ai".
 cogsPerUnit: null/"missing" UNLESS explicitly stated. Almost never mentioned.
 shippingPerUnit: null/"missing" UNLESS explicitly stated.
-affiliateCommPct: If mentioned → "transcript". Else 15, source "ai".
+affiliateCommPct: If mentioned → "transcript". Else 25, source "ai".
 avgViews: 2000, source "ai" — this represents estimated monthly views per creator. Do NOT pull from brand's own TikTok stats; it's an industry benchmark for new-to-TikTok-Shop creators.
 monthlySamples: If mentioned → "transcript". Else estimate conservatively by brand size: very small/new brand=25-40, small=50, mid=75, large=100. Source "ai". Err on the low side — better to under-promise.
 affiliateRetainers: If mentioned → "transcript". Else 1000, source "ai".`;
@@ -4348,7 +4348,7 @@ app.post('/api/ai/propose', async (req, res) => {
     // Build economics summary from confirmed metrics so AI writes accurate narrative
     let economicsSummary = '';
     if (confirmedMetrics) {
-      const { listPrice, promoPct = 0, shippingPerUnit = 6, cogsPerUnit = 0, affiliateCommPct = 15, monthlySamples = 75 } = confirmedMetrics;
+      const { listPrice, promoPct = 0, shippingPerUnit = 6, cogsPerUnit = 0, affiliateCommPct = 25, monthlySamples = 75 } = confirmedMetrics;
       const sellingPrice = listPrice * (1 - promoPct / 100);
       const affComm = sellingPrice * affiliateCommPct / 100;
       const tikTokFee = sellingPrice * 0.06;
