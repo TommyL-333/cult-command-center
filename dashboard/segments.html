@@ -2531,6 +2531,10 @@ function buildProposalHTML(p) {
   const baseGmvRate = m.revSharePct;
   const flatGmvRate = baseGmvRate;
   const ACTIVATION_RATE = 0.5;
+  // Steady-state sample cost: by Month 7-12 the creator roster is built.
+  // Ongoing outreach is ~50% of ramp rate — replacing churned creators only.
+  const steadyStateSampleCost = Math.round(m.sampleCost * 0.5);
+  const steadyStateSamples = Math.round(m.monthlySamples * 0.5);
   const useSampleLogic = m.monthlySamples > 0;
   // Per-phase creator counts: either sample-derived (accumulating cohorts) or manual-multiplier fallback
   const phaseCreatorCounts = useSampleLogic
@@ -2588,8 +2592,9 @@ function buildProposalHTML(p) {
   // KPI projection table
   // Calculate break-even creator count (how many creators to reach break-even GMV)
   const flatNetMarginCalc = m.grossMarginPct - flatGmvRate - 0.02;
+  // Break-even uses steady-state costs (not ramp-phase costs)
   const beGMV = flatNetMarginCalc > 0
-    ? Math.round((m.teamFee + m.sampleCost + m.affiliateRetainers) / flatNetMarginCalc)
+    ? Math.round((m.teamFee + steadyStateSampleCost + m.affiliateRetainers) / flatNetMarginCalc)
     : null;
   const beCreators = beGMV
     ? Math.ceil(beGMV / (m.sellingPrice * m.avgViews * m.ctr * m.cvr))
@@ -2623,15 +2628,18 @@ function buildProposalHTML(p) {
 
   // All-in cost waterfall at Month 7-12 run rate
   const scaled = phaseData[2];
+  // At steady state (Month 7-12), roster is fully built — sample outreach drops to ~50%
+  // to replace creator churn only (not full ramp recruitment).
+  const scaledNet = scaled.gross - scaled.teamC - steadyStateSampleCost - m.affiliateRetainers - (scaled.gmv * 0.02);
   const waterfallRows = [
     { label: 'Gross Revenue (GMV)', val: scaled.gmv, pct: 1, color: '#e2e8f0', bold: true },
     { label: 'Gross Profit from Sales', val: scaled.gross, pct: scaled.gross/scaled.gmv, color: '#5eead4', bold: false },
     { label: '− Team Fee', val: -m.teamFee, pct: -m.teamFee/scaled.gmv, color: '#ef4444', bold: false },
     { label: `− GMV Rev Share (${fmtPct(flatGmvRate)})`, val: -(flatGmvRate * scaled.gmv), pct: -flatGmvRate, color: '#ef4444', bold: false },
-    { label: `− Sample Cost (${m.monthlySamples} units)`, val: -m.sampleCost, pct: -m.sampleCost/scaled.gmv, color: '#f59e0b', bold: false },
+    { label: `− Sample Budget (~${steadyStateSamples} units/mo · maintenance)`, val: -steadyStateSampleCost, pct: -steadyStateSampleCost/scaled.gmv, color: '#f59e0b', bold: false },
     { label: '− Affiliate Retainers', val: -m.affiliateRetainers, pct: -m.affiliateRetainers/scaled.gmv, color: '#f59e0b', bold: false },
     { label: '− Returns & Refunds (2%)', val: -(scaled.gmv * 0.02), pct: -0.02, color: '#64748b', bold: false },
-    { label: 'Net Monthly Profit', val: scaled.net, pct: scaled.net/scaled.gmv, color: scaled.net >= 0 ? '#10b981' : '#ef4444', bold: true },
+    { label: 'Net Monthly Profit', val: scaledNet, pct: scaledNet/scaled.gmv, color: scaledNet >= 0 ? '#10b981' : '#ef4444', bold: true },
   ];
 
   const waterfallHtml = `
@@ -2650,7 +2658,7 @@ function buildProposalHTML(p) {
   // Break-even using flat GMV rate
   const taperNetMargin = m.grossMarginPct - flatGmvRate - 0.02;
   const taperBreakEven = flatNetMarginCalc > 0 ? beGMV : null;
-  const channelProfitable = scaled.net >= 0;
+  const channelProfitable = scaledNet >= 0;
 
   let beHtml;
   if (channelProfitable) {
@@ -2660,7 +2668,7 @@ function buildProposalHTML(p) {
       <div class="be-text">
         GMV rev share: <strong>${fmtPct(flatGmvRate)}</strong> throughout all phases.
         Break-even at <strong>${fmtK(taperBreakEven)}/mo GMV</strong>.
-        At ${fmtK(scaled.gmv)}/mo run rate, net profit is <strong style="color:#4ade80">${fmt$(scaled.net)}/mo</strong>.
+        At ${fmtK(scaled.gmv)}/mo run rate, net profit is <strong style="color:#4ade80">${fmt$(scaledNet)}/mo</strong>.
       </div>
     </div>`;
   } else if (taperBreakEven && beCreators) {
@@ -2678,7 +2686,7 @@ function buildProposalHTML(p) {
         <tr>
           <td style="color:#64748b;padding:4px 0">Current projection (${phaseCreatorCounts[2]} creators${useSampleLogic ? ` — ${m.monthlySamples} samples/mo` : ''})</td>
           <td style="text-align:right;color:#f87171;font-weight:700">${fmtK(scaled.gmv)}/mo</td>
-          <td style="text-align:right;color:#f87171;padding-left:16px">${fmt$(scaled.net)}/mo net</td>
+          <td style="text-align:right;color:#f87171;padding-left:16px">${fmt$(scaledNet)}/mo net</td>
         </tr>
         <tr>
           <td style="color:#4ade80;font-weight:700;padding:4px 0">🎯 Break-even (${beCreators} creators${beSamples ? ` — ${beSamples} samples/mo` : ''})</td>
@@ -2699,7 +2707,7 @@ function buildProposalHTML(p) {
       <div class="be-icon">📊</div>
       <div class="be-text">
         GMV rev share: <strong>${fmtPct(flatGmvRate)}</strong> throughout all phases.
-        At ${fmtK(scaled.gmv)}/mo run rate, net profit is <strong style="color:#f87171">${fmt$(scaled.net)}/mo</strong>.
+        At ${fmtK(scaled.gmv)}/mo run rate, net profit is <strong style="color:#f87171">${fmt$(scaledNet)}/mo</strong>.
         See AOV strategy below.
       </div>
     </div>`;
@@ -2717,7 +2725,7 @@ function buildProposalHTML(p) {
     const tGross = m.targetGrossProfitPerOrder || 0;
     const tGMV = tPrice * phaseData[2].purch; // same purchase volume
     const tGmvShare = flatGmvRate * tGMV;
-    const tNet = (tGross * phaseData[2].purch) - m.teamFee - tGmvShare - m.sampleCost - m.affiliateRetainers - (tGMV * 0.02);
+    const tNet = (tGross * phaseData[2].purch) - m.teamFee - tGmvShare - steadyStateSampleCost - m.affiliateRetainers - (tGMV * 0.02);
 
     profitabilityHtml = `
     <div style="margin:32px 0;border:1.5px solid #ef4444;border-radius:12px;overflow:hidden">
