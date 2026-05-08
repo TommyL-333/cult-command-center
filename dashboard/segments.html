@@ -2425,7 +2425,8 @@ function _renderChart(p) {
     const rate = baseRevShare;
     const purch = gmv / (sel || 1);
     const gross = gpp * purch;
-    return Math.round(gross - teamFee - (rate * gmv) - sampleCost - affRetainers - gmv * 0.02);
+    const sc = i >= 6 ? sampleCost * 0.5 : sampleCost; // months 7-12: maintenance rate
+    return Math.round(gross - teamFee - (rate * gmv) - sc - affRetainers - gmv * 0.02);
   });
 
   _chartInst = new Chart(canvas, {
@@ -3008,7 +3009,8 @@ function renderProjChart(p) {
     const gross = grossProfitPerOrder * purchases;
     const teamC = teamFee + (baseRevSharePct * gmv);
     const ret = gmv * 0.02;
-    return Math.round(gross - teamC - sampleCost - affiliateRetainers - ret);
+    const sc = i >= 6 ? sampleCost * 0.5 : sampleCost; // months 7-12: maintenance rate
+    return Math.round(gross - teamC - sc - affiliateRetainers - ret);
   });
 
   const breakEvenLine = Array(12).fill(0);
