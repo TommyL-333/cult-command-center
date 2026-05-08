@@ -4286,7 +4286,6 @@ Schema:
     "shippingPerUnit": number or null,
     "cogsPerUnit": number or null,
     "affiliateCommPct": number or null,
-    "videosPerCreator": number or null,
     "avgViews": number or null,
     "monthlySamples": number or null,
     "affiliateRetainers": number or null
@@ -4297,7 +4296,6 @@ Schema:
     "shippingPerUnit": "shopify"|"transcript"|"ai"|"missing",
     "cogsPerUnit": "shopify"|"transcript"|"ai"|"missing",
     "affiliateCommPct": "shopify"|"transcript"|"ai"|"missing",
-    "videosPerCreator": "shopify"|"transcript"|"ai"|"missing",
     "avgViews": "shopify"|"transcript"|"ai"|"missing",
     "monthlySamples": "shopify"|"transcript"|"ai"|"missing",
     "affiliateRetainers": "shopify"|"transcript"|"ai"|"missing"
@@ -4312,9 +4310,8 @@ promoPct (whole number): If Shopify compareAtPrice > typicalPrice → promoPct =
 cogsPerUnit: null/"missing" UNLESS explicitly stated. Almost never mentioned.
 shippingPerUnit: null/"missing" UNLESS explicitly stated.
 affiliateCommPct: If mentioned → "transcript". Else 15, source "ai".
-videosPerCreator: If mentioned → "transcript". Else 2, source "ai".
-avgViews: null/"missing" unless brand has existing TikTok data in transcript with actual view counts.
-monthlySamples: If mentioned → "transcript". Else estimate by brand size (small=50, mid=75, large=125), source "ai".
+avgViews: 2000, source "ai" — this represents estimated monthly views per creator. Do NOT pull from brand's own TikTok stats; it's an industry benchmark for new-to-TikTok-Shop creators.
+monthlySamples: If mentioned → "transcript". Else estimate conservatively by brand size: very small/new brand=25-40, small=50, mid=75, large=100. Source "ai". Err on the low side — better to under-promise.
 affiliateRetainers: If mentioned → "transcript". Else 1000, source "ai".`;
 
     const msg = await client.messages.create({

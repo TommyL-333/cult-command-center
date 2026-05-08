@@ -603,8 +603,7 @@ main{max-width:1400px;margin:0 auto;padding:24px 20px;}
         <input type="number" id="m-affcomm" style="display:none" value="15">
         <input type="number" id="m-adspend" style="display:none" value="0">
         <input type="number" id="m-creators" style="display:none">
-        <input type="number" id="m-videos" style="display:none" value="2">
-        <input type="number" id="m-views" style="display:none" value="1500">
+        <input type="number" id="m-views" style="display:none" value="2000">
         <input type="number" id="m-ctr" style="display:none" value="3">
         <input type="number" id="m-cvr" style="display:none" value="2">
         <input type="number" id="m-samples" style="display:none" value="75">
@@ -709,12 +708,7 @@ main{max-width:1400px;margin:0 auto;padding:24px 20px;}
                 <span id="badge-rv-retainers" class="source-badge"></span>
               </div>
               <div class="review-row">
-                <label>Videos/creator/mo</label>
-                <input type="number" id="rv-videos" oninput="onReviewEdit('rv-videos')">
-                <span id="badge-rv-videos" class="source-badge"></span>
-              </div>
-              <div class="review-row">
-                <label>Avg Views/video</label>
+                <label>Avg Views/creator/mo</label>
                 <input type="number" id="rv-views" oninput="onReviewEdit('rv-views')">
                 <span id="badge-rv-views" class="source-badge"></span>
               </div>
@@ -1743,12 +1737,11 @@ function getMetrics() {
   const manualCreators = v('m-creators') || 0;
   const creators = manualCreators || sampleDerivedCreators || 150;
 
-  const videosPerCreator = v('m-videos') || 4;
-  const avgViews = v('m-views') || 1500;
+  const avgViews = v('m-views') || 2000;
   const ctr = v('m-ctr') / 100 || 0.03;
   const cvr = v('m-cvr') / 100 || 0.015;
 
-  const impressions = creators * videosPerCreator * avgViews;
+  const impressions = creators * avgViews;
   const purchases = Math.round(impressions * ctr * cvr);
   const monthlyGMV = purchases * sellingPrice;
   const grossMonthlyProfit = grossProfitPerOrder * purchases;
@@ -1784,7 +1777,7 @@ function getMetrics() {
     // Inputs
     listPrice, promoPct, sellingPrice, shipping, cogs,
     affCommPct, adspendPct, tikTokFeePct,
-    creators, videosPerCreator, avgViews, ctr, cvr,
+    creators, avgViews, ctr, cvr,
     monthlySamples, sampleDerivedCreators, affiliateRetainers, teamFee, revSharePct,
     // Per-order
     affComm, tikTokFee, adspend, totalCostPerOrder, grossProfitPerOrder, grossMarginPct,
@@ -2142,7 +2135,6 @@ function renderMetricsReview(data) {
   setRV('rv-affcomm',  'affiliateCommPct');
   setRV('rv-samples',  'monthlySamples');
   setRV('rv-retainers','affiliateRetainers');
-  setRV('rv-videos',   'videosPerCreator');
   setRV('rv-views',    'avgViews');
 
   updateEconomicsLive();
@@ -2244,7 +2236,6 @@ async function confirmAndGenerate(forceDiagnostic = false) {
     affiliateCommPct: v('rv-affcomm') || 15,
     monthlySamples:   v('rv-samples') || 75,
     affiliateRetainers: v('rv-retainers') || 1000,
-    videosPerCreator: v('rv-videos') || 2,
     avgViews:         v('rv-views') || null,
   };
 
@@ -2257,8 +2248,7 @@ async function confirmAndGenerate(forceDiagnostic = false) {
   setM('m-affcomm',   confirmedMetrics.affiliateCommPct);
   setM('m-samples',   confirmedMetrics.monthlySamples);
   setM('m-retainers', confirmedMetrics.affiliateRetainers);
-  setM('m-videos',    confirmedMetrics.videosPerCreator);
-  setM('m-views',     confirmedMetrics.avgViews || 1500);
+  setM('m-views',     confirmedMetrics.avgViews || 2000);
   setM('m-ctr',       3);
   setM('m-cvr',       2);
 
@@ -2420,7 +2410,6 @@ function _renderChart(p) {
   const gpp = sel - totalCost;
   const sampleCost = ((m.shipping||0) + cogsVal) * samplesVal;
   const baseRevShare = pr.gmvPct != null ? pr.gmvPct / 100 : (m.revSharePct || 0);
-  const exportTaperRates = [baseRevShare, baseRevShare * 0.8, baseRevShare * 0.6];
   const teamFee = pr.retainer != null ? pr.retainer : (m.teamFee || 0);
   const affRetainers = m.affiliateRetainers || 0;
 
@@ -2428,12 +2417,12 @@ function _renderChart(p) {
   const labels = ['M1','M2','M3','M4','M5','M6','M7','M8','M9','M10','M11','M12'];
   const gmvData = ramp.map(r => {
     const c = Math.round((m.creators||0) * r);
-    const imp = c * (m.videosPerCreator||0) * (m.avgViews||0);
+    const imp = c * (m.avgViews||0);
     const purch = Math.round(imp * (m.ctr||0) * (m.cvr||0));
     return Math.round(purch * sel);
   });
   const netData = gmvData.map((gmv, i) => {
-    const rate = i < 3 ? exportTaperRates[0] : i < 6 ? exportTaperRates[1] : exportTaperRates[2];
+    const rate = baseRevShare;
     const purch = gmv / (sel || 1);
     const gross = gpp * purch;
     return Math.round(gross - teamFee - (rate * gmv) - sampleCost - affRetainers - gmv * 0.02);
@@ -2540,7 +2529,7 @@ function buildProposalHTML(p) {
   // KPI ramp: 3 phases — creator counts derived from sampling logic (50% activation per cohort)
   // Each month N samples sent → N×50% activate → at 3mo steady state = N×50%×3 active creators
   const baseGmvRate = m.revSharePct;
-  const gmvTaperRates = [baseGmvRate, baseGmvRate * 0.8, baseGmvRate * 0.6];
+  const flatGmvRate = baseGmvRate;
   const ACTIVATION_RATE = 0.5;
   const useSampleLogic = m.monthlySamples > 0;
   // Per-phase creator counts: either sample-derived (accumulating cohorts) or manual-multiplier fallback
@@ -2553,13 +2542,13 @@ function buildProposalHTML(p) {
     : [Math.round(m.creators * 0.3), Math.round(m.creators * 0.7), m.creators];
 
   const phases = [
-    { label: 'Month 1–3',  c: phaseCreatorCounts[0], vMult: 0.8,  gmvRate: gmvTaperRates[0] },
-    { label: 'Month 4–6',  c: phaseCreatorCounts[1], vMult: 1.0,  gmvRate: gmvTaperRates[1] },
-    { label: 'Month 7–12', c: phaseCreatorCounts[2], vMult: 1.2,  gmvRate: gmvTaperRates[2] },
+    { label: 'Month 1–3',  c: phaseCreatorCounts[0], gmvRate: flatGmvRate },
+    { label: 'Month 4–6',  c: phaseCreatorCounts[1], gmvRate: flatGmvRate },
+    { label: 'Month 7–12', c: phaseCreatorCounts[2], gmvRate: flatGmvRate },
   ];
 
   const phaseCalc = ph => {
-    const imp = ph.c * m.videosPerCreator * m.avgViews * ph.vMult;
+    const imp = ph.c * m.avgViews;
     const purch = Math.round(imp * m.ctr * m.cvr);
     const gmv = purch * m.sellingPrice;
     const gross = m.grossProfitPerOrder * purch;
@@ -2598,19 +2587,19 @@ function buildProposalHTML(p) {
 
   // KPI projection table
   // Calculate break-even creator count (how many creators to reach break-even GMV)
-  const taperNetMarginCalc = m.grossMarginPct - gmvTaperRates[2] - 0.02;
-  const beGMV = taperNetMarginCalc > 0
-    ? Math.round((m.teamFee + m.sampleCost + m.affiliateRetainers) / taperNetMarginCalc)
+  const flatNetMarginCalc = m.grossMarginPct - flatGmvRate - 0.02;
+  const beGMV = flatNetMarginCalc > 0
+    ? Math.round((m.teamFee + m.sampleCost + m.affiliateRetainers) / flatNetMarginCalc)
     : null;
   const beCreators = beGMV
-    ? Math.ceil(beGMV / (m.sellingPrice * m.videosPerCreator * m.avgViews * 1.2 * m.ctr * m.cvr))
-    : null; // uses Phase 3 vMult=1.2
+    ? Math.ceil(beGMV / (m.sellingPrice * m.avgViews * m.ctr * m.cvr))
+    : null;
   // Break-even in terms of monthly samples needed (more actionable than raw creator count)
   const beSamples = beCreators && useSampleLogic
     ? Math.ceil(beCreators / (ACTIVATION_RATE * 3)) // reverse of: creators = samples × 0.5 × 3
     : null;
   const bePhaseGMV = beCreators
-    ? Math.round(beCreators * m.videosPerCreator * m.avgViews * 1.2 * m.ctr * m.cvr * m.sellingPrice)
+    ? Math.round(beCreators * m.avgViews * m.ctr * m.cvr * m.sellingPrice)
     : null;
 
   const kpiTableHtml = `
@@ -2625,21 +2614,20 @@ function buildProposalHTML(p) {
         <tr style="background:#0d1a0d;border-top:1px dashed #166534">
           <td style="font-weight:700;color:#4ade80">🎯 Break-Even Scale</td>
           <td style="color:#4ade80;font-weight:700">${beCreators}</td>
-          <td style="color:#4ade80">${(beCreators * m.videosPerCreator * m.avgViews).toLocaleString()}</td>
+          <td style="color:#4ade80">${(beCreators * m.avgViews).toLocaleString()}</td>
           <td style="color:#4ade80">${Math.round(beGMV / m.sellingPrice).toLocaleString()}</td>
           <td style="color:#4ade80;font-weight:700">${fmtK(beGMV)}</td>
         </tr>` : ''}
       </table>
     </div>`;
 
-  // All-in cost waterfall at Month 7-12 run rate (uses tapered GMV rate)
+  // All-in cost waterfall at Month 7-12 run rate
   const scaled = phaseData[2];
-  const scaledGmvRate = gmvTaperRates[2];
   const waterfallRows = [
     { label: 'Gross Revenue (GMV)', val: scaled.gmv, pct: 1, color: '#e2e8f0', bold: true },
     { label: 'Gross Profit from Sales', val: scaled.gross, pct: scaled.gross/scaled.gmv, color: '#5eead4', bold: false },
     { label: '− Team Fee', val: -m.teamFee, pct: -m.teamFee/scaled.gmv, color: '#ef4444', bold: false },
-    { label: `− GMV Rev Share (${fmtPct(scaledGmvRate)} · tapered)`, val: -(scaledGmvRate * scaled.gmv), pct: -scaledGmvRate, color: '#ef4444', bold: false },
+    { label: `− GMV Rev Share (${fmtPct(flatGmvRate)})`, val: -(flatGmvRate * scaled.gmv), pct: -flatGmvRate, color: '#ef4444', bold: false },
     { label: `− Sample Cost (${m.monthlySamples} units)`, val: -m.sampleCost, pct: -m.sampleCost/scaled.gmv, color: '#f59e0b', bold: false },
     { label: '− Affiliate Retainers', val: -m.affiliateRetainers, pct: -m.affiliateRetainers/scaled.gmv, color: '#f59e0b', bold: false },
     { label: '− Returns & Refunds (2%)', val: -(scaled.gmv * 0.02), pct: -0.02, color: '#64748b', bold: false },
@@ -2659,9 +2647,9 @@ function buildProposalHTML(p) {
       </table>
     </div>`;
 
-  // Break-even using tapered Phase 3 GMV rate
-  const taperNetMargin = m.grossMarginPct - scaledGmvRate - 0.02;
-  const taperBreakEven = taperNetMarginCalc > 0 ? beGMV : null;
+  // Break-even using flat GMV rate
+  const taperNetMargin = m.grossMarginPct - flatGmvRate - 0.02;
+  const taperBreakEven = flatNetMarginCalc > 0 ? beGMV : null;
   const channelProfitable = scaled.net >= 0;
 
   let beHtml;
@@ -2670,7 +2658,7 @@ function buildProposalHTML(p) {
     beHtml = `<div class="pm-breakeven-callout">
       <div class="be-icon">📊</div>
       <div class="be-text">
-        GMV share tapers: <strong>${fmtPct(gmvTaperRates[0])} → ${fmtPct(gmvTaperRates[1])} → ${fmtPct(gmvTaperRates[2])}</strong> as the channel scales.
+        GMV rev share: <strong>${fmtPct(flatGmvRate)}</strong> throughout all phases.
         Break-even at <strong>${fmtK(taperBreakEven)}/mo GMV</strong>.
         At ${fmtK(scaled.gmv)}/mo run rate, net profit is <strong style="color:#4ade80">${fmt$(scaled.net)}/mo</strong>.
       </div>
@@ -2681,7 +2669,7 @@ function buildProposalHTML(p) {
       <div style="display:flex;align-items:center;gap:10px">
         <div class="be-icon">🎯</div>
         <div class="be-text">
-          GMV share tapers: <strong>${fmtPct(gmvTaperRates[0])} → ${fmtPct(gmvTaperRates[1])} → ${fmtPct(gmvTaperRates[2])}</strong> as the channel scales.
+          GMV rev share: <strong>${fmtPct(flatGmvRate)}</strong> throughout all phases.
           Month 7–12 run rate (<strong>${fmtK(scaled.gmv)}/mo</strong>) is below break-even — the channel covers its costs at
           <strong style="color:#4ade80">${fmtK(taperBreakEven)}/mo GMV</strong>.
         </div>
@@ -2710,7 +2698,7 @@ function buildProposalHTML(p) {
     beHtml = `<div class="pm-breakeven-callout">
       <div class="be-icon">📊</div>
       <div class="be-text">
-        GMV share tapers: <strong>${fmtPct(gmvTaperRates[0])} → ${fmtPct(gmvTaperRates[1])} → ${fmtPct(gmvTaperRates[2])}</strong> as the channel scales.
+        GMV rev share: <strong>${fmtPct(flatGmvRate)}</strong> throughout all phases.
         At ${fmtK(scaled.gmv)}/mo run rate, net profit is <strong style="color:#f87171">${fmt$(scaled.net)}/mo</strong>.
         See AOV strategy below.
       </div>
@@ -2728,7 +2716,7 @@ function buildProposalHTML(p) {
     const tPrice = m.targetAOV || 0;
     const tGross = m.targetGrossProfitPerOrder || 0;
     const tGMV = tPrice * phaseData[2].purch; // same purchase volume
-    const tGmvShare = gmvTaperRates[2] * tGMV;
+    const tGmvShare = flatGmvRate * tGMV;
     const tNet = (tGross * phaseData[2].purch) - m.teamFee - tGmvShare - m.sampleCost - m.affiliateRetainers - (tGMV * 0.02);
 
     profitabilityHtml = `
@@ -2838,8 +2826,8 @@ function buildProposalHTML(p) {
 
       <div class="pm-section-title" style="margin-top:24px">KPI Projections — Creator-to-GMV Model</div>
       <p class="pm-body-text">${useSampleLogic
-        ? `Based on ${m.monthlySamples} samples/mo × 50% activation rate — creator roster accumulates each month. ${m.videosPerCreator} videos/creator/mo, ${m.avgViews.toLocaleString()} avg views, ${(m.ctr*100).toFixed(1)}% CTR, ${(m.cvr*100).toFixed(1)}% CVR.`
-        : `Based on ${m.creators.toLocaleString()} active creators at steady state, ${m.videosPerCreator} videos/creator/mo, ${m.avgViews.toLocaleString()} avg views, ${(m.ctr*100).toFixed(1)}% CTR, ${(m.cvr*100).toFixed(1)}% CVR.`
+        ? `Based on ${m.monthlySamples} samples/mo × 50% activation rate — creator roster accumulates each month. ${m.avgViews.toLocaleString()} avg monthly views/creator, ${(m.ctr*100).toFixed(1)}% CTR, ${(m.cvr*100).toFixed(1)}% CVR.`
+        : `Based on ${m.creators.toLocaleString()} active creators at steady state, ${m.avgViews.toLocaleString()} avg monthly views/creator, ${(m.ctr*100).toFixed(1)}% CTR, ${(m.cvr*100).toFixed(1)}% CVR.`
       }</p>
       ${kpiTableHtml}
       ${waterfallHtml}
@@ -2879,7 +2867,7 @@ function buildProposalHTML(p) {
       <div class="pm-pricing-card">
         <div class="pm-pricing-retainer">${fmt$(m.teamFee)}</div>
         <div class="pm-pricing-sub">per month · month-to-month</div>
-        <div class="pm-pricing-gmv">+ ${fmtPct(gmvTaperRates[0])} → ${fmtPct(gmvTaperRates[1])} → ${fmtPct(gmvTaperRates[2])} GMV share (tapers as you scale)</div>
+        <div class="pm-pricing-gmv">+ ${fmtPct(flatGmvRate)} GMV revenue share</div>
         <ul class="pm-pricing-features">
           <li>Dedicated affiliate manager + shop manager</li>
           <li>AI content system — creative briefs, hooks, scripts</li>
@@ -2993,18 +2981,16 @@ function renderProjChart(p) {
   const grossMarginPct = grossProfitPerOrder / sellingPrice;
   const sampleCost = (m.shipping + cogsVal) * samplesVal;
   const baseRevSharePct = m.revSharePct;
-  const taperRates = [baseRevSharePct, baseRevSharePct * 0.8, baseRevSharePct * 0.6];
   const teamFee = m.teamFee;
   const affiliateRetainers = m.affiliateRetainers;
 
-  // Build 12-month ramp with tapering GMV share per phase
+  // Build 12-month ramp with flat GMV share
   const creatorRamp = [0.1, 0.2, 0.3, 0.45, 0.55, 0.65, 0.75, 0.82, 0.88, 0.93, 0.97, 1.0];
   const labels = ['M1','M2','M3','M4','M5','M6','M7','M8','M9','M10','M11','M12'];
-  const getMonthGmvRate = i => i < 3 ? taperRates[0] : i < 6 ? taperRates[1] : taperRates[2];
 
   const gmvData = creatorRamp.map(r => {
     const c = Math.round(m.creators * r);
-    const imp = c * m.videosPerCreator * m.avgViews;
+    const imp = c * m.avgViews;
     const purch = Math.round(imp * m.ctr * m.cvr);
     return Math.round(purch * sellingPrice);
   });
@@ -3012,7 +2998,7 @@ function renderProjChart(p) {
   const netProfitData = gmvData.map((gmv, i) => {
     const purchases = gmv / sellingPrice;
     const gross = grossProfitPerOrder * purchases;
-    const teamC = teamFee + (getMonthGmvRate(i) * gmv);
+    const teamC = teamFee + (baseRevSharePct * gmv);
     const ret = gmv * 0.02;
     return Math.round(gross - teamC - sampleCost - affiliateRetainers - ret);
   });
