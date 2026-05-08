@@ -4259,9 +4259,85 @@ async function scrapeShopifyProducts(context) {
 }
 
 // ─── AI Proposal generator ────────────────────────────────────────────────────
+// ── Step 1: Extract metrics from transcript + Shopify ─────────────────────────
+app.post('/api/ai/extract-metrics', cfAccessMiddleware, async (req, res) => {
+  try {
+    const { context } = req.body;
+    if (!context) return res.status(400).json({ error: 'context required' });
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+    const shopifyData = await scrapeShopifyProducts(context);
+    const shopifyBlock = shopifyData
+      ? `\nSHOPIFY PRODUCT DATA (from ${shopifyData.domain}):\n` +
+        shopifyData.products.map(p =>
+          `- ${p.title}: typicalPrice=$${p.typicalPrice}${p.compareAtPrice ? `, compareAtPrice=$${p.compareAtPrice}` : ''}${p.variantCount > 1 ? ` (${p.variantCount} variants)` : ''}`
+        ).join('\n')
+      : '\nNo Shopify data found.';
+
+    const SYSTEM = `You are a data extraction assistant for a TikTok Shop agency. Extract structured metrics from a sales call transcript and Shopify product data. Return ONLY valid JSON — no markdown, no explanation.
+
+Schema:
+{
+  "brandName": "string",
+  "heroProduct": "string — most relevant product for TikTok Shop (specific name)",
+  "metrics": {
+    "listPrice": number or null,
+    "promoPct": number or null,
+    "shippingPerUnit": number or null,
+    "cogsPerUnit": number or null,
+    "affiliateCommPct": number or null,
+    "videosPerCreator": number or null,
+    "avgViews": number or null,
+    "monthlySamples": number or null,
+    "affiliateRetainers": number or null
+  },
+  "sources": {
+    "listPrice": "shopify"|"transcript"|"ai"|"missing",
+    "promoPct": "shopify"|"transcript"|"ai"|"missing",
+    "shippingPerUnit": "shopify"|"transcript"|"ai"|"missing",
+    "cogsPerUnit": "shopify"|"transcript"|"ai"|"missing",
+    "affiliateCommPct": "shopify"|"transcript"|"ai"|"missing",
+    "videosPerCreator": "shopify"|"transcript"|"ai"|"missing",
+    "avgViews": "shopify"|"transcript"|"ai"|"missing",
+    "monthlySamples": "shopify"|"transcript"|"ai"|"missing",
+    "affiliateRetainers": "shopify"|"transcript"|"ai"|"missing"
+  }
+}
+
+Source meanings: "shopify"=from product data, "transcript"=explicitly stated, "ai"=reasonable estimate you filled in, "missing"=cannot determine.
+
+RULES — follow exactly:
+listPrice: Shopify typicalPrice of most relevant product → source "shopify". If no Shopify, only use price explicitly stated in transcript → "transcript". Otherwise null/"missing". NEVER infer or guess.
+promoPct (whole number): If Shopify compareAtPrice > typicalPrice → promoPct = round((1 - typicalPrice/compareAtPrice)*100), source "shopify". If discount mentioned in transcript → "transcript". If no info → 0, source "ai".
+cogsPerUnit: null/"missing" UNLESS explicitly stated. Almost never mentioned.
+shippingPerUnit: null/"missing" UNLESS explicitly stated.
+affiliateCommPct: If mentioned → "transcript". Else 15, source "ai".
+videosPerCreator: If mentioned → "transcript". Else 2, source "ai".
+avgViews: null/"missing" unless brand has existing TikTok data in transcript with actual view counts.
+monthlySamples: If mentioned → "transcript". Else estimate by brand size (small=50, mid=75, large=125), source "ai".
+affiliateRetainers: If mentioned → "transcript". Else 1000, source "ai".`;
+
+    const msg = await client.messages.create({
+      model: 'claude-opus-4-5',
+      max_tokens: 700,
+      system: SYSTEM,
+      messages: [{ role: 'user', content: `Extract metrics.${shopifyBlock}\n\nTRANSCRIPT:\n${context}\n\nReturn ONLY valid JSON.` }],
+    });
+
+    const raw = msg.content[0].text.trim();
+    const jsonStr = raw.replace(/^```json?\s*/i, '').replace(/\s*```$/i, '').trim();
+    const extracted = JSON.parse(jsonStr);
+    res.json({ ...extracted, shopifyData: shopifyData || null });
+  } catch (err) {
+    console.error('extract-metrics:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ── Step 2: Generate proposal narrative (metrics already confirmed) ─────────────
 app.post('/api/ai/propose', async (req, res) => {
   try {
-    const { context, retainer, gmv } = req.body;
+    const { context, retainer, gmv, confirmedMetrics } = req.body;
     if (!context) return res.status(400).json({ error: 'context required' });
     const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
@@ -4269,8 +4345,25 @@ app.post('/api/ai/propose', async (req, res) => {
     const gmvNum = parseFloat(String(gmv || '5').replace(/[^0-9.]/g, '')) || 5;
     const breakEvenGMV = Math.round(retainerNum / (gmvNum / 100));
 
-    // Try to pull live product data from Shopify before sending to AI
-    const shopifyData = await scrapeShopifyProducts(context);
+    // If confirmed metrics provided (two-step flow), skip Shopify scrape — already done in Step 1
+    const shopifyData = confirmedMetrics ? null : await scrapeShopifyProducts(context);
+
+    // Build economics summary from confirmed metrics so AI writes accurate narrative
+    let economicsSummary = '';
+    if (confirmedMetrics) {
+      const { listPrice, promoPct = 0, shippingPerUnit = 6, cogsPerUnit = 0, affiliateCommPct = 15, monthlySamples = 75 } = confirmedMetrics;
+      const sellingPrice = listPrice * (1 - promoPct / 100);
+      const affComm = sellingPrice * affiliateCommPct / 100;
+      const tikTokFee = sellingPrice * 0.06;
+      const grossProfit = sellingPrice - (shippingPerUnit || 0) - (cogsPerUnit || 0) - affComm - tikTokFee;
+      const grossMarginPct = sellingPrice > 0 ? grossProfit / sellingPrice : 0;
+      const isViable = grossMarginPct >= 0.05;
+      economicsSummary = `\nCONFIRMED UNIT ECONOMICS (use these exact figures, do not invent different numbers):
+List price: $${listPrice} | Promo: ${promoPct}% | Selling price: $${sellingPrice.toFixed(2)}
+COGS: $${cogsPerUnit || '?'} | Shipping: $${shippingPerUnit || '?'} | Aff commission: ${affiliateCommPct}%
+Gross margin: ${(grossMarginPct * 100).toFixed(1)}% ${isViable ? '(VIABLE — write growth narrative)' : '(NEGATIVE — write diagnostic/fix narrative, no GMV growth claims)'}
+Monthly samples at velocity: ${monthlySamples}`;
+    }
 
     const SYSTEM = `You are Tommy Lynch, founder of Cult Content (cultcontent.cc), a TikTok Shop social commerce agency. You write proposals for potential brand clients.
 
@@ -4312,19 +4405,6 @@ Schema (follow exactly):
     "creatorCommissionPct": number,
     "monthlyGMVGoals": [number, number, number, number, number, number, number, number, number, number, number, number]
   },
-  "suggestedMetrics": {
-    "listPrice": number or null,
-    "promoPct": number or null,
-    "shippingPerUnit": number or null,
-    "cogsPerUnit": number or null,
-    "affiliateCommPct": number or null,
-    "videosPerCreator": number or null,
-    "avgViews": number or null,
-    "ctr": number or null,
-    "cvr": number or null,
-    "monthlySamples": number or null,
-    "affiliateRetainers": number or null
-  }
 }
 
 STYLE RULES:
@@ -4332,11 +4412,9 @@ STYLE RULES:
 - Confident assertions: "This will" not "this should"
 - Reference specific details from the notes — product, price point, pain points
 - Never be generic. Every sentence should only make sense for THIS brand.
-- For currentStateMetrics: ONLY include values explicitly stated in the meeting notes. Do NOT infer, estimate, or fabricate values. If a number isn't mentioned, omit that metric entirely. Use the exact figures from the notes — no parenthetical qualifiers, no "(NAD)", no made-up abbreviations. Examples of valid entries: {"label":"Active SKUs","value":"2"}, {"label":"AOV","value":"$74"}.
-- For suggestedMetrics.listPrice: use ONLY Shopify product data (if provided below) or a price explicitly stated in the meeting notes. Use typicalPrice (the average variant price) as listPrice for the most relevant product. If no Shopify data is available AND no price is explicitly mentioned in the notes, return null — NEVER guess or infer a price. A wrong price breaks the entire financial model. promoPct and ctr and cvr should be expressed as whole numbers (e.g. 15 for 15%, 3 for 3%). If a compare_at_price exists and is higher than typicalPrice, calculate promoPct as round((1 - typicalPrice/compareAtPrice)*100).
-- For monthlyGMVGoals: realistic 12-month ramp. Month 1-2 slow (testing), Month 3-6 growing, Month 7-12 scaled. Base on AOV and product type.
-- For suggestedMetrics.monthlySamples: this is the PRIMARY driver of creator scale. The model derives active creators as: Phase 1 = samples×50%×1, Phase 2 = samples×50%×2, Phase 3 = samples×50%×3 (steady state). Set this to the number of product samples sent to creators per month at full velocity. For a typical TikTok shop brand, 50–150 samples/mo is the norm. If the brand has limited inventory or is testing, use 30–60. If they're scaling aggressively, 100–200. If no sample budget is mentioned, default to 75.
-- For profitabilityFix: analyze whether the brand's hero product has viable unit economics (i.e. selling price clearly exceeds COGS + shipping + commissions). If the hero product has thin or negative margins, set isUnprofitable=true and provide a concrete AOV strategy. targetAOV should be a specific price point that generates ~35% gross margin. bundleIdea must be a concrete, named bundle using their actual products (e.g. "Soap + Serum 3-pack — $34.99"). strategySteps should be 3 actionable steps to shift the product mix. If unit economics are healthy, set isUnprofitable=false and leave other fields null.`;
+- For currentStateMetrics: ONLY include values explicitly stated in the meeting notes. Do NOT infer, estimate, or fabricate values. Omit any metric not mentioned. Examples: {"label":"Active SKUs","value":"2"}, {"label":"AOV","value":"$74"}.
+- For monthlyGMVGoals: realistic 12-month ramp based on CONFIRMED UNIT ECONOMICS above. If economics are viable, ramp aggressively. If negative/diagnostic, show conservative ramp based on fixing pricing first.
+- For profitabilityFix: use the CONFIRMED UNIT ECONOMICS above to determine viability. If grossMarginPct >= 5%, set isUnprofitable=false. If negative, set isUnprofitable=true with concrete AOV fix strategy — specific bundle name, specific price point that achieves 35% GM, 3 actionable steps. Do not invent a different price than what was confirmed.`;
 
     const msg = await client.messages.create({
       model: 'claude-opus-4-5',
@@ -4346,16 +4424,13 @@ STYLE RULES:
 
 Meeting notes / context:
 ${context}
-${shopifyData ? `
-LIVE SHOPIFY PRODUCT DATA (scraped from ${shopifyData.domain}):
-${shopifyData.products.map(p => `- ${p.title}: ${p.priceRange} (typicalPrice: $${p.typicalPrice})${p.compareAtPrice ? ` (compare at $${p.compareAtPrice})` : ''}${p.variantCount > 1 ? ` — ${p.variantCount} variants` : ''}`).join('\n')}
+${economicsSummary}
+${shopifyData ? `\nSHOPIFY DATA (${shopifyData.domain}):\n${shopifyData.products.map(p => `- ${p.title}: typicalPrice=$${p.typicalPrice}${p.compareAtPrice ? `, compareAt=$${p.compareAtPrice}` : ''}`).join('\n')}` : ''}
 
-Use typicalPrice as listPrice for the most relevant product. If compareAtPrice > typicalPrice, compute promoPct. Values mentioned in the meeting notes always override Shopify data.` : ''}
-
-Pricing:
+Agency pricing:
 Retainer: $${retainerNum.toLocaleString()}/mo
 GMV share: ${gmvNum}%
-Break-even GMV (when GMV fee covers retainer): $${breakEvenGMV.toLocaleString()}
+Break-even GMV: $${breakEvenGMV.toLocaleString()}
 
 Return ONLY valid JSON. No other text.` }],
     });

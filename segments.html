@@ -253,6 +253,19 @@ main{max-width:1400px;margin:0 auto;padding:24px 20px;}
 .proposal-title{font-size:.88rem;font-weight:700;margin-bottom:14px;}
 .proposal-textarea{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;color:var(--text);font-size:.8rem;resize:vertical;min-height:100px;font-family:inherit;outline:none;}
 .proposal-textarea:focus{border-color:var(--accent);}
+/* ── Metrics Review (Step 2) ── */
+.review-row{display:flex;align-items:center;gap:6px;margin-bottom:6px;}
+.review-row label{font-size:.68rem;color:var(--muted);flex:1;min-width:0;}
+.review-row input{width:72px;background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:3px 7px;color:var(--text);font-size:.74rem;text-align:right;outline:none;flex-shrink:0;}
+.review-row input:focus{border-color:var(--accent);}
+.review-row input.missing{border-color:var(--red);background:#1a0808;}
+.source-badge{font-size:.58rem;font-weight:700;white-space:nowrap;flex-shrink:0;min-width:52px;text-align:right;}
+.economics-live{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-top:12px;}
+.economics-live-title{font-size:.6rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;}
+.econ-row{display:flex;justify-content:space-between;font-size:.74rem;padding:2px 0;}
+.econ-row.total{border-top:1px solid var(--border);margin-top:6px;padding-top:6px;font-weight:700;}
+.selected-meeting-badge{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:7px 11px;font-size:.74rem;display:flex;align-items:center;justify-content:space-between;margin-top:8px;}
+.req-star{color:var(--red);margin-left:2px;}
 .proposal-output{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:16px 20px;margin-top:12px;font-size:.82rem;line-height:1.7;display:none;max-height:500px;overflow-y:auto;}
 .proposal-output.show{display:block;}
 .proposal-output h1,.proposal-output h2{font-size:1rem;font-weight:800;color:var(--text);margin:18px 0 8px;padding-bottom:6px;border-bottom:1px solid var(--border);}
@@ -575,60 +588,158 @@ main{max-width:1400px;margin:0 auto;padding:24px 20px;}
 
       <!-- Proposal Generator -->
       <div class="proposal-wrap">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+        <!-- Header -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
           <div class="proposal-title" style="margin:0">📄 Proposal</div>
-          <button class="btn btn-ghost btn-sm" onclick="toggleFirefliesPicker()" id="ff-btn">🎙 Load meeting</button>
+          <div id="proposal-breadcrumb" style="font-size:.68rem;color:var(--muted)">Step 1 — Select meeting</div>
         </div>
-        <div style="font-size:.71rem;color:var(--muted);margin-bottom:12px">AI-generated strategy doc — share before they've committed</div>
-        <!-- Fireflies meeting list -->
-        <div id="ff-picker" style="display:none;margin-bottom:12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden">
-          <div id="ff-picker-inner" style="padding:8px;max-height:220px;overflow-y:auto">
-            <div style="font-size:.75rem;color:var(--muted);padding:4px">Loading meetings…</div>
+
+        <!-- Hidden transcript store + hidden m- fields (used by getMetrics / buildProposalHTML) -->
+        <textarea id="proposal-input" style="display:none"></textarea>
+        <input type="number" id="m-price" style="display:none">
+        <input type="number" id="m-promo" style="display:none" value="0">
+        <input type="number" id="m-shipping" style="display:none" value="6">
+        <input type="number" id="m-cogs-unit" style="display:none" value="0">
+        <input type="number" id="m-affcomm" style="display:none" value="15">
+        <input type="number" id="m-adspend" style="display:none" value="0">
+        <input type="number" id="m-creators" style="display:none">
+        <input type="number" id="m-videos" style="display:none" value="2">
+        <input type="number" id="m-views" style="display:none" value="1500">
+        <input type="number" id="m-ctr" style="display:none" value="3">
+        <input type="number" id="m-cvr" style="display:none" value="2">
+        <input type="number" id="m-samples" style="display:none" value="75">
+        <input type="number" id="m-retainers" style="display:none" value="1000">
+
+        <!-- ── STEP 1: Select Meeting ── -->
+        <div id="proposal-step1">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <span style="font-size:.72rem;color:var(--muted)">Select a Fireflies meeting — metrics auto-extracted</span>
+            <button class="btn btn-ghost btn-sm" onclick="toggleFirefliesPicker()" id="ff-btn">🎙 Load meeting</button>
           </div>
-        </div>
-        <textarea class="proposal-textarea" id="proposal-input" placeholder="Select a meeting above, or paste notes here. E.g. Spoke with Sarah from GreenBrand — eco water bottles, ~$80 AOV, 40% margins, flexible budget…"></textarea>
-
-        <!-- Metrics toggle -->
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;margin-bottom:4px">
-          <span style="font-size:.7rem;color:var(--muted)">Channel economics & KPIs for projections</span>
-          <button class="metrics-toggle" onclick="toggleMetricsPanel()">▸ Edit metrics</button>
-        </div>
-
-        <!-- Metrics panel (hidden by default) -->
-        <div class="metrics-panel" id="metrics-panel" style="display:none">
-          <div class="metrics-grid">
-            <!-- Creator KPIs -->
-            <div>
-              <div class="metrics-col-title">👥 Creator KPIs</div>
-              <div class="metric-row"><label title="Auto-derived from samples: samples × 50% × 3mo retention. Leave blank to use sample-based logic, or set manually to override.">Creators (override) ⓘ</label><input type="number" id="m-creators" placeholder="auto from samples"></div>
-              <div class="metric-row"><label>Videos / creator / mo</label><input type="number" id="m-videos" value="4"></div>
-              <div class="metric-row"><label>Avg Views / video</label><input type="number" id="m-views" value="1500"></div>
-              <div class="metric-row"><label>CTR %</label><input type="number" id="m-ctr" value="3" step="0.1"></div>
-              <div class="metric-row"><label>CVR %</label><input type="number" id="m-cvr" value="1.5" step="0.1"></div>
+          <!-- Fireflies picker dropdown -->
+          <div id="ff-picker" style="display:none;margin-bottom:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden">
+            <div id="ff-picker-inner" style="padding:8px;max-height:220px;overflow-y:auto">
+              <div style="font-size:.75rem;color:var(--muted);padding:4px">Loading meetings…</div>
             </div>
-            <!-- Unit Economics -->
+          </div>
+          <!-- Selected meeting badge -->
+          <div id="selected-meeting-row" style="display:none" class="selected-meeting-badge">
             <div>
-              <div class="metrics-col-title">💰 Unit Economics</div>
-              <div class="metric-row"><label>List Price ($)</label><input type="number" id="m-price" placeholder="auto-filled from Shopify"></div>
-              <div class="metric-row"><label>Promo Discount %</label><input type="number" id="m-promo" value="15" step="1"></div>
-              <div class="metric-row"><label>Shipping ($/unit)</label><input type="number" id="m-shipping" value="6" step="0.5"></div>
-              <div class="metric-row"><label>COGS ($/unit)</label><input type="number" id="m-cogs-unit" value="10"></div>
-              <div class="metric-row"><label>Affiliate Commission %</label><input type="number" id="m-affcomm" value="20" step="1"></div>
-              <div class="metric-row"><label>Adspend %</label><input type="number" id="m-adspend" value="0" step="1"></div>
+              <div id="selected-meeting-title" style="font-weight:600;color:var(--text)"></div>
+              <div id="selected-meeting-meta" style="font-size:.65rem;color:var(--muted);margin-top:2px"></div>
             </div>
-            <!-- Channel Costs -->
+            <button onclick="clearSelectedMeeting()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:0 4px">✕</button>
+          </div>
+          <!-- Optional extra context -->
+          <div style="margin-top:8px">
+            <button onclick="toggleExtraContext()" id="extra-ctx-toggle-btn" style="font-size:.68rem;color:var(--muted);background:none;border:none;cursor:pointer;text-decoration:underline;padding:0">+ Add context or notes</button>
+            <textarea id="extra-context-input" class="proposal-textarea" style="display:none;margin-top:6px;min-height:60px" placeholder="Optional: paste additional brand context, pricing info, or notes here…"></textarea>
+          </div>
+          <!-- Analyze button -->
+          <button id="analyze-btn" class="btn btn-primary" style="width:100%;margin-top:12px" onclick="extractMetrics()" disabled>
+            📊 Analyze &amp; Extract Metrics
+          </button>
+        </div>
+
+        <!-- ── STEP 2: Metrics Review ── -->
+        <div id="proposal-step2" style="display:none">
+          <!-- Back + brand header -->
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <button onclick="goBackToStep1()" class="btn btn-ghost btn-sm" style="font-size:.7rem;padding:4px 10px">← Back</button>
+            <div style="text-align:center">
+              <div id="review-brand-name" style="font-weight:700;font-size:.88rem;color:var(--text)"></div>
+              <div id="review-hero-product" style="font-size:.65rem;color:var(--muted);margin-top:1px"></div>
+            </div>
+            <div style="width:60px"></div>
+          </div>
+          <!-- Shopify source notice -->
+          <div id="review-shopify-notice" style="display:none;font-size:.68rem;color:var(--green);background:#0a1f14;border:1px solid #166534;border-radius:6px;padding:5px 10px;margin-bottom:10px"></div>
+
+          <!-- Metrics review grid -->
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:4px">
+            <!-- Pricing -->
             <div>
-              <div class="metrics-col-title">📦 Monthly Channel Costs</div>
-              <div class="metric-row"><label>Monthly Samples (units)</label><input type="number" id="m-samples" value="100"></div>
-              <div class="metric-row"><label>Affiliate Retainers ($)</label><input type="number" id="m-retainers" value="1000"></div>
-              <div style="margin-top:10px;padding:8px;background:var(--card);border-radius:6px;font-size:.68rem;color:var(--muted);line-height:1.5">
-                <strong style="color:var(--text)">Team Fee + GMV %</strong> pulled from pricing slider above
+              <div class="metrics-col-title">💰 Pricing</div>
+              <div class="review-row">
+                <label>List Price ($)<span class="req-star">*</span></label>
+                <input type="number" id="rv-price" oninput="onReviewEdit('rv-price')">
+                <span id="badge-rv-price" class="source-badge"></span>
+              </div>
+              <div class="review-row">
+                <label>Promo Discount %</label>
+                <input type="number" id="rv-promo" oninput="onReviewEdit('rv-promo')">
+                <span id="badge-rv-promo" class="source-badge"></span>
+              </div>
+              <div class="review-row" style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border)">
+                <label style="color:var(--text);font-weight:600">Selling Price</label>
+                <span id="rv-selling-price" style="font-size:.78rem;font-weight:700;color:var(--accent)">—</span>
+                <span style="min-width:52px"></span>
+              </div>
+            </div>
+            <!-- Unit Costs -->
+            <div>
+              <div class="metrics-col-title">📦 Unit Costs</div>
+              <div class="review-row">
+                <label>COGS / unit ($)<span class="req-star">*</span></label>
+                <input type="number" id="rv-cogs" oninput="onReviewEdit('rv-cogs')">
+                <span id="badge-rv-cogs" class="source-badge"></span>
+              </div>
+              <div class="review-row">
+                <label>Shipping / unit ($)</label>
+                <input type="number" id="rv-shipping" oninput="onReviewEdit('rv-shipping')">
+                <span id="badge-rv-shipping" class="source-badge"></span>
+              </div>
+              <div class="review-row">
+                <label>Aff. Commission %</label>
+                <input type="number" id="rv-affcomm" oninput="onReviewEdit('rv-affcomm')">
+                <span id="badge-rv-affcomm" class="source-badge"></span>
+              </div>
+            </div>
+            <!-- Channel -->
+            <div>
+              <div class="metrics-col-title">👥 Channel</div>
+              <div class="review-row">
+                <label>Monthly Samples</label>
+                <input type="number" id="rv-samples" oninput="onReviewEdit('rv-samples')">
+                <span id="badge-rv-samples" class="source-badge"></span>
+              </div>
+              <div class="review-row">
+                <label>Aff. Retainers ($)</label>
+                <input type="number" id="rv-retainers" oninput="onReviewEdit('rv-retainers')">
+                <span id="badge-rv-retainers" class="source-badge"></span>
+              </div>
+              <div class="review-row">
+                <label>Videos/creator/mo</label>
+                <input type="number" id="rv-videos" oninput="onReviewEdit('rv-videos')">
+                <span id="badge-rv-videos" class="source-badge"></span>
+              </div>
+              <div class="review-row">
+                <label>Avg Views/video</label>
+                <input type="number" id="rv-views" oninput="onReviewEdit('rv-views')">
+                <span id="badge-rv-views" class="source-badge"></span>
               </div>
             </div>
           </div>
+
+          <!-- Live unit economics -->
+          <div class="economics-live">
+            <div class="economics-live-title">Unit Economics</div>
+            <div id="economics-live-body">
+              <div style="color:var(--muted);font-size:.74rem;text-align:center;padding:8px">Enter list price to see unit economics</div>
+            </div>
+          </div>
+
+          <!-- Gate status -->
+          <div id="review-gate" style="margin-top:10px"></div>
+
+          <!-- Confirm & Generate -->
+          <button id="confirm-gen-btn" class="btn btn-primary" style="width:100%;margin-top:12px" onclick="confirmAndGenerate()" disabled>
+            ✅ Confirm &amp; Generate Proposal
+          </button>
         </div>
 
-        <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
+        <!-- Pricing inputs (always visible) -->
+        <div style="display:flex;gap:8px;margin-top:14px;align-items:center">
           <div style="display:flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:5px 10px;flex:1">
             <span style="font-size:.68rem;color:var(--muted);font-weight:700;white-space:nowrap">$/mo</span>
             <input type="text" id="proposal-retainer" placeholder="from slider" style="background:transparent;border:none;color:var(--text);font-size:.8rem;font-weight:700;width:70px;outline:none" oninput="syncPricingFromProposal()"/>
@@ -637,7 +748,6 @@ main{max-width:1400px;margin:0 auto;padding:24px 20px;}
             <span style="font-size:.68rem;color:var(--muted);font-weight:700;white-space:nowrap">GMV %</span>
             <input type="text" id="proposal-gmv" placeholder="from slider" style="background:transparent;border:none;color:var(--text);font-size:.8rem;font-weight:700;width:50px;outline:none" oninput="syncPricingFromProposal()"/>
           </div>
-          <button class="btn btn-primary" style="flex:2" onclick="generateProposal()" id="gen-btn">✨ Generate</button>
           <button class="btn btn-ghost btn-sm" onclick="copyProposalMd()">Copy</button>
         </div>
         <div class="proposal-output" id="proposal-output"></div>
@@ -1398,14 +1508,20 @@ async function selectFirefliesMeeting(idx) {
   const mt = (ffMeetings?.meetings || [])[idx];
   if (!mt) return;
 
-  // Close picker, show loading state in textarea
   document.getElementById('ff-picker').style.display = 'none';
-  const ta = document.getElementById('proposal-input');
-  ta.value = '⏳ Loading full transcript…';
-  ta.disabled = true;
 
+  // Show selected meeting badge in step 1
   const attendees = (mt.participants || []).filter(e => !e.includes('cultcontent')).join(', ');
   const date = mt.date ? new Date(mt.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+  document.getElementById('selected-meeting-title').textContent = mt.title;
+  document.getElementById('selected-meeting-meta').textContent = [date, attendees].filter(Boolean).join(' · ');
+  document.getElementById('selected-meeting-row').style.display = 'flex';
+
+  // Show loading state on analyze button
+  const analyzeBtn = document.getElementById('analyze-btn');
+  analyzeBtn.disabled = true;
+  analyzeBtn.textContent = '⏳ Loading transcript…';
+
   const header = [
     `Meeting: ${mt.title} (${date})`,
     attendees ? `With: ${attendees}` : '',
@@ -1419,24 +1535,21 @@ async function selectFirefliesMeeting(idx) {
 
     const parts = [header];
     if (d.transcript) parts.push(d.transcript);
-    // Append summary at the end as context for the AI
     if (d.summary?.short_summary) parts.push(`\n--- Summary ---\n${d.summary.short_summary}`);
     if (d.summary?.action_items)  parts.push(`\n--- Action Items ---\n${d.summary.action_items}`);
 
-    ta.value = parts.join('\n').trim();
+    document.getElementById('proposal-input').value = parts.join('\n').trim();
   } catch(e) {
-    // Fall back to summary if transcript fetch fails
     const summary = mt.summary?.short_summary || '';
     const actions = mt.summary?.action_items  || '';
-    ta.value = [
-      header,
-      summary,
-      actions ? `\nAction items:\n${actions}` : '',
-    ].filter(Boolean).join('\n').trim();
+    document.getElementById('proposal-input').value = [header, summary, actions ? `\nAction items:\n${actions}` : ''].filter(Boolean).join('\n').trim();
     console.warn('Full transcript unavailable, using summary:', e.message);
-  } finally {
-    ta.disabled = false;
   }
+
+  // Auto-trigger extraction now that transcript is ready
+  analyzeBtn.textContent = '📊 Analyze & Extract Metrics';
+  analyzeBtn.disabled = false;
+  extractMetrics();
 }
 
 // ── Proposal generator ─────────────────────────────────────────────────────────
@@ -1912,86 +2025,272 @@ async function sendGmvInvoice() {
 let lastProposalData = null;
 let projChart = null;
 
-async function generateProposal() {
-  const input = document.getElementById('proposal-input').value.trim();
-  if (!input) { alert('Add some conversation notes first'); return; }
-  const btn = document.getElementById('gen-btn');
-  btn.disabled = true; btn.textContent = '⏳ Generating…';
+// ── Two-step proposal flow ─────────────────────────────────────────────────────
 
-  const { retainer, gmv } = getProposalPricing();
-  const metrics = getMetrics();
+function showProposalStep(n, msg) {
+  document.getElementById('proposal-step1').style.display = n === 1 ? 'block' : 'none';
+  document.getElementById('proposal-step2').style.display = n === 2 ? 'block' : 'none';
+  document.getElementById('proposal-breadcrumb').textContent =
+    n === 1 ? 'Step 1 — Select meeting' : (msg || 'Step 2 — Review metrics');
+}
 
-  // Warn if list price is missing — AI will try to fill from Shopify, but flag it
-  if (!metrics.listPrice) {
-    btn.disabled = false; btn.textContent = '✨ Generate';
-    const proceed = confirm('⚠️ List price is blank.\n\nThe AI will try to pull it from the brand\'s Shopify store. If it can\'t find it, enter the price manually in the metrics panel before generating.\n\nContinue anyway?');
-    if (!proceed) return;
-    btn.disabled = true; btn.textContent = '⏳ Generating…';
+function goBackToStep1() { showProposalStep(1); }
+
+function clearSelectedMeeting() {
+  document.getElementById('proposal-input').value = '';
+  document.getElementById('selected-meeting-row').style.display = 'none';
+  document.getElementById('analyze-btn').disabled = true;
+  document.getElementById('analyze-btn').textContent = '📊 Analyze & Extract Metrics';
+  showProposalStep(1);
+}
+
+function toggleExtraContext() {
+  const ta = document.getElementById('extra-context-input');
+  const btn = document.getElementById('extra-ctx-toggle-btn');
+  const open = ta.style.display === 'none';
+  ta.style.display = open ? 'block' : 'none';
+  btn.textContent = open ? '− Hide context' : '+ Add context or notes';
+  // Enable analyze button if there's content in the extra context
+  if (open) ta.addEventListener('input', () => {
+    document.getElementById('analyze-btn').disabled = !ta.value.trim() && !document.getElementById('proposal-input').value.trim();
+  }, { once: false });
+}
+
+// STEP 1 → STEP 2: Call extract-metrics API
+async function extractMetrics() {
+  const transcript = document.getElementById('proposal-input').value.trim();
+  const extra = document.getElementById('extra-context-input')?.value.trim() || '';
+  const fullContext = [transcript, extra].filter(Boolean).join('\n\n');
+  if (!fullContext) { alert('Select a meeting or add context first.'); return; }
+
+  const analyzeBtn = document.getElementById('analyze-btn');
+  analyzeBtn.disabled = true;
+  analyzeBtn.textContent = '⏳ Analyzing…';
+  showProposalStep(2, 'Analyzing meeting…');
+
+  try {
+    const r = await fetch(`${BASE}/api/ai/extract-metrics`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ context: fullContext }),
+    });
+    const d = await r.json();
+    if (d.error) throw new Error(d.error);
+    renderMetricsReview(d);
+    showProposalStep(2, 'Step 2 — Review & confirm metrics');
+  } catch(e) {
+    showProposalStep(1);
+    alert('Error analyzing meeting: ' + e.message);
+  } finally {
+    analyzeBtn.disabled = false;
+    analyzeBtn.textContent = '📊 Analyze & Extract Metrics';
   }
+}
+
+// Source badge helper
+function getSourceLabel(src) {
+  return { shopify: '🛍 shopify', transcript: '💬 transcript', ai: '🤖 estimated', user: '✏️ edited', missing: '⚠ needed' }[src] || src;
+}
+function getSourceColor(src) {
+  return { shopify: '#10b981', transcript: '#3b82f6', ai: '#8b5cf6', user: '#0d9488', missing: '#ef4444' }[src] || '#64748b';
+}
+function setBadge(badgeId, src) {
+  const el = document.getElementById(badgeId);
+  if (!el) return;
+  el.textContent = getSourceLabel(src);
+  el.style.color = getSourceColor(src);
+}
+
+// Called whenever user edits a review field
+function onReviewEdit(inputId) {
+  const el = document.getElementById(inputId);
+  if (el) el.dataset.source = 'user';
+  setBadge('badge-' + inputId, 'user');
+  updateEconomicsLive();
+}
+
+// Render the Step 2 review card from extraction results
+function renderMetricsReview(data) {
+  document.getElementById('review-brand-name').textContent = data.brandName || '';
+  document.getElementById('review-hero-product').textContent = data.heroProduct ? `Hero: ${data.heroProduct}` : '';
+
+  if (data.shopifyData) {
+    const n = document.getElementById('review-shopify-notice');
+    n.style.display = 'block';
+    n.textContent = `🛍 Shopify data from ${data.shopifyData.domain} (${data.shopifyData.products.length} products)`;
+  } else {
+    document.getElementById('review-shopify-notice').style.display = 'none';
+  }
+
+  const m = data.metrics || {};
+  const s = data.sources || {};
+
+  const setRV = (rvId, key) => {
+    const el = document.getElementById(rvId);
+    if (!el) return;
+    const src = s[key] || (m[key] != null ? 'ai' : 'missing');
+    el.value = m[key] != null ? m[key] : '';
+    el.dataset.source = src;
+    el.classList.toggle('missing', src === 'missing');
+    setBadge('badge-' + rvId, src);
+  };
+
+  setRV('rv-price',    'listPrice');
+  setRV('rv-promo',    'promoPct');
+  setRV('rv-cogs',     'cogsPerUnit');
+  setRV('rv-shipping', 'shippingPerUnit');
+  setRV('rv-affcomm',  'affiliateCommPct');
+  setRV('rv-samples',  'monthlySamples');
+  setRV('rv-retainers','affiliateRetainers');
+  setRV('rv-videos',   'videosPerCreator');
+  setRV('rv-views',    'avgViews');
+
+  updateEconomicsLive();
+}
+
+// Live unit economics recalculation
+function updateEconomicsLive() {
+  const v = id => parseFloat(document.getElementById(id)?.value || 0) || 0;
+  const listPrice  = v('rv-price');
+  const promoPct   = v('rv-promo');
+  const cogs       = v('rv-cogs');
+  const shipping   = v('rv-shipping');
+  const affCommPct = v('rv-affcomm') / 100 || 0.15;
+  const sellingPrice = listPrice > 0 ? listPrice * (1 - promoPct / 100) : 0;
+
+  // Update selling price display
+  const spEl = document.getElementById('rv-selling-price');
+  if (spEl) spEl.textContent = sellingPrice > 0 ? `$${sellingPrice.toFixed(2)}` : '—';
+
+  const affComm   = sellingPrice * affCommPct;
+  const tikTokFee = sellingPrice * 0.06;
+  const grossProfit = sellingPrice - shipping - cogs - affComm - tikTokFee;
+  const grossMarginPct = sellingPrice > 0 ? grossProfit / sellingPrice : null;
+
+  const liveEl = document.getElementById('economics-live-body');
+  if (liveEl) {
+    if (!listPrice) {
+      liveEl.innerHTML = `<div style="color:var(--muted);font-size:.74rem;text-align:center;padding:8px">Enter list price to see unit economics</div>`;
+    } else {
+      const hasCOGS = cogs > 0;
+      const marginColor = grossMarginPct === null ? '#64748b' : grossMarginPct >= 0.20 ? '#10b981' : grossMarginPct >= 0.05 ? '#f59e0b' : '#ef4444';
+      const marginNote = grossMarginPct === null ? '' : grossMarginPct >= 0.20 ? ' ✅ Healthy' : grossMarginPct >= 0.05 ? ' ⚠ Thin' : grossMarginPct < 0 ? ' ⛔ Negative' : '';
+      liveEl.innerHTML = `
+        <div class="econ-row"><span>Selling price</span><span style="font-weight:600">$${sellingPrice.toFixed(2)}</span></div>
+        <div class="econ-row" style="color:var(--muted)"><span>− Shipping / unit</span><span>${shipping > 0 ? `-$${shipping.toFixed(2)}` : '<span style="color:#f59e0b">⚠ needed</span>'}</span></div>
+        <div class="econ-row" style="color:var(--muted)"><span>− COGS / unit</span><span>${hasCOGS ? `-$${cogs.toFixed(2)}` : '<span style="color:#ef4444">⚠ required</span>'}</span></div>
+        <div class="econ-row" style="color:var(--muted)"><span>− Aff. commission (${(affCommPct*100).toFixed(0)}%)</span><span>-$${affComm.toFixed(2)}</span></div>
+        <div class="econ-row" style="color:var(--muted)"><span>− TikTok fee (6%)</span><span>-$${tikTokFee.toFixed(2)}</span></div>
+        <div class="econ-row total" style="color:${marginColor}">
+          <span>Gross profit / order</span>
+          <span>${hasCOGS ? `$${grossProfit.toFixed(2)} (${(grossMarginPct*100).toFixed(1)}%)${marginNote}` : '—'}</span>
+        </div>`;
+    }
+  }
+
+  updateReviewGate(listPrice, cogs, shipping, grossMarginPct);
+}
+
+// Gate: block confirm button if required fields missing or economics broken
+function updateReviewGate(listPrice, cogs, shipping, grossMarginPct) {
+  const gate = document.getElementById('review-gate');
+  const btn  = document.getElementById('confirm-gen-btn');
+  if (!gate || !btn) return;
+
+  const blockers = [], warnings = [];
+  if (!listPrice)    blockers.push('List price is required');
+  if (!cogs)         blockers.push('COGS / unit required — enter your product cost');
+  if (!shipping)     warnings.push('Shipping cost not set — will default to $6/unit in projections');
+
+  const isNegative = listPrice && cogs && grossMarginPct !== null && grossMarginPct < 0;
+  const isThin     = listPrice && cogs && grossMarginPct !== null && grossMarginPct >= 0 && grossMarginPct < 0.10;
+  if (isNegative) {
+    const minViable = (cogs + (shipping||6)) / (1 - 0.15 - 0.06);
+    blockers.push(`Negative gross margin (${(grossMarginPct*100).toFixed(1)}%) — selling price must be at least $${minViable.toFixed(2)} to break even on variable costs`);
+  }
+
+  let html = '';
+  blockers.forEach(b => { html += `<div style="background:#1a0808;border:1px solid #7f1d1d;border-radius:6px;padding:8px 12px;font-size:.72rem;color:#fca5a5;margin-top:6px">⛔ ${b}</div>`; });
+  warnings.forEach(w => { html += `<div style="background:#1a1200;border:1px solid #78350f;border-radius:6px;padding:8px 12px;font-size:.72rem;color:#fcd34d;margin-top:6px">⚠ ${w}</div>`; });
+
+  if (!blockers.length && !warnings.length && listPrice && cogs) {
+    const color = grossMarginPct >= 0.20 ? '#0d1f16' : '#1a1200';
+    const border = grossMarginPct >= 0.20 ? '#166534' : '#78350f';
+    const text   = grossMarginPct >= 0.20 ? '#86efac' : '#fcd34d';
+    const msg    = grossMarginPct >= 0.20 ? '✅ Unit economics look healthy — ready to generate'
+                 : isThin ? '⚠ Thin margins — proposal will include AOV optimization recommendations' : '';
+    if (msg) html += `<div style="background:${color};border:1px solid ${border};border-radius:6px;padding:8px 12px;font-size:.72rem;color:${text};margin-top:6px">${msg}</div>`;
+  }
+
+  // Diagnostic override for negative margin
+  if (isNegative) {
+    html += `<button onclick="confirmAndGenerate(true)" class="btn btn-ghost btn-sm" style="width:100%;margin-top:8px;font-size:.72rem;border-color:#7f1d1d;color:#fca5a5">Generate Diagnostic Proposal (show path to profitability) →</button>`;
+  }
+
+  gate.innerHTML = html;
+  btn.disabled = blockers.length > 0;
+  btn.textContent = isNegative ? '⛔ Fix economics above to generate' : '✅ Confirm & Generate Proposal';
+}
+
+// STEP 2 → Proposal: sync rv- fields to m- fields, then call propose API
+async function confirmAndGenerate(forceDiagnostic = false) {
+  const v = id => parseFloat(document.getElementById(id)?.value || 0) || 0;
+
+  const confirmedMetrics = {
+    listPrice:        v('rv-price') || null,
+    promoPct:         v('rv-promo'),
+    shippingPerUnit:  v('rv-shipping') || 6,
+    cogsPerUnit:      v('rv-cogs') || null,
+    affiliateCommPct: v('rv-affcomm') || 15,
+    monthlySamples:   v('rv-samples') || 75,
+    affiliateRetainers: v('rv-retainers') || 1000,
+    videosPerCreator: v('rv-videos') || 2,
+    avgViews:         v('rv-views') || null,
+  };
+
+  // Sync confirmed values into hidden m- fields so getMetrics() + buildProposalHTML() work
+  const setM = (id, val) => { const el = document.getElementById(id); if (el && val != null) el.value = val; };
+  setM('m-price',     confirmedMetrics.listPrice);
+  setM('m-promo',     confirmedMetrics.promoPct);
+  setM('m-shipping',  confirmedMetrics.shippingPerUnit);
+  setM('m-cogs-unit', confirmedMetrics.cogsPerUnit);
+  setM('m-affcomm',   confirmedMetrics.affiliateCommPct);
+  setM('m-samples',   confirmedMetrics.monthlySamples);
+  setM('m-retainers', confirmedMetrics.affiliateRetainers);
+  setM('m-videos',    confirmedMetrics.videosPerCreator);
+  setM('m-views',     confirmedMetrics.avgViews || 1500);
+  setM('m-ctr',       3);
+  setM('m-cvr',       2);
+
+  const btn = document.getElementById('confirm-gen-btn');
+  btn.disabled = true; btn.textContent = '⏳ Generating proposal…';
+
+  const transcript = document.getElementById('proposal-input').value.trim();
+  const extra = document.getElementById('extra-context-input')?.value.trim() || '';
+  const fullContext = [transcript, extra].filter(Boolean).join('\n\n');
+  const { retainer, gmv } = getProposalPricing();
 
   try {
     const r = await fetch(`${BASE}/api/ai/propose`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ context: input, retainer, gmv, metrics }),
+      body: JSON.stringify({ context: fullContext, retainer, gmv, confirmedMetrics }),
     });
     const d = await r.json();
     if (d.error) throw new Error(d.error);
 
-    // Show Shopify scrape notice if data was found
-    if (d.shopifyData) {
-      const notice = document.createElement('div');
-      notice.style.cssText = 'font-size:.7rem;color:#20d5c4;margin-top:6px;padding:4px 8px;background:#091819;border-radius:6px;border:1px solid #0f3035';
-      notice.textContent = `🛍 Shopify prices pulled from ${d.shopifyData.domain} (${d.shopifyData.products.length} products)`;
-      btn.parentNode.insertBefore(notice, btn.nextSibling);
-      setTimeout(() => notice.remove(), 8000);
-    }
-
-    // Auto-fill metrics inputs from AI suggestions, then re-read getMetrics()
-    const sm = d.proposal.suggestedMetrics || {};
-    const setField = (id, val) => { if (val != null) { const el = document.getElementById(id); if (el) el.value = val; } };
-    setField('m-price',     sm.listPrice);
-    setField('m-promo',     sm.promoPct);
-    setField('m-shipping',  sm.shippingPerUnit);
-    setField('m-cogs-unit', sm.cogsPerUnit);
-    setField('m-affcomm',   sm.affiliateCommPct);
-    setField('m-videos',    sm.videosPerCreator);
-    setField('m-views',     sm.avgViews);
-    setField('m-ctr',       sm.ctr);
-    setField('m-cvr',       sm.cvr);
-    setField('m-samples',   sm.monthlySamples);
-    setField('m-retainers', sm.affiliateRetainers);
-
-    // Re-read metrics after auto-fill so the proposal uses the updated values
     const filledMetrics = getMetrics();
-
-    // Warn if list price is still 0 after AI fill — Shopify scrape probably failed
-    if (!filledMetrics.listPrice) {
-      const priceEl = document.getElementById('m-price');
-      if (priceEl) {
-        priceEl.style.border = '2px solid #ef4444';
-        priceEl.placeholder = '⚠ Enter price manually';
-        // Auto-open metrics panel so user sees it
-        const panel = document.getElementById('metrics-panel');
-        if (panel) panel.style.display = 'block';
-      }
-    } else {
-      const priceEl = document.getElementById('m-price');
-      if (priceEl) priceEl.style.border = '';
-    }
-
-    // Try to find brand logo from contact's email domain
-    const brandLogoUrl = await tryGetBrandLogo(input);
+    const brandLogoUrl = await tryGetBrandLogo(fullContext);
     lastProposalData = { ...d.proposal, _metrics: filledMetrics, _brandLogoUrl: brandLogoUrl };
     openProposalModal(lastProposalData);
     populateContactSelector();
-    // Extract email + brand name from context to auto-select the right contact
-    const ctxEmail = (input.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/) || [])[0]?.toLowerCase();
+    const ctxEmail = (fullContext.match(/[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}/) || [])[0]?.toLowerCase();
     populatePmContactSel(ctxEmail, d.proposal.brandName);
   } catch(e) {
     alert('Error generating proposal: ' + e.message);
   }
-  btn.disabled = false; btn.textContent = '✨ Generate';
+
+  btn.disabled = false; btn.textContent = '✅ Confirm & Generate Proposal';
 }
 
 function populatePmContactSel(autoEmail, autoBrand) {
