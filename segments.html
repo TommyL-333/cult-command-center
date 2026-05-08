@@ -609,7 +609,7 @@ main{max-width:1400px;margin:0 auto;padding:24px 20px;}
             <!-- Unit Economics -->
             <div>
               <div class="metrics-col-title">💰 Unit Economics</div>
-              <div class="metric-row"><label>List Price ($)</label><input type="number" id="m-price" value="79"></div>
+              <div class="metric-row"><label>List Price ($)</label><input type="number" id="m-price" placeholder="auto-filled from Shopify"></div>
               <div class="metric-row"><label>Promo Discount %</label><input type="number" id="m-promo" value="15" step="1"></div>
               <div class="metric-row"><label>Shipping ($/unit)</label><input type="number" id="m-shipping" value="6" step="0.5"></div>
               <div class="metric-row"><label>COGS ($/unit)</label><input type="number" id="m-cogs-unit" value="10"></div>
@@ -1606,7 +1606,7 @@ function getMetrics() {
   const teamFee = parseInt(sl?.dataset.retainer || sl?.value || 2500);
   const revSharePct = parseFloat(sl?.dataset.gmv || 6.5) / 100;
 
-  const listPrice = v('m-price') || 79;
+  const listPrice = v('m-price') || 0;
   const promoPct = v('m-promo') / 100 || 0.15;
   const sellingPrice = listPrice * (1 - promoPct);
   const shipping = v('m-shipping') || 6;
@@ -1916,6 +1916,14 @@ async function generateProposal() {
   const { retainer, gmv } = getProposalPricing();
   const metrics = getMetrics();
 
+  // Warn if list price is missing — AI will try to fill from Shopify, but flag it
+  if (!metrics.listPrice) {
+    btn.disabled = false; btn.textContent = '✨ Generate';
+    const proceed = confirm('⚠️ List price is blank.\n\nThe AI will try to pull it from the brand\'s Shopify store. If it can\'t find it, enter the price manually in the metrics panel before generating.\n\nContinue anyway?');
+    if (!proceed) return;
+    btn.disabled = true; btn.textContent = '⏳ Generating…';
+  }
+
   try {
     const r = await fetch(`${BASE}/api/ai/propose`, {
       method: 'POST',
@@ -1952,6 +1960,21 @@ async function generateProposal() {
 
     // Re-read metrics after auto-fill so the proposal uses the updated values
     const filledMetrics = getMetrics();
+
+    // Warn if list price is still 0 after AI fill — Shopify scrape probably failed
+    if (!filledMetrics.listPrice) {
+      const priceEl = document.getElementById('m-price');
+      if (priceEl) {
+        priceEl.style.border = '2px solid #ef4444';
+        priceEl.placeholder = '⚠ Enter price manually';
+        // Auto-open metrics panel so user sees it
+        const panel = document.getElementById('metrics-panel');
+        if (panel) panel.style.display = 'block';
+      }
+    } else {
+      const priceEl = document.getElementById('m-price');
+      if (priceEl) priceEl.style.border = '';
+    }
 
     // Try to find brand logo from contact's email domain
     const brandLogoUrl = await tryGetBrandLogo(input);
