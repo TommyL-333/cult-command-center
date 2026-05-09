@@ -80,11 +80,8 @@ function requireAuth(req, res, next) {
 app.use(express.json());
 
 // ─── Lark API helpers ─────────────────────────────────────────────────────────
-const LARK_BASE = 'https://open.larksuite.com/open-apis';
-const LARK_WIKI_TEMPLATE_NODE  = 'WH89wl1s7i2W1ZkxAHIu3g2stsb';
-const LARK_WIKI_SPACE_ID       = '7527434423529111564';
-const LARK_WIKI_BASE_URL       = 'https://cedw5xj2shl.usttp.larksuite.com/wiki';
-const LARK_ALERT_CHAT_ID       = process.env.LARK_ALERT_CHAT_ID || 'oc_e7fa4126968dc76eaeca1d815e706e46';
+const LARK_BASE          = 'https://open.larksuite.com/open-apis';
+const LARK_ALERT_CHAT_ID = process.env.LARK_ALERT_CHAT_ID || 'oc_e7fa4126968dc76eaeca1d815e706e46';
 
 async function larkTenantToken() {
   const r = await axios.post(`${LARK_BASE}/auth/v3/tenant_access_token/internal`, {
@@ -95,14 +92,15 @@ async function larkTenantToken() {
   return r.data.tenant_access_token;
 }
 
-async function larkCopyWikiNode({ spaceId, nodeToken, title, targetParentToken = '' }) {
+async function larkCopyTemplateDoc({ docToken, title }) {
+  // Copies the template via drive/v1 (bot needs Files permission, not wiki admin)
   const token = await larkTenantToken();
   const r = await axios.post(
-    `${LARK_BASE}/wiki/v2/spaces/${spaceId}/nodes/${nodeToken}/copy`,
-    { target_parent_token: targetParentToken, title },
+    `${LARK_BASE}/drive/v1/files/${docToken}/copy`,
+    { name: title, type: 'docx', folder_token: '' },
     { headers: { Authorization: `Bearer ${token}` }, timeout: 15_000 }
   );
-  if (r.data.code !== 0) throw new Error(`Lark copy wiki node failed: ${r.data.msg}`);
+  if (r.data.code !== 0) throw new Error(`Lark copy doc failed: ${r.data.msg}`);
   return r.data;
 }
 
@@ -235,20 +233,20 @@ app.post('/api/webhooks/ghl-client-onboard', async (req, res) => {
 
     console.log(`[webhook] New client onboarded from GHL form: ${brandName} (${brandId})`);
 
-    // ── Lark: create affiliate resource hub wiki page + alert (non-blocking) ───
+    // ── Lark: create affiliate resource hub doc + alert (non-blocking) ──────────
     if (process.env.LARK_APP_ID && process.env.LARK_APP_SECRET) {
       setImmediate(async () => {
         try {
-          // Copy the template wiki node → new page titled "[Brand] — Affiliate Resource Hub"
-          const copyResult = await larkCopyWikiNode({
-            spaceId:           LARK_WIKI_SPACE_ID,
-            nodeToken:         LARK_WIKI_TEMPLATE_NODE,
-            title:             `${brandName} — Affiliate Resource Hub`,
+          // Copy the template doc via drive API (wiki copy requires wiki admin role)
+          const TEMPLATE_DOC_TOKEN = 'RuLZdNSSkouiinxp340uXfEgtjg';
+          const copyResult = await larkCopyTemplateDoc({
+            docToken: TEMPLATE_DOC_TOKEN,
+            title:    `${brandName} — Affiliate Resource Hub`,
           });
-          const newNodeToken = copyResult.data?.node?.node_token;
-          const wikiUrl = newNodeToken
-            ? `${LARK_WIKI_BASE_URL}/${newNodeToken}`
-            : LARK_WIKI_BASE_URL;
+          const newDocToken = copyResult.data?.file?.token;
+          const wikiUrl = newDocToken
+            ? `https://cedw5xj2shl.usttp.larksuite.com/docx/${newDocToken}`
+            : 'https://cedw5xj2shl.usttp.larksuite.com';
 
           // Post alert to Cult Content — Account Alerts channel
           const contactLine = [firstName, lastName].filter(Boolean).join(' ');
