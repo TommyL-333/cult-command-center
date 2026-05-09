@@ -1220,6 +1220,65 @@ app.post('/api/reacher/shops/:shopId/creators', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// GET /api/reacher/shops — list all shops
+app.get('/api/reacher/shops', async (req, res) => {
+  try {
+    const data = await cached('reacher_shops', 5 * 60_000, async () => {
+      const { data } = await axios.get(`${CFG.railwayUrl}/affiliate/shops`, { timeout: 15_000 });
+      return data;
+    });
+    res.json(data);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/reacher/shops/:shopId/automations
+app.get('/api/reacher/shops/:shopId/automations', async (req, res) => {
+  const { shopId } = req.params;
+  try {
+    const data = await cached(`reacher_automations_${shopId}`, 5 * 60_000, async () => {
+      const { data } = await axios.get(`${CFG.railwayUrl}/affiliate/shops/${shopId}/automations`, { timeout: 15_000 });
+      return data;
+    });
+    res.json(data);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/reacher/shops/:shopId/creators/top
+app.get('/api/reacher/shops/:shopId/creators/top', async (req, res) => {
+  const { shopId } = req.params;
+  try {
+    const data = await cached(`reacher_top_creators_${shopId}`, 5 * 60_000, async () => {
+      const { data } = await axios.get(`${CFG.railwayUrl}/affiliate/shops/${shopId}/creators/top`, { timeout: 15_000 });
+      return data;
+    });
+    res.json(data);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/reacher/shops/:shopId/videos
+app.post('/api/reacher/shops/:shopId/videos', async (req, res) => {
+  const { shopId } = req.params;
+  try {
+    const { data } = await axios.post(
+      `${CFG.railwayUrl}/affiliate/shops/${shopId}/videos`,
+      req.body, { timeout: 15_000 }
+    );
+    res.json(data);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/reacher/shops/:shopId/samples
+app.post('/api/reacher/shops/:shopId/samples', async (req, res) => {
+  const { shopId } = req.params;
+  try {
+    const { data } = await axios.post(
+      `${CFG.railwayUrl}/affiliate/shops/${shopId}/samples`,
+      req.body, { timeout: 15_000 }
+    );
+    res.json(data);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // POST /api/command  { text, context?, source? }
 // Fires message to Lark alerts channel via Railway.
 app.post('/api/command', async (req, res) => {
