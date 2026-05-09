@@ -2284,6 +2284,121 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
   </div>
 </section>
 
+<!-- ═══ Affiliate Copy Generator Modal ════════════════════════════════════════ -->
+<div id="affiliateCopyModal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.65);backdrop-filter:blur(4px);overflow-y:auto;" onclick="if(event.target===this)gpCloseAffiliateCopy()">
+  <div style="max-width:700px;margin:40px auto;padding:0 16px 80px;">
+    <div style="background:var(--dark-2);border:1px solid var(--border);border-radius:14px;padding:28px;">
+
+      <!-- Header -->
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;gap:12px;">
+        <div>
+          <div style="font-size:16px;font-weight:800;">✍️ Affiliate Copy Generator</div>
+          <div id="acmBrandLabel" style="font-size:12px;color:var(--muted);margin-top:3px;"></div>
+        </div>
+        <button onclick="gpCloseAffiliateCopy()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;flex-shrink:0;padding:0;">✕</button>
+      </div>
+
+      <!-- Inputs grid -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+        <div>
+          <div class="field-label">Brand Name</div>
+          <input id="acmBrand" class="agent-input" style="width:100%;" placeholder="e.g. Diamandia" />
+        </div>
+        <div>
+          <div class="field-label">Commission %</div>
+          <input id="acmCommission" class="agent-input" style="width:100%;" placeholder="e.g. 15" type="number" min="0" />
+        </div>
+        <div>
+          <div class="field-label">Cashback Amount ($)</div>
+          <input id="acmCashback" class="agent-input" style="width:100%;" placeholder="e.g. 50" type="number" min="0" />
+        </div>
+        <div>
+          <div class="field-label">Posting / Blitz Date</div>
+          <input id="acmPostDate" class="agent-input" style="width:100%;" type="date" />
+        </div>
+        <div>
+          <div class="field-label">Initial Call Date</div>
+          <input id="acmCallDate1" class="agent-input" style="width:100%;" type="date" />
+        </div>
+        <div>
+          <div class="field-label">Initial Call Link (Lark)</div>
+          <input id="acmCallLink1" class="agent-input" style="width:100%;" placeholder="https://..." />
+        </div>
+        <div>
+          <div class="field-label">Pre-Blitz Call Date</div>
+          <input id="acmCallDate2" class="agent-input" style="width:100%;" type="date" />
+        </div>
+        <div>
+          <div class="field-label">Pre-Blitz Call Link (Lark)</div>
+          <input id="acmCallLink2" class="agent-input" style="width:100%;" placeholder="https://..." />
+        </div>
+        <div>
+          <div class="field-label">Affiliate Resource Hub Link</div>
+          <input id="acmHubLink" class="agent-input" style="width:100%;" placeholder="https://..." />
+        </div>
+        <div>
+          <div class="field-label">Reacher Campaign Link</div>
+          <input id="acmCampaignLink" class="agent-input" style="width:100%;" placeholder="https://..." />
+        </div>
+      </div>
+
+      <button class="btn btn-teal" style="width:100%;padding:11px;font-weight:700;font-size:13px;margin-bottom:24px;" onclick="gpGenerateAffiliateCopy()">✨ Generate All Copy</button>
+
+      <!-- Outputs -->
+      <div id="acmOutputs" style="display:none;display:flex;flex-direction:column;gap:16px;">
+
+        <!-- GHL Message 1 -->
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <div style="font-size:10px;font-weight:800;letter-spacing:0.08em;color:var(--muted);">GHL — MESSAGE 1</div>
+            <button class="btn btn-ghost" style="font-size:10px;padding:2px 9px;" onclick="acmCopy('acmGhl1','acmCopyBtn1')" id="acmCopyBtn1">📋 Copy</button>
+          </div>
+          <textarea id="acmGhl1" class="agent-input" rows="5" style="width:100%;resize:vertical;font-size:12px;line-height:1.6;"></textarea>
+        </div>
+
+        <!-- GHL Follow-up -->
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <div style="font-size:10px;font-weight:800;letter-spacing:0.08em;color:var(--muted);">GHL — FOLLOW-UP <span style="font-weight:400;text-transform:none;">(send 3 hrs after call)</span></div>
+            <button class="btn btn-ghost" style="font-size:10px;padding:2px 9px;" onclick="acmCopy('acmGhl2','acmCopyBtn2')" id="acmCopyBtn2">📋 Copy</button>
+          </div>
+          <textarea id="acmGhl2" class="agent-input" rows="7" style="width:100%;resize:vertical;font-size:12px;line-height:1.6;"></textarea>
+        </div>
+
+        <!-- Reacher DM 1 -->
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <div style="font-size:10px;font-weight:800;letter-spacing:0.08em;color:var(--muted);">REACHER — DM AUTOMATION 1 <span style="font-weight:400;text-transform:none;">(brand intro)</span></div>
+            <button class="btn btn-ghost" style="font-size:10px;padding:2px 9px;" onclick="acmCopy('acmReacher1','acmCopyBtn3')" id="acmCopyBtn3">📋 Copy</button>
+          </div>
+          <textarea id="acmReacher1" class="agent-input" rows="5" style="width:100%;resize:vertical;font-size:12px;line-height:1.6;"></textarea>
+        </div>
+
+        <!-- Reacher DM 2 -->
+        <div>
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+            <div style="font-size:10px;font-weight:800;letter-spacing:0.08em;color:var(--muted);">REACHER — DM AUTOMATION 2 <span style="font-weight:400;text-transform:none;">(call follow-up)</span></div>
+            <button class="btn btn-ghost" style="font-size:10px;padding:2px 9px;" onclick="acmCopy('acmReacher2','acmCopyBtn4')" id="acmCopyBtn4">📋 Copy</button>
+          </div>
+          <textarea id="acmReacher2" class="agent-input" rows="6" style="width:100%;resize:vertical;font-size:12px;line-height:1.6;"></textarea>
+        </div>
+
+        <!-- Reacher SOP note -->
+        <div style="background:rgba(0,242,234,0.05);border:1px solid rgba(0,242,234,0.18);border-radius:9px;padding:14px 16px;font-size:11px;line-height:1.7;color:var(--soft);">
+          <div style="font-size:10px;font-weight:800;letter-spacing:0.08em;color:var(--teal);margin-bottom:8px;">⚙️ REACHER SETUP NOTES</div>
+          <strong>Automation flow (DM-first):</strong><br>
+          1. <strong>DM 1</strong> fires immediately when creator enters the sequence — brand intro, no hard ask<br>
+          2. <strong>DM 2</strong> fires 2–3 days later if no response — call details + campaign link<br>
+          3. <strong>TC invite is NOT sent upfront</strong> — configure as a conditional step: trigger only when creator clicks the campaign sign-up link or responds positively<br>
+          4. In Reacher: set TC invite as "If accepted campaign → send TC invite + approve sample request"
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+</div>
+
 </main>
 
 <script>
@@ -2370,6 +2485,7 @@ const GP_TASKS = {
     label: '👥 Affiliate & Community', color: '#60a5fa',
     tasks: [
       { id: 'affiliate_sys',  label: 'Affiliate sourcing system set up',       action: null },
+      { id: 'affiliate_copy', label: 'Affiliate copy generated',               action: { type: 'fn', label: '✍️ Generate Copy', fn: 'gpOpenAffiliateCopy' } },
       { id: 'discord',        label: 'Branded Discord channel created',        action: null },
       { id: 'challenge',      label: 'Initial challenge / contract sent',      action: null },
       { id: 'growi',          label: 'Growi onboarding complete',              action: null },
@@ -2571,6 +2687,76 @@ function gpUpdateOverview() {
   document.getElementById('gpOverallPct').textContent = overallPct + '%';
   document.getElementById('gpOverallBar').style.width = overallPct + '%';
   document.getElementById('gpCategorySummary').innerHTML = summary.join('');
+}
+
+// ─── Affiliate Copy Generator ────────────────────────────────────────────────
+function gpOpenAffiliateCopy() {
+  const client = _gpClients.find(c => c.id === _gpState.clientId);
+  document.getElementById('acmBrand').value = client?.name || '';
+  document.getElementById('acmBrandLabel').textContent = client?.name ? `Generating copy for ${client.name}` : '';
+  document.getElementById('acmOutputs').style.display = 'none';
+  document.getElementById('affiliateCopyModal').style.display = 'block';
+}
+
+function gpCloseAffiliateCopy() {
+  document.getElementById('affiliateCopyModal').style.display = 'none';
+}
+
+function acmFmtDate(val) {
+  if (!val) return null;
+  const d = new Date(val + 'T12:00:00');
+  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+}
+
+function gpGenerateAffiliateCopy() {
+  const brand       = document.getElementById('acmBrand').value.trim()       || '[Brand Name]';
+  const commission  = document.getElementById('acmCommission').value.trim()  || 'X';
+  const cashback    = document.getElementById('acmCashback').value.trim()    || 'Y';
+  const postDate    = acmFmtDate(document.getElementById('acmPostDate').value)   || '[Posting Date]';
+  const callDate1   = acmFmtDate(document.getElementById('acmCallDate1').value)  || '[Initial Call Date]';
+  const callLink1   = document.getElementById('acmCallLink1').value.trim()   || '[Lark Meeting Link]';
+  const callDate2   = acmFmtDate(document.getElementById('acmCallDate2').value)  || '[Pre-Blitz Call Date]';
+  const callLink2   = document.getElementById('acmCallLink2').value.trim()   || '[Lark Meeting Link 2]';
+  const hubLink     = document.getElementById('acmHubLink').value.trim()     || '[Affiliate Resource Hub Link]';
+  const campaignLink= document.getElementById('acmCampaignLink').value.trim()|| '[Reacher Campaign Link]';
+
+  document.getElementById('acmGhl1').value =
+`Hi {{contact.first_name}}! We recently started working with ${brand} and we wanted to bring you this opportunity. They're offering commissions of ${commission}% and have a $${cashback} cashback challenge you can sign up for. We'll be going over all the details on a group call on ${callDate1}. Here's the meeting link: ${callLink1}
+
+You can find out more about the brand here: ${hubLink}`;
+
+  document.getElementById('acmGhl2').value =
+`Hey {{contact.first_name}}! That call with ${brand} went great! If you couldn't make it, that's ok, you can still participate! We're doing a blitz campaign where we all post on the same day — ${postDate}. We're asking that each person that participates makes at least 3 videos. Here is the link to get your sample and for the campaign sign up: ${campaignLink}
+
+We'll be doing another call the day before we all post to make sure we're all on the same page. That will be ${callDate2}. Here's the link for that: ${callLink2}.`;
+
+  document.getElementById('acmReacher1').value =
+`Hey! We're Cult Content, a TikTok Shop agency — and we just started working with ${brand}. We wanted to reach out because we think you'd be a great fit as an affiliate.
+
+They're offering ${commission}% commissions + a $${cashback} cashback challenge for creators who post. No upfront commitment — just get a free sample, make some videos, and earn.
+
+Want to learn more? Here's the full brand overview: ${hubLink}`;
+
+  document.getElementById('acmReacher2').value =
+`Hey again! Just following up on the ${brand} opportunity 👋
+
+We're hosting a group call on ${callDate1} to walk through everything — the cashback challenge, commissions, and our upcoming blitz campaign where everyone posts on ${postDate}.
+
+No pressure, just a quick intro. Join here: ${callLink1}
+
+Ready to grab your free sample + sign up for the campaign? Here's the link: ${campaignLink}`;
+
+  document.getElementById('acmOutputs').style.display = 'flex';
+  document.getElementById('acmOutputs').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function acmCopy(fieldId, btnId) {
+  const val = document.getElementById(fieldId)?.value;
+  if (!val) return;
+  navigator.clipboard.writeText(val).then(() => {
+    const btn = document.getElementById(btnId);
+    if (btn) { btn.textContent = '✓ Copied!'; setTimeout(() => btn.textContent = '📋 Copy', 1600); }
+  });
 }
 
 // ─── Fetch ───────────────────────────────────────────────────────────────────
