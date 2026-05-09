@@ -79,6 +79,44 @@ function requireAuth(req, res, next) {
 
 app.use(express.json());
 
+// ─── Lark API helpers ─────────────────────────────────────────────────────────
+const LARK_BASE = 'https://open.larksuite.com/open-apis';
+const LARK_WIKI_TEMPLATE_NODE  = 'WH89wl1s7i2W1ZkxAHIu3g2stsb';
+const LARK_WIKI_SPACE_ID       = '7527434423529111564';
+const LARK_WIKI_BASE_URL       = 'https://cedw5xj2shl.usttp.larksuite.com/wiki';
+const LARK_ALERT_CHAT_ID       = process.env.LARK_ALERT_CHAT_ID || 'oc_e7fa4126968dc76eaeca1d815e706e46';
+
+async function larkTenantToken() {
+  const r = await axios.post(`${LARK_BASE}/auth/v3/tenant_access_token/internal`, {
+    app_id:     process.env.LARK_APP_ID,
+    app_secret: process.env.LARK_APP_SECRET,
+  }, { timeout: 8_000 });
+  if (r.data.code !== 0) throw new Error(`Lark auth failed: ${r.data.msg}`);
+  return r.data.tenant_access_token;
+}
+
+async function larkCopyWikiNode({ spaceId, nodeToken, title, targetParentToken = '' }) {
+  const token = await larkTenantToken();
+  const r = await axios.post(
+    `${LARK_BASE}/wiki/v2/spaces/${spaceId}/nodes/${nodeToken}/copy`,
+    { target_parent_token: targetParentToken, title },
+    { headers: { Authorization: `Bearer ${token}` }, timeout: 15_000 }
+  );
+  if (r.data.code !== 0) throw new Error(`Lark copy wiki node failed: ${r.data.msg}`);
+  return r.data;
+}
+
+async function larkSendChatMessage({ chatId, text }) {
+  const token = await larkTenantToken();
+  const r = await axios.post(
+    `${LARK_BASE}/im/v1/messages?receive_id_type=chat_id`,
+    { receive_id: chatId, msg_type: 'text', content: JSON.stringify({ text }) },
+    { headers: { Authorization: `Bearer ${token}` }, timeout: 10_000 }
+  );
+  if (r.data.code !== 0) throw new Error(`Lark send message failed: ${r.data.msg}`);
+  return r.data;
+}
+
 // ─── GHL Webhook: client onboarding form → auto-add client ───────────────────
 // This route is intentionally registered BEFORE requireAuth so GHL can call it
 // without a Cloudflare Access session. Verified by WEBHOOK_SECRET query param.
@@ -197,6 +235,39 @@ app.post('/api/webhooks/ghl-client-onboard', async (req, res) => {
 
     console.log(`[webhook] New client onboarded from GHL form: ${brandName} (${brandId})`);
 
+    // ── Lark: create affiliate resource hub wiki page + alert (non-blocking) ───
+    if (process.env.LARK_APP_ID && process.env.LARK_APP_SECRET) {
+      setImmediate(async () => {
+        try {
+          // Copy the template wiki node → new page titled "[Brand] — Affiliate Resource Hub"
+          const copyResult = await larkCopyWikiNode({
+            spaceId:           LARK_WIKI_SPACE_ID,
+            nodeToken:         LARK_WIKI_TEMPLATE_NODE,
+            title:             `${brandName} — Affiliate Resource Hub`,
+          });
+          const newNodeToken = copyResult.data?.node?.node_token;
+          const wikiUrl = newNodeToken
+            ? `${LARK_WIKI_BASE_URL}/${newNodeToken}`
+            : LARK_WIKI_BASE_URL;
+
+          // Post alert to Cult Content — Account Alerts channel
+          const contactLine = [firstName, lastName].filter(Boolean).join(' ');
+          const msg = [
+            `🎉 New brand onboarded: ${brandName}`,
+            contactLine ? `👤 Contact: ${contactLine}${email ? ` (${email})` : ''}` : null,
+            website     ? `🌐 Website: ${website}` : null,
+            `📚 Affiliate Resource Hub: ${wikiUrl}`,
+          ].filter(Boolean).join('\n');
+
+          await larkSendChatMessage({ chatId: LARK_ALERT_CHAT_ID, text: msg });
+
+          console.log(`[webhook] Lark wiki created for ${brandName}: ${wikiUrl}`);
+        } catch (larkErr) {
+          console.warn('[webhook] Lark integration skipped:', larkErr.message);
+        }
+      });
+    }
+
     // ── Optionally trigger Shopify brand import ──────────────────────────────
     // (non-blocking — we respond success first, then attempt the import)
     if (website && isYes(shopify)) {
@@ -218,6 +289,23 @@ app.post('/api/webhooks/ghl-client-onboard', async (req, res) => {
     console.error('[webhook] ghl-client-onboard error:', err.message);
     res.status(500).json({ error: err.message });
   }
+});
+
+// ─── Admin: delete brand by ID (webhook-secret protected, no CF Access needed) ─
+app.delete('/api/webhooks/brand/:brandId', (req, res) => {
+  const secret = process.env.WEBHOOK_SECRET;
+  if (secret && req.query.secret !== secret) return res.status(401).json({ error: 'Unauthorized' });
+  const { brandId } = req.params;
+  const brands = loadBrands();
+  const before = brands.clients.length;
+  brands.clients = brands.clients.filter(b => b.id !== brandId);
+  if (brands.clients.length === before) return res.status(404).json({ error: 'Brand not found' });
+  saveBrands(brands);
+  const gp = loadGP();
+  if (gp.partners) delete gp.partners[brandId];
+  saveGP(gp);
+  console.log(`[admin] Deleted brand ${brandId}`);
+  res.json({ ok: true, brandId });
 });
 
 // Public routes — registered BEFORE requireAuth so no login needed
