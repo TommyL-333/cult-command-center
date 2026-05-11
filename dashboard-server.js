@@ -1170,14 +1170,19 @@ app.post('/api/buffer/post', async (req, res) => {
       'https://api.buffer.com/graphql',
       {
         query: `mutation CreatePost($input: CreatePostInput!) {
-          createPost(input: $input) { post { id dueAt status channelService } }
+          createPost(input: $input) {
+            ... on PostActionSuccess { post { id dueAt status channelService } }
+            ... on PostActionError { message }
+          }
         }`,
         variables: { input },
       },
       { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
     );
     if (gql.errors) return res.json({ ok: false, error: gql.errors[0]?.message });
-    res.json({ ok: true, post: gql.data?.createPost?.post });
+    const result = gql.data?.createPost;
+    if (result?.message) return res.json({ ok: false, error: result.message });
+    res.json({ ok: true, post: result?.post });
   } catch (e) { res.status(500).json({ ok: false, error: e.response?.data || e.message }); }
 });
 
@@ -1210,16 +1215,22 @@ app.post('/api/buffer/post-to-channels', async (req, res) => {
         BUFFER_GQL,
         {
           query: `mutation CreatePost($input: CreatePostInput!) {
-            createPost(input: $input) { post { id dueAt status channelService } }
+            createPost(input: $input) {
+              ... on PostActionSuccess { post { id dueAt status channelService } }
+              ... on PostActionError { message }
+            }
           }`,
           variables: { input },
         },
         { headers }
       );
+      const result = gql.data?.createPost;
       if (gql.errors) {
         results.push({ channelId, ok: false, error: gql.errors[0]?.message });
+      } else if (result?.message) {
+        results.push({ channelId, ok: false, error: result.message });
       } else {
-        results.push({ channelId, ok: true, post: gql.data?.createPost?.post });
+        results.push({ channelId, ok: true, post: result?.post });
       }
     } catch (e) {
       results.push({ channelId, ok: false, error: e.response?.data || e.message });
