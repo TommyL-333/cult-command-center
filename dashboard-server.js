@@ -101,6 +101,17 @@ async function larkCopyTemplateDoc({ docToken, title }) {
     { headers: { Authorization: `Bearer ${token}` }, timeout: 15_000 }
   );
   if (r.data.code !== 0) throw new Error(`Lark copy doc failed: ${r.data.msg}`);
+
+  // Set permissions: org members = edit, external link = view only
+  const newToken = r.data.data?.file?.token;
+  if (newToken) {
+    await axios.patch(
+      `${LARK_BASE}/drive/v1/permissions/${newToken}/public?type=docx`,
+      { link_share_entity: 'tenant_editable', external_access_entity: 'open', invite_external: false },
+      { headers: { Authorization: `Bearer ${token}` }, timeout: 10_000 }
+    ).catch(e => console.warn('[lark] Permission set failed:', e.message));
+  }
+
   return r.data;
 }
 
