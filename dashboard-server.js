@@ -2825,9 +2825,9 @@ app.post('/api/whisper-transcribe', upload.single('audio'), async (req, res) => 
   try {
     // If file exceeds Whisper's 25 MB limit, extract audio track via ffmpeg
     if (req.file.size > WHISPER_MAX) {
-      const { execFile } = require('child_process');
+      const { exec } = require('child_process');
       const { promisify } = require('util');
-      const execFileAsync = promisify(execFile);
+      const execAsync = promisify(exec);
 
       audioPath = req.file.path.replace(/(\.[^.]+)?$/, '_audio.mp3');
       cleanupAudio = true;
@@ -2835,14 +2835,9 @@ app.post('/api/whisper-transcribe', upload.single('audio'), async (req, res) => 
       const mb = (req.file.size / 1024 / 1024).toFixed(1);
       console.log(`[whisper] ${mb} MB video — extracting audio track via ffmpeg`);
 
-      await execFileAsync('ffmpeg', [
-        '-i', req.file.path,
-        '-vn',                  // drop video stream
-        '-ar', '16000',         // 16 kHz sample rate (Whisper sweet spot)
-        '-ac', '1',             // mono
-        '-b:a', '32k',          // low bitrate — sufficient for speech
-        '-y', audioPath,
-      ], { timeout: 120_000 });
+      // Use shell:true so nixpacks PATH is resolved correctly
+      const cmd = `ffmpeg -i "${req.file.path}" -vn -ar 16000 -ac 1 -b:a 32k -y "${audioPath}"`;
+      await execAsync(cmd, { timeout: 120_000 });
 
       const audioSize = fs.statSync(audioPath).size;
       console.log(`[whisper] extracted audio: ${(audioSize / 1024 / 1024).toFixed(1)} MB`);
