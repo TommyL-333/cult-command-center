@@ -225,10 +225,23 @@ app.use('/uploads', express.static(UPLOAD_DIR));
 
 // ─── Fireflies Meeting Intelligence Webhook ────────────────────────────────────
 app.post('/api/webhooks/fireflies-meeting', async (req, res) => {
-  // Verify secret if configured
+  // Log all headers to identify how Fireflies sends the secret
+  console.log('[meeting-intel] Incoming headers:', JSON.stringify(req.headers));
+  console.log('[meeting-intel] Incoming body keys:', JSON.stringify(Object.keys(req.body || {})));
+
+  // Verify secret if configured — accept in any common header
   const secret = process.env.FIREFLIES_WEBHOOK_SECRET;
-  if (secret && req.headers['x-fireflies-webhook-secret'] !== secret) {
-    return res.status(401).json({ ok: false, error: 'Invalid secret' });
+  if (secret) {
+    const received =
+      req.headers['x-fireflies-webhook-secret'] ||
+      req.headers['x-fireflies-token'] ||
+      req.headers['x-webhook-secret'] ||
+      req.headers['authorization']?.replace('Bearer ', '') ||
+      req.body?.secret;
+    if (received !== secret) {
+      console.log('[meeting-intel] Auth failed. Received:', received);
+      return res.status(401).json({ ok: false, error: 'Invalid secret' });
+    }
   }
 
   // Ack immediately
