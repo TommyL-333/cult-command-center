@@ -25,6 +25,10 @@ const TIKTOK_TOKENS_FILE = path.join(DATA_DIR, '.tiktok-tokens.json');
 const UPLOAD_DIR         = path.join(DATA_DIR, 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
+// Public base URL — used to build absolute URLs for external services (Buffer, etc.)
+// Falls back to the known Railway deployment URL when not set via env var.
+const PUBLIC_BASE_URL = (process.env.PUBLIC_BASE_URL || 'https://cult-command-center-production.up.railway.app').replace(/\/$/, '');
+
 const app = express();
 
 // ─── Security: HTTPS redirect in production ───────────────────────────────────
@@ -973,7 +977,8 @@ app.post('/api/proposals/publish', express.json({ limit: '5mb' }), (req, res) =>
 // POST /api/upload/video
 app.post('/api/upload/video', upload.single('video'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file received' });
-  const localUrl = `/uploads/${req.file.filename}`;
+  const localUrl  = `/uploads/${req.file.filename}`;
+  const publicUrl = `${PUBLIC_BASE_URL}${localUrl}`;
   const meta = {
     id:          req.file.filename,
     originalName: req.file.originalname,
@@ -986,11 +991,12 @@ app.post('/api/upload/video', upload.single('video'), (req, res) => {
     uploadedAt:  new Date().toISOString(),
     path:        req.file.path,
     localUrl,
+    url:         publicUrl, // absolute URL for external services (Buffer, etc.)
   };
   const q = loadQueue();
   q.unshift(meta);
   saveQueue(q);
-  res.json({ ok: true, video: meta });
+  res.json({ ok: true, url: publicUrl, video: meta });
 });
 
 // GET /api/upload/queue
@@ -1165,8 +1171,11 @@ app.post('/api/buffer/post', async (req, res) => {
   const token = process.env.BUFFER_ACCESS_TOKEN;
   if (!token) return res.json({ ok: false, error: 'No Buffer token' });
   try {
-    const { channelId, text, mediaUrl, scheduledAt } = req.body;
+    const { channelId, text, scheduledAt } = req.body;
     if (!channelId) return res.status(400).json({ error: 'channelId is required' });
+    // Ensure absolute URL — Buffer's servers can't reach relative paths
+    const rawMedia = req.body.mediaUrl;
+    const mediaUrl = rawMedia && rawMedia.startsWith('/') ? `${PUBLIC_BASE_URL}${rawMedia}` : rawMedia;
     const isImage = mediaUrl && /\.(jpe?g|png|gif|webp)(\?|$)/i.test(mediaUrl);
     const input = {
       channelId,
@@ -1229,7 +1238,10 @@ app.post('/api/buffer/post-to-channels', async (req, res) => {
   const token = process.env.BUFFER_ACCESS_TOKEN;
   if (!token) return res.status(400).json({ ok: false, error: 'BUFFER_ACCESS_TOKEN not configured' });
 
-  const { channels, channelIds, text, mediaUrl, scheduledAt } = req.body;
+  const { channels, channelIds, text, scheduledAt } = req.body;
+  // Ensure absolute URL — Buffer's servers can't reach relative paths
+  const rawMedia = req.body.mediaUrl;
+  const mediaUrl = rawMedia && rawMedia.startsWith('/') ? `${PUBLIC_BASE_URL}${rawMedia}` : rawMedia;
 
   // Support both new {channels:[{id,service}]} and legacy {channelIds:[...]} shapes
   const channelList = channels?.length
