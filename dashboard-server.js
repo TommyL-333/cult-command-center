@@ -2836,13 +2836,8 @@ app.post('/api/whisper-transcribe', upload.single('audio'), async (req, res) => 
       console.log(`[whisper] ${mb} MB video — extracting audio track via ffmpeg`);
 
       // Use shell:true so nixpacks PATH is resolved correctly
-      // Resolve ffmpeg path — nix installs it under /nix/store, find it once
-      let ffmpegBin = 'ffmpeg';
-      try {
-        const { stdout } = await execAsync('which ffmpeg || find /nix -name ffmpeg -type f 2>/dev/null | head -1', { env: process.env });
-        const found = stdout.trim().split('\n')[0];
-        if (found) ffmpegBin = found;
-      } catch(_) {}
+      // Use bundled ffmpeg-static binary — no system ffmpeg needed
+      const ffmpegBin = require('ffmpeg-static');
       console.log(`[whisper] using ffmpeg at: ${ffmpegBin}`);
 
       const cmd = `"${ffmpegBin}" -i "${req.file.path}" -vn -ar 16000 -ac 1 -q:a 5 -y "${audioPath}"`;
