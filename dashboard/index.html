@@ -7119,10 +7119,14 @@ async function svuPublish() {
     const text    = caption + (hashStr ? '\n\n' + hashStr : '');
 
     try {
+      const channels = channelIds.map(id => {
+        const ch = (_svu.channels || []).find(c => c.id === id);
+        return { id, service: ch?.service || '' };
+      });
       const r = await fetch('/api/buffer/post-to-channels', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ channelIds, text, mediaUrl: v.uploadedUrl, scheduledAt: scheduledAt || undefined }),
+        body: JSON.stringify({ channels, text, mediaUrl: v.uploadedUrl, scheduledAt: scheduledAt || undefined }),
       });
       const data = await r.json();
       const rows = data.results || [];
@@ -8745,10 +8749,14 @@ async function bufferPost(realIdx) {
   resultEl.innerHTML = `<div class="storista-status-pill pending">⏳ Sending to Buffer…</div>`;
 
   try {
+    const channels = channelIds.map(id => {
+      const ch = (_buffer.channels || []).find(c => c.id === id);
+      return { id, service: ch?.service || '' };
+    });
     const r = await fetch('/api/buffer/post-to-channels', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ channelIds, text: caption, mediaUrl, scheduledAt }),
+      body: JSON.stringify({ channels, text: caption, mediaUrl, scheduledAt }),
     }).then(r => r.json());
 
     const succeeded = r.results?.filter(x => x.ok) || [];

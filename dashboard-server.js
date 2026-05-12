@@ -1203,22 +1203,51 @@ app.post('/api/buffer/post', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.response?.data || e.message }); }
 });
 
+// Helper: build platform-specific metadata for Buffer posts
+function bufferPlatformMetadata(service, text) {
+  const svc = (service || '').toLowerCase();
+  if (svc === 'youtube') {
+    // YouTube requires title + categoryId. Use first 100 chars of text as title.
+    // categoryId "22" = People & Blogs (safe default for short-form content)
+    const title = (text || 'Video').replace(/\n[\s\S]*/,'').trim().slice(0, 100) || 'Video';
+    return { youtube: { title, categoryId: '22', privacy: 'public' } };
+  }
+  if (svc === 'instagram') {
+    // Reels are the right type for video; shouldShareToFeed is required
+    return { instagram: { type: 'reel', shouldShareToFeed: true } };
+  }
+  if (svc === 'facebook') {
+    return { facebook: { type: 'reel' } };
+  }
+  return null; // tiktok, twitter, linkedin, etc. need no extra metadata
+}
+
 // POST /api/buffer/post-to-channels — post to multiple Buffer channels at once
-// Body: { channelIds: string[], text: string, mediaUrl?: string, scheduledAt?: string }
+// Body: { channels: [{id, service}][], text, mediaUrl?, scheduledAt? }
+//       (legacy: channelIds: string[] also accepted for backwards compat)
 app.post('/api/buffer/post-to-channels', async (req, res) => {
   const token = process.env.BUFFER_ACCESS_TOKEN;
   if (!token) return res.status(400).json({ ok: false, error: 'BUFFER_ACCESS_TOKEN not configured' });
 
-  const { channelIds, text, mediaUrl, scheduledAt } = req.body;
-  if (!channelIds?.length) return res.status(400).json({ error: 'channelIds array is required' });
+  const { channels, channelIds, text, mediaUrl, scheduledAt } = req.body;
+
+  // Support both new {channels:[{id,service}]} and legacy {channelIds:[...]} shapes
+  const channelList = channels?.length
+    ? channels
+    : (channelIds || []).map(id => ({ id, service: '' }));
+
+  if (!channelList.length) return res.status(400).json({ error: 'channels or channelIds array is required' });
 
   const BUFFER_GQL = 'https://api.buffer.com/graphql';
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 
   const results = [];
-  for (const channelId of channelIds) {
+  for (const ch of channelList) {
+    const channelId = ch.id || ch;
+    const service   = ch.service || '';
     try {
       const isImage = mediaUrl && /\.(jpe?g|png|gif|webp)(\?|$)/i.test(mediaUrl);
+      const platformMeta = bufferPlatformMetadata(service, text);
       const input = {
         channelId,
         schedulingType: 'automatic',
@@ -1228,6 +1257,7 @@ app.post('/api/buffer/post-to-channels', async (req, res) => {
           ? [isImage ? { image: { url: mediaUrl } } : { video: { url: mediaUrl } }]
           : [],
         ...(scheduledAt ? { dueAt: scheduledAt } : {}),
+        ...(platformMeta ? { metadata: platformMeta } : {}),
       };
       const { data: gql } = await axios.post(
         BUFFER_GQL,
