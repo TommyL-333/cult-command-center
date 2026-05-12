@@ -2235,6 +2235,14 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
 <!-- 🤝 GROWTH PARTNERS TAB                                                  -->
 <!-- ═══════════════════════════════════════════════════════════════════════ -->
 <section class="tab-pane active" id="tab-growth">
+
+    <!-- Meeting Intel sub-tabs -->
+    <div class="sub-tab-nav" style="margin-bottom:20px">
+      <button class="sub-tab-btn active" data-subtab="gp-onboarding" onclick="gpSubTab('gp-onboarding')">🤝 Onboarding</button>
+      <button class="sub-tab-btn" data-subtab="gp-intel" onclick="gpSubTab('gp-intel')">🧠 Meeting Intel</button>
+    </div>
+
+  <div id="sub-gp-onboarding">
   <div style="max-width:900px;margin:0 auto;padding:28px 0 60px">
 
     <!-- Header -->
@@ -2282,6 +2290,12 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
     <div id="gpChecklist" style="display:none"></div>
 
   </div>
+  </div>
+
+    <div id="sub-gp-intel" style="display:none;max-width:900px;margin:0 auto">
+      <div id="gpIntelList"><div style="text-align:center;padding:60px 0;color:var(--muted)">Loading meeting intelligence...</div></div>
+    </div>
+
 </section>
 
 <!-- ═══ Affiliate Copy Generator Modal ════════════════════════════════════════ -->
@@ -2429,7 +2443,7 @@ function fmtDate(ts) {
 }
 
 // ─── State ───────────────────────────────────────────────────────────────────
-const S = { contacts: null, opportunities: null, appointments: null, railway: null, buffer: null, youtube: null, social: null, twitter: null, history: null, reacher: null, reacherTimeseries: null, skool: null, perfRange: '30d', paidMedia: null, shopOps: null };
+const S = { contacts: null, opportunities: null, appointments: null, railway: null, buffer: null, youtube: null, social: null, twitter: null, history: null, reacher: null, reacherTimeseries: null, skool: null, perfRange: '30d', paidMedia: null, shopOps: null, meetingIntel: null };
 let countdown = 60;
 let timer;
 
@@ -2458,7 +2472,7 @@ const GP_TASKS = {
     label: '🚀 Onboarding', color: '#a78bfa',
     tasks: [
       { id: 'shop_account',   label: 'TikTok Shop account created',           action: { type: 'link', label: 'Sign Up',       url: 'https://seller-us.tiktok.com/account/register?channel=Lucy-BD' } },
-      { id: 'tsp_binding',    label: 'Seller bound to TSP account',            action: { type: 'link', label: 'How To',        url: 'https://bytedance.us.larkoffice.com/docx/Ova8d4AJDoEK4CxjoceuLXRQsRh?from=from_copylink' } },
+      { id: 'tsp_binding',    label: 'Seller bound to TSP account',            action: { type: 'link', label: 'How To',        url: 'https://seller-us.tiktok.com' } },
       { id: 'shopify',        label: 'Shopify integration connected',          action: { type: 'fn',   label: '⚡ Import',     fn: 'gpOpenBrandSettings' } },
       { id: 'category_qual',  label: 'Category qualifications met',            action: null },
       { id: 'brand_qual',     label: 'Brand qualification completed',          action: null },
@@ -2520,6 +2534,13 @@ const GP_TASKS = {
 
 let _gpState = { clientId: null, tasks: {} }; // tasks: { taskId: { done, doneAt } }
 let _gpClients = [];
+
+function gpSubTab(id) {
+  document.querySelectorAll('#tab-growth .sub-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.subtab === id));
+  document.getElementById('sub-gp-onboarding').style.display = id === 'gp-onboarding' ? '' : 'none';
+  document.getElementById('sub-gp-intel').style.display = id === 'gp-intel' ? '' : 'none';
+  if (id === 'gp-intel') loadMeetingIntel();
+}
 
 async function gpInit() {
   // Load client brands
@@ -6914,11 +6935,10 @@ async function svuProcessVideo(v) {
       const ta = document.getElementById('svuTranscript_' + v.id);
       if (ta) ta.value = data.text;
     } else {
-      const reason = data.error ? `⚠ ${data.error}` : '⚠ Transcribe failed — add manually';
-      svuSetStatus(v, 'error', reason); return;
+      svuSetStatus(v, 'ready', '⚠ Transcribe failed — add manually'); return;
     }
   } catch (e) {
-    svuSetStatus(v, 'error', `⚠ Transcribe error: ${e.message}`); return;
+    svuSetStatus(v, 'ready', '⚠ Transcribe failed — add manually'); return;
   }
   // 3. Generate caption
   svuSetStatus(v, 'captioning', '✨ Generating caption…');
@@ -7119,14 +7139,10 @@ async function svuPublish() {
     const text    = caption + (hashStr ? '\n\n' + hashStr : '');
 
     try {
-      const channels = channelIds.map(id => {
-        const ch = (_svu.channels || []).find(c => c.id === id);
-        return { id, service: ch?.service || '' };
-      });
       const r = await fetch('/api/buffer/post-to-channels', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ channels, text, mediaUrl: v.uploadedUrl, scheduledAt: scheduledAt || undefined }),
+        body: JSON.stringify({ channelIds, text, mediaUrl: v.uploadedUrl, scheduledAt: scheduledAt || undefined }),
       });
       const data = await r.json();
       const rows = data.results || [];
@@ -8749,14 +8765,10 @@ async function bufferPost(realIdx) {
   resultEl.innerHTML = `<div class="storista-status-pill pending">⏳ Sending to Buffer…</div>`;
 
   try {
-    const channels = channelIds.map(id => {
-      const ch = (_buffer.channels || []).find(c => c.id === id);
-      return { id, service: ch?.service || '' };
-    });
     const r = await fetch('/api/buffer/post-to-channels', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ channels, text: caption, mediaUrl, scheduledAt }),
+      body: JSON.stringify({ channelIds, text: caption, mediaUrl, scheduledAt }),
     }).then(r => r.json());
 
     const succeeded = r.results?.filter(x => x.ok) || [];
@@ -8797,6 +8809,113 @@ document.addEventListener('DOMContentLoaded', () => {
   prodShowStep(1);
   prodLoadClientBrands();
 });
+
+// ─── Meeting Intelligence ─────────────────────────────────────────────────────
+async function loadMeetingIntel() {
+  try {
+    const r = await fetch('/api/meeting-intel').then(r => r.json());
+    S.meetingIntel = r.meetings || [];
+    renderMeetingIntel();
+  } catch(e) {
+    document.getElementById('gpIntelList').innerHTML = `<div style="text-align:center;padding:40px;color:var(--red)">Failed to load meeting intelligence</div>`;
+  }
+}
+
+function renderMeetingIntel() {
+  const list = document.getElementById('gpIntelList');
+  if (!list) return;
+  const meetings = S.meetingIntel || [];
+  if (!meetings.length) {
+    list.innerHTML = `<div style="text-align:center;padding:60px 0;color:var(--muted)">
+      <div style="font-size:36px;margin-bottom:12px">🧠</div>
+      <div style="font-weight:700;margin-bottom:6px">No meetings analyzed yet</div>
+      <div style="font-size:12px">Meetings will appear here automatically after Fireflies processes them</div>
+    </div>`;
+    return;
+  }
+
+  const stageColors = {
+    'Lead': 'var(--muted)',
+    'Discovery Call': 'var(--gold)',
+    'Proposal Sent': '#a78bfa',
+    'Contract Signed': 'var(--teal)',
+    'Active': 'var(--green)',
+    'Long Term Nurture': '#60a5fa',
+    'Disqualified': 'var(--red)',
+  };
+
+  list.innerHTML = meetings.map(m => {
+    const a = m.analysis || {};
+    const stageColor = stageColors[a.suggestedStageName] || 'var(--muted)';
+    const isApplied = m.status === 'applied';
+    const isSkipped = m.status === 'skipped';
+    const isPending = m.status === 'pending';
+    const hasContact = !!m.ghlContactId;
+    const dateStr = m.date ? new Date(m.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+
+    const statusBadge = isApplied
+      ? `<span style="background:var(--green);color:#000;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700">✓ Applied to GHL</span>`
+      : isSkipped
+      ? `<span style="background:rgba(255,255,255,0.1);color:var(--muted);padding:3px 10px;border-radius:20px;font-size:10px">Skipped</span>`
+      : '';
+
+    const actionBtns = isPending ? `
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+        ${!hasContact ? `<span style="color:var(--gold);font-size:11px;align-self:center">⚠ No GHL contact found</span>` : ''}
+        <button class="btn btn-teal" style="font-size:11px;padding:5px 14px" onclick="applyMeetingIntel('${m.id}',this)">Apply to GHL</button>
+        <button class="btn btn-ghost" style="font-size:11px;padding:5px 14px" onclick="skipMeetingIntel('${m.id}',this)">Skip</button>
+      </div>` : '';
+
+    return `<div class="card" style="padding:18px 20px;margin-bottom:14px;${isSkipped ? 'opacity:0.5' : ''}">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
+        <div>
+          <div style="font-size:15px;font-weight:800">${x(a.companyName || 'Unknown Company')}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${x(m.prospectEmail || '')} ${dateStr ? '· ' + dateStr : ''}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          ${a.suggestedStageName ? `<span style="background:${stageColor};color:${a.suggestedStageName === 'Lead' ? '#fff' : '#000'};padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700">${x(a.suggestedStageName)}</span>` : ''}
+          ${a.confidence ? `<span style="font-size:10px;color:var(--muted);font-weight:600">${a.confidence.toUpperCase()} confidence</span>` : ''}
+          ${statusBadge}
+        </div>
+      </div>
+      ${a.stageReasoning ? `<div style="font-size:12px;color:var(--soft);margin-bottom:10px;line-height:1.6">${x(a.stageReasoning)}</div>` : ''}
+      ${a.meetingSummary ? `<div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.6;font-style:italic">${x(a.meetingSummary)}</div>` : ''}
+      ${(a.tags||[]).length ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">${a.tags.map(t => `<span style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);padding:2px 8px;border-radius:12px;font-size:10px;color:var(--muted)">${x(t)}</span>`).join('')}</div>` : ''}
+      ${(a.actionItems||[]).length ? `<div style="font-size:11px;margin-bottom:6px">${a.actionItems.map(i => `<div style="color:var(--soft);padding:1px 0">→ ${x(i)}</div>`).join('')}</div>` : ''}
+      ${actionBtns}
+    </div>`;
+  }).join('');
+}
+
+async function applyMeetingIntel(id, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = 'Applying...'; }
+  try {
+    const r = await fetch(`/api/meeting-intel/${id}/apply`, { method: 'POST' }).then(r => r.json());
+    if (r.ok) {
+      const m = (S.meetingIntel || []).find(m => m.id === id);
+      if (m) m.status = 'applied';
+      renderMeetingIntel();
+    } else {
+      if (btn) { btn.disabled = false; btn.textContent = 'Apply to GHL'; }
+      alert('Apply failed: ' + (r.error || 'Unknown error'));
+    }
+  } catch(e) {
+    if (btn) { btn.disabled = false; btn.textContent = 'Apply to GHL'; }
+    alert('Apply failed: ' + e.message);
+  }
+}
+
+async function skipMeetingIntel(id, btn) {
+  if (btn) { btn.disabled = true; }
+  try {
+    await fetch(`/api/meeting-intel/${id}/skip`, { method: 'POST' });
+    const m = (S.meetingIntel || []).find(m => m.id === id);
+    if (m) m.status = 'skipped';
+    renderMeetingIntel();
+  } catch(e) {
+    if (btn) btn.disabled = false;
+  }
+}
 </script>
 </body>
 </html>

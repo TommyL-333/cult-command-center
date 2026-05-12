@@ -25,10 +25,6 @@ const TIKTOK_TOKENS_FILE = path.join(DATA_DIR, '.tiktok-tokens.json');
 const UPLOAD_DIR         = path.join(DATA_DIR, 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
-// Public base URL — used to build absolute URLs for external services (Buffer, etc.)
-// Falls back to the known Railway deployment URL when not set via env var.
-const PUBLIC_BASE_URL = (process.env.PUBLIC_BASE_URL || 'https://cult-command-center-production.up.railway.app').replace(/\/$/, '');
-
 const app = express();
 
 // ─── Security: HTTPS redirect in production ───────────────────────────────────
@@ -82,53 +78,6 @@ function requireAuth(req, res, next) {
 }
 
 app.use(express.json());
-
-// ─── Lark API helpers ─────────────────────────────────────────────────────────
-const LARK_BASE          = 'https://open.larksuite.com/open-apis';
-const LARK_ALERT_CHAT_ID = process.env.LARK_ALERT_CHAT_ID || 'oc_e7fa4126968dc76eaeca1d815e706e46';
-
-async function larkTenantToken() {
-  const r = await axios.post(`${LARK_BASE}/auth/v3/tenant_access_token/internal`, {
-    app_id:     process.env.LARK_APP_ID,
-    app_secret: process.env.LARK_APP_SECRET,
-  }, { timeout: 8_000 });
-  if (r.data.code !== 0) throw new Error(`Lark auth failed: ${r.data.msg}`);
-  return r.data.tenant_access_token;
-}
-
-async function larkCopyTemplateDoc({ docToken, title }) {
-  // Copies the template via drive/v1 (bot needs Files permission, not wiki admin)
-  const token = await larkTenantToken();
-  const r = await axios.post(
-    `${LARK_BASE}/drive/v1/files/${docToken}/copy`,
-    { name: title, type: 'docx', folder_token: '' },
-    { headers: { Authorization: `Bearer ${token}` }, timeout: 15_000 }
-  );
-  if (r.data.code !== 0) throw new Error(`Lark copy doc failed: ${r.data.msg}`);
-
-  // Set permissions: org members = edit, external link = view only
-  const newToken = r.data.data?.file?.token;
-  if (newToken) {
-    await axios.patch(
-      `${LARK_BASE}/drive/v1/permissions/${newToken}/public?type=docx`,
-      { link_share_entity: 'tenant_editable', external_access_entity: 'open', invite_external: false },
-      { headers: { Authorization: `Bearer ${token}` }, timeout: 10_000 }
-    ).catch(e => console.warn('[lark] Permission set failed:', e.message));
-  }
-
-  return r.data;
-}
-
-async function larkSendChatMessage({ chatId, text }) {
-  const token = await larkTenantToken();
-  const r = await axios.post(
-    `${LARK_BASE}/im/v1/messages?receive_id_type=chat_id`,
-    { receive_id: chatId, msg_type: 'text', content: JSON.stringify({ text }) },
-    { headers: { Authorization: `Bearer ${token}` }, timeout: 10_000 }
-  );
-  if (r.data.code !== 0) throw new Error(`Lark send message failed: ${r.data.msg}`);
-  return r.data;
-}
 
 // ─── GHL Webhook: client onboarding form → auto-add client ───────────────────
 // This route is intentionally registered BEFORE requireAuth so GHL can call it
@@ -248,39 +197,6 @@ app.post('/api/webhooks/ghl-client-onboard', async (req, res) => {
 
     console.log(`[webhook] New client onboarded from GHL form: ${brandName} (${brandId})`);
 
-    // ── Lark: create affiliate resource hub doc + alert (non-blocking) ──────────
-    if (process.env.LARK_APP_ID && process.env.LARK_APP_SECRET) {
-      setImmediate(async () => {
-        try {
-          // Copy the template doc via drive API (wiki copy requires wiki admin role)
-          const TEMPLATE_DOC_TOKEN = 'RuLZdNSSkouiinxp340uXfEgtjg';
-          const copyResult = await larkCopyTemplateDoc({
-            docToken: TEMPLATE_DOC_TOKEN,
-            title:    `${brandName} — Affiliate Resource Hub`,
-          });
-          const newDocToken = copyResult.data?.file?.token;
-          const wikiUrl = newDocToken
-            ? `https://cedw5xj2shl.usttp.larksuite.com/docx/${newDocToken}`
-            : 'https://cedw5xj2shl.usttp.larksuite.com';
-
-          // Post alert to Cult Content — Account Alerts channel
-          const contactLine = [firstName, lastName].filter(Boolean).join(' ');
-          const msg = [
-            `🎉 New brand onboarded: ${brandName}`,
-            contactLine ? `👤 Contact: ${contactLine}${email ? ` (${email})` : ''}` : null,
-            website     ? `🌐 Website: ${website}` : null,
-            `📚 Affiliate Resource Hub: ${wikiUrl}`,
-          ].filter(Boolean).join('\n');
-
-          await larkSendChatMessage({ chatId: LARK_ALERT_CHAT_ID, text: msg });
-
-          console.log(`[webhook] Lark wiki created for ${brandName}: ${wikiUrl}`);
-        } catch (larkErr) {
-          console.warn('[webhook] Lark integration skipped:', larkErr.message);
-        }
-      });
-    }
-
     // ── Optionally trigger Shopify brand import ──────────────────────────────
     // (non-blocking — we respond success first, then attempt the import)
     if (website && isYes(shopify)) {
@@ -304,25 +220,155 @@ app.post('/api/webhooks/ghl-client-onboard', async (req, res) => {
   }
 });
 
-// ─── Admin: delete brand by ID (webhook-secret protected, no CF Access needed) ─
-app.delete('/api/webhooks/brand/:brandId', (req, res) => {
-  const secret = process.env.WEBHOOK_SECRET;
-  if (secret && req.query.secret !== secret) return res.status(401).json({ error: 'Unauthorized' });
-  const { brandId } = req.params;
-  const brands = loadBrands();
-  const before = brands.clients.length;
-  brands.clients = brands.clients.filter(b => b.id !== brandId);
-  if (brands.clients.length === before) return res.status(404).json({ error: 'Brand not found' });
-  saveBrands(brands);
-  const gp = loadGP();
-  if (gp.partners) delete gp.partners[brandId];
-  saveGP(gp);
-  console.log(`[admin] Deleted brand ${brandId}`);
-  res.json({ ok: true, brandId });
-});
-
 // Public routes — registered BEFORE requireAuth so no login needed
 app.use('/uploads', express.static(UPLOAD_DIR));
+
+// ─── Fireflies Meeting Intelligence Webhook ────────────────────────────────────
+app.post('/api/webhooks/fireflies-meeting', async (req, res) => {
+  // Verify secret if configured
+  const secret = process.env.FIREFLIES_WEBHOOK_SECRET;
+  if (secret && req.headers['x-fireflies-webhook-secret'] !== secret) {
+    return res.status(401).json({ ok: false, error: 'Invalid secret' });
+  }
+
+  // Ack immediately
+  res.json({ ok: true });
+
+  // Async processing
+  setImmediate(async () => {
+    try {
+      const body = req.body || {};
+      const { meetingId, title, participants = [], date, summary = {} } = body;
+
+      if (!meetingId) return;
+
+      // Dedupe
+      const intel = loadMeetingIntel();
+      if (intel.meetings.find(m => m.meetingId === meetingId && m.status !== 'error')) {
+        console.log(`[meeting-intel] Duplicate webhook for ${meetingId}, skipping`);
+        return;
+      }
+
+      // Identify prospect (non-cultcontent.cc participant)
+      const prospect = (participants || []).find(e => e && !e.toLowerCase().includes('@cultcontent.cc') && e.toLowerCase() !== 'tommy@cultcontent.cc');
+
+      if (!prospect) {
+        console.log(`[meeting-intel] Internal call ${meetingId}, skipping`);
+        return;
+      }
+
+      // Build summary text
+      const overview = summary.overview || '';
+      const bullets = (summary.shorthand_bullet || []).join('\n');
+      const actionItems = summary.action_items || [];
+      const keywords = summary.keywords || [];
+      const summaryText = [overview, bullets].filter(Boolean).join('\n\n');
+
+      // Call Claude for classification
+      const STAGE_IDS = {
+        'Lead': '93bc4029-7dbd-4598-8862-cb7ac7784016',
+        'Discovery Call': '4c3cdb15-21e6-4c16-a892-8b419c0a45d9',
+        'Proposal Sent': '7e6bf560-11d6-442a-b64f-3bf12f136d5a',
+        'Contract Signed': '246fa975-94b0-423a-8529-b07601609291',
+        'Active': 'addcb241-593d-4242-b7d5-afeff44cd0a2',
+        'Long Term Nurture': '47cb6c40-df0c-4ac9-b717-ca2bdec2536c',
+        'Disqualified': 'c38e9d11-a1ce-4aa5-9ce9-fef3bab9babd',
+      };
+
+      let analysis = null;
+      try {
+        const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+        const msg = await anthropic.messages.create({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 1024,
+          system: `You are a sales intelligence assistant for Cult Content, a TikTok Shop affiliate marketing agency. Analyze meeting summaries and classify prospects for the Growth Partner Pipeline.
+
+Pipeline stages (use ONLY these exact IDs):
+- Lead: 93bc4029-7dbd-4598-8862-cb7ac7784016
+- Discovery Call: 4c3cdb15-21e6-4c16-a892-8b419c0a45d9
+- Proposal Sent: 7e6bf560-11d6-442a-b64f-3bf12f136d5a
+- Contract Signed: 246fa975-94b0-423a-8529-b07601609291
+- Active: addcb241-593d-4242-b7d5-afeff44cd0a2
+- Long Term Nurture: 47cb6c40-df0c-4ac9-b717-ca2bdec2536c
+- Disqualified: c38e9d11-a1ce-4aa5-9ce9-fef3bab9babd
+
+Stage rules: Lead=first contact no real call yet; Discovery Call=had structured exploratory call; Proposal Sent=pricing/proposal discussed or Tommy committed to sending one; Contract Signed=deal agreed; Active=paying client; Long Term Nurture=interested but not ready 60+ days; Disqualified=clearly wrong fit.
+
+Tags to choose from (pick 2-5 relevant): tiktok-shop, beauty, fashion, food-beverage, supplements, home-goods, electronics, apparel, pet-products, health-wellness, high-aov, low-aov, needs-samples, creator-ready, not-registered, shopify, strong-fit, weak-fit, follow-up-needed, budget-confirmed, price-sensitive, warm-lead, hot-lead, cold-lead
+
+Output ONLY valid JSON, no markdown.`,
+          messages: [{
+            role: 'user',
+            content: `Meeting title: ${title || 'Untitled'}
+Date: ${date ? new Date(date).toLocaleDateString() : 'Unknown'}
+Prospect email: ${prospect}
+All participants: ${(participants || []).join(', ')}
+Keywords: ${keywords.join(', ') || 'none'}
+Action items: ${actionItems.join(', ') || 'none'}
+
+Summary:
+${summaryText || 'No summary available'}
+
+Return JSON: {"companyName":"...","prospectEmail":"...","prospectName":"...","suggestedStageId":"...","suggestedStageName":"...","stageReasoning":"...","tags":[...],"actionItems":[...],"meetingSummary":"...","confidence":"high|medium|low","doNotAutoApply":false}`
+          }]
+        });
+        const text = msg.content[0]?.text || '';
+        const match = text.match(/\{[\s\S]*\}/);
+        if (match) analysis = JSON.parse(match[0]);
+      } catch(e) {
+        console.error('[meeting-intel] AI error:', e.message);
+      }
+
+      // GHL contact lookup
+      let ghlContactId = null, ghlOppId = null, currentStageId = null;
+      try {
+        const r = await ghl.get('/contacts/', { params: { locationId: CFG.locationId, query: prospect, limit: 5 } });
+        const contacts = r.data?.contacts || [];
+        const match = contacts.find(c => c.email?.toLowerCase() === prospect.toLowerCase());
+        if (match) {
+          ghlContactId = match.id;
+          // Look for opportunity in GP pipeline
+          const oppR = await ghl.get('/opportunities/search', { params: { location_id: CFG.locationId, pipeline_id: 'W5PxjulbNVh52Gqlkmzm', contact_id: match.id, limit: 1 } });
+          const opp = (oppR.data?.opportunities || [])[0];
+          if (opp) { ghlOppId = opp.id; currentStageId = opp.pipelineStageId; }
+        }
+      } catch(e) {
+        console.error('[meeting-intel] GHL lookup error:', e.message);
+      }
+
+      // Save record
+      const record = {
+        id: `intel_${Date.now()}`,
+        meetingId,
+        receivedAt: new Date().toISOString(),
+        title: title || 'Untitled Meeting',
+        date,
+        participants,
+        prospectEmail: prospect,
+        analysis: analysis || { companyName: 'Unknown', prospectEmail: prospect, suggestedStageName: 'Unknown', tags: [], actionItems: [], meetingSummary: '', confidence: 'low', doNotAutoApply: true },
+        ghlContactId,
+        ghlOppId,
+        currentStageId,
+        status: (analysis && !analysis.doNotAutoApply) ? 'pending' : 'skipped',
+        appliedAt: null,
+        error: analysis ? null : 'AI classification failed',
+      };
+
+      while (_intelWriteLock) await new Promise(r => setTimeout(r, 100));
+      _intelWriteLock = true;
+      try {
+        const fresh = loadMeetingIntel();
+        fresh.meetings.unshift(record);
+        fresh.meetings = fresh.meetings.slice(0, 100);
+        saveMeetingIntel(fresh);
+      } finally { _intelWriteLock = false; }
+
+      console.log(`[meeting-intel] Processed: ${analysis?.companyName || prospect} → ${analysis?.suggestedStageName || 'unknown'}`);
+    } catch(e) {
+      console.error('[meeting-intel] Processing error:', e.message);
+    }
+  });
+});
 
 app.use(requireAuth); // all other routes require auth in production
 
@@ -955,7 +1001,7 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage,
   limits: { fileSize: 500 * 1024 * 1024 },   // 500 MB cap
-  fileFilter: (_, file, cb) => cb(null, /video|audio|mp4|mov|avi|webm|mp3|m4a|wav/i.test(file.mimetype + file.originalname)),
+  fileFilter: (_, file, cb) => cb(null, /video|mp4|mov|avi|webm/i.test(file.mimetype + file.originalname)),
 });
 
 // POST /api/proposals/publish — saves HTML to UPLOAD_DIR (public via CF bypass) and returns a shareable link
@@ -977,8 +1023,7 @@ app.post('/api/proposals/publish', express.json({ limit: '5mb' }), (req, res) =>
 // POST /api/upload/video
 app.post('/api/upload/video', upload.single('video'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file received' });
-  const localUrl  = `/uploads/${req.file.filename}`;
-  const publicUrl = `${PUBLIC_BASE_URL}${localUrl}`;
+  const localUrl = `/uploads/${req.file.filename}`;
   const meta = {
     id:          req.file.filename,
     originalName: req.file.originalname,
@@ -991,12 +1036,11 @@ app.post('/api/upload/video', upload.single('video'), (req, res) => {
     uploadedAt:  new Date().toISOString(),
     path:        req.file.path,
     localUrl,
-    url:         publicUrl, // absolute URL for external services (Buffer, etc.)
   };
   const q = loadQueue();
   q.unshift(meta);
   saveQueue(q);
-  res.json({ ok: true, url: publicUrl, video: meta });
+  res.json({ ok: true, video: meta });
 });
 
 // GET /api/upload/queue
@@ -1171,131 +1215,72 @@ app.post('/api/buffer/post', async (req, res) => {
   const token = process.env.BUFFER_ACCESS_TOKEN;
   if (!token) return res.json({ ok: false, error: 'No Buffer token' });
   try {
-    const { channelId, text, scheduledAt } = req.body;
+    const { channelId, text, mediaUrl, scheduledAt } = req.body;
     if (!channelId) return res.status(400).json({ error: 'channelId is required' });
-    // Ensure absolute URL — Buffer's servers can't reach relative paths
-    const rawMedia = req.body.mediaUrl;
-    const mediaUrl = rawMedia && rawMedia.startsWith('/') ? `${PUBLIC_BASE_URL}${rawMedia}` : rawMedia;
-    const isImage = mediaUrl && /\.(jpe?g|png|gif|webp)(\?|$)/i.test(mediaUrl);
+    const orgId = process.env.BUFFER_ORG_ID || '69d6ddee1fcceb5bb1faa168';
     const input = {
-      channelId,
-      schedulingType: 'automatic',
-      mode: scheduledAt ? 'customScheduled' : 'addToQueue',
-      text: text || '',
-      assets: mediaUrl
-        ? [isImage ? { image: { url: mediaUrl } } : { video: { url: mediaUrl } }]
-        : [],
-      ...(scheduledAt ? { dueAt: scheduledAt } : {}),
+      organizationId: orgId,
+      channelIds: [channelId],
+      content: {
+        text: text || '',
+        ...(mediaUrl ? { mediaUrls: [mediaUrl] } : {}),
+      },
+      ...(scheduledAt ? { scheduledAt } : { dueAt: null }),
     };
     const { data: gql } = await axios.post(
       'https://api.buffer.com/graphql',
       {
         query: `mutation CreatePost($input: CreatePostInput!) {
-          createPost(input: $input) {
-            ... on PostActionSuccess { post { id dueAt status channelService } }
-            ... on NotFoundError { message }
-            ... on UnauthorizedError { message }
-            ... on UnexpectedError { message }
-            ... on RestProxyError { message }
-            ... on LimitReachedError { message }
-            ... on InvalidInputError { message }
-          }
+          createPost(input: $input) { post { id dueAt status channelService } }
         }`,
         variables: { input },
       },
       { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
     );
     if (gql.errors) return res.json({ ok: false, error: gql.errors[0]?.message });
-    const result = gql.data?.createPost;
-    if (result?.message) return res.json({ ok: false, error: result.message });
-    res.json({ ok: true, post: result?.post });
+    res.json({ ok: true, post: gql.data?.createPost?.post });
   } catch (e) { res.status(500).json({ ok: false, error: e.response?.data || e.message }); }
 });
 
-// Helper: build platform-specific metadata for Buffer posts
-function bufferPlatformMetadata(service, text) {
-  const svc = (service || '').toLowerCase();
-  if (svc === 'youtube') {
-    // YouTube requires title + categoryId. Use first 100 chars of text as title.
-    // categoryId "22" = People & Blogs (safe default for short-form content)
-    const title = (text || 'Video').replace(/\n[\s\S]*/,'').trim().slice(0, 100) || 'Video';
-    return { youtube: { title, categoryId: '22', privacy: 'public' } };
-  }
-  if (svc === 'instagram') {
-    // Reels are the right type for video; shouldShareToFeed is required
-    return { instagram: { type: 'reel', shouldShareToFeed: true } };
-  }
-  if (svc === 'facebook') {
-    return { facebook: { type: 'reel' } };
-  }
-  return null; // tiktok, twitter, linkedin, etc. need no extra metadata
-}
-
 // POST /api/buffer/post-to-channels — post to multiple Buffer channels at once
-// Body: { channels: [{id, service}][], text, mediaUrl?, scheduledAt? }
-//       (legacy: channelIds: string[] also accepted for backwards compat)
+// Body: { channelIds: string[], text: string, mediaUrl?: string, scheduledAt?: string }
 app.post('/api/buffer/post-to-channels', async (req, res) => {
   const token = process.env.BUFFER_ACCESS_TOKEN;
   if (!token) return res.status(400).json({ ok: false, error: 'BUFFER_ACCESS_TOKEN not configured' });
 
-  const { channels, channelIds, text, scheduledAt } = req.body;
-  // Ensure absolute URL — Buffer's servers can't reach relative paths
-  const rawMedia = req.body.mediaUrl;
-  const mediaUrl = rawMedia && rawMedia.startsWith('/') ? `${PUBLIC_BASE_URL}${rawMedia}` : rawMedia;
+  const { channelIds, text, mediaUrl, scheduledAt } = req.body;
+  if (!channelIds?.length) return res.status(400).json({ error: 'channelIds array is required' });
 
-  // Support both new {channels:[{id,service}]} and legacy {channelIds:[...]} shapes
-  const channelList = channels?.length
-    ? channels
-    : (channelIds || []).map(id => ({ id, service: '' }));
-
-  if (!channelList.length) return res.status(400).json({ error: 'channels or channelIds array is required' });
-
+  const orgId = process.env.BUFFER_ORG_ID || '69d6ddee1fcceb5bb1faa168';
   const BUFFER_GQL = 'https://api.buffer.com/graphql';
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 
   const results = [];
-  for (const ch of channelList) {
-    const channelId = ch.id || ch;
-    const service   = ch.service || '';
+  for (const channelId of channelIds) {
     try {
-      const isImage = mediaUrl && /\.(jpe?g|png|gif|webp)(\?|$)/i.test(mediaUrl);
-      const platformMeta = bufferPlatformMetadata(service, text);
       const input = {
-        channelId,
-        schedulingType: 'automatic',
-        mode: scheduledAt ? 'customScheduled' : 'addToQueue',
-        text: text || '',
-        assets: mediaUrl
-          ? [isImage ? { image: { url: mediaUrl } } : { video: { url: mediaUrl } }]
-          : [],
-        ...(scheduledAt ? { dueAt: scheduledAt } : {}),
-        ...(platformMeta ? { metadata: platformMeta } : {}),
+        organizationId: orgId,
+        channelIds: [channelId],
+        content: {
+          text: text || '',
+          ...(mediaUrl ? { mediaUrls: [mediaUrl] } : {}),
+        },
+        ...(scheduledAt ? { scheduledAt } : {}),
       };
       const { data: gql } = await axios.post(
         BUFFER_GQL,
         {
           query: `mutation CreatePost($input: CreatePostInput!) {
-            createPost(input: $input) {
-              ... on PostActionSuccess { post { id dueAt status channelService } }
-              ... on NotFoundError { message }
-              ... on UnauthorizedError { message }
-              ... on UnexpectedError { message }
-              ... on RestProxyError { message }
-              ... on LimitReachedError { message }
-              ... on InvalidInputError { message }
-            }
+            createPost(input: $input) { post { id dueAt status channelService } }
           }`,
           variables: { input },
         },
         { headers }
       );
-      const result = gql.data?.createPost;
       if (gql.errors) {
         results.push({ channelId, ok: false, error: gql.errors[0]?.message });
-      } else if (result?.message) {
-        results.push({ channelId, ok: false, error: result.message });
       } else {
-        results.push({ channelId, ok: true, post: result?.post });
+        results.push({ channelId, ok: true, post: gql.data?.createPost?.post });
       }
     } catch (e) {
       results.push({ channelId, ok: false, error: e.response?.data || e.message });
@@ -2464,8 +2449,77 @@ app.post('/api/growth-partners/add-prospect', async (req, res) => {
   }
 });
 
+// ─── Meeting Intelligence ─────────────────────────────────────────────────────
+app.get('/api/meeting-intel', (req, res) => {
+  const data = loadMeetingIntel();
+  res.json({ ok: true, meetings: data.meetings.slice(0, 50) });
+});
+
+app.post('/api/meeting-intel/:id/apply', async (req, res) => {
+  try {
+    const intel = loadMeetingIntel();
+    const record = intel.meetings.find(m => m.id === req.params.id);
+    if (!record) return res.status(404).json({ ok: false, error: 'Not found' });
+    if (record.status === 'applied') return res.json({ ok: true, already: true });
+
+    const { analysis, ghlContactId, ghlOppId } = record;
+    if (!analysis?.suggestedStageId) return res.status(400).json({ ok: false, error: 'No stage to apply' });
+
+    // Update or create opportunity
+    if (ghlOppId) {
+      await ghl.put(`/opportunities/${ghlOppId}`, { pipelineStageId: analysis.suggestedStageId });
+    } else if (ghlContactId) {
+      await ghl.post('/opportunities/', {
+        pipelineId: 'W5PxjulbNVh52Gqlkmzm',
+        locationId: CFG.locationId,
+        name: analysis.companyName || record.title,
+        pipelineStageId: analysis.suggestedStageId,
+        status: 'open',
+        contactId: ghlContactId,
+      });
+    }
+
+    // Add tags to contact
+    if (ghlContactId && analysis.tags?.length) {
+      try {
+        const cr = await ghl.get(`/contacts/${ghlContactId}`);
+        const existing = cr.data?.contact?.tags || [];
+        const merged = [...new Set([...existing, ...analysis.tags])];
+        await ghl.put(`/contacts/${ghlContactId}`, { tags: merged });
+      } catch(e) { /* non-fatal */ }
+    }
+
+    // Add note
+    if (ghlContactId) {
+      try {
+        const noteBody = `**Meeting: ${record.title}**\n\nStage: ${analysis.suggestedStageName}\nReasoning: ${analysis.stageReasoning}\n\nSummary: ${analysis.meetingSummary}\n\nAction items:\n${(analysis.actionItems || []).map(a => `• ${a}`).join('\n')}`;
+        await ghl.post(`/contacts/${ghlContactId}/notes/`, { body: noteBody, userId: CFG.userId || '' });
+      } catch(e) { /* non-fatal */ }
+    }
+
+    record.status = 'applied';
+    record.appliedAt = new Date().toISOString();
+    saveMeetingIntel(intel);
+    cache.delete('pipeline:growth-partners');
+    res.json({ ok: true });
+  } catch(e) {
+    console.error('[meeting-intel apply]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+app.post('/api/meeting-intel/:id/skip', (req, res) => {
+  const intel = loadMeetingIntel();
+  const record = intel.meetings.find(m => m.id === req.params.id);
+  if (!record) return res.status(404).json({ ok: false, error: 'Not found' });
+  record.status = 'skipped';
+  saveMeetingIntel(intel);
+  res.json({ ok: true });
+});
+
 // ─── Client Brand Management ──────────────────────────────────────────────────
 const BRANDS_FILE = path.join(DATA_DIR, 'brands.json');
+const MEETING_INTEL_FILE = path.join(DATA_DIR, 'meeting-intel.json');
 
 function loadBrands() {
   try { return JSON.parse(fs.readFileSync(BRANDS_FILE, 'utf8')); }
@@ -2474,6 +2528,15 @@ function loadBrands() {
 function saveBrands(data) {
   fs.writeFileSync(BRANDS_FILE, JSON.stringify(data, null, 2));
 }
+
+function loadMeetingIntel() {
+  try { return JSON.parse(fs.readFileSync(MEETING_INTEL_FILE, 'utf8')); }
+  catch(_) { return { meetings: [] }; }
+}
+function saveMeetingIntel(data) {
+  fs.writeFileSync(MEETING_INTEL_FILE, JSON.stringify(data, null, 2));
+}
+let _intelWriteLock = false;
 
 // GET /api/brands — list all client brands
 app.get('/api/brands', (req, res) => {
@@ -2859,71 +2922,33 @@ Return JSON only:
 // Transcribes voice memo using OpenAI Whisper REST API
 // Expects multipart/form-data with field "audio"
 app.post('/api/whisper-transcribe', upload.single('audio'), async (req, res) => {
-  if (!req.file) return res.json({ ok: false, error: 'File not received — check format (mp4/mov/webm)', text: '' });
+  if (!req.file) return res.json({ ok: false, error: 'No audio file provided', text: '' });
 
   const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
   if (!OPENAI_API_KEY) {
+    // Cleanup file and return helpful error
     try { fs.unlinkSync(req.file.path); } catch(_) {}
-    return res.json({ ok: false, error: 'OPENAI_API_KEY not configured on server', text: '' });
+    return res.json({ ok: false, error: 'OPENAI_API_KEY not set in .env — add it to enable Whisper fallback', text: '' });
   }
 
-  const WHISPER_MAX = 25 * 1024 * 1024;
-  let audioPath = req.file.path;   // may be replaced by extracted audio
-  let cleanupAudio = false;        // only unlink extracted audio (not the kept upload)
-
   try {
-    // If file exceeds Whisper's 25 MB limit, extract audio track via ffmpeg
-    if (req.file.size > WHISPER_MAX) {
-      const { exec } = require('child_process');
-      const { promisify } = require('util');
-      const execAsync = promisify(exec);
-
-      audioPath = req.file.path.replace(/(\.[^.]+)?$/, '_audio.mp3');
-      cleanupAudio = true;
-
-      const mb = (req.file.size / 1024 / 1024).toFixed(1);
-      console.log(`[whisper] ${mb} MB video — extracting audio track via ffmpeg`);
-
-      // Use shell:true so nixpacks PATH is resolved correctly
-      // Use bundled ffmpeg-static binary — no system ffmpeg needed
-      const ffmpegBin = require('ffmpeg-static');
-      console.log(`[whisper] using ffmpeg at: ${ffmpegBin}`);
-
-      const cmd = `"${ffmpegBin}" -i "${req.file.path}" -vn -ar 16000 -ac 1 -q:a 5 -y "${audioPath}"`;
-      try {
-        await execAsync(cmd, { timeout: 120_000, env: process.env });
-      } catch (ffErr) {
-        console.error('[whisper] ffmpeg stderr:', ffErr.stderr?.slice(0, 1500));
-        throw ffErr;
-      }
-
-      const audioSize = fs.statSync(audioPath).size;
-      console.log(`[whisper] extracted audio: ${(audioSize / 1024 / 1024).toFixed(1)} MB`);
-    }
-
     const FormData = require('form-data');
     const fd = new FormData();
-    fd.append('file', fs.createReadStream(audioPath), {
-      filename: 'audio.mp3',
-      contentType: 'audio/mpeg',
+    fd.append('file', fs.createReadStream(req.file.path), {
+      filename: req.file.originalname || 'recording.webm',
+      contentType: req.file.mimetype || 'audio/webm'
     });
     fd.append('model', 'whisper-1');
 
     const whisperRes = await axios.post('https://api.openai.com/v1/audio/transcriptions', fd, {
-      headers: { ...fd.getHeaders(), Authorization: `Bearer ${OPENAI_API_KEY}` },
-      timeout: 120_000,
+      headers: { ...fd.getHeaders(), Authorization: `Bearer ${OPENAI_API_KEY}` }
     });
 
-    const text = whisperRes.data.text || '';
-    console.log(`[whisper] transcribed "${req.file.originalname}" — ${text.length} chars`);
-    res.json({ ok: true, text });
+    res.json({ ok: true, text: whisperRes.data.text || '' });
   } catch(e) {
-    const msg = e.response?.data?.error?.message || e.message;
-    console.error('[whisper] transcription error:', msg);
-    res.json({ ok: false, error: msg, text: '' });
+    res.json({ ok: false, error: e.response?.data?.error?.message || e.message, text: '' });
   } finally {
     try { fs.unlinkSync(req.file.path); } catch(_) {}
-    if (cleanupAudio) try { fs.unlinkSync(audioPath); } catch(_) {}
   }
 });
 
