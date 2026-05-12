@@ -2836,11 +2836,20 @@ app.post('/api/whisper-transcribe', upload.single('audio'), async (req, res) => 
       console.log(`[whisper] ${mb} MB video — extracting audio track via ffmpeg`);
 
       // Use shell:true so nixpacks PATH is resolved correctly
-      const cmd = `ffmpeg -i "${req.file.path}" -vn -ar 16000 -ac 1 -q:a 5 -y "${audioPath}"`;
+      // Resolve ffmpeg path — nix installs it under /nix/store, find it once
+      let ffmpegBin = 'ffmpeg';
       try {
-        await execAsync(cmd, { timeout: 120_000 });
+        const { stdout } = await execAsync('which ffmpeg || find /nix -name ffmpeg -type f 2>/dev/null | head -1', { env: process.env });
+        const found = stdout.trim().split('\n')[0];
+        if (found) ffmpegBin = found;
+      } catch(_) {}
+      console.log(`[whisper] using ffmpeg at: ${ffmpegBin}`);
+
+      const cmd = `"${ffmpegBin}" -i "${req.file.path}" -vn -ar 16000 -ac 1 -q:a 5 -y "${audioPath}"`;
+      try {
+        await execAsync(cmd, { timeout: 120_000, env: process.env });
       } catch (ffErr) {
-        console.error('[whisper] ffmpeg stderr:', ffErr.stderr?.slice(0, 1000));
+        console.error('[whisper] ffmpeg stderr:', ffErr.stderr?.slice(0, 1500));
         throw ffErr;
       }
 
