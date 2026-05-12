@@ -2836,8 +2836,13 @@ app.post('/api/whisper-transcribe', upload.single('audio'), async (req, res) => 
       console.log(`[whisper] ${mb} MB video — extracting audio track via ffmpeg`);
 
       // Use shell:true so nixpacks PATH is resolved correctly
-      const cmd = `ffmpeg -i "${req.file.path}" -vn -ar 16000 -ac 1 -b:a 32k -y "${audioPath}"`;
-      await execAsync(cmd, { timeout: 120_000 });
+      const cmd = `ffmpeg -i "${req.file.path}" -vn -ar 16000 -ac 1 -q:a 5 -y "${audioPath}"`;
+      try {
+        await execAsync(cmd, { timeout: 120_000 });
+      } catch (ffErr) {
+        console.error('[whisper] ffmpeg stderr:', ffErr.stderr?.slice(0, 1000));
+        throw ffErr;
+      }
 
       const audioSize = fs.statSync(audioPath).size;
       console.log(`[whisper] extracted audio: ${(audioSize / 1024 / 1024).toFixed(1)} MB`);
