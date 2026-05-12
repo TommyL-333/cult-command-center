@@ -6914,10 +6914,11 @@ async function svuProcessVideo(v) {
       const ta = document.getElementById('svuTranscript_' + v.id);
       if (ta) ta.value = data.text;
     } else {
-      svuSetStatus(v, 'ready', '⚠ Transcribe failed — add manually'); return;
+      const reason = data.error ? `⚠ ${data.error}` : '⚠ Transcribe failed — add manually';
+      svuSetStatus(v, 'ready', reason); return;
     }
   } catch (e) {
-    svuSetStatus(v, 'ready', '⚠ Transcribe failed — add manually'); return;
+    svuSetStatus(v, 'ready', `⚠ Transcribe error: ${e.message}`); return;
   }
   // 3. Generate caption
   svuSetStatus(v, 'captioning', '✨ Generating caption…');

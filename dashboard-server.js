@@ -951,7 +951,7 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage,
   limits: { fileSize: 500 * 1024 * 1024 },   // 500 MB cap
-  fileFilter: (_, file, cb) => cb(null, /video|mp4|mov|avi|webm/i.test(file.mimetype + file.originalname)),
+  fileFilter: (_, file, cb) => cb(null, /video|audio|mp4|mov|avi|webm|mp3|m4a|wav/i.test(file.mimetype + file.originalname)),
 });
 
 // POST /api/proposals/publish — saves HTML to UPLOAD_DIR (public via CF bypass) and returns a shareable link
@@ -2810,31 +2810,43 @@ Return JSON only:
 // Transcribes voice memo using OpenAI Whisper REST API
 // Expects multipart/form-data with field "audio"
 app.post('/api/whisper-transcribe', upload.single('audio'), async (req, res) => {
-  if (!req.file) return res.json({ ok: false, error: 'No audio file provided', text: '' });
+  if (!req.file) return res.json({ ok: false, error: 'File not received — check format (mp4/mov/webm)', text: '' });
 
   const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
   if (!OPENAI_API_KEY) {
-    // Cleanup file and return helpful error
     try { fs.unlinkSync(req.file.path); } catch(_) {}
-    return res.json({ ok: false, error: 'OPENAI_API_KEY not set in .env — add it to enable Whisper fallback', text: '' });
+    return res.json({ ok: false, error: 'OPENAI_API_KEY not configured on server', text: '' });
+  }
+
+  // Whisper hard limit is 25 MB
+  const WHISPER_MAX = 25 * 1024 * 1024;
+  if (req.file.size > WHISPER_MAX) {
+    try { fs.unlinkSync(req.file.path); } catch(_) {}
+    const mb = (req.file.size / 1024 / 1024).toFixed(1);
+    return res.json({ ok: false, error: `File is ${mb} MB — Whisper limit is 25 MB. Trim the video or add transcript manually.`, text: '' });
   }
 
   try {
     const FormData = require('form-data');
     const fd = new FormData();
     fd.append('file', fs.createReadStream(req.file.path), {
-      filename: req.file.originalname || 'recording.webm',
-      contentType: req.file.mimetype || 'audio/webm'
+      filename: req.file.originalname || 'video.mp4',
+      contentType: req.file.mimetype || 'video/mp4',
     });
     fd.append('model', 'whisper-1');
 
     const whisperRes = await axios.post('https://api.openai.com/v1/audio/transcriptions', fd, {
-      headers: { ...fd.getHeaders(), Authorization: `Bearer ${OPENAI_API_KEY}` }
+      headers: { ...fd.getHeaders(), Authorization: `Bearer ${OPENAI_API_KEY}` },
+      timeout: 120_000,
     });
 
-    res.json({ ok: true, text: whisperRes.data.text || '' });
+    const text = whisperRes.data.text || '';
+    console.log(`[whisper] transcribed "${req.file.originalname}" — ${text.length} chars`);
+    res.json({ ok: true, text });
   } catch(e) {
-    res.json({ ok: false, error: e.response?.data?.error?.message || e.message, text: '' });
+    const msg = e.response?.data?.error?.message || e.message;
+    console.error('[whisper] transcription error:', msg);
+    res.json({ ok: false, error: msg, text: '' });
   } finally {
     try { fs.unlinkSync(req.file.path); } catch(_) {}
   }
