@@ -30,8 +30,42 @@
       "contractValue": 1500,
       "gmvShare": 10,
       "contacts": "Mike (mike@gora.group), Angel (angel@gora.group)",
+      "pipelineStage": "Proposal Sent",
+      "startDate": "2026-05-12"
+    },
+    {
+      "id": "mp3662rd4b6l",
+      "createdAt": "2026-05-12T21:55:28.249Z",
+      "name": "Trusted Rituals",
+      "industry": "Wellness supplements and spiritual wellness products",
+      "products": "TBD — to be populated during onboarding call",
+      "audience": "TBD — to be completed during onboarding",
+      "voice": "TBD — to be completed during onboarding",
+      "contentPillars": "TBD",
+      "proofPoints": "TBD",
+      "cta": "TBD",
+      "tiktokHandle": "TBD",
+      "contacts": "Yash Chitnis (vishvaura@gmail.com)",
       "pipelineStage": "Contract Signed",
       "startDate": "2026-05-12"
+    },
+    {
+      "id": "mp3662rlaczd",
+      "createdAt": "2026-05-12T21:55:28.257Z",
+      "name": "Approved Science",
+      "industry": "Supplements — 10-year-old brand, Amazon-first, expanding to TikTok Shop",
+      "products": "Supplements including collagen, Shilajit, appetite suppressants, lift/firming cream. Lead SKU TBD — appetite suppressant has compliance considerations, Shilajit crowded. 100+ samples/month budget. Healthy margins.",
+      "audience": "Health-conscious consumers, primarily Amazon buyers. Budget: $5k–$10k/mo for creator retainers. Decision makers: Dan and Lenea at Marketily.",
+      "voice": "Science-backed, credibility-forward. Lab coat energy. 10 years of Amazon proof points.",
+      "contentPillars": "TBD — strategy call to define lead SKU and content angles",
+      "proofPoints": "10 years in market, strong Amazon presence and reviews, proven product-market fit",
+      "cta": "TBD",
+      "tiktokHandle": "TBD",
+      "contractValue": 1500,
+      "gmvShare": 10,
+      "contacts": "Lenea (lenea@marketily.com), Dan (dan@marketily.com)",
+      "pipelineStage": "Contract Signed",
+      "startDate": "2026-05-07"
     }
   ]
 }
