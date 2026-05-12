@@ -1167,15 +1167,16 @@ app.post('/api/buffer/post', async (req, res) => {
   try {
     const { channelId, text, mediaUrl, scheduledAt } = req.body;
     if (!channelId) return res.status(400).json({ error: 'channelId is required' });
-    const orgId = process.env.BUFFER_ORG_ID || '69d6ddee1fcceb5bb1faa168';
+    const isImage = mediaUrl && /\.(jpe?g|png|gif|webp)(\?|$)/i.test(mediaUrl);
     const input = {
-      organizationId: orgId,
-      channelIds: [channelId],
-      content: {
-        text: text || '',
-        ...(mediaUrl ? { mediaUrls: [mediaUrl] } : {}),
-      },
-      ...(scheduledAt ? { scheduledAt } : { dueAt: null }),
+      channelId,
+      schedulingType: 'automatic',
+      mode: scheduledAt ? 'customScheduled' : 'addToQueue',
+      text: text || '',
+      assets: mediaUrl
+        ? [isImage ? { image: { url: mediaUrl } } : { video: { url: mediaUrl } }]
+        : [],
+      ...(scheduledAt ? { dueAt: scheduledAt } : {}),
     };
     const { data: gql } = await axios.post(
       'https://api.buffer.com/graphql',
@@ -1211,21 +1212,22 @@ app.post('/api/buffer/post-to-channels', async (req, res) => {
   const { channelIds, text, mediaUrl, scheduledAt } = req.body;
   if (!channelIds?.length) return res.status(400).json({ error: 'channelIds array is required' });
 
-  const orgId = process.env.BUFFER_ORG_ID || '69d6ddee1fcceb5bb1faa168';
   const BUFFER_GQL = 'https://api.buffer.com/graphql';
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 
   const results = [];
   for (const channelId of channelIds) {
     try {
+      const isImage = mediaUrl && /\.(jpe?g|png|gif|webp)(\?|$)/i.test(mediaUrl);
       const input = {
-        organizationId: orgId,
-        channelIds: [channelId],
-        content: {
-          text: text || '',
-          ...(mediaUrl ? { mediaUrls: [mediaUrl] } : {}),
-        },
-        ...(scheduledAt ? { scheduledAt } : {}),
+        channelId,
+        schedulingType: 'automatic',
+        mode: scheduledAt ? 'customScheduled' : 'addToQueue',
+        text: text || '',
+        assets: mediaUrl
+          ? [isImage ? { image: { url: mediaUrl } } : { video: { url: mediaUrl } }]
+          : [],
+        ...(scheduledAt ? { dueAt: scheduledAt } : {}),
       };
       const { data: gql } = await axios.post(
         BUFFER_GQL,
