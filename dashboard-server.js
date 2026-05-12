@@ -2818,20 +2818,41 @@ app.post('/api/whisper-transcribe', upload.single('audio'), async (req, res) => 
     return res.json({ ok: false, error: 'OPENAI_API_KEY not configured on server', text: '' });
   }
 
-  // Whisper hard limit is 25 MB
   const WHISPER_MAX = 25 * 1024 * 1024;
-  if (req.file.size > WHISPER_MAX) {
-    try { fs.unlinkSync(req.file.path); } catch(_) {}
-    const mb = (req.file.size / 1024 / 1024).toFixed(1);
-    return res.json({ ok: false, error: `File is ${mb} MB — Whisper limit is 25 MB. Trim the video or add transcript manually.`, text: '' });
-  }
+  let audioPath = req.file.path;   // may be replaced by extracted audio
+  let cleanupAudio = false;        // only unlink extracted audio (not the kept upload)
 
   try {
+    // If file exceeds Whisper's 25 MB limit, extract audio track via ffmpeg
+    if (req.file.size > WHISPER_MAX) {
+      const { execFile } = require('child_process');
+      const { promisify } = require('util');
+      const execFileAsync = promisify(execFile);
+
+      audioPath = req.file.path.replace(/(\.[^.]+)?$/, '_audio.mp3');
+      cleanupAudio = true;
+
+      const mb = (req.file.size / 1024 / 1024).toFixed(1);
+      console.log(`[whisper] ${mb} MB video — extracting audio track via ffmpeg`);
+
+      await execFileAsync('ffmpeg', [
+        '-i', req.file.path,
+        '-vn',                  // drop video stream
+        '-ar', '16000',         // 16 kHz sample rate (Whisper sweet spot)
+        '-ac', '1',             // mono
+        '-b:a', '32k',          // low bitrate — sufficient for speech
+        '-y', audioPath,
+      ], { timeout: 120_000 });
+
+      const audioSize = fs.statSync(audioPath).size;
+      console.log(`[whisper] extracted audio: ${(audioSize / 1024 / 1024).toFixed(1)} MB`);
+    }
+
     const FormData = require('form-data');
     const fd = new FormData();
-    fd.append('file', fs.createReadStream(req.file.path), {
-      filename: req.file.originalname || 'video.mp4',
-      contentType: req.file.mimetype || 'video/mp4',
+    fd.append('file', fs.createReadStream(audioPath), {
+      filename: 'audio.mp3',
+      contentType: 'audio/mpeg',
     });
     fd.append('model', 'whisper-1');
 
@@ -2849,6 +2870,7 @@ app.post('/api/whisper-transcribe', upload.single('audio'), async (req, res) => 
     res.json({ ok: false, error: msg, text: '' });
   } finally {
     try { fs.unlinkSync(req.file.path); } catch(_) {}
+    if (cleanupAudio) try { fs.unlinkSync(audioPath); } catch(_) {}
   }
 });
 
