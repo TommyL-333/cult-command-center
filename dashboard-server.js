@@ -1233,7 +1233,12 @@ app.post('/api/buffer/post-to-channels', async (req, res) => {
           query: `mutation CreatePost($input: CreatePostInput!) {
             createPost(input: $input) {
               ... on PostActionSuccess { post { id dueAt status channelService } }
-              ... on PostActionError { message }
+              ... on NotFoundError { message }
+              ... on UnauthorizedError { message }
+              ... on UnexpectedError { message }
+              ... on RestProxyError { message }
+              ... on LimitReachedError { message }
+              ... on InvalidInputError { message }
             }
           }`,
           variables: { input },
