@@ -77,7 +77,21 @@ function requireAuth(req, res, next) {
   next();
 }
 
-app.use(express.json());
+// Capture raw body for HMAC verification on webhook routes, parse JSON for everything else
+app.use((req, res, next) => {
+  if (req.path === '/api/webhooks/fireflies-meeting') {
+    let raw = '';
+    req.setEncoding('utf8');
+    req.on('data', chunk => { raw += chunk; });
+    req.on('end', () => {
+      req.rawBody = raw;
+      try { req.body = JSON.parse(raw); } catch(_) { req.body = {}; }
+      next();
+    });
+  } else {
+    express.json()(req, res, next);
+  }
+});
 
 // ─── GHL Webhook: client onboarding form → auto-add client ───────────────────
 // This route is intentionally registered BEFORE requireAuth so GHL can call it
@@ -225,22 +239,15 @@ app.use('/uploads', express.static(UPLOAD_DIR));
 
 // ─── Fireflies Meeting Intelligence Webhook ────────────────────────────────────
 app.post('/api/webhooks/fireflies-meeting', async (req, res) => {
-  // Log all headers to identify how Fireflies sends the secret
-  console.log('[meeting-intel] Incoming headers:', JSON.stringify(req.headers));
-  console.log('[meeting-intel] Incoming body keys:', JSON.stringify(Object.keys(req.body || {})));
-
-  // Verify secret if configured — accept in any common header
+  // Verify HMAC-SHA256 signature (x-hub-signature header, signed over raw body)
   const secret = process.env.FIREFLIES_WEBHOOK_SECRET;
   if (secret) {
-    const received =
-      req.headers['x-fireflies-webhook-secret'] ||
-      req.headers['x-fireflies-token'] ||
-      req.headers['x-webhook-secret'] ||
-      req.headers['authorization']?.replace('Bearer ', '') ||
-      req.body?.secret;
-    if (received !== secret) {
-      console.log('[meeting-intel] Auth failed. Received:', received);
-      return res.status(401).json({ ok: false, error: 'Invalid secret' });
+    const sig = req.headers['x-hub-signature'];
+    if (!sig) return res.status(401).json({ ok: false, error: 'Missing signature' });
+    const expected = 'sha256=' + crypto.createHmac('sha256', secret).update(req.rawBody || '').digest('hex');
+    if (sig !== expected) {
+      console.log('[meeting-intel] HMAC mismatch. Got:', sig, 'Expected:', expected);
+      return res.status(401).json({ ok: false, error: 'Invalid signature' });
     }
   }
 
