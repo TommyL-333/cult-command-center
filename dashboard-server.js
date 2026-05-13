@@ -1325,77 +1325,89 @@ app.get('/api/arcads/scripts/:id/videos', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/buffer/post — post a video or text to Buffer from staging queue
+// Shared helper — build a Buffer CreatePostInput using the current API schema
+function buildBufferInput(channelId, service, text, mediaUrl, scheduledAt) {
+  const rawMedia = mediaUrl && mediaUrl.startsWith('/') ? `${PUBLIC_BASE_URL}${mediaUrl}` : mediaUrl;
+  const isImage  = rawMedia && /\.(jpe?g|png|gif|webp)(\?|$)/i.test(rawMedia);
+  const platformMeta = bufferPlatformMetadata(service, text);
+  return {
+    channelId,
+    schedulingType: 'automatic',
+    mode: scheduledAt ? 'customScheduled' : 'addToQueue',
+    text: text || '',
+    assets: rawMedia ? [isImage ? { image: { url: rawMedia } } : { video: { url: rawMedia } }] : [],
+    ...(scheduledAt ? { dueAt: scheduledAt } : {}),
+    ...(platformMeta ? { metadata: platformMeta } : {}),
+  };
+}
+
+const BUFFER_GQL_MUTATION = `mutation CreatePost($input: CreatePostInput!) {
+  createPost(input: $input) {
+    ... on PostSuccess { post { id dueAt status channelService } }
+    ... on PostError   { message type }
+  }
+}`;
+
+// POST /api/buffer/post — post a single video/text to Buffer
+// Body: { channelId, service?, text, mediaUrl?, scheduledAt? }
 app.post('/api/buffer/post', async (req, res) => {
   const token = process.env.BUFFER_ACCESS_TOKEN;
   if (!token) return res.json({ ok: false, error: 'No Buffer token' });
   try {
-    const { channelId, text, mediaUrl, scheduledAt } = req.body;
+    const { channelId, service, text, mediaUrl, scheduledAt } = req.body;
     if (!channelId) return res.status(400).json({ error: 'channelId is required' });
-    const orgId = process.env.BUFFER_ORG_ID || '69d6ddee1fcceb5bb1faa168';
-    const input = {
-      organizationId: orgId,
-      channelIds: [channelId],
-      content: {
-        text: text || '',
-        ...(mediaUrl ? { mediaUrls: [mediaUrl] } : {}),
-      },
-      ...(scheduledAt ? { scheduledAt } : { dueAt: null }),
-    };
+    const input = buildBufferInput(channelId, service, text, mediaUrl, scheduledAt);
     const { data: gql } = await axios.post(
       'https://api.buffer.com/graphql',
-      {
-        query: `mutation CreatePost($input: CreatePostInput!) {
-          createPost(input: $input) { post { id dueAt status channelService } }
-        }`,
-        variables: { input },
-      },
+      { query: BUFFER_GQL_MUTATION, variables: { input } },
       { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
     );
     if (gql.errors) return res.json({ ok: false, error: gql.errors[0]?.message });
-    res.json({ ok: true, post: gql.data?.createPost?.post });
+    const result = gql.data?.createPost;
+    if (result?.message) return res.json({ ok: false, error: result.message });
+    res.json({ ok: true, post: result?.post });
   } catch (e) { res.status(500).json({ ok: false, error: e.response?.data || e.message }); }
 });
 
 // POST /api/buffer/post-to-channels — post to multiple Buffer channels at once
-// Body: { channelIds: string[], text: string, mediaUrl?: string, scheduledAt?: string }
+// Body: { channels: [{id, service}], text, mediaUrl?, scheduledAt? }
+// Also accepts legacy { channelIds: string[] } for backwards compat
 app.post('/api/buffer/post-to-channels', async (req, res) => {
   const token = process.env.BUFFER_ACCESS_TOKEN;
   if (!token) return res.status(400).json({ ok: false, error: 'BUFFER_ACCESS_TOKEN not configured' });
 
-  const { channelIds, text, mediaUrl, scheduledAt } = req.body;
-  if (!channelIds?.length) return res.status(400).json({ error: 'channelIds array is required' });
+  const { channels, channelIds, text, mediaUrl, scheduledAt } = req.body;
 
-  const orgId = process.env.BUFFER_ORG_ID || '69d6ddee1fcceb5bb1faa168';
+  // Normalise to [{id, service}] — accept either new `channels` or legacy `channelIds`
+  const channelList = channels?.length
+    ? channels
+    : (channelIds || []).map(id => ({ id, service: null }));
+
+  if (!channelList.length) return res.status(400).json({ error: 'channels array is required' });
+
   const BUFFER_GQL = 'https://api.buffer.com/graphql';
   const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 
   const results = [];
-  for (const channelId of channelIds) {
+  for (const ch of channelList) {
+    const channelId = ch.id || ch;
+    const service   = ch.service || null;
     try {
-      const input = {
-        organizationId: orgId,
-        channelIds: [channelId],
-        content: {
-          text: text || '',
-          ...(mediaUrl ? { mediaUrls: [mediaUrl] } : {}),
-        },
-        ...(scheduledAt ? { scheduledAt } : {}),
-      };
+      const input = buildBufferInput(channelId, service, text, mediaUrl, scheduledAt);
       const { data: gql } = await axios.post(
         BUFFER_GQL,
-        {
-          query: `mutation CreatePost($input: CreatePostInput!) {
-            createPost(input: $input) { post { id dueAt status channelService } }
-          }`,
-          variables: { input },
-        },
+        { query: BUFFER_GQL_MUTATION, variables: { input } },
         { headers }
       );
       if (gql.errors) {
         results.push({ channelId, ok: false, error: gql.errors[0]?.message });
       } else {
-        results.push({ channelId, ok: true, post: gql.data?.createPost?.post });
+        const result = gql.data?.createPost;
+        if (result?.message) {
+          results.push({ channelId, ok: false, error: result.message });
+        } else {
+          results.push({ channelId, ok: true, post: result?.post });
+        }
       }
     } catch (e) {
       results.push({ channelId, ok: false, error: e.response?.data || e.message });

@@ -7341,6 +7341,11 @@ async function svuPublish() {
 
   const channelIds = Array.from(_svu.selectedChannels);
   const chMap = Object.fromEntries((_svu.channels || []).map(c => [c.id, c.name || c.service]));
+  // Build channels array with service info so server can add correct platform metadata
+  const channels = channelIds.map(id => {
+    const ch = (_svu.channels || []).find(c => c.id === id);
+    return { id, service: ch?.service || null };
+  });
 
   for (let i = 0; i < ready.length; i++) {
     const v = ready[i];
@@ -7363,7 +7368,7 @@ async function svuPublish() {
       const r = await fetch('/api/buffer/post-to-channels', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ channelIds, text, mediaUrl: v.uploadedUrl, scheduledAt: scheduledAt || undefined }),
+        body: JSON.stringify({ channels, text, mediaUrl: v.uploadedUrl, scheduledAt: scheduledAt || undefined }),
       });
       const data = await r.json();
       const rows = data.results || [];
@@ -8989,7 +8994,13 @@ async function bufferPost(realIdx) {
     const r = await fetch('/api/buffer/post-to-channels', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ channelIds, text: caption, mediaUrl, scheduledAt }),
+      body: JSON.stringify({
+          channels: channelIds.map(id => {
+            const ch = (_buffer.channels || []).find(c => c.id === id);
+            return { id, service: ch?.service || null };
+          }),
+          text: caption, mediaUrl, scheduledAt,
+        }),
     }).then(r => r.json());
 
     const succeeded = r.results?.filter(x => x.ok) || [];
