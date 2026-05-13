@@ -1325,6 +1325,19 @@ app.get('/api/arcads/scripts/:id/videos', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// Returns platform-specific metadata required by Buffer for YouTube, Instagram, Facebook.
+// Other platforms (TikTok, Twitter/X, LinkedIn) don't need extra fields.
+function bufferPlatformMetadata(service, text) {
+  const svc = (service || '').toLowerCase();
+  if (svc === 'youtube') {
+    const title = (text || 'Video').replace(/\n[\s\S]*/, '').trim().slice(0, 100) || 'Video';
+    return { youtube: { title, categoryId: '22', privacy: 'public' } };
+  }
+  if (svc === 'instagram') return { instagram: { type: 'reel', shouldShareToFeed: true } };
+  if (svc === 'facebook')  return { facebook:  { type: 'reel' } };
+  return null;
+}
+
 // Shared helper — build a Buffer CreatePostInput using the current API schema
 function buildBufferInput(channelId, service, text, mediaUrl, scheduledAt) {
   const rawMedia = mediaUrl && mediaUrl.startsWith('/') ? `${PUBLIC_BASE_URL}${mediaUrl}` : mediaUrl;
