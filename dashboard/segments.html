@@ -603,8 +603,8 @@ main{max-width:1400px;margin:0 auto;padding:24px 20px;}
         <input type="number" id="m-affcomm" style="display:none" value="25">
         <input type="number" id="m-adspend" style="display:none" value="0">
         <input type="number" id="m-creators" style="display:none">
-        <input type="number" id="m-videos" style="display:none" value="4">
-        <input type="number" id="m-views" style="display:none" value="2000">
+        <input type="number" id="m-videos" style="display:none" value="6">
+        <input type="number" id="m-views" style="display:none" value="8000">
         <input type="number" id="m-ctr" style="display:none" value="3">
         <input type="number" id="m-cvr" style="display:none" value="2">
         <input type="number" id="m-samples" style="display:none" value="75">
@@ -1732,7 +1732,7 @@ function getMetrics() {
 
   const monthlySamples = v('m-samples') || 0;
   const ACTIVATION_RATE = 0.5;
-  const AVG_ACTIVE_MONTHS = 3; // avg months a creator stays active after receiving samples
+  const AVG_ACTIVE_MONTHS = 6; // avg months a creator stays active after receiving samples
   // Derive steady-state creator count from sampling logic: samples × 50% activation × 3mo tenure
   const sampleDerivedCreators = monthlySamples > 0 ? Math.round(monthlySamples * ACTIVATION_RATE * AVG_ACTIVE_MONTHS) : 0;
   const manualCreators = v('m-creators') || 0;
@@ -2250,8 +2250,8 @@ async function confirmAndGenerate(forceDiagnostic = false) {
   setM('m-affcomm',   confirmedMetrics.affiliateCommPct);
   setM('m-samples',   confirmedMetrics.monthlySamples);
   setM('m-retainers', confirmedMetrics.affiliateRetainers);
-  setM('m-videos',    4);
-  setM('m-views',     confirmedMetrics.avgViews || 2000);
+  setM('m-videos',    6);
+  setM('m-views',     confirmedMetrics.avgViews || 8000);
   setM('m-ctr',       3);
   setM('m-cvr',       2);
 
@@ -2534,18 +2534,21 @@ function buildProposalHTML(p) {
   // Each month N samples sent → N×50% activate → at 3mo steady state = N×50%×3 active creators
   const baseGmvRate = m.revSharePct;
   const flatGmvRate = baseGmvRate;
-  const ACTIVATION_RATE = 0.5;
+  const ACTIVATION_RATE = 0.65; // agency with existing 500+ community activates at higher rate
   // Steady-state sample cost: by Month 7-12 the creator roster is built.
-  // Ongoing outreach is ~50% of ramp rate — replacing churned creators only.
-  const steadyStateSampleCost = Math.round(m.sampleCost * 0.5);
-  const steadyStateSamples = Math.round(m.monthlySamples * 0.5);
+  // Ongoing outreach is ~30% of ramp rate — lower churn with managed program.
+  const steadyStateSampleCost = Math.round(m.sampleCost * 0.3);
+  const steadyStateSamples = Math.round(m.monthlySamples * 0.3);
   const useSampleLogic = m.monthlySamples > 0;
-  // Per-phase creator counts: either sample-derived (accumulating cohorts) or manual-multiplier fallback
+  // Per-phase creator counts: accumulating cohorts with 6-month avg tenure
+  // Phase 1 (M1-3): 2 months of cohorts building (community taps accelerate early activation)
+  // Phase 2 (M4-6): 4 months cumulative (roster compounds)
+  // Phase 3 (M7-12): 6 months = steady state at full tenure
   const phaseCreatorCounts = useSampleLogic
     ? [
-        Math.round(m.monthlySamples * ACTIVATION_RATE * 1), // Phase 1: 1 month of activations
-        Math.round(m.monthlySamples * ACTIVATION_RATE * 2), // Phase 2: 2 months cumulative
-        Math.round(m.monthlySamples * ACTIVATION_RATE * 3), // Phase 3: 3 months = steady state
+        Math.round(m.monthlySamples * ACTIVATION_RATE * 2), // Phase 1: 2 months of activations
+        Math.round(m.monthlySamples * ACTIVATION_RATE * 4), // Phase 2: 4 months cumulative
+        Math.round(m.monthlySamples * ACTIVATION_RATE * 6), // Phase 3: 6 months = steady state
       ]
     : [Math.round(m.creators * 0.3), Math.round(m.creators * 0.7), m.creators];
 
@@ -2605,7 +2608,7 @@ function buildProposalHTML(p) {
     : null;
   // Break-even in terms of monthly samples needed (more actionable than raw creator count)
   const beSamples = beCreators && useSampleLogic
-    ? Math.ceil(beCreators / (ACTIVATION_RATE * 3)) // reverse of: creators = samples × 0.5 × 3
+    ? Math.ceil(beCreators / (ACTIVATION_RATE * 6)) // reverse of: creators = samples × 0.65 × 6
     : null;
   const bePhaseGMV = beCreators
     ? Math.round(beCreators * m.videosPerCreator * m.avgViews * m.ctr * m.cvr * m.sellingPrice)
@@ -2838,7 +2841,7 @@ function buildProposalHTML(p) {
 
       <div class="pm-section-title" style="margin-top:24px">KPI Projections — Creator-to-GMV Model</div>
       <p class="pm-body-text">${useSampleLogic
-        ? `Based on ${m.monthlySamples} samples/mo × 50% activation rate — creator roster accumulates each month. ${m.videosPerCreator} videos/creator/mo × ${m.avgViews.toLocaleString()} avg views, ${(m.ctr*100).toFixed(1)}% CTR, ${(m.cvr*100).toFixed(1)}% CVR.`
+        ? `Based on ${m.monthlySamples} samples/mo × 65% activation rate — creator roster accumulates each month (accelerated by Cult Content's 500+ member affiliate community). ${m.videosPerCreator} videos/creator/mo × ${m.avgViews.toLocaleString()} avg views, ${(m.ctr*100).toFixed(1)}% CTR, ${(m.cvr*100).toFixed(1)}% CVR.`
         : `Based on ${m.creators.toLocaleString()} active creators at steady state. ${m.videosPerCreator} videos/creator/mo × ${m.avgViews.toLocaleString()} avg views, ${(m.ctr*100).toFixed(1)}% CTR, ${(m.cvr*100).toFixed(1)}% CVR.`
       }</p>
       ${kpiTableHtml}
