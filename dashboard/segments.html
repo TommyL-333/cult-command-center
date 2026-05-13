@@ -1731,9 +1731,9 @@ function getMetrics() {
   const grossMarginPct = grossProfitPerOrder / sellingPrice;
 
   const monthlySamples = v('m-samples') || 0;
-  const ACTIVATION_RATE = 0.5;
+  const ACTIVATION_RATE = 0.65;
   const AVG_ACTIVE_MONTHS = 6; // avg months a creator stays active after receiving samples
-  // Derive steady-state creator count from sampling logic: samples × 50% activation × 3mo tenure
+  // Derive steady-state creator count from sampling logic: samples × 65% activation × 6mo tenure
   const sampleDerivedCreators = monthlySamples > 0 ? Math.round(monthlySamples * ACTIVATION_RATE * AVG_ACTIVE_MONTHS) : 0;
   const manualCreators = v('m-creators') || 0;
   const creators = manualCreators || sampleDerivedCreators || 150;
@@ -2530,46 +2530,39 @@ function buildProposalHTML(p) {
   const fmtPct = n => (n * 100).toFixed(1) + '%';
   const fmtK = n => n >= 1000 ? '$' + (n/1000).toFixed(0) + 'k' : fmt$(n);
 
-  // KPI ramp: 3 phases — creator counts derived from sampling logic (50% activation per cohort)
-  // Each month N samples sent → N×50% activate → at 3mo steady state = N×50%×3 active creators
+  // KPI ramp: month-by-month for 6 months
+  // Each month: active_creators = monthlySamples × ACTIVATION_RATE × min(month, AVG_ACTIVE_MONTHS)
+  // e.g. Month 1 = 1 cohort active, Month 2 = 2 cohorts, ..., Month 6 = full steady state
   const baseGmvRate = m.revSharePct;
   const flatGmvRate = baseGmvRate;
-  const ACTIVATION_RATE = 0.65; // agency with existing 500+ community activates at higher rate
-  // Steady-state sample cost: by Month 7-12 the creator roster is built.
-  // Ongoing outreach is ~30% of ramp rate — lower churn with managed program.
+  const ACTIVATION_RATE = 0.65; // agency with 500+ community activates at higher rate
+  const AVG_ACTIVE_MONTHS = 6;  // avg months a creator stays active
+  // Steady-state sample cost: roster is built by M6 — only replacing churn (~30%)
   const steadyStateSampleCost = Math.round(m.sampleCost * 0.3);
   const steadyStateSamples = Math.round(m.monthlySamples * 0.3);
   const useSampleLogic = m.monthlySamples > 0;
-  // Per-phase creator counts: accumulating cohorts with 6-month avg tenure
-  // Phase 1 (M1-3): 2 months of cohorts building (community taps accelerate early activation)
-  // Phase 2 (M4-6): 4 months cumulative (roster compounds)
-  // Phase 3 (M7-12): 6 months = steady state at full tenure
-  const phaseCreatorCounts = useSampleLogic
-    ? [
-        Math.round(m.monthlySamples * ACTIVATION_RATE * 2), // Phase 1: 2 months of activations
-        Math.round(m.monthlySamples * ACTIVATION_RATE * 4), // Phase 2: 4 months cumulative
-        Math.round(m.monthlySamples * ACTIVATION_RATE * 6), // Phase 3: 6 months = steady state
-      ]
-    : [Math.round(m.creators * 0.3), Math.round(m.creators * 0.7), m.creators];
 
-  const phases = [
-    { label: 'Month 1–3',  c: phaseCreatorCounts[0], gmvRate: flatGmvRate },
-    { label: 'Month 4–6',  c: phaseCreatorCounts[1], gmvRate: flatGmvRate },
-    { label: 'Month 7–12', c: phaseCreatorCounts[2], gmvRate: flatGmvRate },
-  ];
+  const monthlyCreatorCount = mo => useSampleLogic
+    ? Math.round(m.monthlySamples * ACTIVATION_RATE * Math.min(mo, AVG_ACTIVE_MONTHS))
+    : Math.round(m.creators * (mo / AVG_ACTIVE_MONTHS));
 
-  const phaseCalc = ph => {
-    const imp = ph.c * m.videosPerCreator * m.avgViews;
+  const monthCalc = mo => {
+    const c = monthlyCreatorCount(mo);
+    const imp = c * m.videosPerCreator * m.avgViews;
     const purch = Math.round(imp * m.ctr * m.cvr);
     const gmv = purch * m.sellingPrice;
     const gross = m.grossProfitPerOrder * purch;
-    const teamC = m.teamFee + (ph.gmvRate * gmv);
+    const teamC = m.teamFee + (flatGmvRate * gmv);
     const sampC = m.sampleCost;
     const ret = gmv * 0.02;
     const net = gross - teamC - sampC - m.affiliateRetainers - ret;
-    return { c: ph.c, imp: Math.round(imp), purch, gmv, gross, teamC, net, gmvRate: ph.gmvRate };
+    return { mo, c, imp: Math.round(imp), purch, gmv, gross, teamC, net };
   };
-  const phaseData = phases.map(phaseCalc);
+
+  const monthData = Array.from({ length: 6 }, (_, i) => monthCalc(i + 1));
+  // Aliases for downstream waterfall/break-even (uses Month 6 as run rate)
+  const phaseCreatorCounts = monthData.map(d => d.c); // now 6 values
+  const phaseData = monthData; // waterfall references phaseData[5] for steady state
 
   // Metrics chips
   const metricsHtml = (p.currentStateMetrics || []).map(m2 =>
@@ -2617,12 +2610,9 @@ function buildProposalHTML(p) {
   const kpiTableHtml = `
     <div class="pm-fin-box" style="margin-top:16px">
       <table class="pm-fin-table">
-        <tr style="background:#091819"><td style="color:#5eead4;font-weight:800">Phase</td><td style="color:#5eead4">Creators</td><td style="color:#5eead4">Impressions/mo</td><td style="color:#5eead4">Purchases/mo</td><td style="color:#5eead4">Est. GMV/mo</td></tr>
-        ${phases.map((ph, i) => {
-          const d = phaseData[i];
-          return `<tr><td style="font-weight:700;color:#e2e8f0">${ph.label}</td><td>${d.c.toLocaleString()}</td><td>${d.imp.toLocaleString()}</td><td>${d.purch.toLocaleString()}</td><td style="color:#10b981;font-weight:700">${fmtK(d.gmv)}</td></tr>`;
-        }).join('')}
-        ${beCreators && beCreators > phaseCreatorCounts[2] ? `
+        <tr style="background:#091819"><td style="color:#5eead4;font-weight:800">Month</td><td style="color:#5eead4">Creators</td><td style="color:#5eead4">Impressions/mo</td><td style="color:#5eead4">Purchases/mo</td><td style="color:#5eead4">Est. GMV/mo</td></tr>
+        ${monthData.map(d => `<tr><td style="font-weight:700;color:#e2e8f0">Month ${d.mo}</td><td>${d.c.toLocaleString()}</td><td>${d.imp.toLocaleString()}</td><td>${d.purch.toLocaleString()}</td><td style="color:#10b981;font-weight:700">${fmtK(d.gmv)}</td></tr>`).join('')}
+        ${beCreators && beCreators > monthData[5].c ? `
         <tr style="background:#0d1a0d;border-top:1px dashed #166534">
           <td style="font-weight:700;color:#4ade80">🎯 Break-Even Scale</td>
           <td style="color:#4ade80;font-weight:700">${beCreators}</td>
@@ -2633,9 +2623,9 @@ function buildProposalHTML(p) {
       </table>
     </div>`;
 
-  // All-in cost waterfall at Month 7-12 run rate
-  const scaled = phaseData[2];
-  // At steady state (Month 7-12), roster is fully built — sample outreach drops to ~50%
+  // All-in cost waterfall at Month 6 run rate (full steady state)
+  const scaled = phaseData[5];
+  // At steady state (Month 6), roster is fully built — sample outreach drops to ~30%
   // to replace creator churn only (not full ramp recruitment).
   const scaledNet = scaled.gross - scaled.teamC - steadyStateSampleCost - m.affiliateRetainers - (scaled.gmv * 0.02);
   const waterfallRows = [
@@ -2650,7 +2640,7 @@ function buildProposalHTML(p) {
   ];
 
   const waterfallHtml = `
-    <div class="pm-section-label" style="margin-top:24px">All-In Cost Waterfall — Month 7–12 Run Rate</div>
+    <div class="pm-section-label" style="margin-top:24px">All-In Cost Waterfall — Month 6 Run Rate</div>
     <div class="pm-fin-box">
       <table class="pm-fin-table">
         ${waterfallRows.map(r => `
@@ -2685,13 +2675,13 @@ function buildProposalHTML(p) {
         <div class="be-icon">🎯</div>
         <div class="be-text">
           GMV rev share: <strong>${fmtPct(flatGmvRate)}</strong> throughout all phases.
-          Month 7–12 run rate (<strong>${fmtK(scaled.gmv)}/mo</strong>) is below break-even — the channel covers its costs at
+          Month 6 run rate (<strong>${fmtK(scaled.gmv)}/mo</strong>) is below break-even — the channel covers its costs at
           <strong style="color:#4ade80">${fmtK(taperBreakEven)}/mo GMV</strong>.
         </div>
       </div>
       <table style="width:100%;font-size:.75rem;border-collapse:collapse">
         <tr>
-          <td style="color:#64748b;padding:4px 0">Current projection (${phaseCreatorCounts[2]} creators${useSampleLogic ? ` — ${m.monthlySamples} samples/mo` : ''})</td>
+          <td style="color:#64748b;padding:4px 0">Month 6 projection (${monthData[5].c} creators${useSampleLogic ? ` — ${m.monthlySamples} samples/mo` : ''})</td>
           <td style="text-align:right;color:#f87171;font-weight:700">${fmtK(scaled.gmv)}/mo</td>
           <td style="text-align:right;color:#f87171;padding-left:16px">${fmt$(scaledNet)}/mo net</td>
         </tr>
@@ -2706,7 +2696,7 @@ function buildProposalHTML(p) {
           <td style="text-align:right;color:#86efac;padding-left:16px">~${fmt$(Math.round(taperBreakEven * flatNetMarginCalc))}/mo net</td>
         </tr>
       </table>
-      <div style="font-size:.72rem;color:#64748b">The channel turns profitable as the creator roster scales past ${beCreators}${beSamples ? ` (requires ${beSamples} samples/mo outreach)` : ''}. Month 7–12 projections reflect a conservative ramp — the roadmap targets ${beCreators}+ creators by Month 6.</div>
+      <div style="font-size:.72rem;color:#64748b">The channel turns profitable as the creator roster scales past ${beCreators}${beSamples ? ` (requires ${beSamples} samples/mo outreach)` : ''}. Projections above reflect actual month-by-month accumulation — the roadmap targets ${beCreators}+ active creators by Month 6.</div>
     </div>`;
   } else {
     // No break-even achievable (negative unit economics — handled by profitabilityHtml)
