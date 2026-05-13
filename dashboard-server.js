@@ -244,6 +244,22 @@ app.post('/api/webhooks/ghl-client-onboard', async (req, res) => {
 // Public routes — registered BEFORE requireAuth so no login needed
 app.use('/uploads', express.static(UPLOAD_DIR));
 
+// POST /api/proposals/publish — public so prospects can be linked directly
+// Registered BEFORE requireAuth so it doesn't need a CF Access session
+app.post('/api/proposals/publish-public', express.json({ limit: '5mb' }), (req, res) => {
+  try {
+    const { html } = req.body;
+    if (!html) return res.status(400).json({ error: 'No HTML provided' });
+    const id = require('crypto').randomBytes(12).toString('hex');
+    const filename = `proposal-${id}.html`;
+    fs.writeFileSync(path.join(UPLOAD_DIR, filename), html, 'utf8');
+    const baseUrl = 'https://cult-command-center-production.up.railway.app';
+    res.json({ ok: true, url: `${baseUrl}/uploads/${filename}` });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── Fireflies Meeting Intelligence Webhook ────────────────────────────────────
 app.post('/api/webhooks/fireflies-meeting', async (req, res) => {
   // Verify HMAC-SHA256 signature (x-hub-signature header, signed over raw body)
