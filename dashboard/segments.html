@@ -2700,7 +2700,7 @@ function buildProposalHTML(p) {
         <tr>
           <td style="color:#86efac;padding:4px 0">Scale target (${beCreators * 2}+ creators${beSamples ? ` — ${beSamples * 2} samples/mo` : ''})</td>
           <td style="text-align:right;color:#86efac;font-weight:700">${fmtK(taperBreakEven * 2)}/mo</td>
-          <td style="text-align:right;color:#86efac;padding-left:16px">~${fmt$(Math.round(taperBreakEven * taperNetMarginCalc))}/mo net</td>
+          <td style="text-align:right;color:#86efac;padding-left:16px">~${fmt$(Math.round(taperBreakEven * flatNetMarginCalc))}/mo net</td>
         </tr>
       </table>
       <div style="font-size:.72rem;color:#64748b">The channel turns profitable as the creator roster scales past ${beCreators}${beSamples ? ` (requires ${beSamples} samples/mo outreach)` : ''}. Month 7–12 projections reflect a conservative ramp — the roadmap targets ${beCreators}+ creators by Month 6.</div>
