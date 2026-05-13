@@ -5083,6 +5083,7 @@ STYLE RULES:
 - Short, punchy sentences. Zero filler words.
 - Confident assertions: "This will" not "this should"
 - Reference specific details from the notes — product, price point, pain points
+- CRITICAL: When referencing products, use ONLY the exact product name/description from the notes. Never infer or assume materials, ingredients, or product type. If the notes say "microfiber towel", say "microfiber towel" — do not rephrase as "bamboo towel", "cotton towel", or any other material you weren't told.
 - Never be generic. Every sentence should only make sense for THIS brand.
 - For currentStateMetrics: ONLY include values explicitly stated in the meeting notes. Do NOT infer, estimate, or fabricate values. Omit any metric not mentioned. Examples: {"label":"Active SKUs","value":"2"}, {"label":"AOV","value":"$74"}.
 - For monthlyGMVGoals: realistic 12-month ramp based on CONFIRMED UNIT ECONOMICS above. If economics are viable, ramp aggressively. If negative/diagnostic, show conservative ramp based on fixing pricing first.

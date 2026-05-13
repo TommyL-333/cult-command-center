@@ -334,11 +334,13 @@ main{max-width:1400px;margin:0 auto;padding:24px 20px;}
           <option value="">Link to contact…</option>
         </select>
         <button class="btn btn-ghost btn-sm" onclick="markProposalSentFromModal()">→ Mark Sent</button>
+        <button class="btn btn-ghost btn-sm" id="pm-edit-btn" onclick="toggleProposalEdit()">✏️ Edit</button>
         <button class="btn btn-ghost btn-sm" onclick="exportProposalHTML()">📄 Export</button>
         <button class="btn btn-ghost btn-sm" onclick="closeProposalModal()">✕</button>
       </div>
     </div>
     <div class="pm-body" id="pm-body"></div>
+    <div id="pm-edit-banner" style="display:none;position:sticky;bottom:0;background:#1a3a1a;border-top:1px solid #166534;padding:6px 24px;font-size:.72rem;color:#86efac;text-align:center;z-index:10">✏️ Edit mode — click any text to edit directly. Changes carry through to Export.</div>
   </div>
 </div>
 
@@ -2347,6 +2349,34 @@ function openProposalModal(p) {
 
 function closeProposalModal() {
   document.getElementById('pm-overlay').classList.remove('open');
+  // Exit edit mode on close
+  const body = document.getElementById('pm-body');
+  if (body) body.contentEditable = 'false';
+  const btn = document.getElementById('pm-edit-btn');
+  if (btn) { btn.textContent = '✏️ Edit'; btn.style.background = ''; btn.style.color = ''; }
+  const banner = document.getElementById('pm-edit-banner');
+  if (banner) banner.style.display = 'none';
+}
+
+function toggleProposalEdit() {
+  const body = document.getElementById('pm-body');
+  const btn  = document.getElementById('pm-edit-btn');
+  const banner = document.getElementById('pm-edit-banner');
+  const isEditing = body.contentEditable === 'true';
+  if (isEditing) {
+    body.contentEditable = 'false';
+    btn.textContent = '✏️ Edit';
+    btn.style.background = '';
+    btn.style.color = '';
+    banner.style.display = 'none';
+  } else {
+    body.contentEditable = 'true';
+    btn.textContent = '✅ Done Editing';
+    btn.style.background = '#166534';
+    btn.style.color = '#86efac';
+    banner.style.display = 'block';
+    body.focus();
+  }
 }
 
 function exportProposalHTML() {
