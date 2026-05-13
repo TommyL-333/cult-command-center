@@ -470,6 +470,35 @@ app.post('/api/upload/video-direct', uploadDirect.single('video'), (req, res) =>
   res.json({ ok: true, url: publicUrl, video: meta });
 });
 
+// ─── Admin: volume disk audit (pre-auth, bearer-token protected) ──────────────
+// Registered before requireAuth so it's reachable without a CF Access session.
+app.get('/api/admin/disk-raw', (req, res) => {
+  const secret = process.env.WEBHOOK_SECRET;
+  if (secret) {
+    const token = (req.headers['authorization'] || '').replace(/^Bearer\s+/i, '');
+    if (token !== secret) return res.status(401).json({ error: 'Unauthorized' });
+  }
+  try {
+    const queue = (() => { try { return fs.existsSync(path.join(DATA_DIR,'upload-queue.json')) ? JSON.parse(fs.readFileSync(path.join(DATA_DIR,'upload-queue.json'),'utf8')) : []; } catch(_){ return []; } })();
+    const queueMap = Object.fromEntries(queue.map(v => [v.filename, v.status]));
+    function scanDir(dir, base='') {
+      const entries = [];
+      if (!fs.existsSync(dir)) return entries;
+      for (const name of fs.readdirSync(dir)) {
+        const full = path.join(dir, name);
+        const rel  = base ? `${base}/${name}` : name;
+        const stat = fs.statSync(full);
+        if (stat.isDirectory()) { entries.push(...scanDir(full, rel)); }
+        else { entries.push({ path: rel, size: stat.size, sizeMB: +(stat.size/1024/1024).toFixed(2), mtime: stat.mtime.toISOString(), status: queueMap[name] || null }); }
+      }
+      return entries;
+    }
+    const files = scanDir(DATA_DIR).sort((a,b) => b.size - a.size);
+    const totalMB = +(files.reduce((s,f) => s+f.size, 0)/1024/1024).toFixed(1);
+    res.json({ totalMB, fileCount: files.length, files });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.use(requireAuth); // all other routes require auth in production
 
 // Serve index.html with no-cache to prevent Cloudflare/browser serving stale versions
@@ -5046,7 +5075,13 @@ Return ONLY valid JSON. No other text.` }],
 
 // ─── Admin: volume disk audit ─────────────────────────────────────────────────
 // GET /api/admin/disk — lists every file in DATA_DIR with size + queue status
+// Protected by bearer token (WEBHOOK_SECRET) so it can be called outside CF Access
 app.get('/api/admin/disk', (req, res) => {
+  const secret = process.env.WEBHOOK_SECRET;
+  if (secret) {
+    const token = (req.headers['authorization'] || '').replace(/^Bearer\s+/i, '');
+    if (token !== secret) return res.status(401).json({ error: 'Unauthorized' });
+  }
   try {
     const queue = loadQueue();
     const queueMap = Object.fromEntries(queue.map(v => [v.filename, v.status]));
