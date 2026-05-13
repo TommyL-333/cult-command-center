@@ -13,6 +13,9 @@ const crypto       = require('crypto');
 const Anthropic    = require('@anthropic-ai/sdk');
 const helmet       = require('helmet');
 const rateLimit    = require('express-rate-limit');
+const ffmpeg       = require('fluent-ffmpeg');
+const ffmpegPath   = require('@ffmpeg-installer/ffmpeg').path;
+ffmpeg.setFfmpegPath(ffmpegPath);
 
 // ─── Data directory — use Railway Volume in prod, __dirname locally ───────────
 const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : __dirname;
@@ -3180,6 +3183,59 @@ app.post('/api/whisper-transcribe', upload.single('audio'), async (req, res) => 
     res.json({ ok: false, error: e.response?.data?.error?.message || e.message, text: '' });
   } finally {
     try { fs.unlinkSync(req.file.path); } catch(_) {}
+  }
+});
+
+// POST /api/transcribe-uploaded
+// Transcribes a video that's already on disk — extracts audio with ffmpeg first,
+// so even 500 MB videos work (audio-only is typically < 5 MB after compression).
+// Body: { filename: "1234567890_video.mp4" }
+app.post('/api/transcribe-uploaded', express.json(), async (req, res) => {
+  const { filename } = req.body || {};
+  if (!filename || /[/\\]/.test(filename)) {
+    return res.json({ ok: false, error: 'Invalid filename', text: '' });
+  }
+
+  const videoPath = path.join(UPLOAD_DIR, filename);
+  if (!fs.existsSync(videoPath)) {
+    return res.json({ ok: false, error: 'File not found on server', text: '' });
+  }
+
+  const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+  if (!OPENAI_API_KEY) {
+    return res.json({ ok: false, error: 'OPENAI_API_KEY not configured', text: '' });
+  }
+
+  // Extract audio to a small mp3 — mono 64k is plenty for speech recognition
+  const audioPath = videoPath.replace(/\.[^.]+$/, '') + '_audio.mp3';
+
+  try {
+    await new Promise((resolve, reject) => {
+      ffmpeg(videoPath)
+        .noVideo()
+        .audioChannels(1)
+        .audioBitrate('64k')
+        .format('mp3')
+        .on('error', reject)
+        .on('end', resolve)
+        .save(audioPath);
+    });
+
+    const FormData = require('form-data');
+    const fd = new FormData();
+    fd.append('file', fs.createReadStream(audioPath), { filename: 'audio.mp3', contentType: 'audio/mpeg' });
+    fd.append('model', 'whisper-1');
+
+    const whisperRes = await axios.post('https://api.openai.com/v1/audio/transcriptions', fd, {
+      headers: { ...fd.getHeaders(), Authorization: `Bearer ${OPENAI_API_KEY}` },
+      timeout: 120000,
+    });
+
+    res.json({ ok: true, text: whisperRes.data.text || '' });
+  } catch (e) {
+    res.json({ ok: false, error: e.response?.data?.error?.message || e.message, text: '' });
+  } finally {
+    try { if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath); } catch(_) {}
   }
 });
 
