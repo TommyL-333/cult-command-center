@@ -1490,6 +1490,23 @@ app.post('/api/buffer/post-to-channels', async (req, res) => {
   }
 
   const allOk = results.every(r => r.ok);
+
+  // Auto-cleanup: if all channels posted successfully and the media is a local upload,
+  // delete the file from disk to keep the volume clear.
+  if (allOk && mediaUrl) {
+    const rawMedia = mediaUrl.startsWith('/') ? mediaUrl : mediaUrl.replace(PUBLIC_BASE_URL, '');
+    const match = rawMedia.match(/^\/uploads\/(.+)$/);
+    if (match) {
+      const filePath = path.join(UPLOAD_DIR, match[1]);
+      try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch(_) {}
+      // Mark as done in queue
+      try {
+        const q = loadQueue().map(v => v.filename === match[1] ? { ...v, status: 'done' } : v);
+        saveQueue(q);
+      } catch(_) {}
+    }
+  }
+
   res.json({ ok: allOk, results });
 });
 
