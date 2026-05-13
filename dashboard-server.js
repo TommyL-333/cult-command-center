@@ -499,6 +499,35 @@ app.get('/api/admin/disk-raw', (req, res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// DELETE /api/admin/uploads-purge — deletes specific files from UPLOAD_DIR
+// Protected by bearer token. Only deletes from uploads/, never touches other DATA_DIR files.
+app.delete('/api/admin/uploads-purge', express.json(), (req, res) => {
+  const secret = process.env.WEBHOOK_SECRET;
+  if (secret) {
+    const token = (req.headers['authorization'] || '').replace(/^Bearer\s+/i, '');
+    if (token !== secret) return res.status(401).json({ error: 'Unauthorized' });
+  }
+  const { filenames } = req.body || {};
+  if (!Array.isArray(filenames)) return res.status(400).json({ error: 'filenames array required' });
+  const results = [];
+  for (const name of filenames) {
+    if (/[/\\]/.test(name)) { results.push({ name, ok: false, error: 'invalid name' }); continue; }
+    const full = path.join(UPLOAD_DIR, name);
+    if (!full.startsWith(UPLOAD_DIR)) { results.push({ name, ok: false, error: 'path escape' }); continue; }
+    try {
+      if (fs.existsSync(full)) { fs.unlinkSync(full); results.push({ name, ok: true }); }
+      else { results.push({ name, ok: false, error: 'not found' }); }
+    } catch(e) { results.push({ name, ok: false, error: e.message }); }
+  }
+  // Also remove deleted files from the queue
+  try {
+    const deletedSet = new Set(filenames);
+    const q = loadQueue().filter(v => !deletedSet.has(v.filename));
+    saveQueue(q);
+  } catch(_) {}
+  res.json({ ok: true, results });
+});
+
 app.use(requireAuth); // all other routes require auth in production
 
 // Serve index.html with no-cache to prevent Cloudflare/browser serving stale versions
