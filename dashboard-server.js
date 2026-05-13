@@ -5044,6 +5044,43 @@ Return ONLY valid JSON. No other text.` }],
   }
 });
 
+// ─── Admin: volume disk audit ─────────────────────────────────────────────────
+// GET /api/admin/disk — lists every file in DATA_DIR with size + queue status
+app.get('/api/admin/disk', (req, res) => {
+  try {
+    const queue = loadQueue();
+    const queueMap = Object.fromEntries(queue.map(v => [v.filename, v.status]));
+
+    function scanDir(dir, base = '') {
+      const entries = [];
+      if (!fs.existsSync(dir)) return entries;
+      for (const name of fs.readdirSync(dir)) {
+        const full = path.join(dir, name);
+        const rel  = base ? `${base}/${name}` : name;
+        const stat = fs.statSync(full);
+        if (stat.isDirectory()) {
+          entries.push(...scanDir(full, rel));
+        } else {
+          entries.push({
+            path:    rel,
+            size:    stat.size,
+            sizeMB:  +(stat.size / 1024 / 1024).toFixed(2),
+            mtime:   stat.mtime.toISOString(),
+            status:  queueMap[name] || null,
+          });
+        }
+      }
+      return entries;
+    }
+
+    const files = scanDir(DATA_DIR).sort((a, b) => b.size - a.size);
+    const totalMB = files.reduce((s, f) => s + f.size, 0) / 1024 / 1024;
+    res.json({ totalMB: +totalMB.toFixed(1), fileCount: files.length, files });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── Health ────────────────────────────────────────────────────────────────────
 app.get('/health', (_, res) => res.json({ status: 'ok', service: 'dashboard' }));
 
