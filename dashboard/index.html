@@ -2364,6 +2364,14 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
           <option value="100000">100K+</option>
           <option value="500000">500K+</option>
         </select>
+
+        <select id="creatorsDiscordFilter" class="agent-input" style="font-size:12px;padding:6px 10px;"
+          onchange="creatorsRenderFiltered()">
+          <option value="">Discord: All</option>
+          <option value="onboarded">✓ Active</option>
+          <option value="joined">Joined</option>
+          <option value="none">Not in Discord</option>
+        </select>
       </div>
 
       <!-- Table wrapper -->
@@ -2381,11 +2389,12 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
               <th style="text-align:right;">SHOP GMV</th>
               <th style="text-align:right;">30D GMV</th>
               <th style="text-align:right;">VIDEOS</th>
+              <th style="text-align:center;">DISCORD</th>
               <th style="width:32px;"></th>
             </tr>
           </thead>
           <tbody id="creatorsTableBody">
-            <tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted);">Click Community tab to load creators…</td></tr>
+            <tr><td colspan="9" style="text-align:center;padding:40px;color:var(--muted);">Click Community tab to load creators…</td></tr>
           </tbody>
         </table>
       </div>
@@ -9115,7 +9124,7 @@ async function creatorsLoad(append = false) {
   if (body && !append) {
     // Skeleton rows (8 cols now)
     body.innerHTML = Array.from({ length: 8 }, () =>
-      `<tr class="creator-db-skel"><td></td><td>████████</td><td>█████</td><td>████████████</td><td>██████</td><td>██████</td><td>████</td><td></td></tr>`
+      `<tr class="creator-db-skel"><td></td><td>████████</td><td>█████</td><td>████████████</td><td>██████</td><td>██████</td><td>████</td><td>████</td><td></td></tr>`
     ).join('');
   }
 
@@ -9241,7 +9250,7 @@ function creatorsRender(append = false) {
 
   const rows = _creators.data;
   if (!rows.length) {
-    body.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted);">No creators found</td></tr>`;
+    body.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--muted);">No creators found</td></tr>`;
     creatorsUpdateActionBar();
     return;
   }
@@ -9281,6 +9290,18 @@ function creatorsRender(append = false) {
       ? `<a href="https://app.gohighlevel.com/contacts/${ghlInfo.id}" target="_blank" title="${x(ghlInfo.name)}" style="color:var(--teal);font-size:14px;text-decoration:none;">🔗</a>`
       : '';
 
+    // Discord status from GHL tags
+    const tags = ghlInfo?.tags || [];
+    const discordOnboarded = tags.some(t => /discord.*onboard/i.test(t) || /verified.*creator/i.test(t));
+    const discordJoined    = tags.some(t => /discord.*join/i.test(t));
+    const discordCell = discordOnboarded
+      ? `<span title="Discord Onboarded" style="display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;color:#4ade80;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.25);border-radius:5px;padding:2px 7px;">✓ Active</span>`
+      : discordJoined
+      ? `<span title="Discord Joined" style="display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;color:#818cf8;background:rgba(129,140,248,0.1);border:1px solid rgba(129,140,248,0.25);border-radius:5px;padding:2px 7px;">Joined</span>`
+      : ghlInfo
+      ? `<span title="Not in Discord" style="font-size:11px;color:var(--muted);">—</span>`
+      : '';
+
     return `<tr style="${isSel ? 'background:rgba(0,212,200,0.06);' : ''}">
       <td style="width:28px;padding:8px 6px;">
         <input type="checkbox" ${isSel ? 'checked' : ''} onchange="creatorsToggleSelect('${handleKey}')"
@@ -9292,6 +9313,7 @@ function creatorsRender(append = false) {
       <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--gold);">${shopGmv}</td>
       <td style="text-align:right;font-variant-numeric:tabular-nums;color:${perf ? 'var(--green)' : 'var(--muted)'};">${gmv30d}</td>
       <td style="text-align:right;font-variant-numeric:tabular-nums;">${videos}</td>
+      <td style="text-align:center;">${discordCell}</td>
       <td style="text-align:center;">${crmBtn}</td>
     </tr>`;
   }).join('');
@@ -9302,6 +9324,30 @@ function creatorsRender(append = false) {
     body.innerHTML = html;
   }
   creatorsUpdateActionBar();
+}
+
+// Client-side Discord filter (doesn't re-fetch — GHL map is already loaded)
+function creatorsRenderFiltered() {
+  const discordFilter = document.getElementById('creatorsDiscordFilter')?.value || '';
+  if (!discordFilter) {
+    creatorsRender(false);
+    return;
+  }
+  const orig = _creators.data;
+  const filtered = orig.filter(c => {
+    const h    = (c.creator_handle || '').toLowerCase();
+    const tags = _creators.ghlMap[h]?.tags || [];
+    const onboarded = tags.some(t => /discord.*onboard/i.test(t) || /verified.*creator/i.test(t));
+    const joined    = tags.some(t => /discord.*join/i.test(t));
+    if (discordFilter === 'onboarded') return onboarded;
+    if (discordFilter === 'joined')    return joined && !onboarded;
+    if (discordFilter === 'none')      return !onboarded && !joined && !!_creators.ghlMap[h];
+    return true;
+  });
+  // Temporarily swap data for render, then restore
+  _creators.data = filtered;
+  creatorsRender(false);
+  _creators.data = orig;
 }
 
 function creatorsToggleSelect(handleKey) {
