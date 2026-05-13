@@ -7122,11 +7122,23 @@ async function svuProcessVideo(v) {
     svuSetStatus(v, 'error', `✗ Upload failed — ${e.message}`); return;
   }
   // 2. Transcribe
+  // Whisper's API limit is 25 MB — skip auto-transcribe for larger files
+  if (v.file.size > 25 * MB) {
+    svuSetStatus(v, 'ready', '⚠ File too large to auto-transcribe — add transcript manually');
+    return;
+  }
   svuSetStatus(v, 'transcribing', '🎤 Transcribing…');
   try {
     const fd = new FormData();
     fd.append('audio', v.file);
-    const r = await fetch('/api/whisper-transcribe', { method: 'POST', body: fd });
+    const controller = new AbortController();
+    const transcribeTimeout = setTimeout(() => controller.abort(), 60000); // 60s timeout
+    let r;
+    try {
+      r = await fetch('/api/whisper-transcribe', { method: 'POST', body: fd, signal: controller.signal });
+    } finally {
+      clearTimeout(transcribeTimeout);
+    }
     const data = await r.json();
     if (data.text) {
       v.transcript = data.text;
@@ -7136,7 +7148,7 @@ async function svuProcessVideo(v) {
       svuSetStatus(v, 'ready', '⚠ Transcribe failed — add manually'); return;
     }
   } catch (e) {
-    svuSetStatus(v, 'ready', '⚠ Transcribe failed — add manually'); return;
+    svuSetStatus(v, 'ready', `⚠ Transcribe failed (${e.name === 'AbortError' ? 'timed out' : e.message}) — add manually`); return;
   }
   // 3. Generate caption
   svuSetStatus(v, 'captioning', '✨ Generating caption…');

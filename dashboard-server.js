@@ -3149,9 +3149,14 @@ Return JSON only:
 app.post('/api/whisper-transcribe', upload.single('audio'), async (req, res) => {
   if (!req.file) return res.json({ ok: false, error: 'No audio file provided', text: '' });
 
+  // Whisper rejects files > 25 MB — bail early rather than hanging
+  if (req.file.size > 25 * 1024 * 1024) {
+    try { fs.unlinkSync(req.file.path); } catch(_) {}
+    return res.json({ ok: false, error: `File too large for Whisper (${(req.file.size / 1024 / 1024).toFixed(0)} MB — limit is 25 MB)`, text: '' });
+  }
+
   const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
   if (!OPENAI_API_KEY) {
-    // Cleanup file and return helpful error
     try { fs.unlinkSync(req.file.path); } catch(_) {}
     return res.json({ ok: false, error: 'OPENAI_API_KEY not set in .env — add it to enable Whisper fallback', text: '' });
   }
@@ -3166,7 +3171,8 @@ app.post('/api/whisper-transcribe', upload.single('audio'), async (req, res) => 
     fd.append('model', 'whisper-1');
 
     const whisperRes = await axios.post('https://api.openai.com/v1/audio/transcriptions', fd, {
-      headers: { ...fd.getHeaders(), Authorization: `Bearer ${OPENAI_API_KEY}` }
+      headers: { ...fd.getHeaders(), Authorization: `Bearer ${OPENAI_API_KEY}` },
+      timeout: 90000, // 90 s — Whisper can be slow on long audio
     });
 
     res.json({ ok: true, text: whisperRes.data.text || '' });
