@@ -2371,6 +2371,10 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
         <table class="creator-db-table">
           <thead>
             <tr>
+              <th style="width:28px;padding:8px 6px;">
+                <input type="checkbox" id="creatorsSelectAll" onchange="creatorsSelectAll(this.checked)"
+                  style="width:14px;height:14px;accent-color:var(--teal);cursor:pointer;">
+              </th>
               <th>CREATOR</th>
               <th style="text-align:right;">FOLLOWERS</th>
               <th>BRANDS</th>
@@ -2381,14 +2385,49 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
             </tr>
           </thead>
           <tbody id="creatorsTableBody">
-            <tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted);">Click Community tab to load creators…</td></tr>
+            <tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted);">Click Community tab to load creators…</td></tr>
           </tbody>
         </table>
+      </div>
+
+      <!-- Action bar (shown when creators selected) -->
+      <div id="creatorsActionBar" style="display:none;align-items:center;justify-content:space-between;padding:12px 20px;background:rgba(0,212,200,0.08);border-top:1px solid rgba(0,212,200,0.2);">
+        <span id="creatorsSelCount" style="font-size:12px;font-weight:700;color:var(--teal);"></span>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-ghost" style="font-size:12px;padding:6px 14px;" onclick="_creators.selected.clear();creatorsRender(false)">Clear</button>
+          <button class="btn btn-teal" style="font-size:12px;padding:6px 16px;" onclick="creatorsSmsOpen()">📱 Send SMS</button>
+        </div>
       </div>
 
       <!-- Load more -->
       <div id="creatorsLoadMoreWrap" style="display:none;text-align:center;padding:14px;border-top:1px solid var(--border);">
         <button class="btn btn-ghost" style="font-size:12px;padding:7px 24px;" onclick="_creators.page++;creatorsLoad(true)">Load more</button>
+      </div>
+    </div>
+
+    <!-- SMS Modal -->
+    <div id="creatorsSmsModal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.65);backdrop-filter:blur(4px);align-items:center;justify-content:center;" onclick="if(event.target===this)creatorsSmsClose()">
+      <div style="background:var(--dark-2);border:1px solid var(--border);border-radius:14px;padding:28px;width:100%;max-width:500px;margin:0 16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+          <div style="font-size:15px;font-weight:800;">📱 Send SMS</div>
+          <button onclick="creatorsSmsClose()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1;">×</button>
+        </div>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:0.08em;margin-bottom:8px;">RECIPIENTS</div>
+        <div id="creatorsSmsRecipients" style="max-height:200px;overflow-y:auto;margin-bottom:16px;padding:10px;background:rgba(0,0,0,0.2);border-radius:8px;"></div>
+        <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:0.08em;margin-bottom:6px;">
+          MESSAGE &nbsp;<span id="creatorsSmsCount" style="font-weight:400;color:var(--muted);"></span>
+        </div>
+        <textarea id="creatorsSmsMsg" rows="4" placeholder="Type your message…" maxlength="160"
+          oninput="document.getElementById('creatorsSmsCharCount').textContent=(this.value.length)+' / 160'"
+          style="width:100%;box-sizing:border-box;background:rgba(0,0,0,0.3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;padding:10px;resize:none;outline:none;"></textarea>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:4px;margin-bottom:14px;">
+          <span id="creatorsSmsCharCount" style="font-size:11px;color:var(--muted);">0 / 160</span>
+        </div>
+        <div id="creatorsSmsResult"></div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
+          <button class="btn btn-ghost" style="font-size:13px;" onclick="creatorsSmsClose()">Cancel</button>
+          <button id="creatorsSmsSendBtn" class="btn btn-teal" style="font-size:13px;" onclick="creatorsSmsSend()">Send SMS</button>
+        </div>
       </div>
     </div>
 
@@ -9029,12 +9068,13 @@ async function skipMeetingIntel(id, btn) {
 const _creators = {
   data:        [],
   perf30d:     {},   // handle → { gmv, units, orders }
-  ghlMap:      {},   // handle → { id, name, tags }
+  ghlMap:      {},   // handle → { id, name, phone, email, tags }
   shops:       [],   // [{ id, name }]
   total:       0,
   page:        1,
   loading:     false,
   initialized: false,
+  selected:    new Set(),  // set of selected handles
   filters: {
     shop: 'all',
     search: '',
@@ -9073,9 +9113,9 @@ async function creatorsLoad(append = false) {
 
   const body = document.getElementById('creatorsTableBody');
   if (body && !append) {
-    // Skeleton rows
+    // Skeleton rows (8 cols now)
     body.innerHTML = Array.from({ length: 8 }, () =>
-      `<tr class="creator-db-skel"><td>████████</td><td>█████</td><td>████████████</td><td>██████</td><td>██████</td><td>████</td><td></td></tr>`
+      `<tr class="creator-db-skel"><td></td><td>████████</td><td>█████</td><td>████████████</td><td>██████</td><td>██████</td><td>████</td><td></td></tr>`
     ).join('');
   }
 
@@ -9102,9 +9142,13 @@ async function creatorsLoad(append = false) {
     const shops    = json.shops || [];
 
     if (append) {
+      const prevLen = _creators.data.length;
       _creators.data = _creators.data.concat(rows);
+      // creatorsRender will re-render all; pass prevLen so it knows what's new
+      _creators._appendFrom = prevLen;
     } else {
       _creators.data = rows;
+      _creators._appendFrom = 0;
       _creators.total = pg.total_count || 0;
 
       // Populate shop filter dropdown (first load only)
@@ -9155,19 +9199,28 @@ async function creatorsLoad(append = false) {
 
 async function creatorsLoadPerf30d() {
   try {
-    const r = await fetch('/api/creators/performance', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ page: 1, page_size: 200 }),
-    });
-    const json = await r.json();
-    if (json.data) {
+    // Fetch all pages of 30-day performance data
+    let pg = 1;
+    while (true) {
+      const r = await fetch('/api/creators/performance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ page: pg, page_size: 100 }),
+      });
+      const json = await r.json();
+      if (!json.data?.length) break;
       json.data.forEach(c => {
         const h = (c.creator_handle || '').toLowerCase();
-        if (h) _creators.perf30d[h] = { gmv: c.gmv || 0, units: c.units_sold || 0, orders: c.order_count || 0 };
+        if (!h) return;
+        _creators.perf30d[h] = { gmv: c.gmv || 0, units: c.units_sold || 0, orders: c.order_count || 0 };
+        // Backfill follower_count on creator records that had null from the list endpoint
+        const rec = _creators.data.find(d => (d.creator_handle || '').toLowerCase() === h);
+        if (rec && !rec.follower_count && c.follower_count) rec.follower_count = c.follower_count;
       });
-      creatorsRender(false);
+      if (json.data.length < 100 || pg >= 10) break;
+      pg++;
     }
+    creatorsRender(false);
   } catch (_) {}
 }
 
@@ -9188,23 +9241,15 @@ function creatorsRender(append = false) {
 
   const rows = _creators.data;
   if (!rows.length) {
-    body.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:var(--muted);">No creators found</td></tr>`;
+    body.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted);">No creators found</td></tr>`;
+    creatorsUpdateActionBar();
     return;
   }
 
-  // Colour palette for brand pills (cycles)
-  const PILL_COLORS = [
-    'rgba(0,212,200,0.12)',
-    'rgba(251,191,36,0.12)',
-    'rgba(96,165,250,0.12)',
-    'rgba(244,114,182,0.12)',
-    'rgba(52,211,153,0.12)',
-  ];
-  const PILL_TEXT = ['#00d4c8','#fbbf24','#60a5fa','#f472b6','#34d399'];
-
-  // Build a shop-name → colour index map
+  const PILL_COLORS = ['rgba(0,212,200,0.12)','rgba(251,191,36,0.12)','rgba(96,165,250,0.12)','rgba(244,114,182,0.12)','rgba(52,211,153,0.12)'];
+  const PILL_TEXT   = ['#00d4c8','#fbbf24','#60a5fa','#f472b6','#34d399'];
   const shopColorMap = {};
-  (_creators.shops).forEach((s, i) => { shopColorMap[s.name] = i % PILL_COLORS.length; });
+  _creators.shops.forEach((s, i) => { shopColorMap[s.name] = i % PILL_COLORS.length; });
 
   function fmtFollowers(n) {
     if (!n) return '—';
@@ -9213,16 +9258,19 @@ function creatorsRender(append = false) {
     return String(n);
   }
 
-  const html = rows.map(c => {
+  const renderRows = append ? rows.slice(_creators._appendFrom || 0) : rows;
+
+  const html = renderRows.map(c => {
     const handle    = c.creator_handle || '';
     const handleKey = handle.toLowerCase();
     const ttUrl     = `https://www.tiktok.com/@${handle}`;
     const followers = fmtFollowers(c.follower_count);
-    const shopGmv   = fmtMoney(c.total_shop_gmv || 0);
+    const shopGmv   = c.total_shop_gmv > 0 ? fmtMoney(c.total_shop_gmv) : '—';
     const perf      = _creators.perf30d[handleKey];
     const gmv30d    = perf ? fmtMoney(perf.gmv) : '—';
-    const videos    = c.total_videos || '—';
+    const videos    = c.total_videos > 0 ? c.total_videos : '—';
     const ghlInfo   = _creators.ghlMap[handleKey];
+    const isSel     = _creators.selected.has(handleKey);
 
     const brandPills = (c.shops || []).map(s => {
       const idx = shopColorMap[s.shop_name] ?? 0;
@@ -9233,7 +9281,11 @@ function creatorsRender(append = false) {
       ? `<a href="https://app.gohighlevel.com/contacts/${ghlInfo.id}" target="_blank" title="${x(ghlInfo.name)}" style="color:var(--teal);font-size:14px;text-decoration:none;">🔗</a>`
       : '';
 
-    return `<tr>
+    return `<tr style="${isSel ? 'background:rgba(0,212,200,0.06);' : ''}">
+      <td style="width:28px;padding:8px 6px;">
+        <input type="checkbox" ${isSel ? 'checked' : ''} onchange="creatorsToggleSelect('${handleKey}')"
+          style="width:14px;height:14px;accent-color:var(--teal);cursor:pointer;">
+      </td>
       <td><a href="${ttUrl}" target="_blank" style="color:var(--teal);font-weight:700;text-decoration:none;">@${x(handle)}</a></td>
       <td style="text-align:right;font-variant-numeric:tabular-nums;">${followers}</td>
       <td>${brandPills}</td>
@@ -9245,10 +9297,129 @@ function creatorsRender(append = false) {
   }).join('');
 
   if (append) {
-    // Replace last row if it was a skeleton, otherwise append
     body.insertAdjacentHTML('beforeend', html);
   } else {
     body.innerHTML = html;
+  }
+  creatorsUpdateActionBar();
+}
+
+function creatorsToggleSelect(handleKey) {
+  if (_creators.selected.has(handleKey)) {
+    _creators.selected.delete(handleKey);
+  } else {
+    _creators.selected.add(handleKey);
+  }
+  creatorsUpdateActionBar();
+  // Update row highlight
+  const rows = document.querySelectorAll('#creatorsTableBody tr');
+  rows.forEach(row => {
+    const cb = row.querySelector('input[type=checkbox]');
+    if (!cb) return;
+    const hk = cb.getAttribute('onchange')?.match(/'([^']+)'/)?.[1];
+    if (hk) row.style.background = _creators.selected.has(hk) ? 'rgba(0,212,200,0.06)' : '';
+  });
+}
+
+function creatorsSelectAll(checked) {
+  if (checked) {
+    _creators.data.forEach(c => _creators.selected.add((c.creator_handle || '').toLowerCase()));
+  } else {
+    _creators.selected.clear();
+  }
+  creatorsRender(false);
+}
+
+function creatorsUpdateActionBar() {
+  const bar    = document.getElementById('creatorsActionBar');
+  const countEl = document.getElementById('creatorsSelCount');
+  if (!bar) return;
+  const n = _creators.selected.size;
+  if (n > 0) {
+    bar.style.display = 'flex';
+    const smsable = [..._creators.selected].filter(h => _creators.ghlMap[h]?.phone).length;
+    countEl.textContent = `${n} selected${smsable < n ? ` · ${smsable} have phone numbers` : ''}`;
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+function creatorsSmsOpen() {
+  const modal = document.getElementById('creatorsSmsModal');
+  if (!modal) return;
+
+  // Build list of selected creators with GHL info
+  const recipients = [..._creators.selected].map(h => {
+    const info = _creators.ghlMap[h];
+    return info ? { id: info.id, name: info.name, phone: info.phone, handle: h, hasPhone: !!info.phone } : null;
+  }).filter(Boolean);
+
+  const withPhone    = recipients.filter(r => r.hasPhone);
+  const withoutPhone = recipients.filter(r => !r.hasPhone);
+
+  document.getElementById('creatorsSmsRecipients').innerHTML = withPhone.map(r =>
+    `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;font-size:12px;">
+      <span style="color:var(--green);">✓</span>
+      <span style="font-weight:700;color:var(--teal);">@${x(r.handle)}</span>
+      <span style="color:var(--muted);">${x(r.name)}</span>
+      <span style="margin-left:auto;color:var(--muted);font-size:11px;">${x(r.phone)}</span>
+    </div>`
+  ).join('') + (withoutPhone.length ? `
+    <div style="margin-top:8px;padding:6px 10px;background:rgba(248,113,113,0.08);border-radius:6px;font-size:11px;color:var(--red);">
+      ⚠ ${withoutPhone.length} creator${withoutPhone.length>1?'s':''} not in GHL or missing phone — will be skipped:
+      ${withoutPhone.map(r => `@${x(r.handle)}`).join(', ')}
+    </div>` : '');
+
+  document.getElementById('creatorsSmsCount').textContent = `Sending to ${withPhone.length} creator${withPhone.length!==1?'s':''}`;
+  document.getElementById('creatorsSmsMsg').value = '';
+  document.getElementById('creatorsSmsCharCount').textContent = '0 / 160';
+  document.getElementById('creatorsSmsResult').innerHTML = '';
+  modal.style.display = 'flex';
+}
+
+function creatorsSmsClose() {
+  const modal = document.getElementById('creatorsSmsModal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function creatorsSmsSend() {
+  const msg = document.getElementById('creatorsSmsMsg')?.value?.trim();
+  if (!msg) return;
+
+  const contacts = [..._creators.selected]
+    .map(h => _creators.ghlMap[h])
+    .filter(info => info?.phone)
+    .map(info => ({ id: info.id, name: info.name, phone: info.phone }));
+
+  if (!contacts.length) {
+    document.getElementById('creatorsSmsResult').innerHTML = `<div style="color:var(--red);font-size:12px;">No contacts with phone numbers selected.</div>`;
+    return;
+  }
+
+  const btn = document.getElementById('creatorsSmsSendBtn');
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+  document.getElementById('creatorsSmsResult').innerHTML = '';
+
+  try {
+    const r = await fetch('/api/creators/sms', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contacts, message: msg }),
+    }).then(r => r.json());
+
+    const ok  = r.results?.filter(x => x.ok) || [];
+    const err = r.results?.filter(x => !x.ok) || [];
+    let html = '';
+    if (ok.length)  html += `<div style="color:var(--green);font-size:12px;margin-top:8px;">✓ Sent to ${ok.length} creator${ok.length!==1?'s':''}.</div>`;
+    if (err.length) html += err.map(e => `<div style="color:var(--red);font-size:11px;margin-top:4px;">✗ ${x(e.name)}: ${x(e.error||'Failed')}</div>`).join('');
+    document.getElementById('creatorsSmsResult').innerHTML = html;
+    btn.textContent = 'Send SMS';
+    btn.disabled = false;
+  } catch (e) {
+    document.getElementById('creatorsSmsResult').innerHTML = `<div style="color:var(--red);font-size:12px;margin-top:8px;">Error: ${x(e.message)}</div>`;
+    btn.textContent = 'Send SMS';
+    btn.disabled = false;
   }
 }
 </script>

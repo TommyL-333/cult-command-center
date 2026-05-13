@@ -1535,6 +1535,30 @@ app.get('/api/creators/ghl-map', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// POST /api/creators/sms — bulk SMS to GHL contacts
+// Body: { contacts: [{id, name, phone}], message: string }
+app.post('/api/creators/sms', async (req, res) => {
+  const { contacts, message } = req.body;
+  if (!contacts?.length || !message?.trim()) {
+    return res.status(400).json({ error: 'contacts array and message are required' });
+  }
+  const results = [];
+  for (const c of contacts) {
+    try {
+      await ghl.post('/conversations/messages', {
+        type:      'SMS',
+        contactId: c.id,
+        message:   message.trim(),
+      });
+      results.push({ id: c.id, name: c.name, ok: true });
+    } catch (e) {
+      results.push({ id: c.id, name: c.name, ok: false,
+        error: e.response?.data?.message || e.response?.data?.msg || e.message });
+    }
+  }
+  res.json({ ok: results.every(r => r.ok), results });
+});
+
 // POST /api/command  { text, context?, source? }
 // Fires message to Lark alerts channel via Railway.
 app.post('/api/command', async (req, res) => {
