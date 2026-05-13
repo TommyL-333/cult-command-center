@@ -25,6 +25,10 @@ const TIKTOK_TOKENS_FILE = path.join(DATA_DIR, '.tiktok-tokens.json');
 const UPLOAD_DIR         = path.join(DATA_DIR, 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
+// Public-facing Railway URL — returned in upload responses so Buffer (and browsers) can fetch files
+// without hitting Cloudflare's 100 MB limit.  Override via PUBLIC_BASE_URL env var.
+const PUBLIC_BASE_URL = (process.env.PUBLIC_BASE_URL || 'https://cult-command-center-production.up.railway.app').replace(/\/$/, '');
+
 const app = express();
 
 // ─── Security: HTTPS redirect in production ───────────────────────────────────
@@ -388,6 +392,79 @@ Return JSON: {"companyName":"...","prospectEmail":"...","prospectName":"...","su
       console.error('[meeting-intel] Processing error:', e.message);
     }
   });
+});
+
+// ─── Direct upload endpoint (bypasses Cloudflare) ────────────────────────────
+// This route is registered BEFORE requireAuth so the browser can POST large files
+// straight to the Railway origin URL — Cloudflare only allows ~100 MB through the
+// proxy tunnel, so files > 90 MB must skip it entirely.
+// Auth is a bearer token (WEBHOOK_SECRET) that the dashboard fetches from /api/upload-config
+// after the normal CF-Access session is already established.
+
+const uploadDirect = multer({
+  storage: multer.diskStorage({
+    destination: (_, __, cb) => cb(null, UPLOAD_DIR),
+    filename:    (_, file, cb) => {
+      const ext  = path.extname(file.originalname) || '.mp4';
+      const base = path.basename(file.originalname, ext).replace(/[^a-z0-9_-]/gi, '_').slice(0, 60);
+      cb(null, `${Date.now()}_${base}${ext}`);
+    },
+  }),
+  limits: { fileSize: 500 * 1024 * 1024 }, // 500 MB
+  fileFilter: (_, file, cb) => {
+    const ok = /video|mp4|mov|avi|webm/i.test(file.mimetype + file.originalname)
+            || file.mimetype === 'application/octet-stream';
+    cb(null, ok);
+  },
+});
+
+app.options('/api/upload/video-direct', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin',  'https://manifest.cultcontent.cc');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+  res.sendStatus(204);
+});
+
+app.post('/api/upload/video-direct', uploadDirect.single('video'), (req, res) => {
+  // Allow cross-origin POSTs from the CF-proxied dashboard origin
+  res.setHeader('Access-Control-Allow-Origin',  'https://manifest.cultcontent.cc');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+
+  // Bearer-token auth — generated once at startup from WEBHOOK_SECRET
+  const secret = process.env.WEBHOOK_SECRET;
+  if (secret) {
+    const authHeader = req.headers['authorization'] || '';
+    const token = authHeader.replace(/^Bearer\s+/i, '');
+    if (token !== secret) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+  }
+
+  if (!req.file) return res.status(400).json({ error: 'No file received — check MIME type or file size limit' });
+
+  const localUrl = `/uploads/${req.file.filename}`;
+  const publicUrl = `${PUBLIC_BASE_URL}${localUrl}`;
+
+  const meta = {
+    id:           req.file.filename,
+    originalName: req.file.originalname,
+    filename:     req.file.filename,
+    size:         req.file.size,
+    title:        req.body.title || path.basename(req.file.originalname, path.extname(req.file.originalname)),
+    description:  req.body.description || '',
+    platforms:    req.body.platforms ? req.body.platforms.split(',').map(s => s.trim()) : [],
+    status:       'staged',
+    uploadedAt:   new Date().toISOString(),
+    path:         req.file.path,
+    localUrl,
+  };
+
+  const q = loadQueue();
+  q.unshift(meta);
+  saveQueue(q);
+
+  res.json({ ok: true, url: publicUrl, video: meta });
 });
 
 app.use(requireAuth); // all other routes require auth in production
@@ -1021,7 +1098,11 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage,
   limits: { fileSize: 500 * 1024 * 1024 },   // 500 MB cap
-  fileFilter: (_, file, cb) => cb(null, /video|mp4|mov|avi|webm/i.test(file.mimetype + file.originalname)),
+  fileFilter: (_, file, cb) => {
+    const ok = /video|mp4|mov|avi|webm/i.test(file.mimetype + file.originalname)
+            || file.mimetype === 'application/octet-stream';
+    cb(null, ok);
+  },
 });
 
 // POST /api/proposals/publish — saves HTML to UPLOAD_DIR (public via CF bypass) and returns a shareable link
@@ -1040,27 +1121,38 @@ app.post('/api/proposals/publish', express.json({ limit: '5mb' }), (req, res) =>
   }
 });
 
+// GET /api/upload-config — returns the direct-upload URL + bearer token so the
+// frontend can POST large files straight to Railway, bypassing Cloudflare's ~100 MB limit.
+app.get('/api/upload-config', (req, res) => {
+  res.json({
+    uploadUrl:   `${PUBLIC_BASE_URL}/api/upload/video-direct`,
+    token:       process.env.WEBHOOK_SECRET || '',
+    directThreshold: 90, // MB — files above this go direct
+  });
+});
+
 // POST /api/upload/video
 app.post('/api/upload/video', upload.single('video'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'No file received' });
-  const localUrl = `/uploads/${req.file.filename}`;
+  if (!req.file) return res.status(400).json({ error: 'No file received — unsupported format or file too large' });
+  const localUrl  = `/uploads/${req.file.filename}`;
+  const publicUrl = `${PUBLIC_BASE_URL}${localUrl}`;
   const meta = {
-    id:          req.file.filename,
+    id:           req.file.filename,
     originalName: req.file.originalname,
-    filename:    req.file.filename,
-    size:        req.file.size,
-    title:       req.body.title        || path.basename(req.file.originalname, path.extname(req.file.originalname)),
-    description: req.body.description  || '',
-    platforms:   req.body.platforms    ? req.body.platforms.split(',').map(s => s.trim()) : [],
-    status:      'staged',
-    uploadedAt:  new Date().toISOString(),
-    path:        req.file.path,
+    filename:     req.file.filename,
+    size:         req.file.size,
+    title:        req.body.title       || path.basename(req.file.originalname, path.extname(req.file.originalname)),
+    description:  req.body.description || '',
+    platforms:    req.body.platforms   ? req.body.platforms.split(',').map(s => s.trim()) : [],
+    status:       'staged',
+    uploadedAt:   new Date().toISOString(),
+    path:         req.file.path,
     localUrl,
   };
   const q = loadQueue();
   q.unshift(meta);
   saveQueue(q);
-  res.json({ ok: true, video: meta });
+  res.json({ ok: true, url: publicUrl, video: meta });
 });
 
 // GET /api/upload/queue

@@ -7078,16 +7078,32 @@ async function svuProcessVideo(v) {
   const sizeLabel = v.file.size > MB ? ` (${sizeMB}MB)` : '';
   svuSetStatus(v, 'uploading', `⬆ Uploading${sizeLabel}…`);
 
-  // Warn but don't block if file is large — Cloudflare proxies have a ~100MB limit
-  if (v.file.size > 100 * MB) {
-    svuSetStatus(v, 'uploading', `⬆ Uploading ${sizeMB}MB — large files may take a while…`);
-  }
-
   try {
     const fd = new FormData();
     fd.append('video', v.file);
     fd.append('title', v.file.name.replace(/\.[^.]+$/, ''));
-    const r = await fetch('/api/upload/video', { method: 'POST', body: fd });
+
+    let r;
+    // Files > 90 MB bypass Cloudflare by posting directly to Railway's origin URL.
+    // We first fetch a config object (upload URL + bearer token) from the authenticated
+    // dashboard session, then POST straight to Railway — no CF proxy in the path.
+    if (v.file.size > 90 * MB) {
+      svuSetStatus(v, 'uploading', `⬆ Uploading ${sizeMB}MB directly to server (bypassing CDN)…`);
+      let cfg;
+      try {
+        const cfgRes = await fetch('/api/upload-config');
+        cfg = await cfgRes.json();
+      } catch (e) {
+        svuSetStatus(v, 'error', `✗ Could not fetch upload config — ${e.message}`); return;
+      }
+      r = await fetch(cfg.uploadUrl, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${cfg.token}` },
+        body: fd,
+      });
+    } else {
+      r = await fetch('/api/upload/video', { method: 'POST', body: fd });
+    }
 
     // Explicitly check HTTP status — a 400/413/500 won't throw but IS an error
     if (!r.ok) {
