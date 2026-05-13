@@ -1357,11 +1357,11 @@ function buildBufferInput(channelId, service, text, mediaUrl, scheduledAt) {
 const BUFFER_GQL_MUTATION = `mutation CreatePost($input: CreatePostInput!) {
   createPost(input: $input) {
     ... on PostActionSuccess { post { id dueAt status channelService } }
-    ... on NotFoundError     { message type }
-    ... on UnauthorizedError { message type }
-    ... on InvalidInputError { message type }
-    ... on LimitReachedError { message type }
-    ... on UnexpectedError   { message type }
+    ... on NotFoundError     { message }
+    ... on UnauthorizedError { message }
+    ... on InvalidInputError { message }
+    ... on LimitReachedError { message }
+    ... on UnexpectedError   { message }
   }
 }`;
 
