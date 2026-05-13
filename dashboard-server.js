@@ -1446,6 +1446,95 @@ app.post('/api/reacher/shops/:shopId/samples', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// ─── Creator Database endpoints ───────────────────────────────────────────────
+
+// POST /api/creators/all — aggregate creators across all shops (15-min cache, key by filters)
+app.post('/api/creators/all', async (req, res) => {
+  const { shop = 'all', search = '', sort = 'total_shop_gmv', min_followers = 0, min_gmv = 0, page = 1, page_size = 50 } = req.body;
+  const cacheKey = `creators_all:${shop}:${search}:${sort}:${min_followers}:${min_gmv}:${page}:${page_size}`;
+  try {
+    const data = await cached(cacheKey, 15 * 60_000, async () => {
+      const { data } = await axios.post(
+        `${CFG.railwayUrl}/affiliate/creators/all`,
+        req.body, { timeout: 60_000 }
+      );
+      return data;
+    });
+    res.json(data);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/creators/performance — 30-day top performers across all shops (15-min cache)
+app.post('/api/creators/performance', async (req, res) => {
+  const { start_date = '', end_date = '', page = 1, page_size = 50 } = req.body;
+  const cacheKey = `creators_perf:${start_date}:${end_date}:${page}:${page_size}`;
+  try {
+    const data = await cached(cacheKey, 15 * 60_000, async () => {
+      const { data } = await axios.post(
+        `${CFG.railwayUrl}/affiliate/creators/performance/all`,
+        req.body, { timeout: 60_000 }
+      );
+      return data;
+    });
+    res.json(data);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/creators/ghl-map — TikTok handle → GHL contact info (10-min cache)
+// Searches for contacts tagged "Reacher:" and maps handle → {id, name, phone, email, tags}
+app.get('/api/creators/ghl-map', async (req, res) => {
+  try {
+    const data = await cached('creators_ghl_map', 10 * 60_000, async () => {
+      // GHL contacts/search — fetch contacts tagged with Reacher
+      let page = 1;
+      const allContacts = [];
+      while (true) {
+        let contacts = [];
+        try {
+          const { data: sr } = await ghl.post('/contacts/search', {
+            locationId: CFG.locationId,
+            filters: [{ group: 'AND', filters: [{ field: 'tags', operator: 'contains', value: 'Reacher:' }] }],
+            page,
+            pageLimit: 100,
+          });
+          contacts = sr?.contacts || sr?.data || [];
+        } catch (_) {
+          // Fallback: tag-based search via GET
+          const { data: tr } = await ghl.get('/contacts/', {
+            params: { locationId: CFG.locationId, tags: 'Reacher', limit: 100, skip: (page - 1) * 100 },
+          });
+          contacts = tr?.contacts || [];
+        }
+        if (!contacts.length) break;
+        allContacts.push(...contacts);
+        if (contacts.length < 100) break;
+        page++;
+      }
+
+      // Build handle → contact map
+      const TIKTOK_FIELD = '39UVa4ENm3OeOiafUU1c';
+      const map = {};
+      for (const c of allContacts) {
+        const ttUrl = (c.customFields || []).find(f => f.id === TIKTOK_FIELD)?.value || '';
+        if (!ttUrl) continue;
+        // Extract handle: https://www.tiktok.com/@handle or @handle
+        const match = ttUrl.match(/@([\w.]+)/);
+        if (!match) continue;
+        const handle = match[1].toLowerCase();
+        map[handle] = {
+          id:    c.id,
+          name:  `${c.firstName || ''} ${c.lastName || ''}`.trim() || c.name || handle,
+          phone: c.phone || '',
+          email: c.email || '',
+          tags:  c.tags  || [],
+        };
+      }
+      return map;
+    });
+    res.json(data);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // POST /api/command  { text, context?, source? }
 // Fires message to Lark alerts channel via Railway.
 app.post('/api/command', async (req, res) => {
