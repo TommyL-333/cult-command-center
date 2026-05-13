@@ -6977,14 +6977,20 @@ function svuMakeId() { return 'v' + (_svu._nextId++); }
 function svuHandleDrop(e) {
   e.preventDefault();
   document.getElementById('svuDropZone').style.borderColor = 'var(--border)';
-  const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('video/'));
+  const files = Array.from(e.dataTransfer.files).filter(svuIsVideo);
   svuAddFiles(files);
 }
 
 function svuHandleFiles(input) {
-  const files = Array.from(input.files).filter(f => f.type.startsWith('video/'));
+  const files = Array.from(input.files).filter(svuIsVideo);
   svuAddFiles(files);
   input.value = '';
+}
+
+function svuIsVideo(file) {
+  // Accept by MIME type OR by extension — some browsers/OS report video files as octet-stream
+  if (file.type.startsWith('video/') || file.type === 'application/octet-stream') return true;
+  return /\.(mp4|mov|avi|webm|mkv|m4v|flv|wmv)$/i.test(file.name);
 }
 
 function svuAddFiles(files) {
@@ -7067,16 +7073,37 @@ function svuSetStatus(v, status, msg) {
 
 async function svuProcessVideo(v) {
   // 1. Upload
-  svuSetStatus(v, 'uploading', '⬆ Uploading…');
+  const MB = 1024 * 1024;
+  const sizeMB = (v.file.size / MB).toFixed(0);
+  const sizeLabel = v.file.size > MB ? ` (${sizeMB}MB)` : '';
+  svuSetStatus(v, 'uploading', `⬆ Uploading${sizeLabel}…`);
+
+  // Warn but don't block if file is large — Cloudflare proxies have a ~100MB limit
+  if (v.file.size > 100 * MB) {
+    svuSetStatus(v, 'uploading', `⬆ Uploading ${sizeMB}MB — large files may take a while…`);
+  }
+
   try {
     const fd = new FormData();
     fd.append('video', v.file);
     fd.append('title', v.file.name.replace(/\.[^.]+$/, ''));
     const r = await fetch('/api/upload/video', { method: 'POST', body: fd });
+
+    // Explicitly check HTTP status — a 400/413/500 won't throw but IS an error
+    if (!r.ok) {
+      let errMsg = `Upload failed (${r.status})`;
+      try { const e = await r.json(); errMsg = e.error || errMsg; } catch(_) {}
+      if (r.status === 413) errMsg = `File too large (${sizeMB}MB) — try compressing the video first`;
+      svuSetStatus(v, 'error', `✗ ${errMsg}`); return;
+    }
+
     const data = await r.json();
-    v.uploadedUrl = data.url || `/uploads/${data.filename}`;
+    if (!data.ok || !data.url) {
+      svuSetStatus(v, 'error', `✗ ${data.error || 'Upload failed — no URL returned'}`); return;
+    }
+    v.uploadedUrl = data.url;
   } catch (e) {
-    svuSetStatus(v, 'error', '✗ Upload failed'); return;
+    svuSetStatus(v, 'error', `✗ Upload failed — ${e.message}`); return;
   }
   // 2. Transcribe
   svuSetStatus(v, 'transcribing', '🎤 Transcribing…');
