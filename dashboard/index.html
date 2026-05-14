@@ -2328,6 +2328,12 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
         </div>
       </div>
 
+      <!-- Lark connection banner -->
+      <div id="miLarkBanner" style="display:none;background:rgba(255,185,0,0.08);border:1px solid rgba(255,185,0,0.25);border-radius:10px;padding:12px 16px;margin-bottom:16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+        <div style="font-size:13px">⚠ <strong>Connect your Lark account</strong> to enable Minutes import &amp; automatic transcript syncing</div>
+        <button class="btn btn-teal" style="font-size:12px;padding:6px 16px;font-weight:700;flex-shrink:0" onclick="miConnectLark()">Connect Lark →</button>
+      </div>
+
       <!-- Summary stats -->
       <div id="miStats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px"></div>
 
@@ -9194,12 +9200,31 @@ const MI = { data: null, view: 'clients' };
 
 async function loadMeetingIntel() {
   try {
-    const r = await fetch('/api/client-meetings').then(r => r.json());
+    const [r, status] = await Promise.all([
+      fetch('/api/client-meetings').then(r => r.json()),
+      fetch('/api/lark/oauth/status').then(r => r.json()).catch(() => ({ connected: false })),
+    ]);
     MI.data = r;
+    const banner = document.getElementById('miLarkBanner');
+    if (banner) banner.style.display = status.connected ? 'none' : 'flex';
     miRender();
   } catch(e) {
     document.getElementById('miContent').innerHTML = `<div style="text-align:center;padding:40px;color:var(--red)">Failed to load: ${x(e.message)}</div>`;
   }
+}
+
+function miConnectLark() {
+  window.open('/api/lark/oauth/start', '_blank', 'width=600,height=700');
+  // Poll for connection
+  const poll = setInterval(async () => {
+    const s = await fetch('/api/lark/oauth/status').then(r=>r.json()).catch(()=>({connected:false}));
+    if (s.connected) {
+      clearInterval(poll);
+      const banner = document.getElementById('miLarkBanner');
+      if (banner) banner.style.display = 'none';
+    }
+  }, 2000);
+  setTimeout(() => clearInterval(poll), 120000);
 }
 
 function miSetView(v) {

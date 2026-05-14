@@ -87,6 +87,7 @@ function requireAuth(req, res, next) {
 // ─── Lark API helpers ─────────────────────────────────────────────────────────
 let _larkTenantToken = null;
 let _larkTokenExpiry = 0;
+const LARK_USER_TOKEN_FILE = path.join(DATA_DIR, 'lark-user-token.json');
 
 async function getLarkTenantToken() {
   if (_larkTenantToken && Date.now() < _larkTokenExpiry - 60000) return _larkTenantToken;
@@ -99,6 +100,39 @@ async function getLarkTenantToken() {
   return _larkTenantToken;
 }
 
+// Get stored user access token, refreshing if needed
+async function getLarkUserToken() {
+  let stored = {};
+  try { stored = JSON.parse(fs.readFileSync(LARK_USER_TOKEN_FILE, 'utf8')); } catch(_) {}
+  if (!stored.access_token) return null;
+
+  // Still valid
+  if (stored.expires_at && Date.now() < stored.expires_at - 60000) return stored.access_token;
+
+  // Try refresh
+  if (stored.refresh_token) {
+    try {
+      const r = await axios.post('https://open.larksuite.com/open-apis/authen/v1/refresh_access_token', {
+        grant_type: 'refresh_token',
+        refresh_token: stored.refresh_token,
+        app_id: process.env.LARK_APP_ID,
+        app_secret: process.env.LARK_APP_SECRET,
+      });
+      if (r.data?.code === 0) {
+        const d = r.data.data;
+        const newStored = {
+          access_token:  d.access_token,
+          refresh_token: d.refresh_token,
+          expires_at:    Date.now() + (d.expires_in * 1000),
+        };
+        fs.writeFileSync(LARK_USER_TOKEN_FILE, JSON.stringify(newStored));
+        return d.access_token;
+      }
+    } catch(e) { console.error('[lark-oauth] refresh error:', e.message); }
+  }
+  return null;
+}
+
 async function larkApi(method, path, data) {
   const token = await getLarkTenantToken();
   if (!token) throw new Error('LARK_APP_ID / LARK_APP_SECRET not configured');
@@ -106,14 +140,23 @@ async function larkApi(method, path, data) {
   return r.data;
 }
 
+async function larkUserApi(method, path, data) {
+  const token = await getLarkUserToken();
+  if (!token) throw new Error('Lark user not connected — visit /api/lark/oauth/start');
+  const r = await axios({ method, url: `https://open.larksuite.com/open-apis${path}`, headers: { Authorization: `Bearer ${token}` }, data });
+  return r.data;
+}
+
 // Fetch Lark Minutes transcript for a given minute_token
 async function fetchLarkMinutesTranscript(minuteToken) {
   try {
-    const token = await getLarkTenantToken();
+    // Minutes are user-owned — must use user access token
+    const userToken = await getLarkUserToken();
+    const token = userToken || await getLarkTenantToken();
     const url = `https://open.larksuite.com/open-apis/minutes/v1/minutes/${minuteToken}/transcript`;
-    console.log(`[lark minutes] fetching transcript: ${url}`);
+    console.log(`[lark minutes] fetching transcript (${userToken ? 'user' : 'tenant'} token): ${url}`);
     const r = await axios.get(url, { headers: { Authorization: `Bearer ${token}` } });
-    console.log(`[lark minutes] transcript response code=${r.data?.code} msg=${r.data?.msg} keys=${Object.keys(r.data?.data || {}).join(',')}`);
+    console.log(`[lark minutes] transcript response code=${r.data?.code} msg=${r.data?.msg}`);
     if (r.data?.code !== 0) return null;
     return (r.data?.data?.transcript?.contents || []).map(c => c.content).join('\n');
   } catch(e) {
@@ -125,9 +168,9 @@ async function fetchLarkMinutesTranscript(minuteToken) {
 // Fetch Lark Minutes metadata
 async function fetchLarkMinutesMeta(minuteToken) {
   try {
-    const token = await getLarkTenantToken();
+    const userToken = await getLarkUserToken();
+    const token = userToken || await getLarkTenantToken();
     const url = `https://open.larksuite.com/open-apis/minutes/v1/minutes/${minuteToken}`;
-    console.log(`[lark minutes] fetching meta: ${url}`);
     const r = await axios.get(url, { headers: { Authorization: `Bearer ${token}` } });
     console.log(`[lark minutes] meta response code=${r.data?.code} msg=${r.data?.msg}`);
     if (r.data?.code !== 0) return null;
@@ -465,6 +508,52 @@ Return JSON: {"companyName":"...","prospectEmail":"...","prospectName":"...","su
       console.error('[meeting-intel] Processing error:', e.message);
     }
   });
+});
+
+// ─── Lark OAuth — user token for Minutes access ───────────────────────────────
+// Step 1: redirect user to Lark to authorise
+app.get('/api/lark/oauth/start', requireAuth, (req, res) => {
+  const appId       = process.env.LARK_APP_ID;
+  const redirectUri = encodeURIComponent(`${process.env.PUBLIC_BASE_URL || 'https://cult-command-center-production.up.railway.app'}/api/lark/oauth/callback`);
+  const scope       = encodeURIComponent('minutes:minutes.transcript:export minutes:minutes:readonly minutes:minutes.basic:read');
+  res.redirect(`https://open.larksuite.com/open-apis/authen/v1/authorize?app_id=${appId}&redirect_uri=${redirectUri}&scope=${scope}&state=meeting-intel`);
+});
+
+// Step 2: Lark redirects back here with a code
+app.get('/api/lark/oauth/callback', async (req, res) => {
+  const { code } = req.query;
+  if (!code) return res.send('<h2>Error: no code returned from Lark</h2>');
+  try {
+    const r = await axios.post('https://open.larksuite.com/open-apis/authen/v1/oidc/access_token', {
+      grant_type: 'authorization_code',
+      code,
+      app_id:     process.env.LARK_APP_ID,
+      app_secret: process.env.LARK_APP_SECRET,
+    });
+    if (r.data?.code !== 0) return res.send(`<h2>Lark OAuth error: ${r.data?.msg}</h2>`);
+    const d = r.data.data;
+    fs.writeFileSync(LARK_USER_TOKEN_FILE, JSON.stringify({
+      access_token:  d.access_token,
+      refresh_token: d.refresh_token,
+      expires_at:    Date.now() + (d.expires_in * 1000),
+    }));
+    console.log('[lark-oauth] user token saved successfully');
+    res.send(`<!DOCTYPE html><html><body style="font-family:sans-serif;text-align:center;padding:60px;background:#0d0d0d;color:#fff">
+      <div style="font-size:40px;margin-bottom:16px">✅</div>
+      <h2>Lark connected!</h2>
+      <p style="color:#aaa">You can close this tab and go back to the dashboard.</p>
+      <script>setTimeout(()=>window.close(),2000)</script>
+    </body></html>`);
+  } catch(e) {
+    console.error('[lark-oauth] callback error:', e.message);
+    res.send(`<h2>Error: ${e.message}</h2>`);
+  }
+});
+
+// GET /api/lark/oauth/status — check if user token is stored
+app.get('/api/lark/oauth/status', requireAuth, async (req, res) => {
+  const token = await getLarkUserToken();
+  res.json({ ok: true, connected: !!token });
 });
 
 // ─── Lark Meeting Webhook (vc.meeting.ended) ─────────────────────────────────
