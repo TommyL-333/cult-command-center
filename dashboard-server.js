@@ -3000,6 +3000,155 @@ app.post('/api/meeting-intel/:id/skip', (req, res) => {
   res.json({ ok: true });
 });
 
+// ─── Client Meetings (Lark-based Meeting Intel) ───────────────────────────────
+const CLIENT_MEETINGS_FILE = path.join(DATA_DIR, 'client-meetings.json');
+
+function loadClientMeetings() {
+  try { return JSON.parse(fs.readFileSync(CLIENT_MEETINGS_FILE, 'utf8')); }
+  catch(_) { return { meetings: [] }; }
+}
+function saveClientMeetings(data) {
+  fs.writeFileSync(CLIENT_MEETINGS_FILE, JSON.stringify(data, null, 2));
+}
+
+// GET /api/client-meetings  — all meetings + aggregated intel
+app.get('/api/client-meetings', (req, res) => {
+  const data = loadClientMeetings();
+  const meetings = data.meetings || [];
+
+  // Aggregate action items by client
+  const byClient = {};
+  const byPerson = {};
+  const themeCounts = {};
+
+  for (const m of meetings) {
+    for (const ai of (m.actionItems || [])) {
+      const client = ai.client || m.client || 'General';
+      const assignee = ai.assignee || 'Unassigned';
+      if (!byClient[client]) byClient[client] = [];
+      byClient[client].push({ ...ai, meetingId: m.id, meetingDate: m.date, meetingTitle: m.title });
+      if (!byPerson[assignee]) byPerson[assignee] = [];
+      byPerson[assignee].push({ ...ai, meetingId: m.id, meetingDate: m.date, meetingTitle: m.title, client });
+    }
+    for (const theme of (m.themes || [])) {
+      themeCounts[theme] = (themeCounts[theme] || 0) + 1;
+    }
+  }
+
+  const recurringThemes = Object.entries(themeCounts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([theme, count]) => ({ theme, count }));
+
+  res.json({ ok: true, meetings: meetings.slice(0, 100), byClient, byPerson, recurringThemes });
+});
+
+// POST /api/client-meetings  — add a meeting with AI analysis
+app.post('/api/client-meetings', async (req, res) => {
+  try {
+    const { date, client, participants, notes, title, duration } = req.body;
+    if (!notes) return res.status(400).json({ ok: false, error: 'notes required' });
+
+    const data = loadClientMeetings();
+
+    // AI analysis
+    let actionItems = [], themes = [], summary = '', keyProblems = [];
+    if (process.env.ANTHROPIC_API_KEY) {
+      try {
+        const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+        const msg = await anthropic.messages.create({
+          model: 'claude-sonnet-4-6',
+          max_tokens: 2000,
+          messages: [{
+            role: 'user',
+            content: `You are analyzing meeting notes from a TikTok Shop content/affiliate agency called Cult Content. Extract structured data from these meeting notes.
+
+Meeting details:
+- Date: ${date || 'unknown'}
+- Client: ${client || 'unknown'}
+- Participants: ${(participants || []).join(', ') || 'unknown'}
+- Title: ${title || 'Meeting'}
+
+Meeting notes:
+${notes}
+
+Return ONLY valid JSON with this exact structure:
+{
+  "summary": "2-3 sentence summary of what was discussed",
+  "actionItems": [
+    {
+      "task": "specific action item",
+      "assignee": "person's first name or 'Team'",
+      "client": "client name this relates to (use '${client || 'General'}' if not specified)",
+      "priority": "high|medium|low",
+      "done": false
+    }
+  ],
+  "themes": ["theme1", "theme2"],
+  "keyProblems": ["problem that came up, worded as a short problem statement"]
+}
+
+For assignee: use first names from the participants list. If unclear, use 'Tommy' for owner-level tasks, 'Team' for group tasks.
+For themes: short 2-4 word phrases like "Creator recruitment", "Budget approval", "Content pipeline", "Platform issues"
+For keyProblems: only include if there's a real recurring issue/blocker mentioned. Max 3.
+Return only the JSON, no explanation.`
+          }]
+        });
+        const parsed = JSON.parse(msg.content[0].text.trim().replace(/^```json\n?/, '').replace(/\n?```$/, ''));
+        actionItems = parsed.actionItems || [];
+        themes = parsed.themes || [];
+        summary = parsed.summary || '';
+        keyProblems = parsed.keyProblems || [];
+      } catch(aiErr) {
+        console.error('[client-meetings] AI error:', aiErr.message);
+      }
+    }
+
+    const meeting = {
+      id: `cm_${Date.now()}`,
+      date: date || new Date().toISOString().split('T')[0],
+      client: client || '',
+      title: title || `${client || 'Team'} Meeting`,
+      participants: participants || [],
+      duration: duration || null,
+      notes,
+      summary,
+      actionItems,
+      themes,
+      keyProblems,
+      createdAt: new Date().toISOString()
+    };
+
+    data.meetings.unshift(meeting);
+    saveClientMeetings(data);
+    res.json({ ok: true, meeting });
+  } catch(e) {
+    console.error('[client-meetings]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// DELETE /api/client-meetings/:id
+app.delete('/api/client-meetings/:id', (req, res) => {
+  const data = loadClientMeetings();
+  const before = data.meetings.length;
+  data.meetings = data.meetings.filter(m => m.id !== req.params.id);
+  if (data.meetings.length === before) return res.status(404).json({ ok: false, error: 'Not found' });
+  saveClientMeetings(data);
+  res.json({ ok: true });
+});
+
+// PATCH /api/client-meetings/:id/action/:idx  — toggle action item done
+app.patch('/api/client-meetings/:id/action/:idx', (req, res) => {
+  const data = loadClientMeetings();
+  const m = data.meetings.find(m => m.id === req.params.id);
+  if (!m) return res.status(404).json({ ok: false, error: 'Not found' });
+  const idx = parseInt(req.params.idx, 10);
+  if (!m.actionItems[idx]) return res.status(404).json({ ok: false, error: 'Action not found' });
+  m.actionItems[idx].done = !m.actionItems[idx].done;
+  saveClientMeetings(data);
+  res.json({ ok: true, done: m.actionItems[idx].done });
+});
+
 // ─── Client Brand Management ──────────────────────────────────────────────────
 const BRANDS_FILE = path.join(DATA_DIR, 'brands.json');
 const MEETING_INTEL_FILE = path.join(DATA_DIR, 'meeting-intel.json');

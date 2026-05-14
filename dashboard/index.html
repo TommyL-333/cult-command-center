@@ -2314,8 +2314,74 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
   </div>
   </div>
 
-    <div id="sub-gp-intel" style="display:none;max-width:900px;margin:0 auto">
-      <div id="gpIntelList"><div style="text-align:center;padding:60px 0;color:var(--muted)">Loading meeting intelligence...</div></div>
+    <div id="sub-gp-intel" style="display:none;max-width:960px;margin:0 auto;padding-bottom:60px">
+
+      <!-- Header row -->
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:20px">
+        <div>
+          <h2 class="sec-title" style="margin:0 0 4px">Meeting Intel</h2>
+          <div style="font-size:12px;color:var(--muted)">Action items, themes &amp; recurring issues from all client calls</div>
+        </div>
+        <button class="btn btn-teal" style="font-weight:700;font-size:13px;padding:8px 20px" onclick="miOpenAddModal()">+ Add Meeting</button>
+      </div>
+
+      <!-- Summary stats -->
+      <div id="miStats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px"></div>
+
+      <!-- View toggle -->
+      <div style="display:flex;gap:4px;margin-bottom:20px;background:var(--surface2);border-radius:8px;padding:4px;width:fit-content">
+        <button id="miViewBtnClients" class="btn" onclick="miSetView('clients')" style="font-size:12px;padding:6px 16px;background:var(--teal);color:#fff;border-radius:5px">By Client</button>
+        <button id="miViewBtnPeople" class="btn btn-ghost" onclick="miSetView('people')" style="font-size:12px;padding:6px 16px">By Person</button>
+        <button id="miViewBtnThemes" class="btn btn-ghost" onclick="miSetView('themes')" style="font-size:12px;padding:6px 16px">Themes</button>
+        <button id="miViewBtnMeetings" class="btn btn-ghost" onclick="miSetView('meetings')" style="font-size:12px;padding:6px 16px">All Meetings</button>
+      </div>
+
+      <!-- Main content area -->
+      <div id="miContent"><div style="text-align:center;padding:60px 0;color:var(--muted)">Loading…</div></div>
+
+    </div>
+
+    <!-- Add Meeting Modal -->
+    <div id="miModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center" onclick="if(event.target===this)miCloseModal()">
+      <div class="card" style="width:min(680px,96vw);max-height:90vh;overflow-y:auto;padding:28px 28px 24px;position:relative">
+        <div style="font-size:16px;font-weight:800;margin-bottom:18px">Add Meeting Notes</div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+          <div>
+            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Date</label>
+            <input id="miDate" type="date" class="agent-input" style="width:100%;font-size:13px">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Client</label>
+            <input id="miClient" type="text" class="agent-input" placeholder="e.g. Jinfiniti" style="width:100%;font-size:13px">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Meeting Title</label>
+            <input id="miTitle" type="text" class="agent-input" placeholder="e.g. Weekly Client Call" style="width:100%;font-size:13px">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Duration (min)</label>
+            <input id="miDuration" type="number" class="agent-input" placeholder="45" style="width:100%;font-size:13px">
+          </div>
+        </div>
+        <div style="margin-bottom:12px">
+          <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Participants (comma separated)</label>
+          <input id="miParticipants" type="text" class="agent-input" placeholder="Tommy, Sarah, Client Name" style="width:100%;font-size:13px">
+        </div>
+        <div style="margin-bottom:20px">
+          <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Meeting Notes / Transcript <span style="color:var(--teal)">*</span></label>
+          <textarea id="miNotes" class="agent-input" rows="10" placeholder="Paste your Lark meeting notes or transcript here…&#10;&#10;AI will automatically extract action items, themes, and recurring issues." style="width:100%;font-size:13px;resize:vertical;line-height:1.6"></textarea>
+        </div>
+
+        <div id="miModalError" style="display:none;color:var(--red);font-size:12px;margin-bottom:12px"></div>
+
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button class="btn btn-ghost" onclick="miCloseModal()" style="font-size:13px">Cancel</button>
+          <button id="miSubmitBtn" class="btn btn-teal" onclick="miSubmitMeeting()" style="font-size:13px;font-weight:700;min-width:120px">
+            <span id="miSubmitLabel">Analyze &amp; Save</span>
+          </button>
+        </div>
+      </div>
     </div>
 
 </section>
@@ -9103,110 +9169,320 @@ document.addEventListener('DOMContentLoaded', () => {
   prodLoadClientBrands();
 });
 
-// ─── Meeting Intelligence ─────────────────────────────────────────────────────
+// ─── Meeting Intelligence (Lark-based) ───────────────────────────────────────
+const MI = { data: null, view: 'clients' };
+
 async function loadMeetingIntel() {
   try {
-    const r = await fetch('/api/meeting-intel').then(r => r.json());
-    S.meetingIntel = r.meetings || [];
-    renderMeetingIntel();
+    const r = await fetch('/api/client-meetings').then(r => r.json());
+    MI.data = r;
+    miRender();
   } catch(e) {
-    document.getElementById('gpIntelList').innerHTML = `<div style="text-align:center;padding:40px;color:var(--red)">Failed to load meeting intelligence</div>`;
+    document.getElementById('miContent').innerHTML = `<div style="text-align:center;padding:40px;color:var(--red)">Failed to load: ${x(e.message)}</div>`;
   }
 }
 
-function renderMeetingIntel() {
-  const list = document.getElementById('gpIntelList');
-  if (!list) return;
-  const meetings = S.meetingIntel || [];
-  if (!meetings.length) {
-    list.innerHTML = `<div style="text-align:center;padding:60px 0;color:var(--muted)">
-      <div style="font-size:36px;margin-bottom:12px">🧠</div>
-      <div style="font-weight:700;margin-bottom:6px">No meetings analyzed yet</div>
-      <div style="font-size:12px">Meetings will appear here automatically after Fireflies processes them</div>
-    </div>`;
-    return;
-  }
+function miSetView(v) {
+  MI.view = v;
+  ['clients','people','themes','meetings'].forEach(k => {
+    const btn = document.getElementById(`miViewBtn${k.charAt(0).toUpperCase()+k.slice(1)}`);
+    if (!btn) return;
+    if (k === v) {
+      btn.style.background = 'var(--teal)'; btn.style.color = '#fff'; btn.classList.remove('btn-ghost');
+    } else {
+      btn.style.background = ''; btn.style.color = ''; btn.classList.add('btn-ghost');
+    }
+  });
+  miRender();
+}
 
-  const stageColors = {
-    'Lead': 'var(--muted)',
-    'Discovery Call': 'var(--gold)',
-    'Proposal Sent': '#a78bfa',
-    'Contract Signed': 'var(--teal)',
-    'Active': 'var(--green)',
-    'Long Term Nurture': '#60a5fa',
-    'Disqualified': 'var(--red)',
-  };
+function miRender() {
+  if (!MI.data) return;
+  miRenderStats();
+  const el = document.getElementById('miContent');
+  if (!el) return;
+  if (MI.view === 'clients') el.innerHTML = miRenderByClient();
+  else if (MI.view === 'people') el.innerHTML = miRenderByPerson();
+  else if (MI.view === 'themes') el.innerHTML = miRenderThemes();
+  else if (MI.view === 'meetings') el.innerHTML = miRenderMeetings();
+}
 
-  list.innerHTML = meetings.map(m => {
-    const a = m.analysis || {};
-    const stageColor = stageColors[a.suggestedStageName] || 'var(--muted)';
-    const isApplied = m.status === 'applied';
-    const isSkipped = m.status === 'skipped';
-    const isPending = m.status === 'pending';
-    const hasContact = !!m.ghlContactId;
-    const dateStr = m.date ? new Date(m.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+function miRenderStats() {
+  const el = document.getElementById('miStats');
+  if (!el || !MI.data) return;
+  const meetings = MI.data.meetings || [];
+  const allActions = meetings.flatMap(m => m.actionItems || []);
+  const open = allActions.filter(a => !a.done).length;
+  const done = allActions.filter(a => a.done).length;
+  const themes = (MI.data.recurringThemes || []).filter(t => t.count > 1).length;
+  const clients = [...new Set(meetings.map(m => m.client).filter(Boolean))].length;
+  el.innerHTML = [
+    { label: 'Meetings', val: meetings.length, color: 'var(--teal)' },
+    { label: 'Open Actions', val: open, color: open > 0 ? 'var(--gold)' : 'var(--teal)' },
+    { label: 'Completed', val: done, color: 'var(--green)' },
+    { label: 'Recurring Issues', val: themes, color: themes > 0 ? '#a78bfa' : 'var(--muted)' },
+  ].map(s => `<div class="card" style="padding:16px 18px;text-align:center">
+    <div style="font-size:28px;font-weight:900;color:${s.color}">${s.val}</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:2px">${s.label}</div>
+  </div>`).join('');
+}
 
-    const statusBadge = isApplied
-      ? `<span style="background:var(--green);color:#000;padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700">✓ Applied to GHL</span>`
-      : isSkipped
-      ? `<span style="background:rgba(255,255,255,0.1);color:var(--muted);padding:3px 10px;border-radius:20px;font-size:10px">Skipped</span>`
-      : '';
-
-    const actionBtns = isPending ? `
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
-        ${!hasContact ? `<span style="color:var(--gold);font-size:11px;align-self:center">⚠ No GHL contact found</span>` : ''}
-        <button class="btn btn-teal" style="font-size:11px;padding:5px 14px" onclick="applyMeetingIntel('${m.id}',this)">Apply to GHL</button>
-        <button class="btn btn-ghost" style="font-size:11px;padding:5px 14px" onclick="skipMeetingIntel('${m.id}',this)">Skip</button>
-      </div>` : '';
-
-    return `<div class="card" style="padding:18px 20px;margin-bottom:14px;${isSkipped ? 'opacity:0.5' : ''}">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px">
-        <div>
-          <div style="font-size:15px;font-weight:800">${x(a.companyName || 'Unknown Company')}</div>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">${x(m.prospectEmail || '')} ${dateStr ? '· ' + dateStr : ''}</div>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          ${a.suggestedStageName ? `<span style="background:${stageColor};color:${a.suggestedStageName === 'Lead' ? '#fff' : '#000'};padding:3px 10px;border-radius:20px;font-size:10px;font-weight:700">${x(a.suggestedStageName)}</span>` : ''}
-          ${a.confidence ? `<span style="font-size:10px;color:var(--muted);font-weight:600">${a.confidence.toUpperCase()} confidence</span>` : ''}
-          ${statusBadge}
+function miRenderByClient() {
+  const byClient = MI.data?.byClient || {};
+  const entries = Object.entries(byClient).sort((a,b) => b[1].length - a[1].length);
+  if (!entries.length) return miEmptyState();
+  return entries.map(([client, actions]) => {
+    const open = actions.filter(a => !a.done);
+    const done = actions.filter(a => a.done);
+    return `<div class="card" style="margin-bottom:16px;padding:0;overflow:hidden">
+      <div style="padding:14px 18px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+        <div style="font-weight:800;font-size:14px">${x(client)}</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          ${open.length ? `<span style="background:rgba(255,185,0,0.15);color:var(--gold);padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700">${open.length} open</span>` : ''}
+          ${done.length ? `<span style="background:rgba(20,211,190,0.1);color:var(--teal);padding:2px 10px;border-radius:12px;font-size:11px">${done.length} done</span>` : ''}
         </div>
       </div>
-      ${a.stageReasoning ? `<div style="font-size:12px;color:var(--soft);margin-bottom:10px;line-height:1.6">${x(a.stageReasoning)}</div>` : ''}
-      ${a.meetingSummary ? `<div style="font-size:12px;color:var(--muted);margin-bottom:10px;line-height:1.6;font-style:italic">${x(a.meetingSummary)}</div>` : ''}
-      ${(a.tags||[]).length ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px">${a.tags.map(t => `<span style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.12);padding:2px 8px;border-radius:12px;font-size:10px;color:var(--muted)">${x(t)}</span>`).join('')}</div>` : ''}
-      ${(a.actionItems||[]).length ? `<div style="font-size:11px;margin-bottom:6px">${a.actionItems.map(i => `<div style="color:var(--soft);padding:1px 0">→ ${x(i)}</div>`).join('')}</div>` : ''}
-      ${actionBtns}
+      <div style="padding:10px 0">
+        ${actions.map(a => {
+          const dateStr = a.meetingDate ? new Date(a.meetingDate).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
+          return `<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 18px;border-bottom:1px solid var(--surface2);cursor:pointer" onclick="miToggleAction('${a.meetingId}',${MI.data.meetings.find(m=>m.id===a.meetingId)?.actionItems?.findIndex(ai=>ai.task===a.task&&ai.assignee===a.assignee)??-1})">
+            <div style="width:18px;height:18px;border-radius:4px;border:2px solid ${a.done?'var(--teal)':'rgba(255,255,255,0.2)'};background:${a.done?'var(--teal)':'transparent'};flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center">
+              ${a.done ? '<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' : ''}
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;color:${a.done?'var(--muted)':'var(--fg)'};${a.done?'text-decoration:line-through':''};line-height:1.4">${x(a.task)}</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">${a.assignee ? `@${x(a.assignee)}` : ''} ${dateStr ? '· '+dateStr : ''}</div>
+            </div>
+            <span style="font-size:10px;padding:2px 8px;border-radius:10px;background:${a.priority==='high'?'rgba(255,80,80,0.15)':a.priority==='medium'?'rgba(255,185,0,0.1)':'rgba(255,255,255,0.06)'};color:${a.priority==='high'?'var(--red)':a.priority==='medium'?'var(--gold)':'var(--muted)'};flex-shrink:0">${a.priority||'low'}</span>
+          </div>`;
+        }).join('')}
+      </div>
     </div>`;
   }).join('');
 }
 
-async function applyMeetingIntel(id, btn) {
-  if (btn) { btn.disabled = true; btn.textContent = 'Applying...'; }
+function miRenderByPerson() {
+  const byPerson = MI.data?.byPerson || {};
+  const entries = Object.entries(byPerson).sort((a,b) => b[1].filter(a=>!a.done).length - a[1].filter(a=>!a.done).length);
+  if (!entries.length) return miEmptyState();
+  return entries.map(([person, actions]) => {
+    const open = actions.filter(a => !a.done);
+    const done = actions.filter(a => a.done);
+    return `<div class="card" style="margin-bottom:16px;padding:0;overflow:hidden">
+      <div style="padding:14px 18px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;align-items:center;gap:10px">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--teal);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:#000">${x(person.charAt(0).toUpperCase())}</div>
+          <div style="font-weight:800;font-size:14px">${x(person)}</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          ${open.length ? `<span style="background:rgba(255,185,0,0.15);color:var(--gold);padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700">${open.length} open</span>` : ''}
+          ${done.length ? `<span style="background:rgba(20,211,190,0.1);color:var(--teal);padding:2px 10px;border-radius:12px;font-size:11px">${done.length} done</span>` : ''}
+        </div>
+      </div>
+      <div style="padding:10px 0">
+        ${actions.map(a => {
+          const dateStr = a.meetingDate ? new Date(a.meetingDate).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
+          return `<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 18px;border-bottom:1px solid var(--surface2);cursor:pointer" onclick="miToggleAction('${a.meetingId}',${MI.data.meetings.find(m=>m.id===a.meetingId)?.actionItems?.findIndex(ai=>ai.task===a.task&&ai.assignee===a.assignee)??-1})">
+            <div style="width:18px;height:18px;border-radius:4px;border:2px solid ${a.done?'var(--teal)':'rgba(255,255,255,0.2)'};background:${a.done?'var(--teal)':'transparent'};flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center">
+              ${a.done ? '<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' : ''}
+            </div>
+            <div style="flex:1;min-width:0">
+              <div style="font-size:13px;color:${a.done?'var(--muted)':'var(--fg)'};${a.done?'text-decoration:line-through':''};line-height:1.4">${x(a.task)}</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px">${a.client ? x(a.client)+' · ' : ''}${dateStr}</div>
+            </div>
+            <span style="font-size:10px;padding:2px 8px;border-radius:10px;background:${a.priority==='high'?'rgba(255,80,80,0.15)':a.priority==='medium'?'rgba(255,185,0,0.1)':'rgba(255,255,255,0.06)'};color:${a.priority==='high'?'var(--red)':a.priority==='medium'?'var(--gold)':'var(--muted)'};flex-shrink:0">${a.priority||'low'}</span>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function miRenderThemes() {
+  const themes = MI.data?.recurringThemes || [];
+  const meetings = MI.data?.meetings || [];
+  if (!themes.length) return miEmptyState();
+
+  const maxCount = themes[0]?.count || 1;
+  const themeHtml = themes.map(t => {
+    const pct = Math.round((t.count / maxCount) * 100);
+    const isRecurring = t.count > 1;
+    return `<div class="card" style="margin-bottom:10px;padding:14px 18px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-size:14px;font-weight:700">${x(t.theme)}</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          ${isRecurring ? `<span style="background:rgba(167,139,250,0.15);color:#a78bfa;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700">⚠ Recurring</span>` : ''}
+          <span style="font-size:12px;color:var(--muted)">${t.count} meeting${t.count>1?'s':''}</span>
+        </div>
+      </div>
+      <div style="height:4px;background:var(--surface2);border-radius:2px;overflow:hidden">
+        <div style="height:100%;width:${pct}%;background:${isRecurring?'#a78bfa':'var(--teal)'};border-radius:2px;transition:width 0.3s"></div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Key problems across all meetings
+  const problems = [...new Set(meetings.flatMap(m => m.keyProblems || []))];
+  const problemsHtml = problems.length ? `
+    <div style="margin-top:24px">
+      <div style="font-size:12px;font-weight:700;color:var(--muted);letter-spacing:0.08em;margin-bottom:12px">KEY PROBLEMS FLAGGED</div>
+      ${problems.map(p => `<div class="card" style="padding:12px 16px;margin-bottom:8px;border-left:3px solid var(--red);display:flex;align-items:center;gap:10px">
+        <span style="color:var(--red)">⚡</span>
+        <div style="font-size:13px">${x(p)}</div>
+      </div>`).join('')}
+    </div>` : '';
+
+  return `<div style="margin-bottom:8px;font-size:12px;font-weight:700;color:var(--muted);letter-spacing:0.08em">TOPICS BY FREQUENCY</div>${themeHtml}${problemsHtml}`;
+}
+
+function miRenderMeetings() {
+  const meetings = MI.data?.meetings || [];
+  if (!meetings.length) return miEmptyState();
+  return meetings.map(m => {
+    const dateStr = m.date ? new Date(m.date+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'}) : '';
+    const openCount = (m.actionItems||[]).filter(a=>!a.done).length;
+    return `<div class="card" style="margin-bottom:14px;padding:0;overflow:hidden">
+      <div style="padding:14px 18px 12px;border-bottom:1px solid var(--border)">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div>
+            <div style="font-size:14px;font-weight:800">${x(m.title || 'Meeting')}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:3px">${dateStr}${m.client?' · '+x(m.client):''}${m.duration?' · '+m.duration+'min':''}</div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center">
+            ${openCount ? `<span style="background:rgba(255,185,0,0.15);color:var(--gold);padding:2px 10px;border-radius:12px;font-size:11px">${openCount} open</span>` : '<span style="color:var(--teal);font-size:11px">✓ all done</span>'}
+            <button class="btn btn-ghost" onclick="miDeleteMeeting('${m.id}',this)" style="font-size:10px;padding:3px 10px;color:var(--muted)">Delete</button>
+          </div>
+        </div>
+        ${m.participants?.length ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">${m.participants.map(p=>`<span style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);padding:1px 8px;border-radius:10px;font-size:11px;color:var(--muted)">${x(p)}</span>`).join('')}</div>` : ''}
+        ${m.summary ? `<div style="font-size:12px;color:var(--soft);margin-top:10px;line-height:1.6;font-style:italic">${x(m.summary)}</div>` : ''}
+        ${(m.themes||[]).length ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">${m.themes.map(t=>`<span style="background:rgba(167,139,250,0.1);color:#a78bfa;padding:2px 8px;border-radius:10px;font-size:10px">${x(t)}</span>`).join('')}</div>` : ''}
+      </div>
+      ${(m.actionItems||[]).length ? `<div style="padding:10px 0">
+        ${m.actionItems.map((a,idx) => `<div style="display:flex;align-items:flex-start;gap:10px;padding:7px 18px;cursor:pointer" onclick="miToggleAction('${m.id}',${idx})">
+          <div style="width:16px;height:16px;border-radius:3px;border:2px solid ${a.done?'var(--teal)':'rgba(255,255,255,0.2)'};background:${a.done?'var(--teal)':'transparent'};flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center">
+            ${a.done?'<svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5l2.5 2.5 5-5" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>':''}
+          </div>
+          <div style="flex:1">
+            <span style="font-size:12px;color:${a.done?'var(--muted)':'var(--fg)'};${a.done?'text-decoration:line-through':''}">${x(a.task)}</span>
+            ${a.assignee?`<span style="font-size:10px;color:var(--muted);margin-left:6px">@${x(a.assignee)}</span>`:''}
+          </div>
+        </div>`).join('')}
+      </div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function miEmptyState() {
+  return `<div style="text-align:center;padding:60px 0;color:var(--muted)">
+    <div style="font-size:40px;margin-bottom:12px">🧠</div>
+    <div style="font-size:14px;font-weight:700;margin-bottom:8px">No meetings added yet</div>
+    <div style="font-size:12px;margin-bottom:20px">Paste your Lark meeting notes and AI will extract action items &amp; themes</div>
+    <button class="btn btn-teal" onclick="miOpenAddModal()">+ Add Your First Meeting</button>
+  </div>`;
+}
+
+async function miToggleAction(meetingId, idx) {
+  if (idx < 0) return;
   try {
-    const r = await fetch(`/api/meeting-intel/${id}/apply`, { method: 'POST' }).then(r => r.json());
+    const r = await fetch(`/api/client-meetings/${meetingId}/action/${idx}`, { method: 'PATCH' }).then(r=>r.json());
     if (r.ok) {
-      const m = (S.meetingIntel || []).find(m => m.id === id);
-      if (m) m.status = 'applied';
-      renderMeetingIntel();
-    } else {
-      if (btn) { btn.disabled = false; btn.textContent = 'Apply to GHL'; }
-      alert('Apply failed: ' + (r.error || 'Unknown error'));
+      const m = (MI.data?.meetings||[]).find(m=>m.id===meetingId);
+      if (m?.actionItems?.[idx]) m.actionItems[idx].done = r.done;
+      // Rebuild aggregated views
+      const allMeetings = MI.data.meetings;
+      const byClient = {}, byPerson = {};
+      for (const mt of allMeetings) {
+        for (const ai of (mt.actionItems||[])) {
+          const client = ai.client || mt.client || 'General';
+          const assignee = ai.assignee || 'Unassigned';
+          if (!byClient[client]) byClient[client] = [];
+          byClient[client].push({ ...ai, meetingId: mt.id, meetingDate: mt.date, meetingTitle: mt.title });
+          if (!byPerson[assignee]) byPerson[assignee] = [];
+          byPerson[assignee].push({ ...ai, meetingId: mt.id, meetingDate: mt.date, meetingTitle: mt.title, client });
+        }
+      }
+      MI.data.byClient = byClient;
+      MI.data.byPerson = byPerson;
+      miRender();
     }
+  } catch(e) { console.error('toggle action:', e); }
+}
+
+async function miDeleteMeeting(id, btn) {
+  if (!confirm('Delete this meeting and all its action items?')) return;
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  try {
+    await fetch(`/api/client-meetings/${id}`, { method: 'DELETE' });
+    MI.data.meetings = (MI.data.meetings||[]).filter(m=>m.id!==id);
+    loadMeetingIntel(); // reload for fresh aggregates
   } catch(e) {
-    if (btn) { btn.disabled = false; btn.textContent = 'Apply to GHL'; }
-    alert('Apply failed: ' + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = 'Delete'; }
   }
 }
 
-async function skipMeetingIntel(id, btn) {
-  if (btn) { btn.disabled = true; }
+function miOpenAddModal() {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('miDate').value = today;
+  document.getElementById('miClient').value = '';
+  document.getElementById('miTitle').value = '';
+  document.getElementById('miDuration').value = '';
+  document.getElementById('miParticipants').value = '';
+  document.getElementById('miNotes').value = '';
+  document.getElementById('miModalError').style.display = 'none';
+  document.getElementById('miSubmitLabel').textContent = 'Analyze & Save';
+  document.getElementById('miSubmitBtn').disabled = false;
+  const modal = document.getElementById('miModal');
+  modal.style.display = 'flex';
+}
+
+function miCloseModal() {
+  document.getElementById('miModal').style.display = 'none';
+}
+
+async function miSubmitMeeting() {
+  const notes = document.getElementById('miNotes').value.trim();
+  if (!notes) {
+    document.getElementById('miModalError').style.display = '';
+    document.getElementById('miModalError').textContent = 'Meeting notes are required';
+    return;
+  }
+  const btn = document.getElementById('miSubmitBtn');
+  const label = document.getElementById('miSubmitLabel');
+  btn.disabled = true;
+  label.textContent = '🤖 Analyzing…';
+  document.getElementById('miModalError').style.display = 'none';
+
+  const participants = document.getElementById('miParticipants').value
+    .split(',').map(s=>s.trim()).filter(Boolean);
+
   try {
-    await fetch(`/api/meeting-intel/${id}/skip`, { method: 'POST' });
-    const m = (S.meetingIntel || []).find(m => m.id === id);
-    if (m) m.status = 'skipped';
-    renderMeetingIntel();
+    const r = await fetch('/api/client-meetings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date: document.getElementById('miDate').value,
+        client: document.getElementById('miClient').value.trim(),
+        title: document.getElementById('miTitle').value.trim(),
+        duration: parseInt(document.getElementById('miDuration').value) || null,
+        participants,
+        notes,
+      })
+    }).then(r=>r.json());
+
+    if (r.ok) {
+      miCloseModal();
+      loadMeetingIntel();
+    } else {
+      document.getElementById('miModalError').style.display = '';
+      document.getElementById('miModalError').textContent = r.error || 'Failed to save meeting';
+      btn.disabled = false;
+      label.textContent = 'Analyze & Save';
+    }
   } catch(e) {
-    if (btn) btn.disabled = false;
+    document.getElementById('miModalError').style.display = '';
+    document.getElementById('miModalError').textContent = e.message;
+    btn.disabled = false;
+    label.textContent = 'Analyze & Save';
   }
 }
 
