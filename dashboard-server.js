@@ -544,6 +544,121 @@ app.delete('/api/admin/uploads-purge', express.json(), (req, res) => {
   res.json({ ok: true, results });
 });
 
+// ─── Chunked upload endpoints (pre-auth, bearer-token protected) ─────────────
+// Large files (>90 MB) hit Railway's own 100 MB proxy limit just like Cloudflare.
+// Solution: split into 20 MB chunks in the browser and reassemble here.
+//
+// Flow:
+//   POST /api/upload/chunk  { uploadId, chunkIndex, totalChunks, filename }  + binary body
+//   → when all chunks received, assembles into UPLOAD_DIR and returns { ok, url }
+
+const CHUNKS_DIR = path.join(DATA_DIR, 'chunks');
+if (!fs.existsSync(CHUNKS_DIR)) fs.mkdirSync(CHUNKS_DIR, { recursive: true });
+
+function chunkAuth(req, res) {
+  const secret = process.env.WEBHOOK_SECRET;
+  if (!secret) return true;
+  const token = (req.headers['authorization'] || '').replace(/^Bearer\s+/i, '');
+  if (token !== secret) { res.status(401).json({ error: 'Unauthorized' }); return false; }
+  return true;
+}
+
+// CORS preflight
+app.options('/api/upload/chunk', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin',  'https://manifest.cultcontent.cc');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, X-Upload-Id, X-Chunk-Index, X-Total-Chunks, X-Filename, X-File-Size');
+  res.sendStatus(204);
+});
+
+app.post('/api/upload/chunk', (req, res) => {
+  res.setHeader('Access-Control-Allow-Origin',  'https://manifest.cultcontent.cc');
+  if (!chunkAuth(req, res)) return;
+
+  const uploadId   = req.headers['x-upload-id'];
+  const chunkIndex = parseInt(req.headers['x-chunk-index'], 10);
+  const totalChunks= parseInt(req.headers['x-total-chunks'], 10);
+  const origName   = req.headers['x-filename'] || 'video.mp4';
+  const fileSize   = parseInt(req.headers['x-file-size'] || '0', 10);
+
+  if (!uploadId || isNaN(chunkIndex) || isNaN(totalChunks)) {
+    return res.status(400).json({ error: 'Missing chunk headers' });
+  }
+
+  const sessionDir = path.join(CHUNKS_DIR, uploadId.replace(/[^a-z0-9_-]/gi, '_'));
+  if (!fs.existsSync(sessionDir)) fs.mkdirSync(sessionDir, { recursive: true });
+
+  const chunkPath = path.join(sessionDir, `chunk_${String(chunkIndex).padStart(5, '0')}`);
+
+  // Buffer raw body (chunks are binary, not multipart)
+  const chunks = [];
+  req.on('data', d => chunks.push(d));
+  req.on('end', () => {
+    try {
+      fs.writeFileSync(chunkPath, Buffer.concat(chunks));
+
+      // Check if all chunks have arrived
+      const received = fs.readdirSync(sessionDir).filter(f => f.startsWith('chunk_')).length;
+      if (received < totalChunks) {
+        return res.json({ ok: true, received, totalChunks, done: false });
+      }
+
+      // All chunks here — assemble
+      const ext  = path.extname(origName) || '.mp4';
+      const base = path.basename(origName, ext).replace(/[^a-z0-9_-]/gi, '_').slice(0, 60);
+      const filename = `${Date.now()}_${base}${ext}`;
+      const finalPath = path.join(UPLOAD_DIR, filename);
+
+      const writeStream = fs.createWriteStream(finalPath);
+      const chunkFiles  = fs.readdirSync(sessionDir).filter(f => f.startsWith('chunk_')).sort();
+
+      let idx = 0;
+      function writeNext() {
+        if (idx >= chunkFiles.length) {
+          writeStream.end();
+          return;
+        }
+        const buf = fs.readFileSync(path.join(sessionDir, chunkFiles[idx++]));
+        writeStream.write(buf, writeNext);
+      }
+      writeNext();
+
+      writeStream.on('finish', () => {
+        // Clean up chunk dir
+        try { fs.rmSync(sessionDir, { recursive: true, force: true }); } catch(_) {}
+
+        const localUrl  = `/uploads/${filename}`;
+        const publicUrl = `${PUBLIC_BASE_URL}${localUrl}`;
+
+        const meta = {
+          id:           filename,
+          originalName: origName,
+          filename,
+          size:         fileSize || fs.statSync(finalPath).size,
+          title:        path.basename(origName, ext),
+          description:  '',
+          platforms:    [],
+          status:       'staged',
+          uploadedAt:   new Date().toISOString(),
+          path:         finalPath,
+          localUrl,
+        };
+
+        const q = loadQueue();
+        q.unshift(meta);
+        saveQueue(q);
+
+        res.json({ ok: true, done: true, url: publicUrl, video: meta });
+      });
+
+      writeStream.on('error', e => res.status(500).json({ error: e.message }));
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+  req.on('error', e => res.status(500).json({ error: e.message }));
+});
+
 app.use(requireAuth); // all other routes require auth in production
 
 // Serve index.html with no-cache to prevent Cloudflare/browser serving stale versions

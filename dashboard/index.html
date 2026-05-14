@@ -7083,41 +7083,66 @@ async function svuProcessVideo(v) {
     fd.append('video', v.file);
     fd.append('title', v.file.name.replace(/\.[^.]+$/, ''));
 
-    let r;
-    // Files > 90 MB bypass Cloudflare by posting directly to Railway's origin URL.
-    // We first fetch a config object (upload URL + bearer token) from the authenticated
-    // dashboard session, then POST straight to Railway — no CF proxy in the path.
-    if (v.file.size > 5 * MB) {  // all real videos bypass Cloudflare directly
-      svuSetStatus(v, 'uploading', `⬆ Uploading${sizeLabel}…`);
-      let cfg;
+    // All real videos go direct to Railway via chunked upload (20 MB chunks).
+    // This bypasses both Cloudflare AND Railway's ~100 MB proxy limit entirely.
+    let cfg;
+    try {
+      const cfgRes = await fetch('/api/upload-config');
+      cfg = await cfgRes.json();
+    } catch (e) {
+      svuSetStatus(v, 'error', `✗ Could not fetch upload config — ${e.message}`); return;
+    }
+
+    const CHUNK_SIZE = 20 * MB; // 20 MB chunks — well under any proxy limit
+    const totalChunks = Math.ceil(v.file.size / CHUNK_SIZE);
+    const uploadId = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const baseUrl = cfg.uploadUrl.replace('/video-direct', ''); // e.g. https://railway.app/api/upload
+    const chunkUrl = `${baseUrl.replace(/\/[^/]+$/, '')}/upload/chunk`;
+
+    svuSetStatus(v, 'uploading', `⬆ Uploading 0%…`);
+
+    let lastData = null;
+    for (let i = 0; i < totalChunks; i++) {
+      const start = i * CHUNK_SIZE;
+      const end   = Math.min(start + CHUNK_SIZE, v.file.size);
+      const chunk = v.file.slice(start, end);
+      const pct   = Math.round(((i + 1) / totalChunks) * 100);
+
+      svuSetStatus(v, 'uploading', `⬆ Uploading ${pct}%…`);
+
+      let chunkR;
       try {
-        const cfgRes = await fetch('/api/upload-config');
-        cfg = await cfgRes.json();
+        chunkR = await fetch(chunkUrl, {
+          method: 'POST',
+          headers: {
+            'Authorization':  `Bearer ${cfg.token}`,
+            'X-Upload-Id':    uploadId,
+            'X-Chunk-Index':  String(i),
+            'X-Total-Chunks': String(totalChunks),
+            'X-Filename':     v.file.name,
+            'X-File-Size':    String(v.file.size),
+            'Content-Type':   'application/octet-stream',
+          },
+          body: chunk,
+        });
       } catch (e) {
-        svuSetStatus(v, 'error', `✗ Could not fetch upload config — ${e.message}`); return;
+        svuSetStatus(v, 'error', `✗ Upload failed on chunk ${i+1}/${totalChunks} — ${e.message}`); return;
       }
-      r = await fetch(cfg.uploadUrl, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${cfg.token}` },
-        body: fd,
-      });
-    } else {
-      r = await fetch('/api/upload/video', { method: 'POST', body: fd });
+
+      if (!chunkR.ok) {
+        let msg = `Chunk upload failed (${chunkR.status})`;
+        try { const e = await chunkR.json(); msg = e.error || msg; } catch(_) {}
+        svuSetStatus(v, 'error', `✗ ${msg}`); return;
+      }
+
+      lastData = await chunkR.json();
+      if (!lastData.ok) { svuSetStatus(v, 'error', `✗ ${lastData.error || 'Chunk error'}`); return; }
     }
 
-    // Explicitly check HTTP status — a 400/413/500 won't throw but IS an error
-    if (!r.ok) {
-      let errMsg = `Upload failed (${r.status})`;
-      try { const e = await r.json(); errMsg = e.error || errMsg; } catch(_) {}
-      if (r.status === 413) errMsg = `File too large (${sizeMB}MB) — try compressing the video first`;
-      svuSetStatus(v, 'error', `✗ ${errMsg}`); return;
+    if (!lastData?.url) {
+      svuSetStatus(v, 'error', `✗ Upload finished but no URL returned`); return;
     }
-
-    const data = await r.json();
-    if (!data.ok || !data.url) {
-      svuSetStatus(v, 'error', `✗ ${data.error || 'Upload failed — no URL returned'}`); return;
-    }
-    v.uploadedUrl = data.url;
+    v.uploadedUrl = lastData.url;
   } catch (e) {
     svuSetStatus(v, 'error', `✗ Upload failed — ${e.message}`); return;
   }
