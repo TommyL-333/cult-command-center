@@ -109,11 +109,15 @@ async function larkApi(method, path, data) {
 // Fetch Lark Minutes transcript for a given minute_token
 async function fetchLarkMinutesTranscript(minuteToken) {
   try {
-    const r = await larkApi('GET', `/minutes/v1/minutes/${minuteToken}/transcript`);
-    if (r.code !== 0) return null;
-    return (r.data?.transcript?.contents || []).map(c => c.content).join('\n');
+    const token = await getLarkTenantToken();
+    const url = `https://open.larksuite.com/open-apis/minutes/v1/minutes/${minuteToken}/transcript`;
+    console.log(`[lark minutes] fetching transcript: ${url}`);
+    const r = await axios.get(url, { headers: { Authorization: `Bearer ${token}` } });
+    console.log(`[lark minutes] transcript response code=${r.data?.code} msg=${r.data?.msg} keys=${Object.keys(r.data?.data || {}).join(',')}`);
+    if (r.data?.code !== 0) return null;
+    return (r.data?.data?.transcript?.contents || []).map(c => c.content).join('\n');
   } catch(e) {
-    console.error('[lark minutes] transcript error:', e.message);
+    console.error('[lark minutes] transcript error:', e.message, e.response?.data ? JSON.stringify(e.response.data).slice(0, 200) : '');
     return null;
   }
 }
@@ -121,10 +125,15 @@ async function fetchLarkMinutesTranscript(minuteToken) {
 // Fetch Lark Minutes metadata
 async function fetchLarkMinutesMeta(minuteToken) {
   try {
-    const r = await larkApi('GET', `/minutes/v1/minutes/${minuteToken}`);
-    if (r.code !== 0) return null;
-    return r.data?.minute || null;
+    const token = await getLarkTenantToken();
+    const url = `https://open.larksuite.com/open-apis/minutes/v1/minutes/${minuteToken}`;
+    console.log(`[lark minutes] fetching meta: ${url}`);
+    const r = await axios.get(url, { headers: { Authorization: `Bearer ${token}` } });
+    console.log(`[lark minutes] meta response code=${r.data?.code} msg=${r.data?.msg}`);
+    if (r.data?.code !== 0) return null;
+    return r.data?.data?.minute || null;
   } catch(e) {
+    console.error('[lark minutes] meta error:', e.message, e.response?.data ? JSON.stringify(e.response.data).slice(0, 200) : '');
     return null;
   }
 }
@@ -610,6 +619,7 @@ app.post('/api/admin/lark-minutes-import', requireAuth, async (req, res) => {
     const tokenMatch = url.match(/\/minutes\/([a-z0-9]+)/i) || url.match(/^([a-z0-9]+)$/i);
     if (!tokenMatch) return res.status(400).json({ ok: false, error: 'Could not extract minute token from URL' });
     const minuteToken = tokenMatch[1];
+    console.log(`[lark-import] extracted token: ${minuteToken} from url: ${url}`);
 
     const data = loadClientMeetings();
     if (data.meetings.find(m => m.minuteToken === minuteToken)) {
