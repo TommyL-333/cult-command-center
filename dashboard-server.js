@@ -112,12 +112,15 @@ async function getLarkUserToken() {
   // Try refresh
   if (stored.refresh_token) {
     try {
-      const r = await axios.post('https://open.larksuite.com/open-apis/authen/v1/refresh_access_token', {
-        grant_type: 'refresh_token',
-        refresh_token: stored.refresh_token,
-        app_id: process.env.LARK_APP_ID,
-        app_secret: process.env.LARK_APP_SECRET,
+      const appTokenResp = await axios.post('https://open.larksuite.com/open-apis/auth/v3/app_access_token/internal', {
+        app_id: process.env.LARK_APP_ID, app_secret: process.env.LARK_APP_SECRET,
       });
+      const appToken = appTokenResp.data?.app_access_token;
+      const r = await axios.post(
+        'https://open.larksuite.com/open-apis/authen/v1/oidc/refresh_access_token',
+        { grant_type: 'refresh_token', refresh_token: stored.refresh_token },
+        { headers: { Authorization: `Bearer ${appToken}` } }
+      );
       if (r.data?.code === 0) {
         const d = r.data.data;
         const newStored = {
@@ -521,16 +524,29 @@ app.get('/api/lark/oauth/start', requireAuth, (req, res) => {
 
 // Step 2: Lark redirects back here with a code
 app.get('/api/lark/oauth/callback', async (req, res) => {
-  const { code } = req.query;
+  const { code, error } = req.query;
+  if (error) return res.send(`<h2>Lark denied access: ${error}</h2>`);
   if (!code) return res.send('<h2>Error: no code returned from Lark</h2>');
   try {
-    const r = await axios.post('https://open.larksuite.com/open-apis/authen/v1/oidc/access_token', {
-      grant_type: 'authorization_code',
-      code,
+    // Get app_access_token first (needed as Bearer for OIDC token exchange)
+    const appTokenResp = await axios.post('https://open.larksuite.com/open-apis/auth/v3/app_access_token/internal', {
       app_id:     process.env.LARK_APP_ID,
       app_secret: process.env.LARK_APP_SECRET,
     });
-    if (r.data?.code !== 0) return res.send(`<h2>Lark OAuth error: ${r.data?.msg}</h2>`);
+    const appToken = appTokenResp.data?.app_access_token;
+    console.log('[lark-oauth] app_access_token obtained:', !!appToken);
+
+    // Exchange code for user access token
+    const r = await axios.post(
+      'https://open.larksuite.com/open-apis/authen/v1/oidc/access_token',
+      { grant_type: 'authorization_code', code },
+      { headers: { Authorization: `Bearer ${appToken}`, 'Content-Type': 'application/json' } }
+    );
+    console.log('[lark-oauth] token exchange response:', JSON.stringify(r.data).slice(0, 300));
+
+    if (r.data?.code !== 0) {
+      return res.send(`<h2>Lark OAuth error (${r.data?.code}): ${r.data?.msg}</h2><pre>${JSON.stringify(r.data, null, 2)}</pre>`);
+    }
     const d = r.data.data;
     fs.writeFileSync(LARK_USER_TOKEN_FILE, JSON.stringify({
       access_token:  d.access_token,
@@ -545,8 +561,8 @@ app.get('/api/lark/oauth/callback', async (req, res) => {
       <script>setTimeout(()=>window.close(),2000)</script>
     </body></html>`);
   } catch(e) {
-    console.error('[lark-oauth] callback error:', e.message);
-    res.send(`<h2>Error: ${e.message}</h2>`);
+    console.error('[lark-oauth] callback error:', e.message, e.response?.data);
+    res.send(`<h2>Error: ${e.message}</h2><pre>${JSON.stringify(e.response?.data, null, 2)}</pre>`);
   }
 });
 
