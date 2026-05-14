@@ -1516,10 +1516,29 @@ app.get('/api/arcads/scripts/:id/videos', async (req, res) => {
 
 // Returns platform-specific metadata required by Buffer for YouTube, Instagram, Facebook.
 // Other platforms (TikTok, Twitter/X, LinkedIn) don't need extra fields.
+// Sanitise text per platform constraints before sending to Buffer
+function sanitiseTextForPlatform(service, text) {
+  const svc = (service || '').toLowerCase();
+  const t   = (text || '').trim();
+
+  // Twitter/X: hard 280-char limit. Truncate caption only (preserve hashtags if they fit,
+  // otherwise drop them — a working post is better than a failed one).
+  if (svc === 'twitter' || svc === 'x') {
+    if (t.length <= 280) return t;
+    // Try to keep up to the last sentence/word boundary within 277 chars + "…"
+    const truncated = t.slice(0, 277).replace(/\s+\S*$/, '');
+    return truncated + '…';
+  }
+
+  return t;
+}
+
 function bufferPlatformMetadata(service, text) {
   const svc = (service || '').toLowerCase();
   if (svc === 'youtube') {
-    const title = (text || 'Video').replace(/\n[\s\S]*/, '').trim().slice(0, 100) || 'Video';
+    // Strip characters YouTube rejects in titles: < > and other problematic chars
+    const raw   = (text || 'Video').replace(/\n[\s\S]*/, '').trim();
+    const title = raw.replace(/[<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 100) || 'Video';
     return { youtube: { title, categoryId: '22', privacy: 'public' } };
   }
   if (svc === 'instagram') return { instagram: { type: 'reel', shouldShareToFeed: true } };
@@ -1529,14 +1548,15 @@ function bufferPlatformMetadata(service, text) {
 
 // Shared helper — build a Buffer CreatePostInput using the current API schema
 function buildBufferInput(channelId, service, text, mediaUrl, scheduledAt) {
-  const rawMedia = mediaUrl && mediaUrl.startsWith('/') ? `${PUBLIC_BASE_URL}${mediaUrl}` : mediaUrl;
-  const isImage  = rawMedia && /\.(jpe?g|png|gif|webp)(\?|$)/i.test(rawMedia);
-  const platformMeta = bufferPlatformMetadata(service, text);
+  const rawMedia     = mediaUrl && mediaUrl.startsWith('/') ? `${PUBLIC_BASE_URL}${mediaUrl}` : mediaUrl;
+  const isImage      = rawMedia && /\.(jpe?g|png|gif|webp)(\?|$)/i.test(rawMedia);
+  const safeText     = sanitiseTextForPlatform(service, text);
+  const platformMeta = bufferPlatformMetadata(service, safeText);
   return {
     channelId,
     schedulingType: 'automatic',
     mode: scheduledAt ? 'customScheduled' : 'addToQueue',
-    text: text || '',
+    text: safeText,
     assets: rawMedia ? [isImage ? { image: { url: rawMedia } } : { video: { url: rawMedia } }] : [],
     ...(scheduledAt ? { dueAt: scheduledAt } : {}),
     ...(platformMeta ? { metadata: platformMeta } : {}),
