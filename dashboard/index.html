@@ -2323,6 +2323,7 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
           <div style="font-size:12px;color:var(--muted)">Action items, themes &amp; recurring issues from all client calls</div>
         </div>
         <div style="display:flex;gap:8px">
+          <button id="miFirefliesBtn" class="btn btn-ghost" style="font-size:12px;padding:7px 14px" onclick="miSyncFireflies(this)" title="Pull recent Google Meet transcripts from Fireflies">🔥 Sync Fireflies</button>
           <button id="miReanalyzeBtn" class="btn btn-ghost" style="font-size:12px;padding:7px 14px" onclick="miReanalyze(this)" title="Re-run AI on all meetings with current client list">↻ Re-analyze</button>
           <button class="btn btn-ghost" style="font-size:12px;padding:7px 14px" onclick="miOpenImportModal()" title="Import a meeting from a Lark Minutes URL">🔗 Import from Lark</button>
           <button class="btn btn-teal" style="font-weight:700;font-size:13px;padding:8px 20px" onclick="miOpenAddModal()">+ Add Meeting</button>
@@ -9287,9 +9288,9 @@ function miRenderByClient() {
   const known = MI.knownClients || [];
   const showDone = miShowDone();
 
-  // Only show known clients + Internal; filter unknown AI guesses
+  // Only show known clients — no Internal card in this view
   let entries = Object.entries(byClient)
-    .filter(([client]) => !known.length || known.includes(client) || client === 'Internal' || client === 'General')
+    .filter(([client]) => known.length ? known.includes(client) : (client !== 'Internal' && client !== 'General' && client !== ''))
     .map(([client, actions]) => [client, showDone ? actions : actions.filter(a => !a.done)])
     .filter(([, actions]) => actions.length > 0)
     .sort((a,b) => b[1].filter(a=>!a.done).length - a[1].filter(a=>!a.done).length);
@@ -9486,6 +9487,26 @@ async function miDeleteMeeting(id, btn) {
     loadMeetingIntel(); // reload for fresh aggregates
   } catch(e) {
     if (btn) { btn.disabled = false; btn.textContent = 'Delete'; }
+  }
+}
+
+async function miSyncFireflies(btn) {
+  const orig = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '⏳ Syncing…';
+  try {
+    const r = await fetch('/api/client-meetings/sync-fireflies', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ days: 30 }) }).then(r => r.json());
+    if (r.ok) {
+      btn.textContent = r.added > 0 ? `✓ +${r.added} meetings` : '✓ Up to date';
+      setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 3000);
+      if (r.added > 0) loadMeetingIntel();
+    } else {
+      btn.textContent = '✗ ' + (r.error || 'Failed');
+      setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 4000);
+    }
+  } catch(e) {
+    btn.textContent = '✗ Error';
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 3000);
   }
 }
 

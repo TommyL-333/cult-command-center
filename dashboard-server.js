@@ -3613,6 +3613,119 @@ Return JSON only — no explanation:
   }
 });
 
+// POST /api/client-meetings/sync-fireflies — pull recent Fireflies transcripts into Meeting Intel
+app.post('/api/client-meetings/sync-fireflies', requireAuth, async (req, res) => {
+  try {
+    const keys = [process.env.FIREFLIES_API_KEY, process.env.FIREFLIES_API_KEY_2].filter(Boolean);
+    if (!keys.length) return res.status(400).json({ ok: false, error: 'FIREFLIES_API_KEY not set' });
+
+    const days  = req.body?.days || 30;
+    const since = new Date(Date.now() - days * 86400000).toISOString().split('T')[0];
+
+    // Fetch meeting list from all Fireflies accounts
+    const listQuery = `query { transcripts(limit: 50, fromDate: "${since}") { id title date participants summary { short_summary action_items } } }`;
+    const allMeetings = [];
+    const seen = new Set();
+    for (const key of keys) {
+      try {
+        const r = await axios.post('https://api.fireflies.ai/graphql',
+          { query: listQuery },
+          { headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' } }
+        );
+        for (const t of (r.data?.data?.transcripts || [])) {
+          if (!seen.has(t.id)) { seen.add(t.id); allMeetings.push({ ...t, _key: key }); }
+        }
+      } catch(e) { console.error('[ff-sync] list error:', e.message); }
+    }
+
+    const data = loadClientMeetings();
+    const existingIds = new Set(data.meetings.map(m => m.fireflyId || m.id));
+    const knownClients = (loadBrands().clients || []).map(c => c.name || c.id).filter(Boolean);
+
+    let added = 0;
+    for (const t of allMeetings) {
+      if (existingIds.has(t.id)) continue;
+
+      // Fetch full transcript sentences
+      const txQuery = `query Transcript($id: String!) { transcript(id: $id) { id title date participants sentences { speaker_name text } } }`;
+      let fullTranscript = '';
+      try {
+        const r = await axios.post('https://api.fireflies.ai/graphql',
+          { query: txQuery, variables: { id: t.id } },
+          { headers: { Authorization: `Bearer ${t._key}`, 'Content-Type': 'application/json' } }
+        );
+        const tx = r.data?.data?.transcript;
+        fullTranscript = (tx?.sentences || []).map(s => `${s.speaker_name||'Unknown'}: ${s.text}`).join('\n');
+      } catch(e) { /* use summary fallback */ }
+
+      const notes = fullTranscript || `${t.summary?.short_summary || ''}\n\nAction items:\n${(t.summary?.action_items || []).join('\n')}`;
+      if (!notes.trim()) continue;
+
+      const dateStr = t.date ? new Date(t.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+
+      let actionItems = [], themes = [], summary = '', keyProblems = [], aiClient = '';
+      if (process.env.ANTHROPIC_API_KEY) {
+        try {
+          const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+          const msg = await anthropic.messages.create({
+            model: 'claude-sonnet-4-6', max_tokens: 2000,
+            messages: [{
+              role: 'user',
+              content: `Analyze this meeting transcript from Cult Content agency (TikTok Shop content/affiliate agency).
+
+Known clients (use EXACTLY these names or "Internal"):
+${knownClients.length ? knownClients.join(', ') : 'unknown'}
+
+Meeting: ${t.title} (${dateStr})
+Participants: ${(t.participants||[]).join(', ')||'unknown'}
+
+Transcript:
+${notes.slice(0, 8000)}
+
+Return JSON only:
+{"client":"exact client name or Internal","summary":"","actionItems":[{"task":"","assignee":"","client":"exact client name or Internal","priority":"high|medium|low","done":false}],"themes":[],"keyProblems":[]}`
+            }]
+          });
+          const parsed = JSON.parse(msg.content[0].text.trim().replace(/^```json\n?/, '').replace(/\n?```$/, ''));
+          actionItems = (parsed.actionItems || []).map(ai => ({ ...ai, client: normaliseClientName(ai.client, knownClients) || 'Internal' }));
+          themes      = parsed.themes      || [];
+          summary     = parsed.summary     || '';
+          keyProblems = parsed.keyProblems || [];
+          aiClient    = normaliseClientName(parsed.client, knownClients) || '';
+        } catch(aiErr) { console.error('[ff-sync] AI error:', aiErr.message); }
+      }
+
+      data.meetings.push({
+        id:          `ff_${t.id}`,
+        fireflyId:   t.id,
+        date:        dateStr,
+        client:      aiClient,
+        title:       t.title || 'Google Meet',
+        participants: t.participants || [],
+        duration:    null,
+        notes,
+        summary,
+        actionItems,
+        themes,
+        keyProblems,
+        source:      'fireflies',
+        createdAt:   new Date().toISOString()
+      });
+      existingIds.add(t.id);
+      added++;
+    }
+
+    // Sort newest first
+    data.meetings.sort((a,b) => new Date(b.date) - new Date(a.date));
+    if (added) saveClientMeetings(data);
+    console.log(`[ff-sync] synced ${added}/${allMeetings.length} new meetings from Fireflies`);
+    res.json({ ok: true, added, total: allMeetings.length });
+  } catch(e) {
+    console.error('[ff-sync]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ─── Client Brand Management ──────────────────────────────────────────────────
 const BRANDS_FILE = path.join(DATA_DIR, 'brands.json');
 const MEETING_INTEL_FILE = path.join(DATA_DIR, 'meeting-intel.json');
