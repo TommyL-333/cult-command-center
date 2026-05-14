@@ -598,130 +598,72 @@ Return only the JSON, no explanation.`
 });
 
 // ─── Lark Minutes manual sync — pull recent Minutes docs ─────────────────────
-// GET /api/admin/lark-minutes-sync?since=2025-05-01
-// Searches Lark Drive for Minutes documents (Lark has no list endpoint for minutes).
-app.get('/api/admin/lark-minutes-sync', requireAuth, async (req, res) => {
+// POST /api/admin/lark-minutes-import  — import a single Lark Minutes by URL or token
+// e.g. https://meetings.lark.com/minutes/obcnxxx  or just the token obcnxxx
+app.post('/api/admin/lark-minutes-import', requireAuth, async (req, res) => {
   try {
-    if (!process.env.LARK_APP_ID) return res.status(400).json({ ok: false, error: 'LARK_APP_ID not set' });
+    const { url } = req.body;
+    if (!url) return res.status(400).json({ ok: false, error: 'url required' });
 
-    const sinceDate = req.query.since ? new Date(req.query.since) : new Date(Date.now() - 30 * 86400000);
-    const sinceMs   = sinceDate.getTime();
+    // Extract token from URL like https://meetings.lark.com/minutes/obcnxxxxxx
+    // or https://bytedance.larkoffice.com/minutes/obcnxxxxxx
+    const tokenMatch = url.match(/\/minutes\/([a-z0-9]+)/i) || url.match(/^([a-z0-9]+)$/i);
+    if (!tokenMatch) return res.status(400).json({ ok: false, error: 'Could not extract minute token from URL' });
+    const minuteToken = tokenMatch[1];
 
-    // Lark has no list endpoint for Minutes — search Drive for docs of type 'minutes'
-    // Try the newer drive search endpoint first, fall back to suite search
-    let docs = [];
-    let searchErr = null;
-
-    // Attempt 1: drive/v1/search
-    try {
-      const r1 = await larkApi('POST', '/drive/v1/files/search', {
-        search_key: '',
-        count: 50,
-        offset: 0,
-        docs_types: ['minutes'],
-      });
-      console.log('[lark-sync] drive search response:', JSON.stringify(r1).slice(0, 300));
-      if (r1.code === 0) {
-        docs = r1.data?.files || r1.data?.docs_entities || [];
-      } else {
-        searchErr = `drive/v1: ${r1.msg} (${r1.code})`;
-      }
-    } catch(e1) {
-      searchErr = `drive/v1: ${e1.message}`;
-    }
-
-    // Attempt 2: suite/docs-api/search/object
-    if (!docs.length) {
-      try {
-        const r2 = await larkApi('POST', '/suite/docs-api/search/object', {
-          search_key: '',
-          count: 50,
-          offset: 0,
-          docs_types: ['minutes'],
-        });
-        console.log('[lark-sync] suite search response:', JSON.stringify(r2).slice(0, 300));
-        if (r2.code === 0) {
-          docs = r2.data?.docs_entities || [];
-        } else {
-          searchErr = `suite: ${r2.msg} (${r2.code})`;
-        }
-      } catch(e2) {
-        searchErr = (searchErr ? searchErr + ' | ' : '') + `suite: ${e2.message}`;
-      }
-    }
-
-    if (!docs.length && searchErr) {
-      console.error('[lark-sync] all search attempts failed:', searchErr);
-      return res.status(400).json({ ok: false, error: searchErr });
-    }
     const data = loadClientMeetings();
-    const existingIds = new Set(data.meetings.map(m => m.minuteToken || m.id));
+    if (data.meetings.find(m => m.minuteToken === minuteToken)) {
+      return res.json({ ok: true, alreadyExists: true });
+    }
 
-    let added = 0;
-    for (const doc of docs) {
-      const token = doc.docs_token || doc.token;
-      if (!token) continue;
-      if (existingIds.has(token)) continue;
+    const transcript = await fetchLarkMinutesTranscript(minuteToken);
+    if (!transcript) return res.status(400).json({ ok: false, error: 'Could not fetch transcript — check the app has minutes:minute:readonly permission and the meeting has a transcript' });
 
-      // Filter by date using doc create/edit time if available
-      const docMs = (doc.create_time || doc.edit_time || 0) * 1000;
-      if (docMs && docMs < sinceMs) continue;
+    const meta = await fetchLarkMinutesMeta(minuteToken);
+    const dateStr  = meta?.start_time ? new Date(meta.start_time * 1000).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+    const duration = meta?.duration   ? Math.round(meta.duration / 60) : null;
+    const title    = meta?.title      || 'Lark Meeting';
+    const participants = (meta?.participants || []).map(p => p.name).filter(Boolean);
 
-      const transcript = await fetchLarkMinutesTranscript(token);
-      if (!transcript) continue;
-
-      const dateStr = docMs
-        ? new Date(docMs).toISOString().split('T')[0]
-        : new Date().toISOString().split('T')[0];
-
-      let actionItems = [], themes = [], summary = '', keyProblems = [], aiClient = '';
-      if (process.env.ANTHROPIC_API_KEY) {
-        try {
-          const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-          const msg = await anthropic.messages.create({
-            model: 'claude-sonnet-4-6', max_tokens: 2000,
-            messages: [{
-              role: 'user',
-              content: `Analyze this Lark meeting transcript from Cult Content (a TikTok Shop content/affiliate agency). Return JSON only:
+    let actionItems = [], themes = [], summary = '', keyProblems = [], aiClient = '';
+    if (process.env.ANTHROPIC_API_KEY) {
+      try {
+        const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+        const msg = await anthropic.messages.create({
+          model: 'claude-sonnet-4-6', max_tokens: 2000,
+          messages: [{
+            role: 'user',
+            content: `Analyze this Lark meeting transcript from Cult Content (a TikTok Shop content/affiliate agency). Return JSON only:
 {"client":"","summary":"","actionItems":[{"task":"","assignee":"","client":"","priority":"high|medium|low","done":false}],"themes":[],"keyProblems":[]}
 
 Transcript:
 ${transcript.slice(0, 8000)}`
-            }]
-          });
-          const parsed = JSON.parse(msg.content[0].text.trim().replace(/^```json\n?/, '').replace(/\n?```$/, ''));
-          actionItems = parsed.actionItems || [];
-          themes      = parsed.themes      || [];
-          summary     = parsed.summary     || '';
-          keyProblems = parsed.keyProblems || [];
-          aiClient    = parsed.client      || '';
-        } catch(aiErr) {
-          console.error('[lark-sync] AI error:', aiErr.message);
-        }
+          }]
+        });
+        const parsed = JSON.parse(msg.content[0].text.trim().replace(/^```json\n?/, '').replace(/\n?```$/, ''));
+        actionItems = parsed.actionItems || [];
+        themes      = parsed.themes      || [];
+        summary     = parsed.summary     || '';
+        keyProblems = parsed.keyProblems || [];
+        aiClient    = parsed.client      || '';
+      } catch(aiErr) {
+        console.error('[lark-import] AI error:', aiErr.message);
       }
-
-      data.meetings.unshift({
-        id:          `lark_${token}`,
-        date:        dateStr,
-        client:      aiClient,
-        title:       doc.title || 'Lark Meeting',
-        participants: [],
-        duration:    null,
-        notes:       transcript,
-        summary, actionItems, themes, keyProblems,
-        source:      'lark-sync',
-        minuteToken: token,
-        createdAt:   new Date().toISOString()
-      });
-      existingIds.add(token);
-      added++;
     }
 
-    if (added) saveClientMeetings(data);
-    console.log(`[lark-sync] found ${docs.length} minutes docs, added ${added}`);
-    res.json({ ok: true, added, total: docs.length });
+    const meeting = {
+      id: `lark_${minuteToken}`,
+      date: dateStr, client: aiClient, title, participants, duration,
+      notes: transcript, summary, actionItems, themes, keyProblems,
+      source: 'lark-import', minuteToken,
+      createdAt: new Date().toISOString()
+    };
+    data.meetings.unshift(meeting);
+    saveClientMeetings(data);
+    console.log(`[lark-import] imported: ${title} (${dateStr})`);
+    res.json({ ok: true, meeting });
   } catch(e) {
-    console.error('[lark-sync]', e.message);
+    console.error('[lark-import]', e.message);
     res.status(500).json({ ok: false, error: e.message });
   }
 });

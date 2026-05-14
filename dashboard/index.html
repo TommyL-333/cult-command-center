@@ -2323,7 +2323,7 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
           <div style="font-size:12px;color:var(--muted)">Action items, themes &amp; recurring issues from all client calls</div>
         </div>
         <div style="display:flex;gap:8px">
-          <button id="miSyncBtn" class="btn btn-ghost" style="font-size:12px;padding:7px 14px" onclick="miSyncLark(this)" title="Pull recent meetings from Lark Minutes">↻ Sync Lark</button>
+          <button class="btn btn-ghost" style="font-size:12px;padding:7px 14px" onclick="miOpenImportModal()" title="Import a meeting from a Lark Minutes URL">🔗 Import from Lark</button>
           <button class="btn btn-teal" style="font-weight:700;font-size:13px;padding:8px 20px" onclick="miOpenAddModal()">+ Add Meeting</button>
         </div>
       </div>
@@ -2342,6 +2342,23 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
       <!-- Main content area -->
       <div id="miContent"><div style="text-align:center;padding:60px 0;color:var(--muted)">Loading…</div></div>
 
+    </div>
+
+    <!-- Import from Lark Modal -->
+    <div id="miImportModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:9999;align-items:center;justify-content:center" onclick="if(event.target===this)miCloseImportModal()">
+      <div class="card" style="width:min(520px,96vw);padding:28px;position:relative">
+        <div style="font-size:16px;font-weight:800;margin-bottom:6px">Import from Lark Minutes</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:18px">Open any meeting in Lark Minutes, copy the URL from your browser, and paste it here.</div>
+        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Lark Minutes URL</label>
+        <input id="miImportUrl" type="text" class="agent-input" placeholder="https://meetings.lark.com/minutes/obcn…" style="width:100%;font-size:13px;margin-bottom:16px">
+        <div id="miImportError" style="display:none;color:var(--red);font-size:12px;margin-bottom:12px"></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button class="btn btn-ghost" onclick="miCloseImportModal()" style="font-size:13px">Cancel</button>
+          <button id="miImportBtn" class="btn btn-teal" onclick="miSubmitImport()" style="font-size:13px;font-weight:700;min-width:120px">
+            <span id="miImportLabel">Import &amp; Analyze</span>
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Add Meeting Modal -->
@@ -9423,24 +9440,53 @@ async function miDeleteMeeting(id, btn) {
   }
 }
 
-async function miSyncLark(btn) {
-  const orig = btn.textContent;
+function miOpenImportModal() {
+  document.getElementById('miImportUrl').value = '';
+  document.getElementById('miImportError').style.display = 'none';
+  document.getElementById('miImportLabel').textContent = 'Import & Analyze';
+  document.getElementById('miImportBtn').disabled = false;
+  document.getElementById('miImportModal').style.display = 'flex';
+  setTimeout(() => document.getElementById('miImportUrl').focus(), 50);
+}
+
+function miCloseImportModal() {
+  document.getElementById('miImportModal').style.display = 'none';
+}
+
+async function miSubmitImport() {
+  const url = document.getElementById('miImportUrl').value.trim();
+  if (!url) {
+    document.getElementById('miImportError').style.display = '';
+    document.getElementById('miImportError').textContent = 'Paste a Lark Minutes URL';
+    return;
+  }
+  const btn = document.getElementById('miImportBtn');
+  const label = document.getElementById('miImportLabel');
   btn.disabled = true;
-  btn.textContent = '⏳ Syncing…';
+  label.textContent = '🤖 Importing…';
+  document.getElementById('miImportError').style.display = 'none';
   try {
-    const since = new Date(Date.now() - 30 * 86400000).toISOString().split('T')[0];
-    const r = await fetch(`/api/admin/lark-minutes-sync?since=${since}`).then(r=>r.json());
+    const r = await fetch('/api/admin/lark-minutes-import', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url })
+    }).then(r => r.json());
     if (r.ok) {
-      btn.textContent = r.added > 0 ? `✓ +${r.added} meetings` : '✓ Up to date';
-      setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 3000);
-      if (r.added > 0) loadMeetingIntel();
+      miCloseImportModal();
+      loadMeetingIntel();
+    } else if (r.alreadyExists) {
+      miCloseImportModal();
     } else {
-      btn.textContent = r.error?.includes('LARK_APP_ID') ? '⚠ Not configured' : '✗ Failed';
-      setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 4000);
+      document.getElementById('miImportError').style.display = '';
+      document.getElementById('miImportError').textContent = r.error || 'Import failed';
+      btn.disabled = false;
+      label.textContent = 'Import & Analyze';
     }
   } catch(e) {
-    btn.textContent = '✗ Error';
-    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 3000);
+    document.getElementById('miImportError').style.display = '';
+    document.getElementById('miImportError').textContent = e.message;
+    btn.disabled = false;
+    label.textContent = 'Import & Analyze';
   }
 }
 
