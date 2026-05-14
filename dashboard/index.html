@@ -7017,8 +7017,17 @@ function svuRenderCard(v) {
         <div style="font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${v.file.name}</div>
         <div style="font-size:11px;color:var(--muted);">${(v.file.size/1024/1024).toFixed(1)} MB</div>
       </div>
-      <div id="svuStatus_${v.id}" style="font-size:11px;color:var(--muted);white-space:nowrap;flex-shrink:0;">⏳ Pending</div>
+      <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
+        <div id="svuStatus_${v.id}" style="font-size:11px;color:var(--muted);white-space:nowrap;">⏳ Pending</div>
+        <button id="svuRetry_${v.id}" onclick="svuRetry('${v.id}')"
+          style="display:none;font-size:10px;padding:3px 8px;background:var(--red);color:#fff;border:none;border-radius:4px;cursor:pointer;white-space:nowrap;">↺ Retry</button>
+      </div>
       <button class="btn btn-ghost" style="font-size:11px;padding:4px 8px;flex-shrink:0;" onclick="svuRemoveVideo('${v.id}')">✕</button>
+    </div>
+    <div id="svuProgressWrap_${v.id}" style="display:none;margin-bottom:10px;">
+      <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden;">
+        <div id="svuProgressBar_${v.id}" style="height:100%;width:0%;background:var(--teal);border-radius:2px;transition:width 0.3s ease;"></div>
+      </div>
     </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
       <div>
@@ -7062,13 +7071,40 @@ function svuRenderCard(v) {
   list.appendChild(card);
 }
 
-function svuSetStatus(v, status, msg) {
+function svuSetStatus(v, status, msg, pct) {
   v.status = status;
-  const el = document.getElementById('svuStatus_' + v.id);
+  const el       = document.getElementById('svuStatus_'      + v.id);
+  const retryBtn = document.getElementById('svuRetry_'       + v.id);
+  const progWrap = document.getElementById('svuProgressWrap_'+ v.id);
+  const progBar  = document.getElementById('svuProgressBar_' + v.id);
   if (!el) return;
+
   const colors = { uploading:'var(--teal)', transcribing:'var(--yellow)', captioning:'var(--gold)', ready:'var(--green)', error:'var(--red)', posting:'var(--teal)', done:'var(--green)' };
   el.style.color = colors[status] || 'var(--muted)';
   el.textContent = msg;
+
+  // Progress bar — visible only while uploading
+  if (progWrap) progWrap.style.display = status === 'uploading' ? 'block' : 'none';
+  if (progBar && pct !== undefined) progBar.style.width = pct + '%';
+  if (progBar && status !== 'uploading') progBar.style.width = '0%';
+
+  // Retry button — visible only on error
+  if (retryBtn) retryBtn.style.display = status === 'error' ? 'inline-block' : 'none';
+}
+
+function svuRetry(id) {
+  const v = _svu.videos.find(x => x.id === id);
+  if (!v) return;
+  v.uploadedUrl = null;
+  v.transcript  = '';
+  v.caption     = '';
+  v.hashtags    = [];
+  const ta = document.getElementById('svuTranscript_' + id);
+  const ca = document.getElementById('svuCaption_'    + id);
+  if (ta) ta.value = '';
+  if (ca) ca.value = '';
+  svuSetStatus(v, 'uploading', '⬆ Uploading 0%…', 0);
+  svuProcessVideo(v);
 }
 
 async function svuProcessVideo(v) {
@@ -7099,7 +7135,7 @@ async function svuProcessVideo(v) {
     const baseUrl = cfg.uploadUrl.replace('/video-direct', ''); // e.g. https://railway.app/api/upload
     const chunkUrl = `${baseUrl.replace(/\/[^/]+$/, '')}/upload/chunk`;
 
-    svuSetStatus(v, 'uploading', `⬆ Uploading 0%…`);
+    svuSetStatus(v, 'uploading', `⬆ Uploading 0%…`, 0);
 
     let lastData = null;
     for (let i = 0; i < totalChunks; i++) {
@@ -7108,7 +7144,7 @@ async function svuProcessVideo(v) {
       const chunk = v.file.slice(start, end);
       const pct   = Math.round(((i + 1) / totalChunks) * 100);
 
-      svuSetStatus(v, 'uploading', `⬆ Uploading ${pct}%…`);
+      svuSetStatus(v, 'uploading', `⬆ Uploading ${pct}%…`, pct);
 
       let chunkR;
       try {
