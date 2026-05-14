@@ -2323,6 +2323,7 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
           <div style="font-size:12px;color:var(--muted)">Action items, themes &amp; recurring issues from all client calls</div>
         </div>
         <div style="display:flex;gap:8px">
+          <button id="miReanalyzeBtn" class="btn btn-ghost" style="font-size:12px;padding:7px 14px" onclick="miReanalyze(this)" title="Re-run AI on all meetings with current client list">↻ Re-analyze</button>
           <button class="btn btn-ghost" style="font-size:12px;padding:7px 14px" onclick="miOpenImportModal()" title="Import a meeting from a Lark Minutes URL">🔗 Import from Lark</button>
           <button class="btn btn-teal" style="font-weight:700;font-size:13px;padding:8px 20px" onclick="miOpenAddModal()">+ Add Meeting</button>
         </div>
@@ -9485,6 +9486,26 @@ async function miDeleteMeeting(id, btn) {
     loadMeetingIntel(); // reload for fresh aggregates
   } catch(e) {
     if (btn) { btn.disabled = false; btn.textContent = 'Delete'; }
+  }
+}
+
+async function miReanalyze(btn) {
+  const orig = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '⏳ Re-analyzing…';
+  try {
+    const r = await fetch('/api/client-meetings/reanalyze', { method: 'POST' }).then(r => r.json());
+    if (r.ok) {
+      btn.textContent = `✓ Updated ${r.updated}/${r.total}`;
+      setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 3000);
+      loadMeetingIntel();
+    } else {
+      btn.textContent = '✗ ' + (r.error || 'Failed');
+      setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 4000);
+    }
+  } catch(e) {
+    btn.textContent = '✗ Error';
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 3000);
   }
 }
 

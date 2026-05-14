@@ -3559,6 +3559,60 @@ app.patch('/api/client-meetings/:id/action/:idx', (req, res) => {
   res.json({ ok: true, done: m.actionItems[idx].done });
 });
 
+// POST /api/client-meetings/reanalyze — re-run AI on all stored meetings with current client list
+app.post('/api/client-meetings/reanalyze', requireAuth, async (req, res) => {
+  try {
+    const data = loadClientMeetings();
+    const knownClients = (loadBrands().clients || []).map(c => c.name || c.id).filter(Boolean);
+    if (!process.env.ANTHROPIC_API_KEY) return res.status(400).json({ ok: false, error: 'No Anthropic API key' });
+
+    let updated = 0;
+    for (const m of data.meetings) {
+      if (!m.notes) continue;
+      try {
+        const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+        const msg = await anthropic.messages.create({
+          model: 'claude-sonnet-4-6', max_tokens: 2000,
+          messages: [{
+            role: 'user',
+            content: `Analyze this meeting transcript from Cult Content agency.
+
+Known clients (use EXACTLY these names or "Internal"):
+${knownClients.length ? knownClients.join(', ') : 'unknown'}
+
+Meeting: ${m.title} (${m.date})
+Participants: ${(m.participants||[]).join(', ')||'unknown'}
+
+Transcript:
+${(m.notes||'').slice(0, 8000)}
+
+Return JSON only — no explanation:
+{"client":"exact client name or Internal","summary":"","actionItems":[{"task":"","assignee":"","client":"exact client name or Internal","priority":"high|medium|low","done":false}],"themes":[],"keyProblems":[]}`
+          }]
+        });
+        const parsed = JSON.parse(msg.content[0].text.trim().replace(/^```json\n?/, '').replace(/\n?```$/, ''));
+        m.client      = normaliseClientName(parsed.client, knownClients) || m.client || '';
+        m.summary     = parsed.summary     || m.summary;
+        m.themes      = parsed.themes      || m.themes;
+        m.keyProblems = parsed.keyProblems || m.keyProblems;
+        m.actionItems = (parsed.actionItems || []).map(ai => ({
+          ...ai,
+          client: normaliseClientName(ai.client, knownClients) || 'Internal',
+          done: false,
+        }));
+        updated++;
+      } catch(e) {
+        console.error(`[reanalyze] ${m.id}:`, e.message);
+      }
+    }
+    saveClientMeetings(data);
+    console.log(`[reanalyze] updated ${updated}/${data.meetings.length} meetings`);
+    res.json({ ok: true, updated, total: data.meetings.length });
+  } catch(e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // ─── Client Brand Management ──────────────────────────────────────────────────
 const BRANDS_FILE = path.join(DATA_DIR, 'brands.json');
 const MEETING_INTEL_FILE = path.join(DATA_DIR, 'meeting-intel.json');
