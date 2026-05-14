@@ -599,7 +599,7 @@ Return only the JSON, no explanation.`
 
 // ─── Lark Minutes manual sync — pull recent Minutes docs ─────────────────────
 // GET /api/admin/lark-minutes-sync?since=2025-05-01
-// Can call this from the dashboard to backfill meetings.
+// Searches Lark Drive for Minutes documents (Lark has no list endpoint for minutes).
 app.get('/api/admin/lark-minutes-sync', requireAuth, async (req, res) => {
   try {
     if (!process.env.LARK_APP_ID) return res.status(400).json({ ok: false, error: 'LARK_APP_ID not set' });
@@ -607,25 +607,39 @@ app.get('/api/admin/lark-minutes-sync', requireAuth, async (req, res) => {
     const sinceDate = req.query.since ? new Date(req.query.since) : new Date(Date.now() - 30 * 86400000);
     const sinceMs   = sinceDate.getTime();
 
-    // List recent minutes
-    const listResp = await larkApi('GET', '/minutes/v1/minutes?page_size=50');
-    if (listResp.code !== 0) return res.status(400).json({ ok: false, error: listResp.msg });
+    // Lark has no list endpoint for Minutes — search Drive for docs of type 'minutes'
+    const searchResp = await larkApi('POST', '/suite/docs-api/search/object', {
+      search_key: '',
+      count: 50,
+      offset: 0,
+      docs_types: ['minutes'],
+    });
 
-    const minutes = listResp.data?.minutes || [];
+    if (searchResp.code !== 0) {
+      console.error('[lark-sync] search failed:', searchResp.msg, searchResp.code);
+      return res.status(400).json({ ok: false, error: `Lark search error: ${searchResp.msg || searchResp.code}` });
+    }
+
+    const docs = searchResp.data?.docs_entities || [];
     const data = loadClientMeetings();
     const existingIds = new Set(data.meetings.map(m => m.minuteToken || m.id));
 
     let added = 0;
-    for (const min of minutes) {
-      const createdMs = (min.start_time || 0) * 1000;
-      if (createdMs < sinceMs) continue;
-      if (existingIds.has(min.object_token)) continue;
+    for (const doc of docs) {
+      const token = doc.docs_token;
+      if (!token) continue;
+      if (existingIds.has(token)) continue;
 
-      const transcript = await fetchLarkMinutesTranscript(min.object_token);
+      // Filter by date using doc create/edit time if available
+      const docMs = (doc.create_time || doc.edit_time || 0) * 1000;
+      if (docMs && docMs < sinceMs) continue;
+
+      const transcript = await fetchLarkMinutesTranscript(token);
       if (!transcript) continue;
 
-      const dateStr = new Date(createdMs).toISOString().split('T')[0];
-      const durationMin = min.duration ? Math.round(min.duration / 60) : null;
+      const dateStr = docMs
+        ? new Date(docMs).toISOString().split('T')[0]
+        : new Date().toISOString().split('T')[0];
 
       let actionItems = [], themes = [], summary = '', keyProblems = [], aiClient = '';
       if (process.env.ANTHROPIC_API_KEY) {
@@ -635,7 +649,7 @@ app.get('/api/admin/lark-minutes-sync', requireAuth, async (req, res) => {
             model: 'claude-sonnet-4-6', max_tokens: 2000,
             messages: [{
               role: 'user',
-              content: `Analyze this Lark meeting transcript from Cult Content agency. Return JSON only:
+              content: `Analyze this Lark meeting transcript from Cult Content (a TikTok Shop content/affiliate agency). Return JSON only:
 {"client":"","summary":"","actionItems":[{"task":"","assignee":"","client":"","priority":"high|medium|low","done":false}],"themes":[],"keyProblems":[]}
 
 Transcript:
@@ -648,28 +662,31 @@ ${transcript.slice(0, 8000)}`
           summary     = parsed.summary     || '';
           keyProblems = parsed.keyProblems || [];
           aiClient    = parsed.client      || '';
-        } catch(_) {}
+        } catch(aiErr) {
+          console.error('[lark-sync] AI error:', aiErr.message);
+        }
       }
 
       data.meetings.unshift({
-        id:          `lark_${min.object_token}`,
+        id:          `lark_${token}`,
         date:        dateStr,
         client:      aiClient,
-        title:       min.title || 'Lark Meeting',
-        participants: (min.participants || []).map(p => p.name).filter(Boolean),
-        duration:    durationMin,
+        title:       doc.title || 'Lark Meeting',
+        participants: [],
+        duration:    null,
         notes:       transcript,
         summary, actionItems, themes, keyProblems,
         source:      'lark-sync',
-        minuteToken: min.object_token,
+        minuteToken: token,
         createdAt:   new Date().toISOString()
       });
-      existingIds.add(min.object_token);
+      existingIds.add(token);
       added++;
     }
 
     if (added) saveClientMeetings(data);
-    res.json({ ok: true, added, total: minutes.length });
+    console.log(`[lark-sync] found ${docs.length} minutes docs, added ${added}`);
+    res.json({ ok: true, added, total: docs.length });
   } catch(e) {
     console.error('[lark-sync]', e.message);
     res.status(500).json({ ok: false, error: e.message });
