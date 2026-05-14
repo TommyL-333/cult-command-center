@@ -159,7 +159,7 @@ async function fetchLarkMinutesTranscript(minuteToken) {
     const url = `https://open.larksuite.com/open-apis/minutes/v1/minutes/${minuteToken}/transcript`;
     console.log(`[lark minutes] fetching transcript (${userToken ? 'user' : 'tenant'} token): ${url}`);
     const r = await axios.get(url, { headers: { Authorization: `Bearer ${token}` } });
-    console.log(`[lark minutes] transcript response code=${r.data?.code} msg=${r.data?.msg} hasData=${!!r.data?.data}`);
+    console.log(`[lark minutes] transcript raw response:`, JSON.stringify(r.data).slice(0, 500));
     if (r.data?.code !== undefined && r.data?.code !== 0) return null;
     const contents = r.data?.data?.transcript?.contents || r.data?.transcript?.contents || [];
     console.log(`[lark minutes] got ${contents.length} transcript segments`);
