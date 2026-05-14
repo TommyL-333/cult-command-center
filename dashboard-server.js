@@ -608,25 +608,58 @@ app.get('/api/admin/lark-minutes-sync', requireAuth, async (req, res) => {
     const sinceMs   = sinceDate.getTime();
 
     // Lark has no list endpoint for Minutes — search Drive for docs of type 'minutes'
-    const searchResp = await larkApi('POST', '/suite/docs-api/search/object', {
-      search_key: '',
-      count: 50,
-      offset: 0,
-      docs_types: ['minutes'],
-    });
+    // Try the newer drive search endpoint first, fall back to suite search
+    let docs = [];
+    let searchErr = null;
 
-    if (searchResp.code !== 0) {
-      console.error('[lark-sync] search failed:', searchResp.msg, searchResp.code);
-      return res.status(400).json({ ok: false, error: `Lark search error: ${searchResp.msg || searchResp.code}` });
+    // Attempt 1: drive/v1/search
+    try {
+      const r1 = await larkApi('POST', '/drive/v1/files/search', {
+        search_key: '',
+        count: 50,
+        offset: 0,
+        docs_types: ['minutes'],
+      });
+      console.log('[lark-sync] drive search response:', JSON.stringify(r1).slice(0, 300));
+      if (r1.code === 0) {
+        docs = r1.data?.files || r1.data?.docs_entities || [];
+      } else {
+        searchErr = `drive/v1: ${r1.msg} (${r1.code})`;
+      }
+    } catch(e1) {
+      searchErr = `drive/v1: ${e1.message}`;
     }
 
-    const docs = searchResp.data?.docs_entities || [];
+    // Attempt 2: suite/docs-api/search/object
+    if (!docs.length) {
+      try {
+        const r2 = await larkApi('POST', '/suite/docs-api/search/object', {
+          search_key: '',
+          count: 50,
+          offset: 0,
+          docs_types: ['minutes'],
+        });
+        console.log('[lark-sync] suite search response:', JSON.stringify(r2).slice(0, 300));
+        if (r2.code === 0) {
+          docs = r2.data?.docs_entities || [];
+        } else {
+          searchErr = `suite: ${r2.msg} (${r2.code})`;
+        }
+      } catch(e2) {
+        searchErr = (searchErr ? searchErr + ' | ' : '') + `suite: ${e2.message}`;
+      }
+    }
+
+    if (!docs.length && searchErr) {
+      console.error('[lark-sync] all search attempts failed:', searchErr);
+      return res.status(400).json({ ok: false, error: searchErr });
+    }
     const data = loadClientMeetings();
     const existingIds = new Set(data.meetings.map(m => m.minuteToken || m.id));
 
     let added = 0;
     for (const doc of docs) {
-      const token = doc.docs_token;
+      const token = doc.docs_token || doc.token;
       if (!token) continue;
       if (existingIds.has(token)) continue;
 
