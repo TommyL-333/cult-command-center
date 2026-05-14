@@ -1204,7 +1204,7 @@ app.get('/api/upload-config', (req, res) => {
   res.json({
     uploadUrl:   `${PUBLIC_BASE_URL}/api/upload/video-direct`,
     token:       process.env.WEBHOOK_SECRET || '',
-    directThreshold: 90, // MB — files above this go direct
+    directThreshold: 5, // MB — all real videos go direct, bypassing Cloudflare
   });
 });
 

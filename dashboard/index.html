@@ -7087,8 +7087,8 @@ async function svuProcessVideo(v) {
     // Files > 90 MB bypass Cloudflare by posting directly to Railway's origin URL.
     // We first fetch a config object (upload URL + bearer token) from the authenticated
     // dashboard session, then POST straight to Railway — no CF proxy in the path.
-    if (v.file.size > 90 * MB) {
-      svuSetStatus(v, 'uploading', `⬆ Uploading ${sizeMB}MB directly to server (bypassing CDN)…`);
+    if (v.file.size > 5 * MB) {  // all real videos bypass Cloudflare directly
+      svuSetStatus(v, 'uploading', `⬆ Uploading${sizeLabel}…`);
       let cfg;
       try {
         const cfgRes = await fetch('/api/upload-config');
