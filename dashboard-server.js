@@ -3748,6 +3748,17 @@ function saveMeetingIntel(data) {
 let _intelWriteLock = false;
 
 // GET /api/brands — list all client brands
+// Temporary debug endpoint
+app.get('/api/debug/meeting-intel', requireAuth, (req, res) => {
+  const brands = loadBrands();
+  const meetings = loadClientMeetings();
+  res.json({
+    knownClients: (brands.clients || []).map(c => ({ id: c.id, name: c.name })),
+    meetingCount: meetings.meetings.length,
+    meetings: meetings.meetings.map(m => ({ id: m.id, title: m.title, client: m.client, source: m.source, actionClientTags: [...new Set((m.actionItems||[]).map(a=>a.client))] }))
+  });
+});
+
 app.get('/api/brands', (req, res) => {
   res.json(loadBrands());
 });
