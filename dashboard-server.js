@@ -742,6 +742,7 @@ app.post('/api/admin/lark-minutes-import', requireAuth, async (req, res) => {
     const title    = meta?.title      || 'Lark Meeting';
     const participants = (meta?.participants || []).map(p => p.name).filter(Boolean);
 
+    const knownClients = (loadBrands().clients || []).map(c => c.name || c.id).filter(Boolean);
     let actionItems = [], themes = [], summary = '', keyProblems = [], aiClient = '';
     if (process.env.ANTHROPIC_API_KEY) {
       try {
@@ -750,19 +751,27 @@ app.post('/api/admin/lark-minutes-import', requireAuth, async (req, res) => {
           model: 'claude-sonnet-4-6', max_tokens: 2000,
           messages: [{
             role: 'user',
-            content: `Analyze this Lark meeting transcript from Cult Content (a TikTok Shop content/affiliate agency). Return JSON only:
-{"client":"","summary":"","actionItems":[{"task":"","assignee":"","client":"","priority":"high|medium|low","done":false}],"themes":[],"keyProblems":[]}
+            content: `Analyze this Lark meeting transcript from Cult Content (a TikTok Shop content/affiliate agency).
+
+Known clients (use EXACTLY these names or "Internal"):
+${knownClients.length ? knownClients.join(', ') : 'unknown'}
+
+Return JSON only:
+{"client":"exact client name from the list above or Internal","summary":"","actionItems":[{"task":"","assignee":"","client":"exact client name or Internal","priority":"high|medium|low","done":false}],"themes":[],"keyProblems":[]}
 
 Transcript:
 ${transcript.slice(0, 8000)}`
           }]
         });
         const parsed = JSON.parse(msg.content[0].text.trim().replace(/^```json\n?/, '').replace(/\n?```$/, ''));
-        actionItems = parsed.actionItems || [];
+        actionItems = (parsed.actionItems || []).map(ai => ({
+          ...ai,
+          client: normaliseClientName(ai.client, knownClients) || 'Internal',
+        }));
         themes      = parsed.themes      || [];
         summary     = parsed.summary     || '';
         keyProblems = parsed.keyProblems || [];
-        aiClient    = parsed.client      || '';
+        aiClient    = normaliseClientName(parsed.client, knownClients) || '';
       } catch(aiErr) {
         console.error('[lark-import] AI error:', aiErr.message);
       }
@@ -3372,6 +3381,27 @@ app.post('/api/meeting-intel/:id/skip', (req, res) => {
   res.json({ ok: true });
 });
 
+// ─── Client name normalisation ────────────────────────────────────────────────
+// Match an AI-guessed client name against the canonical client list.
+// Returns the canonical name if a close match is found, otherwise returns null.
+function normaliseClientName(guessed, knownClients) {
+  if (!guessed || !knownClients?.length) return guessed || '';
+  const g = guessed.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (!g) return '';
+  // Exact or contained match
+  for (const c of knownClients) {
+    const k = c.toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (k === g || k.includes(g) || g.includes(k)) return c;
+  }
+  // Partial token overlap (e.g. "amandia" → "DIAMANDIA")
+  for (const c of knownClients) {
+    const k = c.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const overlap = [...g].filter((ch, i) => k.includes(g.slice(Math.max(0,i-1), i+3))).length;
+    if (overlap >= Math.min(4, g.length * 0.6)) return c;
+  }
+  return ''; // couldn't match — treat as internal
+}
+
 // ─── Client Meetings (Lark-based Meeting Intel) ───────────────────────────────
 const CLIENT_MEETINGS_FILE = path.join(DATA_DIR, 'client-meetings.json');
 
@@ -3387,6 +3417,7 @@ function saveClientMeetings(data) {
 app.get('/api/client-meetings', (req, res) => {
   const data = loadClientMeetings();
   const meetings = data.meetings || [];
+  const knownClients = (loadBrands().clients || []).map(c => c.name || c.id).filter(Boolean);
 
   // Aggregate action items by client
   const byClient = {};
@@ -3411,7 +3442,7 @@ app.get('/api/client-meetings', (req, res) => {
     .sort((a, b) => b[1] - a[1])
     .map(([theme, count]) => ({ theme, count }));
 
-  res.json({ ok: true, meetings: meetings.slice(0, 100), byClient, byPerson, recurringThemes });
+  res.json({ ok: true, meetings: meetings.slice(0, 100), byClient, byPerson, recurringThemes, knownClients });
 });
 
 // POST /api/client-meetings  — add a meeting with AI analysis
@@ -3421,6 +3452,7 @@ app.post('/api/client-meetings', async (req, res) => {
     if (!notes) return res.status(400).json({ ok: false, error: 'notes required' });
 
     const data = loadClientMeetings();
+    const knownClients = (loadBrands().clients || []).map(c => c.name || c.id).filter(Boolean);
 
     // AI analysis
     let actionItems = [], themes = [], summary = '', keyProblems = [];
@@ -3433,6 +3465,9 @@ app.post('/api/client-meetings', async (req, res) => {
           messages: [{
             role: 'user',
             content: `You are analyzing meeting notes from a TikTok Shop content/affiliate agency called Cult Content. Extract structured data from these meeting notes.
+
+Known clients (use EXACTLY these names or "Internal" for team-only topics):
+${knownClients.length ? knownClients.join(', ') : 'unknown — use your best guess'}
 
 Meeting details:
 - Date: ${date || 'unknown'}
@@ -3450,7 +3485,7 @@ Return ONLY valid JSON with this exact structure:
     {
       "task": "specific action item",
       "assignee": "person's first name or 'Team'",
-      "client": "client name this relates to (use '${client || 'General'}' if not specified)",
+      "client": "use one of the known client names exactly, or 'Internal' for internal tasks",
       "priority": "high|medium|low",
       "done": false
     }
@@ -3466,7 +3501,10 @@ Return only the JSON, no explanation.`
           }]
         });
         const parsed = JSON.parse(msg.content[0].text.trim().replace(/^```json\n?/, '').replace(/\n?```$/, ''));
-        actionItems = parsed.actionItems || [];
+        actionItems = (parsed.actionItems || []).map(ai => ({
+          ...ai,
+          client: normaliseClientName(ai.client, knownClients) || ai.client || 'Internal',
+        }));
         themes = parsed.themes || [];
         summary = parsed.summary || '';
         keyProblems = parsed.keyProblems || [];
@@ -3478,7 +3516,7 @@ Return only the JSON, no explanation.`
     const meeting = {
       id: `cm_${Date.now()}`,
       date: date || new Date().toISOString().split('T')[0],
-      client: client || '',
+      client: normaliseClientName(client, knownClients) || client || '',
       title: title || `${client || 'Team'} Meeting`,
       participants: participants || [],
       duration: duration || null,

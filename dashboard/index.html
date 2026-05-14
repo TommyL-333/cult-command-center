@@ -2337,12 +2337,18 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
       <!-- Summary stats -->
       <div id="miStats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px"></div>
 
-      <!-- View toggle -->
-      <div style="display:flex;gap:4px;margin-bottom:20px;background:var(--surface2);border-radius:8px;padding:4px;width:fit-content">
+      <!-- View toggle + hide completed -->
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px">
+      <div style="display:flex;gap:4px;background:var(--surface2);border-radius:8px;padding:4px;width:fit-content">
         <button id="miViewBtnClients" class="btn" onclick="miSetView('clients')" style="font-size:12px;padding:6px 16px;background:var(--teal);color:#fff;border-radius:5px">By Client</button>
         <button id="miViewBtnPeople" class="btn btn-ghost" onclick="miSetView('people')" style="font-size:12px;padding:6px 16px">By Person</button>
         <button id="miViewBtnThemes" class="btn btn-ghost" onclick="miSetView('themes')" style="font-size:12px;padding:6px 16px">Themes</button>
         <button id="miViewBtnMeetings" class="btn btn-ghost" onclick="miSetView('meetings')" style="font-size:12px;padding:6px 16px">All Meetings</button>
+      </div>
+      <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);cursor:pointer;user-select:none">
+        <input type="checkbox" id="miShowDone" onchange="miRender()" style="accent-color:var(--teal);width:14px;height:14px">
+        Show completed
+      </label>
       </div>
 
       <!-- Main content area -->
@@ -9205,6 +9211,7 @@ async function loadMeetingIntel() {
       fetch('/api/lark/oauth/status').then(r => r.json()).catch(() => ({ connected: false })),
     ]);
     MI.data = r;
+    MI.knownClients = r.knownClients || [];
     const banner = document.getElementById('miLarkBanner');
     if (banner) banner.style.display = status.connected ? 'none' : 'flex';
     miRender();
@@ -9272,9 +9279,20 @@ function miRenderStats() {
   </div>`).join('');
 }
 
+function miShowDone() { return document.getElementById('miShowDone')?.checked; }
+
 function miRenderByClient() {
   const byClient = MI.data?.byClient || {};
-  const entries = Object.entries(byClient).sort((a,b) => b[1].length - a[1].length);
+  const known = MI.knownClients || [];
+  const showDone = miShowDone();
+
+  // Only show known clients + Internal; filter unknown AI guesses
+  let entries = Object.entries(byClient)
+    .filter(([client]) => !known.length || known.includes(client) || client === 'Internal' || client === 'General')
+    .map(([client, actions]) => [client, showDone ? actions : actions.filter(a => !a.done)])
+    .filter(([, actions]) => actions.length > 0)
+    .sort((a,b) => b[1].filter(a=>!a.done).length - a[1].filter(a=>!a.done).length);
+
   if (!entries.length) return miEmptyState();
   return entries.map(([client, actions]) => {
     const open = actions.filter(a => !a.done);
@@ -9308,7 +9326,11 @@ function miRenderByClient() {
 
 function miRenderByPerson() {
   const byPerson = MI.data?.byPerson || {};
-  const entries = Object.entries(byPerson).sort((a,b) => b[1].filter(a=>!a.done).length - a[1].filter(a=>!a.done).length);
+  const showDone = miShowDone();
+  const entries = Object.entries(byPerson)
+    .map(([person, actions]) => [person, showDone ? actions : actions.filter(a => !a.done)])
+    .filter(([, actions]) => actions.length > 0)
+    .sort((a,b) => b[1].filter(a=>!a.done).length - a[1].filter(a=>!a.done).length);
   if (!entries.length) return miEmptyState();
   return entries.map(([person, actions]) => {
     const open = actions.filter(a => !a.done);
@@ -9402,8 +9424,9 @@ function miRenderMeetings() {
         ${m.summary ? `<div style="font-size:12px;color:var(--soft);margin-top:10px;line-height:1.6;font-style:italic">${x(m.summary)}</div>` : ''}
         ${(m.themes||[]).length ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:8px">${m.themes.map(t=>`<span style="background:rgba(167,139,250,0.1);color:#a78bfa;padding:2px 8px;border-radius:10px;font-size:10px">${x(t)}</span>`).join('')}</div>` : ''}
       </div>
-      ${(m.actionItems||[]).length ? `<div style="padding:10px 0">
-        ${m.actionItems.map((a,idx) => `<div style="display:flex;align-items:flex-start;gap:10px;padding:7px 18px;cursor:pointer" onclick="miToggleAction('${m.id}',${idx})">
+      ${(m.actionItems||[]).filter(a=>miShowDone()||!a.done).length ? `<div style="padding:10px 0">
+        ${m.actionItems.map((a,idx) => ((!miShowDone()&&a.done)?'':
+        `<div style="display:flex;align-items:flex-start;gap:10px;padding:7px 18px;cursor:pointer" onclick="miToggleAction('${m.id}',${idx})">
           <div style="width:16px;height:16px;border-radius:3px;border:2px solid ${a.done?'var(--teal)':'rgba(255,255,255,0.2)'};background:${a.done?'var(--teal)':'transparent'};flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center">
             ${a.done?'<svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5l2.5 2.5 5-5" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>':''}
           </div>
@@ -9411,7 +9434,7 @@ function miRenderMeetings() {
             <span style="font-size:12px;color:${a.done?'var(--muted)':'var(--fg)'};${a.done?'text-decoration:line-through':''}">${x(a.task)}</span>
             ${a.assignee?`<span style="font-size:10px;color:var(--muted);margin-left:6px">@${x(a.assignee)}</span>`:''}
           </div>
-        </div>`).join('')}
+        </div>`)).join('')}
       </div>` : ''}
     </div>`;
   }).join('');
