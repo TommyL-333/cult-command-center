@@ -84,9 +84,54 @@ function requireAuth(req, res, next) {
   next();
 }
 
+// ─── Lark API helpers ─────────────────────────────────────────────────────────
+let _larkTenantToken = null;
+let _larkTokenExpiry = 0;
+
+async function getLarkTenantToken() {
+  if (_larkTenantToken && Date.now() < _larkTokenExpiry - 60000) return _larkTenantToken;
+  const appId     = process.env.LARK_APP_ID;
+  const appSecret = process.env.LARK_APP_SECRET;
+  if (!appId || !appSecret) return null;
+  const r = await axios.post('https://open.larksuite.com/open-apis/auth/v3/tenant_access_token/internal', { app_id: appId, app_secret: appSecret });
+  _larkTenantToken = r.data.tenant_access_token;
+  _larkTokenExpiry = Date.now() + (r.data.expire * 1000);
+  return _larkTenantToken;
+}
+
+async function larkApi(method, path, data) {
+  const token = await getLarkTenantToken();
+  if (!token) throw new Error('LARK_APP_ID / LARK_APP_SECRET not configured');
+  const r = await axios({ method, url: `https://open.larksuite.com/open-apis${path}`, headers: { Authorization: `Bearer ${token}` }, data });
+  return r.data;
+}
+
+// Fetch Lark Minutes transcript for a given minute_token
+async function fetchLarkMinutesTranscript(minuteToken) {
+  try {
+    const r = await larkApi('GET', `/minutes/v1/minutes/${minuteToken}/transcript`);
+    if (r.code !== 0) return null;
+    return (r.data?.transcript?.contents || []).map(c => c.content).join('\n');
+  } catch(e) {
+    console.error('[lark minutes] transcript error:', e.message);
+    return null;
+  }
+}
+
+// Fetch Lark Minutes metadata
+async function fetchLarkMinutesMeta(minuteToken) {
+  try {
+    const r = await larkApi('GET', `/minutes/v1/minutes/${minuteToken}`);
+    if (r.code !== 0) return null;
+    return r.data?.minute || null;
+  } catch(e) {
+    return null;
+  }
+}
+
 // Capture raw body for HMAC verification on webhook routes, parse JSON for everything else
 app.use((req, res, next) => {
-  if (req.path === '/api/webhooks/fireflies-meeting') {
+  if (req.path === '/api/webhooks/lark-meeting' || req.path === '/api/webhooks/fireflies-meeting') {
     let raw = '';
     req.setEncoding('utf8');
     req.on('data', chunk => { raw += chunk; });
@@ -411,6 +456,224 @@ Return JSON: {"companyName":"...","prospectEmail":"...","prospectName":"...","su
       console.error('[meeting-intel] Processing error:', e.message);
     }
   });
+});
+
+// ─── Lark Meeting Webhook (vc.meeting.ended) ─────────────────────────────────
+// Registered BEFORE requireAuth — Lark calls this directly with no CF session.
+// Verification: Lark sends X-Lark-Signature header (HMAC-SHA256 of timestamp+nonce+body).
+// Set LARK_VERIFICATION_TOKEN in Railway env.
+app.post('/api/webhooks/lark-meeting', async (req, res) => {
+  const body = req.body || {};
+
+  // Step 1: Lark URL verification challenge (sent once when you register the webhook URL)
+  if (body.type === 'url_verification' || body.challenge) {
+    return res.json({ challenge: body.challenge });
+  }
+
+  // Step 2: Verify token (simple token check — Lark sends this in every event)
+  const verifyToken = process.env.LARK_VERIFICATION_TOKEN;
+  if (verifyToken && body.header?.token && body.header.token !== verifyToken) {
+    console.warn('[lark-webhook] token mismatch');
+    return res.status(401).json({ ok: false });
+  }
+
+  // Ack immediately
+  res.json({ ok: true });
+
+  const eventType = body.header?.event_type || body.event_type;
+  if (eventType !== 'vc.meeting.ended') return;
+
+  setImmediate(async () => {
+    try {
+      const event = body.event || {};
+      const minuteToken = event.minute_token || event.minuteToken;
+      const meetingNo   = event.meeting_no || event.meetingNo || '';
+      const topic       = event.topic || '';
+      const startTime   = event.meeting_start_time ? new Date(Number(event.meeting_start_time) * 1000) : new Date();
+      const endTime     = event.meeting_end_time   ? new Date(Number(event.meeting_end_time)   * 1000) : new Date();
+      const durationMin = Math.round((endTime - startTime) / 60000);
+
+      // Build participant list
+      const participants = (event.participants || []).map(p => p.name || p.user_name).filter(Boolean);
+
+      let transcript = null;
+      if (minuteToken) {
+        transcript = await fetchLarkMinutesTranscript(minuteToken);
+      }
+
+      if (!transcript && !topic) {
+        console.log('[lark-webhook] No transcript or topic, skipping');
+        return;
+      }
+
+      const notes = transcript || `Meeting: ${topic}\nDuration: ${durationMin} minutes\nParticipants: ${participants.join(', ')}`;
+      const dateStr = startTime.toISOString().split('T')[0];
+
+      // Use same AI analysis as manual add
+      const data = loadClientMeetings();
+      let actionItems = [], themes = [], summary = '', keyProblems = [];
+
+      if (process.env.ANTHROPIC_API_KEY) {
+        try {
+          const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+          const msg = await anthropic.messages.create({
+            model: 'claude-sonnet-4-6',
+            max_tokens: 2000,
+            messages: [{
+              role: 'user',
+              content: `You are analyzing meeting notes from a TikTok Shop content/affiliate agency called Cult Content. Extract structured data from these meeting notes.
+
+Meeting details:
+- Date: ${dateStr}
+- Topic: ${topic || 'Team Meeting'}
+- Participants: ${participants.join(', ') || 'unknown'}
+- Duration: ${durationMin} min
+
+Meeting transcript/notes:
+${notes}
+
+Return ONLY valid JSON with this exact structure:
+{
+  "client": "client company name if this is a client call, or empty string if internal",
+  "summary": "2-3 sentence summary of what was discussed",
+  "actionItems": [
+    {
+      "task": "specific action item",
+      "assignee": "person's first name or 'Team'",
+      "client": "client name or 'Internal'",
+      "priority": "high|medium|low",
+      "done": false
+    }
+  ],
+  "themes": ["theme1", "theme2"],
+  "keyProblems": ["problem statement"]
+}
+
+Return only the JSON, no explanation.`
+            }]
+          });
+          const parsed = JSON.parse(msg.content[0].text.trim().replace(/^```json\n?/, '').replace(/\n?```$/, ''));
+          actionItems  = parsed.actionItems  || [];
+          themes       = parsed.themes       || [];
+          summary      = parsed.summary      || '';
+          keyProblems  = parsed.keyProblems  || [];
+          // Use AI-detected client if none in event
+          var aiClient = parsed.client || '';
+        } catch(aiErr) {
+          console.error('[lark-webhook] AI error:', aiErr.message);
+        }
+      }
+
+      const meeting = {
+        id:           `lark_${meetingNo || Date.now()}`,
+        date:         dateStr,
+        client:       aiClient || '',
+        title:        topic || 'Lark Meeting',
+        participants,
+        duration:     durationMin,
+        notes,
+        summary,
+        actionItems,
+        themes,
+        keyProblems,
+        source:       'lark-auto',
+        minuteToken:  minuteToken || null,
+        createdAt:    new Date().toISOString()
+      };
+
+      // Deduplicate by meeting number
+      const existing = data.meetings.findIndex(m => m.id === meeting.id);
+      if (existing >= 0) {
+        console.log(`[lark-webhook] duplicate meeting ${meeting.id}, skipping`);
+        return;
+      }
+
+      data.meetings.unshift(meeting);
+      saveClientMeetings(data);
+      console.log(`[lark-webhook] Auto-added meeting: ${meeting.title} (${dateStr})`);
+    } catch(e) {
+      console.error('[lark-webhook] Processing error:', e.message);
+    }
+  });
+});
+
+// ─── Lark Minutes manual sync — pull recent Minutes docs ─────────────────────
+// GET /api/admin/lark-minutes-sync?since=2025-05-01
+// Can call this from the dashboard to backfill meetings.
+app.get('/api/admin/lark-minutes-sync', requireAuth, async (req, res) => {
+  try {
+    if (!process.env.LARK_APP_ID) return res.status(400).json({ ok: false, error: 'LARK_APP_ID not set' });
+
+    const sinceDate = req.query.since ? new Date(req.query.since) : new Date(Date.now() - 30 * 86400000);
+    const sinceMs   = sinceDate.getTime();
+
+    // List recent minutes
+    const listResp = await larkApi('GET', '/minutes/v1/minutes?page_size=50');
+    if (listResp.code !== 0) return res.status(400).json({ ok: false, error: listResp.msg });
+
+    const minutes = listResp.data?.minutes || [];
+    const data = loadClientMeetings();
+    const existingIds = new Set(data.meetings.map(m => m.minuteToken || m.id));
+
+    let added = 0;
+    for (const min of minutes) {
+      const createdMs = (min.start_time || 0) * 1000;
+      if (createdMs < sinceMs) continue;
+      if (existingIds.has(min.object_token)) continue;
+
+      const transcript = await fetchLarkMinutesTranscript(min.object_token);
+      if (!transcript) continue;
+
+      const dateStr = new Date(createdMs).toISOString().split('T')[0];
+      const durationMin = min.duration ? Math.round(min.duration / 60) : null;
+
+      let actionItems = [], themes = [], summary = '', keyProblems = [], aiClient = '';
+      if (process.env.ANTHROPIC_API_KEY) {
+        try {
+          const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+          const msg = await anthropic.messages.create({
+            model: 'claude-sonnet-4-6', max_tokens: 2000,
+            messages: [{
+              role: 'user',
+              content: `Analyze this Lark meeting transcript from Cult Content agency. Return JSON only:
+{"client":"","summary":"","actionItems":[{"task":"","assignee":"","client":"","priority":"high|medium|low","done":false}],"themes":[],"keyProblems":[]}
+
+Transcript:
+${transcript.slice(0, 8000)}`
+            }]
+          });
+          const parsed = JSON.parse(msg.content[0].text.trim().replace(/^```json\n?/, '').replace(/\n?```$/, ''));
+          actionItems = parsed.actionItems || [];
+          themes      = parsed.themes      || [];
+          summary     = parsed.summary     || '';
+          keyProblems = parsed.keyProblems || [];
+          aiClient    = parsed.client      || '';
+        } catch(_) {}
+      }
+
+      data.meetings.unshift({
+        id:          `lark_${min.object_token}`,
+        date:        dateStr,
+        client:      aiClient,
+        title:       min.title || 'Lark Meeting',
+        participants: (min.participants || []).map(p => p.name).filter(Boolean),
+        duration:    durationMin,
+        notes:       transcript,
+        summary, actionItems, themes, keyProblems,
+        source:      'lark-sync',
+        minuteToken: min.object_token,
+        createdAt:   new Date().toISOString()
+      });
+      existingIds.add(min.object_token);
+      added++;
+    }
+
+    if (added) saveClientMeetings(data);
+    res.json({ ok: true, added, total: minutes.length });
+  } catch(e) {
+    console.error('[lark-sync]', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 // ─── Direct upload endpoint (bypasses Cloudflare) ────────────────────────────
