@@ -159,9 +159,11 @@ async function fetchLarkMinutesTranscript(minuteToken) {
     const url = `https://open.larksuite.com/open-apis/minutes/v1/minutes/${minuteToken}/transcript`;
     console.log(`[lark minutes] fetching transcript (${userToken ? 'user' : 'tenant'} token): ${url}`);
     const r = await axios.get(url, { headers: { Authorization: `Bearer ${token}` } });
-    console.log(`[lark minutes] transcript response code=${r.data?.code} msg=${r.data?.msg}`);
-    if (r.data?.code !== 0) return null;
-    return (r.data?.data?.transcript?.contents || []).map(c => c.content).join('\n');
+    console.log(`[lark minutes] transcript response code=${r.data?.code} msg=${r.data?.msg} hasData=${!!r.data?.data}`);
+    if (r.data?.code !== undefined && r.data?.code !== 0) return null;
+    const contents = r.data?.data?.transcript?.contents || r.data?.transcript?.contents || [];
+    console.log(`[lark minutes] got ${contents.length} transcript segments`);
+    return contents.length ? contents.map(c => c.content).join('\n') : null;
   } catch(e) {
     console.error('[lark minutes] transcript error:', e.message, e.response?.data ? JSON.stringify(e.response.data).slice(0, 200) : '');
     return null;
@@ -176,8 +178,8 @@ async function fetchLarkMinutesMeta(minuteToken) {
     const url = `https://open.larksuite.com/open-apis/minutes/v1/minutes/${minuteToken}`;
     const r = await axios.get(url, { headers: { Authorization: `Bearer ${token}` } });
     console.log(`[lark minutes] meta response code=${r.data?.code} msg=${r.data?.msg}`);
-    if (r.data?.code !== 0) return null;
-    return r.data?.data?.minute || null;
+    if (r.data?.code !== undefined && r.data?.code !== 0) return null;
+    return r.data?.data?.minute || r.data?.minute || null;
   } catch(e) {
     console.error('[lark minutes] meta error:', e.message, e.response?.data ? JSON.stringify(e.response.data).slice(0, 200) : '');
     return null;
