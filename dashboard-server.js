@@ -6526,16 +6526,17 @@ async function createLarkResourceHub(formData) {
     const larkToken = await getLarkTenantToken();
     if (!larkToken) { console.error('[onboard] No Lark tenant token'); return null; }
 
+    // Use wiki node copy API — drive copy API doesn't handle wiki-type docs properly
     const r = await axios.post(
-      `https://open.larksuite.com/open-apis/drive/v1/files/${RESOURCE_HUB_TEMPLATE_TOKEN}/copy`,
-      { name: `${formData.brandName} - Affiliate Resource Hub`, parent_type: 'wiki', parent_node: RESOURCE_HUB_TEMPLATE_WIKI },
+      `https://open.larksuite.com/open-apis/wiki/v2/spaces/${LARK_WIKI_SPACE_ID}/nodes/${RESOURCE_HUB_TEMPLATE_WIKI}/copy`,
+      { target_parent_token: '', title: `${formData.brandName} - Affiliate Resource Hub` },
       { headers: { Authorization: `Bearer ${larkToken}`, 'Content-Type': 'application/json' } }
     );
-    const file = r.data?.data?.file;
-    if (!file) { console.error('[onboard] Lark copy failed:', JSON.stringify(r.data)); return null; }
-    const url = file.url || `https://cedw5xj2shl.usttp.larksuite.com/docx/${file.token}`;
+    const node = r.data?.data?.node;
+    if (!node) { console.error('[onboard] Lark wiki copy failed:', JSON.stringify(r.data)); return null; }
+    const url = node.url || `https://cedw5xj2shl.usttp.larksuite.com/wiki/${node.node_token}`;
     console.log(`[onboard] Created resource hub: ${url}`);
-    return { token: file.token, url, name: `${formData.brandName} - Affiliate Resource Hub` };
+    return { token: node.obj_token, wikiToken: node.node_token, url, name: `${formData.brandName} - Affiliate Resource Hub` };
   } catch(e) {
     console.error('[onboard] createLarkResourceHub:', e.response?.data || e.message);
     return null;
@@ -6607,7 +6608,7 @@ async function runOnboardingPipeline(formData) {
     console.error('[onboard] AI gen error:', e.message); return null;
   });
 
-  // 3. Create GHL contact
+  // 3. Create GHL contact (or update if duplicate)
   let ghlContactId = null;
   try {
     const cr = await ghl.post('/contacts/', {
@@ -6618,8 +6619,18 @@ async function runOnboardingPipeline(formData) {
       source: 'Client Onboarding Form',
     });
     ghlContactId = cr.data?.contact?.id;
-    console.log(`[onboard] GHL contact: ${ghlContactId}`);
-  } catch(e) { console.error('[onboard] GHL contact error:', e.response?.data || e.message); }
+    console.log(`[onboard] GHL contact created: ${ghlContactId}`);
+  } catch(e) {
+    // GHL rejects duplicate contacts — extract the existing contactId and tag them instead
+    const existingId = e.response?.data?.meta?.contactId;
+    if (existingId) {
+      ghlContactId = existingId;
+      console.log(`[onboard] GHL contact already exists (${existingId}), tagging`);
+      await ghl.post(`/contacts/${existingId}/tags`, { tags: ['client-onboarding', `client-${slugify(brandName)}`] }).catch(() => {});
+    } else {
+      console.error('[onboard] GHL contact error:', e.response?.data || e.message);
+    }
+  }
 
   // 4. Copy Lark resource hub template
   const larkDoc = await createLarkResourceHub(formData).catch(e => {
@@ -6928,6 +6939,70 @@ app.get('/health', (_, res) => res.json({ status: 'ok', service: 'dashboard' }))
     if (changed) saveBrands(data);
   } catch(e) { console.error('[startup] migrateContactNames:', e.message); }
 })();
+
+// ─── AI Post Synthesizer — extract insight + captions from transcript ────────
+app.post('/api/ai/synthesize-post', async (req, res) => {
+  const { transcript, brand = 'tommy' } = req.body || {};
+  if (!transcript) return res.status(400).json({ ok: false, error: 'transcript required' });
+  if (!process.env.ANTHROPIC_API_KEY) return res.status(400).json({ ok: false, error: 'ANTHROPIC_API_KEY not configured' });
+
+  const brandCtx = brand === 'cc'
+    ? 'Cult Content (a TikTok Shop affiliate marketing agency that helps brands scale with creators)'
+    : 'Tommy Lynch (entrepreneur, TikTok Shop expert, lives in a school bus — personal brand with raw, authentic voice)';
+
+  try {
+    const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const msg = await client.messages.create({
+      model: 'claude-sonnet-4-5',
+      max_tokens: 1200,
+      system: `You are a social media content strategist for ${brandCtx}. Extract the single most compelling insight from this transcript and craft platform-native captions. Return ONLY valid JSON:
+{
+  "quote": "The single most quotable line (verbatim or lightly cleaned, max 15 words)",
+  "insight": "The core idea in one punchy sentence",
+  "caption_linkedin": "Professional insight-driven caption, 150-250 chars, end with 3-4 hashtags",
+  "caption_twitter": "Hook-first tweet, max 240 chars, 2-3 hashtags",
+  "caption_instagram": "Conversational caption with strong hook, max 160 chars, 5-7 hashtags",
+  "image_prompt": "DALL-E 3 prompt for a dark cosmic surrealist image that visually represents this insight. Style: deep purples and teals, ethereal mist, symbolic objects floating in void, dramatic chiaroscuro lighting, no text or words, painterly digital art"
+}`,
+      messages: [{ role: 'user', content: `Transcript:\n${transcript.slice(0, 8000)}` }],
+    });
+
+    let raw = msg.content?.[0]?.text || '';
+    raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+    const parsed = JSON.parse(raw);
+    res.json({ ok: true, ...parsed });
+  } catch(e) {
+    console.error('[synthesize-post]', e.message);
+    res.json({ ok: false, error: e.message });
+  }
+});
+
+// ─── AI Image Generation — DALL-E 3 ──────────────────────────────────────────
+app.post('/api/ai/generate-image', async (req, res) => {
+  const { prompt } = req.body || {};
+  if (!prompt) return res.status(400).json({ ok: false, error: 'prompt required' });
+  const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+  if (!OPENAI_API_KEY) return res.status(400).json({ ok: false, error: 'OPENAI_API_KEY not configured' });
+
+  try {
+    const r = await axios.post('https://api.openai.com/v1/images/generations', {
+      model: 'dall-e-3',
+      prompt,
+      n: 1,
+      size: '1024x1024',
+      quality: 'standard',
+      response_format: 'url',
+    }, {
+      headers: { Authorization: `Bearer ${OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
+      timeout: 90000,
+    });
+    const imageUrl = r.data?.data?.[0]?.url;
+    res.json({ ok: true, url: imageUrl, revised_prompt: r.data?.data?.[0]?.revised_prompt });
+  } catch(e) {
+    console.error('[generate-image]', e.response?.data || e.message);
+    res.json({ ok: false, error: e.response?.data?.error?.message || e.message });
+  }
+});
 
 app.listen(CFG.port, () => {
   console.log(`\n⚡ Cult Content Command Center`);
