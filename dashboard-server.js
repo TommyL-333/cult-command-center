@@ -637,7 +637,13 @@ app.post('/api/webhooks/lark-meeting', async (req, res) => {
             max_tokens: 2000,
             messages: [{
               role: 'user',
-              content: `You are analyzing meeting notes from a TikTok Shop content/affiliate agency called Cult Content. Extract structured data from these meeting notes.
+              content: `Analyze this meeting transcript from Cult Content agency (TikTok Shop content/affiliate agency).
+
+Client tagging rules — for BOTH the top-level "client" field and each action item's "client" field:
+- Known brand clients (use EXACTLY these names when applicable): ${(loadBrands().clients||[]).map(c=>c.name||c.id).filter(Boolean).join(', ') || 'none yet'}
+- If a task/topic involves a known brand → use that brand name exactly
+- If a task involves an external person who is NOT a Cult Content employee (e.g. a growth partner, consultant, or individual client) → use their first name as the client tag
+- Use "Internal" ONLY for tasks that are purely internal Cult Content operations with no specific external person or brand involved
 
 Meeting details:
 - Date: ${dateStr}
@@ -645,25 +651,11 @@ Meeting details:
 - Participants: ${participants.join(', ') || 'unknown'}
 - Duration: ${durationMin} min
 
-Meeting transcript/notes:
+Transcript/notes:
 ${notes}
 
-Return ONLY valid JSON with this exact structure:
-{
-  "client": "client company name if this is a client call, or empty string if internal",
-  "summary": "2-3 sentence summary of what was discussed",
-  "actionItems": [
-    {
-      "task": "specific action item",
-      "assignee": "person's first name or 'Team'",
-      "client": "client name or 'Internal'",
-      "priority": "high|medium|low",
-      "done": false
-    }
-  ],
-  "themes": ["theme1", "theme2"],
-  "keyProblems": ["problem statement"]
-}
+Return ONLY valid JSON:
+{"client":"brand name, person first name, or empty string","summary":"","actionItems":[{"task":"","assignee":"","client":"brand name, person first name, or Internal","priority":"high|medium|low","done":false}],"themes":[],"keyProblems":[]}
 
 Return only the JSON, no explanation.`
             }]
@@ -3555,16 +3547,46 @@ app.delete('/api/client-meetings/:id', (req, res) => {
   res.json({ ok: true });
 });
 
-// PATCH /api/client-meetings/:id/action/:idx  — toggle action item done
-app.patch('/api/client-meetings/:id/action/:idx', (req, res) => {
+// PATCH /api/client-meetings/:id/action/:idx  — toggle done OR edit fields
+// Toggle: no body (or empty body)
+// Edit:   body with any of { task, assignee, client, priority }
+app.patch('/api/client-meetings/:id/action/:idx', async (req, res) => {
   const data = loadClientMeetings();
   const m = data.meetings.find(m => m.id === req.params.id);
   if (!m) return res.status(404).json({ ok: false, error: 'Not found' });
   const idx = parseInt(req.params.idx, 10);
   if (!m.actionItems[idx]) return res.status(404).json({ ok: false, error: 'Action not found' });
-  m.actionItems[idx].done = !m.actionItems[idx].done;
+
+  const ai = m.actionItems[idx];
+  const { task, assignee, client, priority } = req.body || {};
+  const wasDone = ai.done;
+
+  const isEdit = task !== undefined || assignee !== undefined || client !== undefined || priority !== undefined;
+  if (isEdit) {
+    if (task     !== undefined) ai.task     = task.trim();
+    if (assignee !== undefined) ai.assignee = assignee.trim();
+    if (client   !== undefined) ai.client   = client.trim();
+    if (priority !== undefined) ai.priority = priority;
+  } else {
+    ai.done = !ai.done;
+  }
+
   saveClientMeetings(data);
-  res.json({ ok: true, done: m.actionItems[idx].done });
+
+  // Send Lark alert when task is marked done
+  if (!wasDone && ai.done) {
+    try {
+      const assigneePart = ai.assignee ? ` (@${ai.assignee})` : '';
+      const clientPart   = ai.client && ai.client !== 'Internal' ? ` · ${ai.client}` : '';
+      const msg = `✅ Task completed: "${ai.task}"${assigneePart}${clientPart} — from _${m.title}_`;
+      await axios.post(`${CFG.railwayUrl}/command`,
+        { text: msg, context: 'Meeting Intel', source: 'Command Center' },
+        { timeout: 5000 }
+      );
+    } catch(e) { console.error('[meeting-intel] Lark alert error:', e.message); }
+  }
+
+  res.json({ ok: true, done: ai.done, actionItem: ai });
 });
 
 // POST /api/client-meetings/reanalyze — re-run AI on all stored meetings with current client list

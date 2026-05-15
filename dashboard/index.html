@@ -2418,6 +2418,43 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
       </div>
     </div>
 
+    <!-- Task Edit Modal -->
+    <div id="miEditModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:10000;align-items:center;justify-content:center" onclick="if(event.target===this)miCloseEditModal()">
+      <div class="card" style="width:min(480px,96vw);padding:24px 24px 20px;position:relative">
+        <div style="font-size:15px;font-weight:800;margin-bottom:18px">Edit Task</div>
+        <input type="hidden" id="miEditMeetingId">
+        <input type="hidden" id="miEditIdx">
+
+        <div style="margin-bottom:12px">
+          <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Task</label>
+          <textarea id="miEditTask" class="agent-input" rows="2" style="width:100%;font-size:13px;resize:vertical"></textarea>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+          <div>
+            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Assignee</label>
+            <input id="miEditAssignee" type="text" class="agent-input" placeholder="e.g. Tommy" style="width:100%;font-size:13px">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Client</label>
+            <input id="miEditClient" type="text" class="agent-input" placeholder="e.g. DIAMANDIA or Internal" style="width:100%;font-size:13px">
+          </div>
+        </div>
+        <div style="margin-bottom:18px">
+          <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Priority</label>
+          <select id="miEditPriority" class="agent-input" style="width:100%;font-size:13px">
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button class="btn btn-ghost" onclick="miCloseEditModal()" style="font-size:13px">Cancel</button>
+          <button id="miEditSaveBtn" class="btn btn-teal" onclick="miSaveEditAction()" style="font-size:13px;font-weight:700;min-width:80px">Save</button>
+        </div>
+      </div>
+    </div>
+
 </section>
 
 <!-- ═══ Community Tab ═════════════════════════════════════════════════════════ -->
@@ -9311,15 +9348,17 @@ function miRenderByClient() {
       <div style="padding:10px 0">
         ${actions.map(a => {
           const dateStr = a.meetingDate ? new Date(a.meetingDate).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
-          return `<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 18px;border-bottom:1px solid var(--surface2);cursor:pointer" onclick="miToggleAction('${a.meetingId}',${MI.data.meetings.find(m=>m.id===a.meetingId)?.actionItems?.findIndex(ai=>ai.task===a.task&&ai.assignee===a.assignee)??-1})">
-            <div style="width:18px;height:18px;border-radius:4px;border:2px solid ${a.done?'var(--teal)':'rgba(255,255,255,0.2)'};background:${a.done?'var(--teal)':'transparent'};flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center">
+          const _idx = MI.data.meetings.find(m=>m.id===a.meetingId)?.actionItems?.findIndex(ai=>ai.task===a.task&&ai.assignee===a.assignee)??-1;
+          return `<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 18px;border-bottom:1px solid var(--surface2)">
+            <div onclick="miToggleAction('${a.meetingId}',${_idx})" style="cursor:pointer;width:18px;height:18px;border-radius:4px;border:2px solid ${a.done?'var(--teal)':'rgba(255,255,255,0.2)'};background:${a.done?'var(--teal)':'transparent'};flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center">
               ${a.done ? '<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' : ''}
             </div>
-            <div style="flex:1;min-width:0">
+            <div onclick="miToggleAction('${a.meetingId}',${_idx})" style="flex:1;min-width:0;cursor:pointer">
               <div style="font-size:13px;color:${a.done?'var(--muted)':'var(--fg)'};${a.done?'text-decoration:line-through':''};line-height:1.4">${x(a.task)}</div>
               <div style="font-size:11px;color:var(--muted);margin-top:2px">${a.assignee ? `@${x(a.assignee)}` : ''} ${dateStr ? '· '+dateStr : ''}</div>
             </div>
             <span style="font-size:10px;padding:2px 8px;border-radius:10px;background:${a.priority==='high'?'rgba(255,80,80,0.15)':a.priority==='medium'?'rgba(255,185,0,0.1)':'rgba(255,255,255,0.06)'};color:${a.priority==='high'?'var(--red)':a.priority==='medium'?'var(--gold)':'var(--muted)'};flex-shrink:0">${a.priority||'low'}</span>
+            <button onclick="miEditAction('${a.meetingId}',${_idx})" title="Edit task" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:2px 4px;flex-shrink:0;line-height:1;font-size:13px;opacity:0.6" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6">✏️</button>
           </div>`;
         }).join('')}
       </div>
@@ -9352,15 +9391,17 @@ function miRenderByPerson() {
       <div style="padding:10px 0">
         ${actions.map(a => {
           const dateStr = a.meetingDate ? new Date(a.meetingDate).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
-          return `<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 18px;border-bottom:1px solid var(--surface2);cursor:pointer" onclick="miToggleAction('${a.meetingId}',${MI.data.meetings.find(m=>m.id===a.meetingId)?.actionItems?.findIndex(ai=>ai.task===a.task&&ai.assignee===a.assignee)??-1})">
-            <div style="width:18px;height:18px;border-radius:4px;border:2px solid ${a.done?'var(--teal)':'rgba(255,255,255,0.2)'};background:${a.done?'var(--teal)':'transparent'};flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center">
+          const _idx2 = MI.data.meetings.find(m=>m.id===a.meetingId)?.actionItems?.findIndex(ai=>ai.task===a.task&&ai.assignee===a.assignee)??-1;
+          return `<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 18px;border-bottom:1px solid var(--surface2)">
+            <div onclick="miToggleAction('${a.meetingId}',${_idx2})" style="cursor:pointer;width:18px;height:18px;border-radius:4px;border:2px solid ${a.done?'var(--teal)':'rgba(255,255,255,0.2)'};background:${a.done?'var(--teal)':'transparent'};flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center">
               ${a.done ? '<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4l3 3 5-6" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>' : ''}
             </div>
-            <div style="flex:1;min-width:0">
+            <div onclick="miToggleAction('${a.meetingId}',${_idx2})" style="flex:1;min-width:0;cursor:pointer">
               <div style="font-size:13px;color:${a.done?'var(--muted)':'var(--fg)'};${a.done?'text-decoration:line-through':''};line-height:1.4">${x(a.task)}</div>
               <div style="font-size:11px;color:var(--muted);margin-top:2px">${a.client ? x(a.client)+' · ' : ''}${dateStr}</div>
             </div>
             <span style="font-size:10px;padding:2px 8px;border-radius:10px;background:${a.priority==='high'?'rgba(255,80,80,0.15)':a.priority==='medium'?'rgba(255,185,0,0.1)':'rgba(255,255,255,0.06)'};color:${a.priority==='high'?'var(--red)':a.priority==='medium'?'var(--gold)':'var(--muted)'};flex-shrink:0">${a.priority||'low'}</span>
+            <button onclick="miEditAction('${a.meetingId}',${_idx2})" title="Edit task" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:2px 4px;flex-shrink:0;line-height:1;font-size:13px;opacity:0.6" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6">✏️</button>
           </div>`;
         }).join('')}
       </div>
@@ -9429,14 +9470,15 @@ function miRenderMeetings() {
       </div>
       ${(m.actionItems||[]).filter(a=>miShowDone()||!a.done).length ? `<div style="padding:10px 0">
         ${m.actionItems.map((a,idx) => ((!miShowDone()&&a.done)?'':
-        `<div style="display:flex;align-items:flex-start;gap:10px;padding:7px 18px;cursor:pointer" onclick="miToggleAction('${m.id}',${idx})">
-          <div style="width:16px;height:16px;border-radius:3px;border:2px solid ${a.done?'var(--teal)':'rgba(255,255,255,0.2)'};background:${a.done?'var(--teal)':'transparent'};flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center">
+        `<div style="display:flex;align-items:flex-start;gap:10px;padding:7px 18px">
+          <div onclick="miToggleAction('${m.id}',${idx})" style="cursor:pointer;width:16px;height:16px;border-radius:3px;border:2px solid ${a.done?'var(--teal)':'rgba(255,255,255,0.2)'};background:${a.done?'var(--teal)':'transparent'};flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center">
             ${a.done?'<svg width="9" height="7" viewBox="0 0 9 7" fill="none"><path d="M1 3.5l2.5 2.5 5-5" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>':''}
           </div>
-          <div style="flex:1">
+          <div onclick="miToggleAction('${m.id}',${idx})" style="flex:1;cursor:pointer">
             <span style="font-size:12px;color:${a.done?'var(--muted)':'var(--fg)'};${a.done?'text-decoration:line-through':''}">${x(a.task)}</span>
             ${a.assignee?`<span style="font-size:10px;color:var(--muted);margin-left:6px">@${x(a.assignee)}</span>`:''}
           </div>
+          <button onclick="miEditAction('${m.id}',${idx})" title="Edit task" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:2px 4px;flex-shrink:0;line-height:1;font-size:12px;opacity:0.5" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.5">✏️</button>
         </div>`)).join('')}
       </div>` : ''}
     </div>`;
@@ -9489,6 +9531,67 @@ async function miDeleteMeeting(id, btn) {
   } catch(e) {
     if (btn) { btn.disabled = false; btn.textContent = 'Delete'; }
   }
+}
+
+function miEditAction(meetingId, idx) {
+  const m = (MI.data?.meetings||[]).find(m=>m.id===meetingId);
+  if (!m || !m.actionItems?.[idx]) return;
+  const ai = m.actionItems[idx];
+  document.getElementById('miEditMeetingId').value = meetingId;
+  document.getElementById('miEditIdx').value = idx;
+  document.getElementById('miEditTask').value = ai.task || '';
+  document.getElementById('miEditAssignee').value = ai.assignee || '';
+  document.getElementById('miEditClient').value = ai.client || '';
+  document.getElementById('miEditPriority').value = ai.priority || 'medium';
+  const modal = document.getElementById('miEditModal');
+  modal.style.display = 'flex';
+  setTimeout(() => document.getElementById('miEditTask').focus(), 50);
+}
+
+function miCloseEditModal() {
+  document.getElementById('miEditModal').style.display = 'none';
+}
+
+async function miSaveEditAction() {
+  const meetingId = document.getElementById('miEditMeetingId').value;
+  const idx       = parseInt(document.getElementById('miEditIdx').value, 10);
+  const task      = document.getElementById('miEditTask').value.trim();
+  const assignee  = document.getElementById('miEditAssignee').value.trim();
+  const client    = document.getElementById('miEditClient').value.trim();
+  const priority  = document.getElementById('miEditPriority').value;
+  if (!task) return;
+
+  const btn = document.getElementById('miEditSaveBtn');
+  btn.disabled = true; btn.textContent = 'Saving…';
+  try {
+    const r = await fetch(`/api/client-meetings/${meetingId}/action/${idx}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ task, assignee, client, priority })
+    }).then(r => r.json());
+    if (r.ok) {
+      const m = (MI.data?.meetings||[]).find(m=>m.id===meetingId);
+      if (m?.actionItems?.[idx]) Object.assign(m.actionItems[idx], r.actionItem);
+      miCloseEditModal();
+      // Rebuild aggregates + re-render
+      const allMeetings = MI.data.meetings;
+      const byClient = {}, byPerson = {};
+      for (const mt of allMeetings) {
+        for (const ai of (mt.actionItems||[])) {
+          const c = ai.client || mt.client || 'General';
+          const p = ai.assignee || 'Unassigned';
+          if (!byClient[c]) byClient[c] = [];
+          byClient[c].push({ ...ai, meetingId: mt.id, meetingDate: mt.date, meetingTitle: mt.title });
+          if (!byPerson[p]) byPerson[p] = [];
+          byPerson[p].push({ ...ai, meetingId: mt.id, meetingDate: mt.date, meetingTitle: mt.title, client: c });
+        }
+      }
+      MI.data.byClient = byClient;
+      MI.data.byPerson = byPerson;
+      miRender();
+    }
+  } catch(e) { console.error('edit action:', e); }
+  finally { btn.disabled = false; btn.textContent = 'Save'; }
 }
 
 async function miSyncFireflies(btn) {
