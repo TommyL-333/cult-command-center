@@ -734,7 +734,9 @@ app.post('/api/admin/lark-minutes-import', requireAuth, async (req, res) => {
     const title    = meta?.title      || 'Lark Meeting';
     const participants = (meta?.participants || []).map(p => p.name).filter(Boolean);
 
-    const knownClients = (loadBrands().clients || []).map(c => c.name || c.id).filter(Boolean);
+    const _brandsLark = loadBrands();
+    const knownClients = (_brandsLark.clients || []).map(c => c.name || c.id).filter(Boolean);
+    const contactMap = buildContactMap(_brandsLark);
     let actionItems = [], themes = [], summary = '', keyProblems = [], aiClient = '';
     if (process.env.ANTHROPIC_API_KEY) {
       try {
@@ -745,16 +747,12 @@ app.post('/api/admin/lark-minutes-import', requireAuth, async (req, res) => {
             role: 'user',
             content: `Analyze this Lark meeting transcript from Cult Content (a TikTok Shop content/affiliate agency).
 
-Client tagging rules — for BOTH the top-level "client" field and each action item's "client" field:
-- Known brand clients (use EXACTLY these names when applicable): ${knownClients.length ? knownClients.join(', ') : 'none yet'}
-- If a task/topic involves a known brand → use that brand name exactly
-- If a task involves an external person who is NOT a Cult Content employee (e.g. a growth partner, consultant, or individual client like "Lenea") → use their first name as the client tag
-- Use "Internal" ONLY for tasks that are purely internal Cult Content operations with no specific external person or brand involved
+${buildClientTaggingPrompt(_brandsLark)}
 
-For the top-level "client": use the primary brand/person this meeting is about. For group calls with multiple external people, use the most prominent one.
+For the top-level "client": use the primary brand this meeting is about. For group calls with multiple clients, use the most prominent one.
 
 Return JSON only:
-{"client":"brand name, person first name, or Internal","summary":"","actionItems":[{"task":"","assignee":"","client":"brand name, person first name, or Internal","priority":"high|medium|low","done":false}],"themes":[],"keyProblems":[]}
+{"client":"brand name or Internal","summary":"","actionItems":[{"task":"","assignee":"","client":"brand name or Internal","priority":"high|medium|low","done":false}],"themes":[],"keyProblems":[]}
 
 Transcript:
 ${transcript.slice(0, 8000)}`
@@ -763,12 +761,12 @@ ${transcript.slice(0, 8000)}`
         const parsed = JSON.parse(msg.content[0].text.trim().replace(/^```json\n?/, '').replace(/\n?```$/, ''));
         actionItems = (parsed.actionItems || []).map(ai => ({
           ...ai,
-          client: normaliseClientName(ai.client, knownClients) || ai.client || 'Internal',
+          client: normaliseClientName(ai.client, knownClients, contactMap) || ai.client || 'Internal',
         }));
         themes      = parsed.themes      || [];
         summary     = parsed.summary     || '';
         keyProblems = parsed.keyProblems || [];
-        aiClient    = normaliseClientName(parsed.client, knownClients) || parsed.client || '';
+        aiClient    = normaliseClientName(parsed.client, knownClients, contactMap) || parsed.client || '';
       } catch(aiErr) {
         console.error('[lark-import] AI error:', aiErr.message);
       }
@@ -3381,14 +3379,33 @@ app.post('/api/meeting-intel/:id/skip', (req, res) => {
 // ─── Client name normalisation ────────────────────────────────────────────────
 // Match an AI-guessed client name against the canonical client list.
 // Returns the canonical name if a close match is found, otherwise returns null.
-function normaliseClientName(guessed, knownClients) {
+// Build a map of { "lenea": "Approved Science", "john": "DIAMANDIA", ... }
+// from the contactName field on each brand in brands.json
+function buildContactMap(brandsData) {
+  const map = {};
+  for (const brand of (brandsData?.clients || [])) {
+    const contactName = (brand.contactName || '').trim();
+    if (!contactName || !brand.name) continue;
+    // Use first name only (e.g. "Lenea Smith" → "lenea")
+    const first = contactName.split(/\s+/)[0].toLowerCase().replace(/[^a-z]/g, '');
+    if (first.length >= 2) map[first] = brand.name;
+  }
+  return map;
+}
+
+function normaliseClientName(guessed, knownClients, contactMap) {
   if (!guessed || !knownClients?.length) return guessed || '';
   const g = guessed.toLowerCase().replace(/[^a-z0-9]/g, '');
   if (!g) return '';
-  // Exact or contained match
+  // Exact or contained match against known brand names
   for (const c of knownClients) {
     const k = c.toLowerCase().replace(/[^a-z0-9]/g, '');
     if (k === g || k.includes(g) || g.includes(k)) return c;
+  }
+  // Contact name → brand match (e.g. "Lenea" → "Approved Science")
+  if (contactMap) {
+    const brandForContact = contactMap[g] || Object.entries(contactMap).find(([first]) => first.startsWith(g) || g.startsWith(first))?.[1];
+    if (brandForContact) return brandForContact;
   }
   // Partial token overlap (e.g. "amandia" → "DIAMANDIA")
   for (const c of knownClients) {
@@ -3396,7 +3413,7 @@ function normaliseClientName(guessed, knownClients) {
     const overlap = [...g].filter((ch, i) => k.includes(g.slice(Math.max(0,i-1), i+3))).length;
     if (overlap >= Math.min(4, g.length * 0.6)) return c;
   }
-  return ''; // couldn't match — treat as internal
+  return ''; // couldn't match — pass through original value
 }
 
 // ─── Client Meetings (Lark-based Meeting Intel) ───────────────────────────────
@@ -3410,11 +3427,29 @@ function saveClientMeetings(data) {
   fs.writeFileSync(CLIENT_MEETINGS_FILE, JSON.stringify(data, null, 2));
 }
 
+// Build the client tagging instruction block used in every AI prompt
+function buildClientTaggingPrompt(brandsData) {
+  const clients = brandsData?.clients || [];
+  const brandLines = clients.map(c => {
+    const contactFirst = (c.contactName||'').split(/\s+/)[0];
+    return `- ${c.name}${contactFirst ? ` (primary contact: ${contactFirst})` : ''}`;
+  }).join('\n');
+  return `Client tagging rules — for BOTH the top-level "client" field and each action item's "client" field:
+Known brands and their primary contacts (if a participant's name matches a contact, use the BRAND name):
+${brandLines || '(none yet)'}
+
+Rules:
+- If a task/topic involves a known brand or their contact → use the BRAND name exactly
+- If a task involves any other external person (not Cult Content staff) → use their first name
+- Use "Internal" ONLY for purely internal Cult Content tasks with no external person/brand`;
+}
+
 // GET /api/client-meetings  — all meetings + aggregated intel
 app.get('/api/client-meetings', (req, res) => {
   const data = loadClientMeetings();
   const meetings = data.meetings || [];
-  const knownClients = (loadBrands().clients || []).map(c => c.name || c.id).filter(Boolean);
+  const brandsData = loadBrands();
+  const knownClients = (brandsData.clients || []).map(c => c.name || c.id).filter(Boolean);
 
   // Aggregate action items by client
   const byClient = {};
@@ -3439,7 +3474,15 @@ app.get('/api/client-meetings', (req, res) => {
     .sort((a, b) => b[1] - a[1])
     .map(([theme, count]) => ({ theme, count }));
 
-  res.json({ ok: true, meetings: meetings.slice(0, 100), byClient, byPerson, recurringThemes, knownClients });
+  // Team members: stored in brands.json under "team", or seeded from unique assignees
+  let teamMembers = brandsData.team || [];
+  if (!teamMembers.length) {
+    const assigneeSet = new Set();
+    for (const m of meetings) for (const ai of (m.actionItems || [])) if (ai.assignee) assigneeSet.add(ai.assignee);
+    teamMembers = [...assigneeSet].filter(Boolean);
+  }
+
+  res.json({ ok: true, meetings: meetings.slice(0, 100), byClient, byPerson, recurringThemes, knownClients, teamMembers });
 });
 
 // POST /api/client-meetings  — add a meeting with AI analysis
@@ -3449,7 +3492,9 @@ app.post('/api/client-meetings', async (req, res) => {
     if (!notes) return res.status(400).json({ ok: false, error: 'notes required' });
 
     const data = loadClientMeetings();
-    const knownClients = (loadBrands().clients || []).map(c => c.name || c.id).filter(Boolean);
+    const brandsData = loadBrands();
+    const knownClients = (brandsData.clients || []).map(c => c.name || c.id).filter(Boolean);
+    const contactMap = buildContactMap(brandsData);
 
     // AI analysis
     let actionItems = [], themes = [], summary = '', keyProblems = [];
@@ -3463,11 +3508,7 @@ app.post('/api/client-meetings', async (req, res) => {
             role: 'user',
             content: `You are analyzing meeting notes from a TikTok Shop content/affiliate agency called Cult Content. Extract structured data from these meeting notes.
 
-Client tagging rules — for BOTH the top-level "client" field and each action item's "client" field:
-- Known brand clients (use EXACTLY these names when applicable): ${knownClients.length ? knownClients.join(', ') : 'none yet'}
-- If a task/topic involves a known brand → use that brand name exactly
-- If a task involves an external person who is NOT a Cult Content employee (e.g. a growth partner, consultant, or individual client) → use their first name as the client tag
-- Use "Internal" ONLY for tasks that are purely internal Cult Content operations with no specific external person or brand involved
+${buildClientTaggingPrompt(brandsData)}
 
 Meeting details:
 - Date: ${date || 'unknown'}
@@ -3503,7 +3544,7 @@ Return only the JSON, no explanation.`
         const parsed = JSON.parse(msg.content[0].text.trim().replace(/^```json\n?/, '').replace(/\n?```$/, ''));
         actionItems = (parsed.actionItems || []).map(ai => ({
           ...ai,
-          client: normaliseClientName(ai.client, knownClients) || ai.client || 'Internal',
+          client: normaliseClientName(ai.client, knownClients, contactMap) || ai.client || 'Internal',
         }));
         themes = parsed.themes || [];
         summary = parsed.summary || '';
@@ -3593,7 +3634,9 @@ app.patch('/api/client-meetings/:id/action/:idx', async (req, res) => {
 app.post('/api/client-meetings/reanalyze', requireAuth, async (req, res) => {
   try {
     const data = loadClientMeetings();
-    const knownClients = (loadBrands().clients || []).map(c => c.name || c.id).filter(Boolean);
+    const _brandsRe = loadBrands();
+    const knownClients = (_brandsRe.clients || []).map(c => c.name || c.id).filter(Boolean);
+    const contactMap = buildContactMap(_brandsRe);
     if (!process.env.ANTHROPIC_API_KEY) return res.status(400).json({ ok: false, error: 'No Anthropic API key' });
 
     let updated = 0;
@@ -3607,11 +3650,7 @@ app.post('/api/client-meetings/reanalyze', requireAuth, async (req, res) => {
             role: 'user',
             content: `Analyze this meeting transcript from Cult Content agency (TikTok Shop content/affiliate agency).
 
-Client tagging rules — for BOTH the top-level "client" field and each action item's "client" field:
-- Known brand clients (use EXACTLY these names when applicable): ${knownClients.length ? knownClients.join(', ') : 'none yet'}
-- If a task/topic involves a known brand → use that brand name exactly
-- If a task involves an external person who is NOT a Cult Content employee (e.g. a growth partner, consultant, or individual client) → use their first name as the client tag (e.g. "Lenea")
-- Use "Internal" ONLY for tasks that are purely internal Cult Content operations with no specific external person or brand involved
+${buildClientTaggingPrompt(_brandsRe)}
 
 Meeting: ${m.title} (${m.date})
 Participants: ${(m.participants||[]).join(', ')||'unknown'}
@@ -3620,17 +3659,17 @@ Transcript:
 ${(m.notes||'').slice(0, 8000)}
 
 Return JSON only — no explanation:
-{"client":"brand name, person first name, or Internal","summary":"","actionItems":[{"task":"","assignee":"","client":"brand name, person first name, or Internal","priority":"high|medium|low","done":false}],"themes":[],"keyProblems":[]}`
+{"client":"brand name or Internal","summary":"","actionItems":[{"task":"","assignee":"","client":"brand name or Internal","priority":"high|medium|low","done":false}],"themes":[],"keyProblems":[]}`
           }]
         });
         const parsed = JSON.parse(msg.content[0].text.trim().replace(/^```json\n?/, '').replace(/\n?```$/, ''));
-        m.client      = normaliseClientName(parsed.client, knownClients) || m.client || '';
+        m.client      = normaliseClientName(parsed.client, knownClients, contactMap) || m.client || '';
         m.summary     = parsed.summary     || m.summary;
         m.themes      = parsed.themes      || m.themes;
         m.keyProblems = parsed.keyProblems || m.keyProblems;
         m.actionItems = (parsed.actionItems || []).map(ai => ({
           ...ai,
-          client: normaliseClientName(ai.client, knownClients) || ai.client || 'Internal',
+          client: normaliseClientName(ai.client, knownClients, contactMap) || ai.client || 'Internal',
           done: false,
         }));
         updated++;
@@ -3652,28 +3691,37 @@ app.post('/api/client-meetings/sync-fireflies', requireAuth, async (req, res) =>
     const keys = [process.env.FIREFLIES_API_KEY, process.env.FIREFLIES_API_KEY_2].filter(Boolean);
     if (!keys.length) return res.status(400).json({ ok: false, error: 'FIREFLIES_API_KEY not set' });
 
-    const days  = req.body?.days || 30;
+    const days  = req.body?.days || 90; // default 90 days to catch older meetings
     const since = new Date(Date.now() - days * 86400000).toISOString().split('T')[0];
 
     // Fetch meeting list from all Fireflies accounts
-    const listQuery = `query { transcripts(limit: 50, fromDate: "${since}") { id title date participants summary { short_summary action_items } } }`;
+    const listQuery = `query { transcripts(limit: 100, fromDate: "${since}") { id title date participants summary { short_summary action_items } } }`;
     const allMeetings = [];
     const seen = new Set();
+    const ffErrors = [];
     for (const key of keys) {
       try {
         const r = await axios.post('https://api.fireflies.ai/graphql',
           { query: listQuery },
           { headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' } }
         );
+        if (r.data?.errors) ffErrors.push(...r.data.errors.map(e => e.message));
         for (const t of (r.data?.data?.transcripts || [])) {
           if (!seen.has(t.id)) { seen.add(t.id); allMeetings.push({ ...t, _key: key }); }
         }
-      } catch(e) { console.error('[ff-sync] list error:', e.message); }
+      } catch(e) {
+        ffErrors.push(e.message);
+        console.error('[ff-sync] list error:', e.message);
+      }
     }
+
+    console.log(`[ff-sync] found ${allMeetings.length} meetings since ${since}, errors: ${ffErrors.join(', ')||'none'}`);
 
     const data = loadClientMeetings();
     const existingIds = new Set(data.meetings.map(m => m.fireflyId || m.id));
-    const knownClients = (loadBrands().clients || []).map(c => c.name || c.id).filter(Boolean);
+    const _brandsFF = loadBrands();
+    const knownClients = (_brandsFF.clients || []).map(c => c.name || c.id).filter(Boolean);
+    const contactMap = buildContactMap(_brandsFF);
 
     let added = 0;
     for (const t of allMeetings) {
@@ -3706,11 +3754,7 @@ app.post('/api/client-meetings/sync-fireflies', requireAuth, async (req, res) =>
               role: 'user',
               content: `Analyze this meeting transcript from Cult Content agency (TikTok Shop content/affiliate agency).
 
-Client tagging rules — for BOTH the top-level "client" field and each action item's "client" field:
-- Known brand clients (use EXACTLY these names when applicable): ${knownClients.length ? knownClients.join(', ') : 'none yet'}
-- If a task/topic involves a known brand → use that brand name exactly
-- If a task involves an external person who is NOT a Cult Content employee (e.g. a growth partner, consultant, or individual client) → use their first name as the client tag (e.g. "Lenea")
-- Use "Internal" ONLY for tasks that are purely internal Cult Content operations with no specific external person or brand involved
+${buildClientTaggingPrompt(_brandsFF)}
 
 Meeting: ${t.title} (${dateStr})
 Participants: ${(t.participants||[]).join(', ')||'unknown'}
@@ -3719,15 +3763,15 @@ Transcript:
 ${notes.slice(0, 8000)}
 
 Return JSON only:
-{"client":"brand name, person first name, or Internal","summary":"","actionItems":[{"task":"","assignee":"","client":"brand name, person first name, or Internal","priority":"high|medium|low","done":false}],"themes":[],"keyProblems":[]}`
+{"client":"brand name or Internal","summary":"","actionItems":[{"task":"","assignee":"","client":"brand name or Internal","priority":"high|medium|low","done":false}],"themes":[],"keyProblems":[]}`
             }]
           });
           const parsed = JSON.parse(msg.content[0].text.trim().replace(/^```json\n?/, '').replace(/\n?```$/, ''));
-          actionItems = (parsed.actionItems || []).map(ai => ({ ...ai, client: normaliseClientName(ai.client, knownClients) || ai.client || 'Internal' }));
+          actionItems = (parsed.actionItems || []).map(ai => ({ ...ai, client: normaliseClientName(ai.client, knownClients, contactMap) || ai.client || 'Internal' }));
           themes      = parsed.themes      || [];
           summary     = parsed.summary     || '';
           keyProblems = parsed.keyProblems || [];
-          aiClient    = normaliseClientName(parsed.client, knownClients) || parsed.client || '';
+          aiClient    = normaliseClientName(parsed.client, knownClients, contactMap) || parsed.client || '';
         } catch(aiErr) { console.error('[ff-sync] AI error:', aiErr.message); }
       }
 
@@ -3755,7 +3799,8 @@ Return JSON only:
     data.meetings.sort((a,b) => new Date(b.date) - new Date(a.date));
     if (added) saveClientMeetings(data);
     console.log(`[ff-sync] synced ${added}/${allMeetings.length} new meetings from Fireflies`);
-    res.json({ ok: true, added, total: allMeetings.length });
+    res.json({ ok: true, added, total: allMeetings.length, sinceDays: days, sinceDate: since, errors: ffErrors.length ? ffErrors : undefined,
+      meetings: allMeetings.map(t => ({ id: t.id, title: t.title, date: t.date, participants: t.participants })) });
   } catch(e) {
     console.error('[ff-sync]', e.message);
     res.status(500).json({ ok: false, error: e.message });

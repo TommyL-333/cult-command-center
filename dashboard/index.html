@@ -2432,11 +2432,11 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
           <div>
             <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Assignee</label>
-            <input id="miEditAssignee" type="text" class="agent-input" placeholder="e.g. Tommy" style="width:100%;font-size:13px">
+            <select id="miEditAssignee" class="agent-input" style="width:100%;font-size:13px"></select>
           </div>
           <div>
             <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Client</label>
-            <input id="miEditClient" type="text" class="agent-input" placeholder="e.g. DIAMANDIA or Internal" style="width:100%;font-size:13px">
+            <select id="miEditClient" class="agent-input" style="width:100%;font-size:13px"></select>
           </div>
         </div>
         <div style="margin-bottom:18px">
@@ -9251,6 +9251,7 @@ async function loadMeetingIntel() {
     ]);
     MI.data = r;
     MI.knownClients = r.knownClients || [];
+    MI.teamMembers  = r.teamMembers  || [];
     const banner = document.getElementById('miLarkBanner');
     if (banner) banner.style.display = status.connected ? 'none' : 'flex';
     miRender();
@@ -9540,9 +9541,27 @@ function miEditAction(meetingId, idx) {
   document.getElementById('miEditMeetingId').value = meetingId;
   document.getElementById('miEditIdx').value = idx;
   document.getElementById('miEditTask').value = ai.task || '';
-  document.getElementById('miEditAssignee').value = ai.assignee || '';
-  document.getElementById('miEditClient').value = ai.client || '';
   document.getElementById('miEditPriority').value = ai.priority || 'medium';
+
+  // Populate assignee dropdown from team members
+  const teamMembers = MI.teamMembers || [];
+  const assigneeSel = document.getElementById('miEditAssignee');
+  const currentAssignee = ai.assignee || '';
+  const allAssignees = [...new Set([...teamMembers, currentAssignee].filter(Boolean))];
+  assigneeSel.innerHTML = '<option value="">— unassigned —</option>' +
+    allAssignees.map(name => `<option value="${name}"${name===currentAssignee?' selected':''}>${name}</option>`).join('');
+  // If current assignee not in list, add it
+  if (currentAssignee && !allAssignees.includes(currentAssignee)) {
+    assigneeSel.innerHTML += `<option value="${currentAssignee}" selected>${currentAssignee}</option>`;
+  }
+
+  // Populate client dropdown from known clients + "Internal"
+  const knownClients = MI.knownClients || [];
+  const clientSel = document.getElementById('miEditClient');
+  const currentClient = ai.client || '';
+  const allClients = [...new Set([...knownClients, 'Internal', currentClient].filter(Boolean))];
+  clientSel.innerHTML = allClients.map(c => `<option value="${c}"${c===currentClient?' selected':''}>${c}</option>`).join('');
+
   const modal = document.getElementById('miEditModal');
   modal.style.display = 'flex';
   setTimeout(() => document.getElementById('miEditTask').focus(), 50);
@@ -9556,8 +9575,8 @@ async function miSaveEditAction() {
   const meetingId = document.getElementById('miEditMeetingId').value;
   const idx       = parseInt(document.getElementById('miEditIdx').value, 10);
   const task      = document.getElementById('miEditTask').value.trim();
-  const assignee  = document.getElementById('miEditAssignee').value.trim();
-  const client    = document.getElementById('miEditClient').value.trim();
+  const assignee  = document.getElementById('miEditAssignee').value;
+  const client    = document.getElementById('miEditClient').value;
   const priority  = document.getElementById('miEditPriority').value;
   if (!task) return;
 
