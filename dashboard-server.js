@@ -346,6 +346,20 @@ app.post('/api/webhooks/ghl-client-onboard', async (req, res) => {
 // Public routes — registered BEFORE requireAuth so no login needed
 app.use('/uploads', express.static(UPLOAD_DIR));
 
+// Catch missing /uploads/* files BEFORE the auth wall — prevents the 401 "sign in" page
+// showing for files that no longer exist on the volume (e.g. after a Railway redeploy).
+app.get('/uploads/*', (req, res) => {
+  res.status(404).send(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Link Expired</title>
+<style>body{background:#050e0f;color:#e2e8f0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}
+.box{text-align:center;max-width:420px;padding:40px 32px}.icon{font-size:2.5rem;margin-bottom:16px}
+h1{font-size:1.3rem;font-weight:700;margin-bottom:10px}.sub{font-size:.85rem;color:#64748b;line-height:1.6}
+a{color:#20d5c4;text-decoration:none}</style></head>
+<body><div class="box"><div class="icon">🔗</div>
+<h1>This link has expired</h1>
+<p class="sub">The file you're looking for is no longer available — it may have been removed after a server update.<br><br>
+Ask the sender to re-export and share a fresh link.</p></div></body></html>`);
+});
+
 // GET /onboard — public client onboarding form
 app.get('/onboard', (req, res) => {
   res.sendFile(path.join(__dirname, 'dashboard', 'onboard.html'));
