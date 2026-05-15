@@ -360,11 +360,12 @@ app.post('/api/onboard/submit', express.json({ limit: '2mb' }), async (req, res)
 });
 
 // GET /creators/:brandSlug — public creator interest page
+// active flag only hides the page if explicitly set to false; omitted or true = visible
 app.get('/creators/:brandSlug', (req, res) => {
   const brands = loadBrands();
   const brand  = (brands.clients || []).find(b => b.creatorPage?.slug === req.params.brandSlug);
-  if (!brand || !brand.creatorPage?.active) {
-    return res.status(404).send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Not found</title></head><body style="font-family:sans-serif;text-align:center;padding:80px 20px;background:#0d0b14;color:#fff"><h1 style="margin-bottom:12px">Page not found</h1><p style="color:#666">This creator page doesn't exist or isn't active.</p></body></html>`);
+  if (!brand?.creatorPage || brand.creatorPage.active === false) {
+    return res.status(404).send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Not found</title></head><body style="font-family:sans-serif;text-align:center;padding:80px 20px;background:#0d0b14;color:#fff"><h1 style="margin-bottom:12px">Page not found</h1><p style="color:#666">This creator page doesn't exist or has been taken down.</p></body></html>`);
   }
   res.set('Content-Type', 'text/html');
   res.send(renderCreatorPage(brand, brand.creatorPage));
@@ -7007,6 +7008,37 @@ app.post('/api/ai/generate-image', async (req, res) => {
     res.json({ ok: false, error: e.response?.data?.error?.message || e.message });
   }
 });
+
+// Startup migration: activate any creator pages stuck as false, fix old Railway publicUrls
+(function migrateCreatorPages() {
+  try {
+    const OLD_RAILWAY = 'https://cult-command-center-production.up.railway.app';
+    // Fix brands.json — set active: true on any page that was created (active===false from old default)
+    const brandsData = loadBrands();
+    let brandsDirty = false;
+    for (const b of (brandsData.clients || [])) {
+      if (b.creatorPage && b.creatorPage.active === false) {
+        b.creatorPage.active = true;
+        if (b.creatorPage.publicUrl?.startsWith(OLD_RAILWAY)) {
+          b.creatorPage.publicUrl = b.creatorPage.publicUrl.replace(OLD_RAILWAY, PUBLIC_BASE_URL);
+        }
+        brandsDirty = true;
+      }
+    }
+    if (brandsDirty) { saveBrands(brandsData); console.log('[migrate] Activated existing creator pages'); }
+
+    // Fix onboard-pending.json — patch old Railway publicUrls
+    const pending = loadPendingOnboards();
+    let pendingDirty = false;
+    for (const p of pending) {
+      if (p.creatorPage?.publicUrl?.startsWith(OLD_RAILWAY)) {
+        p.creatorPage.publicUrl = p.creatorPage.publicUrl.replace(OLD_RAILWAY, PUBLIC_BASE_URL);
+        pendingDirty = true;
+      }
+    }
+    if (pendingDirty) { savePendingOnboards(pending); console.log('[migrate] Patched creator page URLs in pending onboards'); }
+  } catch(e) { console.error('[migrate] creator pages:', e.message); }
+})();
 
 app.listen(CFG.port, () => {
   console.log(`\n⚡ Cult Content Command Center`);
