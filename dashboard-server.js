@@ -3844,6 +3844,21 @@ app.get('/api/brands', (req, res) => {
   res.json(loadBrands());
 });
 
+// GET /api/brands/team — return team members list
+app.get('/api/brands/team', requireAuth, (req, res) => {
+  res.json({ team: loadBrands().team || [] });
+});
+
+// PUT /api/brands/team — overwrite team members list
+app.put('/api/brands/team', requireAuth, (req, res) => {
+  const { team } = req.body;
+  if (!Array.isArray(team)) return res.status(400).json({ ok: false, error: 'team must be an array' });
+  const data = loadBrands();
+  data.team = team.filter(Boolean);
+  saveBrands(data);
+  res.json({ ok: true, team: data.team });
+});
+
 // POST /api/brands — create a new client brand
 app.post('/api/brands', (req, res) => {
   const data = loadBrands();
