@@ -6152,6 +6152,24 @@ app.get('/api/admin/disk', (req, res) => {
 // ─── Health ────────────────────────────────────────────────────────────────────
 app.get('/health', (_, res) => res.json({ status: 'ok', service: 'dashboard' }));
 
+// ── Startup: ensure known contact names are set on manually-added brands ───────
+(function migrateContactNames() {
+  try {
+    const data = loadBrands();
+    // Known contacts from onboarding — fill in if missing
+    const knownContacts = { 'Approved Science': 'Lenea' };
+    let changed = false;
+    for (const brand of (data.clients || [])) {
+      if (knownContacts[brand.name] && !brand.contactName) {
+        brand.contactName = knownContacts[brand.name];
+        changed = true;
+        console.log(`[startup] Set contactName "${knownContacts[brand.name]}" for brand "${brand.name}"`);
+      }
+    }
+    if (changed) saveBrands(data);
+  } catch(e) { console.error('[startup] migrateContactNames:', e.message); }
+})();
+
 app.listen(CFG.port, () => {
   console.log(`\n⚡ Cult Content Command Center`);
   console.log(`   http://localhost:${CFG.port}\n`);
