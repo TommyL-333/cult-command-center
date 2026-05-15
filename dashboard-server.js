@@ -6290,6 +6290,270 @@ app.get('/api/admin/disk', (req, res) => {
   }
 });
 
+// ─── Creator Interest Pages ──────────────────────────────────────────────────
+
+function slugify(str) {
+  return (str || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+function hexToRgb(hex) {
+  const m = (hex || '#00f2ea').replace('#', '').match(/.{2}/g);
+  return m ? `${parseInt(m[0],16)},${parseInt(m[1],16)},${parseInt(m[2],16)}` : '0,242,234';
+}
+
+function renderCreatorPage(brand, cp) {
+  const accent    = cp.accentColor || '#00f2ea';
+  const accentRgb = hexToRgb(accent);
+  const name      = brand.name || 'Brand';
+  const headline  = (cp.headline || `Partner with ${name}`).replace(new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'g'), `<span style="color:${accent}">${name}</span>`);
+  const sub       = cp.subheadline || 'Join our TikTok Shop creator affiliate program';
+  const pitch     = cp.pitch || `We\'re looking for TikTok creators to promote ${name} products. Fill out the form and our team will reach out within 48 hours.`;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${name} × Cult Content — Creator Partnership</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0d0b14;color:#fff;min-height:100vh}
+.hero{background:linear-gradient(135deg,#0d0b14 0%,#1a1429 60%,#120f1f 100%);border-bottom:1px solid rgba(255,255,255,.06);padding:64px 20px 52px;text-align:center}
+.pill{display:inline-block;background:rgba(${accentRgb},.12);color:${accent};border:1px solid rgba(${accentRgb},.3);border-radius:100px;padding:5px 16px;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;margin-bottom:22px}
+h1{font-size:clamp(26px,5vw,46px);font-weight:900;line-height:1.08;margin-bottom:14px;letter-spacing:-.02em;max-width:700px;margin-left:auto;margin-right:auto}
+.sub{font-size:clamp(13px,2vw,16px);color:rgba(255,255,255,.5);max-width:480px;margin:0 auto 28px;line-height:1.65}
+.pitch{max-width:600px;margin:0 auto;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:20px 24px;font-size:14px;color:rgba(255,255,255,.65);line-height:1.7;text-align:left}
+.wrap{max-width:540px;margin:0 auto;padding:52px 20px 80px}
+.form-head{font-size:19px;font-weight:800;margin-bottom:4px}
+.form-sub{font-size:12px;color:rgba(255,255,255,.4);margin-bottom:26px}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.row.full{grid-template-columns:1fr}
+@media(max-width:480px){.row{grid-template-columns:1fr}}
+.field{display:flex;flex-direction:column;gap:5px}
+label{font-size:10px;font-weight:700;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.06em}
+input,select,textarea{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#fff;font-size:14px;padding:11px 14px;outline:none;transition:border-color .18s;width:100%;font-family:inherit}
+input::placeholder,textarea::placeholder{color:rgba(255,255,255,.22)}
+input:focus,select:focus,textarea:focus{border-color:${accent};background:rgba(255,255,255,.07)}
+select option{background:#1a1429;color:#fff}
+textarea{resize:vertical;min-height:80px}
+.btn-submit{width:100%;background:${accent};color:#000;border:none;border-radius:10px;font-size:15px;font-weight:800;padding:15px;cursor:pointer;margin-top:8px;transition:opacity .2s,transform .1s;letter-spacing:.01em}
+.btn-submit:hover{opacity:.88}
+.btn-submit:active{transform:scale(.98)}
+.btn-submit:disabled{opacity:.45;cursor:not-allowed}
+.err{color:#ff5b5b;font-size:12px;margin-top:8px;display:none}
+.success{display:none;text-align:center;padding:44px 0}
+.success-icon{font-size:52px;margin-bottom:18px}
+.success-title{font-size:22px;font-weight:800;margin-bottom:8px}
+.success-msg{font-size:14px;color:rgba(255,255,255,.45);line-height:1.65}
+footer{border-top:1px solid rgba(255,255,255,.06);padding:20px;text-align:center;font-size:11px;color:rgba(255,255,255,.22)}
+footer a{color:${accent};text-decoration:none}
+</style>
+</head>
+<body>
+<div class="hero">
+  <div class="pill">${name} × Cult Content</div>
+  <h1>${headline}</h1>
+  <div class="sub">${sub}</div>
+  <div class="pitch">${pitch}</div>
+</div>
+<div class="wrap">
+  <div id="formWrap">
+    <div class="form-head">Apply to partner</div>
+    <div class="form-sub">Takes 2 minutes — our team reviews every application</div>
+    <form id="form">
+      <div class="row">
+        <div class="field"><label>First name *</label><input name="firstName" required placeholder="Jane"></div>
+        <div class="field"><label>Last name *</label><input name="lastName" required placeholder="Smith"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>Email *</label><input name="email" type="email" required placeholder="jane@email.com"></div>
+        <div class="field"><label>Phone</label><input name="phone" type="tel" placeholder="+1 555-000-0000"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label>TikTok handle *</label><input name="tiktokHandle" required placeholder="@yourhandle"></div>
+        <div class="field">
+          <label>Follower count *</label>
+          <select name="followerRange" required>
+            <option value="" disabled selected>Select range</option>
+            <option>1K – 10K</option><option>10K – 50K</option>
+            <option>50K – 100K</option><option>100K – 500K</option><option>500K+</option>
+          </select>
+        </div>
+      </div>
+      <div class="row full">
+        <div class="field">
+          <label>Monthly TikTok GMV (optional)</label>
+          <select name="gmv">
+            <option value="">No shop yet / not sure</option>
+            <option>&lt;$1K/mo</option><option>$1K – $5K/mo</option>
+            <option>$5K – $20K/mo</option><option>$20K+/mo</option>
+          </select>
+        </div>
+      </div>
+      <div class="row full">
+        <div class="field">
+          <label>Anything else? (optional)</label>
+          <textarea name="message" placeholder="Tell us about your content, niche, or why you're excited to partner…"></textarea>
+        </div>
+      </div>
+      <div class="err" id="formErr"></div>
+      <button type="submit" class="btn-submit" id="submitBtn">Apply Now →</button>
+    </form>
+  </div>
+  <div class="success" id="successWrap">
+    <div class="success-icon">🎉</div>
+    <div class="success-title">Application submitted!</div>
+    <div class="success-msg">Thanks! Our team will review your application and reach out within 48 hours.<br><br>Follow <strong style="color:${accent}">@cultcontent.cc</strong> on TikTok for creator tips.</div>
+  </div>
+</div>
+<footer>Powered by <a href="https://cultcontent.cc" target="_blank">Cult Content</a> — TikTok Shop Creator Agency</footer>
+<script>
+document.getElementById('form').addEventListener('submit',async function(e){
+  e.preventDefault();
+  const btn=document.getElementById('submitBtn'),err=document.getElementById('formErr');
+  btn.disabled=true;btn.textContent='Submitting…';err.style.display='none';
+  const body=Object.fromEntries(new FormData(this));
+  body.brandSlug='${cp.slug}';
+  try{
+    const r=await fetch('/api/creator-pages/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const d=await r.json();
+    if(d.ok){document.getElementById('formWrap').style.display='none';document.getElementById('successWrap').style.display='block';}
+    else throw new Error(d.error||'Unknown error');
+  }catch(ex){
+    btn.disabled=false;btn.textContent='Apply Now →';
+    err.textContent='Something went wrong — please try again or email hello@cultcontent.cc';
+    err.style.display='block';
+  }
+});
+</script>
+</body>
+</html>`;
+}
+
+// GET /creators/:brandSlug — Public creator landing page (no Cloudflare auth required)
+app.get('/creators/:brandSlug', (req, res) => {
+  const brands = loadBrands();
+  const brand  = (brands.clients || []).find(b => b.creatorPage?.slug === req.params.brandSlug);
+  if (!brand || !brand.creatorPage?.active) {
+    return res.status(404).send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Not found</title></head><body style="font-family:sans-serif;text-align:center;padding:80px 20px;background:#0d0b14;color:#fff"><h1 style="margin-bottom:12px">Page not found</h1><p style="color:#666">This creator page doesn't exist or isn't active.</p></body></html>`);
+  }
+  res.set('Content-Type', 'text/html');
+  res.send(renderCreatorPage(brand, brand.creatorPage));
+});
+
+// POST /api/creator-pages/submit — Creator interest form submission (public)
+app.post('/api/creator-pages/submit', async (req, res) => {
+  try {
+    const { brandSlug, firstName, lastName, email, phone, tiktokHandle, followerRange, gmv, message } = req.body || {};
+    if (!brandSlug || !firstName || !email) return res.status(400).json({ ok: false, error: 'Missing required fields' });
+
+    const brands = loadBrands();
+    const brand  = (brands.clients || []).find(b => b.creatorPage?.slug === brandSlug);
+    if (!brand) return res.status(404).json({ ok: false, error: 'Brand not found' });
+
+    const tagName = brand.creatorPage?.tagName || `creator-interested-${brandSlug}`;
+
+    // Search for existing contact by email
+    let contactId = null;
+    try {
+      const sr = await ghl.get('/contacts/', { params: { locationId: CFG.locationId, query: email, limit: 1 } });
+      contactId = sr.data?.contacts?.[0]?.id || null;
+    } catch(_) {}
+
+    const payload = {
+      locationId: CFG.locationId,
+      firstName: firstName || '',
+      lastName:  lastName  || '',
+      email, phone: phone || '',
+      tags: [tagName, 'creator-interest-form'],
+      source: `Creator Interest Page — ${brand.name}`,
+    };
+
+    if (contactId) {
+      await ghl.put(`/contacts/${contactId}`, payload).catch(() => {});
+      await ghl.post(`/contacts/${contactId}/tags`, { tags: [tagName, 'creator-interest-form'] }).catch(() => {});
+    } else {
+      const cr = await ghl.post('/contacts/', payload);
+      contactId = cr.data?.contact?.id;
+    }
+
+    // Add note with creator details
+    if (contactId) {
+      const noteLines = [
+        `TikTok Handle: ${tiktokHandle || 'not provided'}`,
+        `Followers: ${followerRange || 'not provided'}`,
+        `Monthly GMV: ${gmv || 'not provided'}`,
+        `Interested in brand: ${brand.name}`,
+        message ? `Message: ${message}` : null,
+      ].filter(Boolean);
+      await ghl.post(`/contacts/${contactId}/notes`, { body: noteLines.join('\n'), userId: '' }).catch(() => {});
+    }
+
+    console.log(`[creator-pages] New submission for ${brand.name}: ${email} (${tiktokHandle || 'no handle'})`);
+    res.json({ ok: true, contactId });
+  } catch(e) {
+    console.error('[creator-pages/submit]', e.response?.data || e.message);
+    res.status(500).json({ ok: false, error: 'Submission failed — please try again' });
+  }
+});
+
+// GET /api/creator-pages — List all brands with creator page status
+app.get('/api/creator-pages', requireAuth, (req, res) => {
+  const brands  = loadBrands();
+  const baseUrl = PUBLIC_BASE_URL;
+  const pages   = (brands.clients || []).map(b => ({
+    id:        b.id,
+    name:      b.name,
+    creatorPage: b.creatorPage || null,
+    publicUrl: b.creatorPage?.slug ? `${baseUrl}/creators/${b.creatorPage.slug}` : null,
+  }));
+  res.json({ ok: true, pages, baseUrl });
+});
+
+// POST /api/creator-pages/:brandId/setup — Create or update creator page for a brand
+app.post('/api/creator-pages/:brandId/setup', requireAuth, (req, res) => {
+  const data = loadBrands();
+  const idx  = data.clients.findIndex(b => b.id === req.params.brandId);
+  if (idx === -1) return res.status(404).json({ ok: false, error: 'Brand not found' });
+
+  const brand   = data.clients[idx];
+  const slug    = req.body.slug || slugify(brand.name);
+  const tagName = `creator-interested-${slug}`;
+
+  data.clients[idx].creatorPage = {
+    slug,
+    tagName,
+    active:      true,
+    headline:    req.body.headline    || `Partner with ${brand.name}`,
+    subheadline: req.body.subheadline || `Join our TikTok Shop creator affiliate program`,
+    pitch:       req.body.pitch       || `We're looking for TikTok creators to promote ${brand.name} products on TikTok Shop. Our team will review your application and reach out within 48 hours.`,
+    accentColor: req.body.accentColor || '#00f2ea',
+    createdAt:   brand.creatorPage?.createdAt || new Date().toISOString(),
+    updatedAt:   new Date().toISOString(),
+  };
+
+  saveBrands(data);
+  const publicUrl = `${PUBLIC_BASE_URL}/creators/${slug}`;
+  console.log(`[creator-pages] Setup page for ${brand.name}: ${publicUrl}`);
+  res.json({ ok: true, brand: data.clients[idx], publicUrl });
+});
+
+// PUT /api/creator-pages/:brandId — Update creator page content / toggle active
+app.put('/api/creator-pages/:brandId', requireAuth, (req, res) => {
+  const data = loadBrands();
+  const idx  = data.clients.findIndex(b => b.id === req.params.brandId);
+  if (idx === -1) return res.status(404).json({ ok: false, error: 'Brand not found' });
+  if (!data.clients[idx].creatorPage) return res.status(400).json({ ok: false, error: 'No creator page set up yet' });
+
+  data.clients[idx].creatorPage = {
+    ...data.clients[idx].creatorPage,
+    ...req.body,
+    updatedAt: new Date().toISOString(),
+  };
+  saveBrands(data);
+  const publicUrl = `${PUBLIC_BASE_URL}/creators/${data.clients[idx].creatorPage.slug}`;
+  res.json({ ok: true, brand: data.clients[idx], publicUrl });
+});
+
 // ─── Health ────────────────────────────────────────────────────────────────────
 app.get('/health', (_, res) => res.json({ status: 'ok', service: 'dashboard' }));
 

@@ -2262,6 +2262,7 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
     <div class="sub-tab-nav" style="margin-bottom:20px">
       <button class="sub-tab-btn active" data-subtab="gp-onboarding" onclick="gpSubTab('gp-onboarding')">🤝 Onboarding</button>
       <button class="sub-tab-btn" data-subtab="gp-intel" onclick="gpSubTab('gp-intel')">🧠 Meeting Intel</button>
+      <button class="sub-tab-btn" data-subtab="gp-creator-pages" onclick="gpSubTab('gp-creator-pages')">🎯 Creator Pages</button>
     </div>
 
   <div id="sub-gp-onboarding">
@@ -2357,6 +2358,69 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
       <!-- Main content area -->
       <div id="miContent"><div style="text-align:center;padding:60px 0;color:var(--muted)">Loading…</div></div>
 
+    </div>
+
+    <!-- ── Creator Pages sub-tab ─────────────────────────────────────────── -->
+    <div id="sub-gp-creator-pages" style="display:none;max-width:960px;margin:0 auto;padding-bottom:60px">
+
+      <!-- Header -->
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:22px">
+        <div>
+          <h2 class="sec-title" style="margin:0 0 4px">Creator Interest Pages</h2>
+          <div style="font-size:12px;color:var(--muted)">Per-brand landing pages where creators sign up → auto-tagged in GHL for targeted SMS blasts</div>
+        </div>
+        <button class="btn btn-teal" style="font-weight:700;font-size:13px;padding:8px 20px" onclick="cpRefresh()">↻ Refresh</button>
+      </div>
+
+      <!-- Brand grid -->
+      <div id="cpGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px">
+        <div style="text-align:center;padding:60px 0;color:var(--muted);grid-column:1/-1">Loading…</div>
+      </div>
+
+    </div>
+
+    <!-- Creator Page Edit Modal -->
+    <div id="cpEditModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.75);z-index:9999;align-items:center;justify-content:center" onclick="if(event.target===this)cpCloseModal()">
+      <div class="card" style="width:min(580px,96vw);padding:28px;position:relative;max-height:90vh;overflow-y:auto">
+        <button onclick="cpCloseModal()" style="position:absolute;top:14px;right:16px;background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer">✕</button>
+        <div style="font-size:16px;font-weight:800;margin-bottom:4px" id="cpModalTitle">Setup Creator Page</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:20px" id="cpModalSub">Configure the public landing page creators will see</div>
+
+        <input type="hidden" id="cpEditBrandId">
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px">
+          <div>
+            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">URL Slug</label>
+            <input id="cpSlug" class="agent-input" placeholder="diamandia" style="width:100%;font-size:13px">
+            <div style="font-size:10px;color:var(--muted);margin-top:3px">/creators/<span id="cpSlugPreview">slug</span></div>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Accent Color</label>
+            <input id="cpAccent" type="color" class="agent-input" value="#00f2ea" style="height:36px;padding:2px 6px;cursor:pointer">
+          </div>
+        </div>
+
+        <div style="margin-bottom:14px">
+          <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Headline</label>
+          <input id="cpHeadline" class="agent-input" placeholder="Partner with BrandName" style="width:100%;font-size:13px">
+        </div>
+
+        <div style="margin-bottom:14px">
+          <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Sub-headline</label>
+          <input id="cpSubheadline" class="agent-input" placeholder="Join our TikTok Shop creator affiliate program" style="width:100%;font-size:13px">
+        </div>
+
+        <div style="margin-bottom:20px">
+          <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Pitch / Opportunity Description</label>
+          <textarea id="cpPitch" class="agent-input" rows="4" placeholder="Describe the brand opportunity for creators…" style="width:100%;font-size:13px;resize:vertical"></textarea>
+        </div>
+
+        <div id="cpModalError" style="display:none;color:var(--red);font-size:12px;margin-bottom:12px"></div>
+        <div style="display:flex;gap:10px;justify-content:flex-end">
+          <button class="btn btn-ghost" onclick="cpCloseModal()" style="font-size:13px">Cancel</button>
+          <button id="cpSaveBtn" class="btn btn-teal" onclick="cpSavePage()" style="font-size:13px;font-weight:700;min-width:130px">Save Page</button>
+        </div>
+      </div>
     </div>
 
     <!-- Import from Lark Modal -->
@@ -2832,7 +2896,9 @@ function gpSubTab(id) {
   document.querySelectorAll('#tab-growth .sub-tab-btn').forEach(b => b.classList.toggle('active', b.dataset.subtab === id));
   document.getElementById('sub-gp-onboarding').style.display = id === 'gp-onboarding' ? '' : 'none';
   document.getElementById('sub-gp-intel').style.display = id === 'gp-intel' ? '' : 'none';
+  document.getElementById('sub-gp-creator-pages').style.display = id === 'gp-creator-pages' ? '' : 'none';
   if (id === 'gp-intel') loadMeetingIntel();
+  if (id === 'gp-creator-pages') cpLoad();
 }
 
 async function gpInit() {
@@ -9816,6 +9882,186 @@ async function miSubmitMeeting() {
     document.getElementById('miModalError').textContent = e.message;
     btn.disabled = false;
     label.textContent = 'Analyze & Save';
+  }
+}
+
+// ─── Creator Interest Pages ──────────────────────────────────────────────────
+
+const CP = { pages: [], baseUrl: '' };
+
+async function cpLoad() {
+  document.getElementById('cpGrid').innerHTML = '<div style="text-align:center;padding:60px 0;color:var(--muted);grid-column:1/-1">Loading…</div>';
+  try {
+    const r = await fetch('/api/creator-pages').then(r => r.json());
+    if (!r.ok) throw new Error(r.error || 'Failed');
+    CP.pages   = r.pages   || [];
+    CP.baseUrl = r.baseUrl || '';
+    cpRender();
+  } catch(e) {
+    document.getElementById('cpGrid').innerHTML = `<div style="text-align:center;padding:60px 0;color:var(--red);grid-column:1/-1">Error: ${x(e.message)}</div>`;
+  }
+}
+
+function cpRefresh() { cpLoad(); }
+
+function cpRender() {
+  const grid = document.getElementById('cpGrid');
+  if (!CP.pages.length) {
+    grid.innerHTML = '<div style="text-align:center;padding:60px 0;color:var(--muted);grid-column:1/-1">No client brands found. Add a brand in GHL or the Onboarding tab first.</div>';
+    return;
+  }
+  grid.innerHTML = CP.pages.map(p => {
+    const cp  = p.creatorPage;
+    const url = p.publicUrl;
+    const hasPage = !!cp;
+    const isActive = cp?.active;
+    const accent = cp?.accentColor || 'var(--teal)';
+
+    return `<div class="card" style="padding:20px;display:flex;flex-direction:column;gap:14px">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px">
+        <div>
+          <div style="font-size:15px;font-weight:800;margin-bottom:2px">${x(p.name)}</div>
+          ${hasPage ? `<div style="font-size:10px;color:var(--muted);font-family:monospace;word-break:break-all">/creators/${x(cp.slug)}</div>` : '<div style="font-size:11px;color:var(--muted)">No page yet</div>'}
+        </div>
+        ${hasPage ? `<span style="background:${isActive ? 'rgba(0,210,122,.12)' : 'rgba(255,255,255,.06)'};color:${isActive ? 'var(--green)' : 'var(--muted)'};border-radius:6px;padding:3px 9px;font-size:10px;font-weight:700;white-space:nowrap;flex-shrink:0">${isActive ? '● Live' : '○ Off'}</span>` : ''}
+      </div>
+
+      ${hasPage ? `
+        <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px 12px;font-size:12px;color:var(--muted);line-height:1.5">
+          ${x((cp.headline || '').slice(0, 80))}${(cp.headline||'').length > 80 ? '…' : ''}
+        </div>
+        <div style="display:flex;align-items:center;gap:6px">
+          <div style="flex:1;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);border-radius:6px;padding:7px 10px;font-size:11px;font-family:monospace;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${x(url||'')}</div>
+          <button onclick="cpCopyUrl('${x(url||'')}',this)" class="btn btn-ghost" style="font-size:11px;padding:7px 10px;flex-shrink:0">Copy</button>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button onclick="cpOpenEdit('${x(p.id)}')" class="btn btn-ghost" style="flex:1;font-size:12px;padding:8px">✏ Edit</button>
+          <button onclick="cpToggleActive('${x(p.id)}',${!isActive})" class="btn btn-ghost" style="flex:1;font-size:12px;padding:8px">${isActive ? '⏸ Deactivate' : '▶ Activate'}</button>
+          <a href="${x(url||'')}" target="_blank" class="btn btn-ghost" style="flex:1;font-size:12px;padding:8px;text-align:center;text-decoration:none">↗ Preview</a>
+        </div>
+      ` : `
+        <div style="font-size:12px;color:var(--muted);line-height:1.5">Generate a public landing page where creators can express interest in partnering with this brand.</div>
+        <button onclick="cpOpenSetup('${x(p.id)}','${x(p.name)}')" class="btn btn-teal" style="font-size:13px;font-weight:700;padding:10px">+ Generate Creator Page</button>
+      `}
+    </div>`;
+  }).join('');
+}
+
+function cpCopyUrl(url, btn) {
+  navigator.clipboard.writeText(url).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓ Copied';
+    setTimeout(() => { btn.textContent = orig; }, 2000);
+  });
+}
+
+function cpOpenSetup(brandId, brandName) {
+  document.getElementById('cpEditBrandId').value = brandId;
+  document.getElementById('cpModalTitle').textContent = `Setup Page — ${brandName}`;
+  document.getElementById('cpModalSub').textContent = 'Generate a public creator interest page for this brand';
+  document.getElementById('cpSlug').value = brandName.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+  document.getElementById('cpHeadline').value = `Partner with ${brandName}`;
+  document.getElementById('cpSubheadline').value = 'Join our TikTok Shop creator affiliate program';
+  document.getElementById('cpPitch').value = `We're looking for TikTok creators to promote ${brandName} products on TikTok Shop. Our team will review your application and reach out within 48 hours.`;
+  document.getElementById('cpAccent').value = '#00f2ea';
+  document.getElementById('cpModalError').style.display = 'none';
+  document.getElementById('cpSaveBtn').textContent = 'Generate Page';
+  cpUpdateSlugPreview();
+  document.getElementById('cpEditModal').style.display = 'flex';
+}
+
+function cpOpenEdit(brandId) {
+  const p = CP.pages.find(pg => pg.id === brandId);
+  if (!p?.creatorPage) return;
+  const cp = p.creatorPage;
+  document.getElementById('cpEditBrandId').value = brandId;
+  document.getElementById('cpModalTitle').textContent = `Edit Page — ${p.name}`;
+  document.getElementById('cpModalSub').textContent = 'Update the public creator landing page content';
+  document.getElementById('cpSlug').value = cp.slug || '';
+  document.getElementById('cpHeadline').value = cp.headline || '';
+  document.getElementById('cpSubheadline').value = cp.subheadline || '';
+  document.getElementById('cpPitch').value = cp.pitch || '';
+  document.getElementById('cpAccent').value = cp.accentColor || '#00f2ea';
+  document.getElementById('cpModalError').style.display = 'none';
+  document.getElementById('cpSaveBtn').textContent = 'Save Changes';
+  cpUpdateSlugPreview();
+  document.getElementById('cpEditModal').style.display = 'flex';
+}
+
+function cpUpdateSlugPreview() {
+  document.getElementById('cpSlugPreview').textContent = document.getElementById('cpSlug').value || 'slug';
+}
+// Wire up slug preview on input
+document.addEventListener('DOMContentLoaded', () => {
+  const slugInput = document.getElementById('cpSlug');
+  if (slugInput) slugInput.addEventListener('input', cpUpdateSlugPreview);
+});
+
+function cpCloseModal() {
+  document.getElementById('cpEditModal').style.display = 'none';
+}
+
+async function cpSavePage() {
+  const brandId   = document.getElementById('cpEditBrandId').value;
+  const slug      = document.getElementById('cpSlug').value.trim().toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+  const headline  = document.getElementById('cpHeadline').value.trim();
+  const sub       = document.getElementById('cpSubheadline').value.trim();
+  const pitch     = document.getElementById('cpPitch').value.trim();
+  const accent    = document.getElementById('cpAccent').value;
+  const errEl     = document.getElementById('cpModalError');
+  const btn       = document.getElementById('cpSaveBtn');
+
+  if (!slug) { errEl.textContent = 'Slug is required'; errEl.style.display = 'block'; return; }
+  if (!headline) { errEl.textContent = 'Headline is required'; errEl.style.display = 'block'; return; }
+
+  const existing = CP.pages.find(p => p.id === brandId);
+  const isNew    = !existing?.creatorPage;
+  const endpoint = isNew ? `/api/creator-pages/${brandId}/setup` : `/api/creator-pages/${brandId}`;
+  const method   = isNew ? 'POST' : 'PUT';
+  const origText = btn.textContent;
+  btn.disabled   = true;
+  btn.textContent = 'Saving…';
+  errEl.style.display = 'none';
+
+  try {
+    const r = await fetch(endpoint, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ slug, headline, subheadline: sub, pitch, accentColor: accent }),
+    }).then(r => r.json());
+
+    if (!r.ok) throw new Error(r.error || 'Save failed');
+
+    cpCloseModal();
+    await cpLoad();
+    // Show the live URL briefly
+    if (r.publicUrl) {
+      const notify = document.createElement('div');
+      notify.style.cssText = 'position:fixed;bottom:24px;right:24px;background:var(--teal);color:#000;padding:12px 20px;border-radius:10px;font-weight:700;font-size:13px;z-index:9999;cursor:pointer';
+      notify.innerHTML = `✓ Page live at <u>${r.publicUrl}</u>`;
+      notify.onclick = () => window.open(r.publicUrl, '_blank');
+      document.body.appendChild(notify);
+      setTimeout(() => notify.remove(), 6000);
+    }
+  } catch(e) {
+    errEl.textContent = e.message;
+    errEl.style.display = 'block';
+    btn.disabled = false;
+    btn.textContent = origText;
+  }
+}
+
+async function cpToggleActive(brandId, active) {
+  try {
+    const r = await fetch(`/api/creator-pages/${brandId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ active }),
+    }).then(r => r.json());
+    if (!r.ok) throw new Error(r.error);
+    await cpLoad();
+  } catch(e) {
+    alert('Error: ' + e.message);
   }
 }
 
