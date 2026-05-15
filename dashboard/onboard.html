@@ -196,14 +196,6 @@ textarea{resize:vertical;min-height:80px}
     <div class="card-title">TikTok Shop Setup</div>
     <div class="card-sub">Help us understand where you are in your TikTok Shop journey.</div>
 
-    <div class="row full" style="margin-bottom:20px">
-      <div class="field">
-        <label>Hero Product Link <span class="req">*</span></label>
-        <input type="text" id="heroProductLink" placeholder="TikTok Shop product URL or Shopify link">
-        <div class="hint">Your primary product — the one we'll focus affiliate recruitment on first</div>
-      </div>
-    </div>
-
     <div class="row" style="margin-bottom:20px">
       <div class="field">
         <label>Are you registered for TikTok Shop? <span class="req">*</span></label>
@@ -470,7 +462,7 @@ function validateStep(n) {
     return true;
   };
   if (n === 1) return req('brandName','Brand name') && req('website','Website') && req('firstName','First name') && req('lastName','Last name') && req('phone','Phone') && req('email','Email');
-  if (n === 2) return req('heroProductLink','Hero product link') && yn('tiktokShop','TikTok Shop registered?') && yn('shopifyIntegrated','Shopify integrated?') && yn('tiktokAccountManager','TikTok account manager?') && yn('reviewsImported','Reviews imported?') && yn('fbt','FBT registered?');
+  if (n === 2) return yn('tiktokShop','TikTok Shop registered?') && yn('shopifyIntegrated','Shopify integrated?') && yn('tiktokAccountManager','TikTok account manager?') && yn('reviewsImported','Reviews imported?') && yn('fbt','FBT registered?');
   if (n === 3) {
     if (!F.products.length || !F.products.some(p => p.name?.trim())) { alert('Please add at least one product.'); return false; }
     return req('sampleBudget','Monthly sample budget');
@@ -576,7 +568,6 @@ function buildReview() {
     <div class="review-section">
       <div class="review-title">TikTok Shop Setup</div>
       <div class="review-grid">
-        <div class="rv"><div class="rv-label">Hero Product</div><div class="rv-val" style="font-size:11px">${esc(v('heroProductLink'))}</div></div>
         <div class="rv"><div class="rv-label">TikTok Shop</div><div class="rv-val">${esc(F.tiktokShop||'—')}</div></div>
         <div class="rv"><div class="rv-label">Shopify Integrated</div><div class="rv-val">${esc(F.shopifyIntegrated||'—')}</div></div>
         <div class="rv"><div class="rv-label">TikTok AM</div><div class="rv-val">${esc(F.tiktokAccountManager||'—')}</div></div>
@@ -618,7 +609,7 @@ async function submitForm() {
   const payload = {
     brandName: v('brandName'), firstName: v('firstName'), lastName: v('lastName'),
     phone: v('phone'), email: v('email'), website: v('website'),
-    brandMission: v('brandMission'), heroProductLink: v('heroProductLink'),
+    brandMission: v('brandMission'),
     tiktokShop: F.tiktokShop, shopifyIntegrated: F.shopifyIntegrated,
     tiktokAccountManager: F.tiktokAccountManager, reviewsImported: F.reviewsImported,
     fbt: F.fbt, sendSamples: F.sendSamples,
