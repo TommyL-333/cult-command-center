@@ -30,7 +30,7 @@ if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 // Public-facing Railway URL — returned in upload responses so Buffer (and browsers) can fetch files
 // without hitting Cloudflare's 100 MB limit.  Override via PUBLIC_BASE_URL env var.
-const PUBLIC_BASE_URL = (process.env.PUBLIC_BASE_URL || 'https://cult-command-center-production.up.railway.app').replace(/\/$/, '');
+const PUBLIC_BASE_URL = (process.env.PUBLIC_BASE_URL || process.env.DASHBOARD_URL || 'https://cult-command-center-production.up.railway.app').replace(/\/$/, '');
 
 const app = express();
 
@@ -6657,7 +6657,7 @@ async function runOnboardingPipeline(formData) {
     brand.contactName = `${formData.firstName} ${formData.lastName}`;
     brand.website     = formData.website;
     brand.creatorPage = {
-      slug, tagName: `creator-interested-${slug}`, active: false,
+      slug, tagName: `creator-interested-${slug}`, active: true,
       headline: `Partner with ${brandName}`,
       subheadline: 'Join our TikTok Shop creator affiliate program',
       pitch, accentColor: '#00f2ea',
@@ -6665,7 +6665,7 @@ async function runOnboardingPipeline(formData) {
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
     };
     saveBrands(brandsData);
-    creatorPage = { slug, publicUrl: `${PUBLIC_BASE_URL}/creators/${slug}`, active: false };
+    creatorPage = { slug, publicUrl: `${PUBLIC_BASE_URL}/creators/${slug}`, active: true };
     console.log(`[onboard] Creator page draft: ${creatorPage.publicUrl}`);
   } catch(e) { console.error('[onboard] creator page error:', e.message); }
 
