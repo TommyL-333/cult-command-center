@@ -2326,6 +2326,7 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
           <button id="miFirefliesBtn" class="btn btn-ghost" style="font-size:12px;padding:7px 14px" onclick="miSyncFireflies(this)" title="Pull recent Google Meet transcripts from Fireflies">🔥 Sync Fireflies</button>
           <button id="miReanalyzeBtn" class="btn btn-ghost" style="font-size:12px;padding:7px 14px" onclick="miReanalyze(this)" title="Re-run AI on all meetings with current client list">↻ Re-analyze</button>
           <button class="btn btn-ghost" style="font-size:12px;padding:7px 14px" onclick="miOpenImportModal()" title="Import a meeting from a Lark Minutes URL">🔗 Import from Lark</button>
+          <button class="btn btn-ghost" style="font-size:12px;padding:7px 14px" onclick="miImportFireflies(this)" title="Import a specific meeting from a Fireflies URL">🦗 Import from Fireflies</button>
           <button class="btn btn-teal" style="font-weight:700;font-size:13px;padding:8px 20px" onclick="miOpenAddModal()">+ Add Meeting</button>
         </div>
       </div>
@@ -9630,6 +9631,30 @@ async function miSyncFireflies(btn) {
   } catch(e) {
     btn.textContent = '✗ Error';
     setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 3000);
+  }
+}
+
+async function miImportFireflies(btn) {
+  const url = prompt('Paste the Fireflies meeting URL:\n(e.g. https://app.fireflies.ai/view/Meeting-Name::ID)');
+  if (!url?.trim()) return;
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = '⏳ Importing…';
+  try {
+    const r = await fetch('/api/client-meetings/import-fireflies', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ url: url.trim() })
+    }).then(r => r.json());
+    if (r.ok) {
+      btn.textContent = '✓ Imported!';
+      setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 3000);
+      loadMeetingIntel();
+    } else {
+      alert('Import failed: ' + (r.error || 'Unknown error'));
+      btn.textContent = orig; btn.disabled = false;
+    }
+  } catch(e) {
+    alert('Error: ' + e.message);
+    btn.textContent = orig; btn.disabled = false;
   }
 }
 

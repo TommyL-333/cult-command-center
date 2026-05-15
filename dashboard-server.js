@@ -597,7 +597,11 @@ app.post('/api/webhooks/lark-meeting', async (req, res) => {
   res.json({ ok: true });
 
   const eventType = body.header?.event_type || body.event_type;
-  if (eventType !== 'vc.meeting.ended') return;
+  const isMeetingEnded = eventType === 'vc.meeting.ended'           // legacy
+    || eventType === 'vc.meeting.meeting_ended_v1'                  // v2.0
+    || eventType === 'vc.meeting.all_meeting_ended_v1';             // v2.0 all
+  console.log(`[lark-webhook] received event: ${eventType}`);
+  if (!isMeetingEnded) return;
 
   setImmediate(async () => {
     try {
@@ -3675,6 +3679,79 @@ Return JSON only — no explanation:
     console.log(`[reanalyze] updated ${updated}/${data.meetings.length} meetings`);
     res.json({ ok: true, updated, total: data.meetings.length });
   } catch(e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+// POST /api/client-meetings/import-fireflies — import a single transcript by Fireflies URL or ID
+// e.g. https://app.fireflies.ai/view/Trusted-Rituals-Onboarding::01KRGPSQ4XHFNB1KZY0Z8B3EB5
+app.post('/api/client-meetings/import-fireflies', requireAuth, async (req, res) => {
+  try {
+    const { url } = req.body || {};
+    if (!url) return res.status(400).json({ ok: false, error: 'url required' });
+
+    // Extract transcript ID — everything after the last ::
+    const id = url.includes('::') ? url.split('::').pop().split('?')[0].trim() : url.trim();
+    if (!id) return res.status(400).json({ ok: false, error: 'Could not extract transcript ID from URL' });
+
+    const keys = [process.env.FIREFLIES_API_KEY, process.env.FIREFLIES_API_KEY_2].filter(Boolean);
+    if (!keys.length) return res.status(400).json({ ok: false, error: 'FIREFLIES_API_KEY not set' });
+
+    // Check it's not already imported
+    const data = loadClientMeetings();
+    if (data.meetings.find(m => m.fireflyId === id)) {
+      return res.json({ ok: false, error: 'This transcript is already imported' });
+    }
+
+    // Fetch full transcript
+    const txQuery = `query Transcript($id: String!) { transcript(id: $id) { id title date participants sentences { speaker_name text } summary { short_summary action_items } } }`;
+    let tx = null;
+    for (const key of keys) {
+      try {
+        const r = await axios.post('https://api.fireflies.ai/graphql',
+          { query: txQuery, variables: { id } },
+          { headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' }, timeout: 30000 }
+        );
+        if (r.data?.data?.transcript) { tx = r.data.data.transcript; break; }
+      } catch(e) { console.error('[ff-import] fetch error:', e.message); }
+    }
+    if (!tx) return res.status(404).json({ ok: false, error: `Transcript ${id} not found in Fireflies` });
+
+    const fullTranscript = (tx.sentences || []).map(s => `${s.speaker_name||'Unknown'}: ${s.text}`).join('\n');
+    const notes = fullTranscript || `${tx.summary?.short_summary || ''}\n\nAction items:\n${(tx.summary?.action_items || []).join('\n')}`;
+    const dateStr = tx.date ? new Date(tx.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+
+    const _brandsFF = loadBrands();
+    const knownClients = (_brandsFF.clients || []).map(c => c.name || c.id).filter(Boolean);
+    const contactMap = buildContactMap(_brandsFF);
+    let actionItems = [], themes = [], summary = '', keyProblems = [], aiClient = '';
+
+    if (process.env.ANTHROPIC_API_KEY && notes.trim()) {
+      try {
+        const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+        const msg = await anthropic.messages.create({
+          model: 'claude-sonnet-4-6', max_tokens: 2000,
+          messages: [{ role: 'user', content: `Analyze this meeting transcript from Cult Content agency (TikTok Shop content/affiliate agency).\n\n${buildClientTaggingPrompt(_brandsFF)}\n\nMeeting: ${tx.title} (${dateStr})\nParticipants: ${(tx.participants||[]).join(', ')||'unknown'}\n\nTranscript:\n${notes.slice(0, 8000)}\n\nReturn JSON only:\n{"client":"brand name or Internal","summary":"","actionItems":[{"task":"","assignee":"","client":"brand name or Internal","priority":"high|medium|low","done":false}],"themes":[],"keyProblems":[]}` }]
+        });
+        const parsed = JSON.parse(msg.content[0].text.trim().replace(/^```json\n?/, '').replace(/\n?```$/, ''));
+        actionItems = (parsed.actionItems || []).map(ai => ({ ...ai, client: normaliseClientName(ai.client, knownClients, contactMap) || ai.client || 'Internal' }));
+        themes = parsed.themes || []; summary = parsed.summary || ''; keyProblems = parsed.keyProblems || [];
+        aiClient = normaliseClientName(parsed.client, knownClients, contactMap) || parsed.client || '';
+      } catch(e) { console.error('[ff-import] AI error:', e.message); }
+    }
+
+    const meeting = {
+      id: `ff_${id}`, fireflyId: id, date: dateStr, client: aiClient,
+      title: tx.title || 'Fireflies Meeting', participants: tx.participants || [],
+      duration: null, notes, summary, actionItems, themes, keyProblems,
+      source: 'fireflies', createdAt: new Date().toISOString()
+    };
+    data.meetings.unshift(meeting);
+    saveClientMeetings(data);
+    console.log(`[ff-import] imported: ${tx.title} (${dateStr}) → client: ${aiClient}`);
+    res.json({ ok: true, meeting });
+  } catch(e) {
+    console.error('[ff-import]', e.message);
     res.status(500).json({ ok: false, error: e.message });
   }
 });
