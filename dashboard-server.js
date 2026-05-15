@@ -753,11 +753,16 @@ app.post('/api/admin/lark-minutes-import', requireAuth, async (req, res) => {
             role: 'user',
             content: `Analyze this Lark meeting transcript from Cult Content (a TikTok Shop content/affiliate agency).
 
-Known clients (use EXACTLY these names or "Internal"):
-${knownClients.length ? knownClients.join(', ') : 'unknown'}
+Client tagging rules — for BOTH the top-level "client" field and each action item's "client" field:
+- Known brand clients (use EXACTLY these names when applicable): ${knownClients.length ? knownClients.join(', ') : 'none yet'}
+- If a task/topic involves a known brand → use that brand name exactly
+- If a task involves an external person who is NOT a Cult Content employee (e.g. a growth partner, consultant, or individual client like "Lenea") → use their first name as the client tag
+- Use "Internal" ONLY for tasks that are purely internal Cult Content operations with no specific external person or brand involved
+
+For the top-level "client": use the primary brand/person this meeting is about. For group calls with multiple external people, use the most prominent one.
 
 Return JSON only:
-{"client":"exact client name from the list above or Internal","summary":"","actionItems":[{"task":"","assignee":"","client":"exact client name or Internal","priority":"high|medium|low","done":false}],"themes":[],"keyProblems":[]}
+{"client":"brand name, person first name, or Internal","summary":"","actionItems":[{"task":"","assignee":"","client":"brand name, person first name, or Internal","priority":"high|medium|low","done":false}],"themes":[],"keyProblems":[]}
 
 Transcript:
 ${transcript.slice(0, 8000)}`
@@ -766,12 +771,12 @@ ${transcript.slice(0, 8000)}`
         const parsed = JSON.parse(msg.content[0].text.trim().replace(/^```json\n?/, '').replace(/\n?```$/, ''));
         actionItems = (parsed.actionItems || []).map(ai => ({
           ...ai,
-          client: normaliseClientName(ai.client, knownClients) || 'Internal',
+          client: normaliseClientName(ai.client, knownClients) || ai.client || 'Internal',
         }));
         themes      = parsed.themes      || [];
         summary     = parsed.summary     || '';
         keyProblems = parsed.keyProblems || [];
-        aiClient    = normaliseClientName(parsed.client, knownClients) || '';
+        aiClient    = normaliseClientName(parsed.client, knownClients) || parsed.client || '';
       } catch(aiErr) {
         console.error('[lark-import] AI error:', aiErr.message);
       }
@@ -3466,8 +3471,11 @@ app.post('/api/client-meetings', async (req, res) => {
             role: 'user',
             content: `You are analyzing meeting notes from a TikTok Shop content/affiliate agency called Cult Content. Extract structured data from these meeting notes.
 
-Known clients (use EXACTLY these names or "Internal" for team-only topics):
-${knownClients.length ? knownClients.join(', ') : 'unknown — use your best guess'}
+Client tagging rules — for BOTH the top-level "client" field and each action item's "client" field:
+- Known brand clients (use EXACTLY these names when applicable): ${knownClients.length ? knownClients.join(', ') : 'none yet'}
+- If a task/topic involves a known brand → use that brand name exactly
+- If a task involves an external person who is NOT a Cult Content employee (e.g. a growth partner, consultant, or individual client) → use their first name as the client tag
+- Use "Internal" ONLY for tasks that are purely internal Cult Content operations with no specific external person or brand involved
 
 Meeting details:
 - Date: ${date || 'unknown'}
@@ -3485,7 +3493,7 @@ Return ONLY valid JSON with this exact structure:
     {
       "task": "specific action item",
       "assignee": "person's first name or 'Team'",
-      "client": "use one of the known client names exactly, or 'Internal' for internal tasks",
+      "client": "brand name, person first name, or Internal",
       "priority": "high|medium|low",
       "done": false
     }
@@ -3575,10 +3583,13 @@ app.post('/api/client-meetings/reanalyze', requireAuth, async (req, res) => {
           model: 'claude-sonnet-4-6', max_tokens: 2000,
           messages: [{
             role: 'user',
-            content: `Analyze this meeting transcript from Cult Content agency.
+            content: `Analyze this meeting transcript from Cult Content agency (TikTok Shop content/affiliate agency).
 
-Known clients (use EXACTLY these names or "Internal"):
-${knownClients.length ? knownClients.join(', ') : 'unknown'}
+Client tagging rules — for BOTH the top-level "client" field and each action item's "client" field:
+- Known brand clients (use EXACTLY these names when applicable): ${knownClients.length ? knownClients.join(', ') : 'none yet'}
+- If a task/topic involves a known brand → use that brand name exactly
+- If a task involves an external person who is NOT a Cult Content employee (e.g. a growth partner, consultant, or individual client) → use their first name as the client tag (e.g. "Lenea")
+- Use "Internal" ONLY for tasks that are purely internal Cult Content operations with no specific external person or brand involved
 
 Meeting: ${m.title} (${m.date})
 Participants: ${(m.participants||[]).join(', ')||'unknown'}
@@ -3587,7 +3598,7 @@ Transcript:
 ${(m.notes||'').slice(0, 8000)}
 
 Return JSON only — no explanation:
-{"client":"exact client name or Internal","summary":"","actionItems":[{"task":"","assignee":"","client":"exact client name or Internal","priority":"high|medium|low","done":false}],"themes":[],"keyProblems":[]}`
+{"client":"brand name, person first name, or Internal","summary":"","actionItems":[{"task":"","assignee":"","client":"brand name, person first name, or Internal","priority":"high|medium|low","done":false}],"themes":[],"keyProblems":[]}`
           }]
         });
         const parsed = JSON.parse(msg.content[0].text.trim().replace(/^```json\n?/, '').replace(/\n?```$/, ''));
@@ -3597,7 +3608,7 @@ Return JSON only — no explanation:
         m.keyProblems = parsed.keyProblems || m.keyProblems;
         m.actionItems = (parsed.actionItems || []).map(ai => ({
           ...ai,
-          client: normaliseClientName(ai.client, knownClients) || 'Internal',
+          client: normaliseClientName(ai.client, knownClients) || ai.client || 'Internal',
           done: false,
         }));
         updated++;
@@ -3673,8 +3684,11 @@ app.post('/api/client-meetings/sync-fireflies', requireAuth, async (req, res) =>
               role: 'user',
               content: `Analyze this meeting transcript from Cult Content agency (TikTok Shop content/affiliate agency).
 
-Known clients (use EXACTLY these names or "Internal"):
-${knownClients.length ? knownClients.join(', ') : 'unknown'}
+Client tagging rules — for BOTH the top-level "client" field and each action item's "client" field:
+- Known brand clients (use EXACTLY these names when applicable): ${knownClients.length ? knownClients.join(', ') : 'none yet'}
+- If a task/topic involves a known brand → use that brand name exactly
+- If a task involves an external person who is NOT a Cult Content employee (e.g. a growth partner, consultant, or individual client) → use their first name as the client tag (e.g. "Lenea")
+- Use "Internal" ONLY for tasks that are purely internal Cult Content operations with no specific external person or brand involved
 
 Meeting: ${t.title} (${dateStr})
 Participants: ${(t.participants||[]).join(', ')||'unknown'}
@@ -3683,15 +3697,15 @@ Transcript:
 ${notes.slice(0, 8000)}
 
 Return JSON only:
-{"client":"exact client name or Internal","summary":"","actionItems":[{"task":"","assignee":"","client":"exact client name or Internal","priority":"high|medium|low","done":false}],"themes":[],"keyProblems":[]}`
+{"client":"brand name, person first name, or Internal","summary":"","actionItems":[{"task":"","assignee":"","client":"brand name, person first name, or Internal","priority":"high|medium|low","done":false}],"themes":[],"keyProblems":[]}`
             }]
           });
           const parsed = JSON.parse(msg.content[0].text.trim().replace(/^```json\n?/, '').replace(/\n?```$/, ''));
-          actionItems = (parsed.actionItems || []).map(ai => ({ ...ai, client: normaliseClientName(ai.client, knownClients) || 'Internal' }));
+          actionItems = (parsed.actionItems || []).map(ai => ({ ...ai, client: normaliseClientName(ai.client, knownClients) || ai.client || 'Internal' }));
           themes      = parsed.themes      || [];
           summary     = parsed.summary     || '';
           keyProblems = parsed.keyProblems || [];
-          aiClient    = normaliseClientName(parsed.client, knownClients) || '';
+          aiClient    = normaliseClientName(parsed.client, knownClients) || parsed.client || '';
         } catch(aiErr) { console.error('[ff-sync] AI error:', aiErr.message); }
       }
 

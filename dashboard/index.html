@@ -9288,9 +9288,10 @@ function miRenderByClient() {
   const known = MI.knownClients || [];
   const showDone = miShowDone();
 
-  // Only show known clients — no Internal card in this view
+  // Show all external clients — known brands + any named individuals (growth partners, consultants, etc.)
+  // Never show Internal, General, or empty. Known brands list is used for sorting priority but not filtering.
   let entries = Object.entries(byClient)
-    .filter(([client]) => known.length ? known.includes(client) : (client !== 'Internal' && client !== 'General' && client !== ''))
+    .filter(([client]) => client && client !== 'Internal' && client !== 'General' && client !== '')
     .map(([client, actions]) => [client, showDone ? actions : actions.filter(a => !a.done)])
     .filter(([, actions]) => actions.length > 0)
     .sort((a,b) => b[1].filter(a=>!a.done).length - a[1].filter(a=>!a.done).length);
