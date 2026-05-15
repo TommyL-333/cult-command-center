@@ -734,6 +734,15 @@
       </div>
     </div>
 
+    <!-- ── Section: Pending Client Onboards ── -->
+    <div class="agent-section-label" style="display:flex;align-items:center;justify-content:space-between">
+      <span>🚀 Pending Client Onboards</span>
+      <a href="/onboard" target="_blank" class="btn btn-ghost" style="font-size:11px;padding:4px 12px">Open Form ↗</a>
+    </div>
+    <div id="pendingOnboardsWrap" style="margin-bottom:24px">
+      <div style="text-align:center;padding:32px 0;color:var(--muted);font-size:13px">Loading…</div>
+    </div>
+
     <!-- ── Section: Automations ── -->
     <div class="agent-section-label">🔄 Automations</div>
     <div class="two-col mb16">
@@ -7732,6 +7741,7 @@ renderArcadsStats();
 loadConsultantStats();
 loadTikTokStatus();
 renderAgentManager();
+loadPendingOnboards();
 loadPaidMedia();
 gpInit();
 
@@ -9883,6 +9893,111 @@ async function miSubmitMeeting() {
     btn.disabled = false;
     label.textContent = 'Analyze & Save';
   }
+}
+
+// ─── Pending Client Onboards ─────────────────────────────────────────────────
+
+async function loadPendingOnboards() {
+  const wrap = document.getElementById('pendingOnboardsWrap');
+  if (!wrap) return;
+  try {
+    const list = await fetch('/api/onboard/pending').then(r => r.json());
+    if (!list.length) {
+      wrap.innerHTML = '<div style="text-align:center;padding:32px;color:var(--muted);font-size:13px;background:rgba(255,255,255,.02);border-radius:12px;border:1px dashed rgba(255,255,255,.08)">No pending onboards — <a href="/onboard" target="_blank" style="color:var(--teal)">share the onboarding form</a> with your clients</div>';
+      return;
+    }
+    const pending = list.filter(e => e.status === 'pending');
+    const approved = list.filter(e => e.status === 'approved');
+    wrap.innerHTML = (pending.length ? pending : list).map(entry => renderOnboardCard(entry)).join('');
+  } catch(e) {
+    wrap.innerHTML = `<div style="color:var(--red);font-size:13px">Error loading onboards: ${x(e.message)}</div>`;
+  }
+}
+
+function renderOnboardCard(entry) {
+  const fd        = entry.formData || {};
+  const ai        = entry.aiContent || {};
+  const products  = (fd.products || []).filter(p => p.name).map(p => p.name).join(', ');
+  const isApproved = entry.status === 'approved';
+  const hasPage   = !!entry.creatorPage?.publicUrl;
+  const hasDoc    = !!entry.larkDoc?.url;
+  const reacherProducts = Object.keys(ai.reacherCopy || {});
+  const comp      = fd.compensation || {};
+  const incentives = [];
+  if (comp.cashback?.enabled)    incentives.push(`💸 $${comp.cashback.amount}/video`);
+  if (comp.leaderboard?.enabled) incentives.push(`🏆 Leaderboard`);
+  if (comp.volumeBonus?.enabled) incentives.push(`🎬 Volume Bonus`);
+  if (comp.retainer?.enabled)    incentives.push(`🤝 Retainer`);
+
+  return `<div class="card" style="margin-bottom:14px;border-color:${isApproved ? 'rgba(0,210,122,.2)' : 'rgba(0,242,234,.15)'}">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap">
+      <div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div style="font-size:16px;font-weight:800">${x(fd.brandName||'Unknown Brand')}</div>
+          <span style="background:${isApproved?'rgba(0,210,122,.12)':'rgba(0,242,234,.1)'};color:${isApproved?'var(--green)':'var(--teal)'};border-radius:6px;padding:2px 9px;font-size:10px;font-weight:700">${isApproved?'✓ Approved':'⏳ Pending Review'}</span>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px">${x(fd.firstName||'')} ${x(fd.lastName||'')} · ${x(fd.email||'')} · ${x(fd.website||'')}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">📦 ${x(products||'No products listed')} · 💰 Budget: ${fd.monthlyBudget?'$'+fd.monthlyBudget:'TBD'}</div>
+        ${incentives.length ? `<div style="margin-top:6px">${incentives.map(i=>`<span style="display:inline-block;background:rgba(255,255,255,.06);border-radius:5px;padding:2px 8px;font-size:11px;margin-right:4px">${i}</span>`).join('')}</div>` : ''}
+      </div>
+      <div style="font-size:11px;color:var(--muted);flex-shrink:0">${new Date(entry.createdAt).toLocaleDateString()}</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-bottom:14px">
+      ${hasDoc ? `<a href="${x(entry.larkDoc.url)}" target="_blank" class="btn btn-ghost" style="font-size:11px;padding:8px;text-align:center;text-decoration:none">📄 Resource Hub ↗</a>` : '<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:8px;font-size:11px;color:var(--muted);text-align:center">📄 No resource hub yet</div>'}
+      ${hasPage ? `<a href="${x(entry.creatorPage.publicUrl)}" target="_blank" class="btn btn-ghost" style="font-size:11px;padding:8px;text-align:center;text-decoration:none">🎯 Creator Page${isApproved?' (Live)':' (Draft)'} ↗</a>` : '<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:8px;font-size:11px;color:var(--muted);text-align:center">🎯 No creator page</div>'}
+      ${reacherProducts.length ? `<button onclick="pobShowReacher('${entry.id}')" class="btn btn-ghost" style="font-size:11px;padding:8px">📣 Reacher Copy (${reacherProducts.length} product${reacherProducts.length>1?'s':''})</button>` : ''}
+    </div>
+
+    ${!isApproved ? `
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button onclick="pobApprove('${entry.id}',this)" class="btn btn-teal" style="font-size:12px;font-weight:700;padding:9px 20px">✓ Approve &amp; Launch</button>
+      <button onclick="pobDelete('${entry.id}',this)" class="btn btn-ghost" style="font-size:12px;padding:9px 16px;color:var(--red)">✕ Delete</button>
+    </div>` : `<div style="font-size:12px;color:var(--green)">✓ Approved ${entry.approvedAt ? 'on '+new Date(entry.approvedAt).toLocaleDateString() : ''}</div>`}
+
+    <!-- Reacher copy expandable -->
+    <div id="reacher-${entry.id}" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:16px">
+      ${reacherProducts.map(pName => {
+        const copy = ai.reacherCopy[pName];
+        return `<div style="margin-bottom:18px">
+          <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--teal)">${x(pName)}</div>
+          ${[['TC Message',copy.tc_message],['DM Message',copy.dm_message],['Follow-Up',copy.followup_message]].map(([label,text])=>`
+            <div style="margin-bottom:10px">
+              <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:4px">${label}</div>
+              <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.6;white-space:pre-wrap;word-break:break-word">${x(text||'—')}</div>
+            </div>`).join('')}
+        </div>`;
+      }).join('')}
+    </div>
+  </div>`;
+}
+
+function pobShowReacher(id) {
+  const el = document.getElementById(`reacher-${id}`);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+async function pobApprove(id, btn) {
+  const orig = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Approving…';
+  try {
+    const r = await fetch(`/api/onboard/${id}/approve`, { method: 'POST' }).then(r => r.json());
+    if (r.ok) {
+      btn.textContent = '✓ Launched!';
+      setTimeout(() => loadPendingOnboards(), 1500);
+    } else throw new Error(r.error);
+  } catch(e) {
+    alert('Error: ' + e.message);
+    btn.disabled = false; btn.textContent = orig;
+  }
+}
+
+async function pobDelete(id, btn) {
+  if (!confirm('Delete this onboarding entry?')) return;
+  try {
+    await fetch(`/api/onboard/${id}`, { method: 'DELETE' });
+    loadPendingOnboards();
+  } catch(e) { alert('Error: ' + e.message); }
 }
 
 // ─── Creator Interest Pages ──────────────────────────────────────────────────

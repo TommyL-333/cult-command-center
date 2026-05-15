@@ -6290,6 +6290,380 @@ app.get('/api/admin/disk', (req, res) => {
   }
 });
 
+// ─── Client Onboarding Pipeline ─────────────────────────────────────────────
+
+const ONBOARD_PENDING_FILE         = path.join(DATA_DIR, 'onboard-pending.json');
+const RESOURCE_HUB_TEMPLATE_TOKEN  = 'RuLZdNSSkouiinxp340uXfEgtjg';  // Lark doc token
+const RESOURCE_HUB_TEMPLATE_WIKI   = 'WH89wl1s7i2W1ZkxAHIu3g2stsb';  // wiki node token
+const LARK_WIKI_SPACE_ID           = '7527434423529111564';
+
+function loadPendingOnboards() {
+  try { return JSON.parse(fs.readFileSync(ONBOARD_PENDING_FILE, 'utf8')); }
+  catch(_) { return []; }
+}
+function savePendingOnboards(data) {
+  fs.writeFileSync(ONBOARD_PENDING_FILE, JSON.stringify(data, null, 2));
+}
+
+// Scrape Shopify store for brand + product info
+async function scrapeShopify(websiteUrl) {
+  if (!websiteUrl) return { brand: {}, products: [] };
+  const domain  = websiteUrl.replace(/^https?:\/\//, '').replace(/\/$/, '').split('/')[0];
+  const base    = `https://${domain}`;
+  const result  = { brand: {}, products: [], domain };
+  const ua      = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36';
+
+  // Shopify products JSON — usually publicly accessible
+  try {
+    const r = await axios.get(`${base}/products.json?limit=20`, { timeout: 12000, headers: { 'User-Agent': ua } });
+    if (r.data?.products?.length) {
+      result.products = r.data.products.slice(0, 8).map(p => ({
+        title:          p.title,
+        handle:         p.handle,
+        url:            `${base}/products/${p.handle}`,
+        description:    (p.body_html || '').replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().slice(0, 800),
+        imageUrl:       p.images?.[0]?.src || null,
+        price:          p.variants?.[0]?.price || null,
+        compareAtPrice: p.variants?.[0]?.compare_at_price || null,
+        tags:           Array.isArray(p.tags) ? p.tags.join(', ') : (p.tags || ''),
+      }));
+    }
+  } catch(e) { console.log(`[shopify] products.json failed for ${domain}:`, e.message); }
+
+  // Homepage — meta description, og:description, title
+  try {
+    const r = await axios.get(base, { timeout: 12000, headers: { 'User-Agent': ua } });
+    const html = r.data || '';
+    result.brand.metaDescription =
+      html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']{10,}?)["']/i)?.[1] ||
+      html.match(/<meta[^>]+content=["']([^"']{10,}?)["'][^>]+name=["']description["']/i)?.[1] ||
+      html.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']{10,}?)["']/i)?.[1] || '';
+    result.brand.ogTitle =
+      html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i)?.[1] ||
+      html.match(/<title>([^<]+)<\/title>/i)?.[1]?.replace(/\s*[\|—–-].*$/, '').trim() || '';
+    result.brand.ogImage =
+      html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)?.[1] || '';
+  } catch(e) { console.log(`[shopify] homepage scrape failed for ${domain}:`, e.message); }
+
+  return result;
+}
+
+function buildIncentiveSummary(compensation) {
+  if (!compensation) return '';
+  const parts = [];
+  const ordinals = ['1st','2nd','3rd','4th','5th','6th','7th','8th','9th','10th'];
+  if (compensation.cashback?.enabled)
+    parts.push(`$${compensation.cashback.amount} cashback per video`);
+  if (compensation.leaderboard?.enabled) {
+    const places = compensation.leaderboard.places || [];
+    const tiers  = places.map((amt, i) => `${ordinals[i]||i+1+'th'}: $${amt}`).join(', ');
+    parts.push(`Leaderboard challenge (min $${compensation.leaderboard.threshold} GMV) — ${tiers}`);
+  }
+  if (compensation.volumeBonus?.enabled)
+    parts.push(`$${compensation.volumeBonus.bonus} bonus for ${compensation.volumeBonus.quantity}+ videos`);
+  if (compensation.retainer?.enabled)
+    parts.push(`Creator retainer: $${compensation.retainer.budget}/mo for ${compensation.retainer.postsRequired} posts`);
+  return parts.join('\n• ');
+}
+
+// AI — generate all content for the pipeline
+async function generateOnboardingContent(formData, shopifyData) {
+  if (!process.env.ANTHROPIC_API_KEY) return null;
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+  const formProducts = formData.products || [];
+  const shopProducts = shopifyData.products || [];
+  // Merge: prefer form-supplied products (they have TikTok Shop links), enrich from Shopify
+  const mergedProducts = formProducts.length ? formProducts.map(fp => {
+    const match = shopProducts.find(sp => sp.title.toLowerCase().includes((fp.name||'').toLowerCase().slice(0,6)));
+    return { ...fp, shopifyDescription: match?.description || '', shopifyImageUrl: match?.imageUrl || '', price: match?.price || '' };
+  }) : shopProducts.slice(0, 3).map(sp => ({ name: sp.title, url: sp.url, shopifyDescription: sp.description, shopifyImageUrl: sp.imageUrl, price: sp.price }));
+
+  const brandCtx = `Brand: ${formData.brandName}
+Website: ${formData.website}
+Mission/Story provided: ${formData.brandMission || 'not provided'}
+Site meta description: ${shopifyData.brand?.metaDescription || 'N/A'}
+Products: ${mergedProducts.map(p => `${p.name}${p.shopifyDescription ? ' — ' + p.shopifyDescription.slice(0,200) : ''}`).join('\n')}
+Monthly TikTok Shop GMV: ${formData.tiktokGmv || 'N/A'}
+Running TikTok ads: ${formData.tiktokAds || 'N/A'}
+Sending free samples: ${formData.sendSamples || 'Yes'}`;
+
+  const incentiveLine = buildIncentiveSummary(formData.compensation);
+
+  // --- Resource Hub content ---
+  let resourceHub = null;
+  try {
+    const msg = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6', max_tokens: 4000,
+      messages: [{ role: 'user', content: `You are building an Affiliate Resource Hub for TikTok Shop creators promoting ${formData.brandName} products.
+
+${brandCtx}
+
+For each of the top 3 products, generate:
+1. A compelling brand mission & story (2–3 sentences)
+2. Product description (2–3 sentences, benefit-focused, not feature-focused)
+3. Problem & Solution (the core pain point + exactly how the product solves it)
+4. 5 Unique Selling Points (short bullets)
+5. 8 TikTok hook ideas (varied: curiosity, pain-point, transformation, controversy, POV — each under 15 words)
+6. 5 full video scripts (30–60 seconds spoken, each with a hook, problem, solution, CTA)
+
+Return ONLY valid JSON, no explanation:
+{"brandMission":"...","products":[{"name":"...","description":"...","problemSolution":"...","usps":["..."],"hooks":["..."],"scripts":["..."]}]}` }]
+    });
+    resourceHub = JSON.parse(msg.content[0].text.trim().replace(/^```json\n?/,'').replace(/\n?```$/,''));
+  } catch(e) { console.error('[onboard] resource hub gen error:', e.message); }
+
+  // --- Reacher copy per product ---
+  const reacherCopy = {};
+  for (const product of (resourceHub?.products || mergedProducts).slice(0, 3)) {
+    const pName = product.name;
+    const pDesc = product.description || product.shopifyDescription || '';
+    const pProblem = product.problemSolution || '';
+    try {
+      const msg = await anthropic.messages.create({
+        model: 'claude-sonnet-4-6', max_tokens: 3000,
+        messages: [{ role: 'user', content: `Write TikTok Shop affiliate outreach messages for ${formData.brandName} — ${pName}.
+
+Brand: ${formData.brandName}
+Product: ${pName}
+Description: ${pDesc}
+Problem solved: ${pProblem}
+${incentiveLine ? `Creator incentives:\n• ${incentiveLine}` : ''}
+
+Write these 11 messages and return ONLY valid JSON with these exact keys:
+- tc_message: Target Collaboration invite (MAX 500 chars). Attention-grabbing, mentions problem/solution, offers to send scripts/resources. Use {{creators username}}.
+- dm_message: DM sent simultaneously (MAX 2000 chars). Includes brand mission, invites creator to be part of it${incentiveLine ? ', includes incentive details' : ''}. Use {creator_name}.
+- followup_message: Follow-up after 2 days no reply (MAX 400 chars). Re-engage, friendly.
+- sample_requested: Thank you after sample requested. Simple, we'll decide shortly.
+- sample_approved: Sample approved and shipping soon. Express excitement.
+- sample_rejected: Sample denied. Regretful but keep door open for future.
+- sample_shipped: Sample shipped. Build excitement.
+- sample_delivered: Sample delivered. Invite to use creative brief, mention community/discord.
+- video_posted: Thank creator for posting. Encourage more videos.
+- video_unfulfilled: Politely nudge late creator to post.
+- retainer_offer: Ask GMV-generating creator to hop on a call about a retainer deal.
+
+Return ONLY valid JSON.` }]
+      });
+      reacherCopy[pName] = JSON.parse(msg.content[0].text.trim().replace(/^```json\n?/,'').replace(/\n?```$/,''));
+    } catch(e) { console.error(`[onboard] reacher copy error for ${pName}:`, e.message); }
+  }
+
+  // --- Creator page pitch ---
+  let creatorPitch = `We're looking for TikTok creators to promote ${formData.brandName} products on TikTok Shop.${incentiveLine ? ` We offer:\n• ${incentiveLine}.` : ''} Apply below and our team will reach out within 48 hours.`;
+  try {
+    const msg = await anthropic.messages.create({
+      model: 'claude-haiku-4-5', max_tokens: 300,
+      messages: [{ role: 'user', content: `Write a 2–3 sentence creator opportunity pitch for ${formData.brandName}. Compelling for TikTok Shop creators. Mention the product opportunity${incentiveLine ? ` and highlight these incentives: ${incentiveLine}` : ''}. Punchy, exciting, no fluff.` }]
+    });
+    creatorPitch = msg.content[0].text.trim();
+  } catch(_) {}
+
+  return { resourceHub, reacherCopy, creatorPitch, mergedProducts };
+}
+
+// Copy Lark Affiliate Resource Hub template and return {token, url, name}
+async function createLarkResourceHub(formData) {
+  try {
+    const larkToken = await getLarkTenantToken();
+    if (!larkToken) { console.error('[onboard] No Lark tenant token'); return null; }
+
+    const r = await axios.post(
+      `https://open.larksuite.com/open-apis/drive/v1/files/${RESOURCE_HUB_TEMPLATE_TOKEN}/copy`,
+      { name: `${formData.brandName} - Affiliate Resource Hub`, parent_type: 'wiki', parent_node: RESOURCE_HUB_TEMPLATE_WIKI },
+      { headers: { Authorization: `Bearer ${larkToken}`, 'Content-Type': 'application/json' } }
+    );
+    const file = r.data?.data?.file;
+    if (!file) { console.error('[onboard] Lark copy failed:', JSON.stringify(r.data)); return null; }
+    const url = file.url || `https://cedw5xj2shl.usttp.larksuite.com/docx/${file.token}`;
+    console.log(`[onboard] Created resource hub: ${url}`);
+    return { token: file.token, url, name: `${formData.brandName} - Affiliate Resource Hub` };
+  } catch(e) {
+    console.error('[onboard] createLarkResourceHub:', e.response?.data || e.message);
+    return null;
+  }
+}
+
+// Send comprehensive Lark alert via Railway /command
+async function sendLarkOnboardingAlert(formData, shopifyData, aiContent, larkDoc, creatorPage) {
+  try {
+    const brandName      = formData.brandName;
+    const incentiveLine  = buildIncentiveSummary(formData.compensation);
+    const products       = (aiContent?.mergedProducts || formData.products || []).map(p => p.name || p.title).filter(Boolean);
+
+    let text = `🎉 *New Client Onboarded: ${brandName}*\n\n`;
+    text += `👤 ${formData.firstName} ${formData.lastName}  |  ${formData.email}  |  ${formData.phone || '—'}\n`;
+    text += `🌐 ${formData.website}\n`;
+    text += `📦 Products: ${products.join(', ') || 'TBD'}\n`;
+    text += `💰 Monthly Budget: ${formData.monthlyBudget ? '$' + formData.monthlyBudget : 'TBD'}  |  GMV Goal: ${formData.gmvGoal ? '$' + formData.gmvGoal : 'TBD'}\n`;
+    text += `🛍 TikTok Shop GMV: ${formData.tiktokGmv || 'N/A'}  |  Ads: ${formData.tiktokAds || 'N/A'}\n`;
+    text += `📮 Sending Samples: ${formData.sendSamples || 'Yes'}\n`;
+
+    if (incentiveLine) {
+      text += `\n🏆 *Creator Incentive Program:*\n• ${incentiveLine}\n`;
+    }
+
+    if (larkDoc?.url) {
+      text += `\n📄 *Affiliate Resource Hub (copy & fill):* ${larkDoc.url}\n`;
+    }
+
+    if (creatorPage?.publicUrl) {
+      text += `🎯 *Creator Interest Page (DRAFT — approve in dashboard):* ${creatorPage.publicUrl}\n`;
+    }
+
+    // Reacher copy per product
+    if (aiContent?.reacherCopy && Object.keys(aiContent.reacherCopy).length) {
+      text += `\n${'─'.repeat(40)}\n📣 *Generated Reacher Copy:*\n`;
+      for (const [pName, copy] of Object.entries(aiContent.reacherCopy)) {
+        text += `\n*${pName}*\n\n`;
+        text += `📌 TC Message:\n${copy.tc_message || '—'}\n\n`;
+        text += `💬 DM Message:\n${copy.dm_message || '—'}\n\n`;
+        text += `🔁 Follow-Up:\n${copy.followup_message || '—'}\n`;
+        text += `${'─'.repeat(30)}\n`;
+      }
+    }
+
+    text += `\n✅ Review & approve everything: https://manifest.cultcontent.cc`;
+
+    await axios.post(`${CFG.railwayUrl}/command`,
+      { text, context: 'Client Onboarding', source: 'Command Center' },
+      { timeout: 10000 }
+    );
+    console.log(`[onboard] Lark alert sent for ${brandName}`);
+  } catch(e) {
+    console.error('[onboard] sendLarkOnboardingAlert:', e.response?.data || e.message);
+  }
+}
+
+// Full async pipeline — runs after form submission responds
+async function runOnboardingPipeline(formData) {
+  const brandName = formData.brandName;
+  console.log(`[onboard] Pipeline start: ${brandName}`);
+
+  // 1. Scrape Shopify
+  const shopifyData = await scrapeShopify(formData.website).catch(() => ({ brand:{}, products:[] }));
+  console.log(`[onboard] Scraped ${shopifyData.products.length} products from ${shopifyData.domain}`);
+
+  // 2. Generate AI content
+  const aiContent = await generateOnboardingContent(formData, shopifyData).catch(e => {
+    console.error('[onboard] AI gen error:', e.message); return null;
+  });
+
+  // 3. Create GHL contact
+  let ghlContactId = null;
+  try {
+    const cr = await ghl.post('/contacts/', {
+      locationId: CFG.locationId,
+      firstName: formData.firstName, lastName: formData.lastName,
+      email: formData.email, phone: formData.phone || '',
+      tags: ['client-onboarding', `client-${slugify(brandName)}`],
+      source: 'Client Onboarding Form',
+    });
+    ghlContactId = cr.data?.contact?.id;
+    console.log(`[onboard] GHL contact: ${ghlContactId}`);
+  } catch(e) { console.error('[onboard] GHL contact error:', e.response?.data || e.message); }
+
+  // 4. Copy Lark resource hub template
+  const larkDoc = await createLarkResourceHub(formData).catch(e => {
+    console.error('[onboard] lark doc error:', e.message); return null;
+  });
+
+  // 5. Create draft creator page (inactive until approved)
+  let creatorPage = null;
+  try {
+    const slug          = slugify(brandName);
+    const incentiveLine = buildIncentiveSummary(formData.compensation);
+    const pitch         = aiContent?.creatorPitch || `We're looking for TikTok creators to promote ${brandName} products on TikTok Shop.${incentiveLine ? `\n\nCreator incentive program:\n• ${incentiveLine}` : ''}\n\nApply below and our team will reach out within 48 hours.`;
+
+    const brandsData = loadBrands();
+    let brand = brandsData.clients.find(b => slugify(b.name) === slug);
+    if (!brand) {
+      brand = { id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), name: brandName, createdAt: new Date().toISOString() };
+      brandsData.clients.push(brand);
+    }
+    brand.contactName = `${formData.firstName} ${formData.lastName}`;
+    brand.website     = formData.website;
+    brand.creatorPage = {
+      slug, tagName: `creator-interested-${slug}`, active: false,
+      headline: `Partner with ${brandName}`,
+      subheadline: 'Join our TikTok Shop creator affiliate program',
+      pitch, accentColor: '#00f2ea',
+      incentives: formData.compensation,
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    };
+    saveBrands(brandsData);
+    creatorPage = { slug, publicUrl: `${PUBLIC_BASE_URL}/creators/${slug}`, active: false };
+    console.log(`[onboard] Creator page draft: ${creatorPage.publicUrl}`);
+  } catch(e) { console.error('[onboard] creator page error:', e.message); }
+
+  // 6. Save pending review entry
+  const entry = {
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
+    createdAt: new Date().toISOString(),
+    status: 'pending',
+    formData, shopifyData, aiContent, ghlContactId, larkDoc, creatorPage,
+  };
+  const pending = loadPendingOnboards();
+  pending.unshift(entry);
+  savePendingOnboards(pending);
+
+  // 7. Send comprehensive Lark alert
+  await sendLarkOnboardingAlert(formData, shopifyData, aiContent, larkDoc, creatorPage);
+
+  console.log(`[onboard] Pipeline complete: ${brandName} (id: ${entry.id})`);
+}
+
+// GET /onboard — public client onboarding form
+app.get('/onboard', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dashboard', 'onboard.html'));
+});
+
+// POST /api/onboard/submit
+app.post('/api/onboard/submit', async (req, res) => {
+  const { brandName, email } = req.body || {};
+  if (!brandName || !email) return res.status(400).json({ ok: false, error: 'Brand name and email required' });
+  res.json({ ok: true, message: `Welcome to the cult, ${brandName}! Our team will be in touch within 24 hours.` });
+  runOnboardingPipeline(req.body).catch(e => console.error('[onboard] pipeline error:', e.message));
+});
+
+// GET /api/onboard/pending
+app.get('/api/onboard/pending', requireAuth, (req, res) => res.json(loadPendingOnboards()));
+
+// PATCH /api/onboard/:id — edit generated copy before approval
+app.patch('/api/onboard/:id', requireAuth, (req, res) => {
+  const pending = loadPendingOnboards();
+  const idx = pending.findIndex(p => p.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ ok: false, error: 'Not found' });
+  pending[idx] = { ...pending[idx], ...req.body, updatedAt: new Date().toISOString() };
+  savePendingOnboards(pending);
+  res.json({ ok: true });
+});
+
+// POST /api/onboard/:id/approve — activate creator page + mark approved
+app.post('/api/onboard/:id/approve', requireAuth, async (req, res) => {
+  const pending = loadPendingOnboards();
+  const idx = pending.findIndex(p => p.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ ok: false, error: 'Not found' });
+  const entry = pending[idx];
+  try {
+    if (entry.creatorPage?.slug) {
+      const brandsData = loadBrands();
+      const brand = brandsData.clients.find(b => b.creatorPage?.slug === entry.creatorPage.slug);
+      if (brand?.creatorPage) { brand.creatorPage.active = true; saveBrands(brandsData); }
+    }
+    pending[idx].status = 'approved';
+    pending[idx].approvedAt = new Date().toISOString();
+    savePendingOnboards(pending);
+    res.json({ ok: true, message: 'Creator page is now live', publicUrl: entry.creatorPage?.publicUrl });
+  } catch(e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+// DELETE /api/onboard/:id
+app.delete('/api/onboard/:id', requireAuth, (req, res) => {
+  savePendingOnboards(loadPendingOnboards().filter(p => p.id !== req.params.id));
+  res.json({ ok: true });
+});
+
 // ─── Creator Interest Pages ──────────────────────────────────────────────────
 
 function slugify(str) {
