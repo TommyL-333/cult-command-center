@@ -3474,13 +3474,7 @@ app.get('/api/client-meetings', (req, res) => {
     .sort((a, b) => b[1] - a[1])
     .map(([theme, count]) => ({ theme, count }));
 
-  // Team members: stored in brands.json under "team", or seeded from unique assignees
-  let teamMembers = brandsData.team || [];
-  if (!teamMembers.length) {
-    const assigneeSet = new Set();
-    for (const m of meetings) for (const ai of (m.actionItems || [])) if (ai.assignee) assigneeSet.add(ai.assignee);
-    teamMembers = [...assigneeSet].filter(Boolean);
-  }
+  const teamMembers = getTeamMembers();
 
   res.json({ ok: true, meetings: meetings.slice(0, 100), byClient, byPerson, recurringThemes, knownClients, teamMembers });
 });
@@ -3844,9 +3838,17 @@ app.get('/api/brands', (req, res) => {
   res.json(loadBrands());
 });
 
+// Default team — pulled from Lark "Cult Content Comms Channel" members
+const DEFAULT_TEAM = ['Tommy Lynch', 'Hasan', 'Gilbert Conte', 'Hillary'];
+
+function getTeamMembers() {
+  const stored = loadBrands().team || [];
+  return stored.length ? stored : DEFAULT_TEAM;
+}
+
 // GET /api/brands/team — return team members list
 app.get('/api/brands/team', requireAuth, (req, res) => {
-  res.json({ team: loadBrands().team || [] });
+  res.json({ team: getTeamMembers() });
 });
 
 // PUT /api/brands/team — overwrite team members list
