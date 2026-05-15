@@ -3381,8 +3381,47 @@ app.post('/api/meeting-intel/:id/skip', (req, res) => {
 });
 
 // ─── Client name normalisation ────────────────────────────────────────────────
-// Match an AI-guessed client name against the canonical client list.
-// Returns the canonical name if a close match is found, otherwise returns null.
+// ── Team member Lark IDs (from Cult Content Comms Channel) ────────────────────
+const LARK_TEAM_IDS = {
+  'tommy lynch': 'ou_cd6157679f48e0cea557ebcb1995c462',
+  'tommy':       'ou_cd6157679f48e0cea557ebcb1995c462',
+  'hasan':       'ou_c8f157f2f18a8c4ffe6a20d3971348e1',
+  'gilbert conte': 'ou_117739bee32bfbe46cfbb11e5df88472',
+  'gilbert':     'ou_117739bee32bfbe46cfbb11e5df88472',
+  'hillary':     'ou_3209ce4fcb8553908f0d09c30dbae45f',
+};
+
+// Send a Lark @mention notification when a task is assigned to someone.
+// Routes through Railway /command so it goes to the alerts channel.
+async function sendLarkAssignmentNotification(assigneeName, taskText, meetingTitle, client) {
+  try {
+    const larkId = LARK_TEAM_IDS[assigneeName.toLowerCase()];
+    const mention = larkId ? `<at user_id="${larkId}">${assigneeName}</at>` : assigneeName;
+    const clientPart = client && client !== 'Internal' ? ` [${client}]` : '';
+    const text = `📋 Task assigned to ${mention}${clientPart}: "${taskText}" — from ${meetingTitle}\n\nMark it complete in the Command Center: https://manifest.cultcontent.cc`;
+    await axios.post(`${CFG.railwayUrl}/command`,
+      { text, context: 'Task Assignment', source: 'Command Center' },
+      { timeout: 5000 }
+    );
+  } catch(e) { console.error('[lark-assign] notification error:', e.message); }
+}
+
+// Fuzzy-match two task strings to detect if they describe the same action.
+// Used by re-analyze to carry over the done state.
+function isSimilarTask(a, b) {
+  if (!a || !b) return false;
+  const norm = s => s.toLowerCase().replace(/[^a-z0-9\s]/g, '').replace(/\s+/g, ' ').trim();
+  const na = norm(a), nb = norm(b);
+  if (na === nb) return true;
+  // Jaccard similarity on words longer than 3 chars
+  const wordsA = new Set(na.split(' ').filter(w => w.length > 3));
+  const wordsB = new Set(nb.split(' ').filter(w => w.length > 3));
+  if (!wordsA.size || !wordsB.size) return false;
+  const intersection = [...wordsA].filter(w => wordsB.has(w)).length;
+  const union = new Set([...wordsA, ...wordsB]).size;
+  return intersection / union >= 0.5;
+}
+
 // Build a map of { "lenea": "Approved Science", "john": "DIAMANDIA", ... }
 // from the contactName field on each brand in brands.json
 function buildContactMap(brandsData) {
@@ -3598,7 +3637,8 @@ app.patch('/api/client-meetings/:id/action/:idx', async (req, res) => {
 
   const ai = m.actionItems[idx];
   const { task, assignee, client, priority } = req.body || {};
-  const wasDone = ai.done;
+  const wasDone     = ai.done;
+  const prevAssignee = ai.assignee || '';
 
   const isEdit = task !== undefined || assignee !== undefined || client !== undefined || priority !== undefined;
   if (isEdit) {
@@ -3611,6 +3651,12 @@ app.patch('/api/client-meetings/:id/action/:idx', async (req, res) => {
   }
 
   saveClientMeetings(data);
+
+  // @mention new assignee in Lark when task is reassigned
+  const newAssignee = ai.assignee || '';
+  if (isEdit && assignee !== undefined && newAssignee && newAssignee.toLowerCase() !== prevAssignee.toLowerCase()) {
+    sendLarkAssignmentNotification(newAssignee, ai.task, m.title, ai.client).catch(() => {});
+  }
 
   // Send Lark alert when task is marked done
   if (!wasDone && ai.done) {
@@ -3665,11 +3711,17 @@ Return JSON only — no explanation:
         m.summary     = parsed.summary     || m.summary;
         m.themes      = parsed.themes      || m.themes;
         m.keyProblems = parsed.keyProblems || m.keyProblems;
-        m.actionItems = (parsed.actionItems || []).map(ai => ({
-          ...ai,
-          client: normaliseClientName(ai.client, knownClients, contactMap) || ai.client || 'Internal',
-          done: false,
-        }));
+
+        // Preserve done status: match new tasks against previously completed ones
+        const prevDone = (m.actionItems || []).filter(ai => ai.done);
+        m.actionItems = (parsed.actionItems || []).map(ai => {
+          const alreadyDone = prevDone.some(old => isSimilarTask(old.task, ai.task));
+          return {
+            ...ai,
+            client: normaliseClientName(ai.client, knownClients, contactMap) || ai.client || 'Internal',
+            done: alreadyDone,
+          };
+        });
         updated++;
       } catch(e) {
         console.error(`[reanalyze] ${m.id}:`, e.message);
