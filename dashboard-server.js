@@ -6527,18 +6527,22 @@ async function createLarkResourceHub(formData) {
     if (!larkToken) { console.error('[onboard] No Lark tenant token'); return null; }
 
     // Use wiki node copy API — drive copy API doesn't handle wiki-type docs properly
+    // target_parent_token omitted → places copy at root of the same wiki space
+    const copyBody = { title: `${formData.brandName} - Affiliate Resource Hub` };
+    console.log(`[onboard] Lark copy attempt: space=${LARK_WIKI_SPACE_ID} node=${RESOURCE_HUB_TEMPLATE_WIKI}`);
     const r = await axios.post(
       `https://open.larksuite.com/open-apis/wiki/v2/spaces/${LARK_WIKI_SPACE_ID}/nodes/${RESOURCE_HUB_TEMPLATE_WIKI}/copy`,
-      { target_parent_token: '', title: `${formData.brandName} - Affiliate Resource Hub` },
+      copyBody,
       { headers: { Authorization: `Bearer ${larkToken}`, 'Content-Type': 'application/json' } }
     );
+    console.log(`[onboard] Lark copy raw response: ${JSON.stringify(r.data)}`);
     const node = r.data?.data?.node;
     if (!node) { console.error('[onboard] Lark wiki copy failed:', JSON.stringify(r.data)); return null; }
     const url = node.url || `https://cedw5xj2shl.usttp.larksuite.com/wiki/${node.node_token}`;
     console.log(`[onboard] Created resource hub: ${url}`);
     return { token: node.obj_token, wikiToken: node.node_token, url, name: `${formData.brandName} - Affiliate Resource Hub` };
   } catch(e) {
-    console.error('[onboard] createLarkResourceHub:', e.response?.data || e.message);
+    console.error(`[onboard] createLarkResourceHub error: ${JSON.stringify(e.response?.data) || e.message}`);
     return null;
   }
 }
