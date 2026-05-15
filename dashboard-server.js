@@ -3674,6 +3674,18 @@ app.patch('/api/client-meetings/:id/action/:idx', async (req, res) => {
   res.json({ ok: true, done: ai.done, actionItem: ai });
 });
 
+// DELETE /api/client-meetings/:id/action/:idx — remove a single action item
+app.delete('/api/client-meetings/:id/action/:idx', (req, res) => {
+  const data = loadClientMeetings();
+  const m = data.meetings.find(m => m.id === req.params.id);
+  if (!m) return res.status(404).json({ ok: false, error: 'Not found' });
+  const idx = parseInt(req.params.idx, 10);
+  if (!m.actionItems[idx]) return res.status(404).json({ ok: false, error: 'Action not found' });
+  m.actionItems.splice(idx, 1);
+  saveClientMeetings(data);
+  res.json({ ok: true });
+});
+
 // POST /api/client-meetings/reanalyze — re-run AI on all stored meetings with current client list
 app.post('/api/client-meetings/reanalyze', requireAuth, async (req, res) => {
   try {

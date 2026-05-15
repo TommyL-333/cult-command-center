@@ -9359,6 +9359,7 @@ function miRenderByClient() {
             </div>
             <span style="font-size:10px;padding:2px 8px;border-radius:10px;background:${a.priority==='high'?'rgba(255,80,80,0.15)':a.priority==='medium'?'rgba(255,185,0,0.1)':'rgba(255,255,255,0.06)'};color:${a.priority==='high'?'var(--red)':a.priority==='medium'?'var(--gold)':'var(--muted)'};flex-shrink:0">${a.priority||'low'}</span>
             <button onclick="miEditAction('${a.meetingId}',${_idx})" title="Edit task" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:2px 4px;flex-shrink:0;line-height:1;font-size:13px;opacity:0.6" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6">✏️</button>
+            <button onclick="miDeleteAction('${a.meetingId}',${_idx},this)" title="Remove task" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:2px 4px;flex-shrink:0;line-height:1;font-size:14px;opacity:0.5" onmouseover="this.style.opacity=1;this.style.color='var(--red)'" onmouseout="this.style.opacity=0.5;this.style.color='var(--muted)'">✕</button>
           </div>`;
         }).join('')}
       </div>
@@ -9400,6 +9401,7 @@ function miRenderByPerson() {
             </div>
             <span style="font-size:10px;padding:2px 8px;border-radius:10px;background:${a.priority==='high'?'rgba(255,80,80,0.15)':a.priority==='medium'?'rgba(255,185,0,0.1)':'rgba(255,255,255,0.06)'};color:${a.priority==='high'?'var(--red)':a.priority==='medium'?'var(--gold)':'var(--muted)'};flex-shrink:0">${a.priority||'low'}</span>
             <button onclick="miEditAction('${a.meetingId}',${_idx2})" title="Edit task" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:2px 4px;flex-shrink:0;line-height:1;font-size:13px;opacity:0.6" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6">✏️</button>
+            <button onclick="miDeleteAction('${a.meetingId}',${_idx2},this)" title="Remove task" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:2px 4px;flex-shrink:0;line-height:1;font-size:14px;opacity:0.5" onmouseover="this.style.opacity=1;this.style.color='var(--red)'" onmouseout="this.style.opacity=0.5;this.style.color='var(--muted)'">✕</button>
           </div>`;
         }).join('')}
       </div>
@@ -9475,6 +9477,7 @@ function miRenderMeetings() {
             ${a.assignee?`<span style="font-size:10px;color:var(--muted);margin-left:6px">@${x(a.assignee)}</span>`:''}
           </div>
           <button onclick="miEditAction('${m.id}',${idx})" title="Edit task" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:2px 4px;flex-shrink:0;line-height:1;font-size:12px;opacity:0.5" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.5">✏️</button>
+          <button onclick="miDeleteAction('${m.id}',${idx},this)" title="Remove task" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:2px 4px;flex-shrink:0;line-height:1;font-size:13px;opacity:0.5" onmouseover="this.style.opacity=1;this.style.color='var(--red)'" onmouseout="this.style.opacity=0.5;this.style.color='var(--muted)'">✕</button>
         </div>`)).join('')}
       </div>` : ''}
     </div>`;
@@ -9560,6 +9563,34 @@ function miEditAction(meetingId, idx) {
   const modal = document.getElementById('miEditModal');
   modal.style.display = 'flex';
   setTimeout(() => document.getElementById('miEditTask').focus(), 50);
+}
+
+async function miDeleteAction(meetingId, idx, btn) {
+  btn.disabled = true;
+  try {
+    const r = await fetch(`/api/client-meetings/${meetingId}/action/${idx}`, { method: 'DELETE' }).then(r => r.json());
+    if (r.ok) {
+      const m = (MI.data?.meetings||[]).find(m=>m.id===meetingId);
+      if (m?.actionItems) m.actionItems.splice(idx, 1);
+      // Rebuild aggregates
+      const byClient = {}, byPerson = {};
+      for (const mt of (MI.data?.meetings||[])) {
+        for (const ai of (mt.actionItems||[])) {
+          const c = ai.client || mt.client || 'General';
+          const p = ai.assignee || 'Unassigned';
+          if (!byClient[c]) byClient[c] = [];
+          byClient[c].push({ ...ai, meetingId: mt.id, meetingDate: mt.date, meetingTitle: mt.title });
+          if (!byPerson[p]) byPerson[p] = [];
+          byPerson[p].push({ ...ai, meetingId: mt.id, meetingDate: mt.date, meetingTitle: mt.title, client: c });
+        }
+      }
+      MI.data.byClient = byClient;
+      MI.data.byPerson = byPerson;
+      miRender();
+    } else {
+      btn.disabled = false;
+    }
+  } catch(e) { console.error('delete action:', e); btn.disabled = false; }
 }
 
 function miCloseEditModal() {
