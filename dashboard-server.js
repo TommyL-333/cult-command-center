@@ -346,6 +346,64 @@ app.post('/api/webhooks/ghl-client-onboard', async (req, res) => {
 // Public routes — registered BEFORE requireAuth so no login needed
 app.use('/uploads', express.static(UPLOAD_DIR));
 
+// GET /onboard — public client onboarding form
+app.get('/onboard', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dashboard', 'onboard.html'));
+});
+
+// POST /api/onboard/submit — public, responds immediately then runs pipeline async
+app.post('/api/onboard/submit', express.json({ limit: '2mb' }), async (req, res) => {
+  const { brandName, email } = req.body || {};
+  if (!brandName || !email) return res.status(400).json({ ok: false, error: 'Brand name and email required' });
+  res.json({ ok: true, message: `Welcome to the cult, ${brandName}! Our team will be in touch within 24 hours.` });
+  runOnboardingPipeline(req.body).catch(e => console.error('[onboard] pipeline error:', e.message));
+});
+
+// GET /creators/:brandSlug — public creator interest page
+app.get('/creators/:brandSlug', (req, res) => {
+  const brands = loadBrands();
+  const brand  = (brands.clients || []).find(b => b.creatorPage?.slug === req.params.brandSlug);
+  if (!brand || !brand.creatorPage?.active) {
+    return res.status(404).send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Not found</title></head><body style="font-family:sans-serif;text-align:center;padding:80px 20px;background:#0d0b14;color:#fff"><h1 style="margin-bottom:12px">Page not found</h1><p style="color:#666">This creator page doesn't exist or isn't active.</p></body></html>`);
+  }
+  res.set('Content-Type', 'text/html');
+  res.send(renderCreatorPage(brand, brand.creatorPage));
+});
+
+// POST /api/creator-pages/submit — public creator interest form submission
+app.post('/api/creator-pages/submit', express.json(), async (req, res) => {
+  try {
+    const { brandSlug, firstName, lastName, email, phone, tiktokHandle, followerRange, gmv, message } = req.body || {};
+    if (!brandSlug || !firstName || !email) return res.status(400).json({ ok: false, error: 'Missing required fields' });
+    const brands = loadBrands();
+    const brand  = (brands.clients || []).find(b => b.creatorPage?.slug === brandSlug);
+    if (!brand) return res.status(404).json({ ok: false, error: 'Brand not found' });
+    const tagName = brand.creatorPage?.tagName || `creator-interested-${brandSlug}`;
+    let contactId = null;
+    try {
+      const sr = await ghl.get('/contacts/', { params: { locationId: CFG.locationId, query: email, limit: 1 } });
+      contactId = sr.data?.contacts?.[0]?.id || null;
+    } catch(_) {}
+    const payload = { locationId: CFG.locationId, firstName: firstName||'', lastName: lastName||'', email, phone: phone||'', tags: [tagName, 'creator-interest-form'], source: `Creator Interest Page — ${brand.name}` };
+    if (contactId) {
+      await ghl.put(`/contacts/${contactId}`, payload).catch(() => {});
+      await ghl.post(`/contacts/${contactId}/tags`, { tags: [tagName, 'creator-interest-form'] }).catch(() => {});
+    } else {
+      const cr = await ghl.post('/contacts/', payload);
+      contactId = cr.data?.contact?.id;
+    }
+    if (contactId) {
+      const noteLines = [`TikTok Handle: ${tiktokHandle||'not provided'}`,`Followers: ${followerRange||'not provided'}`,`Monthly GMV: ${gmv||'not provided'}`,`Interested in brand: ${brand.name}`,message?`Message: ${message}`:null].filter(Boolean);
+      await ghl.post(`/contacts/${contactId}/notes`, { body: noteLines.join('\n'), userId: '' }).catch(() => {});
+    }
+    console.log(`[creator-pages] Submission for ${brand.name}: ${email} (${tiktokHandle||'no handle'})`);
+    res.json({ ok: true, contactId });
+  } catch(e) {
+    console.error('[creator-pages/submit]', e.response?.data || e.message);
+    res.status(500).json({ ok: false, error: 'Submission failed — please try again' });
+  }
+});
+
 // POST /api/proposals/publish — public so prospects can be linked directly
 // Registered BEFORE requireAuth so it doesn't need a CF Access session
 app.post('/api/proposals/publish-public', express.json({ limit: '5mb' }), (req, res) => {
@@ -6613,19 +6671,6 @@ async function runOnboardingPipeline(formData) {
   console.log(`[onboard] Pipeline complete: ${brandName} (id: ${entry.id})`);
 }
 
-// GET /onboard — public client onboarding form
-app.get('/onboard', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dashboard', 'onboard.html'));
-});
-
-// POST /api/onboard/submit
-app.post('/api/onboard/submit', async (req, res) => {
-  const { brandName, email } = req.body || {};
-  if (!brandName || !email) return res.status(400).json({ ok: false, error: 'Brand name and email required' });
-  res.json({ ok: true, message: `Welcome to the cult, ${brandName}! Our team will be in touch within 24 hours.` });
-  runOnboardingPipeline(req.body).catch(e => console.error('[onboard] pipeline error:', e.message));
-});
-
 // GET /api/onboard/pending
 app.get('/api/onboard/pending', requireAuth, (req, res) => res.json(loadPendingOnboards()));
 
@@ -6803,72 +6848,7 @@ document.getElementById('form').addEventListener('submit',async function(e){
 </html>`;
 }
 
-// GET /creators/:brandSlug — Public creator landing page (no Cloudflare auth required)
-app.get('/creators/:brandSlug', (req, res) => {
-  const brands = loadBrands();
-  const brand  = (brands.clients || []).find(b => b.creatorPage?.slug === req.params.brandSlug);
-  if (!brand || !brand.creatorPage?.active) {
-    return res.status(404).send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Not found</title></head><body style="font-family:sans-serif;text-align:center;padding:80px 20px;background:#0d0b14;color:#fff"><h1 style="margin-bottom:12px">Page not found</h1><p style="color:#666">This creator page doesn't exist or isn't active.</p></body></html>`);
-  }
-  res.set('Content-Type', 'text/html');
-  res.send(renderCreatorPage(brand, brand.creatorPage));
-});
-
-// POST /api/creator-pages/submit — Creator interest form submission (public)
-app.post('/api/creator-pages/submit', async (req, res) => {
-  try {
-    const { brandSlug, firstName, lastName, email, phone, tiktokHandle, followerRange, gmv, message } = req.body || {};
-    if (!brandSlug || !firstName || !email) return res.status(400).json({ ok: false, error: 'Missing required fields' });
-
-    const brands = loadBrands();
-    const brand  = (brands.clients || []).find(b => b.creatorPage?.slug === brandSlug);
-    if (!brand) return res.status(404).json({ ok: false, error: 'Brand not found' });
-
-    const tagName = brand.creatorPage?.tagName || `creator-interested-${brandSlug}`;
-
-    // Search for existing contact by email
-    let contactId = null;
-    try {
-      const sr = await ghl.get('/contacts/', { params: { locationId: CFG.locationId, query: email, limit: 1 } });
-      contactId = sr.data?.contacts?.[0]?.id || null;
-    } catch(_) {}
-
-    const payload = {
-      locationId: CFG.locationId,
-      firstName: firstName || '',
-      lastName:  lastName  || '',
-      email, phone: phone || '',
-      tags: [tagName, 'creator-interest-form'],
-      source: `Creator Interest Page — ${brand.name}`,
-    };
-
-    if (contactId) {
-      await ghl.put(`/contacts/${contactId}`, payload).catch(() => {});
-      await ghl.post(`/contacts/${contactId}/tags`, { tags: [tagName, 'creator-interest-form'] }).catch(() => {});
-    } else {
-      const cr = await ghl.post('/contacts/', payload);
-      contactId = cr.data?.contact?.id;
-    }
-
-    // Add note with creator details
-    if (contactId) {
-      const noteLines = [
-        `TikTok Handle: ${tiktokHandle || 'not provided'}`,
-        `Followers: ${followerRange || 'not provided'}`,
-        `Monthly GMV: ${gmv || 'not provided'}`,
-        `Interested in brand: ${brand.name}`,
-        message ? `Message: ${message}` : null,
-      ].filter(Boolean);
-      await ghl.post(`/contacts/${contactId}/notes`, { body: noteLines.join('\n'), userId: '' }).catch(() => {});
-    }
-
-    console.log(`[creator-pages] New submission for ${brand.name}: ${email} (${tiktokHandle || 'no handle'})`);
-    res.json({ ok: true, contactId });
-  } catch(e) {
-    console.error('[creator-pages/submit]', e.response?.data || e.message);
-    res.status(500).json({ ok: false, error: 'Submission failed — please try again' });
-  }
-});
+// (Public /creators/:brandSlug and /api/creator-pages/submit are registered before requireAuth above)
 
 // GET /api/creator-pages — List all brands with creator page status
 app.get('/api/creator-pages', requireAuth, (req, res) => {
