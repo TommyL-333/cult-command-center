@@ -1132,8 +1132,8 @@ app.use(express.static(path.join(__dirname, 'dashboard')));
 app.use('/tools', express.static(path.join(__dirname)));
 
 const CFG = {
-  ghlApiKey:  process.env.GHL_API_KEY  || 'pit-012c1650-1032-46f0-b293-72720e727a0b',
-  locationId: process.env.GHL_LOC_ID   || 'c216j58Vx9XxYa7WYMiA',
+  ghlApiKey:  process.env.GHL_API_KEY,
+  locationId: process.env.GHL_LOC_ID,
   railwayUrl: process.env.RAILWAY_URL  || 'https://cultcontent-server-production.up.railway.app',
   port:       process.env.PORT || process.env.DASHBOARD_PORT || 3457,
 };
