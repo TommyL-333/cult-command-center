@@ -2119,7 +2119,7 @@ app.post('/api/buffer/post-to-channels', async (req, res) => {
 // proposals and data files are never touched.
 function purgeOldUploadedVideos() {
   try {
-    const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const cutoff = Date.now() - 45 * 24 * 60 * 60 * 1000;
     const files = fs.readdirSync(UPLOAD_DIR);
     let deleted = 0;
     for (const f of files) {
@@ -2130,7 +2130,7 @@ function purgeOldUploadedVideos() {
         if (mtimeMs < cutoff) { fs.unlinkSync(full); deleted++; }
       } catch(_) {}
     }
-    if (deleted > 0) console.log(`[upload-purge] Deleted ${deleted} video file(s) older than 7 days`);
+    if (deleted > 0) console.log(`[upload-purge] Deleted ${deleted} video file(s) older than 45 days`);
   } catch (e) { console.error('[upload-purge] Error:', e.message); }
 }
 purgeOldUploadedVideos();
