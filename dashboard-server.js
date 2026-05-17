@@ -2095,15 +2095,15 @@ app.post('/api/buffer/post-to-channels', async (req, res) => {
 
   const allOk = results.every(r => r.ok);
 
-  // Auto-cleanup: if all channels posted successfully and the media is a local upload,
-  // delete the file from disk to keep the volume clear.
+  // NOTE: Do NOT delete the file here. Buffer only stores the URL when a post is created —
+  // it fetches the actual video at publish time (which for scheduled/queued posts can be
+  // hours later). Deleting immediately caused 404s at publish time and broken posts.
+  // Files are cleaned up by the scheduled purge below (files older than 7 days).
   if (allOk && mediaUrl) {
     const rawMedia = mediaUrl.startsWith('/') ? mediaUrl : mediaUrl.replace(PUBLIC_BASE_URL, '');
     const match = rawMedia.match(/^\/uploads\/(.+)$/);
     if (match) {
-      const filePath = path.join(UPLOAD_DIR, match[1]);
-      try { if (fs.existsSync(filePath)) fs.unlinkSync(filePath); } catch(_) {}
-      // Mark as done in queue
+      // Mark as done in queue only — do not delete the file
       try {
         const q = loadQueue().map(v => v.filename === match[1] ? { ...v, status: 'done' } : v);
         saveQueue(q);
@@ -2113,6 +2113,28 @@ app.post('/api/buffer/post-to-channels', async (req, res) => {
 
   res.json({ ok: allOk, results });
 });
+
+// Scheduled cleanup: delete video files from UPLOAD_DIR that are older than 7 days.
+// Runs once at startup and then every 24 hours. Skips .html and .json files so
+// proposals and data files are never touched.
+function purgeOldUploadedVideos() {
+  try {
+    const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    const files = fs.readdirSync(UPLOAD_DIR);
+    let deleted = 0;
+    for (const f of files) {
+      if (/\.(html|json)$/i.test(f)) continue;
+      const full = path.join(UPLOAD_DIR, f);
+      try {
+        const { mtimeMs } = fs.statSync(full);
+        if (mtimeMs < cutoff) { fs.unlinkSync(full); deleted++; }
+      } catch(_) {}
+    }
+    if (deleted > 0) console.log(`[upload-purge] Deleted ${deleted} video file(s) older than 7 days`);
+  } catch (e) { console.error('[upload-purge] Error:', e.message); }
+}
+purgeOldUploadedVideos();
+setInterval(purgeOldUploadedVideos, 24 * 60 * 60 * 1000);
 
 // GET /api/buffer/channels — list Buffer channels for posting UI
 app.get('/api/buffer/channels', async (req, res) => {
