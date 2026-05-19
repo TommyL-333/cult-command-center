@@ -1236,18 +1236,67 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
       saveBrands(brands);
     }
 
-    // TikTok Shop stats via Reacher (requires brand.shopId to be set)
-    const railwayUrl = process.env.RAILWAY_URL || 'https://cultcontent-server-production.up.railway.app';
-    let tiktokStats = null, tiktokFunnel = null;
-    if (brand.shopId) {
-      const end   = new Date().toISOString().slice(0, 10);
-      const start = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-      const [sr, fr] = await Promise.allSettled([
-        axios.get(`${railwayUrl}/affiliate/stats`, { params: { start_date: start, end_date: end }, timeout: 15000 }),
-        axios.get(`${railwayUrl}/affiliate/shops/${brand.shopId}/funnel`, { timeout: 15000 }),
-      ]);
-      if (sr.status === 'fulfilled') tiktokStats = sr.value.data;
-      if (fr.status === 'fulfilled') tiktokFunnel = fr.value.data;
+    // TikTok Shop stats — use brand's own token if available, else skip
+    let tiktokStats = null, tiktokFunnel = null, tiktokConnected = false;
+    if (brand.tiktokShopToken?.access_token) {
+      tiktokConnected = true;
+      try {
+        const now   = Math.floor(Date.now() / 1000);
+        const start = now - 30 * 24 * 60 * 60;
+        const [ordersRes, creatorsRes] = await Promise.allSettled([
+          ttsBrandPost(brand, brands, brandIdx, '/affiliate/seller/202309/orders/search', {
+            create_time_ge: start,
+            create_time_lt: now,
+            page_size: 100,
+          }),
+          ttsBrandPost(brand, brands, brandIdx, '/affiliate/seller/202309/creators/search', {
+            page_size: 50,
+          }),
+        ]);
+
+        let gmv = 0, orderCount = 0;
+        const creatorMap = {};
+        if (ordersRes.status === 'fulfilled') {
+          const affOrders = ordersRes.value?.data?.affiliate_orders || ordersRes.value?.data?.orders || [];
+          orderCount = affOrders.length;
+          for (const o of affOrders) {
+            const amt = parseFloat(o.sale_amount ?? o.payment_info?.original_total_product_price ?? o.total_amount ?? 0);
+            gmv += amt;
+            const handle = o.creator_handle || o.creator_username || o.creator_open_id;
+            if (handle) {
+              if (!creatorMap[handle]) creatorMap[handle] = { handle, gmv: 0, orders: 0 };
+              creatorMap[handle].gmv    += amt;
+              creatorMap[handle].orders += 1;
+            }
+          }
+        }
+
+        let activeCreators = 0;
+        const allCreators = [];
+        if (creatorsRes.status === 'fulfilled') {
+          const list = creatorsRes.value?.data?.creators || [];
+          activeCreators = list.length;
+          for (const c of list) {
+            allCreators.push({
+              handle: c.creator_handle || c.username || c.creator_open_id,
+              gmv:    parseFloat(c.sale_amount ?? c.gmv ?? 0),
+            });
+          }
+        }
+
+        tiktokStats = { gmv, orders: orderCount, active_creators: activeCreators };
+
+        // Top creators: merge affiliate orders map with creator list, sort by GMV
+        const topCreatorsArr = Object.values(creatorMap).sort((a, b) => b.gmv - a.gmv).slice(0, 6);
+        if (!topCreatorsArr.length) {
+          allCreators.sort((a, b) => b.gmv - a.gmv);
+          topCreatorsArr.push(...allCreators.slice(0, 6));
+        }
+
+        tiktokFunnel = { top_creators: topCreatorsArr, top_videos: [] };
+      } catch (e) {
+        console.error('[client/me] TikTok Shop stats error:', e.message);
+      }
     }
 
     // Tasks — pull action items from client-meetings.json tagged to this brand
@@ -1289,7 +1338,7 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
         estimatedCommission: brand.estimatedCommission || 0,
         referrals: brand.referrals || [],
       },
-      tiktok: { stats: tiktokStats, funnel: tiktokFunnel },
+      tiktok: { connected: tiktokConnected, stats: tiktokStats, funnel: tiktokFunnel },
       tasks,
     });
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -1332,6 +1381,11 @@ app.post('/api/client/referrals', requireClientSession, express.json(), (req, re
     saveBrands(brands);
     res.json({ ok: true, referral });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /client/tiktok/auth — client portal: initiate TikTok Shop OAuth for the logged-in brand
+app.get('/client/tiktok/auth', requireClientSession, (req, res) => {
+  res.redirect(`/api/tiktokshop/auth?brandId=${encodeURIComponent(req.session.clientBrandId)}`);
 });
 
 app.use(requireAuth); // all other routes require auth in production
@@ -5642,6 +5696,73 @@ async function ttsPost(apiPath, body = {}, params = {}, opts = {}) {
   return ttsRequest('POST', apiPath, params, body, opts);
 }
 
+// ── Per-brand TikTok Shop token helpers ──────────────────────────────────────
+async function refreshBrandShopToken(brand, brands, brandIdx) {
+  const t = brand.tiktokShopToken;
+  if (!t?.refresh_token) return false;
+  try {
+    const { data } = await axios.post(`${TTS_BASE}/api/token/refresh`, null, {
+      params: {
+        app_key:       process.env.TIKTOK_SHOP_APP_KEY,
+        app_secret:    process.env.TIKTOK_SHOP_APP_SECRET,
+        refresh_token: t.refresh_token,
+        grant_type:    'refresh_token',
+      },
+    });
+    if (data?.data?.access_token) {
+      brand.tiktokShopToken = {
+        ...t,
+        access_token:  data.data.access_token,
+        refresh_token: data.data.refresh_token || t.refresh_token,
+        expires_at:    Date.now() + (data.data.access_token_expire_in || 86400) * 1000,
+      };
+      brands.clients[brandIdx] = brand;
+      saveBrands(brands);
+      return true;
+    }
+  } catch (e) { console.error('[tiktokshop] brand token refresh failed:', e.message); }
+  return false;
+}
+
+async function ttsBrandRequest(brandToken, method, apiPath, params = {}, body = null) {
+  const allParams = {
+    app_key:     process.env.TIKTOK_SHOP_APP_KEY || '',
+    timestamp:   Math.floor(Date.now() / 1000),
+    shop_cipher: brandToken.shop_cipher,
+    ...params,
+  };
+  allParams.sign = signTTShop(apiPath, allParams, body);
+  const config = {
+    method,
+    url: `${TTS_BASE}${apiPath}`,
+    params: allParams,
+    headers: { 'content-type': 'application/json', 'x-tts-access-token': brandToken.access_token },
+  };
+  if (body) config.data = body;
+  const { data } = await axios(config);
+  return data;
+}
+
+async function ttsBrandGet(brand, brands, brandIdx, apiPath, params = {}) {
+  let t = brand.tiktokShopToken;
+  if (!t?.access_token) throw new Error('No TikTok Shop token for brand');
+  if (t.expires_at && Date.now() > t.expires_at - 120_000) {
+    await refreshBrandShopToken(brand, brands, brandIdx);
+    t = brands.clients[brandIdx].tiktokShopToken;
+  }
+  return ttsBrandRequest(t, 'GET', apiPath, params);
+}
+
+async function ttsBrandPost(brand, brands, brandIdx, apiPath, body = {}, params = {}) {
+  let t = brand.tiktokShopToken;
+  if (!t?.access_token) throw new Error('No TikTok Shop token for brand');
+  if (t.expires_at && Date.now() > t.expires_at - 120_000) {
+    await refreshBrandShopToken(brand, brands, brandIdx);
+    t = brands.clients[brandIdx].tiktokShopToken;
+  }
+  return ttsBrandRequest(t, 'POST', apiPath, params, body);
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // Routes
 // ────────────────────────────────────────────────────────────────────────────
@@ -5666,24 +5787,33 @@ app.get('/api/tiktokshop/status', (req, res) => {
 app.get('/api/tiktokshop/auth', (req, res) => {
   const appKey      = process.env.TIKTOK_SHOP_APP_KEY;
   const redirectUri = process.env.TIKTOK_SHOP_REDIRECT_URI ||
-    `https://cultcontent-server-production.up.railway.app/api/tiktok-shop/callback`;
+    `https://manifest.cultcontent.cc/api/tiktokshop/callback`;
 
   if (!appKey) {
     return res.status(500).json({ error: 'TIKTOK_SHOP_APP_KEY not set in .env' });
   }
 
+  const state = req.query.brandId ? Buffer.from(JSON.stringify({ brandId: req.query.brandId })).toString('base64') : '';
+
   const authUrl = `https://auth.tiktok-shops.com/oauth/authorize?` +
     `app_key=${encodeURIComponent(appKey)}` +
-    `&redirect_uri=${encodeURIComponent(redirectUri)}`;
+    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+    (state ? `&state=${encodeURIComponent(state)}` : '');
 
   res.redirect(authUrl);
 });
 
 // GET /api/tiktokshop/callback — exchange auth_code for access_token
 app.get('/api/tiktokshop/callback', async (req, res) => {
-  const { code, auth_code } = req.query;
+  const { code, auth_code, state } = req.query;
   const authCode = code || auth_code;
   if (!authCode) return res.status(400).send('Missing auth_code');
+
+  // Decode brandId from state param (set by /client/tiktok/auth)
+  let brandId = null;
+  if (state) {
+    try { brandId = JSON.parse(Buffer.from(state, 'base64').toString()).brandId; } catch (_) {}
+  }
 
   try {
     const { data } = await axios.post(`${TTS_BASE}/api/token/getbycode`, null, {
@@ -5699,35 +5829,66 @@ app.get('/api/tiktokshop/callback', async (req, res) => {
       return res.status(500).json({ error: 'Token exchange failed', raw: data });
     }
 
-    const tokens  = loadTikTokTokens();
-    tokens.shop = {
+    const tokenData = {
       access_token:  data.data.access_token,
       refresh_token: data.data.refresh_token,
       expires_at:    Date.now() + (data.data.access_token_expire_in || 86400) * 1000,
       open_id:       data.data.open_id,
     };
-    saveTikTokTokens(tokens);
 
-    // Fetch shops to get shop_cipher
+    // Fetch shop cipher using the new token directly
+    let shopName = 'Unknown';
     try {
-      const shopRes = await ttsGet('/authorization/202309/shops', {}, { withShopCipher: false });
-      const shop    = shopRes?.data?.shops?.[0];
+      const allParams = {
+        app_key:   process.env.TIKTOK_SHOP_APP_KEY || '',
+        timestamp: Math.floor(Date.now() / 1000),
+      };
+      allParams.sign = signTTShop('/authorization/202309/shops', allParams, '');
+      const shopRes = await axios.get(`${TTS_BASE}/authorization/202309/shops`, {
+        params: allParams,
+        headers: { 'content-type': 'application/json', 'x-tts-access-token': tokenData.access_token },
+      });
+      const shop = shopRes.data?.data?.shops?.[0];
       if (shop) {
-        tokens.shop.shop_cipher = shop.cipher;
-        tokens.shop.shop_id     = shop.id;
-        tokens.shop.shop_name   = shop.name;
-        tokens.shop.shop_region = shop.region;
-        saveTikTokTokens(tokens);
+        tokenData.shop_cipher = shop.cipher;
+        tokenData.shop_id     = shop.id;
+        tokenData.shop_name   = shop.name;
+        tokenData.shop_region = shop.region;
+        shopName = shop.name;
       }
     } catch (e) {
       console.warn('[tiktokshop] shop cipher fetch failed:', e.message);
     }
 
+    if (brandId) {
+      // Save token to brand record
+      const brands = loadBrands();
+      const bi = brands.clients.findIndex(b => b.id === brandId);
+      if (bi !== -1) {
+        brands.clients[bi].tiktokShopToken = tokenData;
+        saveBrands(brands);
+      }
+      return res.send(`
+        <html><body style="font-family:sans-serif;padding:40px;background:#12101a;color:#e2e8f0">
+          <h2 style="color:#00f2ea">✅ TikTok Shop connected!</h2>
+          <p>Shop: <strong>${shopName}</strong></p>
+          <p>Stats will now appear in your brand dashboard.</p>
+          <p><a href="/client/dashboard" style="color:#00f2ea">← Back to your dashboard</a></p>
+          <script>setTimeout(() => window.location.href = '/client/dashboard', 2000);</script>
+        </body></html>
+      `);
+    }
+
+    // Fallback: save to global tokens (internal dashboard use)
+    const tokens = loadTikTokTokens();
+    tokens.shop = tokenData;
+    saveTikTokTokens(tokens);
+
     res.send(`
       <html><body style="font-family:sans-serif;padding:40px;background:#111;color:#eee">
         <h2>✅ TikTok Shop connected!</h2>
-        <p>Shop: <strong>${tokens.shop.shop_name || 'Unknown'}</strong></p>
-        <p>Token expires: ${new Date(tokens.shop.expires_at).toLocaleString()}</p>
+        <p>Shop: <strong>${shopName}</strong></p>
+        <p>Token expires: ${new Date(tokenData.expires_at).toLocaleString()}</p>
         <p><a href="/" style="color:#00f2ea">← Back to dashboard</a></p>
       </body></html>
     `);
