@@ -11,6 +11,8 @@ const fs           = require('fs');
 const multer       = require('multer');
 const crypto       = require('crypto');
 const Anthropic    = require('@anthropic-ai/sdk');
+const bcrypt       = require('bcryptjs');
+const session      = require('express-session');
 const helmet       = require('helmet');
 const rateLimit    = require('express-rate-limit');
 const ffmpeg       = require('fluent-ffmpeg');
@@ -25,6 +27,7 @@ const SNAP_FILE          = path.join(DATA_DIR, 'snapshots.json');
 const QUEUE_FILE         = path.join(DATA_DIR, 'upload-queue.json');
 const AGENTS_FILE        = path.join(DATA_DIR, 'agents.json');
 const TIKTOK_TOKENS_FILE = path.join(DATA_DIR, '.tiktok-tokens.json');
+const TASKS_FILE         = path.join(DATA_DIR, 'tasks.json');
 const UPLOAD_DIR         = path.join(DATA_DIR, 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
@@ -58,6 +61,19 @@ const apiLimiter = rateLimit({
   message: { error: 'Too many requests — slow down.' },
 });
 app.use('/api/', apiLimiter);
+
+// ─── Session middleware — powers client portal (session-based auth, separate from CF Access) ──
+app.use(session({
+  secret: process.env.CLIENT_SESSION_SECRET || 'cc-client-portal-secret-change-in-prod',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  },
+}));
 
 // ─── Security: Cloudflare Access authentication ───────────────────────────────
 // Cloudflare Access injects CF-Access-Authenticated-User-Email on every request.
@@ -1112,7 +1128,160 @@ app.post('/api/upload/chunk', (req, res) => {
   req.on('error', e => res.status(500).json({ error: e.message }));
 });
 
+// ─── Client Portal ────────────────────────────────────────────────────────────
+// Session-gated routes registered BEFORE CF Access requireAuth.
+// Clients are brands in brands.json with loginEmail + passwordHash set.
+
+function loadTasks() {
+  try { return JSON.parse(fs.readFileSync(TASKS_FILE, 'utf8')); }
+  catch(_) { return []; }
+}
+
+const clientLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  message: { error: 'Too many login attempts — try again in 15 minutes.' },
+});
+
+function requireClientSession(req, res, next) {
+  if (!req.session?.clientBrandId) {
+    if (req.path.startsWith('/api/')) return res.status(401).json({ error: 'Not authenticated' });
+    return res.redirect('/client');
+  }
+  next();
+}
+
+// GET /client — login page
+app.get('/client', (req, res) => {
+  if (req.session?.clientBrandId) return res.redirect('/client/dashboard');
+  res.sendFile(path.join(__dirname, 'dashboard', 'client-login.html'));
+});
+
+// GET /client/dashboard — session-gated dashboard
+app.get('/client/dashboard', requireClientSession, (req, res) => {
+  res.sendFile(path.join(__dirname, 'dashboard', 'client-dashboard.html'));
+});
+
+// POST /client/login
+app.post('/client/login', clientLoginLimiter, express.json(), async (req, res) => {
+  try {
+    const { email, password } = req.body || {};
+    if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+    const brands = loadBrands();
+    const brand = (brands.clients || []).find(
+      b => b.loginEmail && b.loginEmail.toLowerCase() === email.toLowerCase().trim()
+    );
+    if (!brand || !brand.passwordHash) return res.status(401).json({ error: 'Invalid credentials' });
+    const ok = await bcrypt.compare(password, brand.passwordHash);
+    if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
+    req.session.clientBrandId = brand.id;
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /client/logout
+app.post('/client/logout', (req, res) => {
+  req.session.destroy(() => res.json({ ok: true }));
+});
+
+// GET /api/client/me — return brand data, TikTok stats, tasks, referral info
+app.get('/api/client/me', requireClientSession, async (req, res) => {
+  try {
+    const brands = loadBrands();
+    const brand = (brands.clients || []).find(b => b.id === req.session.clientBrandId);
+    if (!brand) { req.session.destroy(); return res.status(404).json({ error: 'Brand not found' }); }
+
+    const railwayUrl = process.env.RAILWAY_URL || 'https://cultcontent-server-production.up.railway.app';
+    let tiktokStats = null, tiktokFunnel = null;
+    if (brand.shopId) {
+      const end   = new Date().toISOString().slice(0, 10);
+      const start = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      const [sr, fr] = await Promise.allSettled([
+        axios.get(`${railwayUrl}/affiliate/stats`, { params: { start_date: start, end_date: end }, timeout: 15000 }),
+        axios.get(`${railwayUrl}/affiliate/shops/${brand.shopId}/funnel`, { timeout: 15000 }),
+      ]);
+      if (sr.status === 'fulfilled') tiktokStats = sr.value.data;
+      if (fr.status === 'fulfilled') tiktokFunnel = fr.value.data;
+    }
+
+    const brandSlug = brand.creatorPage?.slug || brand.id;
+    const tasks = loadTasks().filter(t => t.brandSlug === brandSlug);
+    const baseUrl = process.env.DASHBOARD_URL || 'https://manifest.cultcontent.cc';
+    const referralUrl = brand.creatorPage?.slug ? `${baseUrl}/creators/${brand.creatorPage.slug}` : null;
+
+    res.json({
+      brand: {
+        id: brand.id,
+        name: brand.name,
+        industry: brand.industry,
+        tiktokHandle: brand.tiktokHandle,
+        shopId: brand.shopId || null,
+        sampleBudget: brand.sampleBudget || 0,
+        creatorPage: brand.creatorPage || null,
+        referralCode: brand.referralCode || null,
+        commissionRate: brand.commissionRate ?? 0.10,
+        referralUrl,
+        estimatedCommission: brand.estimatedCommission || 0,
+      },
+      tiktok: { stats: tiktokStats, funnel: tiktokFunnel },
+      tasks,
+    });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// PATCH /api/client/settings — update sample budget + promo strategy toggles
+app.patch('/api/client/settings', requireClientSession, express.json(), async (req, res) => {
+  try {
+    const brands = loadBrands();
+    const idx = (brands.clients || []).findIndex(b => b.id === req.session.clientBrandId);
+    if (idx === -1) return res.status(404).json({ error: 'Brand not found' });
+    const brand = brands.clients[idx];
+    const { sampleBudget, incentives } = req.body || {};
+    if (sampleBudget !== undefined) brand.sampleBudget = Number(sampleBudget) || 0;
+    if (incentives && typeof incentives === 'object') {
+      if (!brand.creatorPage) brand.creatorPage = {};
+      if (!brand.creatorPage.incentives) brand.creatorPage.incentives = {};
+      Object.assign(brand.creatorPage.incentives, incentives);
+    }
+    brands.clients[idx] = brand;
+    saveBrands(brands);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.use(requireAuth); // all other routes require auth in production
+
+// POST /api/client/admin/set-password — CF Access protected; sets/resets a client's login password
+app.post('/api/client/admin/set-password', express.json(), async (req, res) => {
+  try {
+    const { brandId, password } = req.body || {};
+    if (!brandId || !password || password.length < 8) {
+      return res.status(400).json({ error: 'brandId and password (min 8 chars) required' });
+    }
+    const brands = loadBrands();
+    const idx = (brands.clients || []).findIndex(b => b.id === brandId);
+    if (idx === -1) return res.status(404).json({ error: 'Brand not found' });
+    brands.clients[idx].passwordHash = await bcrypt.hash(password, 12);
+    saveBrands(brands);
+    res.json({ ok: true, brandId, name: brands.clients[idx].name });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/client/admin/set-email — CF Access protected; sets loginEmail for a brand
+app.post('/api/client/admin/set-email', express.json(), async (req, res) => {
+  try {
+    const { brandId, loginEmail } = req.body || {};
+    if (!brandId || !loginEmail) return res.status(400).json({ error: 'brandId and loginEmail required' });
+    const brands = loadBrands();
+    const idx = (brands.clients || []).findIndex(b => b.id === brandId);
+    if (idx === -1) return res.status(404).json({ error: 'Brand not found' });
+    brands.clients[idx].loginEmail = loginEmail.toLowerCase().trim();
+    saveBrands(brands);
+    res.json({ ok: true, brandId, loginEmail: brands.clients[idx].loginEmail });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
 
 // Serve index.html with no-cache to prevent Cloudflare/browser serving stale versions
 app.get('/', (req, res) => {
@@ -3720,9 +3889,9 @@ app.delete('/api/client-meetings/:id', (req, res) => {
   res.json({ ok: true });
 });
 
-// PATCH /api/client-meetings/:id/action/:idx  — toggle done OR edit fields
-// Toggle: no body (or empty body)
-// Edit:   body with any of { task, assignee, client, priority }
+// PATCH /api/client-meetings/:id/action/:idx  — edit fields or quick status toggle
+// Edit:   body with any of { task, assignee, client, priority, status, notes }
+// Toggle: body with { toggleStatus: true } — cycles open→in-progress→closed
 app.patch('/api/client-meetings/:id/action/:idx', async (req, res) => {
   const data = loadClientMeetings();
   const m = data.meetings.find(m => m.id === req.params.id);
@@ -3731,34 +3900,40 @@ app.patch('/api/client-meetings/:id/action/:idx', async (req, res) => {
   if (!m.actionItems[idx]) return res.status(404).json({ ok: false, error: 'Action not found' });
 
   const ai = m.actionItems[idx];
-  const { task, assignee, client, priority } = req.body || {};
-  const wasDone     = ai.done;
+  const { task, assignee, client, priority, status, notes, toggleStatus } = req.body || {};
+  const prevStatus   = ai.status || (ai.done ? 'closed' : 'open');
   const prevAssignee = ai.assignee || '';
 
-  const isEdit = task !== undefined || assignee !== undefined || client !== undefined || priority !== undefined;
-  if (isEdit) {
+  if (toggleStatus) {
+    // Quick cycle: open → in-progress → closed → open
+    const cycle = { 'open': 'in-progress', 'in-progress': 'closed', 'closed': 'open', 'blocked': 'open' };
+    ai.status = cycle[prevStatus] || 'open';
+  } else {
     if (task     !== undefined) ai.task     = task.trim();
     if (assignee !== undefined) ai.assignee = assignee.trim();
     if (client   !== undefined) ai.client   = client.trim();
     if (priority !== undefined) ai.priority = priority;
-  } else {
-    ai.done = !ai.done;
+    if (status   !== undefined) ai.status   = status;
+    if (notes    !== undefined) ai.notes    = notes.trim();
   }
+
+  // Keep done in sync for backward compat
+  ai.done = ai.status === 'closed';
 
   saveClientMeetings(data);
 
   // @mention new assignee in Lark when task is reassigned
   const newAssignee = ai.assignee || '';
-  if (isEdit && assignee !== undefined && newAssignee && newAssignee.toLowerCase() !== prevAssignee.toLowerCase()) {
+  if (assignee !== undefined && newAssignee && newAssignee.toLowerCase() !== prevAssignee.toLowerCase()) {
     sendLarkAssignmentNotification(newAssignee, ai.task, m.title, ai.client).catch(() => {});
   }
 
-  // Send Lark alert when task is marked done
-  if (!wasDone && ai.done) {
+  // Send Lark alert when task is marked closed
+  if (prevStatus !== 'closed' && ai.status === 'closed') {
     try {
       const assigneePart = ai.assignee ? ` (@${ai.assignee})` : '';
       const clientPart   = ai.client && ai.client !== 'Internal' ? ` · ${ai.client}` : '';
-      const msg = `✅ Task completed: "${ai.task}"${assigneePart}${clientPart} — from _${m.title}_`;
+      const msg = `✅ Task closed: "${ai.task}"${assigneePart}${clientPart} — from _${m.title}_`;
       await axios.post(`${CFG.railwayUrl}/command`,
         { text: msg, context: 'Meeting Intel', source: 'Command Center' },
         { timeout: 5000 }

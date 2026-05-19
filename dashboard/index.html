@@ -2513,13 +2513,28 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
             <select id="miEditClient" class="agent-input" style="width:100%;font-size:13px"></select>
           </div>
         </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+          <div>
+            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Priority</label>
+            <select id="miEditPriority" class="agent-input" style="width:100%;font-size:13px">
+              <option value="high">🔴 High</option>
+              <option value="medium">🟡 Medium</option>
+              <option value="low">⚪ Low</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Status</label>
+            <select id="miEditStatus" class="agent-input" style="width:100%;font-size:13px">
+              <option value="open">Open</option>
+              <option value="in-progress">In Progress</option>
+              <option value="blocked">Blocked</option>
+              <option value="closed">Closed</option>
+            </select>
+          </div>
+        </div>
         <div style="margin-bottom:18px">
-          <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Priority</label>
-          <select id="miEditPriority" class="agent-input" style="width:100%;font-size:13px">
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-          </select>
+          <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Notes</label>
+          <textarea id="miEditNotes" class="agent-input" rows="3" style="width:100%;font-size:13px;resize:vertical" placeholder="Add context, blockers, or next steps…"></textarea>
         </div>
 
         <div style="display:flex;gap:10px;justify-content:flex-end">
@@ -9365,6 +9380,110 @@ function miSetView(v) {
   miRender();
 }
 
+// ── Task table helpers ────────────────────────────────────────────────────────
+const MI_STATUS = {
+  'open':        { label:'Open',        bg:'rgba(255,185,0,0.13)',  color:'var(--gold)'  },
+  'in-progress': { label:'In Progress', bg:'rgba(0,242,234,0.11)',  color:'var(--teal)'  },
+  'closed':      { label:'Closed',      bg:'rgba(0,210,122,0.12)', color:'var(--green)' },
+  'blocked':     { label:'Blocked',     bg:'rgba(255,59,48,0.15)', color:'var(--red)'   },
+};
+const MI_PRIORITY_ORDER = { high:0, medium:1, low:2 };
+const MI_STATUS_ORDER   = { blocked:0, open:1, 'in-progress':2, closed:3 };
+
+function miStatusPill(s) {
+  const st = MI_STATUS[s] || MI_STATUS['open'];
+  return `<span style="font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px;background:${st.bg};color:${st.color};white-space:nowrap">${st.label}</span>`;
+}
+function miPriorityPill(p) {
+  const cfg = p === 'high' ? { bg:'rgba(255,59,48,0.13)',   color:'var(--red)'  } :
+              p === 'medium' ? { bg:'rgba(255,185,0,0.11)', color:'var(--gold)' } :
+                               { bg:'rgba(255,255,255,0.06)', color:'var(--muted)' };
+  return `<span style="font-size:10px;font-weight:700;padding:2px 9px;border-radius:10px;background:${cfg.bg};color:${cfg.color};white-space:nowrap">${(p||'low')}</span>`;
+}
+function miSortActions(actions) {
+  return [...actions].sort((a,b) => {
+    const so = (MI_STATUS_ORDER[a.status||(a.done?'closed':'open')]??1) - (MI_STATUS_ORDER[b.status||(b.done?'closed':'open')]??1);
+    if (so !== 0) return so;
+    return (MI_PRIORITY_ORDER[a.priority]??2) - (MI_PRIORITY_ORDER[b.priority]??2);
+  });
+}
+function miActionTable(actions, meetingIdFn) {
+  const TABLE_STYLE = 'width:100%;border-collapse:collapse;font-size:13px';
+  const TH = 'font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:8px 14px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap';
+  const TD = 'padding:9px 14px;border-bottom:1px solid var(--surface2);vertical-align:top';
+  const sorted = miSortActions(actions);
+  return `<div style="overflow-x:auto">
+  <table style="${TABLE_STYLE}">
+    <thead><tr>
+      <th style="${TH}">Task</th>
+      <th style="${TH}">Assignee</th>
+      <th style="${TH}">Priority</th>
+      <th style="${TH}">Status</th>
+      <th style="${TH}">Notes</th>
+      <th style="${TH}"></th>
+    </tr></thead>
+    <tbody>
+    ${sorted.map(a => {
+      const meetingId = meetingIdFn(a);
+      const idx = MI.data.meetings.find(m=>m.id===meetingId)?.actionItems?.findIndex(ai=>ai.task===a.task&&ai.assignee===a.assignee)??-1;
+      const st  = a.status || (a.done ? 'closed' : 'open');
+      const isClosed = st === 'closed';
+      const dateStr  = a.meetingDate ? new Date(a.meetingDate).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
+      return `<tr style="${isClosed?'opacity:0.5':''}">
+        <td style="${TD};max-width:320px">
+          <div style="line-height:1.4;${isClosed?'text-decoration:line-through;color:var(--muted)':''}">${x(a.task)}</div>
+          ${dateStr?`<div style="font-size:10px;color:var(--muted);margin-top:2px">${dateStr}${a.client&&!a.assignee?' · '+x(a.client):''}</div>`:''}
+        </td>
+        <td style="${TD};white-space:nowrap;color:var(--muted);font-size:12px">${a.assignee?x(a.assignee):'—'}</td>
+        <td style="${TD}">${miPriorityPill(a.priority)}</td>
+        <td style="${TD}">
+          <button onclick="miQuickStatus('${meetingId}',${idx},this)" style="background:none;border:none;cursor:pointer;padding:0" title="Click to cycle status">
+            ${miStatusPill(st)}
+          </button>
+        </td>
+        <td style="${TD};max-width:200px;color:var(--muted);font-size:12px;font-style:${a.notes?'normal':'italic'}">${a.notes?x(a.notes):'—'}</td>
+        <td style="${TD};white-space:nowrap">
+          <button onclick="miEditAction('${meetingId}',${idx})" title="Edit" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:2px 5px;font-size:13px;opacity:0.6" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6">✏️</button>
+          <button onclick="miDeleteAction('${meetingId}',${idx},this)" title="Delete" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:2px 5px;font-size:13px;opacity:0.5" onmouseover="this.style.opacity=1;this.style.color='var(--red)'" onmouseout="this.style.opacity=0.5;this.style.color='var(--muted)'">✕</button>
+        </td>
+      </tr>`;
+    }).join('')}
+    </tbody>
+  </table></div>`;
+}
+
+async function miQuickStatus(meetingId, idx, btn) {
+  btn.disabled = true;
+  try {
+    const r = await fetch(`/api/client-meetings/${meetingId}/action/${idx}`, {
+      method: 'PATCH', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ toggleStatus: true })
+    }).then(r => r.json());
+    if (r.ok) {
+      const m = (MI.data?.meetings||[]).find(m=>m.id===meetingId);
+      if (m?.actionItems?.[idx]) Object.assign(m.actionItems[idx], r.actionItem);
+      miRebuildAggregates(); miRender();
+    }
+  } catch(e) { console.error('quick status:', e); }
+  btn.disabled = false;
+}
+
+function miRebuildAggregates() {
+  const byClient = {}, byPerson = {};
+  for (const mt of (MI.data?.meetings||[])) {
+    for (const ai of (mt.actionItems||[])) {
+      const c = ai.client || mt.client || 'General';
+      const p = ai.assignee || 'Unassigned';
+      if (!byClient[c]) byClient[c] = [];
+      byClient[c].push({ ...ai, meetingId: mt.id, meetingDate: mt.date, meetingTitle: mt.title });
+      if (!byPerson[p]) byPerson[p] = [];
+      byPerson[p].push({ ...ai, meetingId: mt.id, meetingDate: mt.date, meetingTitle: mt.title, client: c });
+    }
+  }
+  MI.data.byClient = byClient;
+  MI.data.byPerson = byPerson;
+}
+
 function miRender() {
   if (!MI.data) return;
   miRenderStats();
@@ -9400,45 +9519,29 @@ function miShowDone() { return document.getElementById('miShowDone')?.checked; }
 
 function miRenderByClient() {
   const byClient = MI.data?.byClient || {};
-  const known = MI.knownClients || [];
   const showDone = miShowDone();
 
-  // Show all external clients — known brands + any named individuals (growth partners, consultants, etc.)
-  // Never show Internal, General, or empty. Known brands list is used for sorting priority but not filtering.
   let entries = Object.entries(byClient)
     .filter(([client]) => client && client !== 'Internal' && client !== 'General' && client !== '')
-    .map(([client, actions]) => [client, showDone ? actions : actions.filter(a => !a.done)])
+    .map(([client, actions]) => [client, showDone ? actions : actions.filter(a => (a.status||'open') !== 'closed' && !a.done)])
     .filter(([, actions]) => actions.length > 0)
-    .sort((a,b) => b[1].filter(a=>!a.done).length - a[1].filter(a=>!a.done).length);
+    .sort((a,b) => b[1].filter(a=>(a.status||'open')!=='closed').length - a[1].filter(a=>(a.status||'open')!=='closed').length);
 
   if (!entries.length) return miEmptyState();
   return entries.map(([client, actions]) => {
-    const open = actions.filter(a => !a.done);
-    const done = actions.filter(a => a.done);
+    const counts = { open:0, 'in-progress':0, blocked:0, closed:0 };
+    actions.forEach(a => { const s = a.status||(a.done?'closed':'open'); counts[s] = (counts[s]||0)+1; });
     return `<div class="card" style="margin-bottom:16px;padding:0;overflow:hidden">
-      <div style="padding:14px 18px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <div style="padding:14px 18px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
         <div style="font-weight:800;font-size:14px">${x(client)}</div>
-        <div style="display:flex;gap:8px;align-items:center">
-          ${open.length ? `<span style="background:rgba(255,185,0,0.15);color:var(--gold);padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700">${open.length} open</span>` : ''}
-          ${done.length ? `<span style="background:rgba(20,211,190,0.1);color:var(--teal);padding:2px 10px;border-radius:12px;font-size:11px">${done.length} done</span>` : ''}
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          ${counts.blocked   ? `<span style="background:rgba(255,59,48,0.13);color:var(--red);padding:2px 9px;border-radius:12px;font-size:11px;font-weight:700">${counts.blocked} blocked</span>` : ''}
+          ${counts.open      ? `<span style="background:rgba(255,185,0,0.13);color:var(--gold);padding:2px 9px;border-radius:12px;font-size:11px;font-weight:700">${counts.open} open</span>` : ''}
+          ${counts['in-progress'] ? `<span style="background:rgba(0,242,234,0.1);color:var(--teal);padding:2px 9px;border-radius:12px;font-size:11px">${counts['in-progress']} in progress</span>` : ''}
+          ${counts.closed    ? `<span style="background:rgba(0,210,122,0.1);color:var(--green);padding:2px 9px;border-radius:12px;font-size:11px">${counts.closed} closed</span>` : ''}
         </div>
       </div>
-      <div style="padding:10px 0">
-        ${actions.map(a => {
-          const dateStr = a.meetingDate ? new Date(a.meetingDate).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
-          const _idx = MI.data.meetings.find(m=>m.id===a.meetingId)?.actionItems?.findIndex(ai=>ai.task===a.task&&ai.assignee===a.assignee)??-1;
-          return `<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 18px;border-bottom:1px solid var(--surface2)">
-            <input type="checkbox" ${a.done?'checked':''} onchange="miToggleAction('${a.meetingId}',${_idx})" style="width:16px;height:16px;accent-color:var(--teal);cursor:pointer;flex-shrink:0;margin-top:2px">
-            <div onclick="miToggleAction('${a.meetingId}',${_idx})" style="flex:1;min-width:0;cursor:pointer">
-              <div style="font-size:13px;color:${a.done?'var(--muted)':'var(--fg)'};${a.done?'text-decoration:line-through':''};line-height:1.4">${x(a.task)}</div>
-              <div style="font-size:11px;color:var(--muted);margin-top:2px">${a.assignee ? `@${x(a.assignee)}` : ''} ${dateStr ? '· '+dateStr : ''}</div>
-            </div>
-            <span style="font-size:10px;padding:2px 8px;border-radius:10px;background:${a.priority==='high'?'rgba(255,80,80,0.15)':a.priority==='medium'?'rgba(255,185,0,0.1)':'rgba(255,255,255,0.06)'};color:${a.priority==='high'?'var(--red)':a.priority==='medium'?'var(--gold)':'var(--muted)'};flex-shrink:0">${a.priority||'low'}</span>
-            <button onclick="miEditAction('${a.meetingId}',${_idx})" title="Edit task" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:2px 4px;flex-shrink:0;line-height:1;font-size:13px;opacity:0.6" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6">✏️</button>
-            <button onclick="miDeleteAction('${a.meetingId}',${_idx},this)" title="Remove task" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:2px 4px;flex-shrink:0;line-height:1;font-size:14px;opacity:0.5" onmouseover="this.style.opacity=1;this.style.color='var(--red)'" onmouseout="this.style.opacity=0.5;this.style.color='var(--muted)'">✕</button>
-          </div>`;
-        }).join('')}
-      </div>
+      ${miActionTable(actions, a => a.meetingId)}
     </div>`;
   }).join('');
 }
@@ -9447,40 +9550,27 @@ function miRenderByPerson() {
   const byPerson = MI.data?.byPerson || {};
   const showDone = miShowDone();
   const entries = Object.entries(byPerson)
-    .map(([person, actions]) => [person, showDone ? actions : actions.filter(a => !a.done)])
+    .map(([person, actions]) => [person, showDone ? actions : actions.filter(a => (a.status||'open') !== 'closed' && !a.done)])
     .filter(([, actions]) => actions.length > 0)
-    .sort((a,b) => b[1].filter(a=>!a.done).length - a[1].filter(a=>!a.done).length);
+    .sort((a,b) => b[1].filter(a=>(a.status||'open')!=='closed').length - a[1].filter(a=>(a.status||'open')!=='closed').length);
   if (!entries.length) return miEmptyState();
   return entries.map(([person, actions]) => {
-    const open = actions.filter(a => !a.done);
-    const done = actions.filter(a => a.done);
+    const counts = { open:0, 'in-progress':0, blocked:0, closed:0 };
+    actions.forEach(a => { const s = a.status||(a.done?'closed':'open'); counts[s] = (counts[s]||0)+1; });
     return `<div class="card" style="margin-bottom:16px;padding:0;overflow:hidden">
-      <div style="padding:14px 18px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <div style="padding:14px 18px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
         <div style="display:flex;align-items:center;gap:10px">
           <div style="width:32px;height:32px;border-radius:50%;background:var(--teal);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;color:#000">${x(person.charAt(0).toUpperCase())}</div>
           <div style="font-weight:800;font-size:14px">${x(person)}</div>
         </div>
-        <div style="display:flex;gap:8px;align-items:center">
-          ${open.length ? `<span style="background:rgba(255,185,0,0.15);color:var(--gold);padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700">${open.length} open</span>` : ''}
-          ${done.length ? `<span style="background:rgba(20,211,190,0.1);color:var(--teal);padding:2px 10px;border-radius:12px;font-size:11px">${done.length} done</span>` : ''}
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          ${counts.blocked   ? `<span style="background:rgba(255,59,48,0.13);color:var(--red);padding:2px 9px;border-radius:12px;font-size:11px;font-weight:700">${counts.blocked} blocked</span>` : ''}
+          ${counts.open      ? `<span style="background:rgba(255,185,0,0.13);color:var(--gold);padding:2px 9px;border-radius:12px;font-size:11px;font-weight:700">${counts.open} open</span>` : ''}
+          ${counts['in-progress'] ? `<span style="background:rgba(0,242,234,0.1);color:var(--teal);padding:2px 9px;border-radius:12px;font-size:11px">${counts['in-progress']} in progress</span>` : ''}
+          ${counts.closed    ? `<span style="background:rgba(0,210,122,0.1);color:var(--green);padding:2px 9px;border-radius:12px;font-size:11px">${counts.closed} closed</span>` : ''}
         </div>
       </div>
-      <div style="padding:10px 0">
-        ${actions.map(a => {
-          const dateStr = a.meetingDate ? new Date(a.meetingDate).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
-          const _idx2 = MI.data.meetings.find(m=>m.id===a.meetingId)?.actionItems?.findIndex(ai=>ai.task===a.task&&ai.assignee===a.assignee)??-1;
-          return `<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 18px;border-bottom:1px solid var(--surface2)">
-            <input type="checkbox" ${a.done?'checked':''} onchange="miToggleAction('${a.meetingId}',${_idx2})" style="width:16px;height:16px;accent-color:var(--teal);cursor:pointer;flex-shrink:0;margin-top:2px">
-            <div onclick="miToggleAction('${a.meetingId}',${_idx2})" style="flex:1;min-width:0;cursor:pointer">
-              <div style="font-size:13px;color:${a.done?'var(--muted)':'var(--fg)'};${a.done?'text-decoration:line-through':''};line-height:1.4">${x(a.task)}</div>
-              <div style="font-size:11px;color:var(--muted);margin-top:2px">${a.client ? x(a.client)+' · ' : ''}${dateStr}</div>
-            </div>
-            <span style="font-size:10px;padding:2px 8px;border-radius:10px;background:${a.priority==='high'?'rgba(255,80,80,0.15)':a.priority==='medium'?'rgba(255,185,0,0.1)':'rgba(255,255,255,0.06)'};color:${a.priority==='high'?'var(--red)':a.priority==='medium'?'var(--gold)':'var(--muted)'};flex-shrink:0">${a.priority||'low'}</span>
-            <button onclick="miEditAction('${a.meetingId}',${_idx2})" title="Edit task" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:2px 4px;flex-shrink:0;line-height:1;font-size:13px;opacity:0.6" onmouseover="this.style.opacity=1" onmouseout="this.style.opacity=0.6">✏️</button>
-            <button onclick="miDeleteAction('${a.meetingId}',${_idx2},this)" title="Remove task" style="background:none;border:none;cursor:pointer;color:var(--muted);padding:2px 4px;flex-shrink:0;line-height:1;font-size:14px;opacity:0.5" onmouseover="this.style.opacity=1;this.style.color='var(--red)'" onmouseout="this.style.opacity=0.5;this.style.color='var(--muted)'">✕</button>
-          </div>`;
-        }).join('')}
-      </div>
+      ${miActionTable(actions, a => a.meetingId)}
     </div>`;
   }).join('');
 }
@@ -9616,6 +9706,8 @@ function miEditAction(meetingId, idx) {
   document.getElementById('miEditIdx').value = idx;
   document.getElementById('miEditTask').value = ai.task || '';
   document.getElementById('miEditPriority').value = ai.priority || 'medium';
+  document.getElementById('miEditStatus').value = ai.status || (ai.done ? 'closed' : 'open');
+  document.getElementById('miEditNotes').value = ai.notes || '';
 
   // Populate assignee dropdown from team members
   const teamMembers = MI.teamMembers || [];
@@ -9680,6 +9772,8 @@ async function miSaveEditAction() {
   const assignee  = document.getElementById('miEditAssignee').value;
   const client    = document.getElementById('miEditClient').value;
   const priority  = document.getElementById('miEditPriority').value;
+  const status    = document.getElementById('miEditStatus').value;
+  const notes     = document.getElementById('miEditNotes').value;
   if (!task) return;
 
   const btn = document.getElementById('miEditSaveBtn');
@@ -9688,27 +9782,13 @@ async function miSaveEditAction() {
     const r = await fetch(`/api/client-meetings/${meetingId}/action/${idx}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ task, assignee, client, priority })
+      body: JSON.stringify({ task, assignee, client, priority, status, notes })
     }).then(r => r.json());
     if (r.ok) {
       const m = (MI.data?.meetings||[]).find(m=>m.id===meetingId);
       if (m?.actionItems?.[idx]) Object.assign(m.actionItems[idx], r.actionItem);
       miCloseEditModal();
-      // Rebuild aggregates + re-render
-      const allMeetings = MI.data.meetings;
-      const byClient = {}, byPerson = {};
-      for (const mt of allMeetings) {
-        for (const ai of (mt.actionItems||[])) {
-          const c = ai.client || mt.client || 'General';
-          const p = ai.assignee || 'Unassigned';
-          if (!byClient[c]) byClient[c] = [];
-          byClient[c].push({ ...ai, meetingId: mt.id, meetingDate: mt.date, meetingTitle: mt.title });
-          if (!byPerson[p]) byPerson[p] = [];
-          byPerson[p].push({ ...ai, meetingId: mt.id, meetingDate: mt.date, meetingTitle: mt.title, client: c });
-        }
-      }
-      MI.data.byClient = byClient;
-      MI.data.byPerson = byPerson;
+      miRebuildAggregates();
       miRender();
     }
   } catch(e) { console.error('edit action:', e); }
