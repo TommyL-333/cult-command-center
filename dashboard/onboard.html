@@ -130,11 +130,11 @@ textarea{resize:vertical;min-height:80px}
 
 <div class="progress-wrap">
   <div class="step-labels">
-    <span class="step-label active" id="lbl-1">Brand Info</span>
-    <span class="step-label" id="lbl-2">Shop Setup</span>
-    <span class="step-label" id="lbl-3">Products &amp; Budget</span>
-    <span class="step-label" id="lbl-4">Creator Program</span>
-    <span class="step-label" id="lbl-5">Review</span>
+    <span class="step-label active" id="lbl-1" onclick="jumpStep(1)" style="cursor:pointer">Brand Info</span>
+    <span class="step-label" id="lbl-2" onclick="jumpStep(2)" style="cursor:pointer">Shop Setup</span>
+    <span class="step-label" id="lbl-3" onclick="jumpStep(3)" style="cursor:pointer">Products &amp; Budget</span>
+    <span class="step-label" id="lbl-4" onclick="jumpStep(4)" style="cursor:pointer">Creator Program</span>
+    <span class="step-label" id="lbl-5" onclick="jumpStep(5)" style="cursor:pointer">Review</span>
   </div>
   <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:20%"></div></div>
 </div>
@@ -446,6 +446,11 @@ function showStep(n) {
     lbl.classList.toggle('done', i < n);
   }
   window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function jumpStep(n) {
+  currentStep = n;
+  showStep(n);
+  if (n === TOTAL_STEPS) buildReview();
 }
 
 // ── Validation ──
