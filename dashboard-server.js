@@ -7047,6 +7047,29 @@ async function runOnboardingPipeline(formData) {
     console.log(`[onboard] Creator page draft: ${creatorPage.publicUrl}`);
   } catch(e) { console.error('[onboard] creator page error:', e.message); }
 
+  // 5b. Auto-match Reacher shop by brand name (fuzzy)
+  try {
+    const shopsResp = await axios.get(`${CFG.railwayUrl}/affiliate/shops`, { timeout: 10000 });
+    const shops = shopsResp.data?.data || shopsResp.data || [];
+    const norm = s => (s || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const nb = norm(brandName);
+    const match = shops.find(s => {
+      const ns = norm(s.shop_name);
+      return ns === nb || ns.includes(nb) || nb.includes(ns);
+    });
+    if (match) {
+      const bd = loadBrands();
+      const bi = bd.clients.findIndex(b => slugify(b.name) === slugify(brandName));
+      if (bi !== -1 && !bd.clients[bi].shopId) {
+        bd.clients[bi].shopId = match.shop_id;
+        saveBrands(bd);
+        console.log(`[onboard] Reacher auto-match: ${match.shop_name} → shopId ${match.shop_id}`);
+      }
+    } else {
+      console.log(`[onboard] No Reacher shop match for: ${brandName}`);
+    }
+  } catch(e) { console.error('[onboard] Reacher shop lookup error:', e.message); }
+
   // 6. Save pending review entry
   const entry = {
     id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
@@ -7078,7 +7101,8 @@ app.patch('/api/onboard/:id', requireAuth, (req, res) => {
 });
 
 // POST /api/onboard/:id/approve — activate creator page + mark approved
-app.post('/api/onboard/:id/approve', requireAuth, async (req, res) => {
+// Body (optional): { shopId: number }
+app.post('/api/onboard/:id/approve', requireAuth, express.json(), async (req, res) => {
   const pending = loadPendingOnboards();
   const idx = pending.findIndex(p => p.id === req.params.id);
   if (idx === -1) return res.status(404).json({ ok: false, error: 'Not found' });
@@ -7087,7 +7111,12 @@ app.post('/api/onboard/:id/approve', requireAuth, async (req, res) => {
     if (entry.creatorPage?.slug) {
       const brandsData = loadBrands();
       const brand = brandsData.clients.find(b => b.creatorPage?.slug === entry.creatorPage.slug);
-      if (brand?.creatorPage) { brand.creatorPage.active = true; saveBrands(brandsData); }
+      if (brand) {
+        if (brand.creatorPage) brand.creatorPage.active = true;
+        // Save manually-selected Reacher shopId if provided (overrides auto-match)
+        if (req.body?.shopId) brand.shopId = req.body.shopId;
+        saveBrands(brandsData);
+      }
     }
     pending[idx].status = 'approved';
     pending[idx].approvedAt = new Date().toISOString();

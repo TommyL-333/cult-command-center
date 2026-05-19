@@ -10367,17 +10367,23 @@ async function miSubmitMeeting() {
 
 // ─── Pending Client Onboards ─────────────────────────────────────────────────
 
+let _reacherShops = [];
+
 async function loadPendingOnboards() {
   const wrap = document.getElementById('pendingOnboardsWrap');
   if (!wrap) return;
   try {
-    const list = await fetch('/api/onboard/pending').then(r => r.json());
+    // Load Reacher shops + pending list in parallel
+    const [list, shopsResp] = await Promise.all([
+      fetch('/api/onboard/pending').then(r => r.json()),
+      fetch('/api/reacher/shops').then(r => r.json()).catch(() => ({ data: [] })),
+    ]);
+    _reacherShops = shopsResp.data || [];
     if (!list.length) {
       wrap.innerHTML = '<div style="text-align:center;padding:32px;color:var(--muted);font-size:13px;background:rgba(255,255,255,.02);border-radius:12px;border:1px dashed rgba(255,255,255,.08)">No pending onboards — <a href="/onboard" target="_blank" style="color:var(--teal)">share the onboarding form</a> with your clients</div>';
       return;
     }
     const pending = list.filter(e => e.status === 'pending');
-    const approved = list.filter(e => e.status === 'approved');
     wrap.innerHTML = (pending.length ? pending : list).map(entry => renderOnboardCard(entry)).join('');
   } catch(e) {
     wrap.innerHTML = `<div style="color:var(--red);font-size:13px">Error loading onboards: ${x(e.message)}</div>`;
@@ -10420,10 +10426,17 @@ function renderOnboardCard(entry) {
     </div>
 
     ${!isApproved ? `
+    <div style="margin-bottom:10px">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:5px">Reacher Shop</div>
+      <select id="reacher-shop-${entry.id}" style="background:#12101a;border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px;padding:6px 10px;width:100%;max-width:320px">
+        <option value="">— Auto-detect by name —</option>
+        ${_reacherShops.map(s => `<option value="${s.shop_id}">${x(s.shop_name)} (${s.shop_id})</option>`).join('')}
+      </select>
+    </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button onclick="pobApprove('${entry.id}',this)" class="btn btn-teal" style="font-size:12px;font-weight:700;padding:9px 20px">✓ Approve &amp; Launch</button>
       <button onclick="pobDelete('${entry.id}',this)" class="btn btn-ghost" style="font-size:12px;padding:9px 16px;color:var(--red)">✕ Delete</button>
-    </div>` : `<div style="font-size:12px;color:var(--green)">✓ Approved ${entry.approvedAt ? 'on '+new Date(entry.approvedAt).toLocaleDateString() : ''}</div>`}
+    </div>` : `<div style="font-size:12px;color:var(--green)">✓ Approved ${entry.approvedAt ? 'on '+new Date(entry.approvedAt).toLocaleDateString() : ''}${entry.shopId ? ` · Reacher shop ${entry.shopId}` : ''}</div>`}
 
     <!-- Reacher copy expandable -->
     <div id="reacher-${entry.id}" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:16px">
@@ -10451,7 +10464,13 @@ async function pobApprove(id, btn) {
   const orig = btn.textContent;
   btn.disabled = true; btn.textContent = 'Approving…';
   try {
-    const r = await fetch(`/api/onboard/${id}/approve`, { method: 'POST' }).then(r => r.json());
+    const shopSelect = document.getElementById(`reacher-shop-${id}`);
+    const shopId = shopSelect?.value ? Number(shopSelect.value) : undefined;
+    const r = await fetch(`/api/onboard/${id}/approve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(shopId ? { shopId } : {}),
+    }).then(r => r.json());
     if (r.ok) {
       btn.textContent = '✓ Launched!';
       setTimeout(() => loadPendingOnboards(), 1500);
