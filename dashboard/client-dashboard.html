@@ -17,300 +17,122 @@
       --text:   #e2e8f0;
       --muted:  #64748b;
     }
-
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif; min-height: 100vh; }
 
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif;
-      min-height: 100vh;
-    }
-
-    /* ── Header ── */
-    header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 14px 28px;
-      background: var(--card);
-      border-bottom: 1px solid var(--border);
-      position: sticky;
-      top: 0;
-      z-index: 10;
-    }
+    header { display: flex; align-items: center; justify-content: space-between; padding: 14px 28px; background: var(--card); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; }
     .logo { height: 30px; }
     .header-right { display: flex; align-items: center; gap: 16px; }
-    .brand-badge {
-      background: rgba(0,242,234,0.1);
-      border: 1px solid rgba(0,242,234,0.2);
-      border-radius: 6px;
-      color: var(--teal);
-      font-size: 0.75rem;
-      font-weight: 700;
-      padding: 4px 10px;
-      letter-spacing: 0.05em;
-      text-transform: uppercase;
-    }
-    .logout-btn {
-      background: transparent;
-      border: 1px solid var(--border);
-      color: var(--muted);
-      font-size: 0.78rem;
-      padding: 6px 14px;
-      border-radius: 7px;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
+    .brand-badge { background: rgba(0,242,234,0.1); border: 1px solid rgba(0,242,234,0.2); border-radius: 6px; color: var(--teal); font-size: 0.75rem; font-weight: 700; padding: 4px 10px; letter-spacing: 0.05em; text-transform: uppercase; }
+    .logout-btn { background: transparent; border: 1px solid var(--border); color: var(--muted); font-size: 0.78rem; padding: 6px 14px; border-radius: 7px; cursor: pointer; transition: all 0.15s; }
     .logout-btn:hover { border-color: var(--red); color: var(--red); }
 
-    /* ── Main ── */
-    main {
-      max-width: 1120px;
-      margin: 0 auto;
-      padding: 36px 24px 60px;
-    }
+    main { max-width: 1120px; margin: 0 auto; padding: 36px 24px 60px; }
+    .section-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); margin-bottom: 14px; }
+    .mb-20 { margin-bottom: 20px; }
+    .mb-32 { margin-bottom: 32px; }
 
-    /* ── Section label ── */
-    .section-label {
-      font-size: 0.68rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: var(--muted);
-      margin-bottom: 14px;
-    }
-
-    /* ── Stats row ── */
-    .stats-row {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 16px;
-      margin-bottom: 32px;
-    }
+    /* Stats */
+    .stats-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
     @media (max-width: 900px) { .stats-row { grid-template-columns: repeat(2, 1fr); } }
     @media (max-width: 500px) { .stats-row { grid-template-columns: 1fr; } }
-
-    .stat-card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 13px;
-      padding: 22px 20px;
-    }
-    .stat-label {
-      font-size: 0.72rem;
-      font-weight: 600;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.07em;
-      margin-bottom: 10px;
-    }
-    .stat-value {
-      font-size: 2rem;
-      font-weight: 700;
-      line-height: 1;
-      color: var(--text);
-    }
+    .stat-card { background: var(--card); border: 1px solid var(--border); border-radius: 13px; padding: 22px 20px; }
+    .stat-label { font-size: 0.72rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 10px; }
+    .stat-value { font-size: 2rem; font-weight: 700; line-height: 1; color: var(--text); }
     .stat-value.teal { color: var(--teal); }
     .stat-value.gold { color: var(--gold); }
-    .stat-sub {
-      font-size: 0.73rem;
-      color: var(--muted);
-      margin-top: 6px;
-    }
+    .stat-sub { font-size: 0.73rem; color: var(--muted); margin-top: 6px; }
 
-    /* ── Two-column ── */
-    .two-col {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-      margin-bottom: 20px;
-    }
+    /* Layout */
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
     @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
 
-    /* ── Cards ── */
-    .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 13px;
-      padding: 24px;
-    }
-    .card-title {
-      font-size: 0.9rem;
-      font-weight: 600;
-      color: var(--text);
-      margin-bottom: 20px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--teal);
-      flex-shrink: 0;
-    }
+    /* Cards */
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 13px; padding: 24px; }
+    .card-title { font-size: 0.9rem; font-weight: 600; color: var(--text); margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--teal); flex-shrink: 0; }
 
-    /* ── List items (creators / videos) ── */
-    .list-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 10px 0;
-      border-bottom: 1px solid var(--border);
-      font-size: 0.84rem;
-      gap: 12px;
-    }
+    /* Lists */
+    .list-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--border); font-size: 0.84rem; gap: 12px; }
     .list-item:last-child { border-bottom: none; }
     .list-item-name { color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .list-item-val { color: var(--teal); font-weight: 700; flex-shrink: 0; }
 
-    /* ── Referral ── */
-    .ref-url {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 11px 14px;
-      font-family: monospace;
-      font-size: 0.78rem;
-      color: var(--teal);
-      word-break: break-all;
-      margin-bottom: 12px;
-      line-height: 1.5;
-    }
-    .copy-btn {
-      background: var(--teal);
-      color: var(--bg);
-      font-size: 0.8rem;
-      font-weight: 700;
-      border: none;
-      border-radius: 7px;
-      padding: 8px 18px;
-      cursor: pointer;
-      transition: opacity 0.15s;
-    }
+    /* Referral */
+    .ref-url { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 11px 14px; font-family: monospace; font-size: 0.78rem; color: var(--teal); word-break: break-all; margin-bottom: 12px; line-height: 1.5; }
+    .copy-btn { background: var(--teal); color: var(--bg); font-size: 0.8rem; font-weight: 700; border: none; border-radius: 7px; padding: 8px 18px; cursor: pointer; transition: opacity 0.15s; }
     .copy-btn:hover { opacity: 0.85; }
-    .commission-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 18px;
-      padding-top: 16px;
-      border-top: 1px solid var(--border);
-      font-size: 0.84rem;
-    }
+    .commission-row { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); font-size: 0.84rem; }
     .commission-label { color: var(--muted); }
     .commission-val { color: var(--gold); font-weight: 700; font-size: 1.05rem; }
 
-    /* ── Controls ── */
-    .field-label {
-      font-size: 0.7rem;
-      font-weight: 700;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      display: block;
-      margin-bottom: 8px;
-    }
+    /* Add referral form */
+    .ref-add-toggle { background: transparent; border: 1px dashed var(--border); color: var(--muted); font-size: 0.78rem; padding: 7px 14px; border-radius: 7px; cursor: pointer; margin-top: 14px; transition: all 0.15s; width: 100%; }
+    .ref-add-toggle:hover { border-color: var(--teal); color: var(--teal); }
+    .ref-add-form { margin-top: 14px; display: none; }
+    .ref-add-form.open { display: block; }
+    .ref-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+    @media (max-width: 600px) { .ref-inputs { grid-template-columns: 1fr; } }
+    .ref-input { background: var(--bg); border: 1px solid var(--border); border-radius: 7px; color: var(--text); font-size: 0.83rem; padding: 8px 11px; outline: none; transition: border-color 0.15s; width: 100%; }
+    .ref-input:focus { border-color: var(--teal); }
+    .ref-submit { background: var(--teal); color: var(--bg); font-size: 0.82rem; font-weight: 700; border: none; border-radius: 7px; padding: 8px 16px; cursor: pointer; }
+
+    /* Referral contacts table */
+    .ref-table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 0.82rem; }
+    .ref-table th { text-align: left; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); padding: 0 0 8px; border-bottom: 1px solid var(--border); }
+    .ref-table td { padding: 10px 0; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: top; }
+    .ref-table tr:last-child td { border-bottom: none; }
+    .ref-table td.muted { color: var(--muted); }
+
+    /* Campaign controls */
+    .field-label { font-size: 0.7rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; display: block; margin-bottom: 8px; }
     .budget-row { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
-    .budget-input {
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      color: var(--text);
-      font-size: 1rem;
-      padding: 9px 12px;
-      width: 90px;
-      outline: none;
-      transition: border-color 0.15s;
-    }
-    .budget-input:focus { border-color: var(--teal); }
-    .budget-unit { color: var(--muted); font-size: 0.82rem; }
+    .num-input { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 0.95rem; padding: 8px 12px; width: 90px; outline: none; transition: border-color 0.15s; }
+    .num-input:focus { border-color: var(--teal); }
+    .num-unit { color: var(--muted); font-size: 0.82rem; }
 
-    .toggle-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 13px 0;
-      border-bottom: 1px solid var(--border);
-    }
-    .toggle-row:last-of-type { border-bottom: none; }
-    .toggle-info { flex: 1; min-width: 0; }
-    .toggle-name { font-size: 0.87rem; color: var(--text); }
-    .toggle-desc { font-size: 0.74rem; color: var(--muted); margin-top: 2px; }
+    .incentive-block { border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; transition: border-color 0.15s; }
+    .incentive-block.active { border-color: rgba(0,242,234,0.3); }
+    .incentive-header { display: flex; justify-content: space-between; align-items: flex-start; }
+    .incentive-name { font-size: 0.87rem; font-weight: 600; color: var(--text); }
+    .incentive-desc { font-size: 0.73rem; color: var(--muted); margin-top: 3px; }
+    .incentive-fields { margin-top: 14px; display: none; }
+    .incentive-fields.open { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    @media (max-width: 600px) { .incentive-fields.open { grid-template-columns: 1fr; } }
+    .sub-field label { display: block; font-size: 0.68rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 5px; }
+    .sub-input { background: var(--bg); border: 1px solid var(--border); border-radius: 7px; color: var(--text); font-size: 0.88rem; padding: 7px 10px; width: 100%; outline: none; transition: border-color 0.15s; }
+    .sub-input:focus { border-color: var(--teal); }
 
-    /* Toggle switch */
-    .switch { position: relative; display: inline-block; width: 42px; height: 24px; flex-shrink: 0; margin-left: 16px; }
+    /* Toggle */
+    .switch { position: relative; display: inline-block; width: 42px; height: 24px; flex-shrink: 0; }
     .switch input { opacity: 0; width: 0; height: 0; }
-    .slider {
-      position: absolute;
-      inset: 0;
-      background: #2a2540;
-      border-radius: 12px;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-    .slider::before {
-      content: '';
-      position: absolute;
-      width: 18px;
-      height: 18px;
-      left: 3px;
-      top: 3px;
-      background: #fff;
-      border-radius: 50%;
-      transition: transform 0.2s;
-    }
+    .slider { position: absolute; inset: 0; background: #2a2540; border-radius: 12px; cursor: pointer; transition: background 0.2s; }
+    .slider::before { content: ''; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: transform 0.2s; }
     .switch input:checked + .slider { background: var(--teal); }
     .switch input:checked + .slider::before { transform: translateX(18px); }
 
-    .save-btn {
-      background: var(--teal);
-      color: var(--bg);
-      font-size: 0.88rem;
-      font-weight: 700;
-      border: none;
-      border-radius: 8px;
-      padding: 11px 22px;
-      cursor: pointer;
-      margin-top: 20px;
-      transition: opacity 0.15s;
-    }
+    .save-btn { background: var(--teal); color: var(--bg); font-size: 0.88rem; font-weight: 700; border: none; border-radius: 8px; padding: 11px 22px; cursor: pointer; margin-top: 20px; transition: opacity 0.15s; }
     .save-btn:hover { opacity: 0.85; }
     .save-status { font-size: 0.78rem; color: var(--green); margin-top: 8px; min-height: 18px; }
 
-    /* ── Tasks ── */
-    .task-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      padding: 14px 0;
-      border-bottom: 1px solid var(--border);
-      gap: 16px;
-    }
+    /* Tasks */
+    .task-item { padding: 14px 0; border-bottom: 1px solid var(--border); }
     .task-item:last-child { border-bottom: none; }
+    .task-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
     .task-body { flex: 1; min-width: 0; }
-    .task-title { font-size: 0.88rem; color: var(--text); margin-bottom: 4px; }
-    .task-date { font-size: 0.72rem; color: var(--muted); }
-    .badge {
-      font-size: 0.68rem;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      padding: 4px 9px;
-      border-radius: 5px;
-      flex-shrink: 0;
-      white-space: nowrap;
-    }
+    .task-title { font-size: 0.88rem; color: var(--text); margin-bottom: 5px; }
+    .task-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .task-source { font-size: 0.71rem; color: var(--muted); }
+    .task-assignee { font-size: 0.71rem; color: var(--muted); }
+    .badge { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 3px 8px; border-radius: 5px; flex-shrink: 0; white-space: nowrap; }
     .badge-pending    { background: rgba(255,204,0,0.12);  color: var(--yellow); }
     .badge-progress   { background: rgba(0,242,234,0.10);  color: var(--teal); }
     .badge-done       { background: rgba(0,210,122,0.12);  color: var(--green); }
+    .priority-high    { color: #ff6b6b; font-size: 0.68rem; font-weight: 700; }
+    .priority-medium  { color: var(--yellow); font-size: 0.68rem; font-weight: 700; }
+    .priority-low     { color: var(--muted); font-size: 0.68rem; font-weight: 700; }
 
-    /* ── Misc ── */
     .empty { color: var(--muted); font-size: 0.83rem; padding: 16px 0; }
-    .mb-20 { margin-bottom: 20px; }
-    .mb-32 { margin-bottom: 32px; }
   </style>
 </head>
 <body>
@@ -328,38 +150,15 @@
   <!-- TikTok Stats -->
   <div class="section-label mb-20">TikTok Shop · Last 30 Days</div>
   <div class="stats-row mb-32">
-    <div class="stat-card">
-      <div class="stat-label">GMV</div>
-      <div class="stat-value teal" id="sGmv">—</div>
-      <div class="stat-sub">Gross merchandise value</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Orders</div>
-      <div class="stat-value" id="sOrders">—</div>
-      <div class="stat-sub">Total orders placed</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Avg Order Value</div>
-      <div class="stat-value gold" id="sAov">—</div>
-      <div class="stat-sub">GMV ÷ orders</div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-label">Active Creators</div>
-      <div class="stat-value" id="sCreators">—</div>
-      <div class="stat-sub">Posting for your brand</div>
-    </div>
+    <div class="stat-card"><div class="stat-label">GMV</div><div class="stat-value teal" id="sGmv">—</div><div class="stat-sub">Gross merchandise value</div></div>
+    <div class="stat-card"><div class="stat-label">Orders</div><div class="stat-value" id="sOrders">—</div><div class="stat-sub">Total orders placed</div></div>
+    <div class="stat-card"><div class="stat-label">Avg Order Value</div><div class="stat-value gold" id="sAov">—</div><div class="stat-sub">GMV ÷ orders</div></div>
+    <div class="stat-card"><div class="stat-label">Active Creators</div><div class="stat-value" id="sCreators">—</div><div class="stat-sub">Posting for your brand</div></div>
   </div>
 
-  <!-- Top Creators + Top Videos -->
   <div class="two-col mb-32">
-    <div class="card">
-      <div class="card-title"><span class="dot"></span>Top Creators</div>
-      <div id="topCreators"><span class="empty">Loading…</span></div>
-    </div>
-    <div class="card">
-      <div class="card-title"><span class="dot" style="background:var(--gold)"></span>Top Videos</div>
-      <div id="topVideos"><span class="empty">Loading…</span></div>
-    </div>
+    <div class="card"><div class="card-title"><span class="dot"></span>Top Creators</div><div id="topCreators"><span class="empty">Loading…</span></div></div>
+    <div class="card"><div class="card-title"><span class="dot" style="background:var(--gold)"></span>Top Videos</div><div id="topVideos"><span class="empty">Loading…</span></div></div>
   </div>
 
   <!-- Referral + Controls -->
@@ -368,61 +167,104 @@
     <!-- Referral -->
     <div class="card">
       <div class="card-title"><span class="dot" style="background:var(--gold)"></span>Referral Program</div>
-      <p style="font-size:0.8rem;color:var(--muted);margin-bottom:16px;line-height:1.6">
+      <p style="font-size:0.8rem;color:var(--muted);margin-bottom:14px;line-height:1.6">
         Know a brand that should be on TikTok Shop? Send them this link.
         You earn <strong style="color:var(--gold)">10% recurring commission</strong> on their retainer for life.
       </p>
-      <div class="ref-url" id="refUrl">—</div>
+      <div class="ref-url" id="refUrl">Loading…</div>
       <button class="copy-btn" id="copyBtn" onclick="copyRef()">Copy Link</button>
+
       <div class="commission-row">
         <span class="commission-label">Estimated commission earned</span>
         <span class="commission-val" id="commVal">$0</span>
       </div>
+
+      <!-- Referral contacts -->
+      <div id="refTableWrap" style="display:none;margin-top:18px;">
+        <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:10px;">Referred Contacts</div>
+        <table class="ref-table">
+          <thead><tr><th>Name</th><th>Company</th><th>Email</th></tr></thead>
+          <tbody id="refTableBody"></tbody>
+        </table>
+      </div>
+
+      <button class="ref-add-toggle" id="addRefToggle" onclick="toggleAddRef()">+ Log a Referral</button>
+      <div class="ref-add-form" id="addRefForm">
+        <div class="ref-inputs">
+          <input class="ref-input" id="refName" placeholder="Contact name" type="text">
+          <input class="ref-input" id="refCompany" placeholder="Brand / company" type="text">
+          <input class="ref-input" id="refEmail" placeholder="Email address" type="email" style="grid-column:1/-1">
+        </div>
+        <button class="ref-submit" onclick="addReferral()">Save Referral</button>
+      </div>
     </div>
 
-    <!-- Controls -->
+    <!-- Campaign Controls -->
     <div class="card">
       <div class="card-title"><span class="dot" style="background:var(--gold)"></span>Campaign Controls</div>
 
       <label class="field-label">Sample Budget</label>
       <div class="budget-row">
-        <input class="budget-input" type="number" id="sampleBudget" min="0" placeholder="0">
-        <span class="budget-unit">units per product</span>
+        <input class="num-input" type="number" id="sampleBudget" min="0" placeholder="0">
+        <span class="num-unit">units per product</span>
       </div>
 
-      <label class="field-label">Promotional Strategy</label>
+      <label class="field-label" style="margin-bottom:12px;">Promotional Strategy</label>
 
-      <div class="toggle-row">
-        <div class="toggle-info">
-          <div class="toggle-name">Cashback Offers</div>
-          <div class="toggle-desc">Incentivize creators with cashback on sales they drive</div>
+      <!-- Cashback -->
+      <div class="incentive-block" id="blockCashback">
+        <div class="incentive-header">
+          <div>
+            <div class="incentive-name">Cashback Offers</div>
+            <div class="incentive-desc">Creators earn a cash bonus when they hit a GMV target</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="tCashback" onchange="toggleIncentive('cashback')">
+            <span class="slider"></span>
+          </label>
         </div>
-        <label class="switch">
-          <input type="checkbox" id="tCashback">
-          <span class="slider"></span>
-        </label>
+        <div class="incentive-fields" id="fieldsCashback">
+          <div class="sub-field"><label>Bonus Amount ($)</label><input class="sub-input" type="number" id="cashbackAmount" min="0" placeholder="e.g. 50"></div>
+          <div class="sub-field"><label>GMV Target ($)</label><input class="sub-input" type="number" id="cashbackTarget" min="0" placeholder="e.g. 500"></div>
+        </div>
       </div>
 
-      <div class="toggle-row">
-        <div class="toggle-info">
-          <div class="toggle-name">Leaderboard Competition</div>
-          <div class="toggle-desc">Show creators a live GMV leaderboard for your brand</div>
+      <!-- Leaderboard -->
+      <div class="incentive-block" id="blockLeaderboard">
+        <div class="incentive-header">
+          <div>
+            <div class="incentive-name">Leaderboard Competition</div>
+            <div class="incentive-desc">Show creators a live GMV leaderboard with cash prizes</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="tLeaderboard" onchange="toggleIncentive('leaderboard')">
+            <span class="slider"></span>
+          </label>
         </div>
-        <label class="switch">
-          <input type="checkbox" id="tLeaderboard">
-          <span class="slider"></span>
-        </label>
+        <div class="incentive-fields" id="fieldsLeaderboard">
+          <div class="sub-field"><label>1st Place ($)</label><input class="sub-input" type="number" id="lb1" min="0" placeholder="e.g. 200"></div>
+          <div class="sub-field"><label>2nd Place ($)</label><input class="sub-input" type="number" id="lb2" min="0" placeholder="e.g. 100"></div>
+          <div class="sub-field"><label>3rd Place ($)</label><input class="sub-input" type="number" id="lb3" min="0" placeholder="e.g. 50"></div>
+          <div class="sub-field"><label>Min GMV Threshold ($)</label><input class="sub-input" type="number" id="lbThreshold" min="0" placeholder="e.g. 1000"></div>
+        </div>
       </div>
 
-      <div class="toggle-row">
-        <div class="toggle-info">
-          <div class="toggle-name">Volume Bonus</div>
-          <div class="toggle-desc">Extra commission when creators hit monthly sales tiers</div>
+      <!-- Volume Bonus -->
+      <div class="incentive-block" id="blockVolumeBonus">
+        <div class="incentive-header">
+          <div>
+            <div class="incentive-name">Volume Bonus</div>
+            <div class="incentive-desc">Bonus paid when creators hit a video count milestone</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="tVolumeBonus" onchange="toggleIncentive('volumeBonus')">
+            <span class="slider"></span>
+          </label>
         </div>
-        <label class="switch">
-          <input type="checkbox" id="tVolumeBonus">
-          <span class="slider"></span>
-        </label>
+        <div class="incentive-fields" id="fieldsVolumeBonus">
+          <div class="sub-field"><label>Videos Required</label><input class="sub-input" type="number" id="vbQuantity" min="1" placeholder="e.g. 5"></div>
+          <div class="sub-field"><label>Bonus Amount ($)</label><input class="sub-input" type="number" id="vbBonus" min="0" placeholder="e.g. 100"></div>
+        </div>
       </div>
 
       <button class="save-btn" onclick="saveSettings()">Save Changes</button>
@@ -440,34 +282,32 @@
 </main>
 
 <script>
-  let _brand = null;
-
   function fmt$(n) {
     if (n == null || n === '') return '—';
-    n = Number(n);
-    if (isNaN(n)) return '—';
-    if (n >= 1_000_000) return '$' + (n / 1_000_000).toFixed(1) + 'M';
-    if (n >= 1_000)     return '$' + (n / 1_000).toFixed(1) + 'k';
+    n = Number(n); if (isNaN(n)) return '—';
+    if (n >= 1_000_000) return '$' + (n/1_000_000).toFixed(1) + 'M';
+    if (n >= 1_000)     return '$' + (n/1_000).toFixed(1) + 'k';
     return '$' + n.toFixed(0);
   }
-  function fmtN(n) {
-    if (n == null) return '—';
-    return Number(n).toLocaleString();
-  }
+  function fmtN(n) { if (n == null) return '—'; return Number(n).toLocaleString(); }
   function fmtAge(ts) {
     if (!ts) return '';
     const ms = Date.now() - new Date(ts);
-    if (ms < 60_000)        return 'just now';
-    if (ms < 3_600_000)     return Math.floor(ms / 60_000) + 'm ago';
-    if (ms < 86_400_000)    return Math.floor(ms / 3_600_000) + 'h ago';
-    return Math.floor(ms / 86_400_000) + 'd ago';
+    if (ms < 60_000)     return 'just now';
+    if (ms < 3_600_000)  return Math.floor(ms/60_000) + 'm ago';
+    if (ms < 86_400_000) return Math.floor(ms/3_600_000) + 'h ago';
+    return Math.floor(ms/86_400_000) + 'd ago';
+  }
+  function esc(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
   async function load() {
     const r = await fetch('/api/client/me');
     if (r.status === 401) { window.location.href = '/client'; return; }
     const data = await r.json();
-    _brand = data.brand;
+    window._data = data;
     render(data);
   }
 
@@ -480,75 +320,142 @@
     if (s) {
       const gmv    = s.gmv ?? s.total_gmv ?? s.revenue ?? null;
       const orders = s.orders ?? s.total_orders ?? null;
-      document.getElementById('sGmv').textContent     = fmt$(gmv);
-      document.getElementById('sOrders').textContent  = fmtN(orders);
-      document.getElementById('sAov').textContent     = (gmv && orders) ? fmt$(gmv / orders) : '—';
+      document.getElementById('sGmv').textContent      = fmt$(gmv);
+      document.getElementById('sOrders').textContent   = fmtN(orders);
+      document.getElementById('sAov').textContent      = (gmv && orders) ? fmt$(gmv/orders) : '—';
       document.getElementById('sCreators').textContent = fmtN(s.creators ?? s.active_creators ?? s.creator_count);
     }
 
     // Top creators
     const creators = tiktok?.funnel?.top_creators ?? tiktok?.funnel?.creators ?? [];
     const $cr = document.getElementById('topCreators');
-    if (creators.length) {
-      $cr.innerHTML = creators.slice(0, 6).map(c => `
-        <div class="list-item">
-          <span class="list-item-name">@${c.handle ?? c.creator_handle ?? c.name ?? 'Unknown'}</span>
-          <span class="list-item-val">${fmt$(c.gmv ?? c.revenue ?? c.sales)}</span>
-        </div>`).join('');
-    } else {
-      $cr.innerHTML = '<span class="empty">No creator data yet — check back after your first campaign week.</span>';
-    }
+    $cr.innerHTML = creators.length
+      ? creators.slice(0,6).map(c => `<div class="list-item"><span class="list-item-name">@${esc(c.handle??c.creator_handle??c.name??'Unknown')}</span><span class="list-item-val">${fmt$(c.gmv??c.revenue??c.sales)}</span></div>`).join('')
+      : '<span class="empty">No creator data yet.</span>';
 
     // Top videos
     const videos = tiktok?.funnel?.top_videos ?? tiktok?.funnel?.videos ?? [];
     const $vd = document.getElementById('topVideos');
-    if (videos.length) {
-      $vd.innerHTML = videos.slice(0, 6).map(v => `
-        <div class="list-item">
-          <span class="list-item-name">${escHtml(v.title ?? v.video_id ?? 'Video')}</span>
-          <span class="list-item-val">${fmt$(v.gmv ?? v.revenue ?? v.sales)}</span>
-        </div>`).join('');
-    } else {
-      $vd.innerHTML = '<span class="empty">No video data yet.</span>';
-    }
+    $vd.innerHTML = videos.length
+      ? videos.slice(0,6).map(v => `<div class="list-item"><span class="list-item-name">${esc(v.title??v.video_id??'Video')}</span><span class="list-item-val">${fmt$(v.gmv??v.revenue??v.sales)}</span></div>`).join('')
+      : '<span class="empty">No video data yet.</span>';
 
     // Referral
-    document.getElementById('refUrl').textContent =
-      brand.referralUrl ?? 'Contact your account manager to activate your referral link.';
+    document.getElementById('refUrl').textContent = brand.referralUrl || '—';
     document.getElementById('commVal').textContent = fmt$(brand.estimatedCommission ?? 0);
+    renderReferrals(brand.referrals || []);
 
-    // Controls
+    // Campaign controls
     document.getElementById('sampleBudget').value = brand.sampleBudget ?? '';
-    const inc = brand.creatorPage?.incentives ?? {};
-    document.getElementById('tCashback').checked    = !!inc.cashback;
-    document.getElementById('tLeaderboard').checked = !!inc.leaderboard;
-    document.getElementById('tVolumeBonus').checked = !!inc.volumeBonus;
+    const c = brand.compensation || {};
+    setIncentive('cashback',    c.cashback);
+    setIncentive('leaderboard', c.leaderboard);
+    setIncentive('volumeBonus', c.volumeBonus);
 
     // Tasks
-    const $tf = document.getElementById('taskFeed');
-    if (tasks?.length) {
-      $tf.innerHTML = tasks.map(t => {
-        const cls = t.status === 'done' ? 'badge-done'
-                  : t.status === 'in-progress' ? 'badge-progress'
-                  : 'badge-pending';
-        const label = t.status === 'in-progress' ? 'In Progress' : (t.status ?? 'Pending');
-        return `
-          <div class="task-item">
-            <div class="task-body">
-              <div class="task-title">${escHtml(t.title)}</div>
-              <div class="task-date">${fmtAge(t.updatedAt)}</div>
-            </div>
-            <span class="badge ${cls}">${escHtml(label)}</span>
-          </div>`;
-      }).join('');
-    } else {
-      $tf.innerHTML = '<span class="empty">No active tasks — your Cult Content team will post progress updates here.</span>';
+    renderTasks(tasks);
+  }
+
+  function renderReferrals(referrals) {
+    const wrap = document.getElementById('refTableWrap');
+    const tbody = document.getElementById('refTableBody');
+    if (!referrals.length) { wrap.style.display = 'none'; return; }
+    wrap.style.display = 'block';
+    tbody.innerHTML = referrals.map(r => `
+      <tr>
+        <td>${esc(r.name) || '<span style="color:var(--muted)">—</span>'}</td>
+        <td class="muted">${esc(r.company) || '—'}</td>
+        <td class="muted">${esc(r.email) || '—'}</td>
+      </tr>`).join('');
+  }
+
+  function setIncentive(key, val) {
+    const toggle = document.getElementById('t' + key.charAt(0).toUpperCase() + key.slice(1));
+    if (!toggle) return;
+    const enabled = !!val?.enabled;
+    toggle.checked = enabled;
+    updateIncentiveUI(key, enabled);
+    if (!val) return;
+    if (key === 'cashback') {
+      document.getElementById('cashbackAmount').value = val.amount ?? '';
+      document.getElementById('cashbackTarget').value = val.target ?? '';
+    } else if (key === 'leaderboard') {
+      const places = val.places || [];
+      document.getElementById('lb1').value = places[0] ?? '';
+      document.getElementById('lb2').value = places[1] ?? '';
+      document.getElementById('lb3').value = places[2] ?? '';
+      document.getElementById('lbThreshold').value = val.threshold ?? '';
+    } else if (key === 'volumeBonus') {
+      document.getElementById('vbQuantity').value = val.quantity ?? '';
+      document.getElementById('vbBonus').value = val.bonus ?? '';
     }
   }
 
-  function escHtml(s) {
-    if (!s) return '';
-    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  function updateIncentiveUI(key, enabled) {
+    const blockId  = 'block'  + key.charAt(0).toUpperCase() + key.slice(1);
+    const fieldsId = 'fields' + key.charAt(0).toUpperCase() + key.slice(1);
+    const block  = document.getElementById(blockId);
+    const fields = document.getElementById(fieldsId);
+    if (block)  block.classList.toggle('active', enabled);
+    if (fields) fields.classList.toggle('open', enabled);
+  }
+
+  function toggleIncentive(key) {
+    const toggle = document.getElementById('t' + key.charAt(0).toUpperCase() + key.slice(1));
+    updateIncentiveUI(key, toggle.checked);
+  }
+
+  function buildCompensation() {
+    return {
+      cashback: {
+        enabled: document.getElementById('tCashback').checked,
+        amount:  Number(document.getElementById('cashbackAmount').value) || 0,
+        target:  Number(document.getElementById('cashbackTarget').value) || 0,
+      },
+      leaderboard: {
+        enabled:   document.getElementById('tLeaderboard').checked,
+        places:    [
+          Number(document.getElementById('lb1').value) || 0,
+          Number(document.getElementById('lb2').value) || 0,
+          Number(document.getElementById('lb3').value) || 0,
+        ].filter(v => v > 0),
+        threshold: Number(document.getElementById('lbThreshold').value) || 0,
+      },
+      volumeBonus: {
+        enabled:  document.getElementById('tVolumeBonus').checked,
+        quantity: Number(document.getElementById('vbQuantity').value) || 0,
+        bonus:    Number(document.getElementById('vbBonus').value) || 0,
+      },
+    };
+  }
+
+  function renderTasks(tasks) {
+    const $tf = document.getElementById('taskFeed');
+    if (!tasks?.length) {
+      $tf.innerHTML = '<span class="empty">No action items yet — check back after your next Cult Content meeting.</span>';
+      return;
+    }
+    $tf.innerHTML = tasks.map(t => {
+      const badgeCls = t.status === 'done' ? 'badge-done' : t.status === 'in-progress' ? 'badge-progress' : 'badge-pending';
+      const badgeTxt = t.status === 'in-progress' ? 'In Progress' : t.status === 'done' ? 'Done' : 'Pending';
+      const priCls   = t.priority === 'high' ? 'priority-high' : t.priority === 'low' ? 'priority-low' : 'priority-medium';
+      const meta = [
+        t.source   ? `<span class="task-source">${esc(t.source)}</span>` : '',
+        t.assignee ? `<span class="task-assignee">→ ${esc(t.assignee)}</span>` : '',
+        t.priority ? `<span class="${priCls}">${t.priority.toUpperCase()}</span>` : '',
+        t.updatedAt ? `<span class="task-source">${fmtAge(t.updatedAt)}</span>` : '',
+      ].filter(Boolean).join('<span style="color:var(--border);margin:0 4px">·</span>');
+      return `
+        <div class="task-item">
+          <div class="task-row">
+            <div class="task-body">
+              <div class="task-title">${esc(t.title)}</div>
+              ${meta ? `<div class="task-meta">${meta}</div>` : ''}
+            </div>
+            <span class="badge ${badgeCls}">${badgeTxt}</span>
+          </div>
+        </div>`;
+    }).join('');
   }
 
   function copyRef() {
@@ -561,25 +468,49 @@
     });
   }
 
+  function toggleAddRef() {
+    const form = document.getElementById('addRefForm');
+    form.classList.toggle('open');
+    document.getElementById('addRefToggle').textContent = form.classList.contains('open') ? '− Cancel' : '+ Log a Referral';
+  }
+
+  async function addReferral() {
+    const name    = document.getElementById('refName').value.trim();
+    const company = document.getElementById('refCompany').value.trim();
+    const email   = document.getElementById('refEmail').value.trim();
+    if (!name && !email) { alert('Enter a name or email.'); return; }
+    const r = await fetch('/api/client/referrals', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, company, email }),
+    });
+    const data = await r.json();
+    if (r.ok) {
+      const referrals = (window._data?.brand?.referrals || []);
+      referrals.push(data.referral);
+      if (window._data) window._data.brand.referrals = referrals;
+      renderReferrals(referrals);
+      document.getElementById('refName').value = '';
+      document.getElementById('refCompany').value = '';
+      document.getElementById('refEmail').value = '';
+      toggleAddRef();
+    }
+  }
+
   async function saveSettings() {
     const st = document.getElementById('saveStatus');
-    st.style.color = 'var(--muted)';
-    st.textContent = 'Saving…';
+    st.style.color = 'var(--muted)'; st.textContent = 'Saving…';
     try {
       const r = await fetch('/api/client/settings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sampleBudget: Number(document.getElementById('sampleBudget').value) || 0,
-          incentives: {
-            cashback:    document.getElementById('tCashback').checked,
-            leaderboard: document.getElementById('tLeaderboard').checked,
-            volumeBonus: document.getElementById('tVolumeBonus').checked,
-          },
+          compensation: buildCompensation(),
         }),
       });
       if (r.ok) { st.style.color = 'var(--green)'; st.textContent = '✓ Saved'; }
-      else       { st.style.color = 'var(--red)';   st.textContent = 'Save failed — try again'; }
+      else       { st.style.color = 'var(--red)';   st.textContent = 'Save failed'; }
     } catch (_) { st.style.color = 'var(--red)'; st.textContent = 'Network error'; }
     setTimeout(() => { st.textContent = ''; }, 3000);
   }
