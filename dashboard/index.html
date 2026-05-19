@@ -9415,6 +9415,7 @@ function miActionTable(actions, meetingIdFn) {
   return `<div style="overflow-x:auto">
   <table style="${TABLE_STYLE}">
     <thead><tr>
+      <th style="${TH};width:32px"></th>
       <th style="${TH}">Task</th>
       <th style="${TH}">Assignee</th>
       <th style="${TH}">Priority</th>
@@ -9430,6 +9431,9 @@ function miActionTable(actions, meetingIdFn) {
       const isClosed = st === 'closed';
       const dateStr  = a.meetingDate ? new Date(a.meetingDate).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
       return `<tr style="${isClosed?'opacity:0.5':''}">
+        <td style="${TD};width:32px;text-align:center">
+          <input type="checkbox" ${isClosed?'checked':''} onchange="miQuickStatus('${meetingId}',${idx},this)" style="width:15px;height:15px;accent-color:var(--teal);cursor:pointer">
+        </td>
         <td style="${TD};max-width:320px">
           <div style="line-height:1.4;${isClosed?'text-decoration:line-through;color:var(--muted)':''}">${x(a.task)}</div>
           ${dateStr?`<div style="font-size:10px;color:var(--muted);margin-top:2px">${dateStr}${a.client&&!a.assignee?' · '+x(a.client):''}</div>`:''}
@@ -9452,20 +9456,25 @@ function miActionTable(actions, meetingIdFn) {
   </table></div>`;
 }
 
-async function miQuickStatus(meetingId, idx, btn) {
-  btn.disabled = true;
+async function miQuickStatus(meetingId, idx, el) {
+  // Called from checkbox (el.checked) or status pill button (el is a button)
+  const isCheckbox = el.type === 'checkbox';
+  const body = isCheckbox
+    ? { status: el.checked ? 'closed' : 'open' }
+    : { toggleStatus: true };
+  el.disabled = true;
   try {
     const r = await fetch(`/api/client-meetings/${meetingId}/action/${idx}`, {
       method: 'PATCH', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ toggleStatus: true })
+      body: JSON.stringify(body)
     }).then(r => r.json());
     if (r.ok) {
       const m = (MI.data?.meetings||[]).find(m=>m.id===meetingId);
       if (m?.actionItems?.[idx]) Object.assign(m.actionItems[idx], r.actionItem);
       miRebuildAggregates(); miRender();
-    }
-  } catch(e) { console.error('quick status:', e); }
-  btn.disabled = false;
+    } else if (isCheckbox) { el.checked = !el.checked; } // revert on error
+  } catch(e) { console.error('quick status:', e); if (isCheckbox) el.checked = !el.checked; }
+  el.disabled = false;
 }
 
 function miRebuildAggregates() {
