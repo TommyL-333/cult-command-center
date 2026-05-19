@@ -82,8 +82,10 @@ main{max-width:1400px;margin:0 auto;padding:24px 20px;}
 .kanban-col-body{overflow-y:auto;flex:1;padding-right:2px;}
 .kanban-col-body::-webkit-scrollbar{width:3px;}
 .kanban-col-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px;}
-.kanban-card{background:var(--card);border:1px solid var(--border);border-radius:7px;padding:8px 10px;margin-bottom:6px;cursor:pointer;transition:border-color .15s;}
+.kanban-card{background:var(--card);border:1px solid var(--border);border-radius:7px;padding:8px 10px;margin-bottom:6px;cursor:grab;transition:border-color .15s,opacity .15s;}
 .kanban-card:hover{border-color:var(--accent);}
+.kanban-card.dragging{opacity:.4;cursor:grabbing;}
+.kanban-col-body.drag-over{background:rgba(32,213,196,.07);border:1px dashed var(--accent);border-radius:6px;}
 .kanban-card-name{font-size:.75rem;font-weight:600;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .kanban-card-email{font-size:.63rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .kanban-card-val{font-size:.63rem;color:var(--green);margin-top:3px;font-weight:600;}
@@ -1273,12 +1275,12 @@ function renderGrowthPartners(data) {
     { name: 'Long Term Nurture', color: '--yellow' },
     { name: 'Churned', color: '--red' },
     { name: 'Disqualified', color: '--red' },
-  ]);
+  ], null, {}, 'growth-partners');
   renderListTable('gp', data);
 }
 
 // ── KANBAN renderer ───────────────────────────────────────────────────────────
-function renderKanban(elId, byStage, stageConfig, tagsById, countOverrides = {}) {
+function renderKanban(elId, byStage, stageConfig, tagsById, countOverrides = {}, segment = null) {
   const el = document.getElementById(elId);
   if (!el) return;
   if (!byStage || !byStage.length) {
@@ -1296,8 +1298,9 @@ function renderKanban(elId, byStage, stageConfig, tagsById, countOverrides = {})
       : (isGrowe && !isVerified)
       ? `<div style="margin-top:4px;font-size:.63rem;color:var(--blue)">✓ Onboarded</div>`
       : '';
+    const draggable = segment ? `draggable="true" data-opp-id="${o.id}"` : '';
     return `
-      <div class="kanban-card" onclick="openCQ('${o.id}')">
+      <div class="kanban-card" ${draggable} onclick="openCQ('${o.id}')">
         <div class="kanban-card-name">${esc(o.contact.name || o.name)}</div>
         <div class="kanban-card-email">${esc(o.contact.email)}</div>
         ${discordLine}
@@ -1311,7 +1314,8 @@ function renderKanban(elId, byStage, stageConfig, tagsById, countOverrides = {})
   byStage.forEach(s => stageDataMap[s.name] = s);
 
   const cols = stageConfig.map(cfg => {
-    const s = stageDataMap[cfg.name] || { id: '', name: cfg.name, opportunities: [] };
+    const s = stageDataMap[cfg.name] || { stageId: '', name: cfg.name, opportunities: [] };
+    const stageId = s.stageId || cfg.stageId || '';
     const hasOverride = countOverrides[cfg.name] !== undefined;
     const displayCount = hasOverride ? countOverrides[cfg.name] : s.opportunities.length;
 
@@ -1329,26 +1333,28 @@ function renderKanban(elId, byStage, stageConfig, tagsById, countOverrides = {})
       bodyHtml = '<div class="kanban-empty">—</div>';
     }
 
+    const dropAttrs = (segment && stageId) ? `data-stage-id="${stageId}" data-stage-name="${esc(cfg.name)}"` : '';
     return `
       <div class="kanban-col">
         <div class="kanban-col-hdr">
           <span class="kanban-col-name">${esc(cfg.name)}</span>
           <span class="kanban-col-cnt">${displayCount.toLocaleString()}</span>
         </div>
-        <div class="kanban-col-body">${bodyHtml}</div>
+        <div class="kanban-col-body" ${dropAttrs}>${bodyHtml}</div>
       </div>`;
   });
 
   // Also add any stages that exist in data but not in config
   byStage.forEach(s => {
     if (!stageConfig.find(c => c.name === s.name) && s.opportunities.length) {
+      const dropAttrs = (segment && s.stageId) ? `data-stage-id="${s.stageId}" data-stage-name="${esc(s.name)}"` : '';
       cols.push(`
         <div class="kanban-col">
           <div class="kanban-col-hdr">
             <span class="kanban-col-name">${esc(s.name)}</span>
             <span class="kanban-col-cnt">${s.opportunities.length}</span>
           </div>
-          <div class="kanban-col-body">
+          <div class="kanban-col-body" ${dropAttrs}>
             ${s.opportunities.map(o => cardHtml(o)).join('')}
           </div>
         </div>`);
@@ -1356,6 +1362,55 @@ function renderKanban(elId, byStage, stageConfig, tagsById, countOverrides = {})
   });
 
   el.innerHTML = cols.join('');
+
+  // ── Wire up drag-and-drop if segment provided ──
+  if (segment) {
+    let dragOppId = null;
+
+    el.querySelectorAll('.kanban-card[draggable]').forEach(card => {
+      card.addEventListener('dragstart', e => {
+        dragOppId = card.dataset.oppId;
+        card.classList.add('dragging');
+        e.dataTransfer.effectAllowed = 'move';
+      });
+      card.addEventListener('dragend', () => {
+        card.classList.remove('dragging');
+        el.querySelectorAll('.kanban-col-body').forEach(col => col.classList.remove('drag-over'));
+      });
+    });
+
+    el.querySelectorAll('.kanban-col-body[data-stage-id]').forEach(col => {
+      col.addEventListener('dragover', e => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        col.classList.add('drag-over');
+      });
+      col.addEventListener('dragleave', e => {
+        if (!col.contains(e.relatedTarget)) col.classList.remove('drag-over');
+      });
+      col.addEventListener('drop', async e => {
+        e.preventDefault();
+        col.classList.remove('drag-over');
+        if (!dragOppId) return;
+        const stageId = col.dataset.stageId;
+        const stageName = col.dataset.stageName;
+        try {
+          const r = await fetch(`${BASE}/api/pipeline/${segment}/${dragOppId}/stage`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ stageId }),
+          });
+          if (r.ok) {
+            state[segment] = null;
+            loadSegment(segment);
+          } else {
+            alert('Failed to move card — please try again');
+          }
+        } catch { alert('Network error moving card'); }
+        dragOppId = null;
+      });
+    });
+  }
 }
 
 // ── Generic list table ─────────────────────────────────────────────────────────

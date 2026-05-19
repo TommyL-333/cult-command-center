@@ -5925,8 +5925,8 @@ const SEGMENT_STAGE_NAMES = {
   '246fa975-94b0-423a-8529-b07601609291': 'Contract Signed',
   'addcb241-593d-4242-b7d5-afeff44cd0a2': 'Active',
   '47cb6c40-df0c-4ac9-b717-ca2bdec2536c': 'Long Term Nurture',
-  '9f5e3c2d-0b84-4a7e-b6f1-2e9d8c7a5f3b': 'Churned',
-  'a1b2c3d4-e5f6-7890-abcd-ef1234567890': 'Disqualified',
+  'ee919b9d-1ee4-4afc-9343-5bd46add74c7': 'Churned',
+  'c38e9d11-a1ce-4aa5-9ce9-fef3bab9babd': 'Disqualified',
 };
 
 const GP_PIPELINE_ID = 'W5PxjulbNVh52Gqlkmzm';
@@ -5974,8 +5974,12 @@ app.get('/api/pipeline/:segment', async (req, res) => {
         stageMap[key].push(o);
       });
 
+      // Build reverse map: stage name → stage ID
+      const stageNameToId = {};
+      Object.entries(SEGMENT_STAGE_NAMES).forEach(([id, name]) => { stageNameToId[name] = id; });
+
       const byStage = Object.entries(stageMap)
-        .map(([name, opportunities]) => ({ name, opportunities }));
+        .map(([name, opportunities]) => ({ name, stageId: stageNameToId[name] || '', opportunities }));
 
       return { total: opps.length, byStage, opportunities: opps };
     });
