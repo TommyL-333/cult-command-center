@@ -1098,49 +1098,54 @@
 
     <!-- ── Unibox ─────────────────────────────────────────────────────── -->
     <div id="af-pane-unibox">
-      <div class="card" style="margin-bottom:20px;padding:20px 24px">
-        <div style="font-size:14px;font-weight:800;margin-bottom:16px;letter-spacing:.02em">📥 UNIBOX — Send to Creators</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">
-          <div>
-            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Brand / Shop</label>
-            <select id="ub-shop" class="agent-input" style="width:100%;font-size:13px">
-              <option value="">All Shops</option>
-            </select>
-          </div>
-          <div>
-            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Audience</label>
-            <select id="ub-audience" class="agent-input" style="width:100%;font-size:13px">
-              <option value="all_funnel">All Creators in Funnel</option>
-              <option value="active_posters">Active Posters</option>
-              <option value="non_starters">Non-Starters</option>
-              <option value="sample_approved">Sample Approved</option>
-              <option value="no_video">Sample Received, No Video</option>
-            </select>
-          </div>
-          <div>
-            <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:4px">Message Type</label>
-            <select id="ub-type" class="agent-input" style="width:100%;font-size:13px">
-              <option value="tc">TC Message (≤500 chars)</option>
-              <option value="dm">DM (≤2000 chars)</option>
-            </select>
-          </div>
-        </div>
-        <div style="margin-bottom:12px">
-          <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:4px">
-            <label style="font-size:11px;color:var(--muted)">Message</label>
-            <span id="ub-charcount" style="font-size:11px;color:var(--muted)">0 / 500</span>
-          </div>
-          <textarea id="ub-message" class="agent-input" rows="5" style="width:100%;font-size:13px;resize:vertical;line-height:1.5" placeholder="Write your message here…" oninput="ubCountChars()"></textarea>
-        </div>
-        <div style="display:flex;align-items:center;gap:12px">
-          <button class="btn btn-teal" onclick="ubSend(this)" style="font-weight:700;font-size:13px;padding:10px 24px">Send Message →</button>
-          <span id="ub-status" style="font-size:12px;color:var(--muted)"></span>
-        </div>
+      <!-- Toolbar -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <input id="ub-search" class="agent-input" type="text" placeholder="Search conversations…" style="flex:1;min-width:180px;font-size:13px;padding:7px 12px" oninput="ubFilterList()" />
+        <select id="ub-status-filter" class="agent-input" style="font-size:12px;padding:6px 10px" onchange="ubLoadConversations()">
+          <option value="all">All</option>
+          <option value="unread">Unread</option>
+          <option value="open">Open</option>
+          <option value="starred">Starred</option>
+        </select>
+        <button class="btn btn-ghost" onclick="ubLoadConversations(true)" style="font-size:12px;padding:6px 14px">↻</button>
       </div>
-      <!-- Send log -->
-      <div class="card" style="padding:0;overflow:hidden">
-        <div style="padding:14px 20px;border-bottom:1px solid var(--border);font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Recent Sends</div>
-        <div id="ub-log" style="padding:16px 20px;font-size:13px;color:var(--muted);font-style:italic">No sends yet this session.</div>
+
+      <!-- 2-panel layout -->
+      <div style="display:grid;grid-template-columns:300px 1fr;gap:0;border:1px solid var(--border);border-radius:12px;overflow:hidden;height:600px">
+
+        <!-- Left: conversation list -->
+        <div style="border-right:1px solid var(--border);display:flex;flex-direction:column;background:var(--card)">
+          <div style="padding:10px 14px;border-bottom:1px solid var(--border);font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Conversations</div>
+          <div id="ub-conv-list" style="flex:1;overflow-y:auto;font-size:13px">
+            <div style="padding:20px;text-align:center;color:var(--muted);font-style:italic">Loading…</div>
+          </div>
+        </div>
+
+        <!-- Right: thread + reply -->
+        <div style="display:flex;flex-direction:column;background:var(--card)">
+          <!-- Thread header -->
+          <div id="ub-thread-header" style="padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;min-height:49px">
+            <div style="color:var(--muted);font-size:13px;font-style:italic">Select a conversation</div>
+          </div>
+          <!-- Messages -->
+          <div id="ub-thread-msgs" style="flex:1;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:10px">
+          </div>
+          <!-- Reply composer -->
+          <div id="ub-reply-box" style="border-top:1px solid var(--border);padding:12px 14px;display:none">
+            <div style="display:flex;gap:8px;align-items:flex-end">
+              <textarea id="ub-reply-text" class="agent-input" rows="3" style="flex:1;font-size:13px;resize:none;line-height:1.5;padding:8px 12px" placeholder="Type a reply…" onkeydown="if(event.key==='Enter'&&event.metaKey)ubSendReply()"></textarea>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <select id="ub-reply-type" class="agent-input" style="font-size:11px;padding:4px 6px">
+                  <option value="SMS">SMS</option>
+                  <option value="Email">Email</option>
+                  <option value="WhatsApp">WhatsApp</option>
+                </select>
+                <button class="btn btn-teal" onclick="ubSendReply()" style="font-size:12px;font-weight:700;padding:7px 16px;white-space:nowrap">Send →</button>
+              </div>
+            </div>
+            <div id="ub-reply-status" style="font-size:11px;color:var(--muted);margin-top:6px;min-height:16px"></div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -2993,7 +2998,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     // Lazy-init tab-specific data
     if (btn.dataset.tab === 'shortvideo')  { svuLoadChannels(); }
     if (btn.dataset.tab === 'paidmedia')   loadPaidMedia();
-    if (btn.dataset.tab === 'affiliates')  { loadAffiliate(); rvEnsureShops(); }
+    if (btn.dataset.tab === 'affiliates')  { loadAffiliate(); rvEnsureShops(); ubLoadConversations(); }
     if (btn.dataset.tab === 'pipeline')    renderPerformance();
     if (btn.dataset.tab === 'growth')      gpInit();
     if (btn.dataset.tab === 'community')   creatorsInit();
@@ -4996,7 +5001,7 @@ function afSubTab(tab) {
     document.getElementById(`af-pane-${t}`).style.display = t===tab ? '' : 'none';
   });
   if (tab === 'clients' && !AF.shops.length) afLoadClients();
-  if (tab === 'unibox' && !AF.shops.length) afLoadShopsForUnibox();
+  if (tab === 'unibox') ubLoadConversations();
 }
 
 // Normalize shop objects — Reacher returns {shop_id, shop_name}, map to consistent shape
@@ -5170,59 +5175,119 @@ async function afCreateAutomation(btn) {
   btn.disabled = false; btn.textContent = 'Create';
 }
 
-// Unibox
-function ubCountChars() {
-  const type = document.getElementById('ub-type').value;
-  const limit = type === 'tc' ? 500 : 2000;
-  const len = document.getElementById('ub-message').value.length;
-  const el = document.getElementById('ub-charcount');
-  el.textContent = `${len} / ${limit}`;
-  el.style.color = len > limit ? 'var(--red)' : 'var(--muted)';
-}
+// ─── Unibox (Inbox) ───────────────────────────────────────────────────────────
+let UB = { conversations: [], activeId: null, searchQuery: '' };
 
-async function ubSend(btn) {
-  const shopId   = document.getElementById('ub-shop').value;
-  const audience = document.getElementById('ub-audience').value;
-  const type     = document.getElementById('ub-type').value;
-  const message  = document.getElementById('ub-message').value.trim();
-  const limit    = type === 'tc' ? 500 : 2000;
-  if (!message) { alert('Message is required'); return; }
-  if (message.length > limit) { alert(`Message too long (${message.length}/${limit} chars)`); return; }
-  if (!confirm(`Send this message to all ${audience.replace(/_/g,' ')} creators${shopId ? '' : ' across all shops'}?`)) return;
-  btn.disabled = true;
-  document.getElementById('ub-status').textContent = 'Sending…';
+async function ubLoadConversations(force = false) {
+  const list = document.getElementById('ub-conv-list');
+  if (!list) return;
+  if (!force && UB.conversations.length) { ubRenderList(); return; }
+  list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-style:italic">Loading…</div>';
   try {
-    const r = await fetch('/api/affiliate/blast', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ message, audience, channel: type, shopId: shopId || undefined })
-    }).then(r => r.json());
-    const shop = AF.shops.find(s => (s.shopId||s.id) === shopId);
-    const entry = {
-      time: new Date().toLocaleTimeString(),
-      shop: shop?.name || (shopId ? shopId : 'All Shops'),
-      audience: audience.replace(/_/g,' '),
-      type: type.toUpperCase(),
-      sent: r.sent || '?',
-      preview: message.slice(0, 60) + (message.length > 60 ? '…' : '')
-    };
-    AF.sendLog.unshift(entry);
-    document.getElementById('ub-status').textContent = `✓ Sent to ~${entry.sent} creators`;
-    ubRenderLog();
-  } catch(e) { document.getElementById('ub-status').textContent = 'Error: ' + e.message; }
-  btn.disabled = false;
+    const status = document.getElementById('ub-status-filter')?.value || 'all';
+    const r = await fetch(`/api/ghl/conversations?limit=50&status=${status}`).then(r => r.json());
+    UB.conversations = r.conversations || r.data || [];
+    ubRenderList();
+  } catch(e) {
+    list.innerHTML = `<div style="padding:16px;color:var(--red);font-size:12px">Error: ${e.message}</div>`;
+  }
 }
 
-function ubRenderLog() {
-  const el = document.getElementById('ub-log');
-  if (!AF.sendLog.length) { el.innerHTML = '<div style="color:var(--muted);font-style:italic">No sends yet this session.</div>'; return; }
-  el.innerHTML = AF.sendLog.map(e => `
-    <div style="display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:1px solid var(--surface2)">
-      <span style="font-size:11px;color:var(--muted);white-space:nowrap;padding-top:1px">${e.time}</span>
-      <div style="flex:1;min-width:0">
-        <div style="font-size:13px;line-height:1.4">${e.preview}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:3px">${e.shop} · ${e.audience} · ${e.type} · ${e.sent} creators</div>
+function ubFilterList() {
+  UB.searchQuery = (document.getElementById('ub-search')?.value || '').toLowerCase();
+  ubRenderList();
+}
+
+function ubRenderList() {
+  const list = document.getElementById('ub-conv-list');
+  if (!list) return;
+  const q = UB.searchQuery;
+  const convs = q
+    ? UB.conversations.filter(c => (c.fullName||c.contactName||'').toLowerCase().includes(q) || (c.lastMessageBody||'').toLowerCase().includes(q))
+    : UB.conversations;
+  if (!convs.length) {
+    list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-style:italic">No conversations</div>';
+    return;
+  }
+  list.innerHTML = convs.map(c => {
+    const name    = c.fullName || c.contactName || 'Unknown';
+    const preview = (c.lastMessageBody || '').slice(0, 60);
+    const time    = c.lastMessageDate ? fmtDate(c.lastMessageDate) : '';
+    const unread  = c.unreadCount > 0;
+    const active  = c.id === UB.activeId;
+    // Extract brand tag (client-*)
+    const brandTag = (c.tags || []).find(t => t.startsWith('client-'));
+    const brand    = brandTag ? brandTag.replace('client-','').replace(/-/g,' ') : '';
+    return `<div onclick="ubOpenThread('${c.id}','${x(name)}')"
+      style="padding:12px 14px;cursor:pointer;border-bottom:1px solid var(--border);
+             background:${active?'rgba(0,242,234,0.07)':'transparent'};
+             transition:background .15s"
+      onmouseover="if('${c.id}'!==UB.activeId)this.style.background='var(--surface2)'"
+      onmouseout="this.style.background='${active?'rgba(0,242,234,0.07)':'transparent'}'">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;gap:6px;margin-bottom:3px">
+        <div style="font-size:13px;font-weight:${unread?'800':'600'};color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${x(name)}</div>
+        <div style="font-size:10px;color:var(--muted);white-space:nowrap">${time}</div>
       </div>
-    </div>`).join('');
+      <div style="font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${x(preview)}</div>
+      ${brand ? `<div style="font-size:10px;color:var(--teal);margin-top:3px;text-transform:capitalize">${x(brand)}</div>` : ''}
+      ${unread ? `<span style="display:inline-block;background:var(--teal);color:#000;font-size:10px;font-weight:800;padding:1px 6px;border-radius:8px;margin-top:4px">${c.unreadCount}</span>` : ''}
+    </div>`;
+  }).join('');
+}
+
+async function ubOpenThread(convId, name) {
+  UB.activeId = convId;
+  ubRenderList(); // update active highlight
+  const header = document.getElementById('ub-thread-header');
+  const msgs   = document.getElementById('ub-thread-msgs');
+  const reply  = document.getElementById('ub-reply-box');
+  if (header) header.innerHTML = `<div style="font-size:14px;font-weight:800">${x(name)}</div><div style="font-size:11px;color:var(--muted);margin-left:auto">⌘+Enter to send</div>`;
+  if (msgs)   msgs.innerHTML = '<div style="color:var(--muted);font-style:italic;font-size:13px">Loading messages…</div>';
+  if (reply)  reply.style.display = '';
+  try {
+    const r = await fetch(`/api/ghl/conversations/${convId}/messages`).then(r => r.json());
+    const messages = r.messages || r.data || [];
+    if (!msgs) return;
+    if (!messages.length) { msgs.innerHTML = '<div style="color:var(--muted);font-style:italic;font-size:13px">No messages yet.</div>'; return; }
+    msgs.innerHTML = messages.map(m => {
+      const out  = m.direction === 'outbound' || m.userId;
+      const body = m.body || m.message || '';
+      const ts   = m.dateAdded ? fmtDate(m.dateAdded) : '';
+      return `<div style="display:flex;flex-direction:column;align-items:${out?'flex-end':'flex-start'};gap:2px">
+        <div style="max-width:75%;padding:9px 13px;border-radius:${out?'14px 14px 4px 14px':'14px 14px 14px 4px'};
+                    background:${out?'var(--teal)':'var(--surface2)'};
+                    color:${out?'#000':'var(--fg)'};font-size:13px;line-height:1.5">${x(body)}</div>
+        <div style="font-size:10px;color:var(--muted)">${ts}</div>
+      </div>`;
+    }).join('');
+    msgs.scrollTop = msgs.scrollHeight;
+  } catch(e) {
+    if (msgs) msgs.innerHTML = `<div style="color:var(--red);font-size:12px">Error: ${e.message}</div>`;
+  }
+}
+
+async function ubSendReply() {
+  if (!UB.activeId) return;
+  const textarea = document.getElementById('ub-reply-text');
+  const typeEl   = document.getElementById('ub-reply-type');
+  const statusEl = document.getElementById('ub-reply-status');
+  const message  = textarea?.value?.trim();
+  if (!message) return;
+  statusEl.textContent = 'Sending…';
+  try {
+    await fetch(`/api/ghl/conversations/${UB.activeId}/reply`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ message, type: typeEl?.value || 'SMS' })
+    }).then(r => r.json());
+    textarea.value = '';
+    statusEl.textContent = '✓ Sent';
+    setTimeout(() => statusEl.textContent = '', 3000);
+    // Reload thread to show sent message
+    const conv = UB.conversations.find(c => c.id === UB.activeId);
+    ubOpenThread(UB.activeId, conv?.fullName || conv?.contactName || 'Contact');
+  } catch(e) {
+    statusEl.textContent = 'Error: ' + e.message;
+  }
 }
 
 // ─── Affiliate Agent ─────────────────────────────────────────────────────────────────

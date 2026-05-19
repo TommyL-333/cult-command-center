@@ -1635,13 +1635,52 @@ app.get('/api/ghl/workflows', async (req, res) => {
 });
 
 app.get('/api/ghl/conversations', async (req, res) => {
+  const { limit = 50, status, query } = req.query;
+  const cacheKey = `conversations_${limit}_${status || 'all'}_${query || ''}`;
   try {
-    const data = await cached('conversations', 60_000, async () => {
-      const { data } = await ghl.get('/conversations/search', {
-        params: { locationId: CFG.locationId, limit: 10 },
+    const data = await cached(cacheKey, 60_000, async () => {
+      const params = { locationId: CFG.locationId, limit: parseInt(limit) };
+      if (status && status !== 'all') params.status = status;
+      if (query) params.query = query;
+      const { data } = await ghl.get('/conversations/search', { params });
+      return data;
+    });
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.response?.data || e.message });
+  }
+});
+
+// GET /api/ghl/conversations/:id/messages
+app.get('/api/ghl/conversations/:id/messages', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const data = await cached(`conv_msgs_${id}`, 30_000, async () => {
+      const { data } = await ghl.get(`/conversations/${id}/messages`, {
+        params: { limit: 100 },
       });
       return data;
     });
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.response?.data || e.message });
+  }
+});
+
+// POST /api/ghl/conversations/:id/reply
+app.post('/api/ghl/conversations/:id/reply', async (req, res) => {
+  const { id } = req.params;
+  const { message, type = 'SMS' } = req.body;
+  if (!message?.trim()) return res.status(400).json({ error: 'message required' });
+  try {
+    const { data } = await ghl.post('/conversations/messages', {
+      type,
+      conversationId: id,
+      message,
+    });
+    // Bust cache so next fetch gets fresh messages
+    cache.delete(`conv_msgs_${id}`);
+    cache.delete(`conversations_50_all_`);
     res.json(data);
   } catch (e) {
     res.status(500).json({ error: e.response?.data || e.message });
