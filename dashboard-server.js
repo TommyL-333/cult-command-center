@@ -1186,6 +1186,40 @@ app.post('/client/logout', (req, res) => {
   req.session.destroy(() => res.json({ ok: true }));
 });
 
+// Human-readable labels for Growth Partners task keys
+const GP_TASK_LABELS = {
+  contract_signed:      'Contract signed',
+  brand_brief_filled:   'Brand brief filled out',
+  brand_approved:       'Brand approved for program',
+  onboarding_call:      'Onboarding call completed',
+  cogs_provided:        'COGS provided',
+  margins_confirmed:    'Margins confirmed',
+  commission_set:       'Commission structure set',
+  shop_account:         'TikTok Shop account connected',
+  shopify:              'Shopify integration set up',
+  sellico:              'Sellico connected',
+  whitelisting_eligible:'Whitelisting eligibility confirmed',
+  reviews:              'Reviews integration',
+  fbt:                  'FBT enabled',
+  product_samples:      'Product samples arranged',
+  bundles_enabled:      'Bundles enabled',
+  ugc_source:           'UGC source identified',
+  creator_list:         'Creator outreach list built',
+  outreach_started:     'Creator outreach started',
+  gmv_10k:              'First $10k GMV milestone',
+  gmv_50k:              '$50k GMV milestone',
+  video_plan:           'Video content plan created',
+  first_batch_live:     'First batch of videos live',
+  '10_videos_live':     '10+ videos live',
+  top_performer_id:     'Top performing creator identified',
+  spark_ads_enabled:    'Spark Ads enabled',
+  first_campaign:       'First ad campaign launched',
+  roas_positive:        'Positive ROAS achieved',
+  live_eligible:        'TikTok Live eligible',
+  first_live:           'First live stream completed',
+  live_regular:         'Regular live cadence established',
+};
+
 // GET /api/client/me — return brand data, TikTok stats, tasks, referral info
 app.get('/api/client/me', requireClientSession, async (req, res) => {
   try {
@@ -1193,6 +1227,7 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
     const brand = (brands.clients || []).find(b => b.id === req.session.clientBrandId);
     if (!brand) { req.session.destroy(); return res.status(404).json({ error: 'Brand not found' }); }
 
+    // TikTok Shop stats via Reacher (requires brand.shopId to be set)
     const railwayUrl = process.env.RAILWAY_URL || 'https://cultcontent-server-production.up.railway.app';
     let tiktokStats = null, tiktokFunnel = null;
     if (brand.shopId) {
@@ -1206,10 +1241,22 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
       if (fr.status === 'fulfilled') tiktokFunnel = fr.value.data;
     }
 
-    const brandSlug = brand.creatorPage?.slug || brand.id;
-    const tasks = loadTasks().filter(t => t.brandSlug === brandSlug);
-    const baseUrl = process.env.DASHBOARD_URL || 'https://manifest.cultcontent.cc';
-    const referralUrl = brand.creatorPage?.slug ? `${baseUrl}/creators/${brand.creatorPage.slug}` : null;
+    // Tasks — pull from growth-partners.json (the GP onboarding checklist)
+    const gpData = loadGP();
+    const gpPartner = gpData.partners?.[brand.id];
+    let tasks = [];
+    if (gpPartner?.tasks) {
+      tasks = Object.entries(gpPartner.tasks).map(([key, done]) => ({
+        title: GP_TASK_LABELS[key] || key,
+        status: done ? 'done' : 'pending',
+        updatedAt: gpPartner.updatedAt || brand.createdAt,
+      }));
+    }
+
+    // Referral link — brand referral to cultcontent.cc (not the creator interest page)
+    const referralUrl = brand.referralCode
+      ? `https://cultcontent.cc/growth-partner?ref=${brand.referralCode}`
+      : 'https://cultcontent.cc/growth-partner';
 
     res.json({
       brand: {
