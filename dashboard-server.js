@@ -1224,8 +1224,17 @@ const GP_TASK_LABELS = {
 app.get('/api/client/me', requireClientSession, async (req, res) => {
   try {
     const brands = loadBrands();
-    const brand = (brands.clients || []).find(b => b.id === req.session.clientBrandId);
-    if (!brand) { req.session.destroy(); return res.status(404).json({ error: 'Brand not found' }); }
+    const brandIdx = (brands.clients || []).findIndex(b => b.id === req.session.clientBrandId);
+    if (brandIdx === -1) { req.session.destroy(); return res.status(404).json({ error: 'Brand not found' }); }
+    const brand = brands.clients[brandIdx];
+
+    // Auto-generate referral code if missing
+    if (!brand.referralCode) {
+      brand.referralCode = brand.name.toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || brand.id;
+      brands.clients[brandIdx] = brand;
+      saveBrands(brands);
+    }
 
     // TikTok Shop stats via Reacher (requires brand.shopId to be set)
     const railwayUrl = process.env.RAILWAY_URL || 'https://cultcontent-server-production.up.railway.app';
@@ -1241,22 +1250,29 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
       if (fr.status === 'fulfilled') tiktokFunnel = fr.value.data;
     }
 
-    // Tasks — pull from growth-partners.json (the GP onboarding checklist)
-    const gpData = loadGP();
-    const gpPartner = gpData.partners?.[brand.id];
-    let tasks = [];
-    if (gpPartner?.tasks) {
-      tasks = Object.entries(gpPartner.tasks).map(([key, done]) => ({
-        title: GP_TASK_LABELS[key] || key,
-        status: done ? 'done' : 'pending',
-        updatedAt: gpPartner.updatedAt || brand.createdAt,
-      }));
+    // Tasks — pull action items from client-meetings.json tagged to this brand
+    const meetings = loadClientMeetings();
+    const tasks = [];
+    const brandNameLower = brand.name.toLowerCase().trim();
+    for (const meeting of (meetings.meetings || [])) {
+      for (const item of (meeting.actionItems || [])) {
+        if (!item.client) continue;
+        const cl = item.client.toLowerCase().trim();
+        if (cl === brandNameLower || brandNameLower.includes(cl) || cl.includes(brandNameLower)) {
+          tasks.push({
+            title: item.task,
+            status: item.done ? 'done' : 'in-progress',
+            priority: item.priority || 'medium',
+            assignee: item.assignee || null,
+            updatedAt: meeting.updatedAt || meeting.createdAt,
+            source: meeting.title || 'Meeting',
+          });
+        }
+      }
     }
 
-    // Referral link — brand referral to cultcontent.cc (not the creator interest page)
-    const referralUrl = brand.referralCode
-      ? `https://cultcontent.cc/growth-partner?ref=${brand.referralCode}`
-      : 'https://cultcontent.cc/growth-partner';
+    const referralUrl = `https://cultcontent.cc/growth-partner?ref=${brand.referralCode}`;
+    const compensation = brand.creatorPage?.incentives || null;
 
     res.json({
       brand: {
@@ -1266,11 +1282,12 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
         tiktokHandle: brand.tiktokHandle,
         shopId: brand.shopId || null,
         sampleBudget: brand.sampleBudget || 0,
-        creatorPage: brand.creatorPage || null,
-        referralCode: brand.referralCode || null,
+        compensation,
+        referralCode: brand.referralCode,
         commissionRate: brand.commissionRate ?? 0.10,
         referralUrl,
         estimatedCommission: brand.estimatedCommission || 0,
+        referrals: brand.referrals || [],
       },
       tiktok: { stats: tiktokStats, funnel: tiktokFunnel },
       tasks,
@@ -1278,23 +1295,42 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// PATCH /api/client/settings — update sample budget + promo strategy toggles
+// PATCH /api/client/settings — update sample budget + full compensation config
 app.patch('/api/client/settings', requireClientSession, express.json(), async (req, res) => {
   try {
     const brands = loadBrands();
     const idx = (brands.clients || []).findIndex(b => b.id === req.session.clientBrandId);
     if (idx === -1) return res.status(404).json({ error: 'Brand not found' });
     const brand = brands.clients[idx];
-    const { sampleBudget, incentives } = req.body || {};
+    const { sampleBudget, compensation } = req.body || {};
     if (sampleBudget !== undefined) brand.sampleBudget = Number(sampleBudget) || 0;
-    if (incentives && typeof incentives === 'object') {
+    if (compensation && typeof compensation === 'object') {
       if (!brand.creatorPage) brand.creatorPage = {};
-      if (!brand.creatorPage.incentives) brand.creatorPage.incentives = {};
-      Object.assign(brand.creatorPage.incentives, incentives);
+      brand.creatorPage.incentives = compensation;
     }
     brands.clients[idx] = brand;
     saveBrands(brands);
     res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/client/referrals — log a brand the client referred
+app.post('/api/client/referrals', requireClientSession, express.json(), (req, res) => {
+  try {
+    const brands = loadBrands();
+    const idx = (brands.clients || []).findIndex(b => b.id === req.session.clientBrandId);
+    if (idx === -1) return res.status(404).json({ error: 'Brand not found' });
+    const { name, email, company } = req.body || {};
+    if (!name && !email) return res.status(400).json({ error: 'Name or email required' });
+    const referral = {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      name: name || '', email: email || '', company: company || '',
+      addedAt: new Date().toISOString(),
+    };
+    if (!brands.clients[idx].referrals) brands.clients[idx].referrals = [];
+    brands.clients[idx].referrals.push(referral);
+    saveBrands(brands);
+    res.json({ ok: true, referral });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
