@@ -2787,6 +2787,47 @@ setInterval(() => {
 //   cached  — cached(key, ttlMs, fn) helper
 // ─────────────────────────────────────────────────────────────────────────────
 
+// POST /api/reacher/automations/create — create a new automation in Reacher
+app.post('/api/reacher/automations/create', requireAuth, async (req, res) => {
+  try {
+    const { type, shopId, ...rest } = req.body || {};
+    const endpoint = {
+      'dm': 'automation/dm',
+      'tc': 'automation/tc',
+      'email': 'automation/email',
+      'sample_request': 'automation/sample-request',
+      'target_collab': 'automation/target-collab',
+    }[type];
+    if (!endpoint) return res.status(400).json({ ok: false, error: 'Invalid type' });
+    const r = await axios.post(`${CFG.railwayUrl}/affiliate/shops/${shopId}/${endpoint}`, rest, { timeout: 15000 });
+    res.json({ ok: true, automation: r.data });
+  } catch(e) { res.status(500).json({ ok: false, error: e.response?.data || e.message }); }
+});
+
+// POST /api/reacher/automations/:automationId/start
+app.post('/api/reacher/automations/:automationId/start', requireAuth, async (req, res) => {
+  try {
+    const r = await axios.post(`${CFG.railwayUrl}/affiliate/automations/${req.params.automationId}/start`, {}, { timeout: 10000 });
+    res.json({ ok: true, data: r.data });
+  } catch(e) { res.status(500).json({ ok: false, error: e.response?.data || e.message }); }
+});
+
+// POST /api/reacher/automations/:automationId/stop
+app.post('/api/reacher/automations/:automationId/stop', requireAuth, async (req, res) => {
+  try {
+    const r = await axios.post(`${CFG.railwayUrl}/affiliate/automations/${req.params.automationId}/stop`, {}, { timeout: 10000 });
+    res.json({ ok: true, data: r.data });
+  } catch(e) { res.status(500).json({ ok: false, error: e.response?.data || e.message }); }
+});
+
+// DELETE /api/reacher/automations/:automationId
+app.delete('/api/reacher/automations/:automationId', requireAuth, async (req, res) => {
+  try {
+    await axios.delete(`${CFG.railwayUrl}/affiliate/automations/${req.params.automationId}`, { timeout: 10000 });
+    res.json({ ok: true });
+  } catch(e) { res.status(500).json({ ok: false, error: e.response?.data || e.message }); }
+});
+
 // ── POST /api/affiliate/blast ─────────────────────────────────────────────────
 // Body: { message: string, audience: string, channel: string, shopId?: string }
 // Fires a creator blast message via the chosen channel.
@@ -6903,6 +6944,44 @@ async function runOnboardingPipeline(formData) {
   const larkDoc = await createLarkResourceHub(formData).catch(e => {
     console.error('[onboard] lark doc error:', e.message); return null;
   });
+
+  // 4b. Auto-create Reacher automations based on incentive program
+  if (formData.compensation && shopData?.shopId) {
+    const { cashback, leaderboard, volumeBonus } = formData.compensation;
+    const autoPromises = [];
+
+    if (cashback?.enabled) {
+      const msg = `Hi! I'm reaching out from ${brandName}. We have an exciting cashback program — if you generate $${cashback.target} in GMV, you receive that same amount back as a cash bonus. Interested in learning more?`;
+      autoPromises.push(
+        axios.post(`${CFG.railwayUrl}/affiliate/shops/${shopData.shopId}/automation/tc`,
+          { name: `${brandName} — GMV Cashback Outreach`, message: msg.slice(0, 500), trigger: 'new_signup' },
+          { timeout: 10000 }
+        ).catch(e => console.error('[onboard] cashback auto error:', e.message))
+      );
+    }
+    if (leaderboard?.enabled) {
+      const msg = `Join the ${brandName} creator leaderboard! Top performers this month win cash prizes. Post videos and climb the ranks — the more you sell, the more you earn.`;
+      autoPromises.push(
+        axios.post(`${CFG.railwayUrl}/affiliate/shops/${shopData.shopId}/automation/dm`,
+          { name: `${brandName} — Leaderboard Challenge`, message: msg, trigger: 'active_posters' },
+          { timeout: 10000 }
+        ).catch(e => console.error('[onboard] leaderboard auto error:', e.message))
+      );
+    }
+    if (volumeBonus?.enabled) {
+      const msg = `Great news! ${brandName} offers a volume bonus — post ${volumeBonus.quantity || 'X'} videos and earn an extra $${volumeBonus.bonus || '?'} bonus. Keep posting!`;
+      autoPromises.push(
+        axios.post(`${CFG.railwayUrl}/affiliate/shops/${shopData.shopId}/automation/tc`,
+          { name: `${brandName} — Volume Bonus`, message: msg.slice(0, 500), trigger: 'active_posters' },
+          { timeout: 10000 }
+        ).catch(e => console.error('[onboard] volume auto error:', e.message))
+      );
+    }
+    if (autoPromises.length) {
+      await Promise.allSettled(autoPromises);
+      console.log(`[onboard] Created ${autoPromises.length} Reacher automation(s) for ${brandName}`);
+    }
+  }
 
   // 5. Create draft creator page (inactive until approved)
   let creatorPage = null;
