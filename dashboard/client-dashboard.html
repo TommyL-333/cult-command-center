@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — Cult Content</title>
+  <style>
+    :root {
+      --bg:     #12101a;
+      --card:   #1c1828;
+      --border: #2a2540;
+      --teal:   #00f2ea;
+      --gold:   #c9a84c;
+      --green:  #00d27a;
+      --red:    #ff3b30;
+      --yellow: #ffcc00;
+      --text:   #e2e8f0;
+      --muted:  #64748b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 28px;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .logo { height: 30px; }
+    .header-right { display: flex; align-items: center; gap: 16px; }
+    .brand-badge {
+      background: rgba(0,242,234,0.1);
+      border: 1px solid rgba(0,242,234,0.2);
+      border-radius: 6px;
+      color: var(--teal);
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+    .logout-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.78rem;
+      padding: 6px 14px;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .logout-btn:hover { border-color: var(--red); color: var(--red); }
+
+    /* ── Main ── */
+    main {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 36px 24px 60px;
+    }
+
+    /* ── Section label ── */
+    .section-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    /* ── Stats row ── */
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    @media (max-width: 900px) { .stats-row { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 500px) { .stats-row { grid-template-columns: 1fr; } }
+
+    .stat-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      padding: 22px 20px;
+    }
+    .stat-label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      margin-bottom: 10px;
+    }
+    .stat-value {
+      font-size: 2rem;
+      font-weight: 700;
+      line-height: 1;
+      color: var(--text);
+    }
+    .stat-value.teal { color: var(--teal); }
+    .stat-value.gold { color: var(--gold); }
+    .stat-sub {
+      font-size: 0.73rem;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    /* ── Two-column ── */
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 768px) { .two-col { grid-template-columns: 1fr; } }
+
+    /* ── Cards ── */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 13px;
+      padding: 24px;
+    }
+    .card-title {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--teal);
+      flex-shrink: 0;
+    }
+
+    /* ── List items (creators / videos) ── */
+    .list-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.84rem;
+      gap: 12px;
+    }
+    .list-item:last-child { border-bottom: none; }
+    .list-item-name { color: var(--text); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .list-item-val { color: var(--teal); font-weight: 700; flex-shrink: 0; }
+
+    /* ── Referral ── */
+    .ref-url {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 11px 14px;
+      font-family: monospace;
+      font-size: 0.78rem;
+      color: var(--teal);
+      word-break: break-all;
+      margin-bottom: 12px;
+      line-height: 1.5;
+    }
+    .copy-btn {
+      background: var(--teal);
+      color: var(--bg);
+      font-size: 0.8rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 7px;
+      padding: 8px 18px;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .copy-btn:hover { opacity: 0.85; }
+    .commission-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 18px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+      font-size: 0.84rem;
+    }
+    .commission-label { color: var(--muted); }
+    .commission-val { color: var(--gold); font-weight: 700; font-size: 1.05rem; }
+
+    /* ── Controls ── */
+    .field-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      display: block;
+      margin-bottom: 8px;
+    }
+    .budget-row { display: flex; align-items: center; gap: 10px; margin-bottom: 22px; }
+    .budget-input {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 1rem;
+      padding: 9px 12px;
+      width: 90px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .budget-input:focus { border-color: var(--teal); }
+    .budget-unit { color: var(--muted); font-size: 0.82rem; }
+
+    .toggle-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 13px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .toggle-row:last-of-type { border-bottom: none; }
+    .toggle-info { flex: 1; min-width: 0; }
+    .toggle-name { font-size: 0.87rem; color: var(--text); }
+    .toggle-desc { font-size: 0.74rem; color: var(--muted); margin-top: 2px; }
+
+    /* Toggle switch */
+    .switch { position: relative; display: inline-block; width: 42px; height: 24px; flex-shrink: 0; margin-left: 16px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider {
+      position: absolute;
+      inset: 0;
+      background: #2a2540;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .slider::before {
+      content: '';
+      position: absolute;
+      width: 18px;
+      height: 18px;
+      left: 3px;
+      top: 3px;
+      background: #fff;
+      border-radius: 50%;
+      transition: transform 0.2s;
+    }
+    .switch input:checked + .slider { background: var(--teal); }
+    .switch input:checked + .slider::before { transform: translateX(18px); }
+
+    .save-btn {
+      background: var(--teal);
+      color: var(--bg);
+      font-size: 0.88rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 8px;
+      padding: 11px 22px;
+      cursor: pointer;
+      margin-top: 20px;
+      transition: opacity 0.15s;
+    }
+    .save-btn:hover { opacity: 0.85; }
+    .save-status { font-size: 0.78rem; color: var(--green); margin-top: 8px; min-height: 18px; }
+
+    /* ── Tasks ── */
+    .task-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+      gap: 16px;
+    }
+    .task-item:last-child { border-bottom: none; }
+    .task-body { flex: 1; min-width: 0; }
+    .task-title { font-size: 0.88rem; color: var(--text); margin-bottom: 4px; }
+    .task-date { font-size: 0.72rem; color: var(--muted); }
+    .badge {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 4px 9px;
+      border-radius: 5px;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+    .badge-pending    { background: rgba(255,204,0,0.12);  color: var(--yellow); }
+    .badge-progress   { background: rgba(0,242,234,0.10);  color: var(--teal); }
+    .badge-done       { background: rgba(0,210,122,0.12);  color: var(--green); }
+
+    /* ── Misc ── */
+    .empty { color: var(--muted); font-size: 0.83rem; padding: 16px 0; }
+    .mb-20 { margin-bottom: 20px; }
+    .mb-32 { margin-bottom: 32px; }
+  </style>
+</head>
+<body>
+
+<header>
+  <img class="logo" src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png" alt="Cult Content">
+  <div class="header-right">
+    <span class="brand-badge" id="headerBrand">Loading…</span>
+    <button class="logout-btn" onclick="doLogout()">Sign Out</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- TikTok Stats -->
+  <div class="section-label mb-20">TikTok Shop · Last 30 Days</div>
+  <div class="stats-row mb-32">
+    <div class="stat-card">
+      <div class="stat-label">GMV</div>
+      <div class="stat-value teal" id="sGmv">—</div>
+      <div class="stat-sub">Gross merchandise value</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Orders</div>
+      <div class="stat-value" id="sOrders">—</div>
+      <div class="stat-sub">Total orders placed</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Avg Order Value</div>
+      <div class="stat-value gold" id="sAov">—</div>
+      <div class="stat-sub">GMV ÷ orders</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Active Creators</div>
+      <div class="stat-value" id="sCreators">—</div>
+      <div class="stat-sub">Posting for your brand</div>
+    </div>
+  </div>
+
+  <!-- Top Creators + Top Videos -->
+  <div class="two-col mb-32">
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>Top Creators</div>
+      <div id="topCreators"><span class="empty">Loading…</span></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--gold)"></span>Top Videos</div>
+      <div id="topVideos"><span class="empty">Loading…</span></div>
+    </div>
+  </div>
+
+  <!-- Referral + Controls -->
+  <div class="two-col mb-32">
+
+    <!-- Referral -->
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--gold)"></span>Referral Program</div>
+      <p style="font-size:0.8rem;color:var(--muted);margin-bottom:16px;line-height:1.6">
+        Share this link with any brand interested in TikTok Shop growth.
+        You earn <strong style="color:var(--gold)">10% recurring commission</strong> on their retainer for life.
+      </p>
+      <div class="ref-url" id="refUrl">—</div>
+      <button class="copy-btn" id="copyBtn" onclick="copyRef()">Copy Link</button>
+      <div class="commission-row">
+        <span class="commission-label">Estimated commission earned</span>
+        <span class="commission-val" id="commVal">$0</span>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--gold)"></span>Campaign Controls</div>
+
+      <label class="field-label">Sample Budget</label>
+      <div class="budget-row">
+        <input class="budget-input" type="number" id="sampleBudget" min="0" placeholder="0">
+        <span class="budget-unit">units per product</span>
+      </div>
+
+      <label class="field-label">Promotional Strategy</label>
+
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <div class="toggle-name">Cashback Offers</div>
+          <div class="toggle-desc">Incentivize creators with cashback on sales they drive</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="tCashback">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <div class="toggle-name">Leaderboard Competition</div>
+          <div class="toggle-desc">Show creators a live GMV leaderboard for your brand</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="tLeaderboard">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="toggle-row">
+        <div class="toggle-info">
+          <div class="toggle-name">Volume Bonus</div>
+          <div class="toggle-desc">Extra commission when creators hit monthly sales tiers</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="tVolumeBonus">
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <button class="save-btn" onclick="saveSettings()">Save Changes</button>
+      <div class="save-status" id="saveStatus"></div>
+    </div>
+
+  </div>
+
+  <!-- Task Feed -->
+  <div class="section-label mb-20">Work in Progress</div>
+  <div class="card">
+    <div id="taskFeed"><span class="empty">Loading…</span></div>
+  </div>
+
+</main>
+
+<script>
+  let _brand = null;
+
+  function fmt$(n) {
+    if (n == null || n === '') return '—';
+    n = Number(n);
+    if (isNaN(n)) return '—';
+    if (n >= 1_000_000) return '$' + (n / 1_000_000).toFixed(1) + 'M';
+    if (n >= 1_000)     return '$' + (n / 1_000).toFixed(1) + 'k';
+    return '$' + n.toFixed(0);
+  }
+  function fmtN(n) {
+    if (n == null) return '—';
+    return Number(n).toLocaleString();
+  }
+  function fmtAge(ts) {
+    if (!ts) return '';
+    const ms = Date.now() - new Date(ts);
+    if (ms < 60_000)        return 'just now';
+    if (ms < 3_600_000)     return Math.floor(ms / 60_000) + 'm ago';
+    if (ms < 86_400_000)    return Math.floor(ms / 3_600_000) + 'h ago';
+    return Math.floor(ms / 86_400_000) + 'd ago';
+  }
+
+  async function load() {
+    const r = await fetch('/api/client/me');
+    if (r.status === 401) { window.location.href = '/client'; return; }
+    const data = await r.json();
+    _brand = data.brand;
+    render(data);
+  }
+
+  function render({ brand, tiktok, tasks }) {
+    document.getElementById('headerBrand').textContent = brand.name;
+    document.title = brand.name + ' — Cult Content';
+
+    // Stats
+    const s = tiktok?.stats;
+    if (s) {
+      const gmv    = s.gmv ?? s.total_gmv ?? s.revenue ?? null;
+      const orders = s.orders ?? s.total_orders ?? null;
+      document.getElementById('sGmv').textContent     = fmt$(gmv);
+      document.getElementById('sOrders').textContent  = fmtN(orders);
+      document.getElementById('sAov').textContent     = (gmv && orders) ? fmt$(gmv / orders) : '—';
+      document.getElementById('sCreators').textContent = fmtN(s.creators ?? s.active_creators ?? s.creator_count);
+    }
+
+    // Top creators
+    const creators = tiktok?.funnel?.top_creators ?? tiktok?.funnel?.creators ?? [];
+    const $cr = document.getElementById('topCreators');
+    if (creators.length) {
+      $cr.innerHTML = creators.slice(0, 6).map(c => `
+        <div class="list-item">
+          <span class="list-item-name">@${c.handle ?? c.creator_handle ?? c.name ?? 'Unknown'}</span>
+          <span class="list-item-val">${fmt$(c.gmv ?? c.revenue ?? c.sales)}</span>
+        </div>`).join('');
+    } else {
+      $cr.innerHTML = '<span class="empty">No creator data yet — check back after your first campaign week.</span>';
+    }
+
+    // Top videos
+    const videos = tiktok?.funnel?.top_videos ?? tiktok?.funnel?.videos ?? [];
+    const $vd = document.getElementById('topVideos');
+    if (videos.length) {
+      $vd.innerHTML = videos.slice(0, 6).map(v => `
+        <div class="list-item">
+          <span class="list-item-name">${escHtml(v.title ?? v.video_id ?? 'Video')}</span>
+          <span class="list-item-val">${fmt$(v.gmv ?? v.revenue ?? v.sales)}</span>
+        </div>`).join('');
+    } else {
+      $vd.innerHTML = '<span class="empty">No video data yet.</span>';
+    }
+
+    // Referral
+    document.getElementById('refUrl').textContent =
+      brand.referralUrl ?? 'Contact your account manager to activate your referral link.';
+    document.getElementById('commVal').textContent = fmt$(brand.estimatedCommission ?? 0);
+
+    // Controls
+    document.getElementById('sampleBudget').value = brand.sampleBudget ?? '';
+    const inc = brand.creatorPage?.incentives ?? {};
+    document.getElementById('tCashback').checked    = !!inc.cashback;
+    document.getElementById('tLeaderboard').checked = !!inc.leaderboard;
+    document.getElementById('tVolumeBonus').checked = !!inc.volumeBonus;
+
+    // Tasks
+    const $tf = document.getElementById('taskFeed');
+    if (tasks?.length) {
+      $tf.innerHTML = tasks.map(t => {
+        const cls = t.status === 'done' ? 'badge-done'
+                  : t.status === 'in-progress' ? 'badge-progress'
+                  : 'badge-pending';
+        const label = t.status === 'in-progress' ? 'In Progress' : (t.status ?? 'Pending');
+        return `
+          <div class="task-item">
+            <div class="task-body">
+              <div class="task-title">${escHtml(t.title)}</div>
+              <div class="task-date">${fmtAge(t.updatedAt)}</div>
+            </div>
+            <span class="badge ${cls}">${escHtml(label)}</span>
+          </div>`;
+      }).join('');
+    } else {
+      $tf.innerHTML = '<span class="empty">No active tasks — your Cult Content team will post progress updates here.</span>';
+    }
+  }
+
+  function escHtml(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function copyRef() {
+    const url = document.getElementById('refUrl').textContent;
+    if (!url.startsWith('http')) return;
+    navigator.clipboard.writeText(url).then(() => {
+      const btn = document.getElementById('copyBtn');
+      btn.textContent = '✓ Copied!';
+      setTimeout(() => { btn.textContent = 'Copy Link'; }, 2200);
+    });
+  }
+
+  async function saveSettings() {
+    const st = document.getElementById('saveStatus');
+    st.style.color = 'var(--muted)';
+    st.textContent = 'Saving…';
+    try {
+      const r = await fetch('/api/client/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sampleBudget: Number(document.getElementById('sampleBudget').value) || 0,
+          incentives: {
+            cashback:    document.getElementById('tCashback').checked,
+            leaderboard: document.getElementById('tLeaderboard').checked,
+            volumeBonus: document.getElementById('tVolumeBonus').checked,
+          },
+        }),
+      });
+      if (r.ok) { st.style.color = 'var(--green)'; st.textContent = '✓ Saved'; }
+      else       { st.style.color = 'var(--red)';   st.textContent = 'Save failed — try again'; }
+    } catch (_) { st.style.color = 'var(--red)'; st.textContent = 'Network error'; }
+    setTimeout(() => { st.textContent = ''; }, 3000);
+  }
+
+  async function doLogout() {
+    await fetch('/client/logout', { method: 'POST' }).catch(() => {});
+    window.location.href = '/client';
+  }
+
+  load();
+</script>
+</body>
+</html>

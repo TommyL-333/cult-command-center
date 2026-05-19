@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Client Portal — Cult Content</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #12101a;
+      color: #e2e8f0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .card {
+      background: #1c1828;
+      border: 1px solid #2a2540;
+      border-radius: 18px;
+      padding: 44px 40px;
+      width: 100%;
+      max-width: 400px;
+    }
+    .logo-wrap {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .logo {
+      height: 38px;
+    }
+    h1 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      text-align: center;
+      color: #fff;
+      margin-bottom: 6px;
+    }
+    .subtitle {
+      text-align: center;
+      color: #64748b;
+      font-size: 0.82rem;
+      margin-bottom: 32px;
+    }
+    label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #64748b;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+    }
+    input {
+      display: block;
+      width: 100%;
+      background: #12101a;
+      border: 1px solid #2a2540;
+      border-radius: 9px;
+      color: #e2e8f0;
+      font-size: 0.95rem;
+      padding: 11px 14px;
+      outline: none;
+      transition: border-color 0.15s;
+      margin-bottom: 20px;
+    }
+    input:focus { border-color: #00f2ea; }
+    .btn {
+      display: block;
+      width: 100%;
+      background: #00f2ea;
+      color: #12101a;
+      font-size: 0.95rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 9px;
+      padding: 13px;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      letter-spacing: 0.02em;
+    }
+    .btn:hover:not(:disabled) { opacity: 0.85; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .error {
+      background: rgba(255,59,48,0.1);
+      border: 1px solid rgba(255,59,48,0.3);
+      border-radius: 8px;
+      color: #ff3b30;
+      font-size: 0.83rem;
+      padding: 10px 14px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .divider {
+      border: none;
+      border-top: 1px solid #2a2540;
+      margin: 28px 0 20px;
+    }
+    .footer {
+      text-align: center;
+      font-size: 0.75rem;
+      color: #2a2540;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo-wrap">
+      <img class="logo" src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png" alt="Cult Content">
+    </div>
+    <h1>Client Portal</h1>
+    <p class="subtitle">Sign in to view your brand dashboard</p>
+
+    <div class="error" id="err"></div>
+
+    <form id="form" autocomplete="on">
+      <label for="email">Email</label>
+      <input type="email" id="email" name="email" placeholder="you@brand.com" autocomplete="email" required>
+
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password" placeholder="••••••••" autocomplete="current-password" required>
+
+      <button class="btn" type="submit" id="btn">Sign In</button>
+    </form>
+
+    <hr class="divider">
+    <p class="footer">Need access? Contact your Cult Content account manager.</p>
+  </div>
+
+  <script>
+    document.getElementById('form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('btn');
+      const err = document.getElementById('err');
+      err.style.display = 'none';
+      btn.textContent = 'Signing in…';
+      btn.disabled = true;
+      try {
+        const r = await fetch('/client/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: document.getElementById('email').value.trim(),
+            password: document.getElementById('password').value,
+          }),
+        });
+        const data = await r.json();
+        if (r.ok && data.ok) {
+          window.location.href = '/client/dashboard';
+        } else {
+          err.textContent = data.error || 'Login failed — check your credentials and try again.';
+          err.style.display = 'block';
+        }
+      } catch (_) {
+        err.textContent = 'Network error — please try again.';
+        err.style.display = 'block';
+      }
+      btn.textContent = 'Sign In';
+      btn.disabled = false;
+    });
+  </script>
+</body>
+</html>
