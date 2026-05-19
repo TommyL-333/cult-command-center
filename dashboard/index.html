@@ -4999,14 +4999,25 @@ function afSubTab(tab) {
   if (tab === 'unibox' && !AF.shops.length) afLoadShopsForUnibox();
 }
 
+// Normalize shop objects — Reacher returns {shop_id, shop_name}, map to consistent shape
+function afNormalizeShops(raw) {
+  const arr = raw?.data || raw?.shops || (Array.isArray(raw) ? raw : []);
+  return arr.map(s => ({
+    id:   String(s.shop_id || s.id || s.shopId),
+    name: s.shop_name || s.name || String(s.shop_id || s.id),
+    status: s.status || '',
+    category: s.primary_category || '',
+    region: s.region || '',
+  }));
+}
+
 async function afLoadShopsForUnibox() {
   try {
     const r = await fetch('/api/reacher/shops').then(r => r.json());
-    AF.shops = r.shops || r || [];
+    AF.shops = afNormalizeShops(r);
     const sel = document.getElementById('ub-shop');
     if (!sel) return;
-    const existing = '<option value="">All Shops</option>';
-    sel.innerHTML = existing + AF.shops.map(s => `<option value="${s.shopId||s.id}">${s.name||s.shopId}</option>`).join('');
+    sel.innerHTML = '<option value="">All Shops</option>' + AF.shops.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
   } catch(e) { console.error('afLoadShopsForUnibox:', e); }
 }
 
@@ -5016,24 +5027,28 @@ async function afLoadClients(force) {
   grid.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:40px 0;text-align:center;grid-column:1/-1">Loading…</div>';
   try {
     const r = await fetch('/api/reacher/shops').then(r => r.json());
-    AF.shops = r.shops || r || [];
-    if (!AF.shops.length) { grid.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:40px 0;text-align:center;grid-column:1/-1">No shops found. Connect Reacher to get started.</div>'; return; }
+    AF.shops = afNormalizeShops(r);
+    if (!AF.shops.length) { grid.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:40px 0;text-align:center;grid-column:1/-1">No shops found in Reacher.</div>'; return; }
+
     // Also populate unibox shop selector
     const ubSel = document.getElementById('ub-shop');
-    if (ubSel) ubSel.innerHTML = '<option value="">All Shops</option>' + AF.shops.map(s => `<option value="${s.shopId||s.id}">${s.name||s.shopId}</option>`).join('');
+    if (ubSel) ubSel.innerHTML = '<option value="">All Shops</option>' + AF.shops.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
 
     // Fetch automation counts per shop in parallel
     const counts = await Promise.allSettled(AF.shops.map(s =>
-      fetch(`/api/reacher/shops/${s.shopId||s.id}/automations`).then(r => r.json()).catch(() => [])
+      fetch(`/api/reacher/shops/${s.id}/automations`).then(r => r.json()).catch(() => ({}))
     ));
     grid.innerHTML = AF.shops.map((s, i) => {
-      const autos = counts[i].status === 'fulfilled' ? (counts[i].value?.automations || counts[i].value || []) : [];
+      const raw   = counts[i].status === 'fulfilled' ? counts[i].value : {};
+      const autos = raw?.automations || raw?.data || (Array.isArray(raw) ? raw : []);
       const active = autos.filter(a => a.status === 'active' || a.is_active || a.enabled).length;
-      return `<div class="card" style="padding:20px;cursor:pointer;transition:border-color .2s" onmouseover="this.style.borderColor='var(--teal)'" onmouseout="this.style.borderColor=''" onclick="afOpenClient('${s.shopId||s.id}','${(s.name||s.shopId).replace(/'/g,"\\'")}')">
-        <div style="font-size:16px;font-weight:900;margin-bottom:8px">${s.name||s.shopId}</div>
-        <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px">
-          <span style="font-size:12px;color:var(--muted)">${s.shopId||s.id}</span>
+      const isInactive = s.status === 'inactive';
+      return `<div class="card" style="padding:20px;cursor:pointer;transition:border-color .2s;${isInactive?'opacity:0.5':''}" onmouseover="this.style.borderColor='var(--teal)'" onmouseout="this.style.borderColor=''" onclick="afOpenClient('${s.id}','${s.name.replace(/'/g,"\\'")}')">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div style="font-size:16px;font-weight:900">${s.name}</div>
+          ${isInactive ? `<span style="font-size:10px;color:var(--muted);border:1px solid var(--border);padding:1px 7px;border-radius:8px">Inactive</span>` : ''}
         </div>
+        ${s.category ? `<div style="font-size:11px;color:var(--muted);margin-bottom:12px">${s.category}</div>` : '<div style="margin-bottom:12px"></div>'}
         <div style="display:flex;gap:8px;align-items:center">
           <span style="background:rgba(0,242,234,0.1);color:var(--teal);padding:3px 10px;border-radius:12px;font-size:11px;font-weight:700">${active} active auto${active===1?'':'s'}</span>
           <span style="font-size:11px;color:var(--muted)">${autos.length} total</span>
@@ -5041,7 +5056,7 @@ async function afLoadClients(force) {
         <div style="margin-top:14px;font-size:12px;color:var(--teal);font-weight:700">Open →</div>
       </div>`;
     }).join('');
-  } catch(e) { console.error('afLoadClients:', e); grid.innerHTML = '<div style="color:var(--red);font-size:13px;padding:40px 0;text-align:center;grid-column:1/-1">Error loading clients</div>'; }
+  } catch(e) { console.error('afLoadClients:', e); grid.innerHTML = '<div style="color:var(--red);font-size:13px;padding:40px 0;text-align:center;grid-column:1/-1">Error loading clients: ' + e.message + '</div>'; }
 }
 
 async function afOpenClient(shopId, name) {
