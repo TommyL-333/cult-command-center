@@ -5045,8 +5045,8 @@ async function afLoadClients(force) {
     ));
     grid.innerHTML = AF.shops.map((s, i) => {
       const raw   = counts[i].status === 'fulfilled' ? counts[i].value : {};
-      const autos = raw?.automations || raw?.data || (Array.isArray(raw) ? raw : []);
-      const active = autos.filter(a => a.status === 'active' || a.is_active || a.enabled).length;
+      const autos = raw?.data || raw?.automations || (Array.isArray(raw) ? raw : []);
+      const active = autos.filter(a => { const s = (a.status||'').toLowerCase(); return s === 'active' || s === 'running'; }).length;
       const isInactive = s.status === 'inactive';
       return `<div class="card" style="padding:20px;cursor:pointer;transition:border-color .2s;${isInactive?'opacity:0.5':''}" onmouseover="this.style.borderColor='var(--teal)'" onmouseout="this.style.borderColor=''" onclick="afOpenClient('${s.id}','${s.name.replace(/'/g,"\\'")}')">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
@@ -5084,7 +5084,7 @@ async function afLoadAutomations(shopId) {
   el.innerHTML = '<div style="padding:20px;color:var(--muted);font-size:13px;text-align:center">Loading…</div>';
   try {
     const r = await fetch(`/api/reacher/shops/${shopId}/automations`).then(r => r.json());
-    const autos = r.automations || r || [];
+    const autos = r.data || r.automations || (Array.isArray(r) ? r : []);
     if (!autos.length) { el.innerHTML = '<div style="padding:24px 20px;color:var(--muted);font-size:13px;text-align:center">No automations yet. Click + Create Automation to get started.</div>'; return; }
     const TH = 'font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);padding:8px 16px;text-align:left;border-bottom:1px solid var(--border)';
     const TD = 'padding:11px 16px;border-bottom:1px solid var(--surface2);font-size:13px;vertical-align:middle';
@@ -5093,21 +5093,36 @@ async function afLoadAutomations(shopId) {
         <th style="${TH}">Name</th>
         <th style="${TH}">Type</th>
         <th style="${TH}">Status</th>
-        <th style="${TH}">Creators</th>
+        <th style="${TH}">Reached</th>
+        <th style="${TH}">GMV</th>
         <th style="${TH}"></th>
       </tr></thead>
       <tbody>${autos.map(a => {
-        const isActive = a.status === 'active' || a.is_active || a.enabled;
-        const statusColor = isActive ? 'var(--green)' : 'var(--muted)';
-        const statusLabel = isActive ? 'Active' : 'Paused';
+        const id     = a.automation_id || a.id;
+        const name   = a.automation_name || a.name || '—';
+        const type   = a.automation_type || a.type || '—';
+        const status = a.status || '';
+        const isActive = status.toLowerCase() === 'active' || status.toLowerCase() === 'running';
+        const statusColors = {
+          'active':              'var(--green)',
+          'running':             'var(--green)',
+          'completed':           'var(--teal)',
+          'stopped':             'var(--muted)',
+          'throttled by tiktok': 'var(--gold)',
+          'paused':              'var(--muted)',
+        };
+        const statusColor = statusColors[status.toLowerCase()] || 'var(--muted)';
+        const reached  = a.creators_reached ?? a.creator_count ?? '—';
+        const gmv      = a.gmv != null ? '$' + Number(a.gmv).toLocaleString() : '—';
         return `<tr>
-          <td style="${TD};font-weight:600">${a.name || a.automation_name || '—'}</td>
-          <td style="${TD};color:var(--muted);font-size:12px">${a.type || a.automation_type || '—'}</td>
-          <td style="${TD}"><span style="color:${statusColor};font-size:11px;font-weight:700">${statusLabel}</span></td>
-          <td style="${TD};color:var(--muted)">${a.creator_count ?? a.creators_count ?? '—'}</td>
+          <td style="${TD};font-weight:600">${x(name)}</td>
+          <td style="${TD};color:var(--muted);font-size:12px">${x(type)}</td>
+          <td style="${TD}"><span style="color:${statusColor};font-size:11px;font-weight:700">${x(status)}</span></td>
+          <td style="${TD};color:var(--muted)">${reached}</td>
+          <td style="${TD};color:var(--muted)">${gmv}</td>
           <td style="${TD};white-space:nowrap">
-            <button onclick="afToggleAuto('${a.id||a.automation_id}',${isActive},this)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;color:var(--fg);margin-right:4px">${isActive ? '⏸ Pause' : '▶ Start'}</button>
-            <button onclick="afDeleteAuto('${a.id||a.automation_id}',this)" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;padding:4px" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--muted)'" title="Delete">✕</button>
+            ${isActive ? `<button onclick="afToggleAuto('${id}',true,this)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;color:var(--fg);margin-right:4px">⏸ Pause</button>` : `<button onclick="afToggleAuto('${id}',false,this)" style="background:none;border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;color:var(--fg);margin-right:4px">▶ Start</button>`}
+            <button onclick="afDeleteAuto('${id}',this)" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;padding:4px" onmouseover="this.style.color='var(--red)'" onmouseout="this.style.color='var(--muted)'" title="Delete">✕</button>
           </td>
         </tr>`;
       }).join('')}</tbody></table>`;
