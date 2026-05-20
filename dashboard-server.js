@@ -377,13 +377,12 @@ Ask the sender to re-export and share a fresh link.</p></div></body></html>`);
 });
 
 // GET /onboard — public client onboarding form
-// If request came through the CF Access–protected custom domain, redirect to the
-// raw Railway URL so clients don't hit the login wall.
+// manifest.cultcontent.cc is behind CF Access — redirect to portal.cultcontent.cc
+// which is publicly accessible (no login wall).
 app.get('/onboard', (req, res) => {
   const host = req.headers['x-forwarded-host'] || req.headers.host || '';
-  const isCustomDomain = host.includes('cultcontent.cc');
-  if (isCustomDomain) {
-    return res.redirect(301, 'https://cult-command-center-production.up.railway.app/onboard');
+  if (host.includes('manifest.cultcontent.cc')) {
+    return res.redirect(301, 'https://portal.cultcontent.cc/onboard');
   }
   res.sendFile(path.join(__dirname, 'dashboard', 'onboard.html'));
 });
