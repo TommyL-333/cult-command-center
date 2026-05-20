@@ -1530,8 +1530,9 @@ app.post('/client/admin', express.json(), async (req, res) => {
       if (!brandId) return res.status(400).json({ error: 'brandId required' });
       const idx = brands.clients.findIndex(b => b.id === brandId);
       if (idx === -1) return res.status(404).json({ error: 'brand not found' });
-      if (email)    brands.clients[idx].loginEmail   = email.toLowerCase().trim();
-      if (password) brands.clients[idx].passwordHash = bcrypt.hashSync(password, 12);
+      if (email)                    brands.clients[idx].loginEmail   = email.toLowerCase().trim();
+      if (password)                 brands.clients[idx].passwordHash = bcrypt.hashSync(password, 12);
+      if (payload.clearPassword)    delete brands.clients[idx].passwordHash;
       saveBrands(brands);
       return res.json({ ok: true, id: brandId, loginEmail: brands.clients[idx].loginEmail });
     }
