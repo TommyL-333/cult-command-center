@@ -306,6 +306,33 @@ textarea{resize:vertical;min-height:80px}
 
 <!-- ── STEP 4: Creator Compensation Program ── -->
 <div class="step-pane" id="step-4">
+
+  <!-- USPs -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">Product USPs</div>
+    <div class="card-sub">3 reasons creators will love promoting this brand. These appear on the creator landing page.</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <div class="field">
+        <input type="text" id="usp1" placeholder="e.g. Clinically proven results in 30 days">
+      </div>
+      <div class="field">
+        <input type="text" id="usp2" placeholder="e.g. $60 average order value = higher commissions">
+      </div>
+      <div class="field">
+        <input type="text" id="usp3" placeholder="e.g. 4.8★ rating from 2,000+ reviews">
+      </div>
+    </div>
+  </div>
+
+  <!-- Talking points -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">Creator Talking Points</div>
+    <div class="card-sub">Key messages for creators to weave into their content. One per line.</div>
+    <div class="field">
+      <textarea id="talkingPoints" rows="5" placeholder="e.g. Before and after results&#10;Show unboxing + first impression&#10;Mention the 30-day money back guarantee"></textarea>
+    </div>
+  </div>
+
   <div class="card">
     <div class="card-title">Creator Compensation Program</div>
     <div class="card-sub">Toggle on the incentive programs you want to run. These will appear on your creator interest page and in all outreach messages. Everything is optional — you can always add more later.</div>
@@ -657,7 +684,19 @@ function buildReview() {
       ${incentivePills.length
         ? `<div>${incentivePills.map(p=>`<span class="incentive-pill">${p}</span>`).join('')}</div>`
         : `<div style="font-size:13px;color:var(--muted)">None selected — can be added later</div>`}
-    </div>`;
+    </div>
+    ${[v('usp1'),v('usp2'),v('usp3')].some(Boolean) ? `
+    <div class="review-section">
+      <div class="review-title">Product USPs</div>
+      <div class="review-grid">
+        ${[v('usp1'),v('usp2'),v('usp3')].filter(Boolean).map(u=>`<div class="rv"><div class="rv-val">${esc(u)}</div></div>`).join('')}
+      </div>
+    </div>` : ''}
+    ${v('talkingPoints') ? `
+    <div class="review-section">
+      <div class="review-title">Talking Points</div>
+      <div class="rv" style="max-width:100%"><div class="rv-val" style="white-space:pre-wrap;font-size:12px">${esc(v('talkingPoints'))}</div></div>
+    </div>` : ''}`;
 }
 
 // ── Submit ──
@@ -680,6 +719,8 @@ async function submitForm() {
     products: F.products.filter(p => p.name?.trim()),
     sampleBudget: v('sampleBudget'), retainerBudget: v('retainerBudget'),
     compensation: F.compensation,
+    usp1: v('usp1'), usp2: v('usp2'), usp3: v('usp3'),
+    talkingPoints: v('talkingPoints'),
     submittedAt: new Date().toISOString(),
   };
   const btn = document.getElementById('submitBtn');

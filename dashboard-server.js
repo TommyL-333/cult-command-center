@@ -410,7 +410,7 @@ app.get('/creators/:brandSlug', (req, res) => {
 // POST /api/creator-pages/submit — public creator interest form submission
 app.post('/api/creator-pages/submit', express.json(), async (req, res) => {
   try {
-    const { brandSlug, firstName, lastName, email, phone, tiktokHandle, followerRange, gmv, message } = req.body || {};
+    const { brandSlug, firstName, lastName, email, phone, tiktokHandle, followerRange, gmv, niche, message } = req.body || {};
     if (!brandSlug || !firstName || !email) return res.status(400).json({ ok: false, error: 'Missing required fields' });
     const brands = loadBrands();
     const brand  = (brands.clients || []).find(b => b.creatorPage?.slug === brandSlug);
@@ -430,7 +430,14 @@ app.post('/api/creator-pages/submit', express.json(), async (req, res) => {
       contactId = cr.data?.contact?.id;
     }
     if (contactId) {
-      const noteLines = [`TikTok Handle: ${tiktokHandle||'not provided'}`,`Followers: ${followerRange||'not provided'}`,`Monthly GMV: ${gmv||'not provided'}`,`Interested in brand: ${brand.name}`,message?`Message: ${message}`:null].filter(Boolean);
+      const noteLines = [
+        `TikTok Handle: ${tiktokHandle||'not provided'}`,
+        `Followers: ${followerRange||'not provided'}`,
+        `Monthly GMV: ${gmv||'not provided'}`,
+        `Niche: ${niche||'not provided'}`,
+        `Interested in brand: ${brand.name}`,
+        message ? `Message: ${message}` : null
+      ].filter(Boolean);
       await ghl.post(`/contacts/${contactId}/notes`, { body: noteLines.join('\n'), userId: '' }).catch(() => {});
     }
     console.log(`[creator-pages] Submission for ${brand.name}: ${email} (${tiktokHandle||'no handle'})`);
@@ -7660,6 +7667,10 @@ async function runOnboardingPipeline(formData) {
       subheadline: 'Join our TikTok Shop creator affiliate program',
       pitch, accentColor: '#00f2ea',
       incentives: formData.compensation,
+      usps: [formData.usp1, formData.usp2, formData.usp3].filter(Boolean),
+      talkingPoints: formData.talkingPoints || '',
+      products: formData.products || [],
+      tiktokHandle: formData.tiktokHandle || '',
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
     };
     saveBrands(brandsData);
@@ -7762,110 +7773,294 @@ function hexToRgb(hex) {
   return m ? `${parseInt(m[0],16)},${parseInt(m[1],16)},${parseInt(m[2],16)}` : '0,242,234';
 }
 
+function extractTikTokVideoId(url) {
+  // handles https://www.tiktok.com/@user/video/1234567890 and vm.tiktok.com short links
+  const m = url.match(/\/video\/(\d+)/);
+  return m ? m[1] : null;
+}
+
 function renderCreatorPage(brand, cp) {
   const accent    = cp.accentColor || '#00f2ea';
-  const accentRgb = hexToRgb(accent);
+  const ar        = hexToRgb(accent);
   const name      = brand.name || 'Brand';
-  const headline  = (cp.headline || `Partner with ${name}`).replace(new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'g'), `<span style="color:${accent}">${name}</span>`);
-  const sub       = cp.subheadline || 'Join our TikTok Shop creator affiliate program';
-  const pitch     = cp.pitch || `We\'re looking for TikTok creators to promote ${name} products. Fill out the form and our team will reach out within 48 hours.`;
+  const incentives = cp.incentives || {};
+  const products  = (cp.products || []).filter(p => p.name);
+  const usps      = (cp.usps || []).filter(Boolean);
+  const talking   = (cp.talkingPoints || '').split('\n').map(s => s.trim()).filter(Boolean);
+  const videos    = (cp.competitorVideos || []).filter(Boolean);
+  const tiktokHandle = cp.tiktokHandle || brand.tiktokHandle || '';
+
+  // Build incentive pills + section
+  const pills = [];
+  let incentiveHtml = '';
+  if (incentives.cashback?.enabled) {
+    pills.push(`${incentives.cashback.percent || ''}% Cashback`);
+    incentiveHtml += `
+    <div class="incentive-card">
+      <div class="incentive-icon">💰</div>
+      <div class="incentive-label">CASHBACK RATE</div>
+      <div class="incentive-value">${incentives.cashback.percent || '—'}%</div>
+      <div class="incentive-sub">on every sale you drive${incentives.cashback.gmvTarget ? ` · $${Number(incentives.cashback.gmvTarget).toLocaleString()} GMV target` : ''}</div>
+    </div>`;
+  }
+  if (incentives.leaderboard?.enabled && incentives.leaderboard.prizes?.length) {
+    pills.push('Monthly Leaderboard');
+    const prizes = incentives.leaderboard.prizes;
+    incentiveHtml += `
+    <div class="incentive-card">
+      <div class="incentive-icon">🏆</div>
+      <div class="incentive-label">MONTHLY LEADERBOARD</div>
+      <div class="incentive-value">${prizes[0] || '—'}</div>
+      <div class="incentive-sub">top prize · ${prizes.slice(1).filter(Boolean).map((p,i)=>`${['2nd','3rd'][i]}: ${p}`).join(' · ')}${incentives.leaderboard.threshold ? ` · $${Number(incentives.leaderboard.threshold).toLocaleString()} min GMV` : ''}</div>
+    </div>`;
+  }
+  if (incentives.volumeBonus?.enabled) {
+    pills.push(`$${incentives.volumeBonus.bonusAmount} Volume Bonus`);
+    incentiveHtml += `
+    <div class="incentive-card">
+      <div class="incentive-icon">🎯</div>
+      <div class="incentive-label">VOLUME BONUS</div>
+      <div class="incentive-value">$${incentives.volumeBonus.bonusAmount || '—'}</div>
+      <div class="incentive-sub">post ${incentives.volumeBonus.videoCount || '—'} videos and earn a bonus on top of cashback</div>
+    </div>`;
+  }
+
+  const productsHtml = products.map(p => `
+    <div class="product-card">
+      <div class="product-name">${p.name}</div>
+      ${p.minPrice ? `<div class="product-price">From $${Number(p.minPrice).toFixed(2)}</div>` : ''}
+      ${p.url ? `<a href="${p.url}" target="_blank" rel="noopener" class="product-link">View on TikTok Shop →</a>` : ''}
+    </div>`).join('');
+
+  const uspHtml = usps.map(u => `<li class="usp-item"><span class="usp-check">✓</span>${u}</li>`).join('');
+
+  const talkingHtml = talking.map(t => `<li class="talking-item">${t}</li>`).join('');
+
+  const videosHtml = videos.map(url => {
+    const vid = extractTikTokVideoId(url);
+    if (!vid) return '';
+    return `<div class="video-wrap">
+      <iframe src="https://www.tiktok.com/embed/v2/${vid}"
+        width="325" height="576"
+        style="border:none;border-radius:12px;max-width:100%"
+        allow="fullscreen;autoplay"
+        scrolling="no"
+        loading="lazy">
+      </iframe>
+    </div>`;
+  }).filter(Boolean).join('');
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${name} × Cult Content — Creator Partnership</title>
+<title>Partner with ${name} — TikTok Shop Affiliate Program</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0d0b14;color:#fff;min-height:100vh}
-.hero{background:linear-gradient(135deg,#0d0b14 0%,#1a1429 60%,#120f1f 100%);border-bottom:1px solid rgba(255,255,255,.06);padding:64px 20px 52px;text-align:center}
-.pill{display:inline-block;background:rgba(${accentRgb},.12);color:${accent};border:1px solid rgba(${accentRgb},.3);border-radius:100px;padding:5px 16px;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;margin-bottom:22px}
-h1{font-size:clamp(26px,5vw,46px);font-weight:900;line-height:1.08;margin-bottom:14px;letter-spacing:-.02em;max-width:700px;margin-left:auto;margin-right:auto}
-.sub{font-size:clamp(13px,2vw,16px);color:rgba(255,255,255,.5);max-width:480px;margin:0 auto 28px;line-height:1.65}
-.pitch{max-width:600px;margin:0 auto;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:20px 24px;font-size:14px;color:rgba(255,255,255,.65);line-height:1.7;text-align:left}
-.wrap{max-width:540px;margin:0 auto;padding:52px 20px 80px}
-.form-head{font-size:19px;font-weight:800;margin-bottom:4px}
-.form-sub{font-size:12px;color:rgba(255,255,255,.4);margin-bottom:26px}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0a0f;color:#fff;min-height:100vh}
+/* ── Hero ── */
+.hero{background:linear-gradient(160deg,#0d0b14 0%,#12101e 60%,#0a0a0f 100%);border-bottom:1px solid rgba(255,255,255,.06);padding:72px 20px 60px;text-align:center}
+.brand-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(${ar},.1);border:1px solid rgba(${ar},.25);border-radius:100px;padding:6px 16px;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:${accent};margin-bottom:24px}
+h1{font-size:clamp(28px,5vw,52px);font-weight:900;line-height:1.06;margin-bottom:16px;letter-spacing:-.02em;max-width:760px;margin-left:auto;margin-right:auto}
+.hero-sub{font-size:clamp(13px,2vw,17px);color:rgba(255,255,255,.45);max-width:520px;margin:0 auto 32px;line-height:1.65}
+.pills{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:0}
+.pill{background:rgba(${ar},.1);color:${accent};border:1px solid rgba(${ar},.25);border-radius:100px;padding:6px 16px;font-size:12px;font-weight:700}
+/* ── Sections ── */
+.section{padding:60px 20px}
+.section-inner{max-width:900px;margin:0 auto}
+.section-label{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:${accent};margin-bottom:10px}
+.section-title{font-size:clamp(20px,3vw,30px);font-weight:900;margin-bottom:8px;letter-spacing:-.01em}
+.section-sub{font-size:14px;color:rgba(255,255,255,.45);line-height:1.6;margin-bottom:36px}
+.divider{border:none;border-top:1px solid rgba(255,255,255,.06);margin:0}
+/* ── Incentives ── */
+.incentives-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
+.incentive-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:24px;text-align:center;transition:border-color .2s}
+.incentive-card:hover{border-color:rgba(${ar},.4)}
+.incentive-icon{font-size:28px;margin-bottom:10px}
+.incentive-label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:6px}
+.incentive-value{font-size:32px;font-weight:900;color:${accent};line-height:1;margin-bottom:6px}
+.incentive-sub{font-size:12px;color:rgba(255,255,255,.4);line-height:1.5}
+/* ── Products ── */
+.products-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+.product-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:20px}
+.product-name{font-size:15px;font-weight:700;margin-bottom:6px}
+.product-price{font-size:13px;color:${accent};font-weight:700;margin-bottom:10px}
+.product-link{font-size:12px;color:${accent};text-decoration:none;font-weight:600}
+.product-link:hover{text-decoration:underline}
+/* ── USPs ── */
+.usp-list{list-style:none;display:flex;flex-direction:column;gap:14px}
+.usp-item{display:flex;align-items:flex-start;gap:12px;font-size:16px;font-weight:600;line-height:1.4}
+.usp-check{flex-shrink:0;width:24px;height:24px;background:rgba(${ar},.15);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;color:${accent};font-weight:900}
+/* ── Videos ── */
+.videos-scroll{display:flex;gap:16px;overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+.video-wrap{flex-shrink:0}
+/* ── Talking Points ── */
+.talking-list{list-style:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.talking-item{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:14px 16px;font-size:14px;color:rgba(255,255,255,.75);line-height:1.5;position:relative;padding-left:30px}
+.talking-item::before{content:'→';position:absolute;left:12px;color:${accent};font-weight:900}
+/* ── Form ── */
+.form-wrap{max-width:600px;margin:0 auto}
+.form-head{font-size:22px;font-weight:900;margin-bottom:6px}
+.form-sub{font-size:13px;color:rgba(255,255,255,.4);margin-bottom:28px}
 .row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
 .row.full{grid-template-columns:1fr}
-@media(max-width:480px){.row{grid-template-columns:1fr}}
+@media(max-width:500px){.row{grid-template-columns:1fr}}
 .field{display:flex;flex-direction:column;gap:5px}
-label{font-size:10px;font-weight:700;color:rgba(255,255,255,.45);text-transform:uppercase;letter-spacing:.06em}
-input,select,textarea{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#fff;font-size:14px;padding:11px 14px;outline:none;transition:border-color .18s;width:100%;font-family:inherit}
-input::placeholder,textarea::placeholder{color:rgba(255,255,255,.22)}
-input:focus,select:focus,textarea:focus{border-color:${accent};background:rgba(255,255,255,.07)}
-select option{background:#1a1429;color:#fff}
-textarea{resize:vertical;min-height:80px}
-.btn-submit{width:100%;background:${accent};color:#000;border:none;border-radius:10px;font-size:15px;font-weight:800;padding:15px;cursor:pointer;margin-top:8px;transition:opacity .2s,transform .1s;letter-spacing:.01em}
+label{font-size:10px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.06em}
+input,select,textarea{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:9px;color:#fff;font-size:14px;padding:12px 14px;outline:none;transition:border-color .18s;width:100%;font-family:inherit}
+input::placeholder,textarea::placeholder{color:rgba(255,255,255,.2)}
+input:focus,select:focus,textarea:focus{border-color:${accent}}
+select option{background:#12101e;color:#fff}
+.btn-submit{width:100%;background:${accent};color:#000;border:none;border-radius:10px;font-size:16px;font-weight:900;padding:16px;cursor:pointer;margin-top:10px;transition:opacity .2s,transform .1s;letter-spacing:.01em}
 .btn-submit:hover{opacity:.88}
 .btn-submit:active{transform:scale(.98)}
 .btn-submit:disabled{opacity:.45;cursor:not-allowed}
 .err{color:#ff5b5b;font-size:12px;margin-top:8px;display:none}
-.success{display:none;text-align:center;padding:44px 0}
-.success-icon{font-size:52px;margin-bottom:18px}
-.success-title{font-size:22px;font-weight:800;margin-bottom:8px}
-.success-msg{font-size:14px;color:rgba(255,255,255,.45);line-height:1.65}
-footer{border-top:1px solid rgba(255,255,255,.06);padding:20px;text-align:center;font-size:11px;color:rgba(255,255,255,.22)}
+.success{display:none;text-align:center;padding:56px 0}
+.success-icon{font-size:56px;margin-bottom:20px}
+.success-title{font-size:24px;font-weight:900;margin-bottom:10px}
+.success-msg{font-size:14px;color:rgba(255,255,255,.45);line-height:1.7}
+/* ── Footer ── */
+footer{border-top:1px solid rgba(255,255,255,.06);padding:24px 20px;text-align:center;font-size:11px;color:rgba(255,255,255,.2)}
 footer a{color:${accent};text-decoration:none}
 </style>
 </head>
 <body>
+
+<!-- ── HERO ── -->
 <div class="hero">
-  <div class="pill">${name} × Cult Content</div>
-  <h1>${headline}</h1>
-  <div class="sub">${sub}</div>
-  <div class="pitch">${pitch}</div>
+  <div class="brand-badge">${name} × Cult Content</div>
+  <h1>Partner with <span style="color:${accent}">${name}</span> on TikTok Shop</h1>
+  <div class="hero-sub">Join our affiliate creator program — earn cashback on every sale you drive plus monthly bonuses.</div>
+  ${pills.length ? `<div class="pills">${pills.map(p=>`<span class="pill">${p}</span>`).join('')}</div>` : ''}
 </div>
-<div class="wrap">
-  <div id="formWrap">
-    <div class="form-head">Apply to partner</div>
-    <div class="form-sub">Takes 2 minutes — our team reviews every application</div>
-    <form id="form">
-      <div class="row">
-        <div class="field"><label>First name *</label><input name="firstName" required placeholder="Jane"></div>
-        <div class="field"><label>Last name *</label><input name="lastName" required placeholder="Smith"></div>
-      </div>
-      <div class="row">
-        <div class="field"><label>Email *</label><input name="email" type="email" required placeholder="jane@email.com"></div>
-        <div class="field"><label>Phone</label><input name="phone" type="tel" placeholder="+1 555-000-0000"></div>
-      </div>
-      <div class="row">
-        <div class="field"><label>TikTok handle *</label><input name="tiktokHandle" required placeholder="@yourhandle"></div>
-        <div class="field">
-          <label>Follower count *</label>
-          <select name="followerRange" required>
-            <option value="" disabled selected>Select range</option>
-            <option>1K – 10K</option><option>10K – 50K</option>
-            <option>50K – 100K</option><option>100K – 500K</option><option>500K+</option>
-          </select>
-        </div>
-      </div>
-      <div class="row full">
-        <div class="field">
-          <label>Monthly TikTok GMV (optional)</label>
-          <select name="gmv">
-            <option value="">No shop yet / not sure</option>
-            <option>&lt;$1K/mo</option><option>$1K – $5K/mo</option>
-            <option>$5K – $20K/mo</option><option>$20K+/mo</option>
-          </select>
-        </div>
-      </div>
-      <div class="row full">
-        <div class="field">
-          <label>Anything else? (optional)</label>
-          <textarea name="message" placeholder="Tell us about your content, niche, or why you're excited to partner…"></textarea>
-        </div>
-      </div>
-      <div class="err" id="formErr"></div>
-      <button type="submit" class="btn-submit" id="submitBtn">Apply Now →</button>
-    </form>
+
+${incentiveHtml ? `
+<hr class="divider">
+<!-- ── INCENTIVES ── -->
+<div class="section" style="background:rgba(${ar},.03)">
+  <div class="section-inner">
+    <div class="section-label">Creator Incentive Program</div>
+    <div class="section-title">How you get paid</div>
+    <div class="section-sub">Stack multiple income streams every month.</div>
+    <div class="incentives-grid">${incentiveHtml}</div>
   </div>
-  <div class="success" id="successWrap">
-    <div class="success-icon">🎉</div>
-    <div class="success-title">Application submitted!</div>
-    <div class="success-msg">Thanks! Our team will review your application and reach out within 48 hours.<br><br>Follow <strong style="color:${accent}">@cultcontent.cc</strong> on TikTok for creator tips.</div>
+</div>` : ''}
+
+${productsHtml ? `
+<hr class="divider">
+<!-- ── PRODUCTS ── -->
+<div class="section">
+  <div class="section-inner">
+    <div class="section-label">Products to Promote</div>
+    <div class="section-title">What you'll be featuring</div>
+    <div class="section-sub">High-converting products with strong customer reviews.</div>
+    <div class="products-grid">${productsHtml}</div>
+  </div>
+</div>` : ''}
+
+${uspHtml ? `
+<hr class="divider">
+<!-- ── WHY THIS BRAND ── -->
+<div class="section" style="background:rgba(255,255,255,.02)">
+  <div class="section-inner" style="max-width:640px">
+    <div class="section-label">Why creators love ${name}</div>
+    <div class="section-title">Built to convert</div>
+    <div class="section-sub">Products your audience will actually want to buy.</div>
+    <ul class="usp-list">${uspHtml}</ul>
+  </div>
+</div>` : ''}
+
+${videosHtml ? `
+<hr class="divider">
+<!-- ── EXAMPLE CONTENT ── -->
+<div class="section">
+  <div class="section-inner">
+    <div class="section-label">Content That Converts</div>
+    <div class="section-title">Examples to inspire your videos</div>
+    <div class="section-sub">High-performing content formats for this niche.</div>
+    <div class="videos-scroll">${videosHtml}</div>
+  </div>
+</div>` : ''}
+
+${talkingHtml ? `
+<hr class="divider">
+<!-- ── TALKING POINTS ── -->
+<div class="section" style="background:rgba(255,255,255,.02)">
+  <div class="section-inner">
+    <div class="section-label">Creator Brief</div>
+    <div class="section-title">Key talking points</div>
+    <div class="section-sub">Weave these into your content for the best results.</div>
+    <ul class="talking-list">${talkingHtml}</ul>
+  </div>
+</div>` : ''}
+
+<hr class="divider">
+<!-- ── APPLY FORM ── -->
+<div class="section">
+  <div class="section-inner">
+    <div class="form-wrap">
+      <div id="formWrap">
+        <div class="form-head">Apply to partner with ${name}</div>
+        <div class="form-sub">Takes 2 minutes — our team reviews every application within 48 hours.</div>
+        <form id="form">
+          <div class="row">
+            <div class="field"><label>First name *</label><input name="firstName" required placeholder="Jane"></div>
+            <div class="field"><label>Last name *</label><input name="lastName" required placeholder="Smith"></div>
+          </div>
+          <div class="row">
+            <div class="field"><label>Email *</label><input name="email" type="email" required placeholder="jane@email.com"></div>
+            <div class="field"><label>Phone</label><input name="phone" type="tel" placeholder="+1 555-000-0000"></div>
+          </div>
+          <div class="row">
+            <div class="field"><label>TikTok handle *</label><input name="tiktokHandle" required placeholder="@yourhandle"></div>
+            <div class="field">
+              <label>Follower count *</label>
+              <select name="followerRange" required>
+                <option value="" disabled selected>Select range</option>
+                <option>1K – 10K</option><option>10K – 50K</option>
+                <option>50K – 100K</option><option>100K – 500K</option><option>500K+</option>
+              </select>
+            </div>
+          </div>
+          <div class="row">
+            <div class="field">
+              <label>Monthly TikTok GMV</label>
+              <select name="gmv">
+                <option value="">No shop / not sure</option>
+                <option>&lt;$1K/mo</option><option>$1K–$5K/mo</option>
+                <option>$5K–$20K/mo</option><option>$20K+/mo</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Primary niche</label>
+              <select name="niche">
+                <option value="">Select niche</option>
+                <option>Beauty &amp; Skincare</option><option>Health &amp; Wellness</option>
+                <option>Fashion &amp; Style</option><option>Home &amp; Lifestyle</option>
+                <option>Food &amp; Beverage</option><option>Fitness</option><option>Tech &amp; Gadgets</option><option>Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="row full">
+            <div class="field">
+              <label>Anything else? (optional)</label>
+              <textarea name="message" placeholder="Tell us about your content or why you're excited to partner…" rows="3"></textarea>
+            </div>
+          </div>
+          <div class="err" id="formErr"></div>
+          <button type="submit" class="btn-submit" id="submitBtn">Apply Now →</button>
+        </form>
+      </div>
+      <div class="success" id="successWrap">
+        <div class="success-icon">🎉</div>
+        <div class="success-title">Application submitted!</div>
+        <div class="success-msg">Thanks! Our team will review your application and reach out within 48 hours.${tiktokHandle ? `<br><br>Follow <strong style="color:${accent}">@${tiktokHandle}</strong> on TikTok for updates.` : ''}</div>
+      </div>
+    </div>
   </div>
 </div>
+
 <footer>Powered by <a href="https://cultcontent.cc" target="_blank">Cult Content</a> — TikTok Shop Creator Agency</footer>
 <script>
 document.getElementById('form').addEventListener('submit',async function(e){
@@ -7948,6 +8143,26 @@ app.put('/api/creator-pages/:brandId', requireAuth, (req, res) => {
   saveBrands(data);
   const publicUrl = `${PUBLIC_BASE_URL}/creators/${data.clients[idx].creatorPage.slug}`;
   res.json({ ok: true, brand: data.clients[idx], publicUrl });
+});
+
+// GET /api/creator-pages/:brandId/competitor-videos
+app.get('/api/creator-pages/:brandId/competitor-videos', requireAuth, (req, res) => {
+  const brands = loadBrands();
+  const brand = (brands.clients || []).find(b => b.id === req.params.brandId);
+  if (!brand) return res.status(404).json({ error: 'Brand not found' });
+  res.json({ videos: brand.creatorPage?.competitorVideos || [] });
+});
+
+// PUT /api/creator-pages/:brandId/competitor-videos
+app.put('/api/creator-pages/:brandId/competitor-videos', requireAuth, express.json(), (req, res) => {
+  const brands = loadBrands();
+  const idx = (brands.clients || []).findIndex(b => b.id === req.params.brandId);
+  if (idx === -1) return res.status(404).json({ error: 'Brand not found' });
+  if (!brands.clients[idx].creatorPage) brands.clients[idx].creatorPage = {};
+  brands.clients[idx].creatorPage.competitorVideos = (req.body.videos || []).slice(0, 8);
+  brands.clients[idx].creatorPage.updatedAt = new Date().toISOString();
+  saveBrands(brands);
+  res.json({ ok: true });
 });
 
 // ─── Health ────────────────────────────────────────────────────────────────────
