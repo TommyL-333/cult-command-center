@@ -53,8 +53,10 @@ textarea{resize:vertical;min-height:80px}
 .yn-btn.selected{border-color:var(--teal);background:rgba(0,242,234,.08);color:var(--teal)}
 /* Products */
 .product-list{display:flex;flex-direction:column;gap:10px;margin-bottom:12px}
-.product-row{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:center}
-@media(max-width:520px){.product-row{grid-template-columns:1fr;}}
+.product-row{display:flex;flex-direction:column;gap:10px;padding:14px;border:1px solid var(--border);border-radius:10px;background:rgba(255,255,255,0.02)}
+.product-row-top{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:center}
+.product-row-costs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+@media(max-width:520px){.product-row-top{grid-template-columns:1fr;}.product-row-costs{grid-template-columns:1fr;}}
 .remove-btn{background:none;border:1px solid var(--border);border-radius:7px;color:var(--muted);
   font-size:18px;width:36px;height:36px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;
   transition:color .15s,border-color .15s}
@@ -493,7 +495,7 @@ function setYN(btn) {
 
 // ── Products ──
 function addProduct() {
-  F.products.push({ id: Date.now(), name: '', url: '' });
+  F.products.push({ id: Date.now(), name: '', url: '', cogs: '', shipping: '', minPrice: '' });
   renderProducts();
 }
 function removeProduct(id) {
@@ -504,11 +506,39 @@ function renderProducts() {
   const list = document.getElementById('productList');
   list.innerHTML = F.products.map((p, i) => `
     <div class="product-row">
-      <input type="text" placeholder="Product name" value="${esc(p.name)}"
-        oninput="F.products[${i}].name=this.value" style="font-size:13px">
-      <input type="url" placeholder="TikTok Shop link (optional)" value="${esc(p.url)}"
-        oninput="F.products[${i}].url=this.value" style="font-size:13px">
-      <button type="button" class="remove-btn" onclick="removeProduct(${p.id})">×</button>
+      <div class="product-row-top">
+        <input type="text" placeholder="Product name" value="${esc(p.name)}"
+          oninput="F.products[${i}].name=this.value" style="font-size:13px">
+        <input type="url" placeholder="TikTok Shop link (optional)" value="${esc(p.url)}"
+          oninput="F.products[${i}].url=this.value" style="font-size:13px">
+        <button type="button" class="remove-btn" onclick="removeProduct(${p.id})">×</button>
+      </div>
+      <div class="product-row-costs">
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Cost of Goods (per unit)</div>
+          <div style="position:relative">
+            <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none">$</span>
+            <input type="number" min="0" step="0.01" placeholder="0.00" value="${esc(p.cogs)}"
+              oninput="F.products[${i}].cogs=this.value" style="font-size:13px;padding-left:22px;width:100%;box-sizing:border-box">
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Est. Shipping Cost (per unit)</div>
+          <div style="position:relative">
+            <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none">$</span>
+            <input type="number" min="0" step="0.01" placeholder="0.00" value="${esc(p.shipping)}"
+              oninput="F.products[${i}].shipping=this.value" style="font-size:13px;padding-left:22px;width:100%;box-sizing:border-box">
+          </div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Min. Retail Sale Price</div>
+          <div style="position:relative">
+            <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none">$</span>
+            <input type="number" min="0" step="0.01" placeholder="0.00" value="${esc(p.minPrice)}"
+              oninput="F.products[${i}].minPrice=this.value" style="font-size:13px;padding-left:22px;width:100%;box-sizing:border-box">
+          </div>
+        </div>
+      </div>
     </div>`).join('');
 }
 addProduct(); // start with one
@@ -583,7 +613,17 @@ function buildReview() {
     <div class="review-section">
       <div class="review-title">Products (${F.products.filter(p=>p.name).length})</div>
       <div class="review-grid">
-        ${F.products.filter(p=>p.name).map(p=>`<div class="rv"><div class="rv-label">Product</div><div class="rv-val">${esc(p.name)}</div></div>`).join('')}
+        ${F.products.filter(p=>p.name).map(p=>`
+          <div class="rv"><div class="rv-label">Product</div><div class="rv-val">${esc(p.name)}${p.url?` <a href="${esc(p.url)}" target="_blank" style="color:var(--teal);font-size:11px;margin-left:6px">↗ Shop</a>`:''}</div></div>
+          <div class="rv" style="margin-left:12px">
+            <div class="rv-label">COGS</div><div class="rv-val">${p.cogs?'$'+Number(p.cogs).toFixed(2):'—'}</div>
+          </div>
+          <div class="rv" style="margin-left:12px">
+            <div class="rv-label">Shipping</div><div class="rv-val">${p.shipping?'$'+Number(p.shipping).toFixed(2):'—'}</div>
+          </div>
+          <div class="rv" style="margin-left:12px">
+            <div class="rv-label">Min Sale Price</div><div class="rv-val">${p.minPrice?'$'+Number(p.minPrice).toFixed(2):'—'}</div>
+          </div>`).join('')}
       </div>
     </div>
     <div class="review-section">
