@@ -889,6 +889,42 @@ ${transcript.slice(0, 8000)}`
 // Auth is a bearer token (WEBHOOK_SECRET) that the dashboard fetches from /api/upload-config
 // after the normal CF-Access session is already established.
 
+// ── HEVC → H.264 auto-conversion ─────────────────────────────────────────────
+// iPhones record in HEVC (H.265) by default. Instagram and TikTok reject it via
+// Buffer. On upload we detect HEVC and silently re-encode to H.264/AAC MP4 so
+// every downstream platform gets a compatible file without manual intervention.
+function ensureH264(filePath) {
+  return new Promise((resolve, reject) => {
+    ffmpeg.ffprobe(filePath, (err, meta) => {
+      if (err) return resolve(filePath); // can't probe → leave as-is
+      const videoStream = (meta.streams || []).find(s => s.codec_type === 'video');
+      const codec = (videoStream && videoStream.codec_name) || '';
+      if (!['hevc', 'h265', 'hvc1'].includes(codec.toLowerCase())) {
+        return resolve(filePath); // already H.264 or unknown — skip
+      }
+      // Re-encode to H.264 MP4
+      const outPath = filePath.replace(/\.[^.]+$/, '') + '_h264.mp4';
+      ffmpeg(filePath)
+        .videoCodec('libx264')
+        .addOptions(['-preset fast', '-crf 23', '-maxrate 3500k', '-bufsize 7000k',
+                     '-profile:v high', '-level 4.0', '-pix_fmt yuv420p',
+                     '-movflags +faststart'])
+        .audioCodec('aac')
+        .audioBitrate('128k')
+        .audioFrequency(44100)
+        .on('error', reject)
+        .on('end', () => {
+          // Swap files: remove original, rename converted to same name as original
+          fs.unlinkSync(filePath);
+          fs.renameSync(outPath, filePath);
+          resolve(filePath);
+        })
+        .save(outPath);
+    });
+  });
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 const uploadDirect = multer({
   storage: multer.diskStorage({
     destination: (_, __, cb) => cb(null, UPLOAD_DIR),
@@ -913,7 +949,7 @@ app.options('/api/upload/video-direct', (req, res) => {
   res.sendStatus(204);
 });
 
-app.post('/api/upload/video-direct', uploadDirect.single('video'), (req, res) => {
+app.post('/api/upload/video-direct', uploadDirect.single('video'), async (req, res) => {
   // Allow cross-origin POSTs from the CF-proxied dashboard origin
   res.setHeader('Access-Control-Allow-Origin',  'https://manifest.cultcontent.cc');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -930,6 +966,9 @@ app.post('/api/upload/video-direct', uploadDirect.single('video'), (req, res) =>
   }
 
   if (!req.file) return res.status(400).json({ error: 'No file received — check MIME type or file size limit' });
+
+  // Auto-convert HEVC (iPhone default) → H.264 so Instagram/TikTok accept it
+  try { await ensureH264(req.file.path); } catch (e) { console.warn('ensureH264 failed:', e.message); }
 
   const localUrl = `/uploads/${req.file.filename}`;
   const publicUrl = `${PUBLIC_BASE_URL}${localUrl}`;
@@ -2138,8 +2177,12 @@ app.get('/api/upload-config', (req, res) => {
 });
 
 // POST /api/upload/video
-app.post('/api/upload/video', upload.single('video'), (req, res) => {
+app.post('/api/upload/video', upload.single('video'), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file received — unsupported format or file too large' });
+
+  // Auto-convert HEVC (iPhone default) → H.264 so Instagram/TikTok accept it
+  try { await ensureH264(req.file.path); } catch (e) { console.warn('ensureH264 failed:', e.message); }
+
   const localUrl  = `/uploads/${req.file.filename}`;
   const publicUrl = `${PUBLIC_BASE_URL}${localUrl}`;
   const meta = {
