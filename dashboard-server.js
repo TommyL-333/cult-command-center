@@ -1659,6 +1659,77 @@ app.post('/api/client/arcads/scripts', requireClientSession, express.json(), asy
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// POST /api/client/ai/ideas — generate content ideas for a brand
+app.post('/api/client/ai/ideas', requireClientSession, express.json(), async (req, res) => {
+  try {
+    const brands = loadBrands();
+    const brand = brands.clients.find(b => b.id === req.session.clientBrandId);
+    if (!brand) return res.status(404).json({ error: 'Brand not found' });
+    const { OpenAI } = require('openai');
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const prompt = `You are a TikTok content strategist for the brand "${brand.name}".
+
+Brand context:
+- Industry: ${brand.industry || 'Not specified'}
+- Products: ${brand.products || 'Not specified'}
+- Target audience: ${brand.audience || 'Not specified'}
+- Brand voice: ${brand.voice || 'Not specified'}
+- Content pillars: ${brand.contentPillars || 'Not specified'}
+
+Generate 5 short-form video content ideas for TikTok that would drive product discovery and sales. Each idea should be specific, actionable, and optimized for TikTok's algorithm.
+
+Return JSON: { "ideas": [ { "title": "...", "description": "...", "hook": "...", "format": "..." }, ... ] }`;
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
+      max_tokens: 800,
+    });
+    const result = JSON.parse(completion.choices[0].message.content);
+    res.json({ ok: true, ideas: result.ideas || [] });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/client/ai/script — write a TikTok script from an idea
+app.post('/api/client/ai/script', requireClientSession, express.json(), async (req, res) => {
+  try {
+    const { idea } = req.body || {};
+    if (!idea) return res.status(400).json({ error: 'idea required' });
+    const brands = loadBrands();
+    const brand = brands.clients.find(b => b.id === req.session.clientBrandId);
+    if (!brand) return res.status(404).json({ error: 'Brand not found' });
+    const { OpenAI } = require('openai');
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const prompt = `Write a 30–45 second TikTok video script for an AI actor to deliver on behalf of the brand "${brand.name}".
+
+Idea: ${idea.title}
+Description: ${idea.description}
+Hook: ${idea.hook}
+Brand voice: ${brand.voice || 'energetic and direct'}
+Products: ${brand.products || ''}
+CTA: ${brand.cta || 'Shop now via the link below'}
+
+Requirements:
+- Written as spoken word — exactly what the actor says
+- Opens with a strong hook (first 3 seconds)
+- Natural, conversational TikTok tone
+- Ends with a clear CTA
+- 80–120 words total
+
+Return JSON: { "script": "..." }`;
+
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
+      max_tokens: 400,
+    });
+    const result = JSON.parse(completion.choices[0].message.content);
+    res.json({ ok: true, script: result.script || '' });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 // GET /api/tiktokshop/callback — registered BEFORE requireAuth so portal.cultcontent.cc clients
 // can complete TikTok Shop OAuth without a CF Access session.
 app.get('/api/tiktokshop/callback', async (req, res) => {

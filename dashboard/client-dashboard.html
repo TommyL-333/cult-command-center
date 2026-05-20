@@ -238,6 +238,76 @@
     .storista-desc { font-size: 0.83rem; color: var(--muted); margin: 12px 0 16px; line-height: 1.6; }
     .storista-connect-btn { background: var(--teal); color: var(--bg); font-size: 0.88rem; font-weight: 700; border: none; border-radius: 8px; padding: 10px 22px; cursor: pointer; transition: opacity 0.15s; }
     .storista-connect-btn:hover { opacity: 0.85; }
+
+    /* Connection status badges */
+    .conn-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 0.72rem; font-weight: 700; padding: 3px 9px; border-radius: 20px; white-space: nowrap; }
+    .conn-badge.connected { background: rgba(0,210,122,0.12); color: #00d27a; border: 1px solid rgba(0,210,122,0.2); }
+    .conn-badge.disconnected { background: rgba(255,204,0,0.1); color: #ffcc00; border: 1px solid rgba(255,204,0,0.2); }
+    .conn-badge-note { font-size: 0.72rem; color: var(--muted); margin-top: 4px; }
+
+    /* Stepper */
+    .step-bar { display: flex; align-items: center; margin-bottom: 28px; gap: 0; }
+    .step { display: flex; flex-direction: column; align-items: center; gap: 5px; flex: 1; position: relative; }
+    .step-circle { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.78rem; font-weight: 700; border: 2px solid; flex-shrink: 0; }
+    .step.active .step-circle { background: var(--teal); border-color: var(--teal); color: #12101a; }
+    .step.done .step-circle { background: var(--green); border-color: var(--green); color: #fff; }
+    .step.inactive .step-circle { background: transparent; border-color: var(--border); color: var(--muted); }
+    .step-label { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; white-space: nowrap; }
+    .step.active .step-label { color: var(--teal); }
+    .step.done .step-label { color: var(--green); }
+    .step-line { flex: 1; height: 2px; background: var(--border); margin-bottom: 18px; flex-shrink: 0; }
+    .step-line.done { background: var(--green); }
+    @media (max-width: 600px) { .step-label { display: none; } }
+
+    /* Wizard panels */
+    .wizard-panel { display: none; }
+    .wizard-panel.active { display: block; }
+    .wizard-brand-summary { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin-bottom: 20px; font-size: 0.84rem; line-height: 1.7; color: var(--text); }
+    .wizard-brand-summary strong { color: var(--teal); }
+    .wizard-note { font-size: 0.78rem; color: var(--muted); margin-top: 10px; font-style: italic; }
+    .wizard-btn { background: var(--teal); color: var(--bg); font-size: 0.88rem; font-weight: 700; border: none; border-radius: 8px; padding: 10px 22px; cursor: pointer; transition: opacity 0.15s; }
+    .wizard-btn:hover { opacity: 0.85; }
+    .wizard-btn-secondary { background: transparent; border: 1px solid var(--border); color: var(--text); font-size: 0.85rem; font-weight: 600; border-radius: 8px; padding: 9px 18px; cursor: pointer; transition: all 0.15s; }
+    .wizard-btn-secondary:hover { border-color: var(--teal); color: var(--teal); }
+    .wizard-actions { display: flex; align-items: center; gap: 12px; margin-top: 20px; flex-wrap: wrap; }
+    .wizard-spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--teal); border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .wizard-loading { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 0.84rem; padding: 20px 0; }
+
+    /* Idea cards */
+    .idea-grid { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+    .idea-card { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; cursor: pointer; transition: border-color 0.15s; }
+    .idea-card:hover { border-color: var(--teal); }
+    .idea-card-title { font-size: 0.9rem; font-weight: 700; color: var(--text); margin-bottom: 5px; }
+    .idea-card-desc { font-size: 0.8rem; color: var(--muted); line-height: 1.5; }
+    .idea-card-meta { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+    .idea-tag { font-size: 0.68rem; background: rgba(0,242,234,0.08); color: var(--teal); border: 1px solid rgba(0,242,234,0.15); border-radius: 4px; padding: 2px 7px; }
+    .idea-use-btn { background: transparent; border: 1px solid var(--teal); color: var(--teal); font-size: 0.78rem; font-weight: 700; border-radius: 6px; padding: 5px 12px; cursor: pointer; margin-top: 10px; transition: background 0.15s; white-space: nowrap; }
+    .idea-use-btn:hover { background: rgba(0,242,234,0.1); }
+
+    /* Script panel */
+    .selected-idea-box { background: rgba(0,242,234,0.06); border: 1px solid rgba(0,242,234,0.2); border-radius: 8px; padding: 12px 16px; margin-bottom: 16px; font-size: 0.84rem; color: var(--text); }
+    .selected-idea-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--teal); margin-bottom: 5px; }
+    .script-textarea { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 0.84rem; padding: 10px 13px; outline: none; resize: vertical; min-height: 160px; font-family: inherit; transition: border-color 0.15s; line-height: 1.6; }
+    .script-textarea:focus { border-color: var(--teal); }
+    .word-count { font-size: 0.72rem; color: var(--muted); margin-top: 6px; }
+
+    /* Actor grid */
+    .production-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 700px) { .production-cols { grid-template-columns: 1fr; } }
+    .production-script-box { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px; font-size: 0.82rem; color: var(--text); line-height: 1.6; max-height: 260px; overflow-y: auto; white-space: pre-wrap; }
+    .actor-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 10px; max-height: 260px; overflow-y: auto; }
+    .actor-card { border: 2px solid var(--border); border-radius: 9px; padding: 10px 8px; text-align: center; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+    .actor-card:hover { border-color: rgba(0,242,234,0.4); }
+    .actor-card.selected { border-color: var(--teal); background: rgba(0,242,234,0.06); }
+    .actor-thumb { width: 48px; height: 48px; border-radius: 50%; object-fit: cover; background: var(--border); margin: 0 auto 6px; display: block; }
+    .actor-thumb-placeholder { width: 48px; height: 48px; border-radius: 50%; background: var(--border); margin: 0 auto 6px; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; }
+    .actor-name { font-size: 0.72rem; color: var(--text); font-weight: 600; word-break: break-word; }
+    .col-label { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); margin-bottom: 8px; }
+
+    /* Step 5 scheduling */
+    .schedule-success { background: rgba(0,210,122,0.08); border: 1px solid rgba(0,210,122,0.2); border-radius: 10px; padding: 16px; margin-bottom: 20px; font-size: 0.88rem; color: var(--green); }
+    .step5-channel-list { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
   </style>
 </head>
 <body>
@@ -424,7 +494,11 @@
     <!-- Section A: Upload & Publish -->
     <div class="cs-section">
       <div class="cs-card">
-        <div class="cs-card-title">📤 Upload &amp; Publish</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
+          <div class="cs-card-title" style="margin-bottom:0;">📤 Upload &amp; Publish</div>
+          <span id="bufferConnBadge" class="conn-badge" style="display:none"></span>
+        </div>
+        <div id="bufferConnNote" class="conn-badge-note" style="display:none"></div>
 
         <!-- Drop zone -->
         <div class="drop-zone" id="dropZone" onclick="document.getElementById('videoFileInput').click()" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
@@ -437,10 +511,10 @@
         <!-- Upload result -->
         <div id="uploadResult" style="display:none" class="upload-result">
           <span class="upload-result-name" id="uploadedFilename"></span>
-          <button class="transcribe-btn" id="transcribeBtn" onclick="transcribeVideo()">Transcribe</button>
         </div>
         <div id="uploadProgress" style="display:none;font-size:0.8rem;color:var(--muted);margin-top:10px;">Uploading…</div>
-        <div id="transcribeProgress" style="display:none;font-size:0.8rem;color:var(--muted);margin-top:10px;">Transcribing…</div>
+        <div id="transcribeProgress" style="display:none;font-size:0.8rem;color:var(--muted);margin-top:10px;">🎙 Transcribing audio…</div>
+        <div id="transcribeDone" style="display:none;font-size:0.8rem;color:var(--green);margin-top:10px;">✓ Caption ready — edit and post below</div>
 
         <!-- Caption -->
         <div id="captionSection" style="display:none;margin-top:16px;">
@@ -467,13 +541,14 @@
     <!-- Section B: AI Videos (Arcads) -->
     <div class="cs-section">
       <div class="cs-card">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:12px;">
-          <div class="cs-card-title" style="margin-bottom:0;">🎬 AI Video Generator</div>
-          <div style="display:flex;gap:8px;">
-            <button class="new-script-btn" onclick="toggleScriptForm()">+ New Script</button>
-            <button class="refresh-btn" onclick="loadArcads()">↻ Refresh</button>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:12px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <div class="cs-card-title" style="margin-bottom:0;">🎬 AI Video Generator</div>
+            <span id="arcadsConnBadge" class="conn-badge" style="display:none"></span>
           </div>
+          <button class="refresh-btn" onclick="loadArcads()">↻ Refresh</button>
         </div>
+        <div id="arcadsConnNote" class="conn-badge-note" style="display:none;margin-bottom:16px;"></div>
 
         <div class="arcads-stats">
           <div class="arcads-stat"><div class="arcads-stat-val" id="arcScripts">—</div><div class="arcads-stat-lbl">Scripts</div></div>
@@ -481,26 +556,127 @@
           <div class="arcads-stat"><div class="arcads-stat-val" id="arcPending">—</div><div class="arcads-stat-lbl">Generating</div></div>
         </div>
 
-        <!-- New Script Form -->
-        <div class="script-form" id="scriptForm">
-          <div class="script-form-row">
-            <label>Script Name</label>
-            <input class="script-form-input" id="sfName" type="text" placeholder="e.g. Summer Campaign 1">
+        <!-- 5-Step Wizard -->
+        <div id="aiWizard" style="margin-top:20px;">
+
+          <!-- Step bar -->
+          <div class="step-bar" id="wizardStepBar">
+            <div class="step active" id="wstep-1">
+              <div class="step-circle">1</div>
+              <div class="step-label">Analysis</div>
+            </div>
+            <div class="step-line" id="wline-1"></div>
+            <div class="step inactive" id="wstep-2">
+              <div class="step-circle">2</div>
+              <div class="step-label">Ideas</div>
+            </div>
+            <div class="step-line" id="wline-2"></div>
+            <div class="step inactive" id="wstep-3">
+              <div class="step-circle">3</div>
+              <div class="step-label">Scripting</div>
+            </div>
+            <div class="step-line" id="wline-3"></div>
+            <div class="step inactive" id="wstep-4">
+              <div class="step-circle">4</div>
+              <div class="step-label">Production</div>
+            </div>
+            <div class="step-line" id="wline-4"></div>
+            <div class="step inactive" id="wstep-5">
+              <div class="step-circle">5</div>
+              <div class="step-label">Scheduling</div>
+            </div>
           </div>
-          <div class="script-form-row">
-            <label>Script Text</label>
-            <textarea class="script-form-textarea" id="sfText" placeholder="Write the script for your AI video actors…"></textarea>
+
+          <!-- Step 1: Analysis -->
+          <div class="wizard-panel active" id="wpanel-1">
+            <div class="wizard-brand-summary" id="wizardBrandSummary">
+              <span class="empty">Loading brand context…</span>
+            </div>
+            <div class="wizard-actions">
+              <button class="wizard-btn" onclick="wizardStep2()">Generate Ideas →</button>
+            </div>
           </div>
-          <div class="script-form-row">
-            <label>Actor Count (2–6)</label>
-            <input class="script-form-input" id="sfActorCount" type="number" min="2" max="6" value="3" style="width:80px;">
+
+          <!-- Step 2: Ideas -->
+          <div class="wizard-panel" id="wpanel-2">
+            <div id="ideasLoading" class="wizard-loading" style="display:none;">
+              <span class="wizard-spinner"></span> Generating content ideas…
+            </div>
+            <div class="idea-grid" id="ideaGrid"></div>
+            <div class="wizard-actions">
+              <button class="wizard-btn-secondary" onclick="wizardGoTo(1)">← Back</button>
+            </div>
           </div>
-          <button class="generate-btn" onclick="generateScript()">Generate</button>
-          <div id="scriptStatus" style="font-size:0.8rem;min-height:18px;margin-top:8px;"></div>
-        </div>
+
+          <!-- Step 3: Scripting -->
+          <div class="wizard-panel" id="wpanel-3">
+            <div class="selected-idea-box" id="selectedIdeaBox"></div>
+            <div id="scriptLoading" class="wizard-loading" style="display:none;">
+              <span class="wizard-spinner"></span> Writing your script…
+            </div>
+            <div id="scriptEditorWrap" style="display:none;">
+              <textarea class="script-textarea" id="wizardScriptTA" oninput="updateWordCount()"></textarea>
+              <div class="word-count" id="wordCount">0 words</div>
+            </div>
+            <div class="wizard-actions">
+              <button class="wizard-btn-secondary" onclick="wizardGoTo(2)">← Back</button>
+              <button class="wizard-btn" id="genScriptBtn" onclick="wizardGenerateScript()">Generate Script</button>
+              <button class="wizard-btn" id="toProductionBtn" onclick="wizardStep4()" style="display:none;">Next: Choose Actors →</button>
+            </div>
+          </div>
+
+          <!-- Step 4: Production -->
+          <div class="wizard-panel" id="wpanel-4">
+            <div class="production-cols">
+              <div>
+                <div class="col-label">Your Script</div>
+                <div class="production-script-box" id="prodScriptBox"></div>
+              </div>
+              <div>
+                <div class="col-label">Select Actors (2–6)</div>
+                <div id="actorGridLoading" class="wizard-loading" style="display:none;">
+                  <span class="wizard-spinner"></span> Loading actors…
+                </div>
+                <div class="actor-grid" id="actorGrid"></div>
+                <div style="font-size:0.72rem;color:var(--muted);margin-top:8px;" id="actorSelCount">0 selected</div>
+              </div>
+            </div>
+            <div class="wizard-actions">
+              <button class="wizard-btn-secondary" onclick="wizardGoTo(3)">← Back</button>
+              <button class="wizard-btn" onclick="wizardGenerateVideo()">Generate Video</button>
+            </div>
+            <div id="prodStatus" style="font-size:0.8rem;min-height:18px;margin-top:8px;"></div>
+          </div>
+
+          <!-- Step 5: Scheduling -->
+          <div class="wizard-panel" id="wpanel-5">
+            <div class="schedule-success">✓ Video queued! Check back in a few minutes while your AI video generates.</div>
+            <div style="margin-bottom:14px;">
+              <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:8px;">Post to channels when ready</div>
+              <div id="step5ChannelList" class="step5-channel-list"><span class="empty">Loading channels…</span></div>
+            </div>
+            <div style="margin-bottom:14px;">
+              <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:8px;">Schedule date &amp; time</div>
+              <input class="schedule-input" type="datetime-local" id="wizardScheduleAt">
+            </div>
+            <div class="wizard-actions">
+              <button class="wizard-btn" onclick="wizardSchedule()">Schedule Post</button>
+            </div>
+            <div id="scheduleConfirm" style="display:none;margin-top:14px;font-size:0.84rem;color:var(--green);">
+              ✓ Scheduled — your Cult Content team will post it when the video is ready.
+            </div>
+            <div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border);">
+              <button class="wizard-btn-secondary" onclick="wizardReset()">← Start New Video</button>
+            </div>
+          </div>
+
+        </div><!-- end #aiWizard -->
 
         <!-- Video list -->
-        <div class="video-list" id="arcVideoList"><span class="empty">Loading…</span></div>
+        <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border);">
+          <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:12px;">Your Videos</div>
+          <div class="video-list" id="arcVideoList"><span class="empty">Loading…</span></div>
+        </div>
       </div>
     </div>
 
@@ -797,6 +973,7 @@
     btns.forEach(b => { if (b.textContent.trim() === labels[name]) b.classList.add('active'); });
     if (name === 'content-studio' && !window._channelsLoaded) loadChannels();
     if (name === 'content-studio' && !window._arcadsLoaded) loadArcads();
+    if (name === 'content-studio' && window._data?.brand) wizardInitBrandSummary();
   }
 
   // ─── Affiliate URL ──────────────────────────────────────────────────────────
@@ -861,8 +1038,11 @@
     _selectedFile = file;
     const progress = document.getElementById('uploadProgress');
     const result = document.getElementById('uploadResult');
+    const transcribeDone = document.getElementById('transcribeDone');
     progress.style.display = 'block';
     result.style.display = 'none';
+    transcribeDone.style.display = 'none';
+    document.getElementById('transcribeProgress').style.display = 'none';
     _uploadedVideoUrl = null;
     try {
       const fd = new FormData();
@@ -875,6 +1055,8 @@
       document.getElementById('uploadedFilename').textContent = data.filename || file.name;
       result.style.display = 'flex';
       document.getElementById('captionSection').style.display = 'block';
+      // Auto-transcribe immediately after upload
+      transcribeVideo();
     } catch(e) {
       progress.style.display = 'none';
       alert('Upload error: ' + e.message);
@@ -883,9 +1065,9 @@
 
   async function transcribeVideo() {
     if (!_selectedFile) return;
-    const btn = document.getElementById('transcribeBtn');
     const prog = document.getElementById('transcribeProgress');
-    btn.disabled = true; btn.textContent = 'Transcribing…';
+    const done = document.getElementById('transcribeDone');
+    done.style.display = 'none';
     prog.style.display = 'block';
     try {
       const fd = new FormData();
@@ -896,25 +1078,40 @@
       if (data.text) {
         document.getElementById('captionArea').value = data.text;
         document.getElementById('captionSection').style.display = 'block';
+        done.style.display = 'block';
       } else {
-        alert('Transcription returned no text.');
+        done.style.display = 'none';
       }
     } catch(e) {
       prog.style.display = 'none';
-      alert('Transcription error: ' + e.message);
-    } finally {
-      btn.disabled = false; btn.textContent = 'Transcribe';
     }
   }
 
   async function loadChannels() {
     window._channelsLoaded = true;
+    const $badge = document.getElementById('bufferConnBadge');
+    const $note  = document.getElementById('bufferConnNote');
     try {
       const r = await fetch('/api/client/buffer/channels');
       const data = await r.json();
       const channels = data.channels || [];
       const $list = document.getElementById('channelList');
-      if (!channels.length) { $list.innerHTML = '<span class="empty">No channels connected.</span>'; return; }
+
+      if (!channels.length) {
+        $list.innerHTML = '<span class="empty">No channels connected.</span>';
+        $badge.textContent = '⚠ Buffer not connected';
+        $badge.className = 'conn-badge disconnected';
+        $badge.style.display = 'inline-flex';
+        $note.textContent = 'Contact your account manager to connect your social channels.';
+        $note.style.display = 'block';
+        return;
+      }
+
+      $badge.textContent = '● Buffer Connected — ' + channels.length + ' channel' + (channels.length !== 1 ? 's' : '');
+      $badge.className = 'conn-badge connected';
+      $badge.style.display = 'inline-flex';
+      $note.style.display = 'none';
+
       $list.innerHTML = channels.map(ch => `
         <div class="channel-item" id="ch-${esc(ch.id)}" onclick="toggleChannel('${esc(ch.id)}')">
           ${ch.avatarUrl ? `<img src="${esc(ch.avatarUrl)}" alt="">` : '<div style="width:28px;height:28px;border-radius:50%;background:var(--border);flex-shrink:0"></div>'}
@@ -927,6 +1124,11 @@
       window._channels = channels;
     } catch(e) {
       document.getElementById('channelList').innerHTML = '<span class="empty">Failed to load channels.</span>';
+      $badge.textContent = '⚠ Buffer not connected';
+      $badge.className = 'conn-badge disconnected';
+      $badge.style.display = 'inline-flex';
+      $note.textContent = 'Contact your account manager to connect your social channels.';
+      $note.style.display = 'block';
     }
   }
 
@@ -969,6 +1171,8 @@
   async function loadArcads() {
     window._arcadsLoaded = true;
     document.getElementById('arcVideoList').innerHTML = '<span class="empty">Loading…</span>';
+    const $badge = document.getElementById('arcadsConnBadge');
+    const $note  = document.getElementById('arcadsConnNote');
     try {
       const r = await fetch('/api/client/arcads/stats');
       const data = await r.json();
@@ -979,8 +1183,19 @@
       document.getElementById('arcVideos').textContent   = totalVideos;
       document.getElementById('arcPending').textContent  = pending;
       renderArcadsList(scripts);
+      $badge.textContent = '● Arcads Connected';
+      $badge.className = 'conn-badge connected';
+      $badge.style.display = 'inline-flex';
+      $note.style.display = 'none';
+      // Initialize wizard brand summary now that we know Arcads is connected
+      wizardInitBrandSummary();
     } catch(e) {
       document.getElementById('arcVideoList').innerHTML = `<span class="empty">Failed to load: ${esc(e.message)}</span>`;
+      $badge.textContent = '⚠ Arcads not connected';
+      $badge.className = 'conn-badge disconnected';
+      $badge.style.display = 'inline-flex';
+      $note.textContent = 'Contact your account manager to connect Arcads.';
+      $note.style.display = 'block';
     }
   }
 
@@ -1006,34 +1221,278 @@
     }).join('');
   }
 
-  function toggleScriptForm() {
-    document.getElementById('scriptForm').classList.toggle('open');
+  // ─── AI Video Wizard ───────────────────────────────────────────────────────
+  let _wizardStep = 1;
+  let _wizardIdea = null;
+  let _wizardScript = '';
+  let _selectedActorIds = new Set();
+
+  function wizardGoTo(step) {
+    // Hide all panels
+    document.querySelectorAll('.wizard-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('wpanel-' + step).classList.add('active');
+    _wizardStep = step;
+    // Update step bar
+    for (let i = 1; i <= 5; i++) {
+      const el = document.getElementById('wstep-' + i);
+      const line = document.getElementById('wline-' + i);
+      if (i < step) {
+        el.className = 'step done';
+        el.querySelector('.step-circle').textContent = '✓';
+        if (line) line.className = 'step-line done';
+      } else if (i === step) {
+        el.className = 'step active';
+        el.querySelector('.step-circle').textContent = String(i);
+        if (line) line.className = 'step-line';
+      } else {
+        el.className = 'step inactive';
+        el.querySelector('.step-circle').textContent = String(i);
+        if (line) line.className = 'step-line';
+      }
+    }
   }
 
-  async function generateScript() {
-    const name = document.getElementById('sfName').value.trim();
-    const text = document.getElementById('sfText').value.trim();
-    const actorCount = parseInt(document.getElementById('sfActorCount').value, 10) || 3;
-    if (!name || !text) { alert('Script name and text are required.'); return; }
-    const $st = document.getElementById('scriptStatus');
-    $st.style.color = 'var(--muted)'; $st.textContent = 'Creating script and queuing generation…';
+  function wizardInitBrandSummary() {
+    const brand = window._data?.brand;
+    if (!brand) return;
+    const pillars = brand.contentPillars ? `<div><strong>Content Pillars:</strong> ${esc(brand.contentPillars)}</div>` : '';
+    document.getElementById('wizardBrandSummary').innerHTML = `
+      <div><strong>Brand:</strong> ${esc(brand.name)}</div>
+      <div><strong>Industry:</strong> ${esc(brand.industry || 'Not specified')}</div>
+      <div><strong>Products:</strong> ${esc((brand.products || 'Not specified').slice(0, 120))}</div>
+      <div><strong>Audience:</strong> ${esc((brand.audience || 'Not specified').slice(0, 100))}</div>
+      ${pillars}
+      <div class="wizard-note">We'll use this to generate content ideas tailored to your brand.</div>
+    `;
+  }
+
+  async function wizardStep2() {
+    wizardGoTo(2);
+    const $loading = document.getElementById('ideasLoading');
+    const $grid = document.getElementById('ideaGrid');
+    $grid.innerHTML = '';
+    $loading.style.display = 'flex';
+    try {
+      const r = await fetch('/api/client/ai/ideas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brandId: window._data?.brand?.id }),
+      });
+      const data = await r.json();
+      $loading.style.display = 'none';
+      const ideas = data.ideas || [];
+      if (!ideas.length) { $grid.innerHTML = '<span class="empty">No ideas generated. Try again.</span>'; return; }
+      $grid.innerHTML = ideas.map((idea, i) => `
+        <div class="idea-card">
+          <div class="idea-card-title">${esc(idea.title)}</div>
+          <div class="idea-card-desc">${esc(idea.description)}</div>
+          <div class="idea-card-meta">
+            ${idea.format ? `<span class="idea-tag">${esc(idea.format)}</span>` : ''}
+            ${idea.hook ? `<span class="idea-tag">Hook: ${esc(idea.hook.slice(0, 40))}</span>` : ''}
+          </div>
+          <button class="idea-use-btn" onclick="wizardSelectIdea(${i})">→ Use This Idea</button>
+        </div>`).join('');
+      window._wizardIdeas = ideas;
+    } catch(e) {
+      $loading.style.display = 'none';
+      $grid.innerHTML = `<span class="empty">Error: ${esc(e.message)}</span>`;
+    }
+  }
+
+  function wizardSelectIdea(idx) {
+    _wizardIdea = window._wizardIdeas[idx];
+    _wizardScript = '';
+    document.getElementById('wizardScriptTA').value = '';
+    document.getElementById('scriptEditorWrap').style.display = 'none';
+    document.getElementById('toProductionBtn').style.display = 'none';
+    document.getElementById('genScriptBtn').style.display = 'inline-flex';
+    document.getElementById('selectedIdeaBox').innerHTML = `
+      <div class="selected-idea-label">Selected Idea</div>
+      <strong>${esc(_wizardIdea.title)}</strong>
+      <div style="font-size:0.8rem;color:var(--muted);margin-top:4px;">${esc(_wizardIdea.description)}</div>
+    `;
+    wizardGoTo(3);
+  }
+
+  async function wizardGenerateScript() {
+    if (!_wizardIdea) return;
+    const $loading = document.getElementById('scriptLoading');
+    const $wrap = document.getElementById('scriptEditorWrap');
+    const $btn = document.getElementById('genScriptBtn');
+    $loading.style.display = 'flex';
+    $wrap.style.display = 'none';
+    $btn.style.display = 'none';
+    try {
+      const r = await fetch('/api/client/ai/script', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ idea: _wizardIdea, brandContext: window._data?.brand }),
+      });
+      const data = await r.json();
+      $loading.style.display = 'none';
+      if (data.script) {
+        _wizardScript = data.script;
+        document.getElementById('wizardScriptTA').value = data.script;
+        updateWordCount();
+        $wrap.style.display = 'block';
+        document.getElementById('toProductionBtn').style.display = 'inline-flex';
+      } else {
+        $btn.style.display = 'inline-flex';
+        alert('Script generation returned no text. Try again.');
+      }
+    } catch(e) {
+      $loading.style.display = 'none';
+      $btn.style.display = 'inline-flex';
+      alert('Error: ' + e.message);
+    }
+  }
+
+  function updateWordCount() {
+    const words = document.getElementById('wizardScriptTA').value.trim().split(/\s+/).filter(Boolean).length;
+    document.getElementById('wordCount').textContent = words + ' word' + (words !== 1 ? 's' : '');
+  }
+
+  async function wizardStep4() {
+    _wizardScript = document.getElementById('wizardScriptTA').value.trim();
+    if (!_wizardScript) { alert('Please generate or write a script first.'); return; }
+    _selectedActorIds = new Set();
+    wizardGoTo(4);
+    document.getElementById('prodScriptBox').textContent = _wizardScript;
+    document.getElementById('actorSelCount').textContent = '0 selected';
+
+    const $loading = document.getElementById('actorGridLoading');
+    const $grid = document.getElementById('actorGrid');
+    $grid.innerHTML = '';
+    $loading.style.display = 'flex';
+    try {
+      const r = await fetch('/api/client/arcads/actors');
+      const data = await r.json();
+      $loading.style.display = 'none';
+      const actors = data.actors || data.data || [];
+      if (!actors.length) {
+        $grid.innerHTML = '<span class="empty" style="grid-column:1/-1">No actors available.</span>';
+        return;
+      }
+      window._wizardActors = actors;
+      $grid.innerHTML = actors.map((a, i) => {
+        const thumb = a.thumbnail || a.avatar || a.image_url || '';
+        const name = esc(a.name || a.id || 'Actor ' + (i+1));
+        return `<div class="actor-card" id="actor-${i}" onclick="toggleActor(${i}, '${esc(String(a.id || a.situationId || i))}')">
+          ${thumb ? `<img class="actor-thumb" src="${esc(thumb)}" alt="${name}">` : `<div class="actor-thumb-placeholder">🎭</div>`}
+          <div class="actor-name">${name}</div>
+        </div>`;
+      }).join('');
+    } catch(e) {
+      $loading.style.display = 'none';
+      $grid.innerHTML = `<span class="empty" style="grid-column:1/-1">Failed to load actors: ${esc(e.message)}</span>`;
+    }
+  }
+
+  function toggleActor(idx, actorId) {
+    const el = document.getElementById('actor-' + idx);
+    if (!el) return;
+    if (_selectedActorIds.has(actorId)) {
+      _selectedActorIds.delete(actorId);
+      el.classList.remove('selected');
+    } else {
+      if (_selectedActorIds.size >= 6) { alert('Maximum 6 actors.'); return; }
+      _selectedActorIds.add(actorId);
+      el.classList.add('selected');
+    }
+    document.getElementById('actorSelCount').textContent = _selectedActorIds.size + ' selected';
+  }
+
+  async function wizardGenerateVideo() {
+    if (_selectedActorIds.size < 2) { alert('Select at least 2 actors.'); return; }
+    if (!_wizardScript) { alert('No script found.'); return; }
+    const $st = document.getElementById('prodStatus');
+    $st.style.color = 'var(--muted)'; $st.textContent = 'Queuing video generation…';
     try {
       const r = await fetch('/api/client/arcads/scripts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, text, actorCount }),
+        body: JSON.stringify({
+          name: _wizardIdea?.title || 'AI Video',
+          text: _wizardScript,
+          situationIds: Array.from(_selectedActorIds),
+        }),
       });
       const data = await r.json();
       if (r.ok && data.ok) {
-        $st.style.color = 'var(--green)'; $st.textContent = '✓ Script created — generation queued!';
-        document.getElementById('sfName').value = '';
-        document.getElementById('sfText').value = '';
-        document.getElementById('scriptForm').classList.remove('open');
-        setTimeout(() => { $st.textContent = ''; loadArcads(); }, 2000);
+        $st.textContent = '';
+        wizardGoTo(5);
+        // Populate step 5 channel list from cached channels
+        renderStep5Channels();
       } else {
         $st.style.color = 'var(--red)'; $st.textContent = 'Error: ' + (data.error || 'Failed');
       }
     } catch(e) { $st.style.color = 'var(--red)'; $st.textContent = 'Network error'; }
+  }
+
+  function renderStep5Channels() {
+    const channels = window._channels || [];
+    const $list = document.getElementById('step5ChannelList');
+    if (!channels.length) {
+      $list.innerHTML = '<span class="empty">No channels connected.</span>';
+      return;
+    }
+    $list.innerHTML = channels.map(ch => `
+      <div class="channel-item" id="s5ch-${esc(ch.id)}" onclick="toggleStep5Channel('${esc(ch.id)}')">
+        ${ch.avatarUrl ? `<img src="${esc(ch.avatarUrl)}" alt="">` : '<div style="width:28px;height:28px;border-radius:50%;background:var(--border);flex-shrink:0"></div>'}
+        <div class="channel-item-info">
+          <div class="channel-name">${esc(ch.name)}</div>
+          <div class="channel-service">${esc(ch.service)}</div>
+        </div>
+        <span class="channel-check">✓</span>
+      </div>`).join('');
+    window._step5SelectedChannels = new Set();
+  }
+
+  function toggleStep5Channel(id) {
+    if (!window._step5SelectedChannels) window._step5SelectedChannels = new Set();
+    const el = document.getElementById('s5ch-' + id);
+    if (!el) return;
+    if (window._step5SelectedChannels.has(id)) {
+      window._step5SelectedChannels.delete(id); el.classList.remove('selected');
+    } else {
+      window._step5SelectedChannels.add(id); el.classList.add('selected');
+    }
+  }
+
+  async function wizardSchedule() {
+    const channelIds = Array.from(window._step5SelectedChannels || []);
+    const scheduledAt = document.getElementById('wizardScheduleAt').value;
+    try {
+      await fetch('/api/client/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pendingSchedule: {
+            idea: _wizardIdea?.title,
+            script: _wizardScript,
+            channelIds,
+            scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : null,
+            createdAt: new Date().toISOString(),
+          },
+        }),
+      });
+    } catch(_) {}
+    document.getElementById('scheduleConfirm').style.display = 'block';
+  }
+
+  function wizardReset() {
+    _wizardIdea = null;
+    _wizardScript = '';
+    _selectedActorIds = new Set();
+    window._wizardIdeas = [];
+    document.getElementById('ideaGrid').innerHTML = '';
+    document.getElementById('wizardScriptTA').value = '';
+    document.getElementById('scriptEditorWrap').style.display = 'none';
+    document.getElementById('toProductionBtn').style.display = 'none';
+    document.getElementById('genScriptBtn').style.display = 'inline-flex';
+    document.getElementById('scheduleConfirm').style.display = 'none';
+    wizardGoTo(1);
+    loadArcads();
   }
 
   // ─── Storista ──────────────────────────────────────────────────────────────
