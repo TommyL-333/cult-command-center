@@ -5986,10 +5986,7 @@ app.get('/api/tiktokshop/callback', async (req, res) => {
 
   const appKey    = process.env.TIKTOK_SHOP_APP_KEY;
   const appSecret = process.env.TIKTOK_SHOP_APP_SECRET;
-  console.log('[tiktokshop/callback] auth_code:', authCode?.slice(0,20), '| app_key set:', !!appKey, '| app_secret set:', !!appSecret);
-
   try {
-    // TikTok Shop v2 token exchange — auth.tiktok-shops.com/api/v2/token/get
     const { data } = await axios.get('https://auth.tiktok-shops.com/api/v2/token/get', {
       params: {
         app_key:    appKey,
@@ -5998,7 +5995,6 @@ app.get('/api/tiktokshop/callback', async (req, res) => {
         grant_type: 'authorized_code',
       },
     });
-    console.log('[tiktokshop/callback] token response:', JSON.stringify(data)?.slice(0, 200));
 
     if (data?.code !== 0 || !data?.data?.access_token) {
       return res.status(500).json({ error: 'Token exchange failed', raw: data });
