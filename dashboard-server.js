@@ -1425,6 +1425,7 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
         referralUrl,
         estimatedCommission: brand.estimatedCommission || 0,
         referrals: brand.referrals || [],
+        affiliatePageUrl: brand.affiliatePageUrl || '',
       },
       tiktok: { connected: tiktokConnected, stats: tiktokStats, funnel: tiktokFunnel },
       tasks,
@@ -1444,12 +1445,13 @@ app.patch('/api/client/settings', requireClientSession, express.json(), async (r
     const idx = (brands.clients || []).findIndex(b => b.id === req.session.clientBrandId);
     if (idx === -1) return res.status(404).json({ error: 'Brand not found' });
     const brand = brands.clients[idx];
-    const { sampleBudget, compensation } = req.body || {};
+    const { sampleBudget, compensation, affiliatePageUrl } = req.body || {};
     if (sampleBudget !== undefined) brand.sampleBudget = Number(sampleBudget) || 0;
     if (compensation && typeof compensation === 'object') {
       if (!brand.creatorPage) brand.creatorPage = {};
       brand.creatorPage.incentives = compensation;
     }
+    if (affiliatePageUrl !== undefined) brand.affiliatePageUrl = affiliatePageUrl || '';
     brands.clients[idx] = brand;
     saveBrands(brands);
     res.json({ ok: true });
@@ -1546,6 +1548,105 @@ app.post('/client/admin', express.json(), async (req, res) => {
       return res.json({ ok: true, brand: brands.clients[idx] });
     }
     res.status(400).json({ error: `unknown action: ${action}` });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── Client portal: Buffer channel proxy ─────────────────────────────────────
+// GET /api/client/buffer/channels
+app.get('/api/client/buffer/channels', requireClientSession, async (req, res) => {
+  try {
+    const token = process.env.BUFFER_ACCESS_TOKEN;
+    const orgId = process.env.BUFFER_ORG_ID || '69d6ddee1fcceb5bb1faa168';
+    const query = `query { organization(id:"${orgId}") { channels { id name service serviceId avatarUrl } } }`;
+    const { data } = await axios.post('https://api.buffer.com/graphql',
+      { query },
+      { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
+    );
+    res.json({ ok: true, channels: data.data?.organization?.channels || [] });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/client/buffer/post-to-channels
+app.post('/api/client/buffer/post-to-channels', requireClientSession, express.json(), async (req, res) => {
+  try {
+    const { channelIds = [], text, mediaUrl, scheduledAt } = req.body || {};
+    if (!channelIds.length) return res.status(400).json({ error: 'No channels selected' });
+    const token = process.env.BUFFER_ACCESS_TOKEN;
+    const results = [];
+    for (const channelId of channelIds) {
+      const mode = scheduledAt ? 'customScheduled' : 'shareNow';
+      const assets = mediaUrl ? { videos: [{ url: mediaUrl }] } : undefined;
+      const mutation = `mutation CreatePost($input: CreatePostInput!) { createPost(input: $input) { ... on PostActionSuccess { post { id } } ... on MutationError { extensions { code } message } } }`;
+      const variables = { input: { channelId, text, schedulingType: 'automatic', mode, ...(scheduledAt ? { dueAt: scheduledAt } : {}), ...(assets ? { assets } : {}) } };
+      const { data } = await axios.post('https://api.buffer.com/graphql',
+        { query: mutation, variables },
+        { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
+      );
+      results.push({ channelId, result: data });
+    }
+    res.json({ ok: true, results });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// ─── Client portal: Arcads proxy ─────────────────────────────────────────────
+// GET /api/client/arcads/stats
+app.get('/api/client/arcads/stats', requireClientSession, async (req, res) => {
+  try {
+    const appKey = process.env.ARCADS_APP_KEY || process.env.ARCADS_CLIENT_ID;
+    const appSecret = process.env.ARCADS_API_KEY;
+    const auth = 'Basic ' + Buffer.from(`${appKey}:${appSecret}`).toString('base64');
+    const base = 'https://external-api.arcads.ai';
+    const folderId = process.env.ARCADS_FOLDER_ID || 'cb163f1f-6863-47a2-b984-2f5d384fff1a';
+    const { data: scriptsData } = await axios.get(`${base}/api/v1/scripts`, {
+      params: { folder_id: folderId },
+      headers: { Authorization: auth }
+    });
+    const scripts = scriptsData?.data?.scripts || scriptsData?.scripts || [];
+    const statsArr = await Promise.all(scripts.slice(0, 10).map(async s => {
+      try {
+        const { data: vData } = await axios.get(`${base}/api/v1/scripts/${s.id}/videos`, { headers: { Authorization: auth } });
+        const videos = vData?.data?.videos || vData?.videos || [];
+        return { ...s, videos: videos.slice(0, 20) };
+      } catch { return { ...s, videos: [] }; }
+    }));
+    res.json({ ok: true, scripts: statsArr });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/client/arcads/actors
+app.get('/api/client/arcads/actors', requireClientSession, async (req, res) => {
+  try {
+    const appKey = process.env.ARCADS_APP_KEY || process.env.ARCADS_CLIENT_ID;
+    const appSecret = process.env.ARCADS_API_KEY;
+    const auth = 'Basic ' + Buffer.from(`${appKey}:${appSecret}`).toString('base64');
+    const productId = process.env.ARCADS_PRODUCT_ID || '3cd32041-cc56-4588-b179-cbb55c7dd263';
+    const { data } = await axios.get(`https://external-api.arcads.ai/api/v1/situations`, {
+      params: { product_id: productId, page: 1, per_page: 50 },
+      headers: { Authorization: auth }
+    });
+    res.json({ ok: true, actors: data?.data?.situations || data?.situations || [] });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// POST /api/client/arcads/scripts
+app.post('/api/client/arcads/scripts', requireClientSession, express.json(), async (req, res) => {
+  try {
+    const { name, text, situationIds = [], actorCount = 3 } = req.body || {};
+    if (!name || !text) return res.status(400).json({ error: 'name and text required' });
+    const appKey = process.env.ARCADS_APP_KEY || process.env.ARCADS_CLIENT_ID;
+    const appSecret = process.env.ARCADS_API_KEY;
+    const auth = 'Basic ' + Buffer.from(`${appKey}:${appSecret}`).toString('base64');
+    const base = 'https://external-api.arcads.ai';
+    const productId = process.env.ARCADS_PRODUCT_ID || '3cd32041-cc56-4588-b179-cbb55c7dd263';
+    const folderId = process.env.ARCADS_FOLDER_ID || 'cb163f1f-6863-47a2-b984-2f5d384fff1a';
+    const { data: scriptData } = await axios.post(`${base}/api/v1/scripts`,
+      { name, text, product_id: productId, folder_id: folderId, situation_ids: situationIds },
+      { headers: { Authorization: auth, 'Content-Type': 'application/json' } }
+    );
+    const scriptId = scriptData?.data?.script?.id || scriptData?.script?.id;
+    if (!scriptId) return res.status(500).json({ error: 'Script creation failed', raw: scriptData });
+    await axios.post(`${base}/api/v1/scripts/${scriptId}/generate`, {}, { headers: { Authorization: auth } });
+    res.json({ ok: true, scriptId });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 

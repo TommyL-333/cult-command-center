@@ -133,6 +133,111 @@
     .priority-low     { color: var(--muted); font-size: 0.68rem; font-weight: 700; }
 
     .empty { color: var(--muted); font-size: 0.83rem; padding: 16px 0; }
+
+    /* Tab navigation */
+    .tab-bar { display: flex; gap: 4px; padding: 0 24px; background: var(--card); border-bottom: 1px solid var(--border); }
+    .tab-btn { background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--muted); cursor: pointer; font-size: 0.88rem; font-weight: 600; padding: 14px 18px; transition: color 0.15s, border-color 0.15s; }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { border-bottom-color: var(--teal); color: var(--teal); }
+
+    /* Affiliate card */
+    .affiliate-card { background: var(--card); border: 1px solid var(--border); border-radius: 13px; padding: 24px; margin-bottom: 32px; }
+    .affiliate-card-title { font-size: 0.9rem; font-weight: 600; color: var(--text); margin-bottom: 6px; display: flex; align-items: center; gap: 8px; }
+    .affiliate-card-sub { font-size: 0.8rem; color: var(--muted); margin-bottom: 16px; line-height: 1.6; }
+    .affiliate-url-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .affiliate-url-box { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; font-family: monospace; font-size: 0.78rem; color: var(--teal); word-break: break-all; min-height: 40px; }
+    .affiliate-open-btn { background: var(--teal); color: var(--bg); font-size: 0.8rem; font-weight: 700; border: none; border-radius: 7px; padding: 8px 16px; cursor: pointer; text-decoration: none; white-space: nowrap; transition: opacity 0.15s; display: inline-flex; align-items: center; }
+    .affiliate-open-btn:hover { opacity: 0.85; }
+    .affiliate-open-btn.disabled { background: var(--border); color: var(--muted); pointer-events: none; cursor: default; }
+    .affiliate-edit-toggle { background: transparent; border: none; color: var(--muted); font-size: 0.76rem; cursor: pointer; padding: 0; text-decoration: underline; transition: color 0.15s; }
+    .affiliate-edit-toggle:hover { color: var(--teal); }
+    .affiliate-edit-form { display: none; margin-top: 12px; }
+    .affiliate-edit-form.open { display: flex; gap: 8px; align-items: center; }
+    .affiliate-edit-input { flex: 1; background: var(--bg); border: 1px solid var(--border); border-radius: 7px; color: var(--text); font-size: 0.83rem; padding: 8px 11px; outline: none; transition: border-color 0.15s; }
+    .affiliate-edit-input:focus { border-color: var(--teal); }
+    .affiliate-edit-save { background: var(--teal); color: var(--bg); font-size: 0.82rem; font-weight: 700; border: none; border-radius: 7px; padding: 8px 16px; cursor: pointer; white-space: nowrap; }
+
+    /* Content Studio */
+    .cs-section { margin-bottom: 28px; }
+    .cs-card { background: var(--card); border: 1px solid var(--border); border-radius: 13px; padding: 24px; }
+    .cs-card-title { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 20px; }
+
+    /* Upload zone */
+    .drop-zone { border: 2px dashed var(--border); border-radius: 10px; padding: 36px; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
+    .drop-zone:hover, .drop-zone.dragover { border-color: var(--teal); background: rgba(0,242,234,0.04); }
+    .drop-zone-text { color: var(--muted); font-size: 0.85rem; margin-bottom: 8px; }
+    .drop-zone-hint { color: var(--muted); font-size: 0.73rem; }
+    .upload-file-btn { background: var(--teal); color: var(--bg); font-size: 0.82rem; font-weight: 700; border: none; border-radius: 7px; padding: 8px 18px; cursor: pointer; margin-top: 12px; }
+
+    /* Platform pills */
+    .platform-pills { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0; }
+    .platform-pill { display: inline-flex; align-items: center; gap: 6px; background: var(--bg); border: 1px solid var(--border); border-radius: 20px; padding: 6px 14px; font-size: 0.8rem; color: var(--muted); cursor: pointer; transition: all 0.15s; user-select: none; }
+    .platform-pill input[type=checkbox] { display: none; }
+    .platform-pill.checked { border-color: var(--teal); color: var(--teal); background: rgba(0,242,234,0.08); }
+
+    /* Post actions */
+    .post-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 14px; }
+    .post-now-btn { background: var(--teal); color: var(--bg); font-size: 0.88rem; font-weight: 700; border: none; border-radius: 8px; padding: 10px 22px; cursor: pointer; transition: opacity 0.15s; }
+    .post-now-btn:hover { opacity: 0.85; }
+    .schedule-input { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 0.82rem; padding: 8px 12px; outline: none; transition: border-color 0.15s; }
+    .schedule-input:focus { border-color: var(--teal); }
+    .caption-area { width: 100%; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 0.84rem; padding: 10px 13px; outline: none; resize: vertical; min-height: 90px; transition: border-color 0.15s; font-family: inherit; }
+    .caption-area:focus { border-color: var(--teal); }
+
+    /* Upload result strip */
+    .upload-result { background: rgba(0,242,234,0.06); border: 1px solid rgba(0,242,234,0.2); border-radius: 8px; padding: 12px 16px; margin-top: 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 0.82rem; }
+    .upload-result-name { color: var(--teal); font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .transcribe-btn { background: transparent; border: 1px solid var(--teal); color: var(--teal); font-size: 0.78rem; font-weight: 700; border-radius: 6px; padding: 5px 12px; cursor: pointer; white-space: nowrap; transition: background 0.15s; }
+    .transcribe-btn:hover { background: rgba(0,242,234,0.1); }
+
+    /* Channel list */
+    .channel-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
+    .channel-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; font-size: 0.83rem; cursor: pointer; transition: border-color 0.15s; }
+    .channel-item.selected { border-color: var(--teal); background: rgba(0,242,234,0.05); }
+    .channel-item img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; flex-shrink: 0; }
+    .channel-item-info { flex: 1; }
+    .channel-name { color: var(--text); font-weight: 600; }
+    .channel-service { color: var(--muted); font-size: 0.72rem; text-transform: capitalize; }
+    .channel-check { color: var(--teal); font-size: 1rem; opacity: 0; transition: opacity 0.15s; }
+    .channel-item.selected .channel-check { opacity: 1; }
+
+    /* Arcads */
+    .arcads-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
+    .arcads-stat { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; text-align: center; }
+    .arcads-stat-val { font-size: 1.6rem; font-weight: 700; color: var(--teal); }
+    .arcads-stat-lbl { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-top: 4px; }
+    .new-script-btn { background: var(--teal); color: var(--bg); font-size: 0.82rem; font-weight: 700; border: none; border-radius: 7px; padding: 8px 16px; cursor: pointer; transition: opacity 0.15s; }
+    .new-script-btn:hover { opacity: 0.85; }
+    .refresh-btn { background: transparent; border: 1px solid var(--border); color: var(--muted); font-size: 0.78rem; font-weight: 600; border-radius: 7px; padding: 7px 14px; cursor: pointer; transition: all 0.15s; }
+    .refresh-btn:hover { border-color: var(--teal); color: var(--teal); }
+    .script-form { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 16px; margin: 14px 0; display: none; }
+    .script-form.open { display: block; }
+    .script-form-row { margin-bottom: 12px; }
+    .script-form-row label { display: block; font-size: 0.7rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 6px; }
+    .script-form-input { width: 100%; background: var(--card); border: 1px solid var(--border); border-radius: 7px; color: var(--text); font-size: 0.84rem; padding: 8px 11px; outline: none; font-family: inherit; transition: border-color 0.15s; }
+    .script-form-input:focus { border-color: var(--teal); }
+    .script-form-textarea { width: 100%; background: var(--card); border: 1px solid var(--border); border-radius: 7px; color: var(--text); font-size: 0.84rem; padding: 8px 11px; outline: none; resize: vertical; min-height: 80px; font-family: inherit; transition: border-color 0.15s; }
+    .script-form-textarea:focus { border-color: var(--teal); }
+    .generate-btn { background: var(--teal); color: var(--bg); font-size: 0.88rem; font-weight: 700; border: none; border-radius: 8px; padding: 10px 22px; cursor: pointer; transition: opacity 0.15s; }
+    .generate-btn:hover { opacity: 0.85; }
+
+    .video-list { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+    .video-item { background: var(--bg); border: 1px solid var(--border); border-radius: 9px; padding: 12px 16px; }
+    .video-item-header { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+    .video-item-name { font-size: 0.85rem; font-weight: 600; color: var(--text); }
+    .video-item-pending { font-size: 0.78rem; color: var(--muted); }
+    .video-watch-btn { background: transparent; border: 1px solid var(--border); color: var(--teal); font-size: 0.77rem; font-weight: 600; border-radius: 6px; padding: 4px 10px; text-decoration: none; transition: border-color 0.15s; white-space: nowrap; }
+    .video-watch-btn:hover { border-color: var(--teal); }
+    .video-sub-list { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+    .video-sub-item { display: flex; align-items: center; justify-content: space-between; padding: 6px 10px; background: var(--card); border-radius: 7px; font-size: 0.79rem; }
+
+    /* Storista */
+    .storista-status { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; }
+    .storista-status.disconnected { background: rgba(255,59,48,0.12); color: var(--red); }
+    .storista-status.connected { background: rgba(0,210,122,0.12); color: var(--green); }
+    .storista-desc { font-size: 0.83rem; color: var(--muted); margin: 12px 0 16px; line-height: 1.6; }
+    .storista-connect-btn { background: var(--teal); color: var(--bg); font-size: 0.88rem; font-weight: 700; border: none; border-radius: 8px; padding: 10px 22px; cursor: pointer; transition: opacity 0.15s; }
+    .storista-connect-btn:hover { opacity: 0.85; }
   </style>
 </head>
 <body>
@@ -145,6 +250,12 @@
   </div>
 </header>
 
+<nav class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('overview')">Overview</button>
+  <button class="tab-btn" onclick="switchTab('content-studio')">Content Studio</button>
+</nav>
+
+<div id="tab-overview">
 <main>
 
   <!-- TikTok connect banner (hidden when connected) -->
@@ -171,6 +282,22 @@
   </div>
 
   <!-- Referral + Controls -->
+  <!-- Affiliate Collaboration Page card -->
+  <div class="affiliate-card">
+    <div class="affiliate-card-title"><span class="dot" style="background:var(--teal)"></span>Recruit Creators</div>
+    <p class="affiliate-card-sub">Share this link so TikTok creators can find your products and apply to collaborate.</p>
+    <div class="affiliate-url-row">
+      <div class="affiliate-url-box" id="affiliateUrlBox">—</div>
+      <button class="copy-btn" id="affiliateCopyBtn" onclick="copyAffiliateUrl()">Copy</button>
+      <a class="affiliate-open-btn disabled" id="affiliateOpenBtn" href="#" target="_blank" rel="noopener">Open →</a>
+    </div>
+    <button class="affiliate-edit-toggle" onclick="toggleAffiliateEdit()">Edit URL</button>
+    <div class="affiliate-edit-form" id="affiliateEditForm">
+      <input class="affiliate-edit-input" id="affiliateEditInput" type="url" placeholder="https://your-affiliate-page-url">
+      <button class="affiliate-edit-save" onclick="saveAffiliateUrl()">Save</button>
+    </div>
+  </div>
+
   <div class="two-col mb-32">
 
     <!-- Referral -->
@@ -289,6 +416,108 @@
   </div>
 
 </main>
+</div><!-- end #tab-overview -->
+
+<div id="tab-content-studio" style="display:none">
+  <div style="max-width:1120px;margin:0 auto;padding:36px 24px 60px;">
+
+    <!-- Section A: Upload & Publish -->
+    <div class="cs-section">
+      <div class="cs-card">
+        <div class="cs-card-title">📤 Upload &amp; Publish</div>
+
+        <!-- Drop zone -->
+        <div class="drop-zone" id="dropZone" onclick="document.getElementById('videoFileInput').click()" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+          <div class="drop-zone-text">Drag &amp; drop a video here</div>
+          <div class="drop-zone-hint">or click to browse — MP4, MOV, AVI supported</div>
+          <button class="upload-file-btn" type="button">Choose File</button>
+        </div>
+        <input type="file" id="videoFileInput" accept="video/*" style="display:none" onchange="handleFileSelect(event)">
+
+        <!-- Upload result -->
+        <div id="uploadResult" style="display:none" class="upload-result">
+          <span class="upload-result-name" id="uploadedFilename"></span>
+          <button class="transcribe-btn" id="transcribeBtn" onclick="transcribeVideo()">Transcribe</button>
+        </div>
+        <div id="uploadProgress" style="display:none;font-size:0.8rem;color:var(--muted);margin-top:10px;">Uploading…</div>
+        <div id="transcribeProgress" style="display:none;font-size:0.8rem;color:var(--muted);margin-top:10px;">Transcribing…</div>
+
+        <!-- Caption -->
+        <div id="captionSection" style="display:none;margin-top:16px;">
+          <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px;">Caption</div>
+          <textarea class="caption-area" id="captionArea" placeholder="Write your caption here…"></textarea>
+        </div>
+
+        <!-- Platform selector -->
+        <div style="margin-top:14px;">
+          <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:8px;">Post to channels</div>
+          <div id="channelList" class="channel-list"><span class="empty">Loading channels…</span></div>
+        </div>
+
+        <!-- Post actions -->
+        <div class="post-actions">
+          <button class="post-now-btn" onclick="postToChannels(false)">Post to Channels</button>
+          <input class="schedule-input" type="datetime-local" id="scheduleAt" title="Schedule for later">
+          <button class="post-now-btn" style="background:var(--card);border:1px solid var(--border);color:var(--text);" onclick="postToChannels(true)">Schedule</button>
+        </div>
+        <div id="postStatus" style="font-size:0.8rem;min-height:18px;margin-top:8px;"></div>
+      </div>
+    </div>
+
+    <!-- Section B: AI Videos (Arcads) -->
+    <div class="cs-section">
+      <div class="cs-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:12px;">
+          <div class="cs-card-title" style="margin-bottom:0;">🎬 AI Video Generator</div>
+          <div style="display:flex;gap:8px;">
+            <button class="new-script-btn" onclick="toggleScriptForm()">+ New Script</button>
+            <button class="refresh-btn" onclick="loadArcads()">↻ Refresh</button>
+          </div>
+        </div>
+
+        <div class="arcads-stats">
+          <div class="arcads-stat"><div class="arcads-stat-val" id="arcScripts">—</div><div class="arcads-stat-lbl">Scripts</div></div>
+          <div class="arcads-stat"><div class="arcads-stat-val" id="arcVideos">—</div><div class="arcads-stat-lbl">Total Videos</div></div>
+          <div class="arcads-stat"><div class="arcads-stat-val" id="arcPending">—</div><div class="arcads-stat-lbl">Generating</div></div>
+        </div>
+
+        <!-- New Script Form -->
+        <div class="script-form" id="scriptForm">
+          <div class="script-form-row">
+            <label>Script Name</label>
+            <input class="script-form-input" id="sfName" type="text" placeholder="e.g. Summer Campaign 1">
+          </div>
+          <div class="script-form-row">
+            <label>Script Text</label>
+            <textarea class="script-form-textarea" id="sfText" placeholder="Write the script for your AI video actors…"></textarea>
+          </div>
+          <div class="script-form-row">
+            <label>Actor Count (2–6)</label>
+            <input class="script-form-input" id="sfActorCount" type="number" min="2" max="6" value="3" style="width:80px;">
+          </div>
+          <button class="generate-btn" onclick="generateScript()">Generate</button>
+          <div id="scriptStatus" style="font-size:0.8rem;min-height:18px;margin-top:8px;"></div>
+        </div>
+
+        <!-- Video list -->
+        <div class="video-list" id="arcVideoList"><span class="empty">Loading…</span></div>
+      </div>
+    </div>
+
+    <!-- Section C: Storista -->
+    <div class="cs-section">
+      <div class="cs-card">
+        <div style="display:flex;align-items:center;gap:14px;margin-bottom:0;">
+          <div class="cs-card-title" style="margin-bottom:0;">🛍 Storista — Shop Stories</div>
+          <span class="storista-status disconnected" id="storistaStatus">● Disconnected</span>
+        </div>
+        <p class="storista-desc">Auto-generate TikTok shop story content from your product catalog.</p>
+        <button class="storista-connect-btn" onclick="connectStorista()">Connect Storista</button>
+      </div>
+    </div>
+
+  </div>
+</div><!-- end #tab-content-studio -->
 
 <script>
   function fmt$(n) {
@@ -376,6 +605,19 @@
     setIncentive('cashback',    c.cashback);
     setIncentive('leaderboard', c.leaderboard);
     setIncentive('volumeBonus', c.volumeBonus);
+
+    // Affiliate page URL
+    const affiliateUrl = brand.affiliatePageUrl || '';
+    const $aBox = document.getElementById('affiliateUrlBox');
+    const $aOpen = document.getElementById('affiliateOpenBtn');
+    $aBox.textContent = affiliateUrl || '—';
+    if (affiliateUrl) {
+      $aOpen.href = affiliateUrl;
+      $aOpen.classList.remove('disabled');
+    } else {
+      $aOpen.href = '#';
+      $aOpen.classList.add('disabled');
+    }
 
     // Tasks
     renderTasks(tasks);
@@ -543,6 +785,260 @@
   async function doLogout() {
     await fetch('/client/logout', { method: 'POST' }).catch(() => {});
     window.location.href = '/client';
+  }
+
+  // ─── Tab navigation ────────────────────────────────────────────────────────
+  function switchTab(name) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('[id^="tab-"]').forEach(el => el.style.display = 'none');
+    document.getElementById('tab-' + name).style.display = 'block';
+    const btns = document.querySelectorAll('.tab-btn');
+    const labels = { 'overview': 'Overview', 'content-studio': 'Content Studio' };
+    btns.forEach(b => { if (b.textContent.trim() === labels[name]) b.classList.add('active'); });
+    if (name === 'content-studio' && !window._channelsLoaded) loadChannels();
+    if (name === 'content-studio' && !window._arcadsLoaded) loadArcads();
+  }
+
+  // ─── Affiliate URL ──────────────────────────────────────────────────────────
+  function copyAffiliateUrl() {
+    const url = document.getElementById('affiliateUrlBox').textContent;
+    if (!url || url === '—') return;
+    navigator.clipboard.writeText(url).then(() => {
+      const btn = document.getElementById('affiliateCopyBtn');
+      btn.textContent = '✓ Copied!';
+      setTimeout(() => { btn.textContent = 'Copy'; }, 2200);
+    });
+  }
+
+  function toggleAffiliateEdit() {
+    const form = document.getElementById('affiliateEditForm');
+    form.classList.toggle('open');
+    if (form.classList.contains('open')) {
+      const cur = document.getElementById('affiliateUrlBox').textContent;
+      document.getElementById('affiliateEditInput').value = cur === '—' ? '' : cur;
+      document.getElementById('affiliateEditInput').focus();
+    }
+  }
+
+  async function saveAffiliateUrl() {
+    const url = document.getElementById('affiliateEditInput').value.trim();
+    try {
+      const r = await fetch('/api/client/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ affiliatePageUrl: url }),
+      });
+      if (!r.ok) throw new Error('Save failed');
+      const $box = document.getElementById('affiliateUrlBox');
+      const $open = document.getElementById('affiliateOpenBtn');
+      $box.textContent = url || '—';
+      if (url) { $open.href = url; $open.classList.remove('disabled'); }
+      else      { $open.href = '#'; $open.classList.add('disabled'); }
+      document.getElementById('affiliateEditForm').classList.remove('open');
+      if (window._data?.brand) window._data.brand.affiliatePageUrl = url;
+    } catch(e) { alert('Failed to save URL: ' + e.message); }
+  }
+
+  // ─── Content Studio: Upload & Publish ──────────────────────────────────────
+  let _uploadedVideoUrl = null;
+  let _selectedFile = null;
+  let _selectedChannelIds = new Set();
+
+  function onDragOver(e) { e.preventDefault(); document.getElementById('dropZone').classList.add('dragover'); }
+  function onDragLeave(e) { document.getElementById('dropZone').classList.remove('dragover'); }
+  function onDrop(e) {
+    e.preventDefault();
+    document.getElementById('dropZone').classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if (file) uploadVideo(file);
+  }
+  function handleFileSelect(e) {
+    const file = e.target.files[0];
+    if (file) uploadVideo(file);
+  }
+
+  async function uploadVideo(file) {
+    _selectedFile = file;
+    const progress = document.getElementById('uploadProgress');
+    const result = document.getElementById('uploadResult');
+    progress.style.display = 'block';
+    result.style.display = 'none';
+    _uploadedVideoUrl = null;
+    try {
+      const fd = new FormData();
+      fd.append('video', file);
+      const r = await fetch('/api/upload/video', { method: 'POST', body: fd });
+      const data = await r.json();
+      if (!r.ok || !data.ok) throw new Error(data.error || 'Upload failed');
+      _uploadedVideoUrl = data.url;
+      progress.style.display = 'none';
+      document.getElementById('uploadedFilename').textContent = data.filename || file.name;
+      result.style.display = 'flex';
+      document.getElementById('captionSection').style.display = 'block';
+    } catch(e) {
+      progress.style.display = 'none';
+      alert('Upload error: ' + e.message);
+    }
+  }
+
+  async function transcribeVideo() {
+    if (!_selectedFile) return;
+    const btn = document.getElementById('transcribeBtn');
+    const prog = document.getElementById('transcribeProgress');
+    btn.disabled = true; btn.textContent = 'Transcribing…';
+    prog.style.display = 'block';
+    try {
+      const fd = new FormData();
+      fd.append('audio', _selectedFile);
+      const r = await fetch('/api/whisper-transcribe', { method: 'POST', body: fd });
+      const data = await r.json();
+      prog.style.display = 'none';
+      if (data.text) {
+        document.getElementById('captionArea').value = data.text;
+        document.getElementById('captionSection').style.display = 'block';
+      } else {
+        alert('Transcription returned no text.');
+      }
+    } catch(e) {
+      prog.style.display = 'none';
+      alert('Transcription error: ' + e.message);
+    } finally {
+      btn.disabled = false; btn.textContent = 'Transcribe';
+    }
+  }
+
+  async function loadChannels() {
+    window._channelsLoaded = true;
+    try {
+      const r = await fetch('/api/client/buffer/channels');
+      const data = await r.json();
+      const channels = data.channels || [];
+      const $list = document.getElementById('channelList');
+      if (!channels.length) { $list.innerHTML = '<span class="empty">No channels connected.</span>'; return; }
+      $list.innerHTML = channels.map(ch => `
+        <div class="channel-item" id="ch-${esc(ch.id)}" onclick="toggleChannel('${esc(ch.id)}')">
+          ${ch.avatarUrl ? `<img src="${esc(ch.avatarUrl)}" alt="">` : '<div style="width:28px;height:28px;border-radius:50%;background:var(--border);flex-shrink:0"></div>'}
+          <div class="channel-item-info">
+            <div class="channel-name">${esc(ch.name)}</div>
+            <div class="channel-service">${esc(ch.service)}</div>
+          </div>
+          <span class="channel-check">✓</span>
+        </div>`).join('');
+      window._channels = channels;
+    } catch(e) {
+      document.getElementById('channelList').innerHTML = '<span class="empty">Failed to load channels.</span>';
+    }
+  }
+
+  function toggleChannel(id) {
+    const el = document.getElementById('ch-' + id);
+    if (!el) return;
+    if (_selectedChannelIds.has(id)) { _selectedChannelIds.delete(id); el.classList.remove('selected'); }
+    else { _selectedChannelIds.add(id); el.classList.add('selected'); }
+  }
+
+  async function postToChannels(schedule) {
+    const caption = document.getElementById('captionArea').value.trim();
+    if (!caption) { alert('Please add a caption first.'); return; }
+    if (!_selectedChannelIds.size) { alert('Select at least one channel.'); return; }
+    const $st = document.getElementById('postStatus');
+    $st.style.color = 'var(--muted)'; $st.textContent = 'Posting…';
+    const scheduledAt = schedule ? document.getElementById('scheduleAt').value : null;
+    try {
+      const r = await fetch('/api/client/buffer/post-to-channels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          channelIds: Array.from(_selectedChannelIds),
+          text: caption,
+          mediaUrl: _uploadedVideoUrl || undefined,
+          scheduledAt: scheduledAt ? new Date(scheduledAt).toISOString() : undefined,
+        }),
+      });
+      const data = await r.json();
+      if (r.ok && data.ok) {
+        $st.style.color = 'var(--green)'; $st.textContent = schedule ? '✓ Scheduled!' : '✓ Posted!';
+      } else {
+        $st.style.color = 'var(--red)'; $st.textContent = 'Error: ' + (data.error || 'Post failed');
+      }
+    } catch(e) { $st.style.color = 'var(--red)'; $st.textContent = 'Network error'; }
+    setTimeout(() => { $st.textContent = ''; }, 4000);
+  }
+
+  // ─── Content Studio: Arcads ────────────────────────────────────────────────
+  async function loadArcads() {
+    window._arcadsLoaded = true;
+    document.getElementById('arcVideoList').innerHTML = '<span class="empty">Loading…</span>';
+    try {
+      const r = await fetch('/api/client/arcads/stats');
+      const data = await r.json();
+      const scripts = data.scripts || [];
+      let totalVideos = 0, pending = 0;
+      scripts.forEach(s => { (s.videos || []).forEach(v => { totalVideos++; if (!v.video_url && !v.url) pending++; }); });
+      document.getElementById('arcScripts').textContent  = scripts.length;
+      document.getElementById('arcVideos').textContent   = totalVideos;
+      document.getElementById('arcPending').textContent  = pending;
+      renderArcadsList(scripts);
+    } catch(e) {
+      document.getElementById('arcVideoList').innerHTML = `<span class="empty">Failed to load: ${esc(e.message)}</span>`;
+    }
+  }
+
+  function renderArcadsList(scripts) {
+    const $list = document.getElementById('arcVideoList');
+    if (!scripts.length) { $list.innerHTML = '<span class="empty">No scripts yet. Create one above.</span>'; return; }
+    $list.innerHTML = scripts.map(s => {
+      const videos = s.videos || [];
+      const subList = videos.length ? videos.map(v => {
+        const url = v.video_url || v.url || v.videoUrl;
+        return `<div class="video-sub-item">
+          <span style="color:var(--muted)">${esc(v.id || 'Video')}</span>
+          ${url ? `<a class="video-watch-btn" href="${esc(url)}" target="_blank" rel="noopener">▶ Watch</a>` : '<span style="color:var(--muted);font-size:0.77rem">⏳ Generating…</span>'}
+        </div>`;
+      }).join('') : '<span class="empty" style="padding:6px 0">No videos yet.</span>';
+      return `<div class="video-item">
+        <div class="video-item-header">
+          <div class="video-item-name">${esc(s.name || s.title || 'Script')}</div>
+          <span style="font-size:0.73rem;color:var(--muted)">${(s.videos||[]).length} video${(s.videos||[]).length !== 1 ? 's' : ''}</span>
+        </div>
+        <div class="video-sub-list">${subList}</div>
+      </div>`;
+    }).join('');
+  }
+
+  function toggleScriptForm() {
+    document.getElementById('scriptForm').classList.toggle('open');
+  }
+
+  async function generateScript() {
+    const name = document.getElementById('sfName').value.trim();
+    const text = document.getElementById('sfText').value.trim();
+    const actorCount = parseInt(document.getElementById('sfActorCount').value, 10) || 3;
+    if (!name || !text) { alert('Script name and text are required.'); return; }
+    const $st = document.getElementById('scriptStatus');
+    $st.style.color = 'var(--muted)'; $st.textContent = 'Creating script and queuing generation…';
+    try {
+      const r = await fetch('/api/client/arcads/scripts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, text, actorCount }),
+      });
+      const data = await r.json();
+      if (r.ok && data.ok) {
+        $st.style.color = 'var(--green)'; $st.textContent = '✓ Script created — generation queued!';
+        document.getElementById('sfName').value = '';
+        document.getElementById('sfText').value = '';
+        document.getElementById('scriptForm').classList.remove('open');
+        setTimeout(() => { $st.textContent = ''; loadArcads(); }, 2000);
+      } else {
+        $st.style.color = 'var(--red)'; $st.textContent = 'Error: ' + (data.error || 'Failed');
+      }
+    } catch(e) { $st.style.color = 'var(--red)'; $st.textContent = 'Network error'; }
+  }
+
+  // ─── Storista ──────────────────────────────────────────────────────────────
+  function connectStorista() {
+    alert('Coming soon — contact your account manager to get Storista set up for your store.');
   }
 
   load();
