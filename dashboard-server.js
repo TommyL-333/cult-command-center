@@ -1433,6 +1433,11 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
         estimatedCommission: brand.estimatedCommission || 0,
         referrals: brand.referrals || [],
         affiliatePageUrl: brand.affiliatePageUrl || '',
+        connections: {
+          bufferConnected:   !!brand.bufferConnected,
+          arcadsConnected:   !!brand.arcadsConnected,
+          storistaConnected: !!brand.storistaConnected,
+        },
       },
       tiktok: { connected: tiktokConnected, stats: tiktokStats, funnel: tiktokFunnel },
       tasks,
@@ -1459,6 +1464,11 @@ app.patch('/api/client/settings', requireClientSession, express.json(), async (r
       brand.creatorPage.incentives = compensation;
     }
     if (affiliatePageUrl !== undefined) brand.affiliatePageUrl = affiliatePageUrl || '';
+    // Integration keys — store them, never return them in plain text
+    if (req.body.bufferToken)     { brand.bufferToken     = req.body.bufferToken;     brand.bufferConnected = true; }
+    if (req.body.arcadsClientId)  { brand.arcadsClientId  = req.body.arcadsClientId; }
+    if (req.body.arcadsApiKey)    { brand.arcadsApiKey     = req.body.arcadsApiKey;    brand.arcadsConnected = true; }
+    if (req.body.storistaApiKey)  { brand.storistaApiKey  = req.body.storistaApiKey;  brand.storistaConnected = true; }
     brands.clients[idx] = brand;
     saveBrands(brands);
     res.json({ ok: true });
@@ -1571,7 +1581,9 @@ app.post('/client/admin', express.json(), async (req, res) => {
 // GET /api/client/buffer/channels
 app.get('/api/client/buffer/channels', requireClientSession, async (req, res) => {
   try {
-    const token = process.env.BUFFER_ACCESS_TOKEN;
+    const brands = loadBrands();
+    const brand = brands.clients.find(b => b.id === req.session.clientBrandId);
+    const token = brand?.bufferToken || process.env.BUFFER_ACCESS_TOKEN;
     const orgId = process.env.BUFFER_ORG_ID || '69d6ddee1fcceb5bb1faa168';
     const query = `query { organization(id:"${orgId}") { channels { id name service serviceId avatarUrl } } }`;
     const { data } = await axios.post('https://api.buffer.com/graphql',
@@ -1587,7 +1599,9 @@ app.post('/api/client/buffer/post-to-channels', requireClientSession, express.js
   try {
     const { channelIds = [], text, mediaUrl, scheduledAt } = req.body || {};
     if (!channelIds.length) return res.status(400).json({ error: 'No channels selected' });
-    const token = process.env.BUFFER_ACCESS_TOKEN;
+    const brands = loadBrands();
+    const brand = brands.clients.find(b => b.id === req.session.clientBrandId);
+    const token = brand?.bufferToken || process.env.BUFFER_ACCESS_TOKEN;
     const results = [];
     for (const channelId of channelIds) {
       const mode = scheduledAt ? 'customScheduled' : 'shareNow';
@@ -1608,8 +1622,10 @@ app.post('/api/client/buffer/post-to-channels', requireClientSession, express.js
 // GET /api/client/arcads/stats
 app.get('/api/client/arcads/stats', requireClientSession, async (req, res) => {
   try {
-    const appKey = process.env.ARCADS_APP_KEY || process.env.ARCADS_CLIENT_ID;
-    const appSecret = process.env.ARCADS_API_KEY;
+    const brands = loadBrands();
+    const brand = brands.clients.find(b => b.id === req.session.clientBrandId);
+    const appKey    = brand?.arcadsClientId  || process.env.ARCADS_APP_KEY || process.env.ARCADS_CLIENT_ID;
+    const appSecret = brand?.arcadsApiKey    || process.env.ARCADS_API_KEY;
     const auth = 'Basic ' + Buffer.from(`${appKey}:${appSecret}`).toString('base64');
     const base = 'https://external-api.arcads.ai';
     const folderId = process.env.ARCADS_FOLDER_ID || 'cb163f1f-6863-47a2-b984-2f5d384fff1a';
@@ -1632,8 +1648,10 @@ app.get('/api/client/arcads/stats', requireClientSession, async (req, res) => {
 // GET /api/client/arcads/actors
 app.get('/api/client/arcads/actors', requireClientSession, async (req, res) => {
   try {
-    const appKey = process.env.ARCADS_APP_KEY || process.env.ARCADS_CLIENT_ID;
-    const appSecret = process.env.ARCADS_API_KEY;
+    const brands = loadBrands();
+    const brand = brands.clients.find(b => b.id === req.session.clientBrandId);
+    const appKey    = brand?.arcadsClientId  || process.env.ARCADS_APP_KEY || process.env.ARCADS_CLIENT_ID;
+    const appSecret = brand?.arcadsApiKey    || process.env.ARCADS_API_KEY;
     const auth = 'Basic ' + Buffer.from(`${appKey}:${appSecret}`).toString('base64');
     const productId = process.env.ARCADS_PRODUCT_ID || '3cd32041-cc56-4588-b179-cbb55c7dd263';
     const { data } = await axios.get(`https://external-api.arcads.ai/api/v1/situations`, {
@@ -1649,8 +1667,10 @@ app.post('/api/client/arcads/scripts', requireClientSession, express.json(), asy
   try {
     const { name, text, situationIds = [], actorCount = 3 } = req.body || {};
     if (!name || !text) return res.status(400).json({ error: 'name and text required' });
-    const appKey = process.env.ARCADS_APP_KEY || process.env.ARCADS_CLIENT_ID;
-    const appSecret = process.env.ARCADS_API_KEY;
+    const brands = loadBrands();
+    const brand = brands.clients.find(b => b.id === req.session.clientBrandId);
+    const appKey    = brand?.arcadsClientId  || process.env.ARCADS_APP_KEY || process.env.ARCADS_CLIENT_ID;
+    const appSecret = brand?.arcadsApiKey    || process.env.ARCADS_API_KEY;
     const auth = 'Basic ' + Buffer.from(`${appKey}:${appSecret}`).toString('base64');
     const base = 'https://external-api.arcads.ai';
     const productId = process.env.ARCADS_PRODUCT_ID || '3cd32041-cc56-4588-b179-cbb55c7dd263';
@@ -1807,6 +1827,32 @@ app.get('/api/tiktokshop/callback', async (req, res) => {
     console.error('[tiktokshop] callback error:', e.message);
     res.status(500).json({ error: e.response?.data || e.message });
   }
+});
+
+// GET /api/client/storista/accounts
+app.get('/api/client/storista/accounts', requireClientSession, async (req, res) => {
+  try {
+    const brands = loadBrands();
+    const brand = brands.clients.find(b => b.id === req.session.clientBrandId);
+    const apiKey = brand?.storistaApiKey || process.env.STORISTA_API_KEY;
+    if (!apiKey) return res.json({ ok: true, accounts: [] });
+    const { data } = await axios.get('https://api-v2.storista.io/v1/tiktok/accounts',
+      { headers: { Authorization: `Bearer ${apiKey}` } });
+    res.json({ ok: true, accounts: data?.accounts || data || [] });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/client/storista/products/:account
+app.get('/api/client/storista/products/:account', requireClientSession, async (req, res) => {
+  try {
+    const brands = loadBrands();
+    const brand = brands.clients.find(b => b.id === req.session.clientBrandId);
+    const apiKey = brand?.storistaApiKey || process.env.STORISTA_API_KEY;
+    if (!apiKey) return res.json({ ok: true, products: [] });
+    const { data } = await axios.get(`https://api-v2.storista.io/v1/tiktok/${req.params.account}/products`,
+      { headers: { Authorization: `Bearer ${apiKey}` } });
+    res.json({ ok: true, products: data?.products || data || [] });
+  } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
 app.use(requireAuth); // all other routes require auth in production

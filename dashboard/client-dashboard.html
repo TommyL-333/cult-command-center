@@ -245,6 +245,21 @@
     .conn-badge.disconnected { background: rgba(255,204,0,0.1); color: #ffcc00; border: 1px solid rgba(255,204,0,0.2); }
     .conn-badge-note { font-size: 0.72rem; color: var(--muted); margin-top: 4px; }
 
+    /* Connections */
+    .conn-grid { display:grid; grid-template-columns: repeat(3,1fr); gap:14px; }
+    @media(max-width:768px){ .conn-grid { grid-template-columns:1fr; } }
+    .conn-card { background:var(--bg); border:1px solid var(--border); border-radius:10px; padding:16px; }
+    .conn-card.connected { border-color:rgba(0,210,122,0.3); }
+    .conn-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+    .conn-name { font-size:0.9rem; font-weight:700; color:var(--text); }
+    .conn-desc { font-size:0.78rem; color:var(--muted); margin-bottom:12px; line-height:1.5; }
+    .conn-fields { display:flex; flex-direction:column; }
+    .conn-input { background:var(--card); border:1px solid var(--border); border-radius:7px; color:var(--text); font-size:0.83rem; padding:8px 11px; outline:none; transition:border-color 0.15s; width:100%; }
+    .conn-input:focus { border-color:var(--teal); }
+    .conn-save-btn { background:var(--teal); color:var(--bg); font-size:0.8rem; font-weight:700; border:none; border-radius:7px; padding:8px 16px; cursor:pointer; margin-top:8px; align-self:flex-start; transition:opacity 0.15s; }
+    .conn-save-btn:hover { opacity:0.85; }
+    .conn-status-msg { font-size:0.75rem; margin-top:6px; min-height:16px; }
+
     /* Stepper */
     .step-bar { display: flex; align-items: center; margin-bottom: 28px; gap: 0; }
     .step { display: flex; flex-direction: column; align-items: center; gap: 5px; flex: 1; position: relative; }
@@ -491,6 +506,59 @@
 <div id="tab-content-studio" style="display:none">
   <div style="max-width:1120px;margin:0 auto;padding:36px 24px 60px;">
 
+    <!-- Connections -->
+    <div class="cs-section">
+      <div class="cs-card">
+        <div class="cs-card-title">🔌 Connections</div>
+        <p style="font-size:0.82rem;color:var(--muted);margin-bottom:20px;line-height:1.6">Connect your tools to enable content production and publishing directly from this portal.</p>
+
+        <div class="conn-grid">
+          <!-- Buffer -->
+          <div class="conn-card" id="connBuffer">
+            <div class="conn-header">
+              <div class="conn-name">Buffer</div>
+              <span class="conn-badge" id="connBadgeBuffer">● Not connected</span>
+            </div>
+            <div class="conn-desc">Schedule and publish videos to TikTok, Instagram, YouTube and more.</div>
+            <div class="conn-fields" id="connFieldsBuffer">
+              <input class="conn-input" type="password" id="connInputBuffer" placeholder="Paste your Buffer access token">
+              <button class="conn-save-btn" onclick="saveConnection('buffer')">Save</button>
+            </div>
+            <div class="conn-status-msg" id="connMsgBuffer"></div>
+          </div>
+
+          <!-- Arcads -->
+          <div class="conn-card" id="connArcads">
+            <div class="conn-header">
+              <div class="conn-name">Arcads</div>
+              <span class="conn-badge" id="connBadgeArcads">● Not connected</span>
+            </div>
+            <div class="conn-desc">Generate AI actor videos for your TikTok ad campaigns.</div>
+            <div class="conn-fields" id="connFieldsArcads">
+              <input class="conn-input" type="text" id="connInputArcadsClientId" placeholder="Client ID">
+              <input class="conn-input" type="password" id="connInputArcadsApiKey" placeholder="API Key" style="margin-top:8px">
+              <button class="conn-save-btn" onclick="saveConnection('arcads')" style="margin-top:8px">Save</button>
+            </div>
+            <div class="conn-status-msg" id="connMsgArcads"></div>
+          </div>
+
+          <!-- Storista -->
+          <div class="conn-card" id="connStorista">
+            <div class="conn-header">
+              <div class="conn-name">Storista</div>
+              <span class="conn-badge" id="connBadgeStorista">● Not connected</span>
+            </div>
+            <div class="conn-desc">Post videos directly to TikTok Shop and tag your products for shoppable content.</div>
+            <div class="conn-fields" id="connFieldsStorista">
+              <input class="conn-input" type="password" id="connInputStorista" placeholder="Paste your Storista API key">
+              <button class="conn-save-btn" onclick="saveConnection('storista')">Save</button>
+            </div>
+            <div class="conn-status-msg" id="connMsgStorista"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Section A: Upload & Publish -->
     <div class="cs-section">
       <div class="cs-card">
@@ -683,12 +751,11 @@
     <!-- Section C: Storista -->
     <div class="cs-section">
       <div class="cs-card">
-        <div style="display:flex;align-items:center;gap:14px;margin-bottom:0;">
-          <div class="cs-card-title" style="margin-bottom:0;">🛍 Storista — Shop Stories</div>
-          <span class="storista-status disconnected" id="storistaStatus">● Disconnected</span>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
+          <div class="cs-card-title" style="margin-bottom:0;">🛍 Storista — TikTok Shop Video Publishing</div>
+          <span id="storistaConnBadge" class="conn-badge disconnected">● Not connected</span>
         </div>
-        <p class="storista-desc">Auto-generate TikTok shop story content from your product catalog.</p>
-        <button class="storista-connect-btn" onclick="connectStorista()">Connect Storista</button>
+        <p style="font-size:0.82rem;color:var(--muted);margin-bottom:0;line-height:1.6">Post videos directly to TikTok Shop and tag your products — turning content into shoppable moments. Connect Storista in the Connections panel above to get started.</p>
       </div>
     </div>
 
@@ -797,6 +864,9 @@
 
     // Tasks
     renderTasks(tasks);
+
+    // Connections
+    renderConnections(brand);
   }
 
   function renderReferrals(referrals) {
@@ -1496,8 +1566,90 @@
   }
 
   // ─── Storista ──────────────────────────────────────────────────────────────
-  function connectStorista() {
-    alert('Coming soon — contact your account manager to get Storista set up for your store.');
+  function renderConnections(brand) {
+    const conns = brand.connections || {};
+
+    // Buffer
+    const bufConn = !!conns.bufferConnected;
+    const $bb = document.getElementById('connBadgeBuffer');
+    if ($bb) {
+      $bb.textContent = bufConn ? '● Connected' : '● Not connected';
+      $bb.className = 'conn-badge ' + (bufConn ? 'connected' : 'disconnected');
+      document.getElementById('connBuffer').classList.toggle('connected', bufConn);
+      if (bufConn) document.getElementById('connFieldsBuffer').querySelector('input').placeholder = '••••••••  (saved)';
+    }
+
+    // Arcads
+    const arcConn = !!conns.arcadsConnected;
+    const $ab = document.getElementById('connBadgeArcads');
+    if ($ab) {
+      $ab.textContent = arcConn ? '● Connected' : '● Not connected';
+      $ab.className = 'conn-badge ' + (arcConn ? 'connected' : 'disconnected');
+      document.getElementById('connArcads').classList.toggle('connected', arcConn);
+      if (arcConn) {
+        document.getElementById('connInputArcadsClientId').placeholder = '••••••••  (saved)';
+        document.getElementById('connInputArcadsApiKey').placeholder = '••••••••  (saved)';
+      }
+    }
+
+    // Storista
+    const stConn = !!conns.storistaConnected;
+    const $sb = document.getElementById('connBadgeStorista');
+    if ($sb) {
+      $sb.textContent = stConn ? '● Connected' : '● Not connected';
+      $sb.className = 'conn-badge ' + (stConn ? 'connected' : 'disconnected');
+      document.getElementById('connStorista').classList.toggle('connected', stConn);
+      if (stConn) document.getElementById('connInputStorista').placeholder = '••••••••  (saved)';
+    }
+
+    // Storista section badge
+    const $stBadge = document.getElementById('storistaConnBadge');
+    if ($stBadge) {
+      $stBadge.textContent = stConn ? '● Connected' : '● Not connected';
+      $stBadge.className = 'conn-badge ' + (stConn ? 'connected' : 'disconnected');
+    }
+  }
+
+  async function saveConnection(service) {
+    const msgEl = document.getElementById('connMsg' + service.charAt(0).toUpperCase() + service.slice(1));
+    msgEl.style.color = 'var(--muted)'; msgEl.textContent = 'Saving…';
+
+    let payload = {};
+    if (service === 'buffer') {
+      const val = document.getElementById('connInputBuffer').value.trim();
+      if (!val) { msgEl.style.color='var(--red)'; msgEl.textContent='Token required'; return; }
+      payload.bufferToken = val;
+    } else if (service === 'arcads') {
+      const clientId = document.getElementById('connInputArcadsClientId').value.trim();
+      const apiKey   = document.getElementById('connInputArcadsApiKey').value.trim();
+      if (!clientId || !apiKey) { msgEl.style.color='var(--red)'; msgEl.textContent='Both fields required'; return; }
+      payload.arcadsClientId = clientId;
+      payload.arcadsApiKey = apiKey;
+    } else if (service === 'storista') {
+      const val = document.getElementById('connInputStorista').value.trim();
+      if (!val) { msgEl.style.color='var(--red)'; msgEl.textContent='API key required'; return; }
+      payload.storistaApiKey = val;
+    }
+
+    try {
+      const r = await fetch('/api/client/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await r.json();
+      if (r.ok && data.ok) {
+        msgEl.style.color = 'var(--green)'; msgEl.textContent = '✓ Connected!';
+        if (!window._data.brand.connections) window._data.brand.connections = {};
+        if (service === 'buffer')  window._data.brand.connections.bufferConnected  = true;
+        if (service === 'arcads')  window._data.brand.connections.arcadsConnected  = true;
+        if (service === 'storista') window._data.brand.connections.storistaConnected = true;
+        renderConnections(window._data.brand);
+        setTimeout(() => { msgEl.textContent = ''; }, 3000);
+      } else {
+        msgEl.style.color = 'var(--red)'; msgEl.textContent = data.error || 'Save failed';
+      }
+    } catch(e) { msgEl.style.color='var(--red)'; msgEl.textContent='Network error'; }
   }
 
   load();
