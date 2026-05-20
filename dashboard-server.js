@@ -1470,19 +1470,47 @@ app.get('/client/tiktok/auth', requireClientSession, (req, res) => {
   res.redirect(`/api/tiktokshop/auth?brandId=${encodeURIComponent(req.session.clientBrandId)}`);
 });
 
-// POST /client/setup-creds — ONE-TIME: set brand login email+password (token-gated, remove after use)
-app.post('/client/setup-creds', express.json(), async (req, res) => {
-  const { token, brandId, email, password } = req.body || {};
-  if (token !== 'cc-setup-2026') return res.status(403).json({ error: 'bad token' });
-  if (!brandId || !email || !password) return res.status(400).json({ error: 'missing fields' });
+// POST /client/admin — token-gated brand management (no CF auth needed; used by internal tooling)
+// Actions: create-brand, set-creds, update-brand, list-brands
+app.post('/client/admin', express.json(), async (req, res) => {
+  const { token, action, ...payload } = req.body || {};
+  if (token !== 'cc-admin-2026') return res.status(403).json({ error: 'bad token' });
   try {
     const brands = loadBrands();
-    const idx = brands.clients.findIndex(b => b.id === brandId);
-    if (idx === -1) return res.status(404).json({ error: 'brand not found' });
-    brands.clients[idx].loginEmail   = email;
-    brands.clients[idx].passwordHash = bcrypt.hashSync(password, 12);
-    saveBrands(brands);
-    res.json({ ok: true, email });
+    if (action === 'list-brands') {
+      return res.json({ ok: true, brands: brands.clients.map(b => ({ id: b.id, name: b.name, loginEmail: b.loginEmail })) });
+    }
+    if (action === 'create-brand') {
+      const { name, loginEmail, password, ...rest } = payload;
+      if (!name) return res.status(400).json({ error: 'name required' });
+      const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+      const brand = { id, createdAt: new Date().toISOString(), name, ...rest };
+      if (loginEmail) brand.loginEmail = loginEmail.toLowerCase().trim();
+      if (password)   brand.passwordHash = bcrypt.hashSync(password, 12);
+      brands.clients.push(brand);
+      saveBrands(brands);
+      return res.json({ ok: true, brand: { id, name: brand.name, loginEmail: brand.loginEmail } });
+    }
+    if (action === 'set-creds') {
+      const { brandId, email, password } = payload;
+      if (!brandId) return res.status(400).json({ error: 'brandId required' });
+      const idx = brands.clients.findIndex(b => b.id === brandId);
+      if (idx === -1) return res.status(404).json({ error: 'brand not found' });
+      if (email)    brands.clients[idx].loginEmail   = email.toLowerCase().trim();
+      if (password) brands.clients[idx].passwordHash = bcrypt.hashSync(password, 12);
+      saveBrands(brands);
+      return res.json({ ok: true, id: brandId, loginEmail: brands.clients[idx].loginEmail });
+    }
+    if (action === 'update-brand') {
+      const { brandId, ...fields } = payload;
+      if (!brandId) return res.status(400).json({ error: 'brandId required' });
+      const idx = brands.clients.findIndex(b => b.id === brandId);
+      if (idx === -1) return res.status(404).json({ error: 'brand not found' });
+      Object.assign(brands.clients[idx], fields);
+      saveBrands(brands);
+      return res.json({ ok: true, brand: brands.clients[idx] });
+    }
+    res.status(400).json({ error: `unknown action: ${action}` });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
