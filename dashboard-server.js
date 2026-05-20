@@ -1217,6 +1217,10 @@ app.get('/client', (req, res) => {
   if (req.session?.clientBrandId) return res.redirect('/client/dashboard');
   res.sendFile(path.join(__dirname, 'dashboard', 'client-login.html'));
 });
+app.get('/client/login', (req, res) => {
+  if (req.session?.clientBrandId) return res.redirect('/client/dashboard');
+  res.sendFile(path.join(__dirname, 'dashboard', 'client-login.html'));
+});
 
 // GET /client/dashboard — session-gated dashboard
 app.get('/client/dashboard', requireClientSession, (req, res) => {
