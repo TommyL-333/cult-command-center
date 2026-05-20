@@ -179,6 +179,22 @@ textarea{resize:vertical;min-height:80px}
         <input type="email" id="email" placeholder="jane@brand.com">
       </div>
     </div>
+    <div class="row">
+      <div class="field">
+        <label>TikTok Handle</label>
+        <div style="position:relative">
+          <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none">@</span>
+          <input type="text" id="tiktokHandle" placeholder="yourbrand" style="padding-left:24px">
+        </div>
+      </div>
+      <div class="field">
+        <label>TikTok Shop Handle</label>
+        <div style="position:relative">
+          <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none">@</span>
+          <input type="text" id="tiktokShopHandle" placeholder="yourbrandshop" style="padding-left:24px">
+        </div>
+      </div>
+    </div>
     <div class="row full">
       <div class="field">
         <label>Brand Mission &amp; Story</label>
@@ -594,6 +610,8 @@ function buildReview() {
       <div class="review-title">Brand</div>
       <div class="review-grid">
         <div class="rv"><div class="rv-label">Brand Name</div><div class="rv-val">${esc(v('brandName'))}</div></div>
+        ${v('tiktokHandle')?`<div class="rv"><div class="rv-label">TikTok</div><div class="rv-val">@${esc(v('tiktokHandle'))}</div></div>`:''}
+        ${v('tiktokShopHandle')?`<div class="rv"><div class="rv-label">TikTok Shop</div><div class="rv-val">@${esc(v('tiktokShopHandle'))}</div></div>`:''}
         <div class="rv"><div class="rv-label">Contact</div><div class="rv-val">${esc(v('firstName'))} ${esc(v('lastName'))}</div></div>
         <div class="rv"><div class="rv-label">Email</div><div class="rv-val">${esc(v('email'))}</div></div>
         <div class="rv"><div class="rv-label">Phone</div><div class="rv-val">${esc(v('phone'))}</div></div>
@@ -654,6 +672,7 @@ async function submitForm() {
   const payload = {
     brandName: v('brandName'), firstName: v('firstName'), lastName: v('lastName'),
     phone: v('phone'), email: v('email'), website: v('website'),
+    tiktokHandle: v('tiktokHandle'), tiktokShopHandle: v('tiktokShopHandle'),
     brandMission: v('brandMission'),
     tiktokShop: F.tiktokShop, shopifyIntegrated: F.shopifyIntegrated,
     tiktokAccountManager: F.tiktokAccountManager, reviewsImported: F.reviewsImported,
