@@ -1388,6 +1388,22 @@ app.get('/client/tiktok/auth', requireClientSession, (req, res) => {
   res.redirect(`/api/tiktokshop/auth?brandId=${encodeURIComponent(req.session.clientBrandId)}`);
 });
 
+// POST /client/setup-creds — ONE-TIME: set brand login email+password (token-gated, remove after use)
+app.post('/client/setup-creds', express.json(), async (req, res) => {
+  const { token, brandId, email, password } = req.body || {};
+  if (token !== 'cc-setup-2026') return res.status(403).json({ error: 'bad token' });
+  if (!brandId || !email || !password) return res.status(400).json({ error: 'missing fields' });
+  try {
+    const brands = loadBrands();
+    const idx = brands.clients.findIndex(b => b.id === brandId);
+    if (idx === -1) return res.status(404).json({ error: 'brand not found' });
+    brands.clients[idx].loginEmail   = email;
+    brands.clients[idx].passwordHash = bcrypt.hashSync(password, 12);
+    saveBrands(brands);
+    res.json({ ok: true, email });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 app.use(requireAuth); // all other routes require auth in production
 
 // POST /api/client/admin/set-password — CF Access protected; sets/resets a client's login password
