@@ -5823,20 +5823,22 @@ async function refreshShopToken() {
   if (!shopTok.refresh_token) return false;
 
   try {
-    const { data } = await axios.post(`${TTS_BASE}/api/token/refresh`, null, {
-      params: {
-        app_key:       process.env.TIKTOK_SHOP_APP_KEY,
-        app_secret:    process.env.TIKTOK_SHOP_APP_SECRET,
+    const { data } = await axios.post(
+      'https://open.tiktokapis.com/v2/oauth/token/',
+      new URLSearchParams({
+        client_key:    process.env.TIKTOK_SHOP_APP_KEY,
+        client_secret: process.env.TIKTOK_SHOP_APP_SECRET,
         refresh_token: shopTok.refresh_token,
         grant_type:    'refresh_token',
-      },
-    });
-    if (data?.data?.access_token) {
+      }).toString(),
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+    );
+    if (data?.access_token) {
       tokens.shop = {
         ...shopTok,
-        access_token:  data.data.access_token,
-        refresh_token: data.data.refresh_token || shopTok.refresh_token,
-        expires_at:    Date.now() + (data.data.access_token_expire_in || 86400) * 1000,
+        access_token:  data.access_token,
+        refresh_token: data.refresh_token || shopTok.refresh_token,
+        expires_at:    Date.now() + (data.expires_in || 86400) * 1000,
       };
       saveTikTokTokens(tokens);
       return true;
@@ -5870,20 +5872,22 @@ async function refreshBrandShopToken(brand, brands, brandIdx) {
   const t = brand.tiktokShopToken;
   if (!t?.refresh_token) return false;
   try {
-    const { data } = await axios.post(`${TTS_BASE}/api/token/refresh`, null, {
-      params: {
-        app_key:       process.env.TIKTOK_SHOP_APP_KEY,
-        app_secret:    process.env.TIKTOK_SHOP_APP_SECRET,
+    const { data } = await axios.post(
+      'https://open.tiktokapis.com/v2/oauth/token/',
+      new URLSearchParams({
+        client_key:    process.env.TIKTOK_SHOP_APP_KEY,
+        client_secret: process.env.TIKTOK_SHOP_APP_SECRET,
         refresh_token: t.refresh_token,
         grant_type:    'refresh_token',
-      },
-    });
-    if (data?.data?.access_token) {
+      }).toString(),
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+    );
+    if (data?.access_token) {
       brand.tiktokShopToken = {
         ...t,
-        access_token:  data.data.access_token,
-        refresh_token: data.data.refresh_token || t.refresh_token,
-        expires_at:    Date.now() + (data.data.access_token_expire_in || 86400) * 1000,
+        access_token:  data.access_token,
+        refresh_token: data.refresh_token || t.refresh_token,
+        expires_at:    Date.now() + (data.expires_in || 86400) * 1000,
       };
       brands.clients[brandIdx] = brand;
       saveBrands(brands);
@@ -5989,30 +5993,30 @@ app.get('/api/tiktokshop/callback', async (req, res) => {
   console.log('[tiktokshop/callback] auth_code:', authCode?.slice(0,20), '| app_key set:', !!appKey, '| app_secret set:', !!appSecret);
 
   try {
-    // Build signed token exchange request (newer TikTok Shop API requires signature)
-    const tokenParams = {
-      app_key:    appKey,
-      app_secret: appSecret,
-      auth_code:  authCode,
-      grant_type: 'authorized_code',
-      timestamp:  Math.floor(Date.now() / 1000),
-    };
-    const tokenPath = '/api/token/getbycode';
-    tokenParams.sign = signTTShop(tokenPath, tokenParams, '');
+    // TikTok Shop v2 token exchange (migrated from getbycode endpoint)
+    const redirectUri = process.env.TIKTOK_SHOP_REDIRECT_URI || 'https://manifest.cultcontent.cc/api/tiktokshop/callback';
+    const { data } = await axios.post(
+      'https://open.tiktokapis.com/v2/oauth/token/',
+      new URLSearchParams({
+        client_key:    appKey,
+        client_secret: appSecret,
+        code:          authCode,
+        grant_type:    'authorization_code',
+        redirect_uri:  redirectUri,
+      }).toString(),
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+    );
+    console.log('[tiktokshop/callback] token response:', JSON.stringify(data)?.slice(0, 200));
 
-    console.log('[tiktokshop/callback] calling token exchange, sign:', tokenParams.sign?.slice(0,16));
-    const { data } = await axios.post(`${TTS_BASE}${tokenPath}`, null, { params: tokenParams });
-    console.log('[tiktokshop/callback] token response code:', data?.code, '| has token:', !!data?.data?.access_token);
-
-    if (!data?.data?.access_token) {
+    if (!data?.access_token) {
       return res.status(500).json({ error: 'Token exchange failed', raw: data });
     }
 
     const tokenData = {
-      access_token:  data.data.access_token,
-      refresh_token: data.data.refresh_token,
-      expires_at:    Date.now() + (data.data.access_token_expire_in || 86400) * 1000,
-      open_id:       data.data.open_id,
+      access_token:  data.access_token,
+      refresh_token: data.refresh_token,
+      expires_at:    Date.now() + (data.expires_in || 86400) * 1000,
+      open_id:       data.open_id,
     };
 
     // Fetch shop cipher using the new token directly
