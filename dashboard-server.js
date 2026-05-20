@@ -1503,7 +1503,16 @@ app.post('/api/client/error', requireClientSession, express.json(), async (req, 
 
 // GET /client/tiktok/auth — client portal: initiate TikTok Shop OAuth for the logged-in brand
 app.get('/client/tiktok/auth', requireClientSession, (req, res) => {
-  res.redirect(`/api/tiktokshop/auth?brandId=${encodeURIComponent(req.session.clientBrandId)}`);
+  // Build TikTok Shop OAuth URL directly — avoids routing through CF-protected /api/tiktokshop/auth
+  const appKey     = process.env.TIKTOK_SHOP_APP_KEY;
+  const redirectUri = process.env.TIKTOK_SHOP_REDIRECT_URI || 'https://portal.cultcontent.cc/api/tiktokshop/callback';
+  if (!appKey) return res.status(500).send('TikTok Shop not configured');
+  const state = Buffer.from(JSON.stringify({ brandId: req.session.clientBrandId })).toString('base64');
+  const authUrl = `https://auth.tiktok-shops.com/oauth/authorize?` +
+    `app_key=${encodeURIComponent(appKey)}` +
+    `&redirect_uri=${encodeURIComponent(redirectUri)}` +
+    `&state=${encodeURIComponent(state)}`;
+  res.redirect(authUrl);
 });
 
 // POST /client/admin — token-gated brand management (no CF auth needed; used by internal tooling)
@@ -1648,6 +1657,78 @@ app.post('/api/client/arcads/scripts', requireClientSession, express.json(), asy
     await axios.post(`${base}/api/v1/scripts/${scriptId}/generate`, {}, { headers: { Authorization: auth } });
     res.json({ ok: true, scriptId });
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/tiktokshop/callback — registered BEFORE requireAuth so portal.cultcontent.cc clients
+// can complete TikTok Shop OAuth without a CF Access session.
+app.get('/api/tiktokshop/callback', async (req, res) => {
+  const { code, auth_code, state } = req.query;
+  const authCode = code || auth_code;
+  if (!authCode) return res.status(400).send('Missing auth_code');
+
+  let brandId = null;
+  if (state) {
+    try { brandId = JSON.parse(Buffer.from(state, 'base64').toString()).brandId; } catch (_) {}
+  }
+
+  const appKey    = process.env.TIKTOK_SHOP_APP_KEY;
+  const appSecret = process.env.TIKTOK_SHOP_APP_SECRET;
+  try {
+    const { data } = await axios.get('https://auth.tiktok-shops.com/api/v2/token/get', {
+      params: { app_key: appKey, app_secret: appSecret, auth_code: authCode, grant_type: 'authorized_code' },
+    });
+    if (data?.code !== 0 || !data?.data?.access_token) {
+      return res.status(500).json({ error: 'Token exchange failed', raw: data });
+    }
+    const tokenData = {
+      access_token:  data.data.access_token,
+      refresh_token: data.data.refresh_token,
+      expires_at:    Date.now() + (data.data.access_token_expire_in || 86400) * 1000,
+      open_id:       data.data.open_id,
+    };
+    // Fetch shop info
+    let shopName = 'Unknown';
+    try {
+      const allParams = { app_key: appKey, timestamp: Math.floor(Date.now() / 1000) };
+      allParams.sign = signTTShop('/authorization/202309/shops', allParams, '');
+      const shopRes = await axios.get(`${TTS_BASE}/authorization/202309/shops`, {
+        params: allParams,
+        headers: { 'content-type': 'application/json', 'x-tts-access-token': tokenData.access_token },
+      });
+      const shop = shopRes.data?.data?.shops?.[0];
+      if (shop) {
+        tokenData.shop_cipher = shop.cipher;
+        tokenData.shop_id     = shop.id;
+        tokenData.shop_name   = shop.name;
+        tokenData.shop_region = shop.region;
+        shopName = shop.name;
+      }
+    } catch (e) { console.warn('[tiktokshop] shop cipher fetch failed:', e.message); }
+
+    if (brandId) {
+      const brands = loadBrands();
+      const bi = brands.clients.findIndex(b => b.id === brandId);
+      if (bi !== -1) { brands.clients[bi].tiktokShopToken = tokenData; saveBrands(brands); }
+      return res.send(`
+        <html><body style="font-family:sans-serif;padding:40px;background:#12101a;color:#e2e8f0">
+          <h2 style="color:#00f2ea">✅ TikTok Shop connected!</h2>
+          <p>Shop: <strong>${shopName}</strong></p>
+          <p>Stats will now appear in your brand dashboard.</p>
+          <p><a href="/client/dashboard" style="color:#00f2ea">← Back to your dashboard</a></p>
+          <script>setTimeout(() => window.location.href = '/client/dashboard', 2000);</script>
+        </body></html>`);
+    }
+    // Fallback: save to global tokens
+    const tokens = loadTikTokTokens();
+    tokens.shop = tokenData;
+    saveTikTokTokens(tokens);
+    res.send(`<html><body style="font-family:sans-serif;padding:40px;background:#111;color:#eee">
+      <h2>✅ TikTok Shop connected!</h2><p>Shop: <strong>${shopName}</strong></p>
+      <p><a href="/" style="color:#00f2ea">← Back to dashboard</a></p></body></html>`);
+  } catch (e) {
+    console.error('[tiktokshop] callback error:', e.message);
+    res.status(500).json({ error: e.response?.data || e.message });
+  }
 });
 
 app.use(requireAuth); // all other routes require auth in production
