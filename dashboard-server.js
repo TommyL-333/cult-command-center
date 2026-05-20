@@ -1227,15 +1227,39 @@ app.get('/client/dashboard', requireClientSession, (req, res) => {
 app.post('/client/login', clientLoginLimiter, express.json(), async (req, res) => {
   try {
     const { email, password } = req.body || {};
-    if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+    if (!email) return res.status(400).json({ error: 'Email required' });
     const brands = loadBrands();
     const brand = (brands.clients || []).find(
       b => b.loginEmail && b.loginEmail.toLowerCase() === email.toLowerCase().trim()
     );
-    if (!brand || !brand.passwordHash) return res.status(401).json({ error: 'Invalid credentials' });
+    if (!brand) return res.status(401).json({ error: 'No account found for that email.' });
+    // No password yet — prompt client to create one
+    if (!brand.passwordHash) return res.json({ ok: false, needsSetup: true });
+    if (!password) return res.status(400).json({ error: 'Password required' });
     const ok = await bcrypt.compare(password, brand.passwordHash);
-    if (!ok) return res.status(401).json({ error: 'Invalid credentials' });
+    if (!ok) return res.status(401).json({ error: 'Incorrect password.' });
     req.session.clientBrandId = brand.id;
+    res.json({ ok: true });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /client/set-password — first-time password setup (no existing password on account)
+app.post('/client/set-password', clientLoginLimiter, express.json(), async (req, res) => {
+  try {
+    const { email, password } = req.body || {};
+    if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+    if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' });
+    const brands = loadBrands();
+    const idx = (brands.clients || []).findIndex(
+      b => b.loginEmail && b.loginEmail.toLowerCase() === email.toLowerCase().trim()
+    );
+    if (idx === -1) return res.status(401).json({ error: 'No account found for that email.' });
+    if (brands.clients[idx].passwordHash) return res.status(400).json({ error: 'Password already set. Use your existing password to log in.' });
+    brands.clients[idx].passwordHash = await bcrypt.hash(password, 12);
+    saveBrands(brands);
+    req.session.clientBrandId = brands.clients[idx].id;
     res.json({ ok: true });
   } catch (e) {
     res.status(500).json({ error: e.message });
