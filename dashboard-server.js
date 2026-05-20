@@ -1168,6 +1168,21 @@ app.post('/api/upload/chunk', (req, res) => {
 });
 
 // ─── Client Portal ────────────────────────────────────────────────────────────
+// ── Client portal bug reporter ────────────────────────────────────────────────
+async function sendClientBugReport({ brandName, brandId, route, error, type = 'server', extra = '' }) {
+  try {
+    const emoji = type === 'client' ? '🖥️' : '🔴';
+    const text = `${emoji} *Client Portal Error* — ${brandName || brandId || 'Unknown Brand'}\n` +
+      `Route: \`${route || 'unknown'}\`\n` +
+      `Error: ${String(error).slice(0, 300)}` +
+      (extra ? `\n${extra}` : '');
+    await axios.post(`${CFG.railwayUrl}/command`,
+      { text, context: 'Client Portal Bug', source: 'Client Portal' },
+      { timeout: 5000 }
+    );
+  } catch (_) {}
+}
+
 // Session-gated routes registered BEFORE CF Access requireAuth.
 // Clients are brands in brands.json with loginEmail + passwordHash set.
 
@@ -1380,7 +1395,12 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
       tiktok: { connected: tiktokConnected, stats: tiktokStats, funnel: tiktokFunnel },
       tasks,
     });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    const brands = loadBrands();
+    const brand = (brands.clients || []).find(b => b.id === req.session?.clientBrandId);
+    sendClientBugReport({ brandName: brand?.name, brandId: req.session?.clientBrandId, route: 'GET /api/client/me', error: e.message });
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // PATCH /api/client/settings — update sample budget + full compensation config
@@ -1399,7 +1419,10 @@ app.patch('/api/client/settings', requireClientSession, express.json(), async (r
     brands.clients[idx] = brand;
     saveBrands(brands);
     res.json({ ok: true });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    sendClientBugReport({ brandId: req.session?.clientBrandId, route: 'PATCH /api/client/settings', error: e.message });
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // POST /api/client/referrals — log a brand the client referred
@@ -1419,7 +1442,27 @@ app.post('/api/client/referrals', requireClientSession, express.json(), (req, re
     brands.clients[idx].referrals.push(referral);
     saveBrands(brands);
     res.json({ ok: true, referral });
-  } catch (e) { res.status(500).json({ error: e.message }); }
+  } catch (e) {
+    sendClientBugReport({ brandId: req.session?.clientBrandId, route: 'POST /api/client/referrals', error: e.message });
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/client/error — client-side error beacon
+app.post('/api/client/error', requireClientSession, express.json(), async (req, res) => {
+  const { message, stack, url, line } = req.body || {};
+  if (!message) return res.json({ ok: true });
+  const brands = loadBrands();
+  const brand = (brands.clients || []).find(b => b.id === req.session.clientBrandId);
+  sendClientBugReport({
+    brandName: brand?.name,
+    brandId: req.session.clientBrandId,
+    route: url || 'client JS',
+    error: message,
+    type: 'client',
+    extra: stack ? `Stack: \`${String(stack).slice(0, 200)}\`` : (line ? `Line: ${line}` : ''),
+  });
+  res.json({ ok: true });
 });
 
 // GET /client/tiktok/auth — client portal: initiate TikTok Shop OAuth for the logged-in brand

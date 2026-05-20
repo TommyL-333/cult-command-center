@@ -312,6 +312,18 @@
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
+  function reportError(message, source, lineno, colno, error) {
+    try {
+      fetch('/api/client/error', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: String(message), stack: error?.stack, url: source, line: lineno }),
+      }).catch(() => {});
+    } catch (_) {}
+  }
+  window.onerror = (msg, src, line, col, err) => { reportError(msg, src, line, col, err); return false; };
+  window.addEventListener('unhandledrejection', e => reportError(e.reason?.message || String(e.reason), 'unhandledrejection'));
+
   async function load() {
     const r = await fetch('/api/client/me');
     if (r.status === 401) { window.location.href = '/client'; return; }
