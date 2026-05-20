@@ -441,6 +441,23 @@ app.post('/api/creator-pages/submit', express.json(), async (req, res) => {
       await ghl.post(`/contacts/${contactId}/notes`, { body: noteLines.join('\n'), userId: '' }).catch(() => {});
     }
     console.log(`[creator-pages] Submission for ${brand.name}: ${email} (${tiktokHandle||'no handle'})`);
+
+    // Send Lark notification (fire-and-forget — don't block the response)
+    const larkText = [
+      `🎯 *New Creator Application — ${brand.name}*`,
+      `👤 ${firstName}${lastName ? ' ' + lastName : ''} | ${email}${phone ? ' | ' + phone : ''}`,
+      tiktokHandle ? `📱 TikTok: @${tiktokHandle.replace(/^@/,'')}` : null,
+      followerRange ? `👥 Followers: ${followerRange}` : null,
+      gmv           ? `💰 Monthly GMV: ${gmv}` : null,
+      niche         ? `🎨 Niche: ${niche}` : null,
+      message       ? `💬 Message: ${message}` : null,
+      contactId     ? `\n🔗 GHL: https://app.gohighlevel.com/contacts/${contactId}` : null,
+    ].filter(Boolean).join('\n');
+    axios.post(`${CFG.railwayUrl}/command`,
+      { text: larkText, context: 'Creator Application', source: 'Creator Landing Page' },
+      { timeout: 10000 }
+    ).catch(e => console.error('[creator-pages] Lark notify error:', e.message));
+
     res.json({ ok: true, contactId });
   } catch(e) {
     console.error('[creator-pages/submit]', e.response?.data || e.message);
