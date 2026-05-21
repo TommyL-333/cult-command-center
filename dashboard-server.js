@@ -33,7 +33,9 @@ if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 // Public-facing Railway URL — returned in upload responses so Buffer (and browsers) can fetch files
 // without hitting Cloudflare's 100 MB limit.  Override via PUBLIC_BASE_URL env var.
-const PUBLIC_BASE_URL = (process.env.PUBLIC_BASE_URL || process.env.DASHBOARD_URL || 'https://cult-command-center-production.up.railway.app').replace(/\/$/, '');
+const PUBLIC_BASE_URL   = (process.env.PUBLIC_BASE_URL || process.env.DASHBOARD_URL || 'https://cult-command-center-production.up.railway.app').replace(/\/$/, '');
+// Creator-facing pages live on portal.cultcontent.cc (publicly accessible, no CF Access)
+const CREATOR_BASE_URL  = (process.env.CREATOR_BASE_URL || 'https://portal.cultcontent.cc').replace(/\/$/, '');
 
 const app = express();
 
@@ -7937,7 +7939,7 @@ async function runOnboardingPipeline(formData) {
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
     };
     saveBrands(brandsData);
-    creatorPage = { slug, publicUrl: `${PUBLIC_BASE_URL}/creators/${slug}`, active: true };
+    creatorPage = { slug, publicUrl: `${CREATOR_BASE_URL}/creators/${slug}`, active: true };
     console.log(`[onboard] Creator page live: ${creatorPage.publicUrl}`);
   } catch(e) { console.error('[onboard] creator page error:', e.message); }
 
@@ -8557,7 +8559,7 @@ app.get('/api/creator-pages', requireAuth, (req, res) => {
     id:        b.id,
     name:      b.name,
     creatorPage: b.creatorPage || null,
-    publicUrl: b.creatorPage?.slug ? `${baseUrl}/creators/${b.creatorPage.slug}` : null,
+    publicUrl: b.creatorPage?.slug ? `${CREATOR_BASE_URL}/creators/${b.creatorPage.slug}` : null,
   }));
   res.json({ ok: true, pages, baseUrl });
 });
@@ -8585,7 +8587,7 @@ app.post('/api/creator-pages/:brandId/setup', requireAuth, (req, res) => {
   };
 
   saveBrands(data);
-  const publicUrl = `${PUBLIC_BASE_URL}/creators/${slug}`;
+  const publicUrl = `${CREATOR_BASE_URL}/creators/${slug}`;
   console.log(`[creator-pages] Setup page for ${brand.name}: ${publicUrl}`);
   res.json({ ok: true, brand: data.clients[idx], publicUrl });
 });
@@ -8603,7 +8605,7 @@ app.put('/api/creator-pages/:brandId', requireAuth, (req, res) => {
     updatedAt: new Date().toISOString(),
   };
   saveBrands(data);
-  const publicUrl = `${PUBLIC_BASE_URL}/creators/${data.clients[idx].creatorPage.slug}`;
+  const publicUrl = `${CREATOR_BASE_URL}/creators/${data.clients[idx].creatorPage.slug}`;
   res.json({ ok: true, brand: data.clients[idx], publicUrl });
 });
 
