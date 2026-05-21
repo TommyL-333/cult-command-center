@@ -1315,6 +1315,8 @@ const clientLoginLimiter = rateLimit({
 function requireClientSession(req, res, next) {
   if (!req.session?.clientBrandId) {
     if (req.path.startsWith('/api/')) return res.status(401).json({ error: 'Not authenticated' });
+    // Portal admin trying to reach /client pages without impersonating
+    if (req.session?.isPortalAdmin) return res.redirect('/portal-admin/clients');
     return res.redirect('/client');
   }
   next();
@@ -1381,6 +1383,84 @@ app.post('/client/set-password', clientLoginLimiter, express.json(), async (req,
 // POST /client/logout
 app.post('/client/logout', (req, res) => {
   req.session.destroy(() => res.json({ ok: true }));
+});
+
+// ─── Portal Admin ──────────────────────────────────────────────────────────────
+// Password stored in env PORTAL_ADMIN_PASSWORD. No CF Access needed.
+
+function requirePortalAdmin(req, res, next) {
+  if (!req.session?.isPortalAdmin) {
+    if (req.path.startsWith('/api/') || req.path.startsWith('/portal-admin/clients') || req.path.startsWith('/portal-admin/impersonate')) {
+      return res.status(401).json({ error: 'Not authenticated' });
+    }
+    return res.redirect('/portal-admin');
+  }
+  next();
+}
+
+// GET /portal-admin — login page
+app.get('/portal-admin', (req, res) => {
+  if (req.session?.isPortalAdmin) return res.redirect('/portal-admin/clients');
+  res.sendFile(path.join(__dirname, 'dashboard', 'portal-admin-login.html'));
+});
+
+// POST /portal-admin/login
+app.post('/portal-admin/login', express.json(), (req, res) => {
+  const adminPw = process.env.PORTAL_ADMIN_PASSWORD;
+  if (!adminPw) return res.status(500).json({ error: 'Admin password not configured.' });
+  if (!req.body?.password || req.body.password !== adminPw) {
+    return res.status(401).json({ error: 'Incorrect password.' });
+  }
+  req.session.isPortalAdmin = true;
+  res.json({ ok: true });
+});
+
+// GET /portal-admin/clients — returns client list as JSON (admin only)
+app.get('/portal-admin/clients', requirePortalAdmin, (req, res) => {
+  // If Accept is text/html, serve the admin page
+  if (req.headers.accept?.includes('text/html')) {
+    return res.sendFile(path.join(__dirname, 'dashboard', 'portal-admin.html'));
+  }
+  const brands = loadBrands();
+  const clients = (brands.clients || []).map(b => ({
+    id:              b.id,
+    name:            b.name,
+    email:           b.loginEmail || '',
+    hasPassword:     !!b.passwordHash,
+    tiktokConnected: !!(b.tiktokShopToken?.access_token),
+    bufferConnected: !!b.bufferConnected,
+    arcadsConnected: !!b.arcadsConnected,
+    storistaConnected: !!b.storistaConnected,
+    onboardedAt:     b.onboardedAt || null,
+  }));
+  res.json({ ok: true, clients });
+});
+
+// POST /portal-admin/impersonate — sets session as a client brand
+app.post('/portal-admin/impersonate', requirePortalAdmin, express.json(), (req, res) => {
+  const { brandId } = req.body || {};
+  if (!brandId) return res.status(400).json({ error: 'brandId required' });
+  const brands = loadBrands();
+  const brand = (brands.clients || []).find(b => b.id === brandId);
+  if (!brand) return res.status(404).json({ error: 'Brand not found' });
+  req.session.clientBrandId       = brand.id;
+  req.session.isPortalAdmin       = true; // keep admin flag
+  req.session.adminImpersonating  = brand.name;
+  res.json({ ok: true });
+});
+
+// POST /portal-admin/exit — stop impersonating, back to admin client list
+app.post('/portal-admin/exit', (req, res) => {
+  const wasAdmin = req.session?.isPortalAdmin;
+  req.session.clientBrandId      = undefined;
+  req.session.adminImpersonating = undefined;
+  if (wasAdmin) req.session.isPortalAdmin = true;
+  res.json({ ok: true });
+});
+
+// POST /portal-admin/logout
+app.post('/portal-admin/logout', (req, res) => {
+  req.session.destroy(() => res.redirect('/portal-admin'));
 });
 
 // Human-readable labels for Growth Partners task keys
@@ -1543,6 +1623,7 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
       },
       tiktok: { connected: tiktokConnected, stats: tiktokStats, funnel: tiktokFunnel },
       tasks,
+      adminImpersonating: req.session.adminImpersonating || null,
     });
   } catch (e) {
     const brands = loadBrands();
@@ -3369,6 +3450,48 @@ app.get('/api/skool/events', async (req, res) => {
   } catch (e) {
     res.json({ events: [], error: e.message });
   }
+});
+
+// ─── Reacher Creator Messages ────────────────────────────────────────────────
+// GET /api/reacher/conversations?shop_id=&unread_only=&unreplied_only=&limit=&offset=
+app.get('/api/reacher/conversations', async (req, res) => {
+  try {
+    const { shop_id, unread_only, unreplied_only, limit = 50, offset = 0 } = req.query;
+    const params = { limit: Number(limit), offset: Number(offset) };
+    if (unread_only === 'true')    params.unread_only    = true;
+    if (unreplied_only === 'true') params.unreplied_only = true;
+    const rc = reacherClient(shop_id || null);
+    const { data } = await rc.get('/creator-messages/conversations', { params });
+    res.json(data);
+  } catch(e) { res.status(500).json({ ok: false, error: e.response?.data || e.message }); }
+});
+
+// GET /api/reacher/conversations/:handle/messages?page=1
+app.get('/api/reacher/conversations/:handle/messages', async (req, res) => {
+  try {
+    const { shop_id, page = 1 } = req.query;
+    const handle = decodeURIComponent(req.params.handle);
+    const rc = reacherClient(shop_id || null);
+    const { data } = await rc.get(`/creator-messages/conversations/${encodeURIComponent(handle)}/messages`, { params: { page: Number(page) } });
+    res.json(data);
+  } catch(e) { res.status(500).json({ ok: false, error: e.response?.data || e.message }); }
+});
+
+// POST /api/reacher/conversations/:handle/reply  { message }
+app.post('/api/reacher/conversations/:handle/reply', express.json(), async (req, res) => {
+  try {
+    const { shop_id } = req.query;
+    const handle  = decodeURIComponent(req.params.handle);
+    const message = req.body?.message?.trim();
+    if (!message) return res.status(400).json({ ok: false, error: 'message required' });
+    const rc = reacherClient(shop_id || null);
+    const { data } = await rc.post(
+      `/creator-messages/conversations/${encodeURIComponent(handle)}/reply`,
+      { message },
+      { headers: { 'Idempotency-Key': require('crypto').randomUUID() } }
+    );
+    res.json({ ok: true, ...data });
+  } catch(e) { res.status(500).json({ ok: false, error: e.response?.data || e.message }); }
 });
 
 // ─── Stubs (OAuth integrations — connect later) ────────────────────────────────

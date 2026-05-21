@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin — Client Portal</title>
+  <style>
+    :root {
+      --bg:     #12101a;
+      --card:   #1c1828;
+      --border: #2a2540;
+      --teal:   #00f2ea;
+      --gold:   #c9a84c;
+      --green:  #00d27a;
+      --red:    #ff3b30;
+      --text:   #e2e8f0;
+      --muted:  #64748b;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif;
+      min-height: 100vh;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 28px;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .header-left { display: flex; align-items: center; gap: 16px; }
+    .logo { height: 30px; }
+    .admin-badge {
+      background: rgba(201,168,76,0.15);
+      border: 1px solid rgba(201,168,76,0.3);
+      color: var(--gold);
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+    .logout-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      font-size: 0.78rem;
+      padding: 6px 14px;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .logout-btn:hover { border-color: var(--red); color: var(--red); }
+
+    main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 36px 24px 60px;
+    }
+
+    .page-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .page-sub {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-bottom: 32px;
+    }
+    .count-pill {
+      display: inline-block;
+      background: rgba(0,242,234,0.1);
+      border: 1px solid rgba(0,242,234,0.2);
+      color: var(--teal);
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 2px 9px;
+      border-radius: 20px;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+
+    /* Grid */
+    .client-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 18px;
+    }
+
+    /* Client card */
+    .client-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      transition: border-color 0.15s;
+    }
+    .client-card:hover { border-color: rgba(0,242,234,0.25); }
+
+    .client-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+    .client-name {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.3;
+    }
+    .client-email {
+      font-size: 0.77rem;
+      color: var(--muted);
+      margin-top: 3px;
+      word-break: break-all;
+    }
+    .onboarded-at {
+      font-size: 0.68rem;
+      color: var(--muted);
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* Badges */
+    .badge-row { display: flex; flex-wrap: wrap; gap: 7px; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid;
+      white-space: nowrap;
+    }
+    .badge.yes {
+      background: rgba(0,210,122,0.1);
+      border-color: rgba(0,210,122,0.3);
+      color: #00d27a;
+    }
+    .badge.no {
+      background: rgba(100,116,139,0.08);
+      border-color: rgba(100,116,139,0.2);
+      color: var(--muted);
+    }
+    .badge .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+    }
+
+    /* View button */
+    .view-btn {
+      display: block;
+      width: 100%;
+      background: var(--teal);
+      color: var(--bg);
+      font-size: 0.84rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 9px;
+      padding: 10px;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      text-align: center;
+      margin-top: auto;
+    }
+    .view-btn:hover { opacity: 0.88; }
+    .view-btn:disabled { opacity: 0.5; cursor: default; }
+
+    /* Empty / loading states */
+    .empty-state {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.88rem;
+      padding: 60px 20px;
+      grid-column: 1 / -1;
+    }
+    .spinner {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      border: 2px solid var(--border);
+      border-top-color: var(--teal);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Error */
+    .error-msg {
+      background: rgba(255,59,48,0.1);
+      border: 1px solid rgba(255,59,48,0.25);
+      border-radius: 10px;
+      color: #ff6b6b;
+      font-size: 0.83rem;
+      padding: 14px 18px;
+      margin-bottom: 24px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <img class="logo" src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png" alt="Cult Content">
+    <span class="admin-badge">Admin</span>
+  </div>
+  <button class="logout-btn" onclick="doLogout()">Sign Out</button>
+</header>
+
+<main>
+  <h1 class="page-title">Client Portal <span class="count-pill" id="clientCount">—</span></h1>
+  <p class="page-sub">View and manage all brand accounts.</p>
+
+  <div class="error-msg" id="errMsg"></div>
+
+  <div class="client-grid" id="clientGrid">
+    <div class="empty-state"><span class="spinner"></span>Loading clients…</div>
+  </div>
+</main>
+
+<script>
+  function esc(s) {
+    if (!s) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function fmtDate(iso) {
+    if (!iso) return '';
+    try {
+      return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    } catch(_) { return ''; }
+  }
+
+  function badge(condition, yesLabel, noLabel) {
+    if (condition) {
+      return `<span class="badge yes"><span class="dot"></span>${esc(yesLabel)}</span>`;
+    }
+    return `<span class="badge no"><span class="dot"></span>${esc(noLabel)}</span>`;
+  }
+
+  async function load() {
+    try {
+      const res = await fetch('/portal-admin/clients', {
+        headers: { 'Accept': 'application/json' }
+      });
+      if (res.status === 401) { window.location.href = '/portal-admin'; return; }
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || 'Failed to load clients');
+      render(data.clients || []);
+    } catch (err) {
+      const errEl = document.getElementById('errMsg');
+      errEl.textContent = err.message || 'Failed to load clients.';
+      errEl.style.display = 'block';
+      document.getElementById('clientGrid').innerHTML = '<div class="empty-state">Could not load client list.</div>';
+    }
+  }
+
+  function render(clients) {
+    const grid = document.getElementById('clientGrid');
+    const countEl = document.getElementById('clientCount');
+    countEl.textContent = clients.length;
+
+    if (!clients.length) {
+      grid.innerHTML = '<div class="empty-state">No clients yet.</div>';
+      return;
+    }
+
+    grid.innerHTML = clients.map(c => `
+      <div class="client-card">
+        <div class="client-card-top">
+          <div>
+            <div class="client-name">${esc(c.name)}</div>
+            <div class="client-email">${esc(c.email) || '<em style="color:#64748b">No email</em>'}</div>
+          </div>
+          ${c.onboardedAt ? `<div class="onboarded-at">${fmtDate(c.onboardedAt)}</div>` : ''}
+        </div>
+        <div class="badge-row">
+          ${badge(c.hasPassword, 'Password set', 'Password not set')}
+          ${badge(c.tiktokConnected, 'TikTok connected', 'TikTok not connected')}
+          ${c.bufferConnected ? badge(true, 'Buffer', 'Buffer') : ''}
+          ${c.arcadsConnected ? badge(true, 'Arcads', 'Arcads') : ''}
+          ${c.storistaConnected ? badge(true, 'Storista', 'Storista') : ''}
+        </div>
+        <button class="view-btn" onclick="impersonate('${esc(c.id)}', this)">
+          View Dashboard →
+        </button>
+      </div>
+    `).join('');
+  }
+
+  async function impersonate(brandId, btn) {
+    btn.disabled = true;
+    btn.textContent = 'Loading…';
+    try {
+      const res = await fetch('/portal-admin/impersonate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ brandId }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        window.location.href = '/client/dashboard';
+      } else {
+        alert(data.error || 'Failed to impersonate brand.');
+        btn.disabled = false;
+        btn.textContent = 'View Dashboard →';
+      }
+    } catch (err) {
+      alert('Network error — please try again.');
+      btn.disabled = false;
+      btn.textContent = 'View Dashboard →';
+    }
+  }
+
+  async function doLogout() {
+    await fetch('/portal-admin/logout', { method: 'POST' });
+    window.location.href = '/portal-admin';
+  }
+
+  load();
+</script>
+</body>
+</html>

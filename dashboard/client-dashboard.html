@@ -327,6 +327,12 @@
 </head>
 <body>
 
+<!-- Admin impersonation banner -->
+<div id="adminBanner" style="display:none;border-bottom:1px solid #c9a84c;padding:10px 28px;align-items:center;justify-content:space-between;font-size:0.82rem;background:#2a1a00;">
+  <span style="color:#c9a84c;">&#9889; Admin View — viewing as <strong id="adminBrandName"></strong></span>
+  <button onclick="exitAdminView()" style="background:transparent;border:1px solid #c9a84c;color:#c9a84c;font-size:0.78rem;font-weight:700;padding:5px 14px;border-radius:7px;cursor:pointer;">&#8592; Back to Client List</button>
+</div>
+
 <header>
   <img class="logo" src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png" alt="Cult Content">
   <div class="header-right">
@@ -804,9 +810,22 @@
     render(data);
   }
 
-  function render({ brand, tiktok, tasks }) {
+  async function exitAdminView() {
+    await fetch('/portal-admin/exit', { method: 'POST' });
+    window.location.href = '/portal-admin/clients';
+  }
+
+  function render({ brand, tiktok, tasks, adminImpersonating }) {
     document.getElementById('headerBrand').textContent = brand.name;
     document.title = brand.name + ' — Cult Content';
+
+    // Admin impersonation banner
+    if (adminImpersonating) {
+      const adminBanner = document.getElementById('adminBanner');
+      const adminBrandName = document.getElementById('adminBrandName');
+      if (adminBanner) adminBanner.style.display = 'flex';
+      if (adminBrandName) adminBrandName.textContent = adminImpersonating;
+    }
 
     // Connect banner
     const banner = document.getElementById('tiktokConnectBanner');
