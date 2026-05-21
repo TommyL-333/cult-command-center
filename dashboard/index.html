@@ -9836,9 +9836,21 @@ const MI = { data: null, view: 'clients' };
 
 async function loadMeetingIntel() {
   try {
+    const safeJson = async (url) => {
+      const resp = await fetch(url);
+      if (!resp.ok) {
+        const text = await resp.text();
+        // If response isn't JSON (e.g. auth redirect returned HTML), surface a clean error
+        try { return JSON.parse(text); } catch(_) {
+          if (resp.status === 401) throw new Error('Session expired — please refresh the page');
+          throw new Error(`Server error ${resp.status}`);
+        }
+      }
+      return resp.json();
+    };
     const [r, status] = await Promise.all([
-      fetch('/api/client-meetings').then(r => r.json()),
-      fetch('/api/lark/oauth/status').then(r => r.json()).catch(() => ({ connected: false })),
+      safeJson('/api/client-meetings'),
+      safeJson('/api/lark/oauth/status').catch(() => ({ connected: false })),
     ]);
     MI.data = r;
     MI.knownClients = r.knownClients || [];

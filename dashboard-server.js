@@ -87,11 +87,18 @@ function requireAuth(req, res, next) {
 
   const email = req.headers['cf-access-authenticated-user-email'];
   if (!email) {
+    // API routes get JSON so fetch().then(r.json()) doesn't blow up
+    if (req.path.startsWith('/api/')) {
+      return res.status(401).json({ ok: false, error: 'Unauthorized — session expired, please refresh' });
+    }
     return res.status(401).sendFile(path.join(__dirname, 'dashboard', '401.html'));
   }
 
   const domain = email.split('@')[1]?.toLowerCase();
   if (!ALLOWED_DOMAINS.includes(domain)) {
+    if (req.path.startsWith('/api/')) {
+      return res.status(403).json({ ok: false, error: `Access denied for ${email}` });
+    }
     return res.status(403).send(`Access denied. ${email} is not authorized.`);
   }
 
