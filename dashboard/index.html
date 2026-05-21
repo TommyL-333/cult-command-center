@@ -5193,14 +5193,27 @@ async function ubLoadConversations(force = false) {
   const list = document.getElementById('ub-conv-list');
   if (!list) return;
   if (!force && UB.conversations.length) { ubRenderList(); return; }
+
+  // Ensure shops are loaded first — needed to pick a shop_id
+  if (!AF.shops || !AF.shops.length) await afLoadShopsForUnibox();
+
+  // Auto-select first shop if none chosen
+  const shopSel = document.getElementById('ub-shop');
+  if (shopSel && !shopSel.value && AF.shops.length) {
+    shopSel.value = AF.shops[0].id;
+  }
+  const shopId = shopSel?.value || '';
+  if (!shopId) {
+    list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-style:italic">No shops connected to Reacher</div>';
+    return;
+  }
+
   list.innerHTML = '<div style="padding:20px;text-align:center;color:var(--muted);font-style:italic">Loading…</div>';
   try {
     const status = document.getElementById('ub-status-filter')?.value || 'all';
-    const shopId = document.getElementById('ub-shop')?.value || '';
-    const params = new URLSearchParams({ limit: 50 });
+    const params = new URLSearchParams({ limit: 50, shop_id: shopId });
     if (status === 'unread')    params.set('unread_only',    'true');
     if (status === 'unreplied') params.set('unreplied_only', 'true');
-    if (shopId) params.set('shop_id', shopId);
     const r = await fetch(`/api/reacher/conversations?${params}`).then(r => r.json());
     UB.conversations = r.data || [];
     ubRenderList();
@@ -5261,8 +5274,9 @@ async function ubOpenThread(handle) {
   if (msgs)   msgs.innerHTML = '<div style="color:var(--muted);font-style:italic;font-size:13px">Loading messages…</div>';
   if (reply)  reply.style.display = '';
   try {
+    const shopId = document.getElementById('ub-shop')?.value || '';
     const encodedHandle = encodeURIComponent(handle);
-    const r = await fetch(`/api/reacher/conversations/${encodedHandle}/messages`).then(r => r.json());
+    const r = await fetch(`/api/reacher/conversations/${encodedHandle}/messages?shop_id=${shopId}`).then(r => r.json());
     const messages = r.data || [];
     if (!msgs) return;
     if (!messages.length) { msgs.innerHTML = '<div style="color:var(--muted);font-style:italic;font-size:13px">No messages yet.</div>'; return; }
@@ -5298,10 +5312,11 @@ async function ubSendReply() {
   if (!message) return;
   statusEl.textContent = 'Sending…';
   try {
+    const shopId = document.getElementById('ub-shop')?.value || '';
     const encodedHandle = encodeURIComponent(UB.activeHandle);
     const r = await fetch(`/api/reacher/conversations/${encodedHandle}/reply`, {
       method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ message })
+      body: JSON.stringify({ message, shop_id: shopId })
     }).then(r => r.json());
     if (r.ok === false) throw new Error(r.error || 'Send failed');
     textarea.value = '';

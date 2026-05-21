@@ -3452,43 +3452,45 @@ app.get('/api/skool/events', async (req, res) => {
   }
 });
 
-// ─── Reacher Creator Messages ────────────────────────────────────────────────
+// ─── Reacher Creator Messages — proxied through Railway (holds REACHER_API_KEY)
 // GET /api/reacher/conversations?shop_id=&unread_only=&unreplied_only=&limit=&offset=
 app.get('/api/reacher/conversations', async (req, res) => {
   try {
     const { shop_id, unread_only, unreplied_only, limit = 50, offset = 0 } = req.query;
-    const params = { limit: Number(limit), offset: Number(offset) };
-    if (unread_only === 'true')    params.unread_only    = true;
-    if (unreplied_only === 'true') params.unreplied_only = true;
-    const rc = reacherClient(shop_id || null);
-    const { data } = await rc.get('/creator-messages/conversations', { params });
+    if (!shop_id) return res.json({ data: [], total_count: 0, has_more: false });
+    const params = new URLSearchParams({ limit, offset });
+    if (unread_only    === 'true') params.set('unread_only',    'true');
+    if (unreplied_only === 'true') params.set('unreplied_only', 'true');
+    const { data } = await axios.get(`${CFG.railwayUrl}/affiliate/shops/${shop_id}/conversations?${params}`, { timeout: 15000 });
     res.json(data);
   } catch(e) { res.status(500).json({ ok: false, error: e.response?.data || e.message }); }
 });
 
-// GET /api/reacher/conversations/:handle/messages?page=1
+// GET /api/reacher/conversations/:handle/messages?shop_id=&page=1
 app.get('/api/reacher/conversations/:handle/messages', async (req, res) => {
   try {
     const { shop_id, page = 1 } = req.query;
-    const handle = decodeURIComponent(req.params.handle);
-    const rc = reacherClient(shop_id || null);
-    const { data } = await rc.get(`/creator-messages/conversations/${encodeURIComponent(handle)}/messages`, { params: { page: Number(page) } });
+    const handle = req.params.handle;
+    if (!shop_id) return res.status(400).json({ ok: false, error: 'shop_id required' });
+    const { data } = await axios.get(
+      `${CFG.railwayUrl}/affiliate/shops/${shop_id}/conversations/${encodeURIComponent(handle)}/messages?page=${page}`,
+      { timeout: 15000 }
+    );
     res.json(data);
   } catch(e) { res.status(500).json({ ok: false, error: e.response?.data || e.message }); }
 });
 
-// POST /api/reacher/conversations/:handle/reply  { message }
+// POST /api/reacher/conversations/:handle/reply  { message, shop_id }
 app.post('/api/reacher/conversations/:handle/reply', express.json(), async (req, res) => {
   try {
-    const { shop_id } = req.query;
-    const handle  = decodeURIComponent(req.params.handle);
-    const message = req.body?.message?.trim();
-    if (!message) return res.status(400).json({ ok: false, error: 'message required' });
-    const rc = reacherClient(shop_id || null);
-    const { data } = await rc.post(
-      `/creator-messages/conversations/${encodeURIComponent(handle)}/reply`,
-      { message },
-      { headers: { 'Idempotency-Key': require('crypto').randomUUID() } }
+    const handle  = req.params.handle;
+    const { message, shop_id } = req.body || {};
+    if (!message?.trim()) return res.status(400).json({ ok: false, error: 'message required' });
+    if (!shop_id)         return res.status(400).json({ ok: false, error: 'shop_id required' });
+    const { data } = await axios.post(
+      `${CFG.railwayUrl}/affiliate/shops/${shop_id}/conversations/${encodeURIComponent(handle)}/reply`,
+      { message: message.trim() },
+      { timeout: 15000 }
     );
     res.json({ ok: true, ...data });
   } catch(e) { res.status(500).json({ ok: false, error: e.response?.data || e.message }); }
