@@ -508,10 +508,10 @@ app.post('/api/creator-pages/submit', express.json(), async (req, res) => {
       const sr = await ghl.get('/contacts/', { params: { locationId: CFG.locationId, query: email, limit: 1 } });
       contactId = sr.data?.contacts?.[0]?.id || null;
     } catch(_) {}
-    const payload = { locationId: CFG.locationId, firstName: firstName||'', lastName: lastName||'', email, phone: phone||'', tags: [tagName, 'creator-interest-form'], source: `Creator Interest Page — ${brand.name}` };
+    const payload = { locationId: CFG.locationId, firstName: firstName||'', lastName: lastName||'', email, phone: phone||'', tags: [tagName, 'creator-interest-form', 'affiliate', `${brandSlug}-affiliate`], source: `Creator Interest Page — ${brand.name}` };
     if (contactId) {
       await ghl.put(`/contacts/${contactId}`, payload).catch(() => {});
-      await ghl.post(`/contacts/${contactId}/tags`, { tags: [tagName, 'creator-interest-form'] }).catch(() => {});
+      await ghl.post(`/contacts/${contactId}/tags`, { tags: [tagName, 'creator-interest-form', 'affiliate', `${brandSlug}-affiliate`] }).catch(() => {});
     } else {
       const cr = await ghl.post('/contacts/', payload);
       contactId = cr.data?.contact?.id;
@@ -7899,45 +7899,7 @@ async function runOnboardingPipeline(formData) {
     console.error('[onboard] lark doc error:', e.message); return null;
   });
 
-  // 4b. Auto-create Reacher automations based on incentive program
-  if (formData.compensation && shopData?.shopId) {
-    const { cashback, leaderboard, volumeBonus } = formData.compensation;
-    const autoPromises = [];
-
-    if (cashback?.enabled) {
-      const msg = `Hi! I'm reaching out from ${brandName}. We have an exciting cashback program — if you generate $${cashback.target} in GMV, you receive that same amount back as a cash bonus. Interested in learning more?`;
-      autoPromises.push(
-        axios.post(`${CFG.railwayUrl}/affiliate/shops/${shopData.shopId}/automation/tc`,
-          { name: `${brandName} — GMV Cashback Outreach`, message: msg.slice(0, 500), trigger: 'new_signup' },
-          { timeout: 10000 }
-        ).catch(e => console.error('[onboard] cashback auto error:', e.message))
-      );
-    }
-    if (leaderboard?.enabled) {
-      const msg = `Join the ${brandName} creator leaderboard! Top performers this month win cash prizes. Post videos and climb the ranks — the more you sell, the more you earn.`;
-      autoPromises.push(
-        axios.post(`${CFG.railwayUrl}/affiliate/shops/${shopData.shopId}/automation/dm`,
-          { name: `${brandName} — Leaderboard Challenge`, message: msg, trigger: 'active_posters' },
-          { timeout: 10000 }
-        ).catch(e => console.error('[onboard] leaderboard auto error:', e.message))
-      );
-    }
-    if (volumeBonus?.enabled) {
-      const msg = `Great news! ${brandName} offers a volume bonus — post ${volumeBonus.quantity || 'X'} videos and earn an extra $${volumeBonus.bonus || '?'} bonus. Keep posting!`;
-      autoPromises.push(
-        axios.post(`${CFG.railwayUrl}/affiliate/shops/${shopData.shopId}/automation/tc`,
-          { name: `${brandName} — Volume Bonus`, message: msg.slice(0, 500), trigger: 'active_posters' },
-          { timeout: 10000 }
-        ).catch(e => console.error('[onboard] volume auto error:', e.message))
-      );
-    }
-    if (autoPromises.length) {
-      await Promise.allSettled(autoPromises);
-      console.log(`[onboard] Created ${autoPromises.length} Reacher automation(s) for ${brandName}`);
-    }
-  }
-
-  // 5. Create draft creator page (inactive until approved)
+  // 5. Create draft creator page (always first so URL exists for automations)
   let creatorPage = null;
   try {
     const slug          = slugify(brandName);
@@ -7964,14 +7926,17 @@ async function runOnboardingPipeline(formData) {
       tiktokHandle: formData.tiktokHandle || '',
       tcCommission:   formData.tcCommission   ? parseFloat(formData.tcCommission)   : null,
       openCommission: formData.openCommission ? parseFloat(formData.openCommission) : null,
+      campaigns: {},
+      dmAutomationId: null,
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
     };
     saveBrands(brandsData);
     creatorPage = { slug, publicUrl: `${PUBLIC_BASE_URL}/creators/${slug}`, active: true };
-    console.log(`[onboard] Creator page draft: ${creatorPage.publicUrl}`);
+    console.log(`[onboard] Creator page live: ${creatorPage.publicUrl}`);
   } catch(e) { console.error('[onboard] creator page error:', e.message); }
 
   // 5b. Auto-match Reacher shop by brand name (fuzzy)
+  let matchedShopId = null;
   try {
     const shopsResp = await axios.get(`${CFG.railwayUrl}/affiliate/shops`, { timeout: 10000 });
     const shops = shopsResp.data?.data || shopsResp.data || [];
@@ -7982,17 +7947,84 @@ async function runOnboardingPipeline(formData) {
       return ns === nb || ns.includes(nb) || nb.includes(ns);
     });
     if (match) {
+      matchedShopId = match.shop_id;
       const bd = loadBrands();
       const bi = bd.clients.findIndex(b => slugify(b.name) === slugify(brandName));
       if (bi !== -1 && !bd.clients[bi].shopId) {
-        bd.clients[bi].shopId = match.shop_id;
+        bd.clients[bi].shopId = matchedShopId;
         saveBrands(bd);
-        console.log(`[onboard] Reacher auto-match: ${match.shop_name} → shopId ${match.shop_id}`);
+        console.log(`[onboard] Reacher auto-match: ${match.shop_name} → shopId ${matchedShopId}`);
       }
     } else {
       console.log(`[onboard] No Reacher shop match for: ${brandName}`);
     }
   } catch(e) { console.error('[onboard] Reacher shop lookup error:', e.message); }
+
+  // 5c. Create paused outreach DM automation pointing to creator signup page
+  if (matchedShopId && creatorPage?.publicUrl) {
+    try {
+      const dmMsg = aiContent?.reacherDm1 ||
+        `Hey {creator_name}! 👋 We're ${brandName} and we're looking for TikTok creators to join our affiliate program. Earn commissions on every sale plus monthly bonuses. Check out the full program details and apply here: ${creatorPage.publicUrl}`;
+      const resp = await axios.post(
+        `${CFG.railwayUrl}/affiliate/shops/${matchedShopId}/automations/outreach-dm`,
+        {
+          name:    `${brandName} — Creator Outreach (PAUSED)`,
+          message: dmMsg.slice(0, 2000),
+          creatorPageUrl: creatorPage.publicUrl,
+        },
+        { timeout: 15000 }
+      );
+      const dmAutomationId = resp.data?.automation_id || resp.data?.id || null;
+      if (dmAutomationId) {
+        const bd = loadBrands();
+        const bi = bd.clients.findIndex(b => slugify(b.name) === slugify(brandName));
+        if (bi !== -1) {
+          if (!bd.clients[bi].creatorPage) bd.clients[bi].creatorPage = {};
+          bd.clients[bi].creatorPage.dmAutomationId = dmAutomationId;
+          saveBrands(bd);
+        }
+        console.log(`[onboard] DM automation created (paused): ${dmAutomationId}`);
+      }
+    } catch(e) { console.error('[onboard] DM automation error:', e.message); }
+  }
+
+  // 4b. Auto-create compensation automations (cashback / leaderboard / volume bonus)
+  if (formData.compensation && matchedShopId) {
+    const { cashback, leaderboard, volumeBonus } = formData.compensation;
+    const autoPromises = [];
+
+    if (cashback?.enabled) {
+      const msg = `Hi {creator_name}! I'm reaching out from ${brandName}. We have an exciting cashback program — generate $${cashback.target || 'X'} in GMV and receive that same amount back as a cash bonus. Want to learn more? Apply here: ${creatorPage?.publicUrl || ''}`.slice(0, 500);
+      autoPromises.push(
+        axios.post(`${CFG.railwayUrl}/affiliate/shops/${matchedShopId}/automations/outreach-dm`,
+          { name: `${brandName} — Cashback Program Outreach`, message: msg, creatorPageUrl: creatorPage?.publicUrl },
+          { timeout: 10000 }
+        ).catch(e => console.error('[onboard] cashback auto error:', e.message))
+      );
+    }
+    if (leaderboard?.enabled) {
+      const msg = `Join the ${brandName} creator leaderboard! Top performers this month win cash prizes. Post videos and climb the ranks — the more you sell, the more you earn. Apply here: ${creatorPage?.publicUrl || ''}`.slice(0, 500);
+      autoPromises.push(
+        axios.post(`${CFG.railwayUrl}/affiliate/shops/${matchedShopId}/automations/outreach-dm`,
+          { name: `${brandName} — Leaderboard Challenge Outreach`, message: msg, creatorPageUrl: creatorPage?.publicUrl },
+          { timeout: 10000 }
+        ).catch(e => console.error('[onboard] leaderboard auto error:', e.message))
+      );
+    }
+    if (volumeBonus?.enabled) {
+      const msg = `${brandName} offers a volume bonus — post ${volumeBonus.videoCount || 'X'} videos and earn an extra $${volumeBonus.bonusAmount || '?'} bonus on top of your regular commissions. Apply here: ${creatorPage?.publicUrl || ''}`.slice(0, 500);
+      autoPromises.push(
+        axios.post(`${CFG.railwayUrl}/affiliate/shops/${matchedShopId}/automations/outreach-dm`,
+          { name: `${brandName} — Volume Bonus Outreach`, message: msg, creatorPageUrl: creatorPage?.publicUrl },
+          { timeout: 10000 }
+        ).catch(e => console.error('[onboard] volume bonus auto error:', e.message))
+      );
+    }
+    if (autoPromises.length) {
+      await Promise.allSettled(autoPromises);
+      console.log(`[onboard] Created ${autoPromises.length} compensation automation(s) for ${brandName}`);
+    }
+  }
 
   // 6. Save pending review entry
   const entry = {
@@ -8129,6 +8161,22 @@ function renderCreatorPage(brand, cp) {
 
   const talkingHtml = talking.map(t => `<li class="talking-item">${t}</li>`).join('');
 
+  // Campaign signup buttons
+  const campaigns = cp.campaigns || {};
+  const campaignBtns = [];
+  if (campaigns.cashbackUrl) campaignBtns.push({ icon: '💰', label: 'Cashback Campaign', title: 'Sign up for the cashback program', url: campaigns.cashbackUrl });
+  if (campaigns.quantityVideoUrl) campaignBtns.push({ icon: '🎯', label: 'Video Quantity Challenge', title: 'Sign up for the video quantity challenge', url: campaigns.quantityVideoUrl });
+  if (campaigns.leaderboardUrl) campaignBtns.push({ icon: '🏆', label: 'Leaderboard Challenge', title: 'Sign up for the monthly leaderboard', url: campaigns.leaderboardUrl });
+  const campaignsHtml = campaignBtns.map(c => `
+    <a href="${c.url}" target="_blank" rel="noopener" class="campaign-btn">
+      <div class="campaign-btn-icon">${c.icon}</div>
+      <div class="campaign-btn-text">
+        <div class="campaign-btn-label">${c.label}</div>
+        <div class="campaign-btn-title">${c.title}</div>
+      </div>
+      <div class="campaign-btn-arrow">→</div>
+    </a>`).join('');
+
   const videosHtml = videos.map(url => {
     const vid = extractTikTokVideoId(url);
     if (!vid) return '';
@@ -8184,6 +8232,16 @@ h1{font-size:clamp(28px,5vw,52px);font-weight:900;line-height:1.06;margin-bottom
 .usp-list{list-style:none;display:flex;flex-direction:column;gap:14px}
 .usp-item{display:flex;align-items:flex-start;gap:12px;font-size:16px;font-weight:600;line-height:1.4}
 .usp-check{flex-shrink:0;width:24px;height:24px;background:rgba(${ar},.15);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;color:${accent};font-weight:900}
+/* ── Campaigns ── */
+.campaigns-section{margin-bottom:0}
+.campaigns-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
+.campaign-btn{display:flex;align-items:center;gap:14px;background:rgba(${ar},.08);border:1.5px solid rgba(${ar},.35);border-radius:14px;padding:18px 20px;color:#fff;text-decoration:none;font-weight:700;transition:background .18s,transform .1s,border-color .18s}
+.campaign-btn:hover{background:rgba(${ar},.16);border-color:rgba(${ar},.6);transform:translateY(-2px)}
+.campaign-btn-icon{font-size:24px;flex-shrink:0}
+.campaign-btn-text{flex:1}
+.campaign-btn-label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:${accent};margin-bottom:3px;opacity:.8}
+.campaign-btn-title{font-size:14px;font-weight:900;line-height:1.3;color:#fff}
+.campaign-btn-arrow{font-size:20px;color:${accent};opacity:.7;margin-left:auto}
 /* ── Videos ── */
 .videos-scroll{display:flex;gap:16px;overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
 .video-wrap{flex-shrink:0}
@@ -8237,6 +8295,18 @@ ${incentiveHtml ? `
     <div class="section-title">How you get paid</div>
     <div class="section-sub">Stack multiple income streams every month.</div>
     <div class="incentives-grid">${incentiveHtml}</div>
+  </div>
+</div>` : ''}
+
+${campaignsHtml ? `
+<hr class="divider">
+<!-- ── CAMPAIGNS ── -->
+<div class="section" style="background:rgba(${ar},.04)">
+  <div class="section-inner">
+    <div class="section-label">Join a Campaign</div>
+    <div class="section-title">Pick your earning strategy</div>
+    <div class="section-sub">Sign up for one or more programs — each runs independently so you can stack rewards.</div>
+    <div class="campaigns-grid campaigns-section">${campaignsHtml}</div>
   </div>
 </div>` : ''}
 
@@ -8436,6 +8506,48 @@ app.put('/api/creator-pages/:brandId', requireAuth, (req, res) => {
   saveBrands(data);
   const publicUrl = `${PUBLIC_BASE_URL}/creators/${data.clients[idx].creatorPage.slug}`;
   res.json({ ok: true, brand: data.clients[idx], publicUrl });
+});
+
+// PATCH /api/brands/:brandId/campaign-links — save Reacher campaign URLs + competitor videos
+app.patch('/api/brands/:brandId/campaign-links', requireAuth, express.json(), (req, res) => {
+  const brands = loadBrands();
+  const idx = (brands.clients || []).findIndex(b => b.id === req.params.brandId);
+  if (idx === -1) return res.status(404).json({ error: 'Brand not found' });
+  if (!brands.clients[idx].creatorPage) brands.clients[idx].creatorPage = {};
+  const cp = brands.clients[idx].creatorPage;
+  if (!cp.campaigns) cp.campaigns = {};
+  const { cashbackUrl, quantityVideoUrl, leaderboardUrl, competitorVideos } = req.body;
+  if (cashbackUrl     !== undefined) cp.campaigns.cashbackUrl     = cashbackUrl     || null;
+  if (quantityVideoUrl !== undefined) cp.campaigns.quantityVideoUrl = quantityVideoUrl || null;
+  if (leaderboardUrl  !== undefined) cp.campaigns.leaderboardUrl  = leaderboardUrl  || null;
+  if (competitorVideos !== undefined) cp.competitorVideos = (Array.isArray(competitorVideos) ? competitorVideos : []).slice(0, 8).filter(Boolean);
+  cp.updatedAt = new Date().toISOString();
+  saveBrands(brands);
+  console.log(`[campaign-links] Updated for brand ${req.params.brandId}`);
+  res.json({ ok: true, campaigns: cp.campaigns, competitorVideos: cp.competitorVideos });
+});
+
+// POST /api/brands/:brandId/activate-dm — activate the paused outreach DM automation
+app.post('/api/brands/:brandId/activate-dm', requireAuth, express.json(), async (req, res) => {
+  const brands = loadBrands();
+  const brand = (brands.clients || []).find(b => b.id === req.params.brandId);
+  if (!brand) return res.status(404).json({ error: 'Brand not found' });
+  const automationId = brand.creatorPage?.dmAutomationId;
+  const shopId = brand.shopId;
+  if (!automationId) return res.status(400).json({ error: 'No DM automation found — run onboarding pipeline first' });
+  if (!shopId) return res.status(400).json({ error: 'No Reacher shop linked to this brand' });
+  try {
+    const { data } = await axios.patch(
+      `${CFG.railwayUrl}/affiliate/shops/${shopId}/automations/${automationId}/activate`,
+      { dailyCap: req.body.dailyCap || 20 },
+      { timeout: 15000 }
+    );
+    console.log(`[activate-dm] Activated automation ${automationId} for ${brand.name}`);
+    res.json({ ok: true, automationId, result: data });
+  } catch(e) {
+    console.error('[activate-dm] error:', e.response?.data || e.message);
+    res.status(500).json({ error: e.response?.data?.detail || e.message });
+  }
 });
 
 // GET /api/creator-pages/:brandId/competitor-videos

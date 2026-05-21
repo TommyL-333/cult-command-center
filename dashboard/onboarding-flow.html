@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Client Onboarding Flow — Cult Content</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;800;900&family=Inter:wght@400;500;600;700&display=swap');
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0c16;
+    --surface: #161224;
+    --surface2: #1e1830;
+    --border: rgba(255,255,255,0.07);
+    --teal: #00f2ea;
+    --pink: #ff0050;
+    --gold: #c9a84c;
+    --green: #00d27a;
+    --red: #ff3b30;
+    --yellow: #ffcc00;
+    --blue: #60a5fa;
+    --purple: #a78bfa;
+    --muted: rgba(255,255,255,0.35);
+    --text: rgba(255,255,255,0.88);
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+    padding: 40px 24px 80px;
+    min-height: 100vh;
+  }
+
+  .page-header {
+    max-width: 1100px;
+    margin: 0 auto 48px;
+    text-align: center;
+  }
+  .page-header h1 {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, #fff 0%, var(--teal) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .page-header p {
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .legend {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+    flex-wrap: wrap;
+    margin-bottom: 48px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* ── FLOW WRAPPER ── */
+  .flow {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  /* ── PHASE HEADER ── */
+  .phase-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 16px;
+    margin-top: 36px;
+  }
+  .phase-label:first-child { margin-top: 0; }
+  .phase-label-text {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .phase-label-line {
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ── ROW LAYOUT ── */
+  .row {
+    display: grid;
+    gap: 12px;
+    margin-bottom: 0;
+  }
+  .row-2 { grid-template-columns: 1fr 1fr; }
+  .row-3 { grid-template-columns: 1fr 1fr 1fr; }
+  .row-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
+  .row-1 { grid-template-columns: 1fr; }
+
+  /* ── CONNECTOR ── */
+  .connector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px 0;
+    color: var(--muted);
+    font-size: 18px;
+  }
+  .connector-h {
+    display: flex;
+    align-items: center;
+    gap: 0;
+  }
+
+  /* ── TRIGGER CARD ── */
+  .trigger {
+    background: linear-gradient(135deg, rgba(0,242,234,0.08) 0%, rgba(0,242,234,0.03) 100%);
+    border: 1px solid rgba(0,242,234,0.25);
+    border-radius: 14px;
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .trigger::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--teal), transparent);
+  }
+  .trigger-icon { font-size: 20px; margin-bottom: 6px; }
+  .trigger-title {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 13px;
+    font-weight: 800;
+    color: var(--teal);
+    margin-bottom: 4px;
+  }
+  .trigger-sub {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+  .trigger-detail {
+    font-size: 11px;
+    color: rgba(255,255,255,0.6);
+    background: rgba(0,0,0,0.2);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-family: 'SF Mono', 'Fira Code', monospace;
+  }
+
+  /* ── STEP CARD ── */
+  .step {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    position: relative;
+  }
+  .step-icon { font-size: 16px; margin-bottom: 6px; display: block; }
+  .step-title {
+    font-weight: 700;
+    font-size: 12px;
+    color: var(--text);
+    margin-bottom: 4px;
+  }
+  .step-detail {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .step-tag {
+    display: inline-block;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border-radius: 4px;
+    padding: 2px 6px;
+    margin-top: 8px;
+  }
+
+  /* status variants */
+  .step-live   { border-color: rgba(0,210,122,0.2); }
+  .step-live   .step-title { color: var(--green); }
+  .step-live::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--green); border-radius: 12px 12px 0 0; opacity: 0.5; }
+  .tag-live    { background: rgba(0,210,122,0.12); color: var(--green); }
+
+  .step-broken  { border-color: rgba(255,59,48,0.2); }
+  .step-broken  .step-title { color: var(--red); }
+  .step-broken::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--red); border-radius: 12px 12px 0 0; opacity: 0.5; }
+  .tag-broken   { background: rgba(255,59,48,0.12); color: var(--red); }
+
+  .step-build   { border-color: rgba(0,242,234,0.15); }
+  .step-build   .step-title { color: var(--teal); }
+  .step-build::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--teal); border-radius: 12px 12px 0 0; opacity: 0.4; }
+  .tag-build    { background: rgba(0,242,234,0.1); color: var(--teal); }
+
+  .step-manual  { border-color: rgba(201,168,76,0.2); }
+  .step-manual  .step-title { color: var(--gold); }
+  .step-manual::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--gold); border-radius: 12px 12px 0 0; opacity: 0.5; }
+  .tag-manual   { background: rgba(201,168,76,0.1); color: var(--gold); }
+
+  .step-partial  { border-color: rgba(255,204,0,0.2); }
+  .step-partial  .step-title { color: var(--yellow); }
+  .step-partial::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: var(--yellow); border-radius: 12px 12px 0 0; opacity: 0.5; }
+  .tag-partial   { background: rgba(255,204,0,0.1); color: var(--yellow); }
+
+  /* ── FORK ── */
+  .fork {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+  }
+  .fork-branches {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    width: 100%;
+  }
+  .fork-branch {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+  }
+  .fork-branch-label {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 10px;
+  }
+
+  /* ── SECTION DIVIDER ── */
+  .section-divider {
+    margin: 32px 0 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .section-divider-line { flex: 1; height: 1px; background: var(--border); }
+  .section-divider-label {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  /* ── PARALLEL STEPS ── */
+  .parallel {
+    border: 1px dashed rgba(255,255,255,0.1);
+    border-radius: 14px;
+    padding: 16px;
+    position: relative;
+    margin: 4px 0;
+  }
+  .parallel-label {
+    position: absolute;
+    top: -9px;
+    left: 16px;
+    background: var(--bg);
+    padding: 0 8px;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  /* ── PRIORITY SECTION ── */
+  .priority-section {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    margin-top: 20px;
+  }
+  .priority-section-title {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+  .priority-items {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .priority-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 12px 14px;
+    background: rgba(0,0,0,0.2);
+    border-radius: 10px;
+    border: 1px solid var(--border);
+  }
+  .priority-num {
+    font-family: 'Montserrat', sans-serif;
+    font-size: 18px;
+    font-weight: 900;
+    width: 28px;
+    flex-shrink: 0;
+    line-height: 1;
+    margin-top: 1px;
+  }
+  .priority-content { flex: 1; }
+  .priority-title {
+    font-weight: 700;
+    font-size: 13px;
+    margin-bottom: 2px;
+  }
+  .priority-desc {
+    font-size: 11px;
+    color: var(--muted);
+    line-height: 1.6;
+  }
+  .priority-tag {
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border-radius: 4px;
+    padding: 2px 7px;
+    flex-shrink: 0;
+    align-self: flex-start;
+    margin-top: 2px;
+  }
+
+  @media (max-width: 700px) {
+    .row-2, .row-3, .row-4 { grid-template-columns: 1fr; }
+    .fork-branches { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <h1>Client Onboarding Flow</h1>
+  <p>Order of operations from form submission → live creator program</p>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:var(--green)"></div> Live & working</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--red)"></div> Broken — needs fix</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--teal)"></div> Can be built</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--yellow)"></div> Partially built</div>
+  <div class="legend-item"><div class="legend-dot" style="background:var(--gold)"></div> Manual</div>
+</div>
+
+<div class="flow">
+
+  <!-- ══ TRIGGER ══ -->
+  <div class="row row-1">
+    <div class="trigger">
+      <div class="trigger-icon">📋</div>
+      <div class="trigger-title">Client fills out GHL onboarding form</div>
+      <div class="trigger-sub">GHL workflow fires webhook → two pipelines kick off simultaneously</div>
+      <div class="trigger-detail">POST /api/webhooks/ghl-client-onboard &nbsp;+&nbsp; POST /api/onboard/submit</div>
+    </div>
+  </div>
+
+  <div class="connector">↓</div>
+
+  <!-- ══ PHASE 1: IMMEDIATE ══ -->
+  <div class="phase-label">
+    <div class="phase-label-text">Phase 1 — Immediate (fires on GHL webhook)</div>
+    <div class="phase-label-line"></div>
+  </div>
+
+  <div class="row row-3">
+    <div class="step step-live">
+      <span class="step-icon">🏗️</span>
+      <div class="step-title">Brand created in Command Center</div>
+      <div class="step-detail">New entry in <code>brands.json</code> with name, contact, email, website, source</div>
+      <span class="step-tag tag-live">Live</span>
+    </div>
+    <div class="step step-live">
+      <span class="step-icon">✅</span>
+      <div class="step-title">Growth Partners task checklist</div>
+      <div class="step-detail">Auto-checks tasks based on form answers: TikTok Shop, Shopify, Sellico, TikTok AM, Reviews.io, FBT, JoinBrands, Brand Content</div>
+      <span class="step-tag tag-live">Live</span>
+    </div>
+    <div class="step step-live">
+      <span class="step-icon">🛍️</span>
+      <div class="step-title">Shopify import triggered</div>
+      <div class="step-detail">If <code>shopify=yes</code>, auto-imports products and brand data from their store domain</div>
+      <span class="step-tag tag-live">Live</span>
+    </div>
+  </div>
+
+  <div class="connector">↓</div>
+
+  <!-- ══ PHASE 2: PIPELINE ══ -->
+  <div class="phase-label">
+    <div class="phase-label-text">Phase 2 — Onboarding Pipeline (async)</div>
+    <div class="phase-label-line"></div>
+  </div>
+
+  <div class="row row-2">
+    <div class="step step-live">
+      <span class="step-icon">🤖</span>
+      <div class="step-title">AI content generated</div>
+      <div class="step-detail">Claude writes: Affiliate Resource Hub copy, creator pitch, Reacher DM scripts, USPs — using Shopify data + form answers</div>
+      <span class="step-tag tag-live">Live</span>
+    </div>
+    <div class="step step-live">
+      <span class="step-icon">📇</span>
+      <div class="step-title">GHL contact created + tagged</div>
+      <div class="step-detail">Contact created (or existing contact found) and tagged <code>client-onboarding</code> + <code>client-{brand-slug}</code></div>
+      <span class="step-tag tag-live">Live</span>
+    </div>
+  </div>
+
+  <div class="connector">↓</div>
+
+  <div class="parallel">
+    <div class="parallel-label">runs in parallel</div>
+    <div class="row row-3">
+      <div class="step step-live">
+        <span class="step-icon">📚</span>
+        <div class="step-title">Lark Resource Hub created</div>
+        <div class="step-detail">Affiliate Resource Hub wiki copied from template in Lark, populated with brand info</div>
+        <span class="step-tag tag-live">Live</span>
+      </div>
+      <div class="step step-live">
+        <span class="step-icon">🔗</span>
+        <div class="step-title">Reacher shop auto-matched</div>
+        <div class="step-detail">Fuzzy-matches brand name against Reacher shops. If found, <code>shopId</code> saved to brand entry</div>
+        <span class="step-tag tag-live">Live</span>
+      </div>
+      <div class="step step-broken">
+        <span class="step-icon">⚙️</span>
+        <div class="step-title">Reacher automations (broken)</div>
+        <div class="step-detail">Tries to create cashback / leaderboard / volume bonus automations — calls routes that don't exist on Railway. Silently fails.</div>
+        <span class="step-tag tag-broken">Broken</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="connector">↓</div>
+
+  <div class="row row-2">
+    <div class="step step-live">
+      <span class="step-icon">🌐</span>
+      <div class="step-title">Creator signup page goes live</div>
+      <div class="step-detail">Draft page created at <code>manifest.cultcontent.cc/creators/{slug}</code> — AI pitch, incentives, USPs, commission rates pre-filled</div>
+      <span class="step-tag tag-live">Live</span>
+    </div>
+    <div class="step step-live">
+      <span class="step-icon">🔔</span>
+      <div class="step-title">Lark alert sent</div>
+      <div class="step-detail">Comprehensive alert fired to Lark channel with brand summary, Shopify products, AI content preview, creator page URL</div>
+      <span class="step-tag tag-live">Live</span>
+    </div>
+  </div>
+
+  <div class="connector">↓</div>
+
+  <!-- ══ PHASE 3: MANUAL ══ -->
+  <div class="phase-label">
+    <div class="phase-label-text">Phase 3 — Manual Setup (today)</div>
+    <div class="phase-label-line"></div>
+  </div>
+
+  <div class="row row-4">
+    <div class="step step-manual">
+      <span class="step-icon">🎯</span>
+      <div class="step-title">Create Reacher Campaign</div>
+      <div class="step-detail">Log into Reacher portal, create the Campaign/Challenge. Copy the campaign link for use in DM copy and resource hub.</div>
+      <span class="step-tag tag-manual">Manual</span>
+    </div>
+    <div class="step step-manual">
+      <span class="step-icon">🔍</span>
+      <div class="step-title">FastBoss competitor research</div>
+      <div class="step-detail">Find top-performing competitor TikTok videos. Identify hooks, formats, CTAs to replicate. Drop findings into Lark wiki.</div>
+      <span class="step-tag tag-manual">Manual</span>
+    </div>
+    <div class="step step-manual">
+      <span class="step-icon">📦</span>
+      <div class="step-title">Sample budget + shipping setup</div>
+      <div class="step-detail">Confirm sample quantity, who ships, auto-approve threshold. Update in Command Center brand settings.</div>
+      <span class="step-tag tag-manual">Manual</span>
+    </div>
+    <div class="step step-manual">
+      <span class="step-icon">⭐</span>
+      <div class="step-title">TikTok whitelisting setup</div>
+      <div class="step-detail">If brand has TikTok AM: set up Spark Ads permissions and whitelisting eligibility through TikTok Ads Manager.</div>
+      <span class="step-tag tag-manual">Manual</span>
+    </div>
+  </div>
+
+  <div class="connector">↓</div>
+
+  <!-- ══ PHASE 4: CREATOR OUTREACH ══ -->
+  <div class="phase-label">
+    <div class="phase-label-text">Phase 4 — Creator Outreach</div>
+    <div class="phase-label-line"></div>
+  </div>
+
+  <div class="row row-3">
+    <div class="step step-broken">
+      <span class="step-icon">✉️</span>
+      <div class="step-title">Reacher DM automations fire</div>
+      <div class="step-detail">Should auto-create TC + DM automations using AI-written copy from onboarding. Code exists, endpoints broken. Needs fix.</div>
+      <span class="step-tag tag-broken">Broken — fixable</span>
+    </div>
+    <div class="step step-build">
+      <span class="step-icon">🚀</span>
+      <div class="step-title">TC invite → creator page link</div>
+      <div class="step-detail">After campaign link is retrieved from Reacher portal, auto-create a Target Collab automation that DMs creators and links to <code>/creators/{slug}</code></div>
+      <span class="step-tag tag-build">Can build</span>
+    </div>
+    <div class="step step-manual">
+      <span class="step-icon">📨</span>
+      <div class="step-title">Creator list sourced + uploaded</div>
+      <div class="step-detail">Find or build creator list (JoinBrands, Reacher AI search, existing relationships). Upload to Reacher as a list for targeting.</div>
+      <span class="step-tag tag-manual">Manual</span>
+    </div>
+  </div>
+
+  <div class="connector">↓</div>
+
+  <!-- ══ PHASE 5: CREATOR SIGNS UP ══ -->
+  <div class="phase-label">
+    <div class="phase-label-text">Phase 5 — Creator Signs Up</div>
+    <div class="phase-label-line"></div>
+  </div>
+
+  <div class="row row-1">
+    <div class="trigger" style="background:linear-gradient(135deg,rgba(201,168,76,0.08),rgba(201,168,76,0.03));border-color:rgba(201,168,76,0.25);">
+      <div class="trigger-icon">👤</div>
+      <div class="trigger-title" style="color:var(--gold)">Creator fills out signup form on <code>/creators/{brand-slug}</code></div>
+      <div class="trigger-sub">TikTok handle, follower count, niche, why they want to partner</div>
+    </div>
+  </div>
+
+  <div class="connector">↓</div>
+
+  <div class="row row-4">
+    <div class="step step-live">
+      <span class="step-icon">📋</span>
+      <div class="step-title">Creator page form submission</div>
+      <div class="step-detail">Form hits <code>/api/creator-signup</code>, brand identified from slug, data saved</div>
+      <span class="step-tag tag-live">Live</span>
+    </div>
+    <div class="step step-build">
+      <span class="step-icon">🏷️</span>
+      <div class="step-title">GHL contact created + tagged</div>
+      <div class="step-detail">Create/update GHL contact. Tag as <code>affiliate</code> and <code>{brand-slug}-affiliate</code> for per-brand CRM filtering</div>
+      <span class="step-tag tag-build">Can build</span>
+    </div>
+    <div class="step step-build">
+      <span class="step-icon">🔔</span>
+      <div class="step-title">Lark creator alert</div>
+      <div class="step-detail">Fire notification to Lark: new creator signup for brand X, handle, follower count, niche. Assign review task.</div>
+      <span class="step-tag tag-build">Can build</span>
+    </div>
+    <div class="step step-build">
+      <span class="step-icon">⚡</span>
+      <div class="step-title">GHL workflow triggered</div>
+      <div class="step-detail">Tag triggers GHL workflow: auto-send welcome DM to creator via Reacher, add to brand's creator CRM group</div>
+      <span class="step-tag tag-build">Can build</span>
+    </div>
+  </div>
+
+  <div class="connector">↓</div>
+
+  <!-- ══ PHASE 6: ONGOING ══ -->
+  <div class="phase-label">
+    <div class="phase-label-text">Phase 6 — Ongoing Operations</div>
+    <div class="phase-label-line"></div>
+  </div>
+
+  <div class="row row-4">
+    <div class="step step-live">
+      <span class="step-icon">📊</span>
+      <div class="step-title">Affiliate performance tracked</div>
+      <div class="step-detail">GMV, views, samples, conversion rate pulled from Reacher API. Visible per shop in Affiliate Manager tab.</div>
+      <span class="step-tag tag-live">Live</span>
+    </div>
+    <div class="step step-live">
+      <span class="step-icon">📅</span>
+      <div class="step-title">Growth Partners checklist</div>
+      <div class="step-detail">Task board in Command Center tracks milestones: 10k GMV, 50k GMV, first live, spark ads, etc.</div>
+      <span class="step-tag tag-live">Live</span>
+    </div>
+    <div class="step step-build">
+      <span class="step-icon">📢</span>
+      <div class="step-title">Weekly affiliate report</div>
+      <div class="step-detail">Auto-generate weekly summary: top creators, GMV delta, best videos, sample conversion. Send to Lark + client portal.</div>
+      <span class="step-tag tag-build">Can build</span>
+    </div>
+    <div class="step step-build">
+      <span class="step-icon">🏆</span>
+      <div class="step-title">Leaderboard automation</div>
+      <div class="step-detail">Pull top creators weekly, auto-DM bonus confirmation via Reacher. Announce in creator community.</div>
+      <span class="step-tag tag-build">Can build</span>
+    </div>
+  </div>
+
+  <!-- ══ BUILD PRIORITY ══ -->
+  <div class="section-divider" style="margin-top:52px;">
+    <div class="section-divider-line"></div>
+    <div class="section-divider-label">Build Priority</div>
+    <div class="section-divider-line"></div>
+  </div>
+
+  <div class="priority-section">
+    <div class="priority-section-title">Next 3 things to build</div>
+    <div class="priority-items">
+      <div class="priority-item">
+        <div class="priority-num" style="color:var(--teal)">1</div>
+        <div class="priority-content">
+          <div class="priority-title">Creator form → GHL tagging</div>
+          <div class="priority-desc">When creator submits <code>/creators/{slug}</code> → create GHL contact, tag <code>affiliate</code> + <code>{brand-slug}-affiliate</code>. ~30 lines. Closes the biggest data gap — right now creators sign up and disappear into the void.</div>
+        </div>
+        <div class="priority-tag tag-build">~1 hr</div>
+      </div>
+      <div class="priority-item">
+        <div class="priority-num" style="color:var(--red)">2</div>
+        <div class="priority-content">
+          <div class="priority-title">Fix Reacher DM automations on onboarding</div>
+          <div class="priority-desc">Add the missing routes to <code>affiliate-agent.js</code> on Railway using the real Reacher TC + DM API endpoints we now have full schemas for. Cashback, leaderboard, and volume bonus automations then actually fire on every new client.</div>
+        </div>
+        <div class="priority-tag tag-broken">Fix broken</div>
+      </div>
+      <div class="priority-item">
+        <div class="priority-num" style="color:var(--gold)">3</div>
+        <div class="priority-content">
+          <div class="priority-title">TC automation pointing to creator page</div>
+          <div class="priority-desc">Once Reacher campaign link is retrieved manually, trigger auto-creation of a Target Collab DM automation that drives creators to the brand's signup page. AI copy is already generated at onboard time — just needs the campaign URL injected.</div>
+        </div>
+        <div class="priority-tag tag-build">~2 hrs</div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Highlight current section on scroll (optional interactivity)
+  document.querySelectorAll('.step').forEach(el => {
+    el.addEventListener('mouseenter', () => el.style.transform = 'translateY(-1px)');
+    el.addEventListener('mouseleave', () => el.style.transform = '');
+  });
+</script>
+
+</body>
+</html>
