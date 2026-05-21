@@ -2055,6 +2055,113 @@ app.get('/api/client/storista/products/:account', requireClientSession, async (r
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// ─── Creator Onboarding (PUBLIC — called from cultcontent.cc) ────────────────
+// CORS preflight
+app.options('/api/creator-onboard', (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+  res.sendStatus(204);
+});
+
+app.post('/api/creator-onboard', express.json(), async (req, res) => {
+  res.set('Access-Control-Allow-Origin', '*');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+
+  const { name = '', tiktokHandle = '', email = '', phone = '', discordUsername = '' } = req.body || {};
+  if (!name.trim() || !email.trim() || !phone.trim()) {
+    return res.status(400).json({ ok: false, error: 'Name, email and phone are required.' });
+  }
+
+  const nameParts = name.trim().split(/\s+/);
+  const firstName  = nameParts[0];
+  const lastName   = nameParts.slice(1).join(' ') || '';
+  const handle     = tiktokHandle.replace(/^@/, '').trim();
+  // Normalize phone — strip non-digits, prepend +1 if 10 digits
+  const digits     = phone.replace(/\D/g, '');
+  const cleanPhone = digits.length === 10 ? `+1${digits}` : `+${digits}`;
+
+  const results = { ghl: null, sms: null, discord: null };
+  let contactId = null;
+
+  // 1 — Create GHL contact
+  try {
+    const payload = {
+      firstName, lastName, email,
+      phone: cleanPhone,
+      tags: ['affiliate'],
+      locationId: process.env.GHL_LOC_ID,
+    };
+    if (handle) payload.customFields = [{ key: 'tiktok_handle', field_value: `@${handle}` }];
+
+    const ghlRes = await axios.post('https://services.leadconnectorhq.com/contacts/', payload, {
+      headers: { Authorization: `Bearer ${process.env.GHL_API_KEY}`, Version: '2021-04-15', 'Content-Type': 'application/json' },
+    });
+    contactId = ghlRes.data?.contact?.id;
+    results.ghl = { ok: true, contactId };
+  } catch (e) {
+    results.ghl = { ok: false, error: e.response?.data || e.message };
+    console.error('[creator-onboard] GHL error:', e.response?.data || e.message);
+  }
+
+  // 2 — Send GHL SMS
+  if (contactId) {
+    try {
+      await axios.post('https://services.leadconnectorhq.com/conversations/messages/outbound', {
+        type: 'SMS',
+        contactId,
+        message: `Welcome to the Cult Content Creator Network! 🎉 Browse all brand opportunities here: ${CREATOR_BASE_URL}/creators`,
+      }, {
+        headers: { Authorization: `Bearer ${process.env.GHL_API_KEY}`, Version: '2021-04-15', 'Content-Type': 'application/json' },
+      });
+      results.sms = { ok: true };
+    } catch (e) {
+      results.sms = { ok: false, error: e.response?.data || e.message };
+      console.error('[creator-onboard] SMS error:', e.response?.data || e.message);
+    }
+  }
+
+  // 3 — Discord role assignment
+  const botToken = process.env.DISCORD_BOT_TOKEN;
+  const guildId  = process.env.DISCORD_GUILD_ID;
+  const roleId   = process.env.DISCORD_CREATOR_ROLE_ID;
+  const cleanDu  = discordUsername.replace(/^@/, '').trim();
+
+  if (botToken && guildId && roleId && cleanDu) {
+    try {
+      // Search guild members by username
+      const searchRes = await axios.get(`https://discord.com/api/v10/guilds/${guildId}/members/search`, {
+        params: { query: cleanDu, limit: 10 },
+        headers: { Authorization: `Bot ${botToken}` },
+      });
+      const members = searchRes.data || [];
+      const member  = members.find(m =>
+        m.user.username.toLowerCase()    === cleanDu.toLowerCase() ||
+        (m.user.global_name || '').toLowerCase() === cleanDu.toLowerCase()
+      );
+      if (member) {
+        await axios.put(
+          `https://discord.com/api/v10/guilds/${guildId}/members/${member.user.id}/roles/${roleId}`,
+          null,
+          { headers: { Authorization: `Bot ${botToken}` } }
+        );
+        results.discord = { ok: true, userId: member.user.id, username: member.user.username };
+      } else {
+        results.discord = { ok: false, error: 'Username not found in server — they may need to join first.' };
+      }
+    } catch (e) {
+      results.discord = { ok: false, error: e.response?.data?.message || e.message };
+      console.error('[creator-onboard] Discord error:', e.response?.data || e.message);
+    }
+  } else {
+    results.discord = { ok: false, error: botToken ? 'No Discord username provided' : 'Discord not configured' };
+  }
+
+  const discordInvite = process.env.DISCORD_INVITE_URL || 'https://discord.gg/cultcontent';
+  res.json({ ok: true, discordInvite, results });
+});
+
 app.use(requireAuth); // all other routes require auth in production
 
 // POST /api/client/admin/set-password — CF Access protected; sets/resets a client's login password
