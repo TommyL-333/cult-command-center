@@ -2111,7 +2111,7 @@ app.post('/api/creator-onboard', express.json(), async (req, res) => {
       await axios.post('https://services.leadconnectorhq.com/conversations/messages/outbound', {
         type: 'SMS',
         contactId,
-        message: `Welcome to the Cult Content Creator Network! 🎉 Browse all brand opportunities here: ${CREATOR_BASE_URL}/creators`,
+        message: `Welcome to the cult ${firstName}! We are here to serve you, if you need us, just text this number. Access all of our brand opportunities here: ${CREATOR_BASE_URL}/creators`,
       }, {
         headers: { Authorization: `Bearer ${process.env.GHL_API_KEY}`, Version: '2021-04-15', 'Content-Type': 'application/json' },
       });
