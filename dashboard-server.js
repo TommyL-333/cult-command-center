@@ -8117,31 +8117,49 @@ function renderOpportunitiesPage() {
   const opportunities = (brands.clients || []).filter(b => b.creatorPage?.slug && b.creatorPage?.active !== false);
 
   const cards = opportunities.map(brand => {
-    const cp     = brand.creatorPage;
-    const accent = cp.accentColor || '#00f2ea';
-    const ar     = hexToRgb(accent);
-    const inc    = cp.incentives || {};
-    const pills  = [];
-    if (inc.cashback?.enabled)   pills.push(`${inc.cashback.percent || '?'}% cashback`);
+    const cp         = brand.creatorPage;
+    const accent     = cp.accentColor || '#00f2ea';
+    const ar         = hexToRgb(accent);
+    const inc        = cp.incentives || {};
+    const pills      = [];
+    if (inc.cashback?.enabled)    pills.push(`${inc.cashback.percent || '?'}% cashback`);
     if (inc.leaderboard?.enabled) pills.push('Monthly prizes');
     if (inc.volumeBonus?.enabled) pills.push(`$${inc.volumeBonus.bonusAmount || '?'} video bonus`);
     if (cp.tcCommission)          pills.push(`${cp.tcCommission}% commission`);
-    const pillHtml = pills.map(p => `<span style="background:rgba(${ar},.12);color:${accent};border:1px solid rgba(${ar},.25);border-radius:100px;padding:3px 10px;font-size:11px;font-weight:700;white-space:nowrap;">${p}</span>`).join('');
-    const productCount = (cp.products || []).filter(p => p.name).length;
-    const headline = cp.headline || `Partner with ${brand.name}`;
+    const pillHtml     = pills.map(p => `<span style="background:rgba(${ar},.12);color:${accent};border:1px solid rgba(${ar},.25);border-radius:100px;padding:3px 10px;font-size:11px;font-weight:700;white-space:nowrap;">${p}</span>`).join('');
+    const headline     = cp.headline    || `Partner with ${brand.name}`;
+    const subheadline  = cp.subheadline || '';
+
+    // Logo: prefer manually set logoUrl, then Clearbit from website domain, then letter avatar
+    const manualLogo   = brand.logoUrl || cp.logoUrl || '';
+    const websiteDomain = (brand.website || '').replace(/^https?:\/\//,'').replace(/\/$/, '').split('/')[0];
+    const clearbitLogo  = websiteDomain ? `https://logo.clearbit.com/${websiteDomain}` : '';
+    const initial       = (brand.name || 'B').charAt(0).toUpperCase();
+
+    // Logo HTML: img with onerror fallback to letter avatar
+    const logoHtml = (manualLogo || clearbitLogo) ? `
+      <div style="width:52px;height:52px;border-radius:12px;overflow:hidden;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);flex-shrink:0;display:flex;align-items:center;justify-content:center;">
+        <img src="${manualLogo || clearbitLogo}"
+          style="width:100%;height:100%;object-fit:contain;padding:4px;"
+          onerror="this.style.display='none';this.parentElement.innerHTML='<span style=\\'font-size:22px;font-weight:900;color:${accent}\\'>${initial}</span>';"
+          loading="lazy" />
+      </div>` : `
+      <div style="width:52px;height:52px;border-radius:12px;background:rgba(${ar},.12);border:1px solid rgba(${ar},.2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:${accent};">${initial}</div>`;
 
     return `
     <a href="/creators/${cp.slug}" style="text-decoration:none;display:flex;flex-direction:column;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:20px;overflow:hidden;transition:border-color .2s,transform .15s,box-shadow .2s;cursor:pointer;" class="opp-card">
-      <!-- Accent bar -->
       <div style="height:3px;background:linear-gradient(90deg,${accent},transparent);flex-shrink:0;"></div>
-      <div style="padding:24px 24px 20px;flex:1;display:flex;flex-direction:column;gap:14px;">
-        <!-- Brand name -->
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
-          <div style="font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:${accent};">${brand.name || 'Brand'}</div>
-          ${productCount ? `<div style="font-size:10px;color:rgba(255,255,255,.3);">${productCount} product${productCount !== 1 ? 's' : ''}</div>` : ''}
+      <div style="padding:22px 22px 18px;flex:1;display:flex;flex-direction:column;gap:14px;">
+        <!-- Logo + brand name row -->
+        <div style="display:flex;align-items:center;gap:12px;">
+          ${logoHtml}
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:12px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:${accent};white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${brand.name || 'Brand'}</div>
+            ${subheadline ? `<div style="font-size:11px;color:rgba(255,255,255,.38);margin-top:2px;line-height:1.4;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">${subheadline}</div>` : ''}
+          </div>
         </div>
         <!-- Headline -->
-        <div style="font-size:18px;font-weight:900;line-height:1.25;color:#fff;letter-spacing:-.01em;">${headline}</div>
+        <div style="font-size:17px;font-weight:900;line-height:1.25;color:#fff;letter-spacing:-.01em;">${headline}</div>
         <!-- Pills -->
         ${pillHtml ? `<div style="display:flex;flex-wrap:wrap;gap:6px;">${pillHtml}</div>` : ''}
         <!-- CTA -->
