@@ -404,6 +404,12 @@ app.post('/api/onboard/submit', express.json({ limit: '2mb' }), async (req, res)
   runOnboardingPipeline(req.body).catch(e => console.error('[onboard] pipeline error:', e.message));
 });
 
+// GET /creators — public opportunities gallery (all active brand pages)
+app.get('/creators', (req, res) => {
+  res.set('Content-Type', 'text/html');
+  res.send(renderOpportunitiesPage());
+});
+
 // GET /creators/:brandSlug — public creator interest page
 // active flag only hides the page if explicitly set to false; omitted or true = visible
 app.get('/creators/:brandSlug', (req, res) => {
@@ -8102,6 +8108,99 @@ function extractTikTokVideoId(url) {
   // handles https://www.tiktok.com/@user/video/1234567890 and vm.tiktok.com short links
   const m = url.match(/\/video\/(\d+)/);
   return m ? m[1] : null;
+}
+
+function renderOpportunitiesPage() {
+  const brands = loadBrands();
+  const opportunities = (brands.clients || []).filter(b => b.creatorPage?.slug && b.creatorPage?.active !== false);
+
+  const cards = opportunities.map(brand => {
+    const cp     = brand.creatorPage;
+    const accent = cp.accentColor || '#00f2ea';
+    const ar     = hexToRgb(accent);
+    const inc    = cp.incentives || {};
+    const pills  = [];
+    if (inc.cashback?.enabled)   pills.push(`${inc.cashback.percent || '?'}% cashback`);
+    if (inc.leaderboard?.enabled) pills.push('Monthly prizes');
+    if (inc.volumeBonus?.enabled) pills.push(`$${inc.volumeBonus.bonusAmount || '?'} video bonus`);
+    if (cp.tcCommission)          pills.push(`${cp.tcCommission}% commission`);
+    const pillHtml = pills.map(p => `<span style="background:rgba(${ar},.12);color:${accent};border:1px solid rgba(${ar},.25);border-radius:100px;padding:3px 10px;font-size:11px;font-weight:700;white-space:nowrap;">${p}</span>`).join('');
+    const productCount = (cp.products || []).filter(p => p.name).length;
+    const headline = cp.headline || `Partner with ${brand.name}`;
+
+    return `
+    <a href="/creators/${cp.slug}" style="text-decoration:none;display:flex;flex-direction:column;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:20px;overflow:hidden;transition:border-color .2s,transform .15s,box-shadow .2s;cursor:pointer;" class="opp-card">
+      <!-- Accent bar -->
+      <div style="height:3px;background:linear-gradient(90deg,${accent},transparent);flex-shrink:0;"></div>
+      <div style="padding:24px 24px 20px;flex:1;display:flex;flex-direction:column;gap:14px;">
+        <!-- Brand name -->
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <div style="font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:${accent};">${brand.name || 'Brand'}</div>
+          ${productCount ? `<div style="font-size:10px;color:rgba(255,255,255,.3);">${productCount} product${productCount !== 1 ? 's' : ''}</div>` : ''}
+        </div>
+        <!-- Headline -->
+        <div style="font-size:18px;font-weight:900;line-height:1.25;color:#fff;letter-spacing:-.01em;">${headline}</div>
+        <!-- Pills -->
+        ${pillHtml ? `<div style="display:flex;flex-wrap:wrap;gap:6px;">${pillHtml}</div>` : ''}
+        <!-- CTA -->
+        <div style="margin-top:auto;display:flex;align-items:center;justify-content:space-between;padding-top:14px;border-top:1px solid rgba(255,255,255,.05);">
+          <span style="font-size:13px;font-weight:700;color:${accent};">View opportunity</span>
+          <span style="font-size:18px;color:${accent};opacity:.7;">→</span>
+        </div>
+      </div>
+    </a>`;
+  }).join('');
+
+  const emptyState = `
+    <div style="grid-column:1/-1;text-align:center;padding:80px 20px;color:rgba(255,255,255,.25);">
+      <div style="font-size:48px;margin-bottom:16px;">🌱</div>
+      <div style="font-size:16px;font-weight:700;">Opportunities coming soon</div>
+      <div style="font-size:13px;margin-top:8px;">New brands are being onboarded. Check back shortly.</div>
+    </div>`;
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Manifest Abundance — TikTok Creator Opportunities</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#080610;color:#fff;min-height:100vh}
+.hero{background:linear-gradient(160deg,#0d0b18 0%,#100e1c 50%,#080610 100%);padding:80px 24px 64px;text-align:center;position:relative;overflow:hidden;}
+.hero::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 800px 400px at 50% 0%,rgba(0,242,234,.06) 0%,transparent 70%);pointer-events:none;}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;background:rgba(0,242,234,.08);border:1px solid rgba(0,242,234,.2);border-radius:100px;padding:6px 18px;font-size:11px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#00f2ea;margin-bottom:28px;}
+h1{font-family:'Montserrat',sans-serif;font-size:clamp(36px,6vw,68px);font-weight:900;line-height:1.04;letter-spacing:-.03em;margin-bottom:18px;background:linear-gradient(135deg,#fff 0%,rgba(255,255,255,.6) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hero-sub{font-size:clamp(14px,2vw,18px);color:rgba(255,255,255,.4);max-width:560px;margin:0 auto;line-height:1.65;}
+.count-badge{display:inline-block;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);border-radius:100px;padding:4px 14px;font-size:12px;font-weight:700;color:rgba(255,255,255,.5);margin-top:28px;}
+.grid-wrap{max-width:1100px;margin:0 auto;padding:56px 24px 80px;}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:20px;}
+.opp-card:hover{border-color:rgba(255,255,255,.18)!important;transform:translateY(-3px);box-shadow:0 16px 40px rgba(0,0,0,.35);}
+footer{border-top:1px solid rgba(255,255,255,.05);padding:24px;text-align:center;font-size:11px;color:rgba(255,255,255,.18);}
+footer a{color:#00f2ea;text-decoration:none;}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="eyebrow">✦ TikTok Shop Creator Program</div>
+  <h1>Manifest Abundance</h1>
+  <p class="hero-sub">Find the opportunity that is most aligned with who you are — and start earning.</p>
+  <div class="count-badge">${opportunities.length} brand${opportunities.length !== 1 ? 's' : ''} currently partnering</div>
+</div>
+
+<div class="grid-wrap">
+  <div class="grid">
+    ${cards || emptyState}
+  </div>
+</div>
+
+<footer>Powered by <a href="https://cultcontent.cc" target="_blank">Cult Content</a> — TikTok Shop Creator Agency</footer>
+
+</body>
+</html>`;
 }
 
 function renderCreatorPage(brand, cp) {
