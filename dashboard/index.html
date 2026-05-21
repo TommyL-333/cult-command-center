@@ -2953,6 +2953,13 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
 
 <script>
 // ─── Global helpers ───────────────────────────────────────────────────────────
+// Global fetch wrapper — auto-reloads on 401 so CF Access expiry never breaks the UI
+async function apiFetch(url, opts) {
+  const resp = await fetch(url, opts);
+  if (resp.status === 401) { window.location.reload(); return null; }
+  return resp;
+}
+
 function x(s) {
   if (s == null) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
@@ -9837,13 +9844,12 @@ const MI = { data: null, view: 'meetings' };
 async function loadMeetingIntel() {
   try {
     const safeJson = async (url) => {
-      const resp = await fetch(url);
+      const resp = await apiFetch(url);
+      if (!resp) return null; // apiFetch reloaded due to 401
       if (!resp.ok) {
-        // Always throw on non-ok — never return error JSON as data
         const text = await resp.text();
         let msg = `Server error ${resp.status}`;
         try { const j = JSON.parse(text); if (j.error) msg = j.error; } catch(_) {}
-        if (resp.status === 401) throw new Error('Session expired — please refresh the page');
         throw new Error(msg);
       }
       return resp.json();
@@ -9859,6 +9865,11 @@ async function loadMeetingIntel() {
     if (banner) banner.style.display = status.connected ? 'none' : 'flex';
     miRender();
   } catch(e) {
+    if (e.message && e.message.toLowerCase().includes('session expired')) {
+      // CF Access JWT expired — reload the page to get a fresh token
+      window.location.reload();
+      return;
+    }
     document.getElementById('miContent').innerHTML = `<div style="text-align:center;padding:40px;color:var(--red)">Failed to load: ${x(e.message)}</div>`;
   }
 }
