@@ -4685,6 +4685,7 @@ Rules:
 app.get('/api/client-meetings', (req, res) => {
   const data = loadClientMeetings();
   const meetings = data.meetings || [];
+  console.log(`[client-meetings] GET — ${meetings.length} meeting(s) in file`);
   const brandsData = loadBrands();
   const knownClients = (brandsData.clients || []).map(c => c.name || c.id).filter(Boolean);
 

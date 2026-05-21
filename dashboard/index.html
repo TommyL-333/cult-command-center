@@ -9839,12 +9839,12 @@ async function loadMeetingIntel() {
     const safeJson = async (url) => {
       const resp = await fetch(url);
       if (!resp.ok) {
+        // Always throw on non-ok — never return error JSON as data
         const text = await resp.text();
-        // If response isn't JSON (e.g. auth redirect returned HTML), surface a clean error
-        try { return JSON.parse(text); } catch(_) {
-          if (resp.status === 401) throw new Error('Session expired — please refresh the page');
-          throw new Error(`Server error ${resp.status}`);
-        }
+        let msg = `Server error ${resp.status}`;
+        try { const j = JSON.parse(text); if (j.error) msg = j.error; } catch(_) {}
+        if (resp.status === 401) throw new Error('Session expired — please refresh the page');
+        throw new Error(msg);
       }
       return resp.json();
     };
