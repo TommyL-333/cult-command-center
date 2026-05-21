@@ -2122,15 +2122,15 @@ app.post('/api/creator-onboard', express.json(), async (req, res) => {
     }
   }
 
-  // 3 — Discord role assignment
+  // 3 — Discord role assignment (with automatic retry every 5min, up to 3 attempts)
   const botToken = process.env.DISCORD_BOT_TOKEN;
   const guildId  = process.env.DISCORD_GUILD_ID;
   const roleId   = process.env.DISCORD_CREATOR_ROLE_ID;
   const cleanDu  = discordUsername.replace(/^@/, '').trim();
 
-  if (botToken && guildId && roleId && cleanDu) {
+  async function tryAssignDiscordRole() {
+    if (!botToken || !guildId || !roleId || !cleanDu) return { ok: false, error: botToken ? 'No Discord username provided' : 'Discord not configured' };
     try {
-      // Search guild members by username
       const searchRes = await axios.get(`https://discord.com/api/v10/guilds/${guildId}/members/search`, {
         params: { query: cleanDu, limit: 10 },
         headers: { Authorization: `Bot ${botToken}` },
@@ -2146,16 +2146,33 @@ app.post('/api/creator-onboard', express.json(), async (req, res) => {
           null,
           { headers: { Authorization: `Bot ${botToken}` } }
         );
-        results.discord = { ok: true, userId: member.user.id, username: member.user.username };
-      } else {
-        results.discord = { ok: false, error: 'Username not found in server — they may need to join first.' };
+        return { ok: true, userId: member.user.id, username: member.user.username };
       }
+      return { ok: false, error: 'not_found' };
     } catch (e) {
-      results.discord = { ok: false, error: e.response?.data?.message || e.message };
-      console.error('[creator-onboard] Discord error:', e.response?.data || e.message);
+      return { ok: false, error: e.response?.data?.message || e.message };
     }
-  } else {
-    results.discord = { ok: false, error: botToken ? 'No Discord username provided' : 'Discord not configured' };
+  }
+
+  function scheduleDiscordRetry(attemptsLeft) {
+    if (attemptsLeft <= 0 || !cleanDu) return;
+    setTimeout(async () => {
+      console.log(`[creator-onboard] Discord retry for ${cleanDu}, attempts left: ${attemptsLeft}`);
+      const r = await tryAssignDiscordRole();
+      if (r.ok) {
+        console.log(`[creator-onboard] Discord role assigned on retry for ${cleanDu}`);
+      } else if (r.error === 'not_found') {
+        scheduleDiscordRetry(attemptsLeft - 1);
+      } else {
+        console.error(`[creator-onboard] Discord retry failed for ${cleanDu}:`, r.error);
+      }
+    }, 5 * 60 * 1000); // 5 minutes
+  }
+
+  results.discord = await tryAssignDiscordRole();
+  if (results.discord.error === 'not_found') {
+    results.discord.error = 'Username not found in server — will retry in 5 minutes.';
+    scheduleDiscordRetry(3); // retry up to 3 more times (5, 10, 15 min)
   }
 
   // 4 — Lark alert
