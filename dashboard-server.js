@@ -84,12 +84,14 @@ const ALLOWED_DOMAINS = (process.env.ALLOWED_EMAIL_DOMAINS || 'cultcontent.cc')
 function requireAuth(req, res, next) {
   // Skip auth in local dev (no CF_ACCESS_AUD configured)
   if (!process.env.CF_ACCESS_AUD) return next();
+  if (req.path.startsWith('/api/')) console.log(`[auth] ${req.method} ${req.path} email=${req.headers['cf-access-authenticated-user-email']||'(none)'}`);
 
   const email = req.headers['cf-access-authenticated-user-email'];
   if (!email) {
-    // API routes get JSON so fetch().then(r.json()) doesn't blow up
+    console.log(`[auth] BLOCKED ${req.method} ${req.path} — no CF Access header`);
     if (req.path.startsWith('/api/')) {
-      return res.status(401).json({ ok: false, error: 'Unauthorized — session expired, please refresh' });
+      // Plain text so both old and new JS parse attempts fail and surface the error
+      return res.status(401).type('text').send('Session expired — please refresh the page');
     }
     return res.status(401).sendFile(path.join(__dirname, 'dashboard', '401.html'));
   }
