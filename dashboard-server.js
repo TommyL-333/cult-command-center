@@ -2158,6 +2158,22 @@ app.post('/api/creator-onboard', express.json(), async (req, res) => {
     results.discord = { ok: false, error: botToken ? 'No Discord username provided' : 'Discord not configured' };
   }
 
+  // 4 — Lark alert
+  try {
+    const larkToken = await getLarkToken();
+    const discordStr = discordUsername ? `@${discordUsername.replace(/^@/,'')}` : 'not provided';
+    const tiktokStr  = handle ? `@${handle}` : 'not provided';
+    await axios.post('https://open.larksuite.com/open-apis/im/v1/messages?receive_id_type=chat_id', {
+      receive_id: process.env.LARK_ALERT_CHAT_ID,
+      msg_type: 'text',
+      content: JSON.stringify({ text:
+        `New Creator Signup\nName: ${name}\nTikTok: ${tiktokStr}\nEmail: ${email}\nPhone: ${phone}\nDiscord: ${discordStr}`
+      }),
+    }, { headers: { Authorization: `Bearer ${larkToken}`, 'Content-Type': 'application/json' } });
+  } catch(e) {
+    console.error('[creator-onboard] Lark error:', e.response?.data || e.message);
+  }
+
   const discordInvite = process.env.DISCORD_INVITE_URL || 'https://discord.gg/cultcontent';
   res.json({ ok: true, discordInvite, results });
 });
