@@ -8574,4 +8574,22 @@ app.post('/api/ai/generate-image', async (req, res) => {
 app.listen(CFG.port, () => {
   console.log(`\n⚡ Cult Content Command Center`);
   console.log(`   http://localhost:${CFG.port}\n`);
+
+  // Startup diagnostics — log data file sizes so we can verify persistence
+  try {
+    const mData = loadClientMeetings();
+    const bData = loadBrands();
+    const mCount = (mData.meetings || []).length;
+    const cCount = (bData.clients || []).length;
+    const clientNames = (bData.clients || []).map(c => c.name).join(', ') || '(none)';
+    console.log(`[startup] client-meetings.json: ${mCount} meeting(s)`);
+    console.log(`[startup] brands.json: ${cCount} client(s) — ${clientNames}`);
+    if (mCount > 0) {
+      const firstDate = mData.meetings[mData.meetings.length - 1]?.date || 'unknown';
+      const lastDate  = mData.meetings[0]?.date || 'unknown';
+      console.log(`[startup] meeting range: ${firstDate} → ${lastDate}`);
+    }
+  } catch(e) {
+    console.error('[startup] diagnostic error:', e.message);
+  }
 });

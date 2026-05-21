@@ -2509,10 +2509,10 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
       <!-- View toggle + hide completed -->
       <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px">
       <div style="display:flex;gap:4px;background:var(--surface2);border-radius:8px;padding:4px;width:fit-content">
-        <button id="miViewBtnClients" class="btn" onclick="miSetView('clients')" style="font-size:12px;padding:6px 16px;background:var(--teal);color:#fff;border-radius:5px">By Client</button>
+        <button id="miViewBtnClients" class="btn btn-ghost" onclick="miSetView('clients')" style="font-size:12px;padding:6px 16px">By Client</button>
         <button id="miViewBtnPeople" class="btn btn-ghost" onclick="miSetView('people')" style="font-size:12px;padding:6px 16px">By Person</button>
         <button id="miViewBtnThemes" class="btn btn-ghost" onclick="miSetView('themes')" style="font-size:12px;padding:6px 16px">Themes</button>
-        <button id="miViewBtnMeetings" class="btn btn-ghost" onclick="miSetView('meetings')" style="font-size:12px;padding:6px 16px">All Meetings</button>
+        <button id="miViewBtnMeetings" class="btn" onclick="miSetView('meetings')" style="font-size:12px;padding:6px 16px;background:var(--teal);color:#fff;border-radius:5px">All Meetings</button>
       </div>
       <label style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted);cursor:pointer;user-select:none">
         <input type="checkbox" id="miShowDone" onchange="miRender()" style="accent-color:var(--teal);width:14px;height:14px">
@@ -9832,7 +9832,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // ─── Meeting Intelligence (Lark-based) ───────────────────────────────────────
-const MI = { data: null, view: 'clients' };
+const MI = { data: null, view: 'meetings' };
 
 async function loadMeetingIntel() {
   try {
@@ -10047,7 +10047,16 @@ function miRenderByClient() {
     .filter(([, actions]) => actions.length > 0)
     .sort((a,b) => b[1].filter(a=>(a.status||'open')!=='closed').length - a[1].filter(a=>(a.status||'open')!=='closed').length);
 
-  if (!entries.length) return miEmptyState();
+  if (!entries.length) {
+    const hasAny = (MI.data?.meetings||[]).length > 0;
+    if (hasAny) return `<div style="text-align:center;padding:60px 0;color:var(--muted)">
+      <div style="font-size:40px;margin-bottom:12px">🏷️</div>
+      <div style="font-size:14px;font-weight:700;margin-bottom:8px">No open client tasks</div>
+      <div style="font-size:12px;margin-bottom:20px">Action items may be tagged "Internal" or already completed.<br>Switch to <strong>Meetings</strong> or <strong>People</strong> view to see everything.</div>
+      <button class="btn btn-ghost" onclick="miSetView('meetings')" style="font-size:12px;padding:7px 14px">→ Switch to Meetings View</button>
+    </div>`;
+    return miEmptyState();
+  }
   return entries.map(([client, actions]) => {
     const counts = { open:0, 'in-progress':0, blocked:0, closed:0 };
     actions.forEach(a => { const s = a.status||(a.done?'closed':'open'); counts[s] = (counts[s]||0)+1; });
