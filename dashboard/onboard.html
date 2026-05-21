@@ -333,6 +333,30 @@ textarea{resize:vertical;min-height:80px}
     </div>
   </div>
 
+  <!-- Commission rates -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">Commission Rates</div>
+    <div class="card-sub">Set the default commission rates for TikTok Shop collaborations. These are used when automatically sending invites to creators who apply.</div>
+    <div style="display:flex;gap:14px;flex-wrap:wrap">
+      <div class="field" style="flex:1;min-width:180px">
+        <label>Target Collaboration Commission</label>
+        <div style="position:relative">
+          <input type="number" id="tcCommission" placeholder="e.g. 10" min="1" max="80" step="0.5" style="padding-right:32px">
+          <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px">%</span>
+        </div>
+        <div class="hint">Commission offered on the TC invite card sent to creators</div>
+      </div>
+      <div class="field" style="flex:1;min-width:180px">
+        <label>Open Collaboration Commission</label>
+        <div style="position:relative">
+          <input type="number" id="openCommission" placeholder="e.g. 15" min="1" max="80" step="0.5" style="padding-right:32px">
+          <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px">%</span>
+        </div>
+        <div class="hint">Default rate for open / open-plan affiliate collaborations</div>
+      </div>
+    </div>
+  </div>
+
   <div class="card">
     <div class="card-title">Creator Compensation Program</div>
     <div class="card-sub">Toggle on the incentive programs you want to run. These will appear on your creator interest page and in all outreach messages. Everything is optional — you can always add more later.</div>
@@ -696,6 +720,14 @@ function buildReview() {
     <div class="review-section">
       <div class="review-title">Talking Points</div>
       <div class="rv" style="max-width:100%"><div class="rv-val" style="white-space:pre-wrap;font-size:12px">${esc(v('talkingPoints'))}</div></div>
+    </div>` : ''}
+    ${(v('tcCommission') || v('openCommission')) ? `
+    <div class="review-section">
+      <div class="review-title">Commission Rates</div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        ${v('tcCommission') ? `<div class="rv"><div class="rv-label">Target Collab</div><div class="rv-val">${esc(v('tcCommission'))}%</div></div>` : ''}
+        ${v('openCommission') ? `<div class="rv"><div class="rv-label">Open Collab</div><div class="rv-val">${esc(v('openCommission'))}%</div></div>` : ''}
+      </div>
     </div>` : ''}`;
 }
 
@@ -721,6 +753,7 @@ async function submitForm() {
     compensation: F.compensation,
     usp1: v('usp1'), usp2: v('usp2'), usp3: v('usp3'),
     talkingPoints: v('talkingPoints'),
+    tcCommission: v('tcCommission'), openCommission: v('openCommission'),
     submittedAt: new Date().toISOString(),
   };
   const btn = document.getElementById('submitBtn');

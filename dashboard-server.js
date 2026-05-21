@@ -407,6 +407,84 @@ app.get('/creators/:brandSlug', (req, res) => {
   res.send(renderCreatorPage(brand, brand.creatorPage));
 });
 
+// ─── Auto-send Target Collaboration when a creator applies ────────────────────
+// Fetches the brand's enrolled TikTok Shop affiliate products, builds a
+// single-creator TC automation in Reacher, and fires it off.
+// Runs fire-and-forget — errors are logged but never surface to the creator.
+async function sendCreatorTC(brand, brands, brandIdx, creatorHandle) {
+  const label = `[creator-tc:${brand.name}→@${creatorHandle}]`;
+  const cp = brand.creatorPage || {};
+
+  // Need TikTok Shop connected + Reacher shop + TC commission configured
+  if (!brand.tiktokShopToken?.access_token) {
+    console.log(`${label} skip — no TikTok Shop token`); return;
+  }
+  if (!brand.shopId) {
+    console.log(`${label} skip — no Reacher shopId`); return;
+  }
+  if (!cp.tcCommission) {
+    console.log(`${label} skip — no TC commission configured`); return;
+  }
+  if (!process.env.REACHER_API_KEY) {
+    console.log(`${label} skip — REACHER_API_KEY not set`); return;
+  }
+
+  // 1. Fetch products enrolled in the brand's TikTok Shop affiliate program
+  let products = [];
+  try {
+    const resp = await ttsBrandPost(brand, brands, brandIdx, '/affiliate/seller/202309/products/search', { page_size: 20 });
+    products = resp?.data?.products || [];
+  } catch(e) {
+    console.error(`${label} TTS products fetch error:`, e.message); return;
+  }
+  if (!products.length) {
+    console.log(`${label} skip — no affiliate products enrolled`); return;
+  }
+
+  // 2. Build product list with commission rate (Reacher expects decimal, e.g. 0.10 = 10%)
+  const commissionDecimal = cp.tcCommission / 100;
+  const tcProducts = products.slice(0, 10).map(p => ({
+    product_id:      String(p.product_id || p.id),
+    commission_rate: commissionDecimal,
+  }));
+
+  // 3. Build TC automation payload — single creator, runs for 3 days to ensure delivery
+  const endDate = new Date(Date.now() + 3 * 86_400_000).toISOString().split('T')[0];
+  const handle  = creatorHandle.replace(/^@/, '');
+  const inviteName = (brand.name || 'Collaboration').slice(0, 30);
+  const message = `Hi! We'd love to collaborate with you on ${brand.name}. We offer ${cp.tcCommission}% commission on our TikTok Shop products — click to view the details and accept the invite!`.slice(0, 500);
+
+  const payload = {
+    automation_name: `Creator App TC — ${brand.name} → @${handle}`,
+    shop:            String(brand.shopId),
+    schedule: {
+      Monday_maxCreators: 1, Tuesday_maxCreators: 1, Wednesday_maxCreators: 1,
+      Thursday_maxCreators: 1, Friday_maxCreators: 1, Saturday_maxCreators: 1,
+      Sunday_maxCreators: 1, timezone: 'America/New_York',
+    },
+    target_collab: {
+      invitation_name: inviteName,
+      message,
+      products:        tcProducts,
+      support_contact: { email: brand.loginEmail || 'hello@cultcontent.cc' },
+      content_type:    'no_preference',
+      sample_policy:   { offer_free_samples: false, auto_approve: false },
+    },
+    creators_to_include: { list_upload: [handle] },
+    end_date:     endDate,
+    idempotency_key: require('crypto').randomUUID(),
+  };
+
+  // 4. POST to Reacher
+  try {
+    const rc = reacherClient(brand.shopId);
+    const { data } = await rc.post('/automations/target-collab', payload);
+    console.log(`${label} TC automation created:`, data?.automation_id || data?.id || 'ok');
+  } catch(e) {
+    console.error(`${label} Reacher TC create error:`, e.response?.data || e.message);
+  }
+}
+
 // POST /api/creator-pages/submit — public creator interest form submission
 app.post('/api/creator-pages/submit', express.json(), async (req, res) => {
   try {
@@ -457,6 +535,13 @@ app.post('/api/creator-pages/submit', express.json(), async (req, res) => {
       { text: larkText, context: 'Creator Application', source: 'Creator Landing Page' },
       { timeout: 10000 }
     ).catch(e => console.error('[creator-pages] Lark notify error:', e.message));
+
+    // Auto-send TC invite if brand is fully set up (fire-and-forget)
+    if (tiktokHandle) {
+      const brandIdx = brands.clients.findIndex(b => b.creatorPage?.slug === brandSlug);
+      sendCreatorTC(brand, brands, brandIdx, tiktokHandle)
+        .catch(e => console.error('[creator-pages] TC fire error:', e.message));
+    }
 
     res.json({ ok: true, contactId });
   } catch(e) {
@@ -1936,6 +2021,14 @@ const ghl = axios.create({
     Version: '2021-07-28',
   },
 });
+
+// ─── Reacher API client ───────────────────────────────────────────────────────
+const REACHER_BASE = 'https://api.reacherapp.com/public/v1';
+function reacherClient(shopId) {
+  const headers = { 'x-api-key': process.env.REACHER_API_KEY || '', 'Content-Type': 'application/json' };
+  if (shopId) headers['x-shop-id'] = String(shopId);
+  return axios.create({ baseURL: REACHER_BASE, timeout: 20000, headers });
+}
 
 // ─── Simple TTL cache ──────────────────────────────────────────────────────────
 const cache = new Map();
@@ -7734,6 +7827,8 @@ async function runOnboardingPipeline(formData) {
       talkingPoints: formData.talkingPoints || '',
       products: formData.products || [],
       tiktokHandle: formData.tiktokHandle || '',
+      tcCommission:   formData.tcCommission   ? parseFloat(formData.tcCommission)   : null,
+      openCommission: formData.openCommission ? parseFloat(formData.openCommission) : null,
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
     };
     saveBrands(brandsData);
