@@ -4683,8 +4683,8 @@ Rules:
 - Use "Internal" ONLY for purely internal Cult Content tasks with no external person/brand`;
 }
 
-// GET /api/client-meetings  — all meetings + aggregated intel
-app.get('/api/client-meetings', (req, res) => {
+// GET /api/meetings  — all meetings + aggregated intel
+app.get('/api/meetings', (req, res) => {
   const data = loadClientMeetings();
   const meetings = data.meetings || [];
   console.log(`[client-meetings] GET — ${meetings.length} meeting(s) in file`);
@@ -4719,8 +4719,8 @@ app.get('/api/client-meetings', (req, res) => {
   res.json({ ok: true, meetings: meetings.slice(0, 100), byClient, byPerson, recurringThemes, knownClients, teamMembers });
 });
 
-// POST /api/client-meetings  — add a meeting with AI analysis
-app.post('/api/client-meetings', async (req, res) => {
+// POST /api/meetings  — add a meeting with AI analysis
+app.post('/api/meetings', async (req, res) => {
   try {
     const { date, client, participants, notes, title, duration } = req.body;
     if (!notes) return res.status(400).json({ ok: false, error: 'notes required' });
@@ -4812,8 +4812,8 @@ Return only the JSON, no explanation.`
   }
 });
 
-// DELETE /api/client-meetings/:id
-app.delete('/api/client-meetings/:id', (req, res) => {
+// DELETE /api/meetings/:id
+app.delete('/api/meetings/:id', (req, res) => {
   const data = loadClientMeetings();
   const before = data.meetings.length;
   data.meetings = data.meetings.filter(m => m.id !== req.params.id);
@@ -4822,10 +4822,10 @@ app.delete('/api/client-meetings/:id', (req, res) => {
   res.json({ ok: true });
 });
 
-// PATCH /api/client-meetings/:id/action/:idx  — edit fields or quick status toggle
+// PATCH /api/meetings/:id/action/:idx  — edit fields or quick status toggle
 // Edit:   body with any of { task, assignee, client, priority, status, notes }
 // Toggle: body with { toggleStatus: true } — cycles open→in-progress→closed
-app.patch('/api/client-meetings/:id/action/:idx', async (req, res) => {
+app.patch('/api/meetings/:id/action/:idx', async (req, res) => {
   const data = loadClientMeetings();
   const m = data.meetings.find(m => m.id === req.params.id);
   if (!m) return res.status(404).json({ ok: false, error: 'Not found' });
@@ -4877,8 +4877,8 @@ app.patch('/api/client-meetings/:id/action/:idx', async (req, res) => {
   res.json({ ok: true, done: ai.done, actionItem: ai });
 });
 
-// DELETE /api/client-meetings/:id/action/:idx — remove a single action item
-app.delete('/api/client-meetings/:id/action/:idx', (req, res) => {
+// DELETE /api/meetings/:id/action/:idx — remove a single action item
+app.delete('/api/meetings/:id/action/:idx', (req, res) => {
   const data = loadClientMeetings();
   const m = data.meetings.find(m => m.id === req.params.id);
   if (!m) return res.status(404).json({ ok: false, error: 'Not found' });
@@ -4889,8 +4889,8 @@ app.delete('/api/client-meetings/:id/action/:idx', (req, res) => {
   res.json({ ok: true });
 });
 
-// POST /api/client-meetings/reanalyze — re-run AI on all stored meetings with current client list
-app.post('/api/client-meetings/reanalyze', requireAuth, async (req, res) => {
+// POST /api/meetings/reanalyze — re-run AI on all stored meetings with current client list
+app.post('/api/meetings/reanalyze', requireAuth, async (req, res) => {
   try {
     const data = loadClientMeetings();
     const _brandsRe = loadBrands();
@@ -4950,9 +4950,9 @@ Return JSON only — no explanation:
   }
 });
 
-// POST /api/client-meetings/import-fireflies — import a single transcript by Fireflies URL or ID
+// POST /api/meetings/import-fireflies — import a single transcript by Fireflies URL or ID
 // e.g. https://app.fireflies.ai/view/Trusted-Rituals-Onboarding::01KRGPSQ4XHFNB1KZY0Z8B3EB5
-app.post('/api/client-meetings/import-fireflies', requireAuth, async (req, res) => {
+app.post('/api/meetings/import-fireflies', requireAuth, async (req, res) => {
   try {
     const { url } = req.body || {};
     if (!url) return res.status(400).json({ ok: false, error: 'url required' });
@@ -5023,8 +5023,8 @@ app.post('/api/client-meetings/import-fireflies', requireAuth, async (req, res) 
   }
 });
 
-// POST /api/client-meetings/sync-fireflies — pull recent Fireflies transcripts into Meeting Intel
-app.post('/api/client-meetings/sync-fireflies', requireAuth, async (req, res) => {
+// POST /api/meetings/sync-fireflies — pull recent Fireflies transcripts into Meeting Intel
+app.post('/api/meetings/sync-fireflies', requireAuth, async (req, res) => {
   try {
     const keys = [process.env.FIREFLIES_API_KEY, process.env.FIREFLIES_API_KEY_2].filter(Boolean);
     if (!keys.length) return res.status(400).json({ ok: false, error: 'FIREFLIES_API_KEY not set' });

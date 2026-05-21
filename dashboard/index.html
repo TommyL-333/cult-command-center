@@ -2953,11 +2953,9 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
 
 <script>
 // ─── Global helpers ───────────────────────────────────────────────────────────
-// Global fetch wrapper — auto-reloads on 401 so CF Access expiry never breaks the UI
+// Global fetch wrapper
 async function apiFetch(url, opts) {
-  const resp = await fetch(url, opts);
-  if (resp.status === 401) { window.location.reload(); return null; }
-  return resp;
+  return fetch(url, opts);
 }
 
 function x(s) {
@@ -9845,7 +9843,6 @@ async function loadMeetingIntel() {
   try {
     const safeJson = async (url) => {
       const resp = await apiFetch(url);
-      if (!resp) return null; // apiFetch reloaded due to 401
       if (!resp.ok) {
         const text = await resp.text();
         let msg = `Server error ${resp.status}`;
@@ -9855,7 +9852,7 @@ async function loadMeetingIntel() {
       return resp.json();
     };
     const [r, status] = await Promise.all([
-      safeJson('/api/client-meetings'),
+      safeJson('/api/meetings'),
       safeJson('/api/lark/oauth/status').catch(() => ({ connected: false })),
     ]);
     MI.data = r;
@@ -9865,11 +9862,6 @@ async function loadMeetingIntel() {
     if (banner) banner.style.display = status.connected ? 'none' : 'flex';
     miRender();
   } catch(e) {
-    if (e.message && e.message.toLowerCase().includes('session expired')) {
-      // CF Access JWT expired — reload the page to get a fresh token
-      window.location.reload();
-      return;
-    }
     document.getElementById('miContent').innerHTML = `<div style="text-align:center;padding:40px;color:var(--red)">Failed to load: ${x(e.message)}</div>`;
   }
 }
@@ -9986,7 +9978,7 @@ async function miQuickStatus(meetingId, idx, el) {
     : { toggleStatus: true };
   el.disabled = true;
   try {
-    const r = await fetch(`/api/client-meetings/${meetingId}/action/${idx}`, {
+    const r = await fetch(`/api/meetings/${meetingId}/action/${idx}`, {
       method: 'PATCH', headers: {'Content-Type':'application/json'},
       body: JSON.stringify(body)
     }).then(r => r.json());
@@ -10202,7 +10194,7 @@ function miEmptyState() {
 async function miToggleAction(meetingId, idx) {
   if (idx < 0) return;
   try {
-    const r = await fetch(`/api/client-meetings/${meetingId}/action/${idx}`, { method: 'PATCH' }).then(r=>r.json());
+    const r = await fetch(`/api/meetings/${meetingId}/action/${idx}`, { method: 'PATCH' }).then(r=>r.json());
     if (r.ok) {
       const m = (MI.data?.meetings||[]).find(m=>m.id===meetingId);
       if (m?.actionItems?.[idx]) m.actionItems[idx].done = r.done;
@@ -10230,7 +10222,7 @@ async function miDeleteMeeting(id, btn) {
   if (!confirm('Delete this meeting and all its action items?')) return;
   if (btn) { btn.disabled = true; btn.textContent = '...'; }
   try {
-    await fetch(`/api/client-meetings/${id}`, { method: 'DELETE' });
+    await fetch(`/api/meetings/${id}`, { method: 'DELETE' });
     MI.data.meetings = (MI.data.meetings||[]).filter(m=>m.id!==id);
     loadMeetingIntel(); // reload for fresh aggregates
   } catch(e) {
@@ -10276,7 +10268,7 @@ function miEditAction(meetingId, idx) {
 async function miDeleteAction(meetingId, idx, btn) {
   btn.disabled = true;
   try {
-    const r = await fetch(`/api/client-meetings/${meetingId}/action/${idx}`, { method: 'DELETE' }).then(r => r.json());
+    const r = await fetch(`/api/meetings/${meetingId}/action/${idx}`, { method: 'DELETE' }).then(r => r.json());
     if (r.ok) {
       const m = (MI.data?.meetings||[]).find(m=>m.id===meetingId);
       if (m?.actionItems) m.actionItems.splice(idx, 1);
@@ -10319,7 +10311,7 @@ async function miSaveEditAction() {
   const btn = document.getElementById('miEditSaveBtn');
   btn.disabled = true; btn.textContent = 'Saving…';
   try {
-    const r = await fetch(`/api/client-meetings/${meetingId}/action/${idx}`, {
+    const r = await fetch(`/api/meetings/${meetingId}/action/${idx}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ task, assignee, client, priority, status, notes })
@@ -10340,7 +10332,7 @@ async function miSyncFireflies(btn) {
   btn.disabled = true;
   btn.textContent = '⏳ Syncing…';
   try {
-    const r = await fetch('/api/client-meetings/sync-fireflies', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ days: 30 }) }).then(r => r.json());
+    const r = await fetch('/api/meetings/sync-fireflies', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ days: 30 }) }).then(r => r.json());
     if (r.ok) {
       btn.textContent = r.added > 0 ? `✓ +${r.added} meetings` : '✓ Up to date';
       setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 3000);
@@ -10361,7 +10353,7 @@ async function miImportFireflies(btn) {
   const orig = btn.textContent;
   btn.disabled = true; btn.textContent = '⏳ Importing…';
   try {
-    const r = await fetch('/api/client-meetings/import-fireflies', {
+    const r = await fetch('/api/meetings/import-fireflies', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({ url: url.trim() })
     }).then(r => r.json());
@@ -10384,7 +10376,7 @@ async function miReanalyze(btn) {
   btn.disabled = true;
   btn.textContent = '⏳ Re-analyzing…';
   try {
-    const r = await fetch('/api/client-meetings/reanalyze', { method: 'POST' }).then(r => r.json());
+    const r = await fetch('/api/meetings/reanalyze', { method: 'POST' }).then(r => r.json());
     if (r.ok) {
       btn.textContent = `✓ Updated ${r.updated}/${r.total}`;
       setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 3000);
@@ -10485,7 +10477,7 @@ async function miSubmitMeeting() {
     .split(',').map(s=>s.trim()).filter(Boolean);
 
   try {
-    const r = await fetch('/api/client-meetings', {
+    const r = await fetch('/api/meetings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
