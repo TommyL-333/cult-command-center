@@ -8412,11 +8412,6 @@ function renderCreatorPage(brand, cp) {
   const ar       = hexToRgb(accent);
   const name     = brand.name || 'Brand';
   const inc      = cp.incentives || {};
-  const products = (cp.products || []).filter(p => p.name);
-  const usps     = (cp.usps || []).filter(Boolean);
-  const talking  = (cp.talkingPoints || '').split('\n').map(s => s.trim()).filter(Boolean);
-  const videos   = (cp.competitorVideos || []).filter(Boolean);
-  const tiktokHandle = cp.tiktokHandle || brand.tiktokHandle || '';
 
   // Auto-generate reward copy lines
   const rewardLines = [];
@@ -8432,21 +8427,6 @@ function renderCreatorPage(brand, cp) {
   if (inc.leaderboard?.enabled && inc.leaderboard.prizes?.length) {
     rewardLines.push(`<div class="reward-line"><span class="reward-val">${inc.leaderboard.prizes[0]}</span><span class="reward-desc">top prize for the monthly leaderboard${inc.leaderboard.threshold ? ` — $${Number(inc.leaderboard.threshold).toLocaleString()} min GMV to qualify` : ''}</span></div>`);
   }
-
-  const productsHtml = products.map(p => `
-    <div class="product-card">
-      <div class="product-name">${p.name}</div>
-      ${p.minPrice ? `<div class="product-price">From $${Number(p.minPrice).toFixed(2)}</div>` : ''}
-      ${p.url ? `<a href="${p.url}" target="_blank" rel="noopener" class="product-link">View on TikTok Shop</a>` : ''}
-    </div>`).join('');
-
-  const uspHtml     = usps.map(u => `<li class="usp-item"><span class="usp-check">&#10003;</span>${u}</li>`).join('');
-  const talkingHtml = talking.map(t => `<li class="talking-item">${t}</li>`).join('');
-  const videosHtml  = videos.map(url => {
-    const vid = extractTikTokVideoId(url);
-    if (!vid) return '';
-    return `<div class="video-wrap"><iframe src="https://www.tiktok.com/embed/v2/${vid}" width="325" height="576" style="border:none;border-radius:12px;max-width:100%" allow="fullscreen;autoplay" scrolling="no" loading="lazy"></iframe></div>`;
-  }).filter(Boolean).join('');
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -8474,23 +8454,6 @@ h1{font-size:clamp(26px,5vw,50px);font-weight:900;line-height:1.06;letter-spacin
 .reward-line{display:flex;align-items:baseline;gap:14px;padding:16px 20px;background:rgba(${ar},.05);border:1px solid rgba(${ar},.15);border-radius:12px}
 .reward-val{font-size:20px;font-weight:900;color:${accent};white-space:nowrap;min-width:120px}
 .reward-desc{font-size:13px;color:rgba(255,255,255,.55);line-height:1.5}
-/* products */
-.products-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
-.product-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:20px}
-.product-name{font-size:15px;font-weight:700;margin-bottom:6px}
-.product-price{font-size:13px;color:${accent};font-weight:700;margin-bottom:10px}
-.product-link{font-size:12px;color:${accent};text-decoration:none;font-weight:600}
-/* usps */
-.usp-list{list-style:none;display:flex;flex-direction:column;gap:12px}
-.usp-item{display:flex;align-items:flex-start;gap:12px;font-size:15px;font-weight:600;line-height:1.4}
-.usp-check{flex-shrink:0;width:22px;height:22px;background:rgba(${ar},.15);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;color:${accent};font-weight:900}
-/* videos */
-.videos-scroll{display:flex;gap:16px;overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
-.video-wrap{flex-shrink:0}
-/* talking points */
-.talking-list{list-style:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
-.talking-item{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:14px 16px 14px 32px;font-size:14px;color:rgba(255,255,255,.7);line-height:1.5;position:relative}
-.talking-item::before{content:'';position:absolute;left:14px;top:18px;width:6px;height:6px;border-radius:50%;background:${accent}}
 /* form */
 .form-card{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:40px;max-width:560px;margin:0 auto}
 .form-head{font-size:22px;font-weight:900;margin-bottom:6px}
@@ -8526,50 +8489,6 @@ ${rewardLines.length ? `
     <div class="section-title">How you get paid</div>
     <div class="section-sub">Stack multiple income streams every month.</div>
     <div class="rewards-block">${rewardLines.join('')}</div>
-  </div>
-</div>` : ''}
-
-${productsHtml ? `
-<hr class="divider">
-<div class="section">
-  <div class="section-inner">
-    <div class="section-label">Products to Promote</div>
-    <div class="section-title">What you'll be featuring</div>
-    <div class="section-sub">High-converting products with strong customer reviews.</div>
-    <div class="products-grid">${productsHtml}</div>
-  </div>
-</div>` : ''}
-
-${uspHtml ? `
-<hr class="divider">
-<div class="section" style="background:rgba(255,255,255,.02)">
-  <div class="section-inner" style="max-width:600px">
-    <div class="section-label">Why creators love ${name}</div>
-    <div class="section-title">Built to convert</div>
-    <div class="section-sub">Products your audience will actually want to buy.</div>
-    <ul class="usp-list">${uspHtml}</ul>
-  </div>
-</div>` : ''}
-
-${videosHtml ? `
-<hr class="divider">
-<div class="section">
-  <div class="section-inner">
-    <div class="section-label">Content That Converts</div>
-    <div class="section-title">Examples to inspire your videos</div>
-    <div class="section-sub">High-performing content formats for this niche.</div>
-    <div class="videos-scroll">${videosHtml}</div>
-  </div>
-</div>` : ''}
-
-${talkingHtml ? `
-<hr class="divider">
-<div class="section" style="background:rgba(255,255,255,.02)">
-  <div class="section-inner">
-    <div class="section-label">Creator Brief</div>
-    <div class="section-title">Key talking points</div>
-    <div class="section-sub">Weave these into your content for the best results.</div>
-    <ul class="talking-list">${talkingHtml}</ul>
   </div>
 </div>` : ''}
 
@@ -8634,10 +8553,15 @@ function renderWelcomePage(brand, cp) {
   const campaigns = cp.campaigns || {};
   const discordInvite = process.env.DISCORD_INVITE_URL || 'https://discord.gg/cultcontent';
 
+  const products = (cp.products || []).filter(p => p.name);
+  const usps     = (cp.usps || []).filter(Boolean);
+  const talking  = (cp.talkingPoints || '').split('\n').map(s => s.trim()).filter(Boolean);
+  const videos   = (cp.competitorVideos || []).filter(Boolean);
+
   const campaignBtns = [];
-  if (campaigns.cashbackUrl)    campaignBtns.push({ label: 'Cashback Campaign',        sub: 'Earn cashback on every sale you drive',            url: campaigns.cashbackUrl });
-  if (campaigns.quantityVideoUrl) campaignBtns.push({ label: 'Video Quantity Challenge', sub: 'Post 10 videos and earn a cash bonus',             url: campaigns.quantityVideoUrl });
-  if (campaigns.leaderboardUrl) campaignBtns.push({ label: 'Leaderboard Challenge',    sub: 'Compete for top GMV and win monthly prizes',       url: campaigns.leaderboardUrl });
+  if (campaigns.cashbackUrl)      campaignBtns.push({ label: 'Cashback Campaign',        sub: 'Earn cashback on every sale you drive',       url: campaigns.cashbackUrl });
+  if (campaigns.quantityVideoUrl) campaignBtns.push({ label: 'Video Quantity Challenge', sub: 'Post 10 videos and earn a cash bonus',        url: campaigns.quantityVideoUrl });
+  if (campaigns.leaderboardUrl)   campaignBtns.push({ label: 'Leaderboard Challenge',    sub: 'Compete for top GMV and win monthly prizes',  url: campaigns.leaderboardUrl });
 
   const btnsHtml = campaignBtns.map(c => `
     <a href="${c.url}" target="_blank" rel="noopener" class="camp-btn">
@@ -8648,6 +8572,21 @@ function renderWelcomePage(brand, cp) {
       <div class="camp-btn-arrow">&#8594;</div>
     </a>`).join('');
 
+  const productsHtml = products.map(p => `
+    <div class="product-card">
+      <div class="product-name">${p.name}</div>
+      ${p.minPrice ? `<div class="product-price">From $${Number(p.minPrice).toFixed(2)}</div>` : ''}
+      ${p.url ? `<a href="${p.url}" target="_blank" rel="noopener" class="product-link">View on TikTok Shop</a>` : ''}
+    </div>`).join('');
+
+  const uspHtml     = usps.map(u => `<li class="usp-item"><span class="usp-check">&#10003;</span>${u}</li>`).join('');
+  const talkingHtml = talking.map(t => `<li class="talking-item">${t}</li>`).join('');
+  const videosHtml  = videos.map(url => {
+    const vid = extractTikTokVideoId(url);
+    if (!vid) return '';
+    return `<div class="video-wrap"><iframe src="https://www.tiktok.com/embed/v2/${vid}" width="325" height="576" style="border:none;border-radius:12px;max-width:100%" allow="fullscreen;autoplay" scrolling="no" loading="lazy"></iframe></div>`;
+  }).filter(Boolean).join('');
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8655,12 +8594,13 @@ function renderWelcomePage(brand, cp) {
 <title>Welcome — ${name} Creator Program</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0a0f;color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 20px}
-.card{width:100%;max-width:520px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.08);border-radius:24px;padding:48px 40px;text-align:center}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0a0f;color:#fff;min-height:100vh;padding:48px 20px}
+.top{display:flex;flex-direction:column;align-items:center;text-align:center;max-width:520px;margin:0 auto 48px}
+.card{width:100%;max-width:520px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.08);border-radius:24px;padding:48px 40px;margin:0 auto}
 @media(max-width:560px){.card{padding:36px 24px}}
 .success-icon{font-size:52px;margin-bottom:22px}
 h1{font-size:clamp(22px,4vw,30px);font-weight:900;letter-spacing:-.02em;margin-bottom:10px}
-.welcome-sub{font-size:14px;color:rgba(255,255,255,.42);line-height:1.7;margin-bottom:36px;max-width:380px;margin-left:auto;margin-right:auto}
+.welcome-sub{font-size:14px;color:rgba(255,255,255,.42);line-height:1.7;margin-bottom:0;max-width:380px}
 .section-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:${accent};margin-bottom:14px;text-align:left}
 .camp-btn{display:flex;align-items:center;gap:14px;background:rgba(${ar},.07);border:1.5px solid rgba(${ar},.25);border-radius:14px;padding:18px 20px;color:#fff;text-decoration:none;margin-bottom:10px;transition:background .18s,transform .1s,border-color .18s;text-align:left}
 .camp-btn:hover{background:rgba(${ar},.15);border-color:rgba(${ar},.5);transform:translateY(-1px)}
@@ -8672,17 +8612,41 @@ h1{font-size:clamp(22px,4vw,30px);font-weight:900;letter-spacing:-.02em;margin-b
 .discord-btn:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(88,101,242,.35)}
 .discord-icon{width:20px;height:20px;fill:#fff;flex-shrink:0}
 .divider{border:none;border-top:1px solid rgba(255,255,255,.06);margin:28px 0}
-footer{margin-top:28px;font-size:11px;color:rgba(255,255,255,.18)}
+/* products */
+.section{padding:48px 20px}
+.section-inner{max-width:860px;margin:0 auto}
+.section-title{font-size:clamp(18px,3vw,26px);font-weight:900;margin-bottom:8px;letter-spacing:-.01em}
+.section-sub{font-size:13px;color:rgba(255,255,255,.4);line-height:1.6;margin-bottom:28px}
+.page-divider{border:none;border-top:1px solid rgba(255,255,255,.06);margin:0}
+.products-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+.product-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:20px}
+.product-name{font-size:15px;font-weight:700;margin-bottom:6px}
+.product-price{font-size:13px;color:${accent};font-weight:700;margin-bottom:10px}
+.product-link{font-size:12px;color:${accent};text-decoration:none;font-weight:600}
+/* usps */
+.usp-list{list-style:none;display:flex;flex-direction:column;gap:12px}
+.usp-item{display:flex;align-items:flex-start;gap:12px;font-size:15px;font-weight:600;line-height:1.4}
+.usp-check{flex-shrink:0;width:22px;height:22px;background:rgba(${ar},.15);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;color:${accent};font-weight:900}
+/* videos */
+.videos-scroll{display:flex;gap:16px;overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
+.video-wrap{flex-shrink:0}
+/* talking points */
+.talking-list{list-style:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.talking-item{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:14px 16px 14px 32px;font-size:14px;color:rgba(255,255,255,.7);line-height:1.5;position:relative}
+.talking-item::before{content:'';position:absolute;left:14px;top:18px;width:6px;height:6px;border-radius:50%;background:${accent}}
+footer{border-top:1px solid rgba(255,255,255,.06);padding:24px 20px;text-align:center;font-size:11px;color:rgba(255,255,255,.18)}
 footer a{color:${accent};text-decoration:none}
 </style>
 </head>
 <body>
 
-<div class="card">
+<div class="top">
   <div class="success-icon">&#127881;</div>
   <h1>You're in the ${name} program!</h1>
   <div class="welcome-sub">Check your texts for your creator hub link. Now sign up for the campaigns below and join the community.</div>
+</div>
 
+<div class="card">
   ${btnsHtml ? `
   <div class="section-label">Sign Up for Campaigns</div>
   ${btnsHtml}
@@ -8694,6 +8658,50 @@ footer a{color:${accent};text-decoration:none}
     Join the Discord
   </a>
 </div>
+
+${productsHtml ? `
+<hr class="page-divider">
+<div class="section">
+  <div class="section-inner">
+    <div class="section-label" style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:${accent};margin-bottom:10px">Products to Promote</div>
+    <div class="section-title">What you'll be featuring</div>
+    <div class="section-sub">High-converting products with strong customer reviews.</div>
+    <div class="products-grid">${productsHtml}</div>
+  </div>
+</div>` : ''}
+
+${uspHtml ? `
+<hr class="page-divider">
+<div class="section" style="background:rgba(255,255,255,.02)">
+  <div class="section-inner" style="max-width:600px">
+    <div class="section-label" style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:${accent};margin-bottom:10px">Why creators love ${name}</div>
+    <div class="section-title">Built to convert</div>
+    <div class="section-sub">Products your audience will actually want to buy.</div>
+    <ul class="usp-list">${uspHtml}</ul>
+  </div>
+</div>` : ''}
+
+${videosHtml ? `
+<hr class="page-divider">
+<div class="section">
+  <div class="section-inner">
+    <div class="section-label" style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:${accent};margin-bottom:10px">Content That Converts</div>
+    <div class="section-title">Examples to inspire your videos</div>
+    <div class="section-sub">High-performing content formats for this niche.</div>
+    <div class="videos-scroll">${videosHtml}</div>
+  </div>
+</div>` : ''}
+
+${talkingHtml ? `
+<hr class="page-divider">
+<div class="section" style="background:rgba(255,255,255,.02)">
+  <div class="section-inner">
+    <div class="section-label" style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:${accent};margin-bottom:10px">Creator Brief</div>
+    <div class="section-title">Key talking points</div>
+    <div class="section-sub">Weave these into your content for the best results.</div>
+    <ul class="talking-list">${talkingHtml}</ul>
+  </div>
+</div>` : ''}
 
 <footer>Powered by <a href="https://cultcontent.cc" target="_blank">Cult Content</a></footer>
 
