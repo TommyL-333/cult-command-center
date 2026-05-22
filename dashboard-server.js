@@ -412,6 +412,16 @@ app.get('/creators', (req, res) => {
   res.send(renderOpportunitiesPage());
 });
 
+// GET /creators/:brandSlug/welcome — post-signup welcome page
+app.get('/creators/:brandSlug/welcome', (req, res) => {
+  const { brandSlug } = req.params;
+  const brands = loadBrands();
+  const brand  = (brands.clients || []).find(b => b.creatorPage?.slug === brandSlug);
+  if (!brand || !brand.creatorPage) return res.status(404).send('Page not found');
+  res.set('Content-Type', 'text/html');
+  res.send(renderWelcomePage(brand, brand.creatorPage));
+});
+
 // GET /creators/:brandSlug — public creator interest page
 // active flag only hides the page if explicitly set to false; omitted or true = visible
 app.get('/creators/:brandSlug', (req, res) => {
@@ -505,18 +515,30 @@ async function sendCreatorTC(brand, brands, brandIdx, creatorHandle) {
 // POST /api/creator-pages/submit — public creator interest form submission
 app.post('/api/creator-pages/submit', express.json(), async (req, res) => {
   try {
-    const { brandSlug, firstName, lastName, email, phone, tiktokHandle, followerRange, gmv, niche, message } = req.body || {};
+    const { brandSlug, name, firstName: fFirst, lastName: fLast, email, phone, tiktokHandle, discordUsername, followerRange, gmv, niche, message } = req.body || {};
+    // Support both "name" (full name) and "firstName"/"lastName" separately
+    let firstName = fFirst || '';
+    let lastName  = fLast  || '';
+    if (name && !firstName) {
+      const parts = name.trim().split(/\s+/);
+      firstName = parts[0];
+      lastName  = parts.slice(1).join(' ') || '';
+    }
     if (!brandSlug || !firstName || !email) return res.status(400).json({ ok: false, error: 'Missing required fields' });
     const brands = loadBrands();
     const brand  = (brands.clients || []).find(b => b.creatorPage?.slug === brandSlug);
     if (!brand) return res.status(404).json({ ok: false, error: 'Brand not found' });
     const tagName = brand.creatorPage?.tagName || `creator-interested-${brandSlug}`;
+    const handle  = (tiktokHandle || '').replace(/^@/, '').trim();
+    const digits  = (phone || '').replace(/\D/g, '');
+    const cleanPhone = digits.length === 10 ? `+1${digits}` : digits ? `+${digits}` : '';
+
     let contactId = null;
     try {
       const sr = await ghl.get('/contacts/', { params: { locationId: CFG.locationId, query: email, limit: 1 } });
       contactId = sr.data?.contacts?.[0]?.id || null;
     } catch(_) {}
-    const payload = { locationId: CFG.locationId, firstName: firstName||'', lastName: lastName||'', email, phone: phone||'', tags: [tagName, 'creator-interest-form', 'affiliate', `${brandSlug}-affiliate`], source: `Creator Interest Page — ${brand.name}` };
+    const payload = { locationId: CFG.locationId, firstName, lastName, email, phone: cleanPhone, tags: [tagName, 'creator-interest-form', 'affiliate', `${brandSlug}-affiliate`], source: `Creator Interest Page — ${brand.name}` };
     if (contactId) {
       await ghl.put(`/contacts/${contactId}`, payload).catch(() => {});
       await ghl.post(`/contacts/${contactId}/tags`, { tags: [tagName, 'creator-interest-form', 'affiliate', `${brandSlug}-affiliate`] }).catch(() => {});
@@ -526,41 +548,86 @@ app.post('/api/creator-pages/submit', express.json(), async (req, res) => {
     }
     if (contactId) {
       const noteLines = [
-        `TikTok Handle: ${tiktokHandle||'not provided'}`,
-        `Followers: ${followerRange||'not provided'}`,
-        `Monthly GMV: ${gmv||'not provided'}`,
-        `Niche: ${niche||'not provided'}`,
+        `TikTok Handle: ${handle ? '@' + handle : 'not provided'}`,
+        `Discord: ${discordUsername || 'not provided'}`,
+        followerRange ? `Followers: ${followerRange}` : null,
+        gmv           ? `Monthly GMV: ${gmv}` : null,
+        niche         ? `Niche: ${niche}` : null,
         `Interested in brand: ${brand.name}`,
-        message ? `Message: ${message}` : null
+        message ? `Message: ${message}` : null,
       ].filter(Boolean);
       await ghl.post(`/contacts/${contactId}/notes`, { body: noteLines.join('\n'), userId: '' }).catch(() => {});
     }
-    console.log(`[creator-pages] Submission for ${brand.name}: ${email} (${tiktokHandle||'no handle'})`);
 
-    // Send Lark notification (fire-and-forget — don't block the response)
+    // SMS
+    if (contactId && cleanPhone) {
+      axios.post('https://services.leadconnectorhq.com/conversations/messages/outbound', {
+        type: 'SMS',
+        contactId,
+        message: `Welcome to the cult ${firstName}! We are here to serve you, if you need us, just text this number. Access all of our brand opportunities here: ${CREATOR_BASE_URL}/creators`,
+      }, { headers: { Authorization: `Bearer ${process.env.GHL_API_KEY}`, Version: '2021-04-15', 'Content-Type': 'application/json' } })
+      .catch(e => console.error('[creator-pages] SMS error:', e.response?.data || e.message));
+    }
+
+    // Discord role assignment with retry
+    const botToken = process.env.DISCORD_BOT_TOKEN;
+    const guildId  = process.env.DISCORD_GUILD_ID;
+    const roleId   = process.env.DISCORD_CREATOR_ROLE_ID;
+    const cleanDu  = (discordUsername || '').replace(/^@/, '').trim();
+
+    async function tryAssignCreatorRole() {
+      if (!botToken || !guildId || !roleId || !cleanDu) return { ok: false };
+      try {
+        const searchRes = await axios.get(`https://discord.com/api/v10/guilds/${guildId}/members/search`, {
+          params: { query: cleanDu, limit: 10 },
+          headers: { Authorization: `Bot ${botToken}` },
+        });
+        const members = searchRes.data || [];
+        const member  = members.find(m =>
+          m.user.username.toLowerCase() === cleanDu.toLowerCase() ||
+          (m.user.global_name || '').toLowerCase() === cleanDu.toLowerCase()
+        );
+        if (member) {
+          await axios.put(`https://discord.com/api/v10/guilds/${guildId}/members/${member.user.id}/roles/${roleId}`, null, { headers: { Authorization: `Bot ${botToken}` } });
+          return { ok: true };
+        }
+        return { ok: false, error: 'not_found' };
+      } catch(e) { return { ok: false, error: e.message }; }
+    }
+    function scheduleCreatorRoleRetry(attemptsLeft) {
+      if (attemptsLeft <= 0 || !cleanDu) return;
+      setTimeout(async () => {
+        const r = await tryAssignCreatorRole();
+        if (!r.ok && r.error === 'not_found') scheduleCreatorRoleRetry(attemptsLeft - 1);
+      }, 5 * 60 * 1000);
+    }
+    const discordResult = await tryAssignCreatorRole();
+    if (discordResult.error === 'not_found') scheduleCreatorRoleRetry(3);
+
+    // Lark alert
     const larkText = [
-      `🎯 *New Creator Application — ${brand.name}*`,
-      `👤 ${firstName}${lastName ? ' ' + lastName : ''} | ${email}${phone ? ' | ' + phone : ''}`,
-      tiktokHandle ? `📱 TikTok: @${tiktokHandle.replace(/^@/,'')}` : null,
-      followerRange ? `👥 Followers: ${followerRange}` : null,
-      gmv           ? `💰 Monthly GMV: ${gmv}` : null,
-      niche         ? `🎨 Niche: ${niche}` : null,
-      message       ? `💬 Message: ${message}` : null,
-      contactId     ? `\n🔗 GHL: https://app.gohighlevel.com/contacts/${contactId}` : null,
+      `New Creator Signup - ${brand.name}`,
+      `Name: ${firstName}${lastName ? ' ' + lastName : ''} | ${email}${phone ? ' | ' + phone : ''}`,
+      handle        ? `TikTok: @${handle}` : null,
+      discordUsername ? `Discord: @${discordUsername.replace(/^@/,'')}` : null,
+      followerRange ? `Followers: ${followerRange}` : null,
+      gmv           ? `Monthly GMV: ${gmv}` : null,
+      contactId     ? `GHL: https://app.gohighlevel.com/contacts/${contactId}` : null,
     ].filter(Boolean).join('\n');
     axios.post(`${CFG.railwayUrl}/command`,
-      { text: larkText, context: 'Creator Application', source: 'Creator Landing Page' },
+      { text: larkText, context: 'Creator Signup', source: 'Creator Landing Page' },
       { timeout: 10000 }
     ).catch(e => console.error('[creator-pages] Lark notify error:', e.message));
 
-    // Auto-send TC invite if brand is fully set up (fire-and-forget)
-    if (tiktokHandle) {
+    // Auto-send TC invite (fire-and-forget)
+    if (handle) {
       const brandIdx = brands.clients.findIndex(b => b.creatorPage?.slug === brandSlug);
-      sendCreatorTC(brand, brands, brandIdx, tiktokHandle)
+      sendCreatorTC(brand, brands, brandIdx, handle)
         .catch(e => console.error('[creator-pages] TC fire error:', e.message));
     }
 
-    res.json({ ok: true, contactId });
+    console.log(`[creator-pages] Submission for ${brand.name}: ${email} (${handle ? '@'+handle : 'no handle'})`);
+    res.json({ ok: true, contactId, welcomeUrl: `/creators/${brandSlug}/welcome` });
   } catch(e) {
     console.error('[creator-pages/submit]', e.response?.data || e.message);
     res.status(500).json({ ok: false, error: 'Submission failed — please try again' });
@@ -8341,214 +8408,129 @@ footer a{color:#00f2ea;text-decoration:none;}
 }
 
 function renderCreatorPage(brand, cp) {
-  const accent    = cp.accentColor || '#00f2ea';
-  const ar        = hexToRgb(accent);
-  const name      = brand.name || 'Brand';
-  const incentives = cp.incentives || {};
-  const products  = (cp.products || []).filter(p => p.name);
-  const usps      = (cp.usps || []).filter(Boolean);
-  const talking   = (cp.talkingPoints || '').split('\n').map(s => s.trim()).filter(Boolean);
-  const videos    = (cp.competitorVideos || []).filter(Boolean);
+  const accent   = cp.accentColor || '#00f2ea';
+  const ar       = hexToRgb(accent);
+  const name     = brand.name || 'Brand';
+  const inc      = cp.incentives || {};
+  const products = (cp.products || []).filter(p => p.name);
+  const usps     = (cp.usps || []).filter(Boolean);
+  const talking  = (cp.talkingPoints || '').split('\n').map(s => s.trim()).filter(Boolean);
+  const videos   = (cp.competitorVideos || []).filter(Boolean);
   const tiktokHandle = cp.tiktokHandle || brand.tiktokHandle || '';
 
-  // Build incentive pills + section
-  const pills = [];
-  let incentiveHtml = '';
-  if (incentives.cashback?.enabled) {
-    pills.push(`${incentives.cashback.percent || ''}% Cashback`);
-    incentiveHtml += `
-    <div class="incentive-card">
-      <div class="incentive-icon">💰</div>
-      <div class="incentive-label">CASHBACK RATE</div>
-      <div class="incentive-value">${incentives.cashback.percent || '—'}%</div>
-      <div class="incentive-sub">on every sale you drive${incentives.cashback.gmvTarget ? ` · $${Number(incentives.cashback.gmvTarget).toLocaleString()} GMV target` : ''}</div>
-    </div>`;
+  // Auto-generate reward copy lines
+  const rewardLines = [];
+  if (cp.tcCommission) rewardLines.push(`<div class="reward-line"><span class="reward-val">${cp.tcCommission}%</span><span class="reward-desc">commission on every sale you drive</span></div>`);
+  if (inc.cashback?.enabled) {
+    const pct = inc.cashback.percent ? `${inc.cashback.percent}% cashback` : 'Cashback';
+    const gmvStr = inc.cashback.gmvTarget ? ` when you hit $${Number(inc.cashback.gmvTarget).toLocaleString()} GMV` : '';
+    rewardLines.push(`<div class="reward-line"><span class="reward-val">${pct}</span><span class="reward-desc">${gmvStr || 'on qualifying sales'}</span></div>`);
   }
-  if (incentives.leaderboard?.enabled && incentives.leaderboard.prizes?.length) {
-    pills.push('Monthly Leaderboard');
-    const prizes = incentives.leaderboard.prizes;
-    incentiveHtml += `
-    <div class="incentive-card">
-      <div class="incentive-icon">🏆</div>
-      <div class="incentive-label">MONTHLY LEADERBOARD</div>
-      <div class="incentive-value">${prizes[0] || '—'}</div>
-      <div class="incentive-sub">top prize · ${prizes.slice(1).filter(Boolean).map((p,i)=>`${['2nd','3rd'][i]}: ${p}`).join(' · ')}${incentives.leaderboard.threshold ? ` · $${Number(incentives.leaderboard.threshold).toLocaleString()} min GMV` : ''}</div>
-    </div>`;
+  if (inc.volumeBonus?.enabled) {
+    rewardLines.push(`<div class="reward-line"><span class="reward-val">$${inc.volumeBonus.bonusAmount || '?'} bonus</span><span class="reward-desc">post ${inc.volumeBonus.videoCount || '?'} videos and earn a one-time bonus</span></div>`);
   }
-  if (incentives.volumeBonus?.enabled) {
-    pills.push(`$${incentives.volumeBonus.bonusAmount} Volume Bonus`);
-    incentiveHtml += `
-    <div class="incentive-card">
-      <div class="incentive-icon">🎯</div>
-      <div class="incentive-label">VOLUME BONUS</div>
-      <div class="incentive-value">$${incentives.volumeBonus.bonusAmount || '—'}</div>
-      <div class="incentive-sub">post ${incentives.volumeBonus.videoCount || '—'} videos and earn a bonus on top of cashback</div>
-    </div>`;
+  if (inc.leaderboard?.enabled && inc.leaderboard.prizes?.length) {
+    rewardLines.push(`<div class="reward-line"><span class="reward-val">${inc.leaderboard.prizes[0]}</span><span class="reward-desc">top prize for the monthly leaderboard${inc.leaderboard.threshold ? ` — $${Number(inc.leaderboard.threshold).toLocaleString()} min GMV to qualify` : ''}</span></div>`);
   }
 
   const productsHtml = products.map(p => `
     <div class="product-card">
       <div class="product-name">${p.name}</div>
       ${p.minPrice ? `<div class="product-price">From $${Number(p.minPrice).toFixed(2)}</div>` : ''}
-      ${p.url ? `<a href="${p.url}" target="_blank" rel="noopener" class="product-link">View on TikTok Shop →</a>` : ''}
+      ${p.url ? `<a href="${p.url}" target="_blank" rel="noopener" class="product-link">View on TikTok Shop</a>` : ''}
     </div>`).join('');
 
-  const uspHtml = usps.map(u => `<li class="usp-item"><span class="usp-check">✓</span>${u}</li>`).join('');
-
+  const uspHtml     = usps.map(u => `<li class="usp-item"><span class="usp-check">&#10003;</span>${u}</li>`).join('');
   const talkingHtml = talking.map(t => `<li class="talking-item">${t}</li>`).join('');
-
-  // Campaign signup buttons
-  const campaigns = cp.campaigns || {};
-  const campaignBtns = [];
-  if (campaigns.cashbackUrl) campaignBtns.push({ icon: '💰', label: 'Cashback Campaign', title: 'Sign up for the cashback program', url: campaigns.cashbackUrl });
-  if (campaigns.quantityVideoUrl) campaignBtns.push({ icon: '🎯', label: 'Video Quantity Challenge', title: 'Sign up for the video quantity challenge', url: campaigns.quantityVideoUrl });
-  if (campaigns.leaderboardUrl) campaignBtns.push({ icon: '🏆', label: 'Leaderboard Challenge', title: 'Sign up for the monthly leaderboard', url: campaigns.leaderboardUrl });
-  const campaignsHtml = campaignBtns.map(c => `
-    <a href="${c.url}" target="_blank" rel="noopener" class="campaign-btn">
-      <div class="campaign-btn-icon">${c.icon}</div>
-      <div class="campaign-btn-text">
-        <div class="campaign-btn-label">${c.label}</div>
-        <div class="campaign-btn-title">${c.title}</div>
-      </div>
-      <div class="campaign-btn-arrow">→</div>
-    </a>`).join('');
-
-  const videosHtml = videos.map(url => {
+  const videosHtml  = videos.map(url => {
     const vid = extractTikTokVideoId(url);
     if (!vid) return '';
-    return `<div class="video-wrap">
-      <iframe src="https://www.tiktok.com/embed/v2/${vid}"
-        width="325" height="576"
-        style="border:none;border-radius:12px;max-width:100%"
-        allow="fullscreen;autoplay"
-        scrolling="no"
-        loading="lazy">
-      </iframe>
-    </div>`;
+    return `<div class="video-wrap"><iframe src="https://www.tiktok.com/embed/v2/${vid}" width="325" height="576" style="border:none;border-radius:12px;max-width:100%" allow="fullscreen;autoplay" scrolling="no" loading="lazy"></iframe></div>`;
   }).filter(Boolean).join('');
 
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Partner with ${name} — TikTok Shop Affiliate Program</title>
+<title>Partner with ${name} — Creator Program</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0a0f;color:#fff;min-height:100vh}
-/* ── Hero ── */
 .hero{background:linear-gradient(160deg,#0d0b14 0%,#12101e 60%,#0a0a0f 100%);border-bottom:1px solid rgba(255,255,255,.06);padding:72px 20px 60px;text-align:center}
 .brand-badge{display:inline-flex;align-items:center;gap:8px;background:rgba(${ar},.1);border:1px solid rgba(${ar},.25);border-radius:100px;padding:6px 16px;font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:${accent};margin-bottom:24px}
-h1{font-size:clamp(28px,5vw,52px);font-weight:900;line-height:1.06;margin-bottom:16px;letter-spacing:-.02em;max-width:760px;margin-left:auto;margin-right:auto}
-.hero-sub{font-size:clamp(13px,2vw,17px);color:rgba(255,255,255,.45);max-width:520px;margin:0 auto 32px;line-height:1.65}
-.pills{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:0}
-.pill{background:rgba(${ar},.1);color:${accent};border:1px solid rgba(${ar},.25);border-radius:100px;padding:6px 16px;font-size:12px;font-weight:700}
-/* ── Sections ── */
-.section{padding:60px 20px}
-.section-inner{max-width:900px;margin:0 auto}
+.live-dot{width:6px;height:6px;border-radius:50%;background:${accent};box-shadow:0 0 6px ${accent};animation:pulse 2s ease-in-out infinite;display:inline-block}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+h1{font-size:clamp(26px,5vw,50px);font-weight:900;line-height:1.06;letter-spacing:-.02em;max-width:720px;margin:0 auto 16px}
+.hero-sub{font-size:clamp(13px,2vw,16px);color:rgba(255,255,255,.45);max-width:500px;margin:0 auto 40px;line-height:1.7}
+.section{padding:56px 20px}
+.section-inner{max-width:860px;margin:0 auto}
 .section-label{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:${accent};margin-bottom:10px}
-.section-title{font-size:clamp(20px,3vw,30px);font-weight:900;margin-bottom:8px;letter-spacing:-.01em}
-.section-sub{font-size:14px;color:rgba(255,255,255,.45);line-height:1.6;margin-bottom:36px}
+.section-title{font-size:clamp(18px,3vw,28px);font-weight:900;margin-bottom:8px;letter-spacing:-.01em}
+.section-sub{font-size:13px;color:rgba(255,255,255,.4);line-height:1.6;margin-bottom:32px}
 .divider{border:none;border-top:1px solid rgba(255,255,255,.06);margin:0}
-/* ── Incentives ── */
-.incentives-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px}
-.incentive-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:24px;text-align:center;transition:border-color .2s}
-.incentive-card:hover{border-color:rgba(${ar},.4)}
-.incentive-icon{font-size:28px;margin-bottom:10px}
-.incentive-label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:6px}
-.incentive-value{font-size:32px;font-weight:900;color:${accent};line-height:1;margin-bottom:6px}
-.incentive-sub{font-size:12px;color:rgba(255,255,255,.4);line-height:1.5}
-/* ── Products ── */
+/* rewards */
+.rewards-block{display:flex;flex-direction:column;gap:14px;max-width:560px}
+.reward-line{display:flex;align-items:baseline;gap:14px;padding:16px 20px;background:rgba(${ar},.05);border:1px solid rgba(${ar},.15);border-radius:12px}
+.reward-val{font-size:20px;font-weight:900;color:${accent};white-space:nowrap;min-width:120px}
+.reward-desc{font-size:13px;color:rgba(255,255,255,.55);line-height:1.5}
+/* products */
 .products-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
 .product-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:20px}
 .product-name{font-size:15px;font-weight:700;margin-bottom:6px}
 .product-price{font-size:13px;color:${accent};font-weight:700;margin-bottom:10px}
 .product-link{font-size:12px;color:${accent};text-decoration:none;font-weight:600}
-.product-link:hover{text-decoration:underline}
-/* ── USPs ── */
-.usp-list{list-style:none;display:flex;flex-direction:column;gap:14px}
-.usp-item{display:flex;align-items:flex-start;gap:12px;font-size:16px;font-weight:600;line-height:1.4}
-.usp-check{flex-shrink:0;width:24px;height:24px;background:rgba(${ar},.15);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;color:${accent};font-weight:900}
-/* ── Campaigns ── */
-.campaigns-section{margin-bottom:0}
-.campaigns-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}
-.campaign-btn{display:flex;align-items:center;gap:14px;background:rgba(${ar},.08);border:1.5px solid rgba(${ar},.35);border-radius:14px;padding:18px 20px;color:#fff;text-decoration:none;font-weight:700;transition:background .18s,transform .1s,border-color .18s}
-.campaign-btn:hover{background:rgba(${ar},.16);border-color:rgba(${ar},.6);transform:translateY(-2px)}
-.campaign-btn-icon{font-size:24px;flex-shrink:0}
-.campaign-btn-text{flex:1}
-.campaign-btn-label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:${accent};margin-bottom:3px;opacity:.8}
-.campaign-btn-title{font-size:14px;font-weight:900;line-height:1.3;color:#fff}
-.campaign-btn-arrow{font-size:20px;color:${accent};opacity:.7;margin-left:auto}
-/* ── Videos ── */
+/* usps */
+.usp-list{list-style:none;display:flex;flex-direction:column;gap:12px}
+.usp-item{display:flex;align-items:flex-start;gap:12px;font-size:15px;font-weight:600;line-height:1.4}
+.usp-check{flex-shrink:0;width:22px;height:22px;background:rgba(${ar},.15);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;color:${accent};font-weight:900}
+/* videos */
 .videos-scroll{display:flex;gap:16px;overflow-x:auto;padding-bottom:8px;-webkit-overflow-scrolling:touch;scrollbar-width:thin}
 .video-wrap{flex-shrink:0}
-/* ── Talking Points ── */
+/* talking points */
 .talking-list{list-style:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
-.talking-item{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:14px 16px;font-size:14px;color:rgba(255,255,255,.75);line-height:1.5;position:relative;padding-left:30px}
-.talking-item::before{content:'→';position:absolute;left:12px;color:${accent};font-weight:900}
-/* ── Form ── */
-.form-wrap{max-width:600px;margin:0 auto}
+.talking-item{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:14px 16px 14px 32px;font-size:14px;color:rgba(255,255,255,.7);line-height:1.5;position:relative}
+.talking-item::before{content:'';position:absolute;left:14px;top:18px;width:6px;height:6px;border-radius:50%;background:${accent}}
+/* form */
+.form-card{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:40px;max-width:560px;margin:0 auto}
 .form-head{font-size:22px;font-weight:900;margin-bottom:6px}
-.form-sub{font-size:13px;color:rgba(255,255,255,.4);margin-bottom:28px}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
-.row.full{grid-template-columns:1fr}
-@media(max-width:500px){.row{grid-template-columns:1fr}}
-.field{display:flex;flex-direction:column;gap:5px}
-label{font-size:10px;font-weight:700;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.06em}
-input,select,textarea{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:9px;color:#fff;font-size:14px;padding:12px 14px;outline:none;transition:border-color .18s;width:100%;font-family:inherit}
-input::placeholder,textarea::placeholder{color:rgba(255,255,255,.2)}
-input:focus,select:focus,textarea:focus{border-color:${accent}}
-select option{background:#12101e;color:#fff}
-.btn-submit{width:100%;background:${accent};color:#000;border:none;border-radius:10px;font-size:16px;font-weight:900;padding:16px;cursor:pointer;margin-top:10px;transition:opacity .2s,transform .1s;letter-spacing:.01em}
+.form-sub{font-size:13px;color:rgba(255,255,255,.4);margin-bottom:28px;line-height:1.6}
+.f-row{margin-bottom:16px}
+.f-row label{display:block;font-size:10px;font-weight:700;color:rgba(255,255,255,.38);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px}
+.f-row input{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:9px;color:#fff;font-size:14px;padding:12px 14px;outline:none;transition:border-color .18s;width:100%;font-family:inherit}
+.f-row input::placeholder{color:rgba(255,255,255,.2)}
+.f-row input:focus{border-color:${accent}}
+.f-hint{font-size:11px;color:rgba(255,255,255,.25);margin-top:5px}
+.btn-submit{width:100%;background:${accent};color:#000;border:none;border-radius:10px;font-size:16px;font-weight:900;padding:16px;cursor:pointer;margin-top:8px;transition:opacity .2s,transform .1s;letter-spacing:.01em}
 .btn-submit:hover{opacity:.88}
 .btn-submit:active{transform:scale(.98)}
 .btn-submit:disabled{opacity:.45;cursor:not-allowed}
-.err{color:#ff5b5b;font-size:12px;margin-top:8px;display:none}
-.success{display:none;text-align:center;padding:56px 0}
-.success-icon{font-size:56px;margin-bottom:20px}
-.success-title{font-size:24px;font-weight:900;margin-bottom:10px}
-.success-msg{font-size:14px;color:rgba(255,255,255,.45);line-height:1.7}
-/* ── Footer ── */
+.f-err{color:#ff5b5b;font-size:12px;margin-top:10px;display:none}
 footer{border-top:1px solid rgba(255,255,255,.06);padding:24px 20px;text-align:center;font-size:11px;color:rgba(255,255,255,.2)}
 footer a{color:${accent};text-decoration:none}
 </style>
 </head>
 <body>
 
-<!-- ── HERO ── -->
 <div class="hero">
-  <div class="brand-badge">${name} × Cult Content</div>
-  <h1>Partner with <span style="color:${accent}">${name}</span> on TikTok Shop</h1>
-  <div class="hero-sub">Join our affiliate creator program — earn cashback on every sale you drive plus monthly bonuses.</div>
-  ${pills.length ? `<div class="pills">${pills.map(p=>`<span class="pill">${p}</span>`).join('')}</div>` : ''}
+  <div class="brand-badge"><span class="live-dot"></span>&nbsp;${name} Creator Program</div>
+  <h1>${cp.headline || `Partner with ${name} on TikTok Shop`}</h1>
+  <div class="hero-sub">Join our affiliate creator program and start earning. Sign up below to get access to all campaigns and your Discord role.</div>
 </div>
 
-${incentiveHtml ? `
+${rewardLines.length ? `
 <hr class="divider">
-<!-- ── INCENTIVES ── -->
-<div class="section" style="background:rgba(${ar},.03)">
+<div class="section" style="background:rgba(${ar},.02)">
   <div class="section-inner">
-    <div class="section-label">Creator Incentive Program</div>
+    <div class="section-label">Creator Rewards</div>
     <div class="section-title">How you get paid</div>
     <div class="section-sub">Stack multiple income streams every month.</div>
-    <div class="incentives-grid">${incentiveHtml}</div>
-  </div>
-</div>` : ''}
-
-${campaignsHtml ? `
-<hr class="divider">
-<!-- ── CAMPAIGNS ── -->
-<div class="section" style="background:rgba(${ar},.04)">
-  <div class="section-inner">
-    <div class="section-label">Join a Campaign</div>
-    <div class="section-title">Pick your earning strategy</div>
-    <div class="section-sub">Sign up for one or more programs — each runs independently so you can stack rewards.</div>
-    <div class="campaigns-grid campaigns-section">${campaignsHtml}</div>
+    <div class="rewards-block">${rewardLines.join('')}</div>
   </div>
 </div>` : ''}
 
 ${productsHtml ? `
 <hr class="divider">
-<!-- ── PRODUCTS ── -->
 <div class="section">
   <div class="section-inner">
     <div class="section-label">Products to Promote</div>
@@ -8560,9 +8542,8 @@ ${productsHtml ? `
 
 ${uspHtml ? `
 <hr class="divider">
-<!-- ── WHY THIS BRAND ── -->
 <div class="section" style="background:rgba(255,255,255,.02)">
-  <div class="section-inner" style="max-width:640px">
+  <div class="section-inner" style="max-width:600px">
     <div class="section-label">Why creators love ${name}</div>
     <div class="section-title">Built to convert</div>
     <div class="section-sub">Products your audience will actually want to buy.</div>
@@ -8572,7 +8553,6 @@ ${uspHtml ? `
 
 ${videosHtml ? `
 <hr class="divider">
-<!-- ── EXAMPLE CONTENT ── -->
 <div class="section">
   <div class="section-inner">
     <div class="section-label">Content That Converts</div>
@@ -8584,7 +8564,6 @@ ${videosHtml ? `
 
 ${talkingHtml ? `
 <hr class="divider">
-<!-- ── TALKING POINTS ── -->
 <div class="section" style="background:rgba(255,255,255,.02)">
   <div class="section-inner">
     <div class="section-label">Creator Brief</div>
@@ -8595,91 +8574,129 @@ ${talkingHtml ? `
 </div>` : ''}
 
 <hr class="divider">
-<!-- ── APPLY FORM ── -->
-<div class="section">
+<div class="section" id="signup">
   <div class="section-inner">
-    <div class="form-wrap">
-      <div id="formWrap">
-        <div class="form-head">Apply to partner with ${name}</div>
-        <div class="form-sub">Takes 2 minutes — our team reviews every application within 48 hours.</div>
-        <form id="form">
-          <div class="row">
-            <div class="field"><label>First name *</label><input name="firstName" required placeholder="Jane"></div>
-            <div class="field"><label>Last name *</label><input name="lastName" required placeholder="Smith"></div>
-          </div>
-          <div class="row">
-            <div class="field"><label>Email *</label><input name="email" type="email" required placeholder="jane@email.com"></div>
-            <div class="field"><label>Phone</label><input name="phone" type="tel" placeholder="+1 555-000-0000"></div>
-          </div>
-          <div class="row">
-            <div class="field"><label>TikTok handle *</label><input name="tiktokHandle" required placeholder="@yourhandle"></div>
-            <div class="field">
-              <label>Follower count *</label>
-              <select name="followerRange" required>
-                <option value="" disabled selected>Select range</option>
-                <option>1K – 10K</option><option>10K – 50K</option>
-                <option>50K – 100K</option><option>100K – 500K</option><option>500K+</option>
-              </select>
-            </div>
-          </div>
-          <div class="row">
-            <div class="field">
-              <label>Monthly TikTok GMV</label>
-              <select name="gmv">
-                <option value="">No shop / not sure</option>
-                <option>&lt;$1K/mo</option><option>$1K–$5K/mo</option>
-                <option>$5K–$20K/mo</option><option>$20K+/mo</option>
-              </select>
-            </div>
-            <div class="field">
-              <label>Primary niche</label>
-              <select name="niche">
-                <option value="">Select niche</option>
-                <option>Beauty &amp; Skincare</option><option>Health &amp; Wellness</option>
-                <option>Fashion &amp; Style</option><option>Home &amp; Lifestyle</option>
-                <option>Food &amp; Beverage</option><option>Fitness</option><option>Tech &amp; Gadgets</option><option>Other</option>
-              </select>
-            </div>
-          </div>
-          <div class="row full">
-            <div class="field">
-              <label>Anything else? (optional)</label>
-              <textarea name="message" placeholder="Tell us about your content or why you're excited to partner…" rows="3"></textarea>
-            </div>
-          </div>
-          <div class="err" id="formErr"></div>
-          <button type="submit" class="btn-submit" id="submitBtn">Apply Now →</button>
-        </form>
-      </div>
-      <div class="success" id="successWrap">
-        <div class="success-icon">🎉</div>
-        <div class="success-title">Application submitted!</div>
-        <div class="success-msg">Thanks! Our team will review your application and reach out within 48 hours.${tiktokHandle ? `<br><br>Follow <strong style="color:${accent}">@${tiktokHandle}</strong> on TikTok for updates.` : ''}</div>
-      </div>
+    <div class="form-card" id="formCard">
+      <div class="form-head">Join the ${name} Creator Program</div>
+      <div class="form-sub">Takes 30 seconds. You'll get instant access to all campaigns and your Verified Creator role in our Discord community.</div>
+      <form id="cpForm">
+        <div class="f-row"><label>Full Name *</label><input name="name" required placeholder="Jane Smith" autocomplete="name"></div>
+        <div class="f-row"><label>TikTok Handle *</label><input name="tiktokHandle" required placeholder="@yourhandle"></div>
+        <div class="f-row"><label>Email *</label><input name="email" type="email" required placeholder="jane@email.com" autocomplete="email"></div>
+        <div class="f-row"><label>Phone *</label><input name="phone" type="tel" required placeholder="+1 555-000-0000" autocomplete="tel"></div>
+        <div class="f-row">
+          <label>Discord Username</label>
+          <input name="discordUsername" placeholder="yourname">
+          <div class="f-hint">Needed to unlock your Verified Creator role.</div>
+        </div>
+        <div class="f-err" id="cpErr"></div>
+        <button type="submit" class="btn-submit" id="cpBtn">Join Now</button>
+      </form>
     </div>
   </div>
 </div>
 
 <footer>Powered by <a href="https://cultcontent.cc" target="_blank">Cult Content</a> — TikTok Shop Creator Agency</footer>
+
 <script>
-document.getElementById('form').addEventListener('submit',async function(e){
+document.getElementById('cpForm').addEventListener('submit', async function(e) {
   e.preventDefault();
-  const btn=document.getElementById('submitBtn'),err=document.getElementById('formErr');
-  btn.disabled=true;btn.textContent='Submitting…';err.style.display='none';
-  const body=Object.fromEntries(new FormData(this));
-  body.brandSlug='${cp.slug}';
-  try{
-    const r=await fetch('/api/creator-pages/submit',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-    const d=await r.json();
-    if(d.ok){document.getElementById('formWrap').style.display='none';document.getElementById('successWrap').style.display='block';}
-    else throw new Error(d.error||'Unknown error');
-  }catch(ex){
-    btn.disabled=false;btn.textContent='Apply Now →';
-    err.textContent='Something went wrong — please try again or email hello@cultcontent.cc';
-    err.style.display='block';
+  var btn = document.getElementById('cpBtn');
+  var err = document.getElementById('cpErr');
+  btn.disabled = true; btn.textContent = 'Submitting...'; err.style.display = 'none';
+  var data = Object.fromEntries(new FormData(this));
+  data.brandSlug = '${cp.slug}';
+  try {
+    var r = await fetch('/api/creator-pages/submit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    var d = await r.json();
+    if (d.ok && d.welcomeUrl) {
+      window.location.href = d.welcomeUrl;
+    } else if (d.ok) {
+      btn.textContent = 'Done!';
+    } else {
+      throw new Error(d.error || 'Unknown error');
+    }
+  } catch(ex) {
+    btn.disabled = false; btn.textContent = 'Join Now';
+    err.textContent = ex.message || 'Something went wrong - please try again.';
+    err.style.display = 'block';
   }
 });
 </script>
+</body>
+</html>`;
+}
+
+function renderWelcomePage(brand, cp) {
+  const accent   = cp.accentColor || '#00f2ea';
+  const ar       = hexToRgb(accent);
+  const name     = brand.name || 'Brand';
+  const campaigns = cp.campaigns || {};
+  const discordInvite = process.env.DISCORD_INVITE_URL || 'https://discord.gg/cultcontent';
+
+  const campaignBtns = [];
+  if (campaigns.cashbackUrl)    campaignBtns.push({ label: 'Cashback Campaign',        sub: 'Earn cashback on every sale you drive',            url: campaigns.cashbackUrl });
+  if (campaigns.quantityVideoUrl) campaignBtns.push({ label: 'Video Quantity Challenge', sub: 'Post 10 videos and earn a cash bonus',             url: campaigns.quantityVideoUrl });
+  if (campaigns.leaderboardUrl) campaignBtns.push({ label: 'Leaderboard Challenge',    sub: 'Compete for top GMV and win monthly prizes',       url: campaigns.leaderboardUrl });
+
+  const btnsHtml = campaignBtns.map(c => `
+    <a href="${c.url}" target="_blank" rel="noopener" class="camp-btn">
+      <div class="camp-btn-text">
+        <div class="camp-btn-label">${c.label}</div>
+        <div class="camp-btn-sub">${c.sub}</div>
+      </div>
+      <div class="camp-btn-arrow">&#8594;</div>
+    </a>`).join('');
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Welcome — ${name} Creator Program</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0a0f;color:#fff;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 20px}
+.card{width:100%;max-width:520px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.08);border-radius:24px;padding:48px 40px;text-align:center}
+@media(max-width:560px){.card{padding:36px 24px}}
+.success-icon{font-size:52px;margin-bottom:22px}
+h1{font-size:clamp(22px,4vw,30px);font-weight:900;letter-spacing:-.02em;margin-bottom:10px}
+.welcome-sub{font-size:14px;color:rgba(255,255,255,.42);line-height:1.7;margin-bottom:36px;max-width:380px;margin-left:auto;margin-right:auto}
+.section-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:${accent};margin-bottom:14px;text-align:left}
+.camp-btn{display:flex;align-items:center;gap:14px;background:rgba(${ar},.07);border:1.5px solid rgba(${ar},.25);border-radius:14px;padding:18px 20px;color:#fff;text-decoration:none;margin-bottom:10px;transition:background .18s,transform .1s,border-color .18s;text-align:left}
+.camp-btn:hover{background:rgba(${ar},.15);border-color:rgba(${ar},.5);transform:translateY(-1px)}
+.camp-btn-text{flex:1}
+.camp-btn-label{font-size:14px;font-weight:900;margin-bottom:3px}
+.camp-btn-sub{font-size:12px;color:rgba(255,255,255,.42);line-height:1.4}
+.camp-btn-arrow{font-size:18px;color:${accent};opacity:.7;flex-shrink:0}
+.discord-btn{display:flex;align-items:center;justify-content:center;gap:10px;background:#5865F2;color:#fff;text-decoration:none;border-radius:14px;padding:16px 24px;font-size:14px;font-weight:900;letter-spacing:.03em;margin-top:24px;transition:transform .15s,box-shadow .15s}
+.discord-btn:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(88,101,242,.35)}
+.discord-icon{width:20px;height:20px;fill:#fff;flex-shrink:0}
+.divider{border:none;border-top:1px solid rgba(255,255,255,.06);margin:28px 0}
+footer{margin-top:28px;font-size:11px;color:rgba(255,255,255,.18)}
+footer a{color:${accent};text-decoration:none}
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="success-icon">&#127881;</div>
+  <h1>You're in the ${name} program!</h1>
+  <div class="welcome-sub">Check your texts for your creator hub link. Now sign up for the campaigns below and join the community.</div>
+
+  ${btnsHtml ? `
+  <div class="section-label">Sign Up for Campaigns</div>
+  ${btnsHtml}
+  <div class="divider"></div>` : ''}
+
+  <div class="section-label">Join the Community</div>
+  <a href="${discordInvite}" target="_blank" rel="noopener" class="discord-btn">
+    <svg class="discord-icon" viewBox="0 0 127.14 96.36" xmlns="http://www.w3.org/2000/svg"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
+    Join the Discord
+  </a>
+</div>
+
+<footer>Powered by <a href="https://cultcontent.cc" target="_blank">Cult Content</a></footer>
+
 </body>
 </html>`;
 }
