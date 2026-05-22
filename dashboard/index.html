@@ -10522,26 +10522,77 @@ const _clientData = {};  // id → client overview entry
 
 async function loadPendingOnboards() { await loadClientCards(); } // legacy alias
 
+function buildClientsOverview(brands, pending) {
+  const pendingByName = {};
+  for (const p of pending) {
+    const key = (p.formData?.brandName || '').toLowerCase().trim();
+    if (key) pendingByName[key] = p;
+  }
+  const liveClients = brands.map(b => {
+    const cp  = b.creatorPage || {};
+    const inc = cp.incentives  || {};
+    const cam = cp.campaigns   || {};
+    const pob = pendingByName[(b.name || '').toLowerCase().trim()];
+    return {
+      _type: 'live', id: b.id, pendingId: pob?.id || null,
+      name: b.name, website: b.website || '', email: b.email || '',
+      contactName: b.contactName || '', createdAt: b.createdAt || '',
+      hasForm: true,
+      hasPortalLogin: !!(b.loginEmail || b.lastLoginAt),
+      hasTikTok: !!(b.tiktokShopToken),
+      hasCreatorPage: !!(cp.slug && cp.active !== false),
+      hasReacher: !!(b.shopId),
+      hasCampaigns: !!(cam.cashbackUrl || cam.quantityVideoUrl || cam.leaderboardUrl),
+      tcCommission: cp.tcCommission || null,
+      openCommission: cp.openCommission || null,
+      incentives: inc, accentColor: cp.accentColor || '#00f2ea',
+      campaigns: cam,
+      creatorPageUrl: cp.slug ? `https://portal.cultcontent.cc/creators/${cp.slug}` : null,
+      slug: cp.slug || null, shopId: b.shopId || null,
+      dmAutomationId: cp.dmAutomationId || null, headline: cp.headline || '',
+    };
+  });
+  const liveNames = new Set(brands.map(b => (b.name || '').toLowerCase().trim()));
+  const pendingOnly = pending
+    .filter(p => !liveNames.has((p.formData?.brandName || '').toLowerCase().trim()))
+    .map(p => {
+      const fd   = p.formData || {};
+      const comp = fd.compensation || {};
+      return {
+        _type: 'pending', id: p.id, pendingId: p.id,
+        name: fd.brandName || 'Unknown', website: fd.website || '',
+        email: fd.email || '',
+        contactName: `${fd.firstName || ''} ${fd.lastName || ''}`.trim(),
+        createdAt: p.createdAt || '', status: p.status || 'pending',
+        hasForm: true, hasPortalLogin: false, hasTikTok: false,
+        hasCreatorPage: !!(p.creatorPage?.publicUrl),
+        hasReacher: false, hasCampaigns: false,
+        tcCommission: fd.tcCommission || null, openCommission: fd.openCommission || null,
+        incentives: { cashback: comp.cashback, volumeBonus: comp.volumeBonus, leaderboard: comp.leaderboard },
+        accentColor: '#00f2ea', campaigns: {},
+        creatorPageUrl: p.creatorPage?.publicUrl || null,
+        slug: null, shopId: null, dmAutomationId: null, headline: '',
+      };
+    });
+  return { clients: [...liveClients, ...pendingOnly] };
+}
+
 async function loadClientCards() {
   const wrap = document.getElementById('clientCardsWrap');
   if (!wrap) return;
   wrap.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px">Loading clients…</div>';
   try {
-    const r = await fetch('/api/clients/overview');
-    if (r.status === 401) {
-      wrap.innerHTML = '<div style="color:var(--red);font-size:13px;padding:16px">⚠ Session expired — <a href="/" style="color:var(--teal)">click here to reload</a></div>';
-      return;
-    }
-    if (!r.ok) {
-      wrap.innerHTML = `<div style="color:var(--red);font-size:13px;padding:16px">Server error ${r.status} — try refreshing</div>`;
-      return;
-    }
-    const overview = await r.json();
-    let reacherShops = [];
-    try {
-      const sr = await fetch('/api/reacher/shops');
-      if (sr.ok) { const sd = await sr.json(); reacherShops = sd.data || []; }
-    } catch(e) {}
+    // Use existing proven endpoints instead of /api/clients/overview
+    const [brandsResp, pendingResp, shopsResp] = await Promise.all([
+      fetch('/api/brands').then(r => r.ok ? r.json() : { clients: [] }),
+      fetch('/api/onboard/pending').then(r => r.ok ? r.json() : []),
+      fetch('/api/reacher/shops').then(r => r.ok ? r.json() : { data: [] }).catch(() => ({ data: [] })),
+    ]);
+
+    const brands  = brandsResp.clients || [];
+    const pending = Array.isArray(pendingResp) ? pendingResp : [];
+    const overview = buildClientsOverview(brands, pending);
+    let reacherShops = shopsResp.data || [];
     _reacherShops = reacherShops;
     const clients = overview.clients || [];
     if (!clients.length) {
