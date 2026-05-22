@@ -1722,7 +1722,7 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
         referralUrl,
         estimatedCommission: brand.estimatedCommission || 0,
         referrals: brand.referrals || [],
-        affiliatePageUrl: brand.affiliatePageUrl || '',
+        affiliatePageUrl: brand.affiliatePageUrl || (brand.creatorPage?.slug ? `${CREATOR_BASE_URL}/creators/${brand.creatorPage.slug}` : ''),
         connections: {
           bufferConnected:   !!brand.bufferConnected,
           arcadsConnected:   !!brand.arcadsConnected,
