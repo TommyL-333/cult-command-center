@@ -9106,6 +9106,44 @@ app.listen(CFG.port, () => {
   console.log(`\n⚡ Cult Content Command Center`);
   console.log(`   http://localhost:${CFG.port}\n`);
 
+  // One-time update — Lode WTR product title, USPs, and talking points
+  try {
+    const bd = loadBrands();
+    const lode = (bd.clients || []).find(b => (b.name || '').toLowerCase().includes('lode'));
+    if (lode?.creatorPage && !lode.creatorPage._productInfoUpdated) {
+      lode.creatorPage.products = [{
+        name: 'Lode WTR Scalp Water',
+        description: 'A scalp-first reset designed to replace shampoo, not punish your scalp. Built to calm the chaos of flakes, buildup, oil, and harsh shampoos.',
+      }];
+      lode.creatorPage.usps = [
+        'Replaces shampoo entirely — no DIY or 5-step scalp routine required',
+        'Designed for flakes, itch, oil, and buildup without harsh stripping',
+        'Low-foam "anti-shampoo" format drives curiosity and engagement',
+      ];
+      lode.creatorPage.talkingPoints = [
+        '"I stopped shampooing and switched to this instead."',
+        '"This is low foam on purpose — your scalp doesn\'t need aggressive stripping to feel clean."',
+        '"My scalp feels cleaner, calmer, and less reactive over time."',
+        '"It\'s designed to replace shampoo, not stack on top of it."',
+        '"No sulfates, no heavy fragrance, no harsh surfactants."',
+        '"This is for people tired of flakes, buildup, itch, or oil constantly coming back."',
+        '"Think scalp care first, hair care second."',
+        '"It cleans with plant-derived saponins instead of detergent-heavy foam."',
+        '"The philosophy is simple: support your scalp instead of fighting it."',
+        '"It feels more like resetting your scalp than washing your hair."',
+        '"This made my routine simpler — one bottle instead of multiple products."',
+        '"If shampoo leaves your scalp feeling tight or stripped, this feels very different."',
+        '"A lot of scalp issues come from overcorrecting and over-cleansing."',
+        '"The goal isn\'t deep cleaning — it\'s balance."',
+        '"This is probably the weirdest scalp product I\'ve tried… in a good way."',
+      ].join('\n');
+      lode.creatorPage._productInfoUpdated = true;
+      lode.creatorPage.updatedAt = new Date().toISOString();
+      saveBrands(bd);
+      console.log('[startup] Updated Lode WTR product info, USPs, and talking points');
+    }
+  } catch(e) { console.error('[startup] Lode WTR product update error:', e.message); }
+
   // One-time fix — correct Lode WTR cashback target 96 → 100
   try {
     const bd = loadBrands();
