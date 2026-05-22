@@ -8357,10 +8357,17 @@ function renderOpportunitiesPage() {
     const ar         = hexToRgb(accent);
     const inc        = cp.incentives || {};
     const pills      = [];
-    if (inc.cashback?.enabled)    pills.push(`${inc.cashback.percent || '?'}% cashback`);
-    if (inc.leaderboard?.enabled) pills.push('Monthly prizes');
-    if (inc.volumeBonus?.enabled) pills.push(`$${inc.volumeBonus.bonusAmount || '?'} video bonus`);
     if (cp.tcCommission)          pills.push(`${cp.tcCommission}% commission`);
+    if (inc.cashback?.enabled) {
+      const amt = inc.cashback.target || inc.cashback.amount || inc.cashback.gmvTarget;
+      pills.push(amt ? `$${amt} cashback` : 'Cashback program');
+    }
+    if (inc.volumeBonus?.enabled) {
+      const bonus = inc.volumeBonus.bonus || inc.volumeBonus.bonusAmount;
+      const qty   = inc.volumeBonus.quantity || inc.volumeBonus.videoCount;
+      pills.push(bonus && qty ? `$${bonus} for ${qty} videos` : 'Video bonus');
+    }
+    if (inc.leaderboard?.enabled) pills.push('Monthly prizes');
     const pillHtml     = pills.map(p => `<span style="background:rgba(${ar},.12);color:${accent};border:1px solid rgba(${ar},.25);border-radius:100px;padding:3px 10px;font-size:11px;font-weight:700;white-space:nowrap;">${p}</span>`).join('');
     const headline     = cp.headline    || `Partner with ${brand.name}`;
 
