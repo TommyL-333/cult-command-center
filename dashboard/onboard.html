@@ -766,10 +766,7 @@ async function submitForm() {
     });
     const d = await r.json();
     if (d.ok) {
-      document.getElementById('mainForm').style.display = 'none';
-      document.querySelector('.progress-wrap').style.display = 'none';
-      document.getElementById('successState').style.display = 'block';
-      if (d.message) document.getElementById('successMsg').textContent = d.message;
+      window.location.href = 'https://portal.cultcontent.cc/client/login';
     } else throw new Error(d.error || 'Submission failed');
   } catch(e) {
     errEl.textContent = 'Something went wrong — please try again or email hello@cultcontent.cc';
