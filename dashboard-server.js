@@ -8289,6 +8289,98 @@ async function runOnboardingPipeline(formData) {
 // GET /api/onboard/pending
 app.get('/api/onboard/pending', requireAuth, (req, res) => res.json(loadPendingOnboards()));
 
+// GET /api/clients/overview — unified list: live brands + pending onboards
+app.get('/api/clients/overview', requireAuth, (req, res) => {
+  const brands  = loadBrands();
+  const pending = loadPendingOnboards();
+
+  // Build a map of brandName → pending entry (for brands that have both)
+  const pendingByName = {};
+  for (const p of pending) {
+    const key = (p.formData?.brandName || '').toLowerCase().trim();
+    if (key) pendingByName[key] = p;
+  }
+
+  // Live brands
+  const liveClients = (brands.clients || []).map(b => {
+    const cp  = b.creatorPage || {};
+    const inc = cp.incentives || {};
+    const cam = cp.campaigns  || {};
+    const pob = pendingByName[(b.name || '').toLowerCase().trim()];
+    return {
+      _type:        'live',
+      id:           b.id,
+      pendingId:    pob?.id || null,
+      name:         b.name,
+      website:      b.website || '',
+      email:        b.email || '',
+      contactName:  b.contactName || '',
+      createdAt:    b.createdAt || '',
+      // onboarding progress flags
+      hasForm:      true,
+      hasPortalLogin: !!(b.loginEmail || b.lastLoginAt),
+      hasTikTok:    !!(b.tiktokShopToken),
+      hasCreatorPage: !!(cp.slug && cp.active !== false),
+      hasReacher:   !!(b.shopId),
+      hasCampaigns: !!(cam.cashbackUrl || cam.quantityVideoUrl || cam.leaderboardUrl),
+      // incentives
+      tcCommission:   cp.tcCommission  || null,
+      openCommission: cp.openCommission || null,
+      incentives:     inc,
+      accentColor:    cp.accentColor || '#00f2ea',
+      // campaign links
+      campaigns: cam,
+      creatorPageUrl: cp.slug ? `${CREATOR_BASE_URL}/creators/${cp.slug}` : null,
+      slug: cp.slug || null,
+      shopId: b.shopId || null,
+      dmAutomationId: cp.dmAutomationId || null,
+      headline: cp.headline || '',
+    };
+  });
+
+  // Pending-only entries (not yet a live brand)
+  const liveNames = new Set((brands.clients || []).map(b => (b.name || '').toLowerCase().trim()));
+  const pendingOnly = pending
+    .filter(p => !liveNames.has((p.formData?.brandName || '').toLowerCase().trim()))
+    .map(p => {
+      const fd  = p.formData || {};
+      const comp = fd.compensation || {};
+      return {
+        _type:        'pending',
+        id:           p.id,
+        pendingId:    p.id,
+        name:         fd.brandName || 'Unknown',
+        website:      fd.website || '',
+        email:        fd.email || '',
+        contactName:  `${fd.firstName || ''} ${fd.lastName || ''}`.trim(),
+        createdAt:    p.createdAt || '',
+        status:       p.status || 'pending',
+        hasForm:      true,
+        hasPortalLogin: false,
+        hasTikTok:    false,
+        hasCreatorPage: !!(p.creatorPage?.publicUrl),
+        hasReacher:   false,
+        hasCampaigns: false,
+        tcCommission:   fd.tcCommission  || null,
+        openCommission: fd.openCommission || null,
+        incentives: {
+          cashback:    comp.cashback,
+          volumeBonus: comp.volumeBonus,
+          leaderboard: comp.leaderboard,
+        },
+        accentColor:    '#00f2ea',
+        campaigns:      {},
+        creatorPageUrl: p.creatorPage?.publicUrl || null,
+        slug:           null,
+        shopId:         null,
+        dmAutomationId: null,
+        headline:       '',
+      };
+    });
+
+  res.json({ clients: [...liveClients, ...pendingOnly] });
+});
+
 // PATCH /api/onboard/:id — edit generated copy before approval
 app.patch('/api/onboard/:id', requireAuth, (req, res) => {
   const pending = loadPendingOnboards();

@@ -7,7 +7,7 @@
       "loginEmail": "tommy@cultcontent.cc",
       "passwordHash": "$2b$12$OKvmI4d0H6jOCk.8F8eY7e6pvKqP668Fq2Tk41KIyOx10y.lXjjXa",
       "referralCode": "diamandia",
-      "commissionRate": 0.10,
+      "commissionRate": 0.1,
       "industry": "Anti-inflammatory wellness and body sculpting tools — premium self-care and holistic body care",
       "products": "DIAMANDIA sells a curated range of body and face wellness tools, bundles, digital products, and coaching experiences. Core products include body gua sha tools (Bian Stone, Siren, LALA, Muse — $75–$99), body brushes, castor oil, and bundled kits ($105–$275). Higher-ticket offerings include an 8-week Anti-Inflammatory Group Coaching Experience ($500) and an in-person Anti-Inflammatory Reset Retreat ($4,000). Digital products include seasonal recipe guides ($20). Price range spans $10–$4,000.",
       "audience": "Women aged approximately 25–45 interested in holistic wellness, anti-inflammatory lifestyles, body sculpting, and non-toxic self-care. Likely health-conscious, wellness-educated consumers who are interested in reducing bloating, cellulite, inflammation, and puffiness through at-home rituals. Also appeals to brides-to-be (Bridal Glow collection) and those seeking alternatives to clinical or invasive beauty treatments. Buyers are willing to invest in premium self-care and may already follow clean beauty, functional wellness, or anti-inflammatory diet content.",
@@ -69,7 +69,8 @@
       "gmvShare": 10,
       "contacts": "Lenea (lenea@marketily.com), Dan (dan@marketily.com)",
       "pipelineStage": "Contract Signed",
-      "startDate": "2026-05-07"
+      "startDate": "2026-05-07",
+      "contactName": "Lenea"
     }
   ]
 }

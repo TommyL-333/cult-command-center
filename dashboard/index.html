@@ -2299,12 +2299,12 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
   <div id="sub-gp-onboarding">
   <div style="max-width:900px;margin:0 auto;padding:28px 0 60px">
 
-    <!-- ── Pending Client Onboards ── -->
-    <div class="agent-section-label" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <span>🚀 Pending Client Onboards</span>
-      <a href="/onboard" target="_blank" class="btn btn-ghost" style="font-size:11px;padding:4px 12px">Open Form ↗</a>
+    <!-- ── Client Cards ── -->
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+      <div style="font-size:13px;font-weight:700;color:var(--text)">All Clients</div>
+      <a href="/onboard" target="_blank" class="btn btn-ghost" style="font-size:11px;padding:4px 12px">+ New Client Form ↗</a>
     </div>
-    <div id="pendingOnboardsWrap" style="margin-bottom:28px">
+    <div id="clientCardsWrap" style="margin-bottom:32px">
       <div style="text-align:center;padding:32px 0;color:var(--muted);font-size:13px">Loading…</div>
     </div>
 
@@ -2836,6 +2836,10 @@ async function apiFetch(url, opts) {
 function x(s) {
   if (s == null) return '';
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function hexToRgb(hex) {
+  const m = (hex || '#00f2ea').replace('#', '').match(/.{2}/g);
+  return m ? `${parseInt(m[0],16)},${parseInt(m[1],16)},${parseInt(m[2],16)}` : '0,242,234';
 }
 function fmtNum(n) {
   if (n == null || isNaN(n)) return '—';
@@ -10510,211 +10514,279 @@ async function miSubmitMeeting() {
   }
 }
 
-// ─── Pending Client Onboards ─────────────────────────────────────────────────
+// ─── Client Cards ────────────────────────────────────────────────────────────
 
 let _reacherShops = [];
-const _pobData = {}; // id → entry, used by edit panel
+const _pobData    = {};  // pendingId → pending entry
+const _clientData = {};  // id → client overview entry
 
-async function loadPendingOnboards() {
-  const wrap = document.getElementById('pendingOnboardsWrap');
+async function loadPendingOnboards() { await loadClientCards(); } // legacy alias
+
+async function loadClientCards() {
+  const wrap = document.getElementById('clientCardsWrap');
   if (!wrap) return;
   try {
-    const [list, shopsResp] = await Promise.all([
-      fetch('/api/onboard/pending').then(r => r.json()),
+    const [overview, shopsResp] = await Promise.all([
+      fetch('/api/clients/overview').then(r => r.json()),
       fetch('/api/reacher/shops').then(r => r.json()).catch(() => ({ data: [] })),
     ]);
     _reacherShops = shopsResp.data || [];
-    if (!list.length) {
-      wrap.innerHTML = '<div style="text-align:center;padding:32px;color:var(--muted);font-size:13px;background:rgba(255,255,255,.02);border-radius:12px;border:1px dashed rgba(255,255,255,.08)">No pending onboards — <a href="/onboard" target="_blank" style="color:var(--teal)">share the onboarding form</a> with your clients</div>';
+    const clients = overview.clients || [];
+    if (!clients.length) {
+      wrap.innerHTML = '<div style="text-align:center;padding:32px;color:var(--muted);font-size:13px;background:rgba(255,255,255,.02);border-radius:12px;border:1px dashed rgba(255,255,255,.08)">No clients yet — <a href="/onboard" target="_blank" style="color:var(--teal)">share the onboarding form</a></div>';
       return;
     }
-    const pending = list.filter(e => e.status === 'pending');
-    const toRender = pending.length ? pending : list;
-    toRender.forEach(e => { _pobData[e.id] = e; });
-    wrap.innerHTML = toRender.map(entry => renderOnboardCard(entry)).join('');
+    clients.forEach(c => {
+      _clientData[c.id] = c;
+      if (c.pendingId) _pobData[c.pendingId] = c;
+    });
+    wrap.innerHTML = clients.map(c => renderClientCard(c)).join('');
   } catch(e) {
-    wrap.innerHTML = `<div style="color:var(--red);font-size:13px">Error loading onboards: ${x(e.message)}</div>`;
+    wrap.innerHTML = `<div style="color:var(--red);font-size:13px">Error: ${x(e.message)}</div>`;
   }
 }
 
-function renderOnboardCard(entry) {
-  const fd        = entry.formData || {};
-  const ai        = entry.aiContent || {};
-  const products  = (fd.products || []).filter(p => p.name).map(p => p.name).join(', ');
-  const isApproved = entry.status === 'approved';
-  const hasPage   = !!entry.creatorPage?.publicUrl;
-  const hasDoc    = !!entry.larkDoc?.url;
-  const reacherProducts = Object.keys(ai.reacherCopy || {});
-  const comp      = fd.compensation || {};
-  const incentives = [];
-  if (comp.cashback?.enabled)    incentives.push(`💸 $${comp.cashback.amount}/video`);
-  if (comp.leaderboard?.enabled) incentives.push(`🏆 Leaderboard`);
-  if (comp.volumeBonus?.enabled) incentives.push(`🎬 Volume Bonus`);
-  if (comp.retainer?.enabled)    incentives.push(`🤝 Retainer`);
+function renderClientCard(c) {
+  const accent = c.accentColor || '#00f2ea';
+  const ar     = hexToRgb(accent);
+  const isLive = c._type === 'live';
 
-  return `<div class="card" style="margin-bottom:14px;border-color:${isApproved ? 'rgba(0,210,122,.2)' : 'rgba(0,242,234,.15)'}">
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap">
-      <div>
-        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-          <div style="font-size:16px;font-weight:800">${x(fd.brandName||'Unknown Brand')}</div>
-          <span style="background:${isApproved?'rgba(0,210,122,.12)':'rgba(0,242,234,.1)'};color:${isApproved?'var(--green)':'var(--teal)'};border-radius:6px;padding:2px 9px;font-size:10px;font-weight:700">${isApproved?'✓ Approved':'⏳ Pending Review'}</span>
+  // Progress steps
+  const steps = [
+    { key: 'hasForm',        label: 'Form',         done: c.hasForm },
+    { key: 'hasCreatorPage', label: 'Creator Page',  done: c.hasCreatorPage },
+    { key: 'hasPortalLogin', label: 'Portal Login',  done: c.hasPortalLogin },
+    { key: 'hasTikTok',      label: 'TikTok Shop',   done: c.hasTikTok },
+    { key: 'hasReacher',     label: 'Reacher',        done: c.hasReacher },
+    { key: 'hasCampaigns',   label: 'Campaigns',      done: c.hasCampaigns },
+  ];
+  const nextStep = steps.find(s => !s.done);
+
+  const nextStepMsg = {
+    hasForm:        'Fill out onboarding form',
+    hasCreatorPage: 'Approve creator page',
+    hasPortalLogin: 'Client needs to log into portal',
+    hasTikTok:      'Connect TikTok Shop account',
+    hasReacher:     'Link Reacher shop',
+    hasCampaigns:   'Add campaign links',
+  };
+
+  const stepsHtml = steps.map(s => `
+    <div style="display:flex;align-items:center;gap:4px">
+      <div style="width:7px;height:7px;border-radius:50%;background:${s.done ? `rgb(${ar})` : 'rgba(255,255,255,.12)'};flex-shrink:0"></div>
+      <span style="font-size:10px;color:${s.done ? accent : 'rgba(255,255,255,.3)'}">${s.label}</span>
+    </div>`).join('');
+
+  // Incentive pills
+  const inc = c.incentives || {};
+  const pills = [];
+  if (c.tcCommission)          pills.push(`${c.tcCommission}% commission`);
+  if (inc.cashback?.enabled) {
+    const amt = inc.cashback.target || inc.cashback.amount;
+    if (amt) pills.push(`$${amt} cashback`);
+  }
+  if (inc.volumeBonus?.enabled) {
+    const bonus = inc.volumeBonus.bonus || inc.volumeBonus.bonusAmount;
+    const qty   = inc.volumeBonus.quantity || inc.volumeBonus.videoCount;
+    if (bonus && qty) pills.push(`$${bonus} for ${qty} videos`);
+  }
+  if (inc.leaderboard?.enabled) {
+    const places = inc.leaderboard.places || inc.leaderboard.prizes || [];
+    if (places[0]) pills.push(`$${places[0]} leaderboard prize`);
+  }
+  const pillsHtml = pills.map(p => `<span style="background:rgba(${ar},.1);color:${accent};border:1px solid rgba(${ar},.22);border-radius:100px;padding:2px 9px;font-size:10px;font-weight:700">${p}</span>`).join('');
+
+  // Campaign link buttons
+  const cam = c.campaigns || {};
+  const camBtns = [
+    cam.cashbackUrl      && `<a href="${x(cam.cashbackUrl)}"      target="_blank" class="btn btn-ghost" style="font-size:10px;padding:4px 10px">💸 Cashback ↗</a>`,
+    cam.quantityVideoUrl && `<a href="${x(cam.quantityVideoUrl)}" target="_blank" class="btn btn-ghost" style="font-size:10px;padding:4px 10px">🎬 Volume ↗</a>`,
+    cam.leaderboardUrl   && `<a href="${x(cam.leaderboardUrl)}"   target="_blank" class="btn btn-ghost" style="font-size:10px;padding:4px 10px">🏆 Leaderboard ↗</a>`,
+  ].filter(Boolean).join('');
+
+  const statusBadge = isLive
+    ? `<span style="background:rgba(0,210,122,.1);color:var(--green);border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700">● Live</span>`
+    : `<span style="background:rgba(0,242,234,.08);color:var(--teal);border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700">⏳ ${c.status || 'Pending'}</span>`;
+
+  // Edit panel field values
+  const cbAmt   = inc.cashback?.enabled  ? (inc.cashback.target  || inc.cashback.amount  || '') : '';
+  const vbQty   = inc.volumeBonus?.enabled ? (inc.volumeBonus.quantity || inc.volumeBonus.videoCount || '') : '';
+  const vbAmt   = inc.volumeBonus?.enabled ? (inc.volumeBonus.bonus    || inc.volumeBonus.bonusAmount || '') : '';
+  const lb1     = inc.leaderboard?.enabled ? ((inc.leaderboard.places || inc.leaderboard.prizes || [])[0] || '') : '';
+  const lbMin   = inc.leaderboard?.enabled ? (inc.leaderboard.threshold || '') : '';
+
+  return `
+  <div class="card" style="margin-bottom:14px;border-color:rgba(${ar},.2)" id="cc-card-${c.id}">
+    <!-- Header row -->
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+          <span style="font-size:15px;font-weight:800;color:#fff">${x(c.name)}</span>
+          ${statusBadge}
         </div>
-        <div style="font-size:12px;color:var(--muted);margin-top:3px">${x(fd.firstName||'')} ${x(fd.lastName||'')} · ${x(fd.email||'')} · ${x(fd.website||'')}</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:2px">📦 ${x(products||'No products listed')} · 💰 Budget: ${fd.monthlyBudget?'$'+fd.monthlyBudget:'TBD'}</div>
-        ${incentives.length ? `<div style="margin-top:6px">${incentives.map(i=>`<span style="display:inline-block;background:rgba(255,255,255,.06);border-radius:5px;padding:2px 8px;font-size:11px;margin-right:4px">${i}</span>`).join('')}</div>` : ''}
+        <div style="font-size:11px;color:var(--muted)">${x(c.contactName || '')}${c.contactName && c.email ? ' · ' : ''}${x(c.email || '')}${c.website ? ' · ' + x(c.website) : ''}</div>
       </div>
-      <div style="font-size:11px;color:var(--muted);flex-shrink:0">${new Date(entry.createdAt).toLocaleDateString()}</div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        ${c.creatorPageUrl ? `<a href="${x(c.creatorPageUrl)}" target="_blank" class="btn btn-ghost" style="font-size:11px;padding:5px 10px">Page ↗</a>` : ''}
+        <button onclick="ccToggleEdit('${c.id}')" class="btn btn-ghost" style="font-size:11px;padding:5px 10px">✎ Edit</button>
+      </div>
     </div>
 
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;margin-bottom:14px">
-      ${hasDoc ? `<a href="${x(entry.larkDoc.url)}" target="_blank" class="btn btn-ghost" style="font-size:11px;padding:8px;text-align:center;text-decoration:none">📄 Resource Hub ↗</a>` : '<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:8px;font-size:11px;color:var(--muted);text-align:center">📄 No resource hub yet</div>'}
-      ${hasPage ? `<a href="${x(entry.creatorPage.publicUrl)}" target="_blank" class="btn btn-ghost" style="font-size:11px;padding:8px;text-align:center;text-decoration:none">🎯 Creator Page${isApproved?' (Live)':' (Draft)'} ↗</a>` : '<div style="background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:8px;font-size:11px;color:var(--muted);text-align:center">🎯 No creator page</div>'}
-      ${reacherProducts.length ? `<button onclick="pobShowReacher('${entry.id}')" class="btn btn-ghost" style="font-size:11px;padding:8px">📣 Reacher Copy (${reacherProducts.length} product${reacherProducts.length>1?'s':''})</button>` : ''}
+    <!-- Progress steps -->
+    <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px;padding:10px 12px;background:rgba(255,255,255,.02);border-radius:10px;border:1px solid rgba(255,255,255,.05)">
+      ${stepsHtml}
     </div>
 
-    ${!isApproved ? `
-    <div style="margin-bottom:10px">
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:5px">Reacher Shop</div>
-      <select id="reacher-shop-${entry.id}" style="background:#12101a;border:1px solid var(--border);border-radius:7px;color:#fff;font-size:12px;padding:6px 10px;width:100%;max-width:320px">
-        <option value="">— Auto-detect by name —</option>
-        ${_reacherShops.map(s => `<option value="${s.shop_id}">${x(s.shop_name)} (${s.shop_id})</option>`).join('')}
-      </select>
-    </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap">
-      <button onclick="pobApprove('${entry.id}',this)" class="btn btn-teal" style="font-size:12px;font-weight:700;padding:9px 20px">✓ Approve &amp; Launch</button>
-      <button onclick="pobToggleEdit('${entry.id}')" class="btn btn-ghost" style="font-size:12px;padding:9px 16px">✎ Edit</button>
-      <button onclick="pobDelete('${entry.id}',this)" class="btn btn-ghost" style="font-size:12px;padding:9px 16px;color:var(--red)">✕ Delete</button>
-    </div>
+    <!-- Incentive pills -->
+    ${pillsHtml ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">${pillsHtml}</div>` : '<div style="font-size:11px;color:rgba(255,255,255,.2);margin-bottom:10px">No incentives configured</div>'}
+
+    <!-- Campaign links -->
+    ${camBtns ? `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px">${camBtns}</div>` : ''}
+
+    <!-- Next step -->
+    ${nextStep ? `<div style="font-size:11px;color:${accent};font-weight:600">→ Next: ${nextStepMsg[nextStep.key]}</div>` : `<div style="font-size:11px;color:var(--green);font-weight:600">✓ Fully onboarded</div>`}
 
     <!-- Inline edit panel -->
-    <div id="pob-edit-${entry.id}" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:16px">
-      <div style="font-size:12px;font-weight:700;margin-bottom:14px;color:var(--teal)">Edit Onboarding Data</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:16px">
-        <div>
-          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:5px">Brand Name</div>
-          <input id="pob-brandName-${entry.id}" class="agent-input" style="font-size:13px;width:100%" value="${x(fd.brandName||'')}">
-        </div>
+    <div id="cc-edit-${c.id}" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:16px">
+      <div style="font-size:12px;font-weight:700;color:${accent};margin-bottom:14px">Edit Client Data</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-bottom:14px">
         <div>
           <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:5px">TC Commission %</div>
-          <input id="pob-tcComm-${entry.id}" class="agent-input" style="font-size:13px;width:100%" type="number" min="1" max="80" value="${x(String(fd.tcCommission||''))}">
+          <input id="cc-tcComm-${c.id}" class="agent-input" type="number" min="1" max="80" style="font-size:13px;width:100%" value="${x(String(c.tcCommission||''))}">
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:5px">Cashback Target ($)</div>
+          <input id="cc-cb-${c.id}" class="agent-input" type="number" min="0" style="font-size:13px;width:100%" placeholder="0 = off" value="${x(String(cbAmt))}">
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:5px">Video Bonus — # Videos</div>
+          <input id="cc-vbQty-${c.id}" class="agent-input" type="number" min="0" style="font-size:13px;width:100%" placeholder="0 = off" value="${x(String(vbQty))}">
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:5px">Video Bonus — Amount ($)</div>
+          <input id="cc-vbAmt-${c.id}" class="agent-input" type="number" min="0" style="font-size:13px;width:100%" value="${x(String(vbAmt))}">
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:5px">Leaderboard 1st Prize ($)</div>
+          <input id="cc-lb1-${c.id}" class="agent-input" type="number" min="0" style="font-size:13px;width:100%" placeholder="0 = off" value="${x(String(lb1))}">
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:5px">Leaderboard Min GMV ($)</div>
+          <input id="cc-lbMin-${c.id}" class="agent-input" type="number" min="0" style="font-size:13px;width:100%" value="${x(String(lbMin))}">
         </div>
       </div>
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:10px">Incentive Program</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:16px">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:8px">Campaign Links</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:8px;margin-bottom:14px">
         <div>
-          <div style="font-size:11px;color:var(--muted);margin-bottom:5px">💸 Cashback GMV target ($)</div>
-          <input id="pob-cashback-${entry.id}" class="agent-input" style="font-size:13px;width:100%" type="number" min="0" placeholder="0 = off" value="${x(String(comp.cashback?.enabled ? (comp.cashback.target||comp.cashback.amount||'') : ''))}">
+          <div style="font-size:10px;color:var(--muted);margin-bottom:4px">💸 Cashback URL</div>
+          <input id="cc-camCb-${c.id}" class="agent-input" style="font-size:12px;width:100%" placeholder="https://..." value="${x(cam.cashbackUrl||'')}">
         </div>
         <div>
-          <div style="font-size:11px;color:var(--muted);margin-bottom:5px">🎬 Volume bonus — videos</div>
-          <input id="pob-vbQty-${entry.id}" class="agent-input" style="font-size:13px;width:100%" type="number" min="0" placeholder="0 = off" value="${x(String(comp.volumeBonus?.enabled ? (comp.volumeBonus.quantity||comp.volumeBonus.videoCount||'') : ''))}">
+          <div style="font-size:10px;color:var(--muted);margin-bottom:4px">🎬 Volume Bonus URL</div>
+          <input id="cc-camVb-${c.id}" class="agent-input" style="font-size:12px;width:100%" placeholder="https://..." value="${x(cam.quantityVideoUrl||'')}">
         </div>
         <div>
-          <div style="font-size:11px;color:var(--muted);margin-bottom:5px">🎬 Volume bonus — amount ($)</div>
-          <input id="pob-vbAmt-${entry.id}" class="agent-input" style="font-size:13px;width:100%" type="number" min="0" value="${x(String(comp.volumeBonus?.enabled ? (comp.volumeBonus.bonus||comp.volumeBonus.bonusAmount||'') : ''))}">
-        </div>
-        <div>
-          <div style="font-size:11px;color:var(--muted);margin-bottom:5px">🏆 Leaderboard 1st prize ($)</div>
-          <input id="pob-lb1-${entry.id}" class="agent-input" style="font-size:13px;width:100%" type="number" min="0" placeholder="0 = off" value="${x(String(comp.leaderboard?.enabled ? ((comp.leaderboard.places||comp.leaderboard.prizes||[])[0]||'') : ''))}">
-        </div>
-        <div>
-          <div style="font-size:11px;color:var(--muted);margin-bottom:5px">🏆 Leaderboard min GMV ($)</div>
-          <input id="pob-lbMin-${entry.id}" class="agent-input" style="font-size:13px;width:100%" type="number" min="0" value="${x(String(comp.leaderboard?.enabled ? (comp.leaderboard.threshold||'') : ''))}">
+          <div style="font-size:10px;color:var(--muted);margin-bottom:4px">🏆 Leaderboard URL</div>
+          <input id="cc-camLb-${c.id}" class="agent-input" style="font-size:12px;width:100%" placeholder="https://..." value="${x(cam.leaderboardUrl||'')}">
         </div>
       </div>
-      <button onclick="pobSave('${entry.id}',this)" class="btn btn-teal" style="font-size:12px;padding:9px 20px">Save Changes</button>
-      <span id="pob-save-status-${entry.id}" style="font-size:12px;margin-left:10px;color:var(--muted)"></span>
-    </div>` : `<div style="font-size:12px;color:var(--green)">✓ Approved ${entry.approvedAt ? 'on '+new Date(entry.approvedAt).toLocaleDateString() : ''}${entry.shopId ? ` · Reacher shop ${entry.shopId}` : ''}</div>`}
-
-    <!-- Reacher copy expandable -->
-    <div id="reacher-${entry.id}" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:16px">
-      ${reacherProducts.map(pName => {
-        const copy = ai.reacherCopy[pName];
-        return `<div style="margin-bottom:18px">
-          <div style="font-size:13px;font-weight:700;margin-bottom:10px;color:var(--teal)">${x(pName)}</div>
-          ${[['TC Message',copy.tc_message],['DM Message',copy.dm_message],['Follow-Up',copy.followup_message]].map(([label,text])=>`
-            <div style="margin-bottom:10px">
-              <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:4px">${label}</div>
-              <div style="background:rgba(255,255,255,.04);border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.6;white-space:pre-wrap;word-break:break-word">${x(text||'—')}</div>
-            </div>`).join('')}
-        </div>`;
-      }).join('')}
+      ${!isLive && c.pendingId ? `
+      <div style="margin-bottom:14px">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:5px">Reacher Shop</div>
+        <select id="cc-shop-${c.id}" style="background:#12101a;border:1px solid var(--border);border-radius:7px;color:#fff;font-size:12px;padding:6px 10px;width:100%;max-width:320px">
+          <option value="">— Auto-detect by name —</option>
+          ${_reacherShops.map(s => `<option value="${s.shop_id}">${x(s.shop_name)} (${s.shop_id})</option>`).join('')}
+        </select>
+      </div>
+      <button onclick="ccApprove('${c.pendingId}','${c.id}',this)" class="btn btn-teal" style="font-size:12px;font-weight:700;padding:9px 20px;margin-right:8px">✓ Approve &amp; Launch</button>
+      ` : ''}
+      <button onclick="ccSave('${c.id}',this)" class="btn btn-teal" style="font-size:12px;padding:9px 20px">Save Changes</button>
+      <button onclick="ccToggleEdit('${c.id}')" class="btn btn-ghost" style="font-size:12px;padding:9px 14px;margin-left:6px">Cancel</button>
+      <span id="cc-save-status-${c.id}" style="font-size:12px;margin-left:10px;color:var(--muted)"></span>
     </div>
   </div>`;
 }
 
-function pobShowReacher(id) {
-  const el = document.getElementById(`reacher-${id}`);
+function ccToggleEdit(id) {
+  const el = document.getElementById(`cc-edit-${id}`);
   if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
 }
 
-function pobToggleEdit(id) {
-  const el = document.getElementById(`pob-edit-${id}`);
-  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
-}
-
-async function pobSave(id, btn) {
-  const entry = _pobData[id];
-  if (!entry) return;
-  const orig = btn.textContent;
-  const status = document.getElementById(`pob-save-status-${id}`);
+async function ccSave(id, btn) {
+  const c = _clientData[id];
+  if (!c) return;
+  const orig   = btn.textContent;
+  const status = document.getElementById(`cc-save-status-${id}`);
   btn.disabled = true; btn.textContent = 'Saving…';
 
-  const v = field => {
-    const el = document.getElementById(`pob-${field}-${id}`);
-    return el ? el.value.trim() : '';
-  };
+  const v = f => { const el = document.getElementById(`cc-${f}-${id}`); return el ? el.value.trim() : ''; };
 
-  // Rebuild formData with edited values
-  const fd = JSON.parse(JSON.stringify(entry.formData || {}));
-  fd.brandName   = v('brandName') || fd.brandName;
-  fd.tcCommission = v('tcComm') !== '' ? v('tcComm') : fd.tcCommission;
+  // Build updated incentives
+  const cbAmt  = parseFloat(v('cb'));
+  const vbQty  = parseFloat(v('vbQty'));
+  const vbAmt  = parseFloat(v('vbAmt'));
+  const lb1    = parseFloat(v('lb1'));
+  const lbMin  = parseFloat(v('lbMin'));
+  const tcComm = v('tcComm') !== '' ? parseFloat(v('tcComm')) : null;
 
-  // Cashback
-  const cbAmt = parseFloat(v('cashback'));
-  if (cbAmt > 0) {
-    fd.compensation = fd.compensation || {};
-    fd.compensation.cashback = { enabled: true, target: cbAmt };
-  } else if (cbAmt === 0) {
-    if (fd.compensation?.cashback) fd.compensation.cashback.enabled = false;
-  }
-
-  // Volume bonus
-  const vbQty = parseFloat(v('vbQty'));
-  const vbAmt = parseFloat(v('vbAmt'));
-  if (vbQty > 0 && vbAmt > 0) {
-    fd.compensation = fd.compensation || {};
-    fd.compensation.volumeBonus = { enabled: true, quantity: vbQty, bonus: vbAmt };
-  } else if (vbQty === 0) {
-    if (fd.compensation?.volumeBonus) fd.compensation.volumeBonus.enabled = false;
-  }
-
-  // Leaderboard
-  const lb1 = parseFloat(v('lb1'));
-  const lbMin = parseFloat(v('lbMin'));
+  const inc = c.incentives ? JSON.parse(JSON.stringify(c.incentives)) : {};
+  if (cbAmt > 0)  { inc.cashback    = { enabled: true,  target: cbAmt }; }
+  else if (!isNaN(cbAmt))  { inc.cashback    = { enabled: false }; }
+  if (vbQty > 0 && vbAmt > 0) { inc.volumeBonus = { enabled: true,  quantity: vbQty, bonus: vbAmt }; }
+  else if (!isNaN(vbQty)) { inc.volumeBonus = { enabled: false }; }
   if (lb1 > 0) {
-    const existing = entry.formData?.compensation?.leaderboard?.places || [];
-    fd.compensation = fd.compensation || {};
-    fd.compensation.leaderboard = {
-      enabled: true,
-      threshold: lbMin || fd.compensation?.leaderboard?.threshold || 0,
-      places: [lb1, ...existing.slice(1)],
-    };
-  } else if (lb1 === 0) {
-    if (fd.compensation?.leaderboard) fd.compensation.leaderboard.enabled = false;
-  }
+    const existingPlaces = (c.incentives?.leaderboard?.places || c.incentives?.leaderboard?.prizes || []).slice(1);
+    inc.leaderboard = { enabled: true, threshold: lbMin || 0, places: [lb1, ...existingPlaces] };
+  } else if (!isNaN(lb1)) { inc.leaderboard = { enabled: false }; }
+
+  const camCb = v('camCb');
+  const camVb = v('camVb');
+  const camLb = v('camLb');
 
   try {
-    const r = await fetch(`/api/onboard/${id}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ formData: fd }),
-    }).then(r => r.json());
-    if (!r.ok) throw new Error(r.error || 'Save failed');
-    _pobData[id].formData = fd;
+    if (c._type === 'live') {
+      // Update creator page (incentives + commission)
+      await fetch(`/api/creator-pages/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ incentives: inc, tcCommission: tcComm }),
+      }).then(r => r.json());
+      // Update campaign links
+      await fetch(`/api/brands/${id}/campaign-links`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cashbackUrl: camCb || null, quantityVideoUrl: camVb || null, leaderboardUrl: camLb || null }),
+      }).then(r => r.json());
+    } else if (c.pendingId) {
+      // Update pending onboard formData
+      const existing = _pobData[c.pendingId] || {};
+      const fd = JSON.parse(JSON.stringify(existing.formData || {}));
+      if (tcComm) fd.tcCommission = tcComm;
+      fd.compensation = fd.compensation || {};
+      if (inc.cashback)    fd.compensation.cashback    = inc.cashback;
+      if (inc.volumeBonus) fd.compensation.volumeBonus = inc.volumeBonus;
+      if (inc.leaderboard) fd.compensation.leaderboard = inc.leaderboard;
+      await fetch(`/api/onboard/${c.pendingId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ formData: fd }),
+      }).then(r => r.json());
+    }
+
+    // Update local cache
+    c.tcCommission = tcComm;
+    c.incentives = inc;
+    c.campaigns = { cashbackUrl: camCb || null, quantityVideoUrl: camVb || null, leaderboardUrl: camLb || null };
+    _clientData[id] = c;
+
     status.style.color = 'var(--green)';
     status.textContent = '✓ Saved';
-    setTimeout(() => { status.textContent = ''; }, 3000);
+    setTimeout(() => {
+      status.textContent = '';
+      // Re-render this card in place
+      const card = document.getElementById(`cc-card-${id}`);
+      if (card) card.outerHTML = renderClientCard(c);
+    }, 1000);
   } catch(e) {
     status.style.color = 'var(--red)';
     status.textContent = e.message;
@@ -10722,33 +10794,35 @@ async function pobSave(id, btn) {
   btn.disabled = false; btn.textContent = orig;
 }
 
-async function pobApprove(id, btn) {
+async function ccApprove(pendingId, clientId, btn) {
   const orig = btn.textContent;
   btn.disabled = true; btn.textContent = 'Approving…';
   try {
-    const shopSelect = document.getElementById(`reacher-shop-${id}`);
-    const shopId = shopSelect?.value ? Number(shopSelect.value) : undefined;
-    const r = await fetch(`/api/onboard/${id}/approve`, {
+    const shopSel = document.getElementById(`cc-shop-${clientId}`);
+    const shopId  = shopSel?.value ? Number(shopSel.value) : undefined;
+    const r = await fetch(`/api/onboard/${pendingId}/approve`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(shopId ? { shopId } : {}),
     }).then(r => r.json());
-    if (r.ok) {
-      btn.textContent = '✓ Launched!';
-      setTimeout(() => loadPendingOnboards(), 1500);
-    } else throw new Error(r.error);
+    if (!r.ok) throw new Error(r.error || 'Approve failed');
+    btn.textContent = '✓ Launched!';
+    setTimeout(() => loadClientCards(), 1500);
   } catch(e) {
     alert('Error: ' + e.message);
     btn.disabled = false; btn.textContent = orig;
   }
 }
 
-async function pobDelete(id, btn) {
-  if (!confirm('Delete this onboarding entry?')) return;
-  try {
-    await fetch(`/api/onboard/${id}`, { method: 'DELETE' });
-    loadPendingOnboards();
-  } catch(e) { alert('Error: ' + e.message); }
+// Keep pobShowReacher and pobDelete for backwards compat if referenced
+function pobShowReacher(id) {
+  const el = document.getElementById(`reacher-${id}`);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+async function pobDelete(id) {
+  if (!confirm('Delete this entry?')) return;
+  await fetch(`/api/onboard/${id}`, { method: 'DELETE' });
+  loadClientCards();
 }
 
 // ─── Creator Interest Pages ──────────────────────────────────────────────────
