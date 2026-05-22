@@ -8982,6 +8982,28 @@ app.listen(CFG.port, () => {
   console.log(`\n⚡ Cult Content Command Center`);
   console.log(`   http://localhost:${CFG.port}\n`);
 
+  // One-time fix — correct Lode WTR cashback target 96 → 100
+  try {
+    const bd = loadBrands();
+    const lode = (bd.clients || []).find(b => (b.name || '').toLowerCase().includes('lode'));
+    if (lode?.creatorPage?.incentives?.cashback?.target == 96) {
+      lode.creatorPage.incentives.cashback.target = 100;
+      saveBrands(bd);
+      console.log('[startup] Fixed Lode WTR cashback target: 96 → 100');
+    }
+    // Also fix in pending onboards
+    const po = loadPendingOnboards();
+    let poDirty = false;
+    for (const e of po) {
+      if ((e.formData?.brandName || '').toLowerCase().includes('lode') && e.formData?.compensation?.cashback?.target == 96) {
+        e.formData.compensation.cashback.target = 100;
+        if (e.aiContent) e.aiContent = null; // re-gen on approve
+        poDirty = true;
+      }
+    }
+    if (poDirty) { savePendingOnboards(po); console.log('[startup] Fixed Lode WTR cashback in pending onboards'); }
+  } catch(e) { console.error('[startup] Lode WTR cashback fix error:', e.message); }
+
   // One-time cleanup — remove test/placeholder brands
   try {
     const testNames = ['test brand', 'test', 'organic social marketing'];
