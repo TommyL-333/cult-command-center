@@ -1542,6 +1542,18 @@ app.post('/portal-admin/exit', (req, res) => {
   res.json({ ok: true });
 });
 
+// POST /portal-admin/set-email — set the loginEmail for a client brand
+app.post('/portal-admin/set-email', requirePortalAdmin, express.json(), (req, res) => {
+  const { brandId, email } = req.body || {};
+  if (!brandId || !email) return res.status(400).json({ error: 'brandId and email required' });
+  const brands = loadBrands();
+  const idx = (brands.clients || []).findIndex(b => b.id === brandId);
+  if (idx === -1) return res.status(404).json({ error: 'Brand not found' });
+  brands.clients[idx].loginEmail = email.toLowerCase().trim();
+  saveBrands(brands);
+  res.json({ ok: true, name: brands.clients[idx].name, loginEmail: brands.clients[idx].loginEmail });
+});
+
 // POST /portal-admin/clear-password — reset a client's password so they can set a new one
 app.post('/portal-admin/clear-password', requirePortalAdmin, express.json(), (req, res) => {
   const { brandId } = req.body || {};
@@ -8198,6 +8210,7 @@ async function runOnboardingPipeline(formData) {
     }
     brand.contactName = `${formData.firstName} ${formData.lastName}`;
     brand.website     = formData.website;
+    if (formData.email && !brand.loginEmail) brand.loginEmail = formData.email.toLowerCase().trim();
     brand.creatorPage = {
       slug, tagName: `creator-interested-${slug}`, active: true,
       headline: `Partner with ${brandName}`,
