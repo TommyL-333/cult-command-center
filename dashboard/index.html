@@ -10513,12 +10513,12 @@ async function miSubmitMeeting() {
 // ─── Pending Client Onboards ─────────────────────────────────────────────────
 
 let _reacherShops = [];
+const _pobData = {}; // id → entry, used by edit panel
 
 async function loadPendingOnboards() {
   const wrap = document.getElementById('pendingOnboardsWrap');
   if (!wrap) return;
   try {
-    // Load Reacher shops + pending list in parallel
     const [list, shopsResp] = await Promise.all([
       fetch('/api/onboard/pending').then(r => r.json()),
       fetch('/api/reacher/shops').then(r => r.json()).catch(() => ({ data: [] })),
@@ -10529,7 +10529,9 @@ async function loadPendingOnboards() {
       return;
     }
     const pending = list.filter(e => e.status === 'pending');
-    wrap.innerHTML = (pending.length ? pending : list).map(entry => renderOnboardCard(entry)).join('');
+    const toRender = pending.length ? pending : list;
+    toRender.forEach(e => { _pobData[e.id] = e; });
+    wrap.innerHTML = toRender.map(entry => renderOnboardCard(entry)).join('');
   } catch(e) {
     wrap.innerHTML = `<div style="color:var(--red);font-size:13px">Error loading onboards: ${x(e.message)}</div>`;
   }
@@ -10580,7 +10582,48 @@ function renderOnboardCard(entry) {
     </div>
     <div style="display:flex;gap:8px;flex-wrap:wrap">
       <button onclick="pobApprove('${entry.id}',this)" class="btn btn-teal" style="font-size:12px;font-weight:700;padding:9px 20px">✓ Approve &amp; Launch</button>
+      <button onclick="pobToggleEdit('${entry.id}')" class="btn btn-ghost" style="font-size:12px;padding:9px 16px">✎ Edit</button>
       <button onclick="pobDelete('${entry.id}',this)" class="btn btn-ghost" style="font-size:12px;padding:9px 16px;color:var(--red)">✕ Delete</button>
+    </div>
+
+    <!-- Inline edit panel -->
+    <div id="pob-edit-${entry.id}" style="display:none;margin-top:16px;border-top:1px solid var(--border);padding-top:16px">
+      <div style="font-size:12px;font-weight:700;margin-bottom:14px;color:var(--teal)">Edit Onboarding Data</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:16px">
+        <div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:5px">Brand Name</div>
+          <input id="pob-brandName-${entry.id}" class="agent-input" style="font-size:13px;width:100%" value="${x(fd.brandName||'')}">
+        </div>
+        <div>
+          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:5px">TC Commission %</div>
+          <input id="pob-tcComm-${entry.id}" class="agent-input" style="font-size:13px;width:100%" type="number" min="1" max="80" value="${x(String(fd.tcCommission||''))}">
+        </div>
+      </div>
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:10px">Incentive Program</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;margin-bottom:16px">
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:5px">💸 Cashback GMV target ($)</div>
+          <input id="pob-cashback-${entry.id}" class="agent-input" style="font-size:13px;width:100%" type="number" min="0" placeholder="0 = off" value="${x(String(comp.cashback?.enabled ? (comp.cashback.target||comp.cashback.amount||'') : ''))}">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:5px">🎬 Volume bonus — videos</div>
+          <input id="pob-vbQty-${entry.id}" class="agent-input" style="font-size:13px;width:100%" type="number" min="0" placeholder="0 = off" value="${x(String(comp.volumeBonus?.enabled ? (comp.volumeBonus.quantity||comp.volumeBonus.videoCount||'') : ''))}">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:5px">🎬 Volume bonus — amount ($)</div>
+          <input id="pob-vbAmt-${entry.id}" class="agent-input" style="font-size:13px;width:100%" type="number" min="0" value="${x(String(comp.volumeBonus?.enabled ? (comp.volumeBonus.bonus||comp.volumeBonus.bonusAmount||'') : ''))}">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:5px">🏆 Leaderboard 1st prize ($)</div>
+          <input id="pob-lb1-${entry.id}" class="agent-input" style="font-size:13px;width:100%" type="number" min="0" placeholder="0 = off" value="${x(String(comp.leaderboard?.enabled ? ((comp.leaderboard.places||comp.leaderboard.prizes||[])[0]||'') : ''))}">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:5px">🏆 Leaderboard min GMV ($)</div>
+          <input id="pob-lbMin-${entry.id}" class="agent-input" style="font-size:13px;width:100%" type="number" min="0" value="${x(String(comp.leaderboard?.enabled ? (comp.leaderboard.threshold||'') : ''))}">
+        </div>
+      </div>
+      <button onclick="pobSave('${entry.id}',this)" class="btn btn-teal" style="font-size:12px;padding:9px 20px">Save Changes</button>
+      <span id="pob-save-status-${entry.id}" style="font-size:12px;margin-left:10px;color:var(--muted)"></span>
     </div>` : `<div style="font-size:12px;color:var(--green)">✓ Approved ${entry.approvedAt ? 'on '+new Date(entry.approvedAt).toLocaleDateString() : ''}${entry.shopId ? ` · Reacher shop ${entry.shopId}` : ''}</div>`}
 
     <!-- Reacher copy expandable -->
@@ -10603,6 +10646,80 @@ function renderOnboardCard(entry) {
 function pobShowReacher(id) {
   const el = document.getElementById(`reacher-${id}`);
   if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+function pobToggleEdit(id) {
+  const el = document.getElementById(`pob-edit-${id}`);
+  if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+async function pobSave(id, btn) {
+  const entry = _pobData[id];
+  if (!entry) return;
+  const orig = btn.textContent;
+  const status = document.getElementById(`pob-save-status-${id}`);
+  btn.disabled = true; btn.textContent = 'Saving…';
+
+  const v = field => {
+    const el = document.getElementById(`pob-${field}-${id}`);
+    return el ? el.value.trim() : '';
+  };
+
+  // Rebuild formData with edited values
+  const fd = JSON.parse(JSON.stringify(entry.formData || {}));
+  fd.brandName   = v('brandName') || fd.brandName;
+  fd.tcCommission = v('tcComm') !== '' ? v('tcComm') : fd.tcCommission;
+
+  // Cashback
+  const cbAmt = parseFloat(v('cashback'));
+  if (cbAmt > 0) {
+    fd.compensation = fd.compensation || {};
+    fd.compensation.cashback = { enabled: true, target: cbAmt };
+  } else if (cbAmt === 0) {
+    if (fd.compensation?.cashback) fd.compensation.cashback.enabled = false;
+  }
+
+  // Volume bonus
+  const vbQty = parseFloat(v('vbQty'));
+  const vbAmt = parseFloat(v('vbAmt'));
+  if (vbQty > 0 && vbAmt > 0) {
+    fd.compensation = fd.compensation || {};
+    fd.compensation.volumeBonus = { enabled: true, quantity: vbQty, bonus: vbAmt };
+  } else if (vbQty === 0) {
+    if (fd.compensation?.volumeBonus) fd.compensation.volumeBonus.enabled = false;
+  }
+
+  // Leaderboard
+  const lb1 = parseFloat(v('lb1'));
+  const lbMin = parseFloat(v('lbMin'));
+  if (lb1 > 0) {
+    const existing = entry.formData?.compensation?.leaderboard?.places || [];
+    fd.compensation = fd.compensation || {};
+    fd.compensation.leaderboard = {
+      enabled: true,
+      threshold: lbMin || fd.compensation?.leaderboard?.threshold || 0,
+      places: [lb1, ...existing.slice(1)],
+    };
+  } else if (lb1 === 0) {
+    if (fd.compensation?.leaderboard) fd.compensation.leaderboard.enabled = false;
+  }
+
+  try {
+    const r = await fetch(`/api/onboard/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ formData: fd }),
+    }).then(r => r.json());
+    if (!r.ok) throw new Error(r.error || 'Save failed');
+    _pobData[id].formData = fd;
+    status.style.color = 'var(--green)';
+    status.textContent = '✓ Saved';
+    setTimeout(() => { status.textContent = ''; }, 3000);
+  } catch(e) {
+    status.style.color = 'var(--red)';
+    status.textContent = e.message;
+  }
+  btn.disabled = false; btn.textContent = orig;
 }
 
 async function pobApprove(id, btn) {
