@@ -10525,10 +10525,18 @@ async function loadPendingOnboards() { await loadClientCards(); } // legacy alia
 async function loadClientCards() {
   const wrap = document.getElementById('clientCardsWrap');
   if (!wrap) return;
+  async function safeJson(url, fallback) {
+    try {
+      const r = await fetch(url);
+      if (r.status === 401) { window.location.reload(); return fallback; }
+      if (!r.ok) return fallback;
+      return await r.json();
+    } catch(e) { return fallback; }
+  }
   try {
     const [overview, shopsResp] = await Promise.all([
-      fetch('/api/clients/overview').then(r => r.json()),
-      fetch('/api/reacher/shops').then(r => r.json()).catch(() => ({ data: [] })),
+      safeJson('/api/clients/overview', { clients: [] }),
+      safeJson('/api/reacher/shops', { data: [] }),
     ]);
     _reacherShops = shopsResp.data || [];
     const clients = overview.clients || [];
