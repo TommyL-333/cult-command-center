@@ -8982,6 +8982,18 @@ app.listen(CFG.port, () => {
   console.log(`\n⚡ Cult Content Command Center`);
   console.log(`   http://localhost:${CFG.port}\n`);
 
+  // One-time cleanup — remove test/placeholder brands
+  try {
+    const testNames = ['test brand', 'test', 'organic social marketing'];
+    const bd = loadBrands();
+    const before = (bd.clients || []).length;
+    bd.clients = (bd.clients || []).filter(b => !testNames.includes((b.name || '').toLowerCase().trim()));
+    if (bd.clients.length < before) {
+      saveBrands(bd);
+      console.log(`[startup] Removed ${before - bd.clients.length} test brand(s)`);
+    }
+  } catch(e) { console.error('[startup] test brand cleanup error:', e.message); }
+
   // Startup diagnostics — log data file sizes so we can verify persistence
   try {
     const mData = loadClientMeetings();
