@@ -734,15 +734,6 @@
       </div>
     </div>
 
-    <!-- ── Section: Pending Client Onboards ── -->
-    <div class="agent-section-label" style="display:flex;align-items:center;justify-content:space-between">
-      <span>🚀 Pending Client Onboards</span>
-      <a href="/onboard" target="_blank" class="btn btn-ghost" style="font-size:11px;padding:4px 12px">Open Form ↗</a>
-    </div>
-    <div id="pendingOnboardsWrap" style="margin-bottom:24px">
-      <div style="text-align:center;padding:32px 0;color:var(--muted);font-size:13px">Loading…</div>
-    </div>
-
     <!-- ── Section: Automations ── -->
     <div class="agent-section-label">🔄 Automations</div>
     <div class="two-col mb16">
@@ -2307,6 +2298,15 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
 
   <div id="sub-gp-onboarding">
   <div style="max-width:900px;margin:0 auto;padding:28px 0 60px">
+
+    <!-- ── Pending Client Onboards ── -->
+    <div class="agent-section-label" style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <span>🚀 Pending Client Onboards</span>
+      <a href="/onboard" target="_blank" class="btn btn-ghost" style="font-size:11px;padding:4px 12px">Open Form ↗</a>
+    </div>
+    <div id="pendingOnboardsWrap" style="margin-bottom:28px">
+      <div style="text-align:center;padding:32px 0;color:var(--muted);font-size:13px">Loading…</div>
+    </div>
 
     <!-- Header -->
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:24px">
@@ -10573,7 +10573,7 @@ function renderOnboardCard(entry) {
     ${!isApproved ? `
     <div style="margin-bottom:10px">
       <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:5px">Reacher Shop</div>
-      <select id="reacher-shop-${entry.id}" style="background:#12101a;border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:12px;padding:6px 10px;width:100%;max-width:320px">
+      <select id="reacher-shop-${entry.id}" style="background:#12101a;border:1px solid var(--border);border-radius:7px;color:#fff;font-size:12px;padding:6px 10px;width:100%;max-width:320px">
         <option value="">— Auto-detect by name —</option>
         ${_reacherShops.map(s => `<option value="${s.shop_id}">${x(s.shop_name)} (${s.shop_id})</option>`).join('')}
       </select>
