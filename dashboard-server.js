@@ -7874,7 +7874,44 @@ async function scrapeShopify(websiteUrl) {
       html.match(/<title>([^<]+)<\/title>/i)?.[1]?.replace(/\s*[\|—–-].*$/, '').trim() || '';
     result.brand.ogImage =
       html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)?.[1] || '';
+    result._html = html; // used by color extractor below, deleted after
   } catch(e) { console.log(`[shopify] homepage scrape failed for ${domain}:`, e.message); }
+
+  // Retry homepage without SSL verification (handles expired certs)
+  if (!result.brand.metaDescription && !result.brand.ogTitle) {
+    try {
+      const https = require('https');
+      const r2 = await axios.get(base, { timeout: 12000, headers: { 'User-Agent': ua }, httpsAgent: new https.Agent({ rejectUnauthorized: false }) });
+      const html = r2.data || '';
+      result.brand.metaDescription =
+        html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']{10,}?)["']/i)?.[1] ||
+        html.match(/<meta[^>]+content=["']([^"']{10,}?)["'][^>]+name=["']description["']/i)?.[1] ||
+        html.match(/<meta[^>]+property=["']og:description["'][^>]+content=["']([^"']{10,}?)["']/i)?.[1] || '';
+      result.brand.ogTitle =
+        html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i)?.[1] ||
+        html.match(/<title>([^<]+)<\/title>/i)?.[1]?.replace(/\s*[\|—–-].*$/, '').trim() || '';
+      result.brand.ogImage =
+        html.match(/<meta[^>]+property=["']og:image["'][^>]+content=["']([^"']+)["']/i)?.[1] || '';
+      result._html = html;
+      console.log(`[shopify] homepage retried without SSL verification for ${domain}`);
+    } catch(e2) { console.log(`[shopify] homepage retry also failed for ${domain}:`, e2.message); }
+  }
+
+  // Extract brand primary/button color from theme CSS variables
+  if (result._html) {
+    const colorPatterns = [
+      /--color-button[^:]*:\s*(#[0-9a-fA-F]{3,6})/i,
+      /--colors-accent-[12][^:]*:\s*(#[0-9a-fA-F]{3,6})/i,
+      /--color-accent[^:]*:\s*(#[0-9a-fA-F]{3,6})/i,
+      /--color-primary[^:]*:\s*(#[0-9a-fA-F]{3,6})/i,
+      /--c-theme-button[^:]*:\s*(#[0-9a-fA-F]{3,6})/i,
+    ];
+    for (const pat of colorPatterns) {
+      const m = result._html.match(pat);
+      if (m) { result.brand.primaryColor = m[1]; break; }
+    }
+    delete result._html;
+  }
 
   return result;
 }
@@ -7883,15 +7920,20 @@ function buildIncentiveSummary(compensation) {
   if (!compensation) return '';
   const parts = [];
   const ordinals = ['1st','2nd','3rd','4th','5th','6th','7th','8th','9th','10th'];
-  if (compensation.cashback?.enabled)
-    parts.push(`$${compensation.cashback.amount} cashback per video`);
-  if (compensation.leaderboard?.enabled) {
-    const places = compensation.leaderboard.places || [];
-    const tiers  = places.map((amt, i) => `${ordinals[i]||i+1+'th'}: $${amt}`).join(', ');
-    parts.push(`Leaderboard challenge (min $${compensation.leaderboard.threshold} GMV) — ${tiers}`);
+  if (compensation.cashback?.enabled) {
+    const amt = compensation.cashback.target || compensation.cashback.amount;
+    if (amt) parts.push(`$${amt} cashback when you hit $${amt} GMV`);
   }
-  if (compensation.volumeBonus?.enabled)
-    parts.push(`$${compensation.volumeBonus.bonus} bonus for ${compensation.volumeBonus.quantity}+ videos`);
+  if (compensation.leaderboard?.enabled) {
+    const places = compensation.leaderboard.places || compensation.leaderboard.prizes || [];
+    const tiers  = places.map((amt, i) => `${ordinals[i]||i+1+'th'}: $${amt}`).join(', ');
+    parts.push(`Leaderboard challenge${compensation.leaderboard.threshold ? ` (min $${compensation.leaderboard.threshold} GMV)` : ''} — ${tiers}`);
+  }
+  if (compensation.volumeBonus?.enabled) {
+    const bonus = compensation.volumeBonus.bonus || compensation.volumeBonus.bonusAmount;
+    const qty   = compensation.volumeBonus.quantity || compensation.volumeBonus.videoCount;
+    parts.push(`$${bonus} bonus for ${qty}+ videos`);
+  }
   if (compensation.retainer?.enabled)
     parts.push(`Creator retainer: $${compensation.retainer.budget}/mo for ${compensation.retainer.postsRequired} posts`);
   return parts.join('\n• ');
@@ -8148,7 +8190,7 @@ async function runOnboardingPipeline(formData) {
       slug, tagName: `creator-interested-${slug}`, active: true,
       headline: `Partner with ${brandName}`,
       subheadline: 'Join our TikTok Shop creator affiliate program',
-      pitch, accentColor: '#00f2ea',
+      pitch, accentColor: shopifyData?.brand?.primaryColor || '#00f2ea',
       incentives: formData.compensation,
       usps: [formData.usp1, formData.usp2, formData.usp3].filter(Boolean),
       talkingPoints: formData.talkingPoints || '',
@@ -8190,16 +8232,33 @@ async function runOnboardingPipeline(formData) {
     }
   } catch(e) { console.error('[onboard] Reacher shop lookup error:', e.message); }
 
-  // 5c. Create paused outreach DM automation pointing to creator signup page
+  // 5c. Create comprehensive creator outreach DM automation in Reacher
   if (matchedShopId && creatorPage?.publicUrl) {
     try {
-      const dmMsg = aiContent?.reacherDm1 ||
-        `Hey {creator_name}! 👋 We're ${brandName} and we're looking for TikTok creators to join our affiliate program. Earn commissions on every sale plus monthly bonuses. Check out the full program details and apply here: ${creatorPage.publicUrl}`;
+      const inc = formData.compensation || {};
+      const incentiveLine = buildIncentiveSummary(inc);
+      const firstProductName = (aiContent?.mergedProducts || formData.products || [])[0]?.name || '';
+      const aiDm = firstProductName && aiContent?.reacherCopy?.[firstProductName]?.dm_message;
+
+      let dmMessage;
+      if (aiDm) {
+        // AI-generated copy — append signup link if not already present
+        dmMessage = aiDm.includes(creatorPage.publicUrl)
+          ? aiDm
+          : `${aiDm}\n\nSign up here: ${creatorPage.publicUrl}`;
+      } else {
+        // Built-in fallback
+        const incentiveBlock = incentiveLine
+          ? `\n\nCreator Incentive Program:\n• ${incentiveLine}`
+          : '';
+        dmMessage = `Hey {creator_name}! 👋 We're ${brandName} — ${shopifyData?.brand?.metaDescription?.slice(0,120) || 'a fast-growing brand'} — and we're building our TikTok Shop creator team.${incentiveBlock}\n\nIf you're interested in collaborating, sign up here and we'll get you set up right away:\n${creatorPage.publicUrl}`;
+      }
+
       const resp = await axios.post(
         `${CFG.railwayUrl}/affiliate/shops/${matchedShopId}/automations/outreach-dm`,
         {
-          name:    `${brandName} — Creator Outreach (PAUSED)`,
-          message: dmMsg.slice(0, 2000),
+          name:    `${brandName} — Creator Outreach`,
+          message: dmMessage.slice(0, 2000),
           creatorPageUrl: creatorPage.publicUrl,
         },
         { timeout: 15000 }
@@ -8213,47 +8272,9 @@ async function runOnboardingPipeline(formData) {
           bd.clients[bi].creatorPage.dmAutomationId = dmAutomationId;
           saveBrands(bd);
         }
-        console.log(`[onboard] DM automation created (paused): ${dmAutomationId}`);
+        console.log(`[onboard] Creator outreach DM automation created: ${dmAutomationId}`);
       }
     } catch(e) { console.error('[onboard] DM automation error:', e.message); }
-  }
-
-  // 4b. Auto-create compensation automations (cashback / leaderboard / volume bonus)
-  if (formData.compensation && matchedShopId) {
-    const { cashback, leaderboard, volumeBonus } = formData.compensation;
-    const autoPromises = [];
-
-    if (cashback?.enabled) {
-      const msg = `Hi {creator_name}! I'm reaching out from ${brandName}. We have an exciting cashback program — generate $${cashback.target || 'X'} in GMV and receive that same amount back as a cash bonus. Want to learn more? Apply here: ${creatorPage?.publicUrl || ''}`.slice(0, 500);
-      autoPromises.push(
-        axios.post(`${CFG.railwayUrl}/affiliate/shops/${matchedShopId}/automations/outreach-dm`,
-          { name: `${brandName} — Cashback Program Outreach`, message: msg, creatorPageUrl: creatorPage?.publicUrl },
-          { timeout: 10000 }
-        ).catch(e => console.error('[onboard] cashback auto error:', e.message))
-      );
-    }
-    if (leaderboard?.enabled) {
-      const msg = `Join the ${brandName} creator leaderboard! Top performers this month win cash prizes. Post videos and climb the ranks — the more you sell, the more you earn. Apply here: ${creatorPage?.publicUrl || ''}`.slice(0, 500);
-      autoPromises.push(
-        axios.post(`${CFG.railwayUrl}/affiliate/shops/${matchedShopId}/automations/outreach-dm`,
-          { name: `${brandName} — Leaderboard Challenge Outreach`, message: msg, creatorPageUrl: creatorPage?.publicUrl },
-          { timeout: 10000 }
-        ).catch(e => console.error('[onboard] leaderboard auto error:', e.message))
-      );
-    }
-    if (volumeBonus?.enabled) {
-      const msg = `${brandName} offers a volume bonus — post ${volumeBonus.videoCount || 'X'} videos and earn an extra $${volumeBonus.bonusAmount || '?'} bonus on top of your regular commissions. Apply here: ${creatorPage?.publicUrl || ''}`.slice(0, 500);
-      autoPromises.push(
-        axios.post(`${CFG.railwayUrl}/affiliate/shops/${matchedShopId}/automations/outreach-dm`,
-          { name: `${brandName} — Volume Bonus Outreach`, message: msg, creatorPageUrl: creatorPage?.publicUrl },
-          { timeout: 10000 }
-        ).catch(e => console.error('[onboard] volume bonus auto error:', e.message))
-      );
-    }
-    if (autoPromises.length) {
-      await Promise.allSettled(autoPromises);
-      console.log(`[onboard] Created ${autoPromises.length} compensation automation(s) for ${brandName}`);
-    }
   }
 
   // 6. Finalise pending review entry (was saved as stub at pipeline start)
@@ -8422,17 +8443,20 @@ function renderCreatorPage(brand, cp) {
 
   // Auto-generate reward copy lines
   const rewardLines = [];
-  if (cp.tcCommission) rewardLines.push(`<div class="reward-line"><span class="reward-val">${cp.tcCommission}%</span><span class="reward-desc">commission on every sale you drive</span></div>`);
+  if (cp.tcCommission) rewardLines.push({ val: `${cp.tcCommission}%`, desc: 'commission on every sale you drive' });
   if (inc.cashback?.enabled) {
-    const pct = inc.cashback.percent ? `${inc.cashback.percent}% cashback` : 'Cashback';
-    const gmvStr = inc.cashback.gmvTarget ? ` when you hit $${Number(inc.cashback.gmvTarget).toLocaleString()} GMV` : '';
-    rewardLines.push(`<div class="reward-line"><span class="reward-val">${pct}</span><span class="reward-desc">${gmvStr || 'on qualifying sales'}</span></div>`);
+    const amt = inc.cashback.target || inc.cashback.amount || inc.cashback.gmvTarget;
+    if (amt) rewardLines.push({ val: `$${amt} cashback`, desc: `hit $${amt} GMV and earn it back as cash` });
   }
   if (inc.volumeBonus?.enabled) {
-    rewardLines.push(`<div class="reward-line"><span class="reward-val">$${inc.volumeBonus.bonusAmount || '?'} bonus</span><span class="reward-desc">post ${inc.volumeBonus.videoCount || '?'} videos and earn a one-time bonus</span></div>`);
+    const bonus = inc.volumeBonus.bonus || inc.volumeBonus.bonusAmount;
+    const qty   = inc.volumeBonus.quantity || inc.volumeBonus.videoCount;
+    if (bonus && qty) rewardLines.push({ val: `$${bonus} bonus`, desc: `post ${qty} videos and earn a one-time cash bonus` });
   }
-  if (inc.leaderboard?.enabled && inc.leaderboard.prizes?.length) {
-    rewardLines.push(`<div class="reward-line"><span class="reward-val">${inc.leaderboard.prizes[0]}</span><span class="reward-desc">top prize for the monthly leaderboard${inc.leaderboard.threshold ? ` — $${Number(inc.leaderboard.threshold).toLocaleString()} min GMV to qualify` : ''}</span></div>`);
+  if (inc.leaderboard?.enabled) {
+    const places = inc.leaderboard.places || inc.leaderboard.prizes || [];
+    const topPrize = places[0];
+    if (topPrize) rewardLines.push({ val: `$${topPrize} top prize`, desc: `monthly leaderboard${inc.leaderboard.threshold ? ` — $${Number(inc.leaderboard.threshold).toLocaleString()} min GMV` : ''}` });
   }
 
   return `<!DOCTYPE html>
@@ -8457,10 +8481,10 @@ h1{font-size:clamp(26px,5vw,50px);font-weight:900;line-height:1.06;letter-spacin
 .section-sub{font-size:13px;color:rgba(255,255,255,.4);line-height:1.6;margin-bottom:32px}
 .divider{border:none;border-top:1px solid rgba(255,255,255,.06);margin:0}
 /* rewards */
-.rewards-block{display:flex;flex-direction:column;gap:14px;max-width:560px}
-.reward-line{display:flex;align-items:baseline;gap:14px;padding:16px 20px;background:rgba(${ar},.05);border:1px solid rgba(${ar},.15);border-radius:12px}
-.reward-val{font-size:20px;font-weight:900;color:${accent};white-space:nowrap;min-width:120px}
-.reward-desc{font-size:13px;color:rgba(255,255,255,.55);line-height:1.5}
+.rewards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
+.reward-card{background:rgba(${ar},.08);border:1.5px solid rgba(${ar},.22);border-radius:14px;padding:20px 18px;display:flex;flex-direction:column;gap:6px}
+.reward-val{font-size:22px;font-weight:900;color:${accent};line-height:1.1}
+.reward-desc{font-size:13px;color:rgba(255,255,255,.5);line-height:1.45}
 /* form */
 .form-card{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:40px;max-width:560px;margin:0 auto}
 .form-head{font-size:22px;font-weight:900;margin-bottom:6px}
@@ -8495,7 +8519,7 @@ ${rewardLines.length ? `
     <div class="section-label">Creator Rewards</div>
     <div class="section-title">How you get paid</div>
     <div class="section-sub">Stack multiple income streams every month.</div>
-    <div class="rewards-block">${rewardLines.join('')}</div>
+    <div class="rewards-grid">${rewardLines.map(r => `<div class="reward-card"><div class="reward-val">${r.val}</div><div class="reward-desc">${r.desc}</div></div>`).join('')}</div>
   </div>
 </div>` : ''}
 
