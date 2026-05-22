@@ -8975,4 +8975,20 @@ app.listen(CFG.port, () => {
   } catch(e) {
     console.error('[startup] diagnostic error:', e.message);
   }
+
+  // Resume any pipeline runs that were interrupted by a restart/deploy
+  try {
+    const all = loadPendingOnboards();
+    const interrupted = all.filter(e => e.status === 'processing');
+    if (interrupted.length) {
+      // Remove the stale stubs — runOnboardingPipeline will create fresh ones
+      savePendingOnboards(all.filter(e => e.status !== 'processing'));
+      console.log(`[startup] Resuming ${interrupted.length} interrupted onboarding pipeline(s)...`);
+      for (const entry of interrupted) {
+        runOnboardingPipeline(entry.formData).catch(e => console.error(`[startup] resume pipeline error (${entry.formData?.brandName}):`, e.message));
+      }
+    }
+  } catch(e) {
+    console.error('[startup] resume pipelines error:', e.message);
+  }
 });
