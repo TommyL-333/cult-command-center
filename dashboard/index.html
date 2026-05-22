@@ -10525,19 +10525,24 @@ async function loadPendingOnboards() { await loadClientCards(); } // legacy alia
 async function loadClientCards() {
   const wrap = document.getElementById('clientCardsWrap');
   if (!wrap) return;
-  async function safeJson(url, fallback) {
-    try {
-      const r = await fetch(url);
-      if (!r.ok) return fallback;
-      return await r.json();
-    } catch(e) { return fallback; }
-  }
+  wrap.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px">Loading clients…</div>';
   try {
-    const [overview, shopsResp] = await Promise.all([
-      safeJson('/api/clients/overview', { clients: [] }),
-      safeJson('/api/reacher/shops', { data: [] }),
-    ]);
-    _reacherShops = shopsResp.data || [];
+    const r = await fetch('/api/clients/overview');
+    if (r.status === 401) {
+      wrap.innerHTML = '<div style="color:var(--red);font-size:13px;padding:16px">⚠ Session expired — <a href="/" style="color:var(--teal)">click here to reload</a></div>';
+      return;
+    }
+    if (!r.ok) {
+      wrap.innerHTML = `<div style="color:var(--red);font-size:13px;padding:16px">Server error ${r.status} — try refreshing</div>`;
+      return;
+    }
+    const overview = await r.json();
+    let reacherShops = [];
+    try {
+      const sr = await fetch('/api/reacher/shops');
+      if (sr.ok) { const sd = await sr.json(); reacherShops = sd.data || []; }
+    } catch(e) {}
+    _reacherShops = reacherShops;
     const clients = overview.clients || [];
     if (!clients.length) {
       wrap.innerHTML = '<div style="text-align:center;padding:32px;color:var(--muted);font-size:13px;background:rgba(255,255,255,.02);border-radius:12px;border:1px dashed rgba(255,255,255,.08)">No clients yet — <a href="/onboard" target="_blank" style="color:var(--teal)">share the onboarding form</a></div>';
@@ -10549,7 +10554,7 @@ async function loadClientCards() {
     });
     wrap.innerHTML = clients.map(c => renderClientCard(c)).join('');
   } catch(e) {
-    wrap.innerHTML = `<div style="color:var(--red);font-size:13px">Error: ${x(e.message)}</div>`;
+    wrap.innerHTML = `<div style="color:var(--red);font-size:13px;padding:16px">Error: ${x(e.message)}</div>`;
   }
 }
 
