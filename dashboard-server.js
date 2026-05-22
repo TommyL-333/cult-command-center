@@ -1542,6 +1542,18 @@ app.post('/portal-admin/exit', (req, res) => {
   res.json({ ok: true });
 });
 
+// POST /portal-admin/clear-password — reset a client's password so they can set a new one
+app.post('/portal-admin/clear-password', requirePortalAdmin, express.json(), (req, res) => {
+  const { brandId } = req.body || {};
+  if (!brandId) return res.status(400).json({ error: 'brandId required' });
+  const brands = loadBrands();
+  const idx = (brands.clients || []).findIndex(b => b.id === brandId);
+  if (idx === -1) return res.status(404).json({ error: 'Brand not found' });
+  delete brands.clients[idx].passwordHash;
+  saveBrands(brands);
+  res.json({ ok: true, name: brands.clients[idx].name });
+});
+
 // POST /portal-admin/logout
 app.post('/portal-admin/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/portal-admin'));
