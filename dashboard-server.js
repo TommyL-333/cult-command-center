@@ -7925,7 +7925,7 @@ Sending free samples: ${formData.sendSamples || 'Yes'}`;
   let resourceHub = null;
   try {
     const msg = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6', max_tokens: 4000,
+      model: 'claude-sonnet-4-6', max_tokens: 8000,
       messages: [{ role: 'user', content: `You are building an Affiliate Resource Hub for TikTok Shop creators promoting ${formData.brandName} products.
 
 ${brandCtx}
@@ -8076,14 +8076,29 @@ async function runOnboardingPipeline(formData) {
   const brandName = formData.brandName;
   console.log(`[onboard] Pipeline start: ${brandName}`);
 
+  // Save a stub entry immediately so the submission is never lost even if the process is killed
+  const entryId = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
+  const stubEntry = { id: entryId, createdAt: new Date().toISOString(), status: 'processing', formData, shopifyData: null, aiContent: null, ghlContactId: null, larkDoc: null, creatorPage: null };
+  const stubPending = loadPendingOnboards();
+  stubPending.unshift(stubEntry);
+  savePendingOnboards(stubPending);
+
+  function updatePendingEntry(fields) {
+    const all = loadPendingOnboards();
+    const idx = all.findIndex(e => e.id === entryId);
+    if (idx !== -1) { Object.assign(all[idx], fields); savePendingOnboards(all); }
+  }
+
   // 1. Scrape Shopify
   const shopifyData = await scrapeShopify(formData.website).catch(() => ({ brand:{}, products:[] }));
   console.log(`[onboard] Scraped ${shopifyData.products.length} products from ${shopifyData.domain}`);
+  updatePendingEntry({ shopifyData });
 
   // 2. Generate AI content
   const aiContent = await generateOnboardingContent(formData, shopifyData).catch(e => {
     console.error('[onboard] AI gen error:', e.message); return null;
   });
+  updatePendingEntry({ aiContent });
 
   // 3. Create GHL contact (or update if duplicate)
   let ghlContactId = null;
@@ -8241,21 +8256,13 @@ async function runOnboardingPipeline(formData) {
     }
   }
 
-  // 6. Save pending review entry
-  const entry = {
-    id: Date.now().toString(36) + Math.random().toString(36).slice(2,6),
-    createdAt: new Date().toISOString(),
-    status: 'pending',
-    formData, shopifyData, aiContent, ghlContactId, larkDoc, creatorPage,
-  };
-  const pending = loadPendingOnboards();
-  pending.unshift(entry);
-  savePendingOnboards(pending);
+  // 6. Finalise pending review entry (was saved as stub at pipeline start)
+  updatePendingEntry({ status: 'pending', ghlContactId, larkDoc, creatorPage });
 
   // 7. Send comprehensive Lark alert
   await sendLarkOnboardingAlert(formData, shopifyData, aiContent, larkDoc, creatorPage);
 
-  console.log(`[onboard] Pipeline complete: ${brandName} (id: ${entry.id})`);
+  console.log(`[onboard] Pipeline complete: ${brandName} (id: ${entryId})`);
 }
 
 // GET /api/onboard/pending
