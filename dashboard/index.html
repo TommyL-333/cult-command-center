@@ -10528,7 +10528,6 @@ async function loadClientCards() {
   async function safeJson(url, fallback) {
     try {
       const r = await fetch(url);
-      if (r.status === 401) { window.location.reload(); return fallback; }
       if (!r.ok) return fallback;
       return await r.json();
     } catch(e) { return fallback; }
