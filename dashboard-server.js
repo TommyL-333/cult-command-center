@@ -594,18 +594,14 @@ app.post('/api/creator-pages/submit', express.json(), async (req, res) => {
         return { ok: false, error: 'not_found' };
       } catch(e) { return { ok: false, error: e.message }; }
     }
-    const discordResult = await tryAssignCreatorRole();
-    if (discordResult.ok && contactId) {
-      ghl.post(`/contacts/${contactId}/tags`, { tags: ['discord-verified'] }).catch(() => {});
-    }
     function scheduleCreatorRoleRetry(attemptsLeft) {
       if (attemptsLeft <= 0 || !cleanDu) return;
       setTimeout(async () => {
         const r = await tryAssignCreatorRole();
-        if (r.ok && contactId) ghl.post(`/contacts/${contactId}/tags`, { tags: ['discord-verified'] }).catch(() => {});
-        else if (!r.ok && r.error === 'not_found') scheduleCreatorRoleRetry(attemptsLeft - 1);
+        if (!r.ok && r.error === 'not_found') scheduleCreatorRoleRetry(attemptsLeft - 1);
       }, 5 * 60 * 1000);
     }
+    const discordResult = await tryAssignCreatorRole();
     if (discordResult.error === 'not_found') scheduleCreatorRoleRetry(3);
 
     // Lark alert
@@ -1546,30 +1542,6 @@ app.post('/portal-admin/exit', (req, res) => {
   res.json({ ok: true });
 });
 
-// POST /portal-admin/set-email — set the loginEmail for a client brand
-app.post('/portal-admin/set-email', requirePortalAdmin, express.json(), (req, res) => {
-  const { brandId, email } = req.body || {};
-  if (!brandId || !email) return res.status(400).json({ error: 'brandId and email required' });
-  const brands = loadBrands();
-  const idx = (brands.clients || []).findIndex(b => b.id === brandId);
-  if (idx === -1) return res.status(404).json({ error: 'Brand not found' });
-  brands.clients[idx].loginEmail = email.toLowerCase().trim();
-  saveBrands(brands);
-  res.json({ ok: true, name: brands.clients[idx].name, loginEmail: brands.clients[idx].loginEmail });
-});
-
-// POST /portal-admin/clear-password — reset a client's password so they can set a new one
-app.post('/portal-admin/clear-password', requirePortalAdmin, express.json(), (req, res) => {
-  const { brandId } = req.body || {};
-  if (!brandId) return res.status(400).json({ error: 'brandId required' });
-  const brands = loadBrands();
-  const idx = (brands.clients || []).findIndex(b => b.id === brandId);
-  if (idx === -1) return res.status(404).json({ error: 'Brand not found' });
-  delete brands.clients[idx].passwordHash;
-  saveBrands(brands);
-  res.json({ ok: true, name: brands.clients[idx].name });
-});
-
 // POST /portal-admin/logout
 app.post('/portal-admin/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/portal-admin'));
@@ -1726,7 +1698,7 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
         referralUrl,
         estimatedCommission: brand.estimatedCommission || 0,
         referrals: brand.referrals || [],
-        affiliatePageUrl: brand.affiliatePageUrl || (brand.creatorPage?.slug ? `${CREATOR_BASE_URL}/creators/${brand.creatorPage.slug}` : ''),
+        affiliatePageUrl: brand.affiliatePageUrl || '',
         connections: {
           bufferConnected:   !!brand.bufferConnected,
           arcadsConnected:   !!brand.arcadsConnected,
@@ -2256,7 +2228,6 @@ app.post('/api/creator-onboard', express.json(), async (req, res) => {
       const r = await tryAssignDiscordRole();
       if (r.ok) {
         console.log(`[creator-onboard] Discord role assigned on retry for ${cleanDu}`);
-        if (results.ghl?.contactId) ghl.post(`/contacts/${results.ghl.contactId}/tags`, { tags: ['discord-verified'] }).catch(() => {});
       } else if (r.error === 'not_found') {
         scheduleDiscordRetry(attemptsLeft - 1);
       } else {
@@ -2266,9 +2237,6 @@ app.post('/api/creator-onboard', express.json(), async (req, res) => {
   }
 
   results.discord = await tryAssignDiscordRole();
-  if (results.discord.ok && results.ghl?.contactId) {
-    ghl.post(`/contacts/${results.ghl.contactId}/tags`, { tags: ['discord-verified'] }).catch(() => {});
-  }
   if (results.discord.error === 'not_found') {
     results.discord.error = 'Username not found in server — will retry in 5 minutes.';
     scheduleDiscordRetry(3); // retry up to 3 more times (5, 10, 15 min)
@@ -3573,43 +3541,30 @@ app.post('/api/creators/performance', async (req, res) => {
 app.get('/api/creators/ghl-map', async (req, res) => {
   try {
     const data = await cached('creators_ghl_map', 10 * 60_000, async () => {
-      // Fetch contacts from two sources: Reacher-tagged (from Reacher platform)
-      // and affiliate-tagged (from creator interest form signups, which have Discord info)
-      async function fetchByTag(tagValue) {
-        const results = [];
-        let pg = 1;
-        while (true) {
-          let contacts = [];
-          try {
-            const { data: sr } = await ghl.post('/contacts/search', {
-              locationId: CFG.locationId,
-              filters: [{ group: 'AND', filters: [{ field: 'tags', operator: 'contains', value: tagValue }] }],
-              page: pg, pageLimit: 100,
-            });
-            contacts = sr?.contacts || sr?.data || [];
-          } catch (_) {
-            const { data: tr } = await ghl.get('/contacts/', {
-              params: { locationId: CFG.locationId, tags: tagValue, limit: 100, skip: (pg - 1) * 100 },
-            });
-            contacts = tr?.contacts || [];
-          }
-          if (!contacts.length) break;
-          results.push(...contacts);
-          if (contacts.length < 100) break;
-          pg++;
-        }
-        return results;
-      }
-
-      const [reacherContacts, affiliateContacts] = await Promise.all([
-        fetchByTag('Reacher:'),
-        fetchByTag('affiliate'),
-      ]);
-      // Merge, dedupe by contact id
-      const seen = new Set();
+      // GHL contacts/search — fetch contacts tagged with Reacher
+      let page = 1;
       const allContacts = [];
-      for (const c of [...reacherContacts, ...affiliateContacts]) {
-        if (!seen.has(c.id)) { seen.add(c.id); allContacts.push(c); }
+      while (true) {
+        let contacts = [];
+        try {
+          const { data: sr } = await ghl.post('/contacts/search', {
+            locationId: CFG.locationId,
+            filters: [{ group: 'AND', filters: [{ field: 'tags', operator: 'contains', value: 'Reacher:' }] }],
+            page,
+            pageLimit: 100,
+          });
+          contacts = sr?.contacts || sr?.data || [];
+        } catch (_) {
+          // Fallback: tag-based search via GET
+          const { data: tr } = await ghl.get('/contacts/', {
+            params: { locationId: CFG.locationId, tags: 'Reacher', limit: 100, skip: (page - 1) * 100 },
+          });
+          contacts = tr?.contacts || [];
+        }
+        if (!contacts.length) break;
+        allContacts.push(...contacts);
+        if (contacts.length < 100) break;
+        page++;
       }
 
       // Build handle → contact map
@@ -3622,65 +3577,15 @@ app.get('/api/creators/ghl-map', async (req, res) => {
         const match = ttUrl.match(/@([\w.]+)/);
         if (!match) continue;
         const handle = match[1].toLowerCase();
-        // Extract Discord username from notes if present ("Discord: @username")
-        let discordUsername = '';
-        const noteFields = (c.customFields || []);
-        // Try to find from notes via contact tags or custom fields
-        for (const t of (c.tags || [])) {
-          const dm = t.match(/^discord:(.+)/i);
-          if (dm) { discordUsername = dm[1].trim().replace(/^@/, ''); break; }
-        }
         map[handle] = {
-          id:              c.id,
-          name:            `${c.firstName || ''} ${c.lastName || ''}`.trim() || c.name || handle,
-          phone:           c.phone || '',
-          email:           c.email || '',
-          tags:            c.tags  || [],
-          discordUsername: discordUsername,
+          id:    c.id,
+          name:  `${c.firstName || ''} ${c.lastName || ''}`.trim() || c.name || handle,
+          phone: c.phone || '',
+          email: c.email || '',
+          tags:  c.tags  || [],
         };
       }
       return map;
-    });
-    res.json(data);
-  } catch (e) { res.status(500).json({ error: e.message }); }
-});
-
-// GET /api/discord/creator-members — fetch all guild members with the Verified Creator role
-// Returns Set-friendly array of lowercase Discord usernames { username, globalName, userId }
-// Cached 15 min — Discord rate limits guild member pagination at 1000/req
-app.get('/api/discord/creator-members', requireAuth, async (req, res) => {
-  try {
-    const data = await cached('discord_creator_members', 15 * 60_000, async () => {
-      const botToken = process.env.DISCORD_BOT_TOKEN;
-      const guildId  = process.env.DISCORD_GUILD_ID;
-      const roleId   = process.env.DISCORD_CREATOR_ROLE_ID;
-      if (!botToken || !guildId || !roleId) return { members: [], error: 'Discord not configured' };
-
-      const members = [];
-      let after = '0';
-      // Page through all guild members (max 1000 per request)
-      while (true) {
-        const { data: page } = await axios.get(
-          `https://discord.com/api/v10/guilds/${guildId}/members`,
-          { params: { limit: 1000, after }, headers: { Authorization: `Bot ${botToken}` } }
-        );
-        if (!page?.length) break;
-        for (const m of page) {
-          if ((m.roles || []).includes(roleId)) {
-            members.push({
-              userId:     m.user.id,
-              username:   m.user.username.toLowerCase(),
-              globalName: (m.user.global_name || m.nick || '').toLowerCase(),
-              avatar:     m.user.avatar
-                ? `https://cdn.discordapp.com/avatars/${m.user.id}/${m.user.avatar}.png`
-                : null,
-            });
-          }
-        }
-        if (page.length < 1000) break;
-        after = page[page.length - 1].user.id;
-      }
-      return { members, total: members.length };
     });
     res.json(data);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -8034,6 +7939,49 @@ function buildIncentiveSummary(compensation) {
   return parts.join('\n• ');
 }
 
+// Scrape Amazon brand store or product page for product names, descriptions, prices
+async function scrapeAmazonProducts(amazonUrl) {
+  if (!amazonUrl) return { brand: {}, products: [], domain: '' };
+  try {
+    const res = await axios.get(amazonUrl, {
+      timeout: 12000,
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept-Language': 'en-US,en;q=0.9',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+      },
+    });
+    const html = res.data || '';
+    const products = [];
+
+    // Brand store grid — product titles appear in data-cy="title" spans or h2 tags
+    const titleRe = /data-cy="title"[^>]*>([^<]{5,120})<\/span>|<h2[^>]*class="[^"]*product-title[^"]*"[^>]*>\s*([^<]{5,120})\s*<\/h2>/gi;
+    let m;
+    while ((m = titleRe.exec(html)) !== null && products.length < 8) {
+      const title = (m[1] || m[2] || '').trim().replace(/&amp;/g,'&').replace(/&#\d+;/g,'');
+      if (title.length > 4) products.push({ name: title, description: '', price: '', url: amazonUrl });
+    }
+
+    // If brand store scrape found nothing, try single product page (ASIN in URL)
+    if (!products.length) {
+      const nameMatch = html.match(/<span id="productTitle"[^>]*>\s*([^<]{5,200})\s*<\/span>/i);
+      const priceMatch = html.match(/<span class="a-price-whole">(\d+)<\/span>/i);
+      const descMatch = html.match(/<div id="feature-bullets"[^>]*>([\s\S]{20,600}?)<\/div>/i);
+      if (nameMatch) {
+        const desc = descMatch ? descMatch[1].replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim().slice(0,200) : '';
+        products.push({ name: nameMatch[1].trim(), description: desc, price: priceMatch ? priceMatch[1] : '', url: amazonUrl });
+      }
+    }
+
+    const domain = amazonUrl.replace(/^https?:\/\//,'').split('/')[0];
+    console.log(`[amazon-scrape] Found ${products.length} products from ${domain}`);
+    return { brand: {}, products, domain };
+  } catch (e) {
+    console.warn('[amazon-scrape] Failed:', e.message);
+    return { brand: {}, products: [], domain: '' };
+  }
+}
+
 // AI — generate all content for the pipeline
 async function generateOnboardingContent(formData, shopifyData) {
   if (!process.env.ANTHROPIC_API_KEY) return null;
@@ -8128,6 +8076,130 @@ Return ONLY valid JSON.` }]
   } catch(_) {}
 
   return { resourceHub, reacherCopy, creatorPitch, mergedProducts };
+}
+
+// Generates a structured creative brief for creators — hooks, frameworks, scripts, talking points
+async function generateCreatorBrief(formData, shopifyData, aiContent) {
+  if (!process.env.ANTHROPIC_API_KEY) return null;
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+  const products    = aiContent?.mergedProducts || shopifyData?.products?.slice(0, 3) || [];
+  const resourceHub = aiContent?.resourceHub;
+  const brandName   = formData.brandName || 'this brand';
+
+  const productCtx = products.map(p =>
+    `${p.name}: ${(p.shopifyDescription || p.description || '').slice(0, 180)}`
+  ).join('\n');
+
+  // Use explicit brand-supplied creative context when available — more reliable than scraped data
+  const audienceCtx    = formData.targetAudience   || 'general consumer';
+  const problemCtx     = formData.mainProblem       || resourceHub?.products?.[0]?.problemSolution || 'improves daily life';
+  const objectionsCtx  = formData.buyerObjections   || '';
+  const resultsCtx     = formData.customerResults   || '';
+
+  const prompt = `You are building a TikTok creator content brief for a brand. Generate a structured brief that gives creators everything they need to make high-converting TikTok Shop videos.
+
+BRAND:
+Name: ${brandName}
+Mission: ${formData.brandMission || resourceHub?.brandMission || 'not provided'}
+Products:
+${productCtx || 'not provided'}
+Target audience: ${audienceCtx}
+Main problem solved: ${problemCtx}${objectionsCtx ? `\nCommon buyer objections: ${objectionsCtx}` : ''}${resultsCtx ? `\nResults customers report: ${resultsCtx}` : ''}
+
+HOOK TEMPLATES (fill in blanks with this brand's specific details — every hook must be complete and ready to use):
+- _____ don't want you to know this, but [brand secret/benefit]
+- [Product] is the only thing I use for [problem this solves] anymore and here's why
+- [Target audience], this is your answer to [main problem]
+- [Target audience], DON'T make the same mistake as me with [category]
+- Everything you know about [product category] is WRONG
+- After [time struggling with problem] I finally [desired outcome] with this
+- Don't waste your money on [old solution] — do this instead
+- [Timeframe] ago I discovered something that changed my [relevant life area] forever
+- Biggest myths about [problem this product solves]
+- My honest review of [product name] — is it worth it?
+- 3 reasons you need [product name] in your life
+- I'm never going back to [old solution] again
+- Best way to [desired outcome] in [year]
+- Why [target audience] are switching to [product name]
+- Five signs you should stop using [alternative product]
+- Did you know that [surprising fact about the problem/product]?
+
+UGC FRAMEWORKS TO CHOOSE FROM:
+- Problem → Solution: Hook with pain point, agitate it, introduce product as the fix, CTA
+- Before / After: Show transformation — life before product vs. after, visual or verbal
+- Why I Switched: Personal story of moving from old solution to this product, with reason
+- My Honest Review: Authentic pros/cons walkthrough with personal experience and verdict
+- 3 Reasons Why: Three tight, benefit-focused arguments for the product
+- POV You're Obsessed: First-person immersive experience of discovering and loving the product
+- Industry Secret: Position product as insider knowledge most people don't know about
+- Stop Wasting Your [X]: Call out wrong/old solution, introduce better one
+- Reply to Comment: TikTok comment overlay format — address an objection or common question
+- Features Focused: Walk through 3-5 key features with quick demonstrations
+
+COPYWRITING FRAMEWORKS:
+- PAS (Problem-Agitate-Solution): Name the problem, make it feel urgent, present the product as relief
+- BAB (Before-After-Bridge): Where viewer is now → where they could be → how the product bridges the gap
+- AIDA (Attention-Interest-Desire-Action): Stop scroll, build curiosity, create desire, direct to buy
+- FAB (Features-Advantages-Benefits): What it does → why that matters → how it improves their life
+
+Generate this EXACT JSON (no markdown, no explanation):
+{
+  "niche": "single word (Beauty/Fashion/Health/Food/Home/Pet/Accessories/etc)",
+  "targetAudience": "2-sentence description of the exact viewer this content is for",
+  "mainProblem": "the single core problem this product solves, in 1 sentence",
+  "hooks": [
+    { "text": "completely filled-in hook, ready to record, specific to this brand/product", "type": "curiosity|pain-point|transformation|social-proof|controversy|myth-bust" },
+    { "text": "...", "type": "..." },
+    { "text": "...", "type": "..." },
+    { "text": "...", "type": "..." },
+    { "text": "...", "type": "..." },
+    { "text": "...", "type": "..." },
+    { "text": "...", "type": "..." },
+    { "text": "...", "type": "..." }
+  ],
+  "frameworks": [
+    { "name": "Framework Name", "why": "1 sentence why this format works best for this product", "outline": ["Step 1 specific to this product", "Step 2", "Step 3"] },
+    { "name": "...", "why": "...", "outline": ["...", "...", "..."] },
+    { "name": "...", "why": "...", "outline": ["...", "...", "..."] }
+  ],
+  "sampleScripts": [
+    {
+      "framework": "PAS",
+      "title": "Short descriptive title",
+      "duration": "~30 seconds",
+      "script": "Full word-for-word script. Label sections: [HOOK] [PROBLEM] [SOLUTION] [CTA]. Write it as spoken dialogue, conversational and natural."
+    },
+    {
+      "framework": "BAB",
+      "title": "Short descriptive title",
+      "duration": "~30 seconds",
+      "script": "Full word-for-word script. Label sections: [BEFORE] [AFTER] [BRIDGE] [CTA]."
+    }
+  ],
+  "talkingPoints": {
+    "benefits": ["benefit 1", "benefit 2", "benefit 3", "benefit 4", "benefit 5"],
+    "objections": ["common objection: how to handle it in the video"],
+    "powerPhrases": ["memorable phrase 1", "memorable phrase 2", "memorable phrase 3"]
+  },
+  "doAndDont": {
+    "dos": ["specific do for this product/niche", "do 2", "do 3"],
+    "donts": ["specific dont for this product/niche", "dont 2", "dont 3"]
+  },
+  "benchmarks": {
+    "hookRate": ">30% (impressions ÷ 3-second plays)",
+    "holdRate": ">10-15% (thruplays ÷ 3-second plays)",
+    "ctr": ">1-1.5% (clicks ÷ impressions)"
+  }
+}`;
+
+  const msg = await anthropic.messages.create({
+    model: 'claude-sonnet-4-6',
+    max_tokens: 4000,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  return JSON.parse(msg.content[0].text.trim().replace(/^```json\n?/, '').replace(/\n?```$/, ''));
 }
 
 // Copy Lark Affiliate Resource Hub template and return {token, url, name}
@@ -8226,9 +8298,17 @@ async function runOnboardingPipeline(formData) {
     if (idx !== -1) { Object.assign(all[idx], fields); savePendingOnboards(all); }
   }
 
-  // 1. Scrape Shopify
-  const shopifyData = await scrapeShopify(formData.website).catch(() => ({ brand:{}, products:[] }));
-  console.log(`[onboard] Scraped ${shopifyData.products.length} products from ${shopifyData.domain}`);
+  // 1. Scrape product data — try shopifyUrl first, fall back to website, then Amazon
+  const scrapeTarget = formData.shopifyUrl || formData.website;
+  let shopifyData = await scrapeShopify(scrapeTarget).catch(() => ({ brand:{}, products:[] }));
+
+  // If Shopify scrape returned nothing and Amazon URL was provided, try scraping that
+  if (!shopifyData.products?.length && formData.amazonUrl) {
+    shopifyData = await scrapeAmazonProducts(formData.amazonUrl).catch(() => shopifyData);
+    console.log(`[onboard] Amazon fallback scraped ${shopifyData.products?.length || 0} products`);
+  }
+
+  console.log(`[onboard] Scraped ${shopifyData.products.length} products from ${shopifyData.domain || scrapeTarget}`);
   updatePendingEntry({ shopifyData });
 
   // 2. Generate AI content
@@ -8236,6 +8316,11 @@ async function runOnboardingPipeline(formData) {
     console.error('[onboard] AI gen error:', e.message); return null;
   });
   updatePendingEntry({ aiContent });
+
+  // 2b. Generate creator brief (hooks, frameworks, scripts)
+  const creatorBrief = await generateCreatorBrief(formData, shopifyData, aiContent).catch(e => {
+    console.error('[onboard] creator brief gen error:', e.message); return null;
+  });
 
   // 3. Create GHL contact (or update if duplicate)
   let ghlContactId = null;
@@ -8281,7 +8366,6 @@ async function runOnboardingPipeline(formData) {
     }
     brand.contactName = `${formData.firstName} ${formData.lastName}`;
     brand.website     = formData.website;
-    if (formData.email && !brand.loginEmail) brand.loginEmail = formData.email.toLowerCase().trim();
     brand.creatorPage = {
       slug, tagName: `creator-interested-${slug}`, active: true,
       headline: `Partner with ${brandName}`,
@@ -8294,8 +8378,14 @@ async function runOnboardingPipeline(formData) {
       tiktokHandle: formData.tiktokHandle || '',
       tcCommission:   formData.tcCommission   ? parseFloat(formData.tcCommission)   : null,
       openCommission: formData.openCommission ? parseFloat(formData.openCommission) : null,
+      targetAudience:  formData.targetAudience  || '',
+      mainProblem:     formData.mainProblem     || '',
+      buyerObjections: formData.buyerObjections || '',
+      customerResults: formData.customerResults || '',
+      competitorVideos: Array.isArray(formData.competitorVideos) ? formData.competitorVideos : [],
       campaigns: {},
       dmAutomationId: null,
+      brief: creatorBrief || null,
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
     };
     saveBrands(brandsData);
@@ -8384,98 +8474,6 @@ async function runOnboardingPipeline(formData) {
 
 // GET /api/onboard/pending
 app.get('/api/onboard/pending', requireAuth, (req, res) => res.json(loadPendingOnboards()));
-
-// GET /api/clients/overview — unified list: live brands + pending onboards
-app.get('/api/clients/overview', requireAuth, (req, res) => {
-  const brands  = loadBrands();
-  const pending = loadPendingOnboards();
-
-  // Build a map of brandName → pending entry (for brands that have both)
-  const pendingByName = {};
-  for (const p of pending) {
-    const key = (p.formData?.brandName || '').toLowerCase().trim();
-    if (key) pendingByName[key] = p;
-  }
-
-  // Live brands
-  const liveClients = (brands.clients || []).map(b => {
-    const cp  = b.creatorPage || {};
-    const inc = cp.incentives || {};
-    const cam = cp.campaigns  || {};
-    const pob = pendingByName[(b.name || '').toLowerCase().trim()];
-    return {
-      _type:        'live',
-      id:           b.id,
-      pendingId:    pob?.id || null,
-      name:         b.name,
-      website:      b.website || '',
-      email:        b.email || '',
-      contactName:  b.contactName || '',
-      createdAt:    b.createdAt || '',
-      // onboarding progress flags
-      hasForm:      true,
-      hasPortalLogin: !!(b.loginEmail || b.lastLoginAt),
-      hasTikTok:    !!(b.tiktokShopToken),
-      hasCreatorPage: !!(cp.slug && cp.active !== false),
-      hasReacher:   !!(b.shopId),
-      hasCampaigns: !!(cam.cashbackUrl || cam.quantityVideoUrl || cam.leaderboardUrl),
-      // incentives
-      tcCommission:   cp.tcCommission  || null,
-      openCommission: cp.openCommission || null,
-      incentives:     inc,
-      accentColor:    cp.accentColor || '#00f2ea',
-      // campaign links
-      campaigns: cam,
-      creatorPageUrl: cp.slug ? `${CREATOR_BASE_URL}/creators/${cp.slug}` : null,
-      slug: cp.slug || null,
-      shopId: b.shopId || null,
-      dmAutomationId: cp.dmAutomationId || null,
-      headline: cp.headline || '',
-    };
-  });
-
-  // Pending-only entries (not yet a live brand)
-  const liveNames = new Set((brands.clients || []).map(b => (b.name || '').toLowerCase().trim()));
-  const pendingOnly = pending
-    .filter(p => !liveNames.has((p.formData?.brandName || '').toLowerCase().trim()))
-    .map(p => {
-      const fd  = p.formData || {};
-      const comp = fd.compensation || {};
-      return {
-        _type:        'pending',
-        id:           p.id,
-        pendingId:    p.id,
-        name:         fd.brandName || 'Unknown',
-        website:      fd.website || '',
-        email:        fd.email || '',
-        contactName:  `${fd.firstName || ''} ${fd.lastName || ''}`.trim(),
-        createdAt:    p.createdAt || '',
-        status:       p.status || 'pending',
-        hasForm:      true,
-        hasPortalLogin: false,
-        hasTikTok:    false,
-        hasCreatorPage: !!(p.creatorPage?.publicUrl),
-        hasReacher:   false,
-        hasCampaigns: false,
-        tcCommission:   fd.tcCommission  || null,
-        openCommission: fd.openCommission || null,
-        incentives: {
-          cashback:    comp.cashback,
-          volumeBonus: comp.volumeBonus,
-          leaderboard: comp.leaderboard,
-        },
-        accentColor:    '#00f2ea',
-        campaigns:      {},
-        creatorPageUrl: p.creatorPage?.publicUrl || null,
-        slug:           null,
-        shopId:         null,
-        dmAutomationId: null,
-        headline:       '',
-      };
-    });
-
-  res.json({ clients: [...liveClients, ...pendingOnly] });
-});
 
 // PATCH /api/onboard/:id — edit generated copy before approval
 app.patch('/api/onboard/:id', requireAuth, (req, res) => {
@@ -8783,6 +8781,7 @@ function renderWelcomePage(brand, cp) {
   const usps     = (cp.usps || []).filter(Boolean);
   const talking  = (cp.talkingPoints || '').split('\n').map(s => s.trim()).filter(Boolean);
   const videos   = (cp.competitorVideos || []).filter(Boolean);
+  const brief    = cp.brief || null;
 
   const campaignBtns = [];
   if (campaigns.cashbackUrl)      campaignBtns.push({ label: 'Cashback Campaign',        sub: 'Earn cashback on every sale you drive',       url: campaigns.cashbackUrl });
@@ -8797,6 +8796,110 @@ function renderWelcomePage(brand, cp) {
       </div>
       <div class="camp-btn-arrow">&#8594;</div>
     </a>`).join('');
+
+  // ── Brief sections ──────────────────────────────────────────────────────────
+  const typeLabel = { curiosity:'Curiosity', 'pain-point':'Pain Point', transformation:'Transformation', 'social-proof':'Social Proof', controversy:'Controversy', 'myth-bust':'Myth Bust' };
+
+  const hooksHtml = brief?.hooks?.length ? `
+<hr class="page-divider">
+<div class="section">
+  <div class="section-inner">
+    <div class="section-label" style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:${accent};margin-bottom:10px">Content Brief</div>
+    <div class="section-title">Your hook library</div>
+    <div class="section-sub">Copy any of these word-for-word as your video's first 3 seconds. The hook makes or breaks your stop-rate.</div>
+    <div class="hooks-grid">${brief.hooks.map(h => `
+      <div class="hook-card">
+        <div class="hook-text">${h.text.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+        <div class="hook-type">${typeLabel[h.type] || h.type}</div>
+      </div>`).join('')}
+    </div>
+  </div>
+</div>` : '';
+
+  const frameworksHtml = brief?.frameworks?.length ? `
+<hr class="page-divider">
+<div class="section" style="background:rgba(255,255,255,.015)">
+  <div class="section-inner" style="max-width:680px">
+    <div class="section-label" style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:${accent};margin-bottom:10px">Video Formats</div>
+    <div class="section-title">Recommended UGC frameworks</div>
+    <div class="section-sub">These formats work best for this product. Pick one and follow the structure.</div>
+    <div class="frameworks-list">${brief.frameworks.map(f => `
+      <div class="fw-card">
+        <div class="fw-name">${f.name.replace(/</g,'&lt;')}</div>
+        <div class="fw-why">${f.why.replace(/</g,'&lt;')}</div>
+        <ol class="fw-steps">${(f.outline||[]).map((s,i) => `<li class="fw-step"><span class="fw-num">${i+1}</span><span>${s.replace(/</g,'&lt;')}</span></li>`).join('')}</ol>
+      </div>`).join('')}
+    </div>
+  </div>
+</div>` : '';
+
+  const scriptsHtml = brief?.sampleScripts?.length ? `
+<hr class="page-divider">
+<div class="section">
+  <div class="section-inner" style="max-width:680px">
+    <div class="section-label" style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:${accent};margin-bottom:10px">Sample Scripts</div>
+    <div class="section-title">Ready-to-record scripts</div>
+    <div class="section-sub">Use these as-is or riff off them. Tap to expand.</div>
+    <div class="scripts-list">${brief.sampleScripts.map((s,i) => `
+      <div class="script-card" id="sc${i}">
+        <div class="script-header" onclick="toggleScript(${i})">
+          <span class="script-fw-badge">${s.framework}</span>
+          <span class="script-title">${(s.title||'Script').replace(/</g,'&lt;')}</span>
+          <span class="script-duration">${s.duration||'~30s'}</span>
+          <span class="script-toggle">&#8964;</span>
+        </div>
+        <div class="script-body">${(s.script||'').replace(/</g,'&lt;').replace(/\n/g,'\n')}</div>
+      </div>`).join('')}
+    </div>
+  </div>
+</div>` : '';
+
+  const tpHtml = brief?.talkingPoints ? `
+<hr class="page-divider">
+<div class="section" style="background:rgba(255,255,255,.015)">
+  <div class="section-inner" style="max-width:720px">
+    <div class="section-label" style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:${accent};margin-bottom:10px">Talking Points</div>
+    <div class="section-title">What to say</div>
+    <div class="section-sub">Key benefits to weave into your video, plus power phrases that drive action.</div>
+    ${brief.talkingPoints.benefits?.length ? `<ul class="brief-benefits">${brief.talkingPoints.benefits.map(b=>`<li class="brief-benefit">${b.replace(/</g,'&lt;')}</li>`).join('')}</ul>` : ''}
+    ${brief.talkingPoints.powerPhrases?.length ? `<div style="margin-top:4px"><div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:10px">Power Phrases</div><div class="power-phrases">${brief.talkingPoints.powerPhrases.map(p=>`<span class="power-phrase">${p.replace(/</g,'&lt;')}</span>`).join('')}</div></div>` : ''}
+  </div>
+</div>` : '';
+
+  const ddHtml = (brief?.doAndDont?.dos?.length || brief?.doAndDont?.donts?.length) ? `
+<hr class="page-divider">
+<div class="section">
+  <div class="section-inner" style="max-width:720px">
+    <div class="section-label" style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:${accent};margin-bottom:10px">Creator Guidelines</div>
+    <div class="section-title">Do's and don'ts</div>
+    <div class="section-sub">Follow these to maximise your conversion rate.</div>
+    <div class="dd-grid">
+      <div class="dd-col dos">
+        <div class="dd-label">Do</div>
+        <ul class="dd-list">${(brief.doAndDont.dos||[]).map(d=>`<li class="dd-item">${d.replace(/</g,'&lt;')}</li>`).join('')}</ul>
+      </div>
+      <div class="dd-col donts">
+        <div class="dd-label">Don't</div>
+        <ul class="dd-list">${(brief.doAndDont.donts||[]).map(d=>`<li class="dd-item">${d.replace(/</g,'&lt;')}</li>`).join('')}</ul>
+      </div>
+    </div>
+  </div>
+</div>` : '';
+
+  const benchmarksHtml = brief?.benchmarks ? `
+<hr class="page-divider">
+<div class="section" style="background:rgba(255,255,255,.015)">
+  <div class="section-inner" style="max-width:600px">
+    <div class="section-label" style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:${accent};margin-bottom:10px">Performance Targets</div>
+    <div class="section-title">What good looks like</div>
+    <div class="section-sub">These are the benchmarks we use to gauge whether a video is performing. Aim for these on every post.</div>
+    <div class="benchmarks-row">
+      <div class="bm-card"><div class="bm-metric">&gt;30%</div><div class="bm-label">Hook Rate</div></div>
+      <div class="bm-card"><div class="bm-metric">&gt;10%</div><div class="bm-label">Hold Rate</div></div>
+      <div class="bm-card"><div class="bm-metric">&gt;1%</div><div class="bm-label">Click-Through Rate</div></div>
+    </div>
+  </div>
+</div>` : '';
 
   const productsHtml = products.map(p => `
     <div class="product-card">
@@ -8860,6 +8963,57 @@ h1{font-size:clamp(22px,4vw,30px);font-weight:900;letter-spacing:-.02em;margin-b
 .talking-list{list-style:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
 .talking-item{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:14px 16px 14px 32px;font-size:14px;color:rgba(255,255,255,.7);line-height:1.5;position:relative}
 .talking-item::before{content:'';position:absolute;left:14px;top:18px;width:6px;height:6px;border-radius:50%;background:${accent}}
+/* brief — hooks */
+.hooks-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.hook-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:8px}
+.hook-text{font-size:15px;font-weight:600;color:#fff;line-height:1.45}
+.hook-type{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(${ar},.8);background:rgba(${ar},.1);border-radius:100px;padding:3px 10px;align-self:flex-start}
+/* brief — frameworks */
+.frameworks-list{display:flex;flex-direction:column;gap:14px}
+.fw-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:20px 22px}
+.fw-name{font-size:14px;font-weight:900;margin-bottom:4px;color:${accent}}
+.fw-why{font-size:13px;color:rgba(255,255,255,.5);margin-bottom:12px;line-height:1.5}
+.fw-steps{list-style:none;display:flex;flex-direction:column;gap:6px}
+.fw-step{display:flex;gap:10px;font-size:13px;color:rgba(255,255,255,.75);line-height:1.4}
+.fw-num{flex-shrink:0;width:20px;height:20px;border-radius:50%;background:rgba(${ar},.15);color:${accent};font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;margin-top:1px}
+/* brief — scripts */
+.scripts-list{display:flex;flex-direction:column;gap:16px}
+.script-card{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.07);border-radius:14px;overflow:hidden}
+.script-header{display:flex;align-items:center;gap:12px;padding:16px 20px;cursor:pointer;user-select:none;background:rgba(255,255,255,.02)}
+.script-header:hover{background:rgba(255,255,255,.04)}
+.script-fw-badge{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;background:rgba(${ar},.12);color:${accent};border-radius:100px;padding:4px 12px;flex-shrink:0}
+.script-title{font-size:14px;font-weight:700;flex:1}
+.script-duration{font-size:11px;color:rgba(255,255,255,.3);flex-shrink:0}
+.script-toggle{font-size:16px;color:rgba(255,255,255,.3);flex-shrink:0;transition:transform .2s}
+.script-body{display:none;padding:0 20px 20px;font-size:13.5px;color:rgba(255,255,255,.7);line-height:1.75;white-space:pre-wrap}
+.script-card.open .script-toggle{transform:rotate(180deg)}
+.script-card.open .script-body{display:block}
+/* brief — talking points */
+.brief-benefits{list-style:none;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-bottom:20px}
+.brief-benefit{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:12px 14px 12px 32px;font-size:13px;color:rgba(255,255,255,.75);line-height:1.4;position:relative}
+.brief-benefit::before{content:'✓';position:absolute;left:11px;top:12px;font-size:11px;font-weight:900;color:${accent}}
+.power-phrases{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px}
+.power-phrase{background:rgba(${ar},.08);border:1px solid rgba(${ar},.2);border-radius:100px;padding:6px 14px;font-size:12px;font-weight:600;color:rgba(255,255,255,.8)}
+/* brief — do/dont */
+.dd-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media(max-width:560px){.dd-grid{grid-template-columns:1fr}}
+.dd-col{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.06);border-radius:12px;padding:18px}
+.dd-col.dos{border-color:rgba(0,210,122,.15)}
+.dd-col.donts{border-color:rgba(255,60,60,.12)}
+.dd-label{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:12px}
+.dd-col.dos .dd-label{color:#00d27a}
+.dd-col.donts .dd-label{color:#ff6060}
+.dd-list{list-style:none;display:flex;flex-direction:column;gap:8px}
+.dd-item{font-size:13px;color:rgba(255,255,255,.7);line-height:1.4;padding-left:18px;position:relative}
+.dd-item::before{position:absolute;left:0;font-size:12px;font-weight:900}
+.dd-col.dos .dd-item::before{content:'✓';color:#00d27a}
+.dd-col.donts .dd-item::before{content:'✕';color:#ff6060}
+/* benchmarks */
+.benchmarks-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media(max-width:520px){.benchmarks-row{grid-template-columns:1fr}}
+.bm-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:16px;text-align:center}
+.bm-metric{font-size:22px;font-weight:900;color:${accent};margin-bottom:4px}
+.bm-label{font-size:11px;font-weight:700;color:rgba(255,255,255,.4);letter-spacing:.05em;text-transform:uppercase}
 footer{border-top:1px solid rgba(255,255,255,.06);padding:24px 20px;text-align:center;font-size:11px;color:rgba(255,255,255,.18)}
 footer a{color:${accent};text-decoration:none}
 </style>
@@ -8884,6 +9038,13 @@ footer a{color:${accent};text-decoration:none}
     Join the Discord
   </a>
 </div>
+
+${hooksHtml}
+${frameworksHtml}
+${scriptsHtml}
+${tpHtml}
+${ddHtml}
+${benchmarksHtml}
 
 ${productsHtml ? `
 <hr class="page-divider">
@@ -8931,11 +9092,25 @@ ${talkingHtml ? `
 
 <footer>Powered by <a href="https://cultcontent.cc" target="_blank">Cult Content</a></footer>
 
+<script>
+function toggleScript(i){
+  var c=document.getElementById('sc'+i);
+  if(c)c.classList.toggle('open');
+}
+</script>
 </body>
 </html>`;
 }
 
 // (Public /creators/:brandSlug and /api/creator-pages/submit are registered before requireAuth above)
+
+// GET /api/creator-pages/:slug/brief — public, returns the generated creator brief for a brand
+app.get('/api/creator-pages/:slug/brief', (req, res) => {
+  const brands = loadBrands();
+  const brand  = (brands.clients || []).find(b => b.creatorPage?.slug === req.params.slug);
+  if (!brand) return res.status(404).json({ ok: false, error: 'Brand not found' });
+  res.json({ ok: true, brief: brand.creatorPage?.brief || null, brandName: brand.name });
+});
 
 // GET /api/creator-pages — List all brands with creator page status
 app.get('/api/creator-pages', requireAuth, (req, res) => {
@@ -9176,44 +9351,6 @@ app.post('/api/ai/generate-image', async (req, res) => {
 app.listen(CFG.port, () => {
   console.log(`\n⚡ Cult Content Command Center`);
   console.log(`   http://localhost:${CFG.port}\n`);
-
-  // One-time update — Lode WTR product title, USPs, and talking points
-  try {
-    const bd = loadBrands();
-    const lode = (bd.clients || []).find(b => (b.name || '').toLowerCase().includes('lode'));
-    if (lode?.creatorPage && !lode.creatorPage._productInfoUpdated) {
-      lode.creatorPage.products = [{
-        name: 'Lode WTR Scalp Water',
-        description: 'A scalp-first reset designed to replace shampoo, not punish your scalp. Built to calm the chaos of flakes, buildup, oil, and harsh shampoos.',
-      }];
-      lode.creatorPage.usps = [
-        'Replaces shampoo entirely — no DIY or 5-step scalp routine required',
-        'Designed for flakes, itch, oil, and buildup without harsh stripping',
-        'Low-foam "anti-shampoo" format drives curiosity and engagement',
-      ];
-      lode.creatorPage.talkingPoints = [
-        '"I stopped shampooing and switched to this instead."',
-        '"This is low foam on purpose — your scalp doesn\'t need aggressive stripping to feel clean."',
-        '"My scalp feels cleaner, calmer, and less reactive over time."',
-        '"It\'s designed to replace shampoo, not stack on top of it."',
-        '"No sulfates, no heavy fragrance, no harsh surfactants."',
-        '"This is for people tired of flakes, buildup, itch, or oil constantly coming back."',
-        '"Think scalp care first, hair care second."',
-        '"It cleans with plant-derived saponins instead of detergent-heavy foam."',
-        '"The philosophy is simple: support your scalp instead of fighting it."',
-        '"It feels more like resetting your scalp than washing your hair."',
-        '"This made my routine simpler — one bottle instead of multiple products."',
-        '"If shampoo leaves your scalp feeling tight or stripped, this feels very different."',
-        '"A lot of scalp issues come from overcorrecting and over-cleansing."',
-        '"The goal isn\'t deep cleaning — it\'s balance."',
-        '"This is probably the weirdest scalp product I\'ve tried… in a good way."',
-      ].join('\n');
-      lode.creatorPage._productInfoUpdated = true;
-      lode.creatorPage.updatedAt = new Date().toISOString();
-      saveBrands(bd);
-      console.log('[startup] Updated Lode WTR product info, USPs, and talking points');
-    }
-  } catch(e) { console.error('[startup] Lode WTR product update error:', e.message); }
 
   // One-time fix — correct Lode WTR cashback target 96 → 100
   try {
