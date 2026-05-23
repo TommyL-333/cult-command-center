@@ -2674,8 +2674,8 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
               <th>NAME</th>
               <th style="text-align:right;">FOLLOWERS</th>
               <th>BRANDS</th>
-              <th style="text-align:right;">SHOP GMV</th>
-              <th style="text-align:right;">30D GMV</th>
+              <th style="text-align:right;" title="All-time GMV for your shops">YOUR SHOPS GMV</th>
+              <th style="text-align:right;" title="GMV in the last 30 days">30D GMV</th>
               <th style="text-align:right;">VIDEOS</th>
               <th style="text-align:center;">DISCORD</th>
               <th style="width:32px;"></th>
@@ -11383,9 +11383,22 @@ async function creatorsLoadGhlMap() {
     const json = await r.json();
     if (typeof json === 'object' && !json.error) {
       Object.assign(_creators.ghlMap, json);
-      creatorsRender(false); // re-render to show names + discord statuses
+      // Rebuild discordByGhl with whatever Discord members are already loaded
+      // (Discord and ghlMap load in parallel — whichever finishes last wins)
+      _creatorsRebuildDiscordMap();
+      creatorsRender(false);
     }
   } catch (_) {}
+}
+
+function _creatorsRebuildDiscordMap() {
+  if (_creators.discordMembers.size === 0) return;
+  for (const [, info] of Object.entries(_creators.ghlMap)) {
+    const du = (info.discordUsername || '').toLowerCase().replace(/^@/, '');
+    if (du && _creators.discordMembers.has(du)) {
+      _creators.discordByGhl[info.id] = true;
+    }
+  }
 }
 
 async function creatorsLoadDiscord() {
@@ -11401,12 +11414,7 @@ async function creatorsLoadDiscord() {
     });
     // Also build a reverse map: ghl contactId → inDiscord
     // Match by comparing each ghl contact's stored discord note against member usernames
-    for (const [handle, info] of Object.entries(_creators.ghlMap)) {
-      const name = (info.discordUsername || '').toLowerCase().replace(/^@/, '');
-      if (name && _creators.discordMembers.has(name)) {
-        _creators.discordByGhl[info.id] = true;
-      }
-    }
+    _creatorsRebuildDiscordMap();
     creatorsRender(false); // re-render with live Discord data
   } catch (_) {}
 }
