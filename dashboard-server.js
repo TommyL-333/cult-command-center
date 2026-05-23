@@ -3537,52 +3537,76 @@ app.post('/api/creators/performance', async (req, res) => {
 });
 
 // GET /api/creators/ghl-map — TikTok handle → GHL contact info (10-min cache)
-// Searches for contacts tagged "Reacher:" and maps handle → {id, name, phone, email, tags}
+// Fetches contacts tagged "Reacher:" OR "affiliate" and maps handle → {id, name, phone, email, tags, discordUsername}
 app.get('/api/creators/ghl-map', async (req, res) => {
   try {
     const data = await cached('creators_ghl_map', 10 * 60_000, async () => {
-      // GHL contacts/search — fetch contacts tagged with Reacher
-      let page = 1;
-      const allContacts = [];
-      while (true) {
-        let contacts = [];
-        try {
-          const { data: sr } = await ghl.post('/contacts/search', {
-            locationId: CFG.locationId,
-            filters: [{ group: 'AND', filters: [{ field: 'tags', operator: 'contains', value: 'Reacher:' }] }],
-            page,
-            pageLimit: 100,
-          });
-          contacts = sr?.contacts || sr?.data || [];
-        } catch (_) {
-          // Fallback: tag-based search via GET
-          const { data: tr } = await ghl.get('/contacts/', {
-            params: { locationId: CFG.locationId, tags: 'Reacher', limit: 100, skip: (page - 1) * 100 },
-          });
-          contacts = tr?.contacts || [];
+      const TIKTOK_FIELD = '39UVa4ENm3OeOiafUU1c';
+
+      // Fetch all pages for a given tag using cursor pagination
+      async function fetchByTag(tagValue) {
+        const contacts = [];
+        let startAfter = null;
+        let startAfterId = null;
+        while (true) {
+          const params = { locationId: CFG.locationId, limit: 100, query: tagValue };
+          if (startAfter)   params.startAfter   = startAfter;
+          if (startAfterId) params.startAfterId = startAfterId;
+          const { data: tr } = await ghl.get('/contacts/', { params });
+          const batch = tr?.contacts || [];
+          contacts.push(...batch);
+          if (batch.length < 100) break;
+          const meta = tr?.meta || {};
+          startAfter   = meta.startAfter   || null;
+          startAfterId = meta.startAfterId || null;
+          if (!startAfterId) break;
         }
-        if (!contacts.length) break;
-        allContacts.push(...contacts);
-        if (contacts.length < 100) break;
-        page++;
+        return contacts;
+      }
+
+      // Fetch both tag groups and dedupe by contact ID
+      const [reacherContacts, affiliateContacts] = await Promise.all([
+        fetchByTag('Reacher:').catch(() => []),
+        fetchByTag('affiliate').catch(() => []),
+      ]);
+      const seen = new Set();
+      const allContacts = [];
+      for (const c of [...reacherContacts, ...affiliateContacts]) {
+        if (!seen.has(c.id)) { seen.add(c.id); allContacts.push(c); }
       }
 
       // Build handle → contact map
-      const TIKTOK_FIELD = '39UVa4ENm3OeOiafUU1c';
       const map = {};
       for (const c of allContacts) {
+        // Determine TikTok handle: custom field URL takes priority, then contactName
+        let handle = '';
         const ttUrl = (c.customFields || []).find(f => f.id === TIKTOK_FIELD)?.value || '';
-        if (!ttUrl) continue;
-        // Extract handle: https://www.tiktok.com/@handle or @handle
-        const match = ttUrl.match(/@([\w.]+)/);
-        if (!match) continue;
-        const handle = match[1].toLowerCase();
+        if (ttUrl) {
+          const m = ttUrl.match(/@([\w.]+)/);
+          if (m) handle = m[1].toLowerCase();
+        }
+        // Fall back to contactName (Reacher imports and some affiliate contacts use handle as name)
+        if (!handle && c.contactName) {
+          handle = c.contactName.replace(/^@/, '').toLowerCase().trim();
+        }
+        if (!handle) continue;
+
+        // Extract discord username from discord: tags
+        let discordUsername = '';
+        for (const t of (c.tags || [])) {
+          const dm = t.match(/^discord:(.+)/i);
+          if (dm) { discordUsername = dm[1].trim().replace(/^@/, ''); break; }
+        }
+
+        // Prefer a real name; fall back to handle
+        const fullName = `${c.firstName || ''} ${c.lastName || ''}`.trim();
         map[handle] = {
-          id:    c.id,
-          name:  `${c.firstName || ''} ${c.lastName || ''}`.trim() || c.name || handle,
-          phone: c.phone || '',
-          email: c.email || '',
-          tags:  c.tags  || [],
+          id:              c.id,
+          name:            fullName || c.name || '',
+          phone:           c.phone || '',
+          email:           c.email || '',
+          tags:            c.tags  || [],
+          discordUsername: discordUsername,
         };
       }
       return map;
