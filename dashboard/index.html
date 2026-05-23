@@ -2641,6 +2641,7 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
                   style="width:14px;height:14px;accent-color:var(--teal);cursor:pointer;">
               </th>
               <th>CREATOR</th>
+              <th>NAME</th>
               <th style="text-align:right;">FOLLOWERS</th>
               <th>BRANDS</th>
               <th style="text-align:right;">SHOP GMV</th>
@@ -2651,7 +2652,7 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
             </tr>
           </thead>
           <tbody id="creatorsTableBody">
-            <tr><td colspan="9" style="text-align:center;padding:40px;color:var(--muted);">Click Community tab to load creators…</td></tr>
+            <tr><td colspan="10" style="text-align:center;padding:40px;color:var(--muted);">Click Community tab to load creators…</td></tr>
           </tbody>
         </table>
       </div>
@@ -11213,7 +11214,7 @@ async function creatorsLoad(append = false) {
   if (body && !append) {
     // Skeleton rows (8 cols now)
     body.innerHTML = Array.from({ length: 8 }, () =>
-      `<tr class="creator-db-skel"><td></td><td>████████</td><td>█████</td><td>████████████</td><td>██████</td><td>██████</td><td>████</td><td>████</td><td></td></tr>`
+      `<tr class="creator-db-skel"><td></td><td>████████</td><td>██████</td><td>█████</td><td>████████████</td><td>██████</td><td>██████</td><td>████</td><td>████</td><td></td></tr>`
     ).join('');
   }
 
@@ -11289,7 +11290,7 @@ async function creatorsLoad(append = false) {
 
   } catch (e) {
     const body = document.getElementById('creatorsTableBody');
-    if (body) body.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:32px;color:var(--red);">Error: ${x(e.message)}</td></tr>`;
+    if (body) body.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--red);">Error: ${x(e.message)}</td></tr>`;
   } finally {
     _creators.loading = false;
   }
@@ -11328,18 +11329,30 @@ async function creatorsLoadGhlMap() {
     const json = await r.json();
     if (typeof json === 'object' && !json.error) {
       Object.assign(_creators.ghlMap, json);
-      creatorsRender(false);
+      creatorsRender(false); // re-render to show names + discord statuses
     }
   } catch (_) {}
+}
+
+// Client-side name search layered on top of handle results
+function creatorsNameFilter(rows) {
+  const q = (_creators.filters.search || '').toLowerCase().trim();
+  if (!q) return rows;
+  return rows.filter(c => {
+    const handle = (c.creator_handle || '').toLowerCase();
+    if (handle.includes(q)) return true;
+    const name = (_creators.ghlMap[(c.creator_handle || '').toLowerCase()]?.name || '').toLowerCase();
+    return name.includes(q);
+  });
 }
 
 function creatorsRender(append = false) {
   const body = document.getElementById('creatorsTableBody');
   if (!body) return;
 
-  const rows = _creators.data;
+  const rows = creatorsNameFilter(_creators.data);
   if (!rows.length) {
-    body.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--muted);">No creators found</td></tr>`;
+    body.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--muted);">No creators found</td></tr>`;
     creatorsUpdateActionBar();
     return;
   }
@@ -11362,13 +11375,30 @@ function creatorsRender(append = false) {
     const handle    = c.creator_handle || '';
     const handleKey = handle.toLowerCase();
     const ttUrl     = `https://www.tiktok.com/@${handle}`;
-    const followers = fmtFollowers(c.follower_count);
-    const shopGmv   = c.total_shop_gmv > 0 ? fmtMoney(c.total_shop_gmv) : '—';
-    const perf      = _creators.perf30d[handleKey];
-    const gmv30d    = perf ? fmtMoney(perf.gmv) : '—';
-    const videos    = c.total_videos > 0 ? c.total_videos : '—';
     const ghlInfo   = _creators.ghlMap[handleKey];
     const isSel     = _creators.selected.has(handleKey);
+    const ghlLoaded = Object.keys(_creators.ghlMap).length > 0;
+
+    // Followers — amber dash if data unavailable, real value otherwise
+    const followerRaw = c.follower_count;
+    const followers = followerRaw != null
+      ? fmtFollowers(followerRaw)
+      : `<span style="color:#f59e0b;font-size:10px" title="Follower data not available from Reacher">—</span>`;
+
+    // GMV — show real value or a muted dash
+    const shopGmv = c.total_shop_gmv > 0 ? fmtMoney(c.total_shop_gmv) : `<span style="color:var(--muted)">—</span>`;
+    const perf    = _creators.perf30d[handleKey];
+    const gmv30d  = perf
+      ? (perf.gmv > 0 ? fmtMoney(perf.gmv) : `<span style="color:var(--muted)">$0</span>`)
+      : `<span style="color:#f59e0b;font-size:10px" title="30-day performance data loading">—</span>`;
+    const videos  = c.total_videos > 0 ? c.total_videos : `<span style="color:var(--muted)">—</span>`;
+
+    // Name from GHL
+    const creatorName = ghlInfo?.name
+      ? `<span style="font-size:11px;color:var(--text)">${x(ghlInfo.name)}</span>`
+      : ghlLoaded
+        ? `<span style="font-size:10px;color:var(--muted)">—</span>`
+        : `<span style="font-size:10px;color:var(--muted)">…</span>`;
 
     const brandPills = (c.shops || []).map(s => {
       const idx = shopColorMap[s.shop_name] ?? 0;
@@ -11388,8 +11418,10 @@ function creatorsRender(append = false) {
       : discordJoined
       ? `<span title="Discord Joined" style="display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;color:#818cf8;background:rgba(129,140,248,0.1);border:1px solid rgba(129,140,248,0.25);border-radius:5px;padding:2px 7px;">Joined</span>`
       : ghlInfo
-      ? `<span title="Not in Discord" style="font-size:11px;color:var(--muted);">—</span>`
-      : '';
+      ? `<span title="In CRM but not in Discord" style="font-size:11px;color:var(--muted);">Not in</span>`
+      : ghlLoaded
+      ? `<span title="Not in GHL — not tracked" style="font-size:10px;color:rgba(0,0,0,0.2);">No CRM</span>`
+      : `<span style="font-size:10px;color:var(--muted)">…</span>`;
 
     return `<tr style="${isSel ? 'background:rgba(0,212,200,0.06);' : ''}">
       <td style="width:28px;padding:8px 6px;">
@@ -11397,6 +11429,7 @@ function creatorsRender(append = false) {
           style="width:14px;height:14px;accent-color:var(--teal);cursor:pointer;">
       </td>
       <td><a href="${ttUrl}" target="_blank" style="color:var(--teal);font-weight:700;text-decoration:none;">@${x(handle)}</a></td>
+      <td>${creatorName}</td>
       <td style="text-align:right;font-variant-numeric:tabular-nums;">${followers}</td>
       <td>${brandPills}</td>
       <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--gold);">${shopGmv}</td>
