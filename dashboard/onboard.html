@@ -298,7 +298,17 @@ textarea{resize:vertical;min-height:80px}
     </div>
   </div>
 
-  <div class="card">
+  <div class="nav-row">
+    <button class="btn-back" onclick="goBack(3)">← Back</button>
+    <button class="btn-next" onclick="goNext(3)">Continue →</button>
+  </div>
+</div>
+
+<!-- ── STEP 4: Creator Compensation Program ── -->
+<div class="step-pane" id="step-4">
+
+  <!-- Affiliate budgets -->
+  <div class="card" style="margin-bottom:16px">
     <div class="card-title">Affiliate Budgets</div>
     <div class="card-sub">These help us plan the right campaigns from day one.</div>
     <div class="row">
@@ -312,24 +322,6 @@ textarea{resize:vertical;min-height:80px}
         <input type="number" id="retainerBudget" placeholder="e.g. 2000" min="0">
         <div class="hint">Rough max you'd spend on creator retainers/month — we won't exceed this</div>
       </div>
-    </div>
-  </div>
-
-  <div class="nav-row">
-    <button class="btn-back" onclick="goBack(3)">← Back</button>
-    <button class="btn-next" onclick="goNext(3)">Continue →</button>
-  </div>
-</div>
-
-<!-- ── STEP 4: Creator Compensation Program ── -->
-<div class="step-pane" id="step-4">
-
-  <!-- Talking points -->
-  <div class="card" style="margin-bottom:16px">
-    <div class="card-title">Creator Talking Points</div>
-    <div class="card-sub">Key messages for creators to weave into their content. One per line.</div>
-    <div class="field">
-      <textarea id="talkingPoints" rows="5" placeholder="e.g. Before and after results&#10;Show unboxing + first impression&#10;Mention the 30-day money back guarantee"></textarea>
     </div>
   </div>
 
@@ -539,8 +531,9 @@ function validateStep(n) {
   if (n === 2) return yn('tiktokShop','TikTok Shop registered?') && yn('shopifyIntegrated','Shopify integrated?') && yn('tiktokAccountManager','TikTok account manager?') && yn('reviewsImported','Reviews imported?') && yn('fbt','FBT registered?');
   if (n === 3) {
     if (!F.products.length || !F.products.some(p => p.name?.trim())) { alert('Please add at least one product.'); return false; }
-    return req('sampleBudget','Monthly sample budget');
+    return true;
   }
+  if (n === 4) return req('sampleBudget','Monthly sample budget');
   return true;
 }
 function markErr(el, msg) {
