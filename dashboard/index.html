@@ -2593,42 +2593,72 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
       </div>
 
       <!-- Filter bar -->
-      <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:12px 20px;border-bottom:1px solid var(--border);background:rgba(0,0,0,0.15);">
-        <input id="creatorsSearch" class="agent-input" placeholder="Search by handle…"
-          style="font-size:12px;padding:6px 10px;width:180px;"
-          oninput="creatorsApplyFilter()" />
+      <div style="display:flex;flex-direction:column;gap:0;border-bottom:1px solid var(--border);">
+        <!-- Row 1: search + shop + sort + followers -->
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:10px 20px;background:rgba(0,0,0,0.12);">
+          <input id="creatorsSearch" class="agent-input" placeholder="Search by handle or name…"
+            style="font-size:12px;padding:6px 10px;width:190px;"
+            oninput="creatorsApplyFilter()" />
 
-        <select id="creatorsShopFilter" class="agent-input" style="font-size:12px;padding:6px 10px;"
-          onchange="creatorsApplyFilter()">
-          <option value="all">All Shops</option>
-        </select>
+          <select id="creatorsShopFilter" class="agent-input" style="font-size:12px;padding:6px 10px;"
+            onchange="creatorsApplyFilter()">
+            <option value="all">All Shops</option>
+          </select>
 
-        <select id="creatorsSort" class="agent-input" style="font-size:12px;padding:6px 10px;"
-          onchange="creatorsApplyFilter()">
-          <option value="total_shop_gmv">Sort: GMV</option>
-          <option value="follower_count">Sort: Followers</option>
-          <option value="overall_gmv">Sort: Overall GMV</option>
-          <option value="total_videos">Sort: Videos</option>
-          <option value="total_views">Sort: Views</option>
-        </select>
+          <select id="creatorsSort" class="agent-input" style="font-size:12px;padding:6px 10px;"
+            onchange="creatorsApplyFilter()">
+            <option value="total_shop_gmv">Sort: GMV</option>
+            <option value="follower_count">Sort: Followers</option>
+            <option value="overall_gmv">Sort: Overall GMV</option>
+            <option value="total_videos">Sort: Videos</option>
+            <option value="total_views">Sort: Views</option>
+          </select>
 
-        <select id="creatorsMinFollowers" class="agent-input" style="font-size:12px;padding:6px 10px;"
-          onchange="creatorsApplyFilter()">
-          <option value="0">Min Followers: Any</option>
-          <option value="1000">1K+</option>
-          <option value="10000">10K+</option>
-          <option value="50000">50K+</option>
-          <option value="100000">100K+</option>
-          <option value="500000">500K+</option>
-        </select>
+          <select id="creatorsMinFollowers" class="agent-input" style="font-size:12px;padding:6px 10px;"
+            onchange="creatorsApplyFilter()">
+            <option value="0">Followers: Any</option>
+            <option value="1000">1K+</option>
+            <option value="10000">10K+</option>
+            <option value="50000">50K+</option>
+            <option value="100000">100K+</option>
+            <option value="500000">500K+</option>
+          </select>
+        </div>
+        <!-- Row 2: client-side filters (no re-fetch) -->
+        <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 20px;background:rgba(0,0,0,0.07);">
+          <select id="creatorsDiscordFilter" class="agent-input" style="font-size:12px;padding:5px 10px;"
+            onchange="creatorsClientFilter()">
+            <option value="">Discord: All</option>
+            <option value="onboarded">✓ Active</option>
+            <option value="joined">Joined</option>
+            <option value="none">Not in Discord</option>
+          </select>
 
-        <select id="creatorsDiscordFilter" class="agent-input" style="font-size:12px;padding:6px 10px;"
-          onchange="creatorsRenderFiltered()">
-          <option value="">Discord: All</option>
-          <option value="onboarded">✓ Active</option>
-          <option value="joined">Joined</option>
-          <option value="none">Not in Discord</option>
-        </select>
+          <select id="creators30dGmvFilter" class="agent-input" style="font-size:12px;padding:5px 10px;"
+            onchange="creatorsClientFilter()">
+            <option value="0">30D GMV: Any</option>
+            <option value="1">Has any GMV</option>
+            <option value="100">$100+</option>
+            <option value="500">$500+</option>
+            <option value="1000">$1K+</option>
+            <option value="5000">$5K+</option>
+            <option value="10000">$10K+</option>
+          </select>
+
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--soft);cursor:pointer;padding:5px 10px;background:var(--card);border:1.5px solid rgba(20,18,16,.1);border-radius:8px;white-space:nowrap;">
+            <input type="checkbox" id="creatorsHasName" onchange="creatorsClientFilter()"
+              style="width:13px;height:13px;accent-color:var(--teal);cursor:pointer;">
+            Has name
+          </label>
+
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--soft);cursor:pointer;padding:5px 10px;background:var(--card);border:1.5px solid rgba(20,18,16,.1);border-radius:8px;white-space:nowrap;">
+            <input type="checkbox" id="creatorsHasPhone" onchange="creatorsClientFilter()"
+              style="width:13px;height:13px;accent-color:var(--teal);cursor:pointer;">
+            Has phone
+          </label>
+
+          <span id="creatorsFilterCount" style="font-size:11px;color:var(--muted);margin-left:4px;"></span>
+        </div>
       </div>
 
       <!-- Table wrapper -->
@@ -11181,6 +11211,10 @@ const _creators = {
     search: '',
     sort: 'total_shop_gmv',
     minFollowers: 0,
+    discord: '',
+    hasName: false,
+    hasPhone: false,
+    min30dGmv: 0,
   },
 };
 
@@ -11198,14 +11232,29 @@ function creatorsInit() {
 }
 
 function creatorsApplyFilter() {
+  // Server-side filters → re-fetch from Reacher
   _creators.filters.shop         = document.getElementById('creatorsShopFilter')?.value   || 'all';
   _creators.filters.search       = document.getElementById('creatorsSearch')?.value        || '';
   _creators.filters.sort         = document.getElementById('creatorsSort')?.value          || 'total_shop_gmv';
   _creators.filters.minFollowers = Number(document.getElementById('creatorsMinFollowers')?.value) || 0;
+  // Also sync client-side filters while we're here
+  _creatorsReadClientFilters();
   _creators.page = 1;
   _creators.data = [];
-  // Bust cache on filter change by forcing a fresh fetch
   creatorsLoad(false);
+}
+
+function creatorsClientFilter() {
+  // Client-side only — no re-fetch, just re-render with updated filter state
+  _creatorsReadClientFilters();
+  creatorsRender(false);
+}
+
+function _creatorsReadClientFilters() {
+  _creators.filters.discord   = document.getElementById('creatorsDiscordFilter')?.value || '';
+  _creators.filters.min30dGmv = Number(document.getElementById('creators30dGmvFilter')?.value) || 0;
+  _creators.filters.hasName   = document.getElementById('creatorsHasName')?.checked  || false;
+  _creators.filters.hasPhone  = document.getElementById('creatorsHasPhone')?.checked || false;
 }
 
 async function creatorsLoad(append = false) {
@@ -11378,9 +11427,56 @@ function creatorsRender(append = false) {
   const body = document.getElementById('creatorsTableBody');
   if (!body) return;
 
-  const rows = creatorsNameFilter(_creators.data);
+  // Start with name-search filter (already applied by creatorsNameFilter)
+  let rows = creatorsNameFilter(_creators.data);
+
+  // Apply client-side filters
+  const f = _creators.filters;
+  const ghlLoaded = Object.keys(_creators.ghlMap).length > 0;
+  const perfLoaded = Object.keys(_creators.perf30d).length > 0;
+
+  if (f.discord || f.hasName || f.hasPhone || f.min30dGmv > 0) {
+    rows = rows.filter(c => {
+      const h       = (c.creator_handle || '').toLowerCase();
+      const ghlInfo = _creators.ghlMap[h];
+
+      // Has Name: contact must exist in GHL with a real name
+      if (f.hasName && !(ghlInfo?.name)) return false;
+
+      // Has Phone
+      if (f.hasPhone && !ghlInfo?.phone) return false;
+
+      // Min 30D GMV
+      if (f.min30dGmv > 0) {
+        const perf = _creators.perf30d[h];
+        if (!perf || perf.gmv < f.min30dGmv) return false;
+      }
+
+      // Discord status
+      if (f.discord) {
+        const tags         = ghlInfo?.tags || [];
+        const inDiscordLive = _creators.discordByGhl[ghlInfo?.id];
+        const discordTagged = tags.some(t => /discord.*onboard/i.test(t) || /verified.*creator/i.test(t) || t === 'discord-verified');
+        const onboarded     = inDiscordLive || discordTagged;
+        const joined        = tags.some(t => /discord.*join/i.test(t));
+        if (f.discord === 'onboarded') return onboarded;
+        if (f.discord === 'joined')    return joined && !onboarded;
+        if (f.discord === 'none')      return !onboarded && !joined && !!ghlInfo;
+      }
+
+      return true;
+    });
+  }
+
+  // Update filter count badge
+  const countEl = document.getElementById('creatorsFilterCount');
+  if (countEl) {
+    const active = [f.discord, f.hasName, f.hasPhone, f.min30dGmv > 0].filter(Boolean).length;
+    countEl.textContent = active > 0 ? `${rows.length} shown` : '';
+  }
+
   if (!rows.length) {
-    body.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--muted);">No creators found</td></tr>`;
+    body.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--muted);">No creators match the current filters</td></tr>`;
     creatorsUpdateActionBar();
     return;
   }
@@ -11480,29 +11576,8 @@ function creatorsRender(append = false) {
   creatorsUpdateActionBar();
 }
 
-// Client-side Discord filter (doesn't re-fetch — GHL map is already loaded)
-function creatorsRenderFiltered() {
-  const discordFilter = document.getElementById('creatorsDiscordFilter')?.value || '';
-  if (!discordFilter) {
-    creatorsRender(false);
-    return;
-  }
-  const orig = _creators.data;
-  const filtered = orig.filter(c => {
-    const h    = (c.creator_handle || '').toLowerCase();
-    const tags = _creators.ghlMap[h]?.tags || [];
-    const onboarded = tags.some(t => /discord.*onboard/i.test(t) || /verified.*creator/i.test(t));
-    const joined    = tags.some(t => /discord.*join/i.test(t));
-    if (discordFilter === 'onboarded') return onboarded;
-    if (discordFilter === 'joined')    return joined && !onboarded;
-    if (discordFilter === 'none')      return !onboarded && !joined && !!_creators.ghlMap[h];
-    return true;
-  });
-  // Temporarily swap data for render, then restore
-  _creators.data = filtered;
-  creatorsRender(false);
-  _creators.data = orig;
-}
+// creatorsRenderFiltered — kept as alias for backward compat (e.g. bookmarks)
+function creatorsRenderFiltered() { creatorsClientFilter(); }
 
 function creatorsToggleSelect(handleKey) {
   if (_creators.selected.has(handleKey)) {

@@ -3598,11 +3598,19 @@ app.get('/api/creators/ghl-map', async (req, res) => {
           if (dm) { discordUsername = dm[1].trim().replace(/^@/, ''); break; }
         }
 
-        // Prefer a real name; fall back to handle
-        const fullName = `${c.firstName || ''} ${c.lastName || ''}`.trim();
+        // Build a real name — only use it if it looks like an actual person's name,
+        // not a TikTok handle. Reacher imports set firstName = the handle, so we
+        // check: has a last name, OR firstName contains a space, OR firstName ≠ handle.
+        const firstName = (c.firstName || '').trim();
+        const lastName  = (c.lastName  || '').trim();
+        const rawFull   = `${firstName} ${lastName}`.trim();
+        const looksLikeName = lastName
+          || firstName.includes(' ')
+          || (firstName && firstName.toLowerCase() !== handle && !/^[\w.]+$/.test(firstName));
+        const fullName = looksLikeName ? rawFull : '';
         map[handle] = {
           id:              c.id,
-          name:            fullName || c.name || '',
+          name:            fullName,
           phone:           c.phone || '',
           email:           c.email || '',
           tags:            c.tags  || [],
