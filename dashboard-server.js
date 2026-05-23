@@ -3622,15 +3622,65 @@ app.get('/api/creators/ghl-map', async (req, res) => {
         const match = ttUrl.match(/@([\w.]+)/);
         if (!match) continue;
         const handle = match[1].toLowerCase();
+        // Extract Discord username from notes if present ("Discord: @username")
+        let discordUsername = '';
+        const noteFields = (c.customFields || []);
+        // Try to find from notes via contact tags or custom fields
+        for (const t of (c.tags || [])) {
+          const dm = t.match(/^discord:(.+)/i);
+          if (dm) { discordUsername = dm[1].trim().replace(/^@/, ''); break; }
+        }
         map[handle] = {
-          id:    c.id,
-          name:  `${c.firstName || ''} ${c.lastName || ''}`.trim() || c.name || handle,
-          phone: c.phone || '',
-          email: c.email || '',
-          tags:  c.tags  || [],
+          id:              c.id,
+          name:            `${c.firstName || ''} ${c.lastName || ''}`.trim() || c.name || handle,
+          phone:           c.phone || '',
+          email:           c.email || '',
+          tags:            c.tags  || [],
+          discordUsername: discordUsername,
         };
       }
       return map;
+    });
+    res.json(data);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/discord/creator-members — fetch all guild members with the Verified Creator role
+// Returns Set-friendly array of lowercase Discord usernames { username, globalName, userId }
+// Cached 15 min — Discord rate limits guild member pagination at 1000/req
+app.get('/api/discord/creator-members', requireAuth, async (req, res) => {
+  try {
+    const data = await cached('discord_creator_members', 15 * 60_000, async () => {
+      const botToken = process.env.DISCORD_BOT_TOKEN;
+      const guildId  = process.env.DISCORD_GUILD_ID;
+      const roleId   = process.env.DISCORD_CREATOR_ROLE_ID;
+      if (!botToken || !guildId || !roleId) return { members: [], error: 'Discord not configured' };
+
+      const members = [];
+      let after = '0';
+      // Page through all guild members (max 1000 per request)
+      while (true) {
+        const { data: page } = await axios.get(
+          `https://discord.com/api/v10/guilds/${guildId}/members`,
+          { params: { limit: 1000, after }, headers: { Authorization: `Bot ${botToken}` } }
+        );
+        if (!page?.length) break;
+        for (const m of page) {
+          if ((m.roles || []).includes(roleId)) {
+            members.push({
+              userId:     m.user.id,
+              username:   m.user.username.toLowerCase(),
+              globalName: (m.user.global_name || m.nick || '').toLowerCase(),
+              avatar:     m.user.avatar
+                ? `https://cdn.discordapp.com/avatars/${m.user.id}/${m.user.avatar}.png`
+                : null,
+            });
+          }
+        }
+        if (page.length < 1000) break;
+        after = page[page.length - 1].user.id;
+      }
+      return { members, total: members.length };
     });
     res.json(data);
   } catch (e) { res.status(500).json({ error: e.message }); }

@@ -11165,15 +11165,17 @@ async function cpSubmitVideos() {
 // ─── Creator Database ─────────────────────────────────────────────────────────
 
 const _creators = {
-  data:        [],
-  perf30d:     {},   // handle → { gmv, units, orders }
-  ghlMap:      {},   // handle → { id, name, phone, email, tags }
-  shops:       [],   // [{ id, name }]
-  total:       0,
-  page:        1,
-  loading:     false,
-  initialized: false,
-  selected:    new Set(),  // set of selected handles
+  data:           [],
+  perf30d:        {},   // handle → { gmv, units, orders }
+  ghlMap:         {},   // handle → { id, name, phone, email, tags }
+  discordMembers: new Set(), // lowercase discord usernames with Verified Creator role
+  discordByGhl:   {},   // ghl contactId → true (discord verified)
+  shops:          [],   // [{ id, name }]
+  total:          0,
+  page:           1,
+  loading:        false,
+  initialized:    false,
+  selected:       new Set(),  // set of selected handles
   filters: {
     shop: 'all',
     search: '',
@@ -11276,9 +11278,12 @@ async function creatorsLoad(append = false) {
       creatorsLoadPerf30d();
     }
 
-    // Fetch GHL map in parallel (non-blocking)
+    // Fetch GHL map + Discord members in parallel (non-blocking)
     if (!append && Object.keys(_creators.ghlMap).length === 0) {
       creatorsLoadGhlMap();
+    }
+    if (!append && _creators.discordMembers.size === 0) {
+      creatorsLoadDiscord();
     }
 
     creatorsRender(append);
@@ -11331,6 +11336,29 @@ async function creatorsLoadGhlMap() {
       Object.assign(_creators.ghlMap, json);
       creatorsRender(false); // re-render to show names + discord statuses
     }
+  } catch (_) {}
+}
+
+async function creatorsLoadDiscord() {
+  try {
+    const r = await fetch('/api/discord/creator-members');
+    if (!r.ok) return;
+    const json = await r.json();
+    if (json.error) return;
+    _creators.discordMembers.clear();
+    (json.members || []).forEach(m => {
+      if (m.username)   _creators.discordMembers.add(m.username);
+      if (m.globalName) _creators.discordMembers.add(m.globalName);
+    });
+    // Also build a reverse map: ghl contactId → inDiscord
+    // Match by comparing each ghl contact's stored discord note against member usernames
+    for (const [handle, info] of Object.entries(_creators.ghlMap)) {
+      const name = (info.discordUsername || '').toLowerCase().replace(/^@/, '');
+      if (name && _creators.discordMembers.has(name)) {
+        _creators.discordByGhl[info.id] = true;
+      }
+    }
+    creatorsRender(false); // re-render with live Discord data
   } catch (_) {}
 }
 
@@ -11411,16 +11439,20 @@ function creatorsRender(append = false) {
 
     // Discord status from GHL tags
     const tags = ghlInfo?.tags || [];
-    const discordOnboarded = tags.some(t => /discord.*onboard/i.test(t) || /verified.*creator/i.test(t) || /discord.verified/i.test(t) || t === 'discord-verified');
-    const discordJoined    = tags.some(t => /discord.*join/i.test(t));
+    // Discord status: check live Discord member set first, fall back to GHL tags
+    const discordLoaded = _creators.discordMembers.size > 0;
+    const inDiscordLive = discordLoaded && ghlInfo && _creators.discordByGhl[ghlInfo.id];
+    const discordTagged = tags.some(t => /discord.*onboard/i.test(t) || /verified.*creator/i.test(t) || /discord.verified/i.test(t) || t === 'discord-verified');
+    const discordJoined = tags.some(t => /discord.*join/i.test(t));
+    const discordOnboarded = inDiscordLive || discordTagged;
     const discordCell = discordOnboarded
-      ? `<span title="Discord Onboarded" style="display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;color:#4ade80;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.25);border-radius:5px;padding:2px 7px;">✓ Active</span>`
+      ? `<span title="Verified Creator in Discord" style="display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;color:#4ade80;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.25);border-radius:5px;padding:2px 7px;">✓ Active</span>`
       : discordJoined
-      ? `<span title="Discord Joined" style="display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;color:#818cf8;background:rgba(129,140,248,0.1);border:1px solid rgba(129,140,248,0.25);border-radius:5px;padding:2px 7px;">Joined</span>`
+      ? `<span title="Joined Discord" style="display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;color:#818cf8;background:rgba(129,140,248,0.1);border:1px solid rgba(129,140,248,0.25);border-radius:5px;padding:2px 7px;">Joined</span>`
       : ghlInfo
       ? `<span title="In CRM but not in Discord" style="font-size:11px;color:var(--muted);">Not in</span>`
       : ghlLoaded
-      ? `<span title="Not in GHL — not tracked" style="font-size:10px;color:rgba(0,0,0,0.2);">No CRM</span>`
+      ? `<span title="Not tracked in CRM" style="font-size:10px;color:rgba(0,0,0,0.2);">No CRM</span>`
       : `<span style="font-size:10px;color:var(--muted)">…</span>`;
 
     return `<tr style="${isSel ? 'background:rgba(0,212,200,0.06);' : ''}">
