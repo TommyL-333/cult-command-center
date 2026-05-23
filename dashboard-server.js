@@ -594,14 +594,18 @@ app.post('/api/creator-pages/submit', express.json(), async (req, res) => {
         return { ok: false, error: 'not_found' };
       } catch(e) { return { ok: false, error: e.message }; }
     }
+    const discordResult = await tryAssignCreatorRole();
+    if (discordResult.ok && contactId) {
+      ghl.post(`/contacts/${contactId}/tags`, { tags: ['discord-verified'] }).catch(() => {});
+    }
     function scheduleCreatorRoleRetry(attemptsLeft) {
       if (attemptsLeft <= 0 || !cleanDu) return;
       setTimeout(async () => {
         const r = await tryAssignCreatorRole();
-        if (!r.ok && r.error === 'not_found') scheduleCreatorRoleRetry(attemptsLeft - 1);
+        if (r.ok && contactId) ghl.post(`/contacts/${contactId}/tags`, { tags: ['discord-verified'] }).catch(() => {});
+        else if (!r.ok && r.error === 'not_found') scheduleCreatorRoleRetry(attemptsLeft - 1);
       }, 5 * 60 * 1000);
     }
-    const discordResult = await tryAssignCreatorRole();
     if (discordResult.error === 'not_found') scheduleCreatorRoleRetry(3);
 
     // Lark alert
@@ -2252,6 +2256,7 @@ app.post('/api/creator-onboard', express.json(), async (req, res) => {
       const r = await tryAssignDiscordRole();
       if (r.ok) {
         console.log(`[creator-onboard] Discord role assigned on retry for ${cleanDu}`);
+        if (results.ghl?.contactId) ghl.post(`/contacts/${results.ghl.contactId}/tags`, { tags: ['discord-verified'] }).catch(() => {});
       } else if (r.error === 'not_found') {
         scheduleDiscordRetry(attemptsLeft - 1);
       } else {
@@ -2261,6 +2266,9 @@ app.post('/api/creator-onboard', express.json(), async (req, res) => {
   }
 
   results.discord = await tryAssignDiscordRole();
+  if (results.discord.ok && results.ghl?.contactId) {
+    ghl.post(`/contacts/${results.ghl.contactId}/tags`, { tags: ['discord-verified'] }).catch(() => {});
+  }
   if (results.discord.error === 'not_found') {
     results.discord.error = 'Username not found in server — will retry in 5 minutes.';
     scheduleDiscordRetry(3); // retry up to 3 more times (5, 10, 15 min)
@@ -3565,30 +3573,43 @@ app.post('/api/creators/performance', async (req, res) => {
 app.get('/api/creators/ghl-map', async (req, res) => {
   try {
     const data = await cached('creators_ghl_map', 10 * 60_000, async () => {
-      // GHL contacts/search — fetch contacts tagged with Reacher
-      let page = 1;
-      const allContacts = [];
-      while (true) {
-        let contacts = [];
-        try {
-          const { data: sr } = await ghl.post('/contacts/search', {
-            locationId: CFG.locationId,
-            filters: [{ group: 'AND', filters: [{ field: 'tags', operator: 'contains', value: 'Reacher:' }] }],
-            page,
-            pageLimit: 100,
-          });
-          contacts = sr?.contacts || sr?.data || [];
-        } catch (_) {
-          // Fallback: tag-based search via GET
-          const { data: tr } = await ghl.get('/contacts/', {
-            params: { locationId: CFG.locationId, tags: 'Reacher', limit: 100, skip: (page - 1) * 100 },
-          });
-          contacts = tr?.contacts || [];
+      // Fetch contacts from two sources: Reacher-tagged (from Reacher platform)
+      // and affiliate-tagged (from creator interest form signups, which have Discord info)
+      async function fetchByTag(tagValue) {
+        const results = [];
+        let pg = 1;
+        while (true) {
+          let contacts = [];
+          try {
+            const { data: sr } = await ghl.post('/contacts/search', {
+              locationId: CFG.locationId,
+              filters: [{ group: 'AND', filters: [{ field: 'tags', operator: 'contains', value: tagValue }] }],
+              page: pg, pageLimit: 100,
+            });
+            contacts = sr?.contacts || sr?.data || [];
+          } catch (_) {
+            const { data: tr } = await ghl.get('/contacts/', {
+              params: { locationId: CFG.locationId, tags: tagValue, limit: 100, skip: (pg - 1) * 100 },
+            });
+            contacts = tr?.contacts || [];
+          }
+          if (!contacts.length) break;
+          results.push(...contacts);
+          if (contacts.length < 100) break;
+          pg++;
         }
-        if (!contacts.length) break;
-        allContacts.push(...contacts);
-        if (contacts.length < 100) break;
-        page++;
+        return results;
+      }
+
+      const [reacherContacts, affiliateContacts] = await Promise.all([
+        fetchByTag('Reacher:'),
+        fetchByTag('affiliate'),
+      ]);
+      // Merge, dedupe by contact id
+      const seen = new Set();
+      const allContacts = [];
+      for (const c of [...reacherContacts, ...affiliateContacts]) {
+        if (!seen.has(c.id)) { seen.add(c.id); allContacts.push(c); }
       }
 
       // Build handle → contact map

@@ -11411,7 +11411,7 @@ function creatorsRender(append = false) {
 
     // Discord status from GHL tags
     const tags = ghlInfo?.tags || [];
-    const discordOnboarded = tags.some(t => /discord.*onboard/i.test(t) || /verified.*creator/i.test(t));
+    const discordOnboarded = tags.some(t => /discord.*onboard/i.test(t) || /verified.*creator/i.test(t) || /discord.verified/i.test(t) || t === 'discord-verified');
     const discordJoined    = tags.some(t => /discord.*join/i.test(t));
     const discordCell = discordOnboarded
       ? `<span title="Discord Onboarded" style="display:inline-flex;align-items:center;gap:3px;font-size:11px;font-weight:700;color:#4ade80;background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.25);border-radius:5px;padding:2px 7px;">✓ Active</span>`
