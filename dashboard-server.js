@@ -3504,6 +3504,166 @@ app.post('/api/reacher/shops/:shopId/samples', async (req, res) => {
 
 // ─── Creator Database endpoints ───────────────────────────────────────────────
 
+// ─── TikTok Shop API — Creator database (replaces Reacher) ───────────────────
+// POST /api/creators/tts-all — aggregate affiliated creators across all connected brands
+// Returns same shape as /api/creators/all so the UI needs minimal changes.
+app.post('/api/creators/tts-all', async (req, res) => {
+  const { sort = 'total_shop_gmv', search = '', min_followers = 0, shop = 'all', page = 1, page_size = 50 } = req.body;
+  try {
+    // Cache the raw aggregated fetch (expensive) — filters/sort/pagination applied outside
+    const { allCreators, shopList } = await cached('tts_creators_raw', 15 * 60_000, async () => {
+      const brands  = loadBrands();
+      // Build a list of {token, shopName} for every available token source
+      // Priority: per-brand tokens first, then global token as a catch-all
+      const sources = [];
+      for (const [bi, brand] of (brands.clients || []).entries()) {
+        if (brand.tiktokShopToken?.access_token) {
+          sources.push({ token: brand.tiktokShopToken, shopName: brand.name, brands, bi });
+        }
+      }
+      // Fall back to global token (covers the shop connected via the main TikTok Shop auth)
+      if (sources.length === 0) {
+        const globalTok = loadTikTokTokens().shop;
+        if (globalTok?.access_token) {
+          sources.push({ token: globalTok, shopName: globalTok.shop_name || 'Connected Shop', brands, bi: -1 });
+        }
+      }
+
+      const byHandle = {};
+
+      async function fetchCreatorsForSource(src) {
+        let pageToken = '';
+        let safeguard = 0;
+        while (safeguard++ < 20) {
+          const body = { page_size: 100, sort_field: 'gmv', sort_order: 'DESC' };
+          if (pageToken) body.page_token = pageToken;
+          let resp;
+          try {
+            if (src.bi >= 0) {
+              resp = await ttsBrandPost(src.brands.clients[src.bi], src.brands, src.bi, '/affiliate/seller/202309/creators/search', body);
+            } else {
+              // Global token path
+              if (src.token.expires_at && Date.now() > src.token.expires_at - 120_000) {
+                await refreshShopToken();
+              }
+              resp = await ttsPost('/affiliate/seller/202309/creators/search', body);
+            }
+          } catch (e) {
+            console.error(`[tts-creators] ${src.shopName}:`, e.message);
+            break;
+          }
+          const list = resp?.data?.creators || [];
+          for (const c of list) {
+            const handle = (c.creator_handle || c.username || '').toLowerCase().replace(/^@/, '');
+            if (!handle) continue;
+            if (!byHandle[handle]) {
+              byHandle[handle] = { creator_handle: handle, follower_count: 0, total_shop_gmv: 0, overall_gmv: 0, shops: [] };
+            }
+            byHandle[handle].total_shop_gmv += parseFloat(c.sale_amount ?? c.gmv ?? 0);
+            byHandle[handle].follower_count  = Math.max(byHandle[handle].follower_count, c.follower_count || 0);
+            if (!byHandle[handle].shops.includes(src.shopName)) byHandle[handle].shops.push(src.shopName);
+          }
+          const next = resp?.data?.next_page_token;
+          if (!next || list.length === 0) break;
+          pageToken = next;
+        }
+      }
+
+      await Promise.allSettled(sources.map(fetchCreatorsForSource));
+
+      return {
+        allCreators: Object.values(byHandle),
+        shopList:    sources.map(s => ({ name: s.shopName })),
+      };
+    });
+
+    // Apply filters, sort, and pagination in-memory (fast)
+    let creators = allCreators;
+    if (shop && shop !== 'all') creators = creators.filter(c => c.shops.includes(shop));
+    if (search)                  creators = creators.filter(c => c.creator_handle.includes(search.toLowerCase()));
+    if (Number(min_followers) > 0) creators = creators.filter(c => c.follower_count >= Number(min_followers));
+    creators.sort((a, b) => sort === 'follower_count' ? b.follower_count - a.follower_count : b.total_shop_gmv - a.total_shop_gmv);
+
+    const total      = creators.length;
+    const totalPages = Math.ceil(total / page_size) || 1;
+    const startIdx   = (page - 1) * page_size;
+
+    res.json({
+      data:       creators.slice(startIdx, startIdx + page_size),
+      pagination: { total_count: total, page, total_pages: totalPages },
+      shops:      shopList,
+      source:     'tiktok_shop_api',
+    });
+  } catch (e) {
+    console.error('[tts-creators]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/creators/tts-performance — 30-day GMV per creator aggregated across all brands
+// Pulls affiliate orders with a 30-day date window for each connected brand.
+app.post('/api/creators/tts-performance', async (req, res) => {
+  const cacheKey = 'tts_creators_perf:30d';
+  try {
+    const data = await cached(cacheKey, 15 * 60_000, async () => {
+      const now    = Math.floor(Date.now() / 1000);
+      const start  = now - 30 * 24 * 60 * 60;
+      const brands  = loadBrands();
+      const perfByHandle = {};
+
+      // Build token sources (per-brand first, global fallback)
+      const perfSources = [];
+      for (const [bi, brand] of (brands.clients || []).entries()) {
+        if (brand.tiktokShopToken?.access_token) perfSources.push({ brand, brands, bi, global: false });
+      }
+      if (perfSources.length === 0) {
+        const globalTok = loadTikTokTokens().shop;
+        if (globalTok?.access_token) perfSources.push({ brand: null, brands, bi: -1, global: true });
+      }
+
+      await Promise.allSettled(perfSources.map(async (src) => {
+        let pageToken = '';
+        let safeguard = 0;
+        while (safeguard++ < 20) {
+          const body = { create_time_ge: start, create_time_lt: now, page_size: 100 };
+          if (pageToken) body.page_token = pageToken;
+          let resp;
+          try {
+            if (!src.global) {
+              resp = await ttsBrandPost(src.brand, src.brands, src.bi, '/affiliate/seller/202309/orders/search', body);
+            } else {
+              if ((loadTikTokTokens().shop?.expires_at || 0) < Date.now() - 120_000) await refreshShopToken();
+              resp = await ttsPost('/affiliate/seller/202309/orders/search', body);
+            }
+          } catch (e) {
+            console.error(`[tts-perf] ${src.brand?.name || 'global'}:`, e.message);
+            break;
+          }
+          const orders = resp?.data?.affiliate_orders || resp?.data?.orders || [];
+          for (const o of orders) {
+            const handle = (o.creator_handle || o.creator_username || o.creator_open_id || '').toLowerCase().replace(/^@/, '');
+            if (!handle) continue;
+            const amt = parseFloat(o.sale_amount ?? o.payment_info?.original_total_product_price ?? o.total_amount ?? 0);
+            if (!perfByHandle[handle]) perfByHandle[handle] = { creator_handle: handle, gmv: 0, order_count: 0, units_sold: 0 };
+            perfByHandle[handle].gmv        += amt;
+            perfByHandle[handle].order_count += 1;
+          }
+          const next = resp?.data?.next_page_token;
+          if (!next || orders.length === 0) break;
+          pageToken = next;
+        }
+      }));
+
+      const perf = Object.values(perfByHandle).sort((a, b) => b.gmv - a.gmv);
+      return { data: perf, source: 'tiktok_shop_api' };
+    });
+    res.json(data);
+  } catch (e) {
+    console.error('[tts-perf]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // POST /api/creators/all — aggregate creators across all shops (15-min cache, key by filters)
 app.post('/api/creators/all', async (req, res) => {
   const { shop = 'all', search = '', sort = 'total_shop_gmv', min_followers = 0, min_gmv = 0, page = 1, page_size = 50 } = req.body;

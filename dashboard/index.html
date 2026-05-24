@@ -11271,7 +11271,7 @@ async function creatorsLoad(append = false) {
 
   try {
     const f = _creators.filters;
-    const res = await fetch('/api/creators/all', {
+    const res = await fetch('/api/creators/tts-all', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -11352,27 +11352,18 @@ async function creatorsLoad(append = false) {
 
 async function creatorsLoadPerf30d() {
   try {
-    // Fetch all pages of 30-day performance data
-    let pg = 1;
-    while (true) {
-      const r = await fetch('/api/creators/performance', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ page: pg, page_size: 100 }),
-      });
-      const json = await r.json();
-      if (!json.data?.length) break;
-      json.data.forEach(c => {
-        const h = (c.creator_handle || '').toLowerCase();
-        if (!h) return;
-        _creators.perf30d[h] = { gmv: c.gmv || 0, units: c.units_sold || 0, orders: c.order_count || 0 };
-        // Backfill follower_count on creator records that had null from the list endpoint
-        const rec = _creators.data.find(d => (d.creator_handle || '').toLowerCase() === h);
-        if (rec && !rec.follower_count && c.follower_count) rec.follower_count = c.follower_count;
-      });
-      if (json.data.length < 100 || pg >= 10) break;
-      pg++;
-    }
+    // TikTok Shop API returns all 30D performers in a single call (server aggregates orders)
+    const r = await fetch('/api/creators/tts-performance', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+    const json = await r.json();
+    (json.data || []).forEach(c => {
+      const h = (c.creator_handle || '').toLowerCase();
+      if (!h) return;
+      _creators.perf30d[h] = { gmv: c.gmv || 0, units: c.units_sold || 0, orders: c.order_count || 0 };
+    });
     creatorsRender(false);
   } catch (_) {}
 }
