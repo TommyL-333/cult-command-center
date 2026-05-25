@@ -3871,21 +3871,34 @@ function _ensureGhlMap() {
       const map = {};
       const affiliateList = [];
       for (const c of allContacts) {
-        // Determine TikTok handle: custom field URL takes priority, then contactName
+        // Determine TikTok handle — try multiple sources in priority order:
+        // 1. Custom field (by ID or by key name)
+        // 2. contactName (if it looks like a handle — no spaces)
+        // 3. firstName (if it looks like a handle and there's no last name)
         let handle = '';
-        const ttUrl = (c.customFields || []).find(f => f.id === TIKTOK_FIELD)?.value || '';
+        const isHandleLike = s => /^[\w.]{1,30}$/.test(s);
+        const customFields = c.customFields || [];
+        const ttField = customFields.find(f =>
+          f.id === TIKTOK_FIELD ||
+          (f.fieldKey || f.key || '').toLowerCase().includes('tiktok')
+        );
+        const ttUrl = ttField?.value || '';
         if (ttUrl) {
+          // Value might be a full URL (https://tiktok.com/@becca.bryan), a bare @handle, or just a handle
           const m = ttUrl.match(/@([\w.]+)/);
           if (m) handle = m[1].toLowerCase();
+          else if (isHandleLike(ttUrl.trim())) handle = ttUrl.trim().toLowerCase();
         }
-        // Fall back to contactName only if it looks like a TikTok handle:
-        // no spaces, only word chars/dots/underscores, 1-30 chars.
-        // Real names ("John Smith") have spaces and would never match Reacher handles.
+        // Fall back to contactName if it looks like a TikTok handle (no spaces)
         if (!handle && c.contactName) {
           const candidate = c.contactName.replace(/^@/, '').trim();
-          if (/^[\w.]{1,30}$/.test(candidate)) {
-            handle = candidate.toLowerCase();
-          }
+          if (isHandleLike(candidate)) handle = candidate.toLowerCase();
+        }
+        // Fall back to firstName if it looks like a handle and there's no last name
+        // (Reacher imports often store the TikTok handle as firstName with no lastName)
+        if (!handle && c.firstName && !c.lastName) {
+          const candidate = c.firstName.replace(/^@/, '').trim();
+          if (isHandleLike(candidate)) handle = candidate.toLowerCase();
         }
 
         // Extract discord username from discord: tags
@@ -3896,10 +3909,12 @@ function _ensureGhlMap() {
         }
 
         // Build a real name — only use it if it looks like an actual person's name,
-        // not a TikTok handle. Reacher imports set firstName = the handle, so we
-        // check: has a last name, OR firstName contains a space, OR firstName ≠ handle.
-        const firstName = (c.firstName || '').trim();
-        const lastName  = (c.lastName  || '').trim();
+        // not a TikTok handle. Reacher imports often set firstName = the handle, so we
+        // require: has a last name, OR firstName contains a space, OR firstName ≠ handle.
+        // Title-case to fix contacts imported in all-lowercase.
+        const toTitleCase = s => s.replace(/\b\w/g, ch => ch.toUpperCase());
+        const firstName = toTitleCase((c.firstName || '').trim());
+        const lastName  = toTitleCase((c.lastName  || '').trim());
         const rawFull   = `${firstName} ${lastName}`.trim();
         const looksLikeName = lastName
           || firstName.includes(' ')
