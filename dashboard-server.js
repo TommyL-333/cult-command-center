@@ -3840,40 +3840,24 @@ app.get('/api/creators/ghl-map', async (req, res) => {
     const data = await (async () => {
       const TIKTOK_FIELD = '39UVa4ENm3OeOiafUU1c';
 
-      // Paginate through all contacts with a given tag.
-      // GHL contacts API uses `tags` (array param) for tag filtering — NOT `query` which
-      // is a text search and only matches ~2 contacts whose name/email contains the word.
-      async function fetchByTag(tagName) {
-        const contacts = [];
-        let startAfter = null;
-        let startAfterId = null;
-        while (true) {
-          const params = { locationId: CFG.locationId, limit: 100 };
-          params['tags[]'] = tagName;
-          if (startAfter)   params.startAfter   = startAfter;
-          if (startAfterId) params.startAfterId = startAfterId;
-          const { data: tr } = await ghl.get('/contacts/', { params });
-          const batch = tr?.contacts || [];
-          contacts.push(...batch);
-          if (batch.length < 100) break;
-          const meta = tr?.meta || {};
-          startAfter   = meta.startAfter   || null;
-          startAfterId = meta.startAfterId || null;
-          if (!startAfterId) break;
-        }
-        return contacts;
-      }
-
-      // Fetch affiliate-tagged contacts (the primary creator CRM tag)
-      // plus creator-interested-* for creator page signups
-      const [affiliateContacts, creatorInterestedContacts] = await Promise.all([
-        fetchByTag('affiliate').catch(() => []),
-        fetchByTag('creator-interested').catch(() => []),
-      ]);
-      const seen = new Set();
+      // GHL's GET /contacts/ doesn't support tag filtering via query params in v2021-07-28.
+      // Paginate through all contacts — the TikTok handle check below naturally limits
+      // the map to creator contacts (anyone without a handle is skipped).
       const allContacts = [];
-      for (const c of [...affiliateContacts, ...creatorInterestedContacts]) {
-        if (!seen.has(c.id)) { seen.add(c.id); allContacts.push(c); }
+      let startAfter = null;
+      let startAfterId = null;
+      while (true) {
+        const params = { locationId: CFG.locationId, limit: 100 };
+        if (startAfter)   params.startAfter   = startAfter;
+        if (startAfterId) params.startAfterId = startAfterId;
+        const { data: tr } = await ghl.get('/contacts/', { params });
+        const batch = tr?.contacts || [];
+        allContacts.push(...batch);
+        if (batch.length < 100) break;
+        const meta = tr?.meta || {};
+        startAfter   = meta.startAfter   || null;
+        startAfterId = meta.startAfterId || null;
+        if (!startAfterId) break;
       }
 
       // Build handle → contact map
