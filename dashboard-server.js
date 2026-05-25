@@ -442,43 +442,39 @@ async function sendCreatorTC(brand, brands, brandIdx, creatorHandle) {
   const label = `[creator-tc:${brand.name}→@${creatorHandle}]`;
   const cp = brand.creatorPage || {};
 
-  // Need a Reacher shopId and TC commission rate configured on the brand
+  // Need a Reacher shopId — tcCommission falls back to brand.commissionRate if not set on creator page
   if (!brand.shopId) {
     console.log(`${label} skip — no Reacher shopId on brand`); return;
   }
-  if (!cp.tcCommission) {
-    console.log(`${label} skip — no tcCommission set on creator page`); return;
+  // tcCommission is a percentage (e.g. 25 = 25%). Fall back to brand.commissionRate (decimal, e.g. 0.1)
+  const tcCommission = cp.tcCommission || (brand.commissionRate ? Math.round(brand.commissionRate * 100) : 0);
+  if (!tcCommission) {
+    console.log(`${label} skip — no commission rate configured`); return;
   }
 
-  // 1. Fetch products enrolled in the brand's TikTok Shop affiliate program
-  //    Prefer per-brand token; fall back to global token
-  let products = [];
+  // 1. Fetch products from Reacher (no TikTok Shop token needed)
+  let tcProducts = [];
   try {
-    if (brand.tiktokShopToken?.access_token) {
-      const resp = await ttsBrandPost(brand, brands, brandIdx, '/affiliate/seller/202309/products/search', { page_size: 20 });
-      products = resp?.data?.products || [];
-    } else {
-      // Global token fallback
-      if ((loadTikTokTokens().shop?.expires_at || 0) < Date.now() - 120_000) await refreshShopToken();
-      const resp = await ttsPost('/affiliate/seller/202309/products/search', { page_size: 20 });
-      products = resp?.data?.products || [];
-    }
+    const { data: prodResp } = await axios.post(
+      `${CFG.railwayUrl}/affiliate/shops/${brand.shopId}/products`,
+      { page: 1, page_size: 20 },
+      { timeout: 15_000 }
+    );
+    const rawProducts = (prodResp?.data || []);
+    const commissionDecimal = tcCommission / 100;
+    tcProducts = rawProducts.slice(0, 10).map(p => ({
+      product_id:      String(p.product_id || p.id),
+      commission_rate: commissionDecimal,
+    }));
   } catch(e) {
-    console.error(`${label} products fetch error:`, e.message);
+    console.error(`${label} Reacher products fetch error:`, e.message);
   }
-  if (!products.length) {
-    console.log(`${label} skip — no affiliate products enrolled (or TikTok Shop not connected)`); return;
+  if (!tcProducts.length) {
+    console.log(`${label} skip — no products found in Reacher for shop ${brand.shopId}`); return;
   }
-
-  // 2. Build product list for TC (Reacher expects decimal commission, e.g. 0.10 = 10%)
-  const commissionDecimal = cp.tcCommission / 100;
-  const tcProducts = products.slice(0, 10).map(p => ({
-    product_id:      String(p.product_id || p.id),
-    commission_rate: commissionDecimal,
-  }));
 
   // 3. Route TC creation through the Railway scheduler (which holds REACHER_API_KEY)
-  const message = `Hi! We'd love to collaborate with you on ${brand.name}. We offer ${cp.tcCommission}% commission on our TikTok Shop products — click to view the details and accept the invite!`;
+  const message = `Hi! We'd love to collaborate with you on ${brand.name}. We offer ${tcCommission}% commission on our TikTok Shop products — click to view the details and accept the invite!`;
   try {
     const { data } = await axios.post(`${CFG.railwayUrl}/affiliate/tc-invite`, {
       shopId:    brand.shopId,
@@ -486,7 +482,7 @@ async function sendCreatorTC(brand, brands, brandIdx, creatorHandle) {
       products:  tcProducts,
       brandName: brand.name,
       message,
-      commission: cp.tcCommission,
+      commission: tcCommission,
     }, { timeout: 20_000 });
     console.log(`${label} TC automation created:`, data?.automation_id || 'ok');
   } catch(e) {
