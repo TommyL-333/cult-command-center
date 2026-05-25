@@ -3957,7 +3957,8 @@ function _ensureGhlMap() {
 
         // Add to affiliateList if tagged "affiliate" (case-insensitive)
         const isAffiliate = (c.tags || []).some(t => t.toLowerCase() === 'affiliate');
-        if (isAffiliate) {
+        const hasContactInfo = !!(c.phone || c.email);
+        if (isAffiliate && hasContactInfo) {
           affiliateList.push({
             ghl_id:          c.id,
             handle:          handle || '',
