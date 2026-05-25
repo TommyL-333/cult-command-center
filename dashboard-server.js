@@ -3908,6 +3908,14 @@ app.get('/api/creators/ghl-map', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+// GET /api/creators/ghl-debug — raw first page of GHL contacts to diagnose structure
+app.get('/api/creators/ghl-debug', async (req, res) => {
+  try {
+    const { data: tr } = await ghl.get('/contacts/', { params: { locationId: CFG.locationId, limit: 5 } });
+    res.json({ raw: tr, keys: Object.keys(tr || {}), contact_sample: (tr?.contacts || [])[0] || null });
+  } catch (e) { res.status(500).json({ error: e.message, response: e.response?.data }); }
+});
+
 // GET /api/discord/creator-members — list all Discord server members with the Creator role
 // Returns { members: [{username, globalName, userId}] } — used to show Discord status in the creator DB.
 // Results are cached for 5 minutes.
