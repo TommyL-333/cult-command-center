@@ -3913,11 +3913,20 @@ app.get('/api/creators/ghl-map', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/creators/ghl-debug — raw first page of GHL contacts to diagnose structure
+// GET /api/creators/ghl-debug — raw first page of GHL contacts + contacts WITH phones
 app.get('/api/creators/ghl-debug', async (req, res) => {
   try {
-    const { data: tr } = await ghl.get('/contacts/', { params: { locationId: CFG.locationId, limit: 5 } });
-    res.json({ raw: tr, keys: Object.keys(tr || {}), contact_sample: (tr?.contacts || [])[0] || null });
+    const { data: tr } = await ghl.get('/contacts/', { params: { locationId: CFG.locationId, limit: 100 } });
+    const contacts = tr?.contacts || [];
+    const withPhone = contacts.filter(c => c.phone);
+    res.json({
+      total_in_page: contacts.length,
+      with_phone_in_page: withPhone.length,
+      // Show first contact with a phone so we can see customFields structure
+      phone_contact_sample: withPhone[0] || null,
+      // Show first contact regardless
+      first_contact: contacts[0] || null,
+    });
   } catch (e) { res.status(500).json({ error: e.message, response: e.response?.data }); }
 });
 
