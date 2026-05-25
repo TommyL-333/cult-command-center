@@ -2670,8 +2670,8 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
                 <input type="checkbox" id="creatorsSelectAll" onchange="creatorsSelectAll(this.checked)"
                   style="width:14px;height:14px;accent-color:var(--teal);cursor:pointer;">
               </th>
-              <th>CREATOR</th>
               <th>NAME</th>
+              <th>CREATOR</th>
               <th style="text-align:right;">FOLLOWERS</th>
               <th>BRANDS</th>
               <th style="text-align:right;" title="Creator's lifetime TikTok GMV across all shops globally">LIFETIME GMV</th>
@@ -11564,8 +11564,8 @@ function creatorsRender(append = false) {
         <input type="checkbox" ${isSel ? 'checked' : ''} onchange="creatorsToggleSelect('${handleKey}')"
           style="width:14px;height:14px;accent-color:var(--teal);cursor:pointer;">
       </td>
-      <td><a href="${ttUrl}" target="_blank" style="color:var(--teal);font-weight:700;text-decoration:none;">@${x(handle)}</a></td>
       <td>${creatorName}</td>
+      <td><a href="${ttUrl}" target="_blank" style="color:var(--teal);font-weight:700;text-decoration:none;">@${x(handle)}</a></td>
       <td style="text-align:right;font-variant-numeric:tabular-nums;">${followers}</td>
       <td>${brandPills}</td>
       <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--teal);opacity:0.85;">${lifetimeGmv}</td>
