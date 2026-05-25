@@ -11271,7 +11271,7 @@ async function creatorsLoad(append = false) {
 
   try {
     const f = _creators.filters;
-    const res = await fetch('/api/creators/tts-all', {
+    const res = await fetch('/api/creators/all', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -11353,7 +11353,7 @@ async function creatorsLoad(append = false) {
 async function creatorsLoadPerf30d() {
   try {
     // TikTok Shop API returns all 30D performers in a single call (server aggregates orders)
-    const r = await fetch('/api/creators/tts-performance', {
+    const r = await fetch('/api/creators/performance', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({}),
