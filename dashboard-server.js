@@ -10122,14 +10122,15 @@ app.listen(CFG.port, () => {
   try {
     const bd = loadBrands();
     const as = (bd.clients || []).find(b => (b.name || '').toLowerCase().trim() === 'approved science');
-    if (as && !as.creatorPage?.productRequestEnabled) {
+    const asHasShilajit = (as?.creatorPage?.catalogProducts || []).some(p => /shilajit/i.test(p.name));
+    if (as && (!as.creatorPage?.productRequestEnabled || asHasShilajit)) {
       const existingCp = as.creatorPage || {};
       Object.assign(as, {
         industry:       'Health supplements — 10-year-old brand, Amazon-first, expanding to TikTok Shop',
-        products:       'Hero: Parastrin (science-backed parasite cleanse, 60 capsules). Also: Shilajit 500mg (energy, strength, stamina, focus), Appetite Suppressant (Gymnema Sylvestre + African Mango, 60 capsules). 100+ samples/month budget.',
+        products:       'Hero: Parastrin (science-backed parasite cleanse, 60 capsules). 100+ samples/month budget. Additional catalog products available on request.',
         audience:       'Health-conscious adults 25–45 interested in gut health, detox, energy, and weight management. Predominantly Amazon buyers already familiar with the brand.',
         voice:          'Science-backed, credibility-forward. Lab-coat confidence without being cold — Approved Science has 10 years of proof points. Accessible and educational.',
-        contentPillars: 'Parasite cleanse awareness & gut health education, Energy & performance with Shilajit, Weight management & appetite control, Supplement unboxing & demos, Before/after transformation stories',
+        contentPillars: 'Parasite cleanse awareness & gut health education, Digestive health & detox, Supplement unboxing & demos, Before/after transformation stories, Gut health myth-busting',
         proofPoints:    '10+ years in market. Strong Amazon presence with thousands of verified reviews. Science-backed formulas. Manufactured in the USA. Multiple supplement categories with proven product-market fit.',
         cta:            'Link in bio to shop',
       });
@@ -10164,24 +10165,20 @@ app.listen(CFG.port, () => {
         },
         productRequestEnabled: true,
         catalogProducts: [
-          { name: 'Parastrin — Parasite Cleanse',          description: '60 capsules · science-backed digestive & intestinal support formula' },
-          { name: 'Shilajit — Energy & Focus',             description: '500mg shilajit with fulvic acid · vegan & non-GMO · 1 month supply' },
-          { name: 'Appetite Suppressant',                  description: 'Gymnema Sylvestre + African Mango · 60 capsules' },
+          { name: 'Parastrin — Parasite Cleanse', description: '60 capsules · science-backed digestive & intestinal support formula' },
         ],
         products: [
-          { name: 'Parastrin (60 Capsules)',       description: 'Science-backed parasite cleanse and digestive support formula',                    url: existingCp.products?.[0]?.url || '' },
-          { name: 'Shilajit 500mg (1 Month)',      description: 'Energy, strength, stamina & focus — with fulvic acid, vegan & non-GMO',           url: existingCp.products?.[1]?.url || '' },
-          { name: 'Appetite Suppressant (60 Caps)',description: 'Gymnema Sylvestre + African Mango blend for natural weight management support',    url: existingCp.products?.[2]?.url || '' },
+          { name: 'Parastrin (60 Capsules)', description: 'Science-backed parasite cleanse and digestive support formula', url: existingCp.products?.[0]?.url || '' },
         ],
         usps: [
           '10+ years of proven Amazon sales — thousands of verified reviews',
           '20% commission on every sale you drive',
-          'Free samples shipped directly to you',
-          'Science-backed formulas manufactured in the USA',
-          'Request any product from the full catalog',
+          'Free Parastrin sample shipped directly to you',
+          'Science-backed formula manufactured in the USA',
+          'Request other products from the full catalog',
           'Monthly cash bonuses for top performers',
         ],
-        talkingPoints: 'Parasites affect up to 1 in 3 people globally — most don\'t know they have one\nGut health is the #1 health trend on TikTok — parasite cleanse content goes viral\nParastrin uses science-backed ingredients in clinical doses\nShilajit has been used in Ayurvedic medicine for thousands of years\n500mg with fulvic acid for maximum absorption\n10+ years of real customer reviews on Amazon backing every product\nMade in the USA to strict supplement standards',
+        talkingPoints: 'Parasites affect up to 1 in 3 people globally — most don\'t know they have one\nGut health is the #1 health trend on TikTok — parasite cleanse content goes viral\nParastrin uses science-backed ingredients in clinical doses\n10+ years of real customer reviews on Amazon backing every product\nMade in the USA to strict supplement manufacturing standards\nBloating, fatigue, brain fog — all potential signs of gut imbalance\n60 capsules — a full 30-day cleanse protocol',
         brief: {
           niche:          'Health & Wellness Supplements',
           targetAudience: 'Health-conscious adults 25–45 interested in gut health, energy, and weight management. Amazon shoppers who trust established supplement brands.',
@@ -10220,14 +10217,14 @@ app.listen(CFG.port, () => {
               ],
             },
             {
-              name:    'Shilajit Demo & Energy Check-In',
-              why:     'Shilajit is a hot supplement on TikTok — the visual of the resin or capsules plus an energy check-in narrative is highly engaging',
+              name:    '30-Day Results Check-In',
+              why:     'Supplement content that follows a creator\'s personal journey over 30 days builds trust and drives consistent engagement — viewers tune back in to see the update',
               outline: [
-                'Hook: "I\'ve been taking this for 30 days to test the energy claims — here\'s my honest update"',
-                'Explain what shilajit is: "Used in Ayurvedic medicine for thousands of years. 500mg with fulvic acid for maximum absorption"',
-                'Show Approved Science\'s version: "Vegan, non-GMO, made in the USA — and it\'s the most affordable quality shilajit I\'ve found"',
-                'Real talk: "Energy is genuinely different. I\'m not exaggerating for views — I track this stuff"',
-                'CTA: "Link in bio — they have free samples through TikTok Shop right now"',
+                'Hook: "I\'ve been doing a parasite cleanse for 30 days — here\'s my honest update"',
+                'Context: "I picked Parastrin by Approved Science — 10+ years on Amazon, thousands of reviews, science-backed formula"',
+                'Timeline: briefly walk through days 1, 2, and week 4 — what changed, what you noticed',
+                'Honest take: "I\'m not going to oversell this. Here\'s exactly what I experienced…"',
+                'CTA: "Free samples available through my link — worth trying if you\'ve been dealing with gut issues"',
               ],
             },
           ],
@@ -10242,14 +10239,14 @@ app.listen(CFG.port, () => {
               framework: 'Trust Bridge',
               title:     'The Amazon-to-TikTok Discovery',
               duration:  '~30 seconds',
-              script:    '[HOOK] This supplement brand has been on Amazon for over 10 years and most TikTok creators have no idea it exists.\n\n[BRIDGE] Approved Science just launched on TikTok Shop and they\'re offering free samples to creators right now. I\'m talking Shilajit, parasite cleanse, appetite support — all science-backed formulas with real Amazon proof.\n\n[DEMO] I got the Parastrin and the Shilajit. Shilajit is 500mg with fulvic acid — the version that actually absorbs. The Parastrin is a proper 30-day gut cleanse protocol.\n\n[CTA] 20% commission and free samples. Link in bio — this is the supplement program I\'ve been looking for.',
+              script:    '[HOOK] This supplement brand has been on Amazon for over 10 years and most TikTok creators have no idea it exists.\n\n[BRIDGE] Approved Science just launched on TikTok Shop and they\'re offering free samples to creators right now. Their Parastrin is a proper science-backed parasite cleanse — 60 capsules, clinical doses, manufactured in the USA.\n\n[CREDIBILITY] Thousands of verified Amazon reviews over a decade. This isn\'t a random drop-shipped supplement. It\'s a brand with a real track record.\n\n[CTA] Free samples and 20% commission through my link. If you\'ve been dealing with gut issues — this is worth a look.',
             },
           ],
           talkingPoints: {
             benefits: [
               'Parastrin: science-backed parasite cleanse for digestive & intestinal support',
-              'Shilajit: 500mg with fulvic acid — clinically dosed for energy, strength, and focus',
-              'Appetite Suppressant: Gymnema Sylvestre + African Mango for natural weight management',
+              '60 capsules — a complete 30-day cleanse protocol',
+              'Clinical doses of science-backed ingredients — not underdosed fillers',
               '10+ years of Amazon sales — real verified reviews at scale',
               'Made in the USA to strict supplement manufacturing standards',
               '20% commission + free samples for all creators',
