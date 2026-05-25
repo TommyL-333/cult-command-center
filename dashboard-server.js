@@ -3895,7 +3895,7 @@ function _ensureGhlMap() {
 
         // Priority 1: known TikTok field by resolved UUID
         const ttField = customFields.find(f => f.id === TIKTOK_FIELD);
-        const ttUrl = ttField?.value || '';
+        const ttUrl = typeof ttField?.value === 'string' ? ttField.value : '';
         if (ttUrl) {
           const m = ttUrl.match(/(?:tiktok\.com\/@?|^@?)([\w.]{3,30})/i);
           if (m) handle = m[1].toLowerCase();
@@ -3904,8 +3904,8 @@ function _ensureGhlMap() {
         // Priority 2: scan all custom field values for anything TikTok-shaped
         if (!handle) {
           for (const f of customFields) {
-            const v = (f.value || '').trim();
-            if (!v) continue;
+            const v = (typeof f.value === 'string' ? f.value : String(f.value || '')).trim();
+            if (!v || v === 'null' || v === 'undefined') continue;
             const urlM = v.match(/tiktok\.com\/@?([\w.]{3,30})/i);
             if (urlM) { handle = urlM[1].toLowerCase(); break; }
             const atM = v.match(/^@([\w.]{3,30})$/);
