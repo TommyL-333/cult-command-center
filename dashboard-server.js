@@ -3849,7 +3849,20 @@ function _ensureGhlMap() {
   if (_ghlMapCache && (Date.now() - _ghlMapCacheAt) < GHL_MAP_TTL) return Promise.resolve(_ghlMapCache);
   if (!_ghlMapBuilding) {
     _ghlMapBuilding = (async () => {
-      const TIKTOK_FIELD = '39UVa4ENm3OeOiafUU1c';
+      // Dynamically resolve the TikTok handle custom field ID so we don't rely
+      // on a hardcoded UUID that could be wrong or differ between locations.
+      let TIKTOK_FIELD = '39UVa4ENm3OeOiafUU1c'; // fallback
+      try {
+        const { data: cfData } = await ghl.get(`/locations/${CFG.locationId}/customFields`);
+        const ttField = (cfData?.customFields || []).find(f =>
+          (f.fieldKey || f.key || '').toLowerCase() === 'tiktok_handle' ||
+          (f.name || '').toLowerCase().includes('tiktok')
+        );
+        if (ttField?.id) TIKTOK_FIELD = ttField.id;
+        console.log('[ghl-map] tiktok custom field:', ttField?.id, ttField?.name, ttField?.fieldKey);
+      } catch (e) {
+        console.warn('[ghl-map] could not fetch custom fields, using hardcoded UUID:', e.message);
+      }
       const allContacts = [];
       let startAfter = null;
       let startAfterId = null;
@@ -3872,30 +3885,41 @@ function _ensureGhlMap() {
       const affiliateList = [];
       for (const c of allContacts) {
         // Determine TikTok handle — try multiple sources in priority order:
-        // 1. Custom field (by ID or by key name)
-        // 2. contactName (if it looks like a handle — no spaces)
-        // 3. firstName (if it looks like a handle and there's no last name)
+        // 1. Custom field matching the tiktok_handle field ID
+        // 2. Any custom field value that looks like a TikTok URL or @handle (safety net)
+        // 3. contactName if it looks like a handle (no spaces, word chars only)
+        // 4. firstName if handle-like and no lastName (Reacher imports)
         let handle = '';
-        const isHandleLike = s => /^[\w.]{1,30}$/.test(s);
+        const isHandleLike = s => /^[\w.]{3,30}$/.test(s);
         const customFields = c.customFields || [];
-        const ttField = customFields.find(f =>
-          f.id === TIKTOK_FIELD ||
-          (f.fieldKey || f.key || '').toLowerCase().includes('tiktok')
-        );
+
+        // Priority 1: known TikTok field by resolved UUID
+        const ttField = customFields.find(f => f.id === TIKTOK_FIELD);
         const ttUrl = ttField?.value || '';
         if (ttUrl) {
-          // Value might be a full URL (https://tiktok.com/@becca.bryan), a bare @handle, or just a handle
-          const m = ttUrl.match(/@([\w.]+)/);
+          const m = ttUrl.match(/(?:tiktok\.com\/@?|^@?)([\w.]{3,30})/i);
           if (m) handle = m[1].toLowerCase();
-          else if (isHandleLike(ttUrl.trim())) handle = ttUrl.trim().toLowerCase();
         }
-        // Fall back to contactName if it looks like a TikTok handle (no spaces)
+
+        // Priority 2: scan all custom field values for anything TikTok-shaped
+        if (!handle) {
+          for (const f of customFields) {
+            const v = (f.value || '').trim();
+            if (!v) continue;
+            const urlM = v.match(/tiktok\.com\/@?([\w.]{3,30})/i);
+            if (urlM) { handle = urlM[1].toLowerCase(); break; }
+            const atM = v.match(/^@([\w.]{3,30})$/);
+            if (atM) { handle = atM[1].toLowerCase(); break; }
+          }
+        }
+
+        // Priority 3: contactName if it looks like a TikTok handle
         if (!handle && c.contactName) {
           const candidate = c.contactName.replace(/^@/, '').trim();
           if (isHandleLike(candidate)) handle = candidate.toLowerCase();
         }
-        // Fall back to firstName if it looks like a handle and there's no last name
-        // (Reacher imports often store the TikTok handle as firstName with no lastName)
+
+        // Priority 4: firstName with no lastName (Reacher imports store handle as firstName)
         if (!handle && c.firstName && !c.lastName) {
           const candidate = c.firstName.replace(/^@/, '').trim();
           if (isHandleLike(candidate)) handle = candidate.toLowerCase();
