@@ -2608,6 +2608,7 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
           <select id="creatorsSort" class="agent-input" style="font-size:12px;padding:6px 10px;"
             onchange="creatorsApplyFilter()">
             <option value="name" selected>Sort: Name</option>
+            <option value="gmv_30d">Sort: 30D GMV</option>
             <option value="overall_gmv">Sort: Lifetime GMV</option>
             <option value="total_shop_gmv">Sort: Your Shops GMV</option>
             <option value="follower_count">Sort: Followers</option>
@@ -11457,6 +11458,7 @@ function creatorsRender(append = false) {
   // Sort
   const sortFns = {
     name:          (a, b) => (a.name || a.handle).localeCompare(b.name || b.handle),
+    gmv_30d:       (a, b) => (_creators.perf30d[b.handle?.toLowerCase()]?.gmv || 0) - (_creators.perf30d[a.handle?.toLowerCase()]?.gmv || 0),
     overall_gmv:   (a, b) => (_creators.reacherMap[b.handle]?.overall_gmv    || 0) - (_creators.reacherMap[a.handle]?.overall_gmv    || 0),
     total_shop_gmv:(a, b) => (_creators.reacherMap[b.handle]?.total_shop_gmv || 0) - (_creators.reacherMap[a.handle]?.total_shop_gmv || 0),
     follower_count:(a, b) => (_creators.reacherMap[b.handle]?.follower_count  || 0) - (_creators.reacherMap[a.handle]?.follower_count  || 0),
