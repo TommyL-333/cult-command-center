@@ -3927,19 +3927,29 @@ app.get('/api/creators/ghl-map', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// GET /api/creators/ghl-debug — raw first page of GHL contacts + contacts WITH phones
+// GET /api/creators/ghl-debug — inspect GHL contact structure
 app.get('/api/creators/ghl-debug', async (req, res) => {
   try {
     const { data: tr } = await ghl.get('/contacts/', { params: { locationId: CFG.locationId, limit: 100 } });
     const contacts = tr?.contacts || [];
-    const withPhone = contacts.filter(c => c.phone);
+    const first = contacts[0] || {};
     res.json({
-      total_in_page: contacts.length,
-      with_phone_in_page: withPhone.length,
-      // Show first contact with a phone so we can see customFields structure
-      phone_contact_sample: withPhone[0] || null,
-      // Show first contact regardless
-      first_contact: contacts[0] || null,
+      total_in_page:   contacts.length,
+      meta:            tr?.meta || {},
+      // Show all top-level keys on a contact so we know the field names
+      first_contact_keys: Object.keys(first),
+      first_contact: {
+        id:           first.id,
+        contactName:  first.contactName,
+        firstName:    first.firstName,
+        lastName:     first.lastName,
+        phone:        first.phone,
+        email:        first.email,
+        tags:         first.tags,
+        customFields: first.customFields,
+      },
+      // Also search for a contact that has any phone-like field
+      contacts_with_phone: contacts.filter(c => c.phone || c.phoneNumber || c.mobilePhone).length,
     });
   } catch (e) { res.status(500).json({ error: e.message, response: e.response?.data }); }
 });
