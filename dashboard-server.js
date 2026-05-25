@@ -3902,7 +3902,7 @@ app.get('/api/creators/ghl-map', async (req, res) => {
           discordUsername: discordUsername,
         };
       }
-      return map;
+      return { map, _debug: { total_fetched: allContacts.length, mapped: Object.keys(map).length, with_phone: Object.values(map).filter(v => v.phone).length } };
     })();
     res.json(data);
   } catch (e) { res.status(500).json({ error: e.message }); }
