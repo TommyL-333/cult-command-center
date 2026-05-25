@@ -3844,10 +3844,9 @@ let _ghlMapCacheAt  = 0;
 let _ghlMapBuilding = null; // promise while build in progress
 const GHL_MAP_TTL   = 30 * 60_000;
 
-app.get('/api/creators/ghl-map', async (req, res) => {
-  if (_ghlMapCache && (Date.now() - _ghlMapCacheAt) < GHL_MAP_TTL) {
-    return res.json(_ghlMapCache);
-  }
+// Shared helper — starts the build if not running, returns a promise that resolves to the cache
+function _ensureGhlMap() {
+  if (_ghlMapCache && (Date.now() - _ghlMapCacheAt) < GHL_MAP_TTL) return Promise.resolve(_ghlMapCache);
   if (!_ghlMapBuilding) {
     _ghlMapBuilding = (async () => {
       const TIKTOK_FIELD = '39UVa4ENm3OeOiafUU1c';
@@ -3939,19 +3938,22 @@ app.get('/api/creators/ghl-map', async (req, res) => {
       return result;
     })().finally(() => { _ghlMapBuilding = null; });
   }
+  return _ghlMapBuilding;
+}
+
+app.get('/api/creators/ghl-map', async (req, res) => {
   try {
-    const data = await _ghlMapBuilding;
+    const data = await _ensureGhlMap();
     res.json(data);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 // GET /api/creators/affiliate-list — returns all GHL affiliate contacts from cache
+// Triggers the GHL map build if not already running (same as /api/creators/ghl-map)
 app.get('/api/creators/affiliate-list', async (req, res) => {
   try {
-    // Wait for in-flight build if needed
-    if (!_ghlMapCache && _ghlMapBuilding) await _ghlMapBuilding;
-    if (!_ghlMapCache) return res.status(503).json({ error: 'GHL map not loaded yet — try again in a moment' });
-    const list = _ghlMapCache.affiliateList || [];
+    const cache = await _ensureGhlMap();
+    const list  = cache.affiliateList || [];
     res.json({ data: list, total: list.length });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });

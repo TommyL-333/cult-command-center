@@ -11268,13 +11268,9 @@ async function creatorsLoad(append = false) {
   }
 
   try {
+    // affiliate-list blocks until the GHL map is built (~30s on cold start)
+    if (body) body.innerHTML = `<tr><td colspan="11" style="text-align:center;padding:40px;color:var(--muted);">Loading contacts from GHL…</td></tr>`;
     const res = await fetch('/api/creators/affiliate-list');
-    if (res.status === 503) {
-      // GHL map still building — retry in 5s
-      setTimeout(() => { _creators.loading = false; creatorsLoad(false); }, 5000);
-      if (body) body.innerHTML = `<tr><td colspan="11" style="text-align:center;padding:40px;color:var(--muted);">Loading GHL contacts… this takes ~30s on first load</td></tr>`;
-      return;
-    }
     const json = await res.json();
     if (json.error) throw new Error(json.error);
 
