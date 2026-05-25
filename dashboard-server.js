@@ -9791,7 +9791,7 @@ app.listen(CFG.port, () => {
   try {
     const BRAND_DEFAULTS = {
       'diamandia':       { shopId: 8595, tc: { commission: 25, heroProductId: '1729491556857975130' } },
-      'trusted rituals': { shopId: 8974 },
+      'trusted rituals': { shopId: 8974, tc: { commission: 25, heroProductId: '1732230831415267648' } },
       'approved science':{ shopId: 8913 },
     };
     const bd = loadBrands(); let dirty = false;
