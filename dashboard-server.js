@@ -3870,9 +3870,14 @@ app.get('/api/creators/ghl-map', async (req, res) => {
           const m = ttUrl.match(/@([\w.]+)/);
           if (m) handle = m[1].toLowerCase();
         }
-        // Fall back to contactName (Reacher imports and some affiliate contacts use handle as name)
+        // Fall back to contactName only if it looks like a TikTok handle:
+        // no spaces, only word chars/dots/underscores, 1-30 chars.
+        // Real names ("John Smith") have spaces and would never match Reacher handles.
         if (!handle && c.contactName) {
-          handle = c.contactName.replace(/^@/, '').toLowerCase().trim();
+          const candidate = c.contactName.replace(/^@/, '').trim();
+          if (/^[\w.]{1,30}$/.test(candidate)) {
+            handle = candidate.toLowerCase();
+          }
         }
         if (!handle) continue;
 
