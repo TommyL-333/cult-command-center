@@ -3848,7 +3848,8 @@ app.get('/api/creators/ghl-map', async (req, res) => {
         let startAfter = null;
         let startAfterId = null;
         while (true) {
-          const params = { locationId: CFG.locationId, limit: 100, 'tags[]': tagName };
+          const params = { locationId: CFG.locationId, limit: 100 };
+          params['tags[]'] = tagName;
           if (startAfter)   params.startAfter   = startAfter;
           if (startAfterId) params.startAfterId = startAfterId;
           const { data: tr } = await ghl.get('/contacts/', { params });
