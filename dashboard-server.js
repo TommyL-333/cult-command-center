@@ -3833,20 +3833,22 @@ app.post('/api/creators/performance', async (req, res) => {
 });
 
 // GET /api/creators/ghl-map — TikTok handle → GHL contact info (10-min cache)
-// Fetches contacts tagged "Reacher:", "affiliate", OR "creator-interested" (creator page signups)
+// Fetches all contacts tagged "affiliate" (GHL tag filter, not text search).
 // Maps handle → {id, name, phone, email, tags, discordUsername}
 app.get('/api/creators/ghl-map', async (req, res) => {
   try {
     const data = await cached('creators_ghl_map', 10 * 60_000, async () => {
       const TIKTOK_FIELD = '39UVa4ENm3OeOiafUU1c';
 
-      // Fetch all pages for a given tag using cursor pagination
-      async function fetchByTag(tagValue) {
+      // Paginate through all contacts with a given tag.
+      // GHL contacts API uses `tags` (array param) for tag filtering — NOT `query` which
+      // is a text search and only matches ~2 contacts whose name/email contains the word.
+      async function fetchByTag(tagName) {
         const contacts = [];
         let startAfter = null;
         let startAfterId = null;
         while (true) {
-          const params = { locationId: CFG.locationId, limit: 100, query: tagValue };
+          const params = { locationId: CFG.locationId, limit: 100, 'tags[]': tagName };
           if (startAfter)   params.startAfter   = startAfter;
           if (startAfterId) params.startAfterId = startAfterId;
           const { data: tr } = await ghl.get('/contacts/', { params });
@@ -3861,16 +3863,15 @@ app.get('/api/creators/ghl-map', async (req, res) => {
         return contacts;
       }
 
-      // Fetch all tag groups and dedupe by contact ID
-      // creator-interested-* covers creator page signups (tagged by /creator-onboard endpoint)
-      const [reacherContacts, affiliateContacts, creatorInterestedContacts] = await Promise.all([
-        fetchByTag('Reacher:').catch(() => []),
+      // Fetch affiliate-tagged contacts (the primary creator CRM tag)
+      // plus creator-interested-* for creator page signups
+      const [affiliateContacts, creatorInterestedContacts] = await Promise.all([
         fetchByTag('affiliate').catch(() => []),
         fetchByTag('creator-interested').catch(() => []),
       ]);
       const seen = new Set();
       const allContacts = [];
-      for (const c of [...reacherContacts, ...affiliateContacts, ...creatorInterestedContacts]) {
+      for (const c of [...affiliateContacts, ...creatorInterestedContacts]) {
         if (!seen.has(c.id)) { seen.add(c.id); allContacts.push(c); }
       }
 
