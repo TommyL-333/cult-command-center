@@ -3837,7 +3837,7 @@ app.post('/api/creators/performance', async (req, res) => {
 // Maps handle → {id, name, phone, email, tags, discordUsername}
 app.get('/api/creators/ghl-map', async (req, res) => {
   try {
-    const data = await cached('creators_ghl_map', 10 * 60_000, async () => {
+    const data = await (async () => {
       const TIKTOK_FIELD = '39UVa4ENm3OeOiafUU1c';
 
       // Paginate through all contacts with a given tag.
@@ -3918,7 +3918,7 @@ app.get('/api/creators/ghl-map', async (req, res) => {
         };
       }
       return map;
-    });
+    })();
     res.json(data);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
