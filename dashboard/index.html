@@ -11364,7 +11364,7 @@ async function creatorsLoadPerf30d() {
     });
     const json = await r.json();
     (json.data || []).forEach(c => {
-      const h = (c.creator_handle || '').toLowerCase();
+      const h = (c.creator_handle || '').replace(/^@/, '').toLowerCase();
       if (!h) return;
       _creators.perf30d[h] = { gmv: c.gmv || 0, units: c.units_sold || 0, orders: c.order_count || 0 };
     });
@@ -11421,9 +11421,9 @@ function creatorsNameFilter(rows) {
   const q = (_creators.filters.search || '').toLowerCase().trim();
   if (!q) return rows;
   return rows.filter(c => {
-    const handle = (c.creator_handle || '').toLowerCase();
+    const handle = (c.creator_handle || '').replace(/^@/, '').toLowerCase();
     if (handle.includes(q)) return true;
-    const name = (_creators.ghlMap[(c.creator_handle || '').toLowerCase()]?.name || '').toLowerCase();
+    const name = (_creators.ghlMap[(c.creator_handle || '').replace(/^@/, '').toLowerCase()]?.name || '').toLowerCase();
     return name.includes(q);
   });
 }
@@ -11442,7 +11442,7 @@ function creatorsRender(append = false) {
 
   if (f.discord || f.hasName || f.hasPhone || f.min30dGmv > 0) {
     rows = rows.filter(c => {
-      const h       = (c.creator_handle || '').toLowerCase();
+      const h       = (c.creator_handle || '').replace(/^@/, '').toLowerCase();
       const ghlInfo = _creators.ghlMap[h];
 
       // Has Name: contact must exist in GHL with a real name
@@ -11501,7 +11501,7 @@ function creatorsRender(append = false) {
   const renderRows = append ? rows.slice(_creators._appendFrom || 0) : rows;
 
   const html = renderRows.map(c => {
-    const handle    = c.creator_handle || '';
+    const handle    = (c.creator_handle || '').replace(/^@/, '');
     const handleKey = handle.toLowerCase();
     const ttUrl     = `https://www.tiktok.com/@${handle}`;
     const ghlInfo   = _creators.ghlMap[handleKey];
@@ -11606,7 +11606,7 @@ function creatorsToggleSelect(handleKey) {
 
 function creatorsSelectAll(checked) {
   if (checked) {
-    _creators.data.forEach(c => _creators.selected.add((c.creator_handle || '').toLowerCase()));
+    _creators.data.forEach(c => _creators.selected.add((c.creator_handle || '').replace(/^@/, '').toLowerCase()));
   } else {
     _creators.selected.clear();
   }
