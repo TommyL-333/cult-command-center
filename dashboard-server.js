@@ -9153,6 +9153,7 @@ function renderWelcomePage(brand, cp) {
   const brief    = cp.brief || null;
 
   const campaignBtns = [];
+  if (campaigns.blitzUrl)         campaignBtns.push({ label: campaigns.blitzLabel || '🚀 Blitz Launch Campaign', sub: campaigns.blitzSub || 'Post your videos on launch day — bonus for first-15-day GMV', url: campaigns.blitzUrl });
   if (campaigns.cashbackUrl)      campaignBtns.push({ label: 'Cashback Campaign',        sub: 'Earn cashback on every sale you drive',       url: campaigns.cashbackUrl });
   if (campaigns.quantityVideoUrl) campaignBtns.push({ label: 'Video Quantity Challenge', sub: 'Post 10 videos and earn a cash bonus',        url: campaigns.quantityVideoUrl });
   if (campaigns.leaderboardUrl)   campaignBtns.push({ label: 'Leaderboard Challenge',    sub: 'Compete for top GMV and win monthly prizes',  url: campaigns.leaderboardUrl });
@@ -9385,20 +9386,51 @@ h1{font-size:clamp(22px,4vw,30px);font-weight:900;letter-spacing:-.02em;margin-b
 .bm-label{font-size:11px;font-weight:700;color:rgba(255,255,255,.4);letter-spacing:.05em;text-transform:uppercase}
 footer{border-top:1px solid rgba(255,255,255,.06);padding:24px 20px;text-align:center;font-size:11px;color:rgba(255,255,255,.18)}
 footer a{color:${accent};text-decoration:none}
+/* earn pill */
+.earn-pill{display:inline-flex;align-items:center;gap:8px;background:rgba(${ar},.12);border:1px solid rgba(${ar},.3);border-radius:100px;padding:8px 20px;font-size:13px;font-weight:700;color:${accent};margin-top:16px}
+/* next steps */
+.steps-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:20px 24px;margin-top:20px;text-align:left;width:100%;max-width:520px}
+.steps-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:${accent};margin-bottom:14px}
+.steps-list{list-style:none;display:flex;flex-direction:column;gap:10px}
+.step-item{display:flex;align-items:flex-start;gap:12px;font-size:14px;color:rgba(255,255,255,.8);line-height:1.4}
+.step-num{flex-shrink:0;width:22px;height:22px;border-radius:50%;background:rgba(${ar},.15);color:${accent};font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;margin-top:1px}
+/* blitz tiers */
+.blitz-tiers{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+.blitz-tier{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:rgba(${ar},.06);border:1px solid rgba(${ar},.15);border-radius:10px;font-size:13px}
+.blitz-tier-gmv{font-weight:700;color:rgba(255,255,255,.7)}
+.blitz-tier-bonus{font-weight:900;color:${accent}}
 </style>
 </head>
 <body>
 
 <div class="top">
   <div class="success-icon">&#127881;</div>
-  <h1>You're in the ${name} program!</h1>
-  <div class="welcome-sub">Check your texts for your creator hub link. Now sign up for the campaigns below and join the community.</div>
+  <h1>Welcome to the ${name} Creator Program</h1>
+  <div class="welcome-sub">${cp.welcomeMessage || 'You\'re officially in. Sign up for the campaigns below and join the creator community.'}</div>
+  ${cp.earnPotential ? `<div class="earn-pill">💰 Up to $${Number(cp.earnPotential).toLocaleString()} in bonuses${cp.tcCommission ? ` + ${cp.tcCommission}% commission` : ''}</div>` : ''}
+  ${(cp.welcomeSteps || []).length ? `
+  <div class="steps-card">
+    <div class="steps-label">Your next steps</div>
+    <ol class="steps-list">${(cp.welcomeSteps || []).map((s, i) => `
+      <li class="step-item"><span class="step-num">${i + 1}</span><span>${s}</span></li>`).join('')}
+    </ol>
+  </div>` : ''}
 </div>
 
 <div class="card">
   ${btnsHtml ? `
   <div class="section-label">Sign Up for Campaigns</div>
   ${btnsHtml}
+  ${(cp.blitzTiers || []).length ? `
+  <div style="margin-top:4px;margin-bottom:16px">
+    <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:8px">Blitz Bonus Tiers — First 15 Days</div>
+    <div class="blitz-tiers">${(cp.blitzTiers || []).map(t => `
+      <div class="blitz-tier">
+        <span class="blitz-tier-gmv">$${Number(t.gmv).toLocaleString()}+ GMV</span>
+        <span class="blitz-tier-bonus">+$${Number(t.bonus).toLocaleString()} cash</span>
+      </div>`).join('')}
+    </div>
+  </div>` : ''}
   <div class="divider"></div>` : ''}
 
   <div class="section-label">Join the Community</div>
@@ -9787,6 +9819,179 @@ app.listen(CFG.port, () => {
     }
     if (dirty) saveBrands(bd);
   } catch(e) { console.error('[startup] brand defaults backfill error:', e.message); }
+
+  // Trusted Rituals — full brand config + creator page setup (runs if brief not yet set)
+  try {
+    const bd = loadBrands();
+    const tr = (bd.clients || []).find(b => (b.name || '').toLowerCase().trim() === 'trusted rituals');
+    if (tr && !tr.creatorPage?.brief) {
+      // Brand-level fields
+      Object.assign(tr, {
+        industry:       'Wellness supplements — respiratory health & lung support',
+        products:       'Hero product: Mullein Honey Sticks — 30 individually packed honey sticks with 2,000mg Himalayan mullein + pure honey in ginger lemon flavor. Supports respiratory health, lung detox, seasonal allergy relief, and throat soothing. First-ever mullein honey stick on market (no direct competition). Additional wellness products available.',
+        audience:       'Adults 20–45 with seasonal allergies, pollen sensitivity, or who smoke/vape and want natural lung support. Health-conscious consumers who\'ve tried mullein but found tinctures, pills, or tea bags too inconvenient to stick with. Also resonates with general respiratory wellness seekers.',
+        voice:          'Science-backed but accessible and founder-led. Conversational, mission-driven, transparent. Yash (founder) draws on his own experience as a smoker. Confident and disruptive — proud to be first-to-market. Inclusive "we\'re in this together" energy.',
+        contentPillars: 'Allergy season & pollen relief, Smoking/vaping cessation & lung recovery, Respiratory health education, Product demos & unboxing, Before/after breathing improvement stories',
+        proofPoints:    'VC-backed with 3-year funding runway. Amazon bestseller. First-ever mullein honey stick — zero direct competition on TikTok Shop. 2,000mg per stick (full therapeutic dose). Premium Himalayan high-altitude sourcing, rosette-stage leaves (first-year harvest = max potency). Pure honey, no added sugar. 60M Americans have seasonal allergies. 50M+ smoke or vape.',
+        cta:            'Link in bio — grab yours',
+      });
+      // Creator page — preserves any existing slug + campaign URLs already set
+      const existingCp = tr.creatorPage || {};
+      tr.creatorPage = {
+        ...existingCp,
+        slug:            existingCp.slug || 'trusted-rituals',
+        active:          true,
+        listed:          true,
+        accentColor:     '#F5A623',
+        headline:        'Earn 25% Commission + Up to $2,850 in Bonuses',
+        subheadline:     'Join the Trusted Rituals TikTok Shop Creator Program',
+        tcCommission:    25,
+        earnPotential:   2850,
+        welcomeMessage:  'You\'re officially in the Trusted Rituals Creator Program. Your sample ships May 29 — use the hooks and scripts below to make content that converts.',
+        welcomeSteps:    [
+          'Apply for all 4 campaigns using the links below',
+          'Look for your free sample on or around May 29',
+          'Prep your 3 blitz videos before launch day',
+          'Post on launch day for the algorithmic push (and the $650 tier)',
+          'Keep posting through June 30 for the video volume bonus + leaderboard',
+        ],
+        blitzTiers:      [{ gmv: 1000, bonus: 650 }, { gmv: 750, bonus: 500 }, { gmv: 375, bonus: 250 }],
+        incentives: {
+          cashback:    { enabled: true,  amount: 100, target: 6 },
+          volumeBonus: { enabled: true,  bonus: 100,  videoCount: 10 },
+          leaderboard: { enabled: true,  places: [2000], threshold: 5000 },
+        },
+        campaigns: {
+          blitzUrl:         existingCp.campaigns?.blitzUrl         || '',
+          blitzLabel:       '🚀 Blitz Launch Campaign',
+          blitzSub:         'Post 3 videos on launch day — earn up to $650 in the first 15 days',
+          cashbackUrl:      existingCp.campaigns?.cashbackUrl      || '',
+          quantityVideoUrl: existingCp.campaigns?.quantityVideoUrl || '',
+          leaderboardUrl:   existingCp.campaigns?.leaderboardUrl   || '',
+        },
+        products: [
+          {
+            name:        'Mullein Honey Sticks (30 Pack)',
+            description: '2,000mg premium Himalayan mullein + pure honey in ginger lemon flavor. Supports respiratory health, clears mucus, soothes throat. First-ever mullein honey stick — nothing else like it on the market.',
+            minPrice:    null,
+            url:         existingCp.products?.[0]?.url || '',
+          },
+        ],
+        usps: [
+          '2,000mg of mullein per stick — a full therapeutic dose every time',
+          'First-ever mullein honey stick — zero direct competition on TikTok Shop',
+          'Premium Himalayan sourcing: rosette-stage, first-year harvest (max potency)',
+          'Pure honey masks bitterness naturally — it actually tastes good',
+          'Portable & mess-free — tear, sip, done. No dropper, no brewing, no prep',
+          'VC-backed brand with 3-year runway — reliable payouts, long-term opportunity',
+        ],
+        talkingPoints: '60M Americans deal with seasonal allergies every year\n50M+ people in the US smoke or vape\nMullein is a 2,000-year-old proven herb for respiratory health\nExisting formats are terrible — bitter tinctures, hard pills, 25-min tea bags\nHoney naturally soothes throat + masks mullein bitterness\nGinger lemon flavor with warm herbal finish — you\'ll actually take it daily\n30 sticks per box, individually packed, carry anywhere\nAmazon bestseller with proven product-market fit',
+        brief: {
+          niche:          'Health',
+          targetAudience: 'Adults 20–45 dealing with seasonal allergies, pollen sensitivity, or looking to support their lungs after smoking/vaping. Health-conscious buyers who\'ve heard of mullein but find tinctures, pills, and tea bags too bitter, messy, or inconvenient to stick with.',
+          mainProblem:    'Mullein is one of the most proven natural herbs for respiratory health — but every existing format is bitter, messy, and hard to turn into a daily habit.',
+          hooks: [
+            { text: 'Seasonal allergies were ruining my spring — then I found this and everything changed', type: 'transformation' },
+            { text: '60 million Americans suffer from seasonal allergies and nobody is talking about this natural fix', type: 'curiosity' },
+            { text: 'I quit vaping 3 months ago and these honey sticks are the reason my lungs feel clean again', type: 'social-proof' },
+            { text: 'Everything you know about mullein supplements is wrong — and that\'s why nothing has worked for you', type: 'myth-bust' },
+            { text: 'Why are you still brewing mullein tea for 25 minutes when you can literally just do this?', type: 'pain-point' },
+            { text: 'POV: You finally found the thing that actually works during pollen season', type: 'transformation' },
+            { text: 'This herb has been used for 2,000 years for lung health — and someone finally made it taste like honey', type: 'curiosity' },
+            { text: 'Stop wasting money on gross mullein tinctures — there is a way better option and it\'s finally here', type: 'pain-point' },
+          ],
+          frameworks: [
+            {
+              name: 'Problem → Solution',
+              why:  'The gap between mullein\'s proven benefits and every existing format\'s awful UX is the entire pitch — make viewers feel the frustration before you reveal the honey stick as the obvious fix',
+              outline: [
+                'Hook: Lead with the pain — allergy season, can\'t breathe, or physically show a gross tincture dropper',
+                'Agitate: "I tried pills (forgot to take them), tinctures (disgusting), tea bags (who has 25 minutes?)"',
+                'Introduce: "Then I found Trusted Rituals Mullein Honey Sticks — 2,000mg per stick, ginger lemon honey, just tear and sip"',
+                'CTA: "They have a launch promo with free samples right now — link in bio"',
+              ],
+            },
+            {
+              name: 'Why I Switched',
+              why:  'Personal switch stories convert at the highest rate for wellness products — a genuine comparison makes the product feel like a discovery, not an ad',
+              outline: [
+                'What I was using before: tinctures, pills, or just suffering through allergy season with no solution',
+                'Why I switched: too bitter, too inconvenient, too easy to forget',
+                'The discovery: show the honey stick — "tear it open and just sip it. It tastes like warm honey with a herbal finish"',
+                'The result: "This is my morning ritual now and I\'m genuinely never going back"',
+              ],
+            },
+            {
+              name: 'Unboxing + Demo',
+              why:  'The visual of tearing open a honey stick and sipping it is this product\'s best asset — novel, satisfying, and immediately communicates the convenience advantage over messy tinctures',
+              outline: [
+                'Show the box — 30 sticks, clean individual packaging',
+                'Tear one stick open on camera — contrast it with a dropper (no mess, no measuring)',
+                'Mix into coffee or tea, or sip directly — let the viewer see how effortless it is',
+                'State the dose: "2,000mg of Himalayan mullein in literally one honey stick"',
+              ],
+            },
+          ],
+          sampleScripts: [
+            {
+              framework: 'PAS',
+              title:     'The Allergy Season Script',
+              duration:  '~35 seconds',
+              script:    '[HOOK] Pollen season almost broke me this year. I was sneezing constantly, congested all day, just couldn\'t breathe properly no matter what I tried.\n\n[PROBLEM] I heard mullein was a natural herb that could actually help with respiratory health so I went looking for supplements. But everything was awful — tinctures that taste disgusting, pills I kept forgetting to take, tea bags that take 20 minutes to brew. I gave up.\n\n[SOLUTION] Then I found Trusted Rituals Mullein Honey Sticks. 2,000mg of mullein sourced from the Himalayas — in a single honey stick. I just tear it open and sip it directly or mix it into my morning coffee. Ginger lemon flavor. It actually tastes good. It\'s my morning ritual now.\n\n[CTA] They\'re running a launch promotion with free samples right now — link is in my bio before they run out.',
+            },
+            {
+              framework: 'BAB',
+              title:     'The Lung Recovery Script',
+              duration:  '~30 seconds',
+              script:    '[BEFORE] Six months ago I was vaping almost every day. My lungs felt wrecked — tight, congested, just not right.\n\n[AFTER] Today I wake up and I can actually breathe clearly. Three months vape-free and my respiratory health genuinely feels different.\n\n[BRIDGE] The thing that kept me consistent? Trusted Rituals Mullein Honey Sticks. Mullein has been used for centuries to support lung health and clear mucus. 2,000mg per stick, pure honey, no bitterness — it became the daily ritual that kept me on track.\n\n[CTA] If you\'re trying to quit or just want to breathe better this pollen season — grab it through my link.',
+            },
+          ],
+          talkingPoints: {
+            benefits: [
+              '2,000mg of mullein per stick — a full clinical therapeutic dose in every single use',
+              'First-ever mullein honey stick on the market — zero direct competition on TikTok Shop',
+              'Premium Himalayan sourcing: rosette-stage, first-year harvest mullein at maximum potency',
+              'Pure honey soothes throat irritation naturally — no added sugar, no fillers',
+              'Ginger lemon flavor eliminates the bitterness — you\'ll actually want to take it every day',
+              'One stick = complete convenience — carry anywhere, no dropper, no measuring, no brewing',
+            ],
+            objections: [
+              '"Is this just a gimmick?" — Mullein has been used since Greek times, 2,000mg is a real therapeutic dose, and there is literally no other product like this on the market. Address it head-on.',
+              '"Does it actually taste good?" — Yes. The honey completely masks mullein\'s natural bitterness. Taste it on camera and let your genuine reaction do the selling.',
+              '"Why pay more than pills?" — Convenience and habit-formation premium. Same dose, but pills are easy to skip. The honey stick ritual is what makes people actually stick with it.',
+            ],
+            powerPhrases: [
+              '"The only mullein supplement you\'ll actually remember to take"',
+              '"2,000mg. Pure honey. Zero competition."',
+              '"Respiratory health that tastes like honey"',
+            ],
+          },
+          doAndDont: {
+            dos: [
+              'Lead with the pain — allergy season, pollen, smoking/vaping recovery. Hook the viewer\'s problem before showing the product',
+              'Show the product in use — tear the stick open on camera, sip directly or stir into a hot drink',
+              'Call out 2,000mg + Himalayan sourcing — these are the premium proof points that justify the price',
+              'Use the "first-ever" angle — there is literally nothing else like this on TikTok Shop right now',
+              'Lean into ritual language — this is a daily wellness practice, not a one-off supplement',
+            ],
+            donts: [
+              'Don\'t make medical claims about treating or curing conditions — use "supports respiratory health" and "seasonal wellness"',
+              'Don\'t skip the taste reveal — it actually tastes like honey, and that\'s the #1 objection handler',
+              'Don\'t only target smokers — seasonal allergy sufferers are a much larger audience and just as receptive',
+              'Don\'t rush past the unboxing — the stick format is visually novel, let viewers appreciate the convenience',
+            ],
+          },
+          benchmarks: {
+            hookRate: '>30% (impressions ÷ 3-second plays)',
+            holdRate: '>10-15% (thruplays ÷ 3-second plays)',
+            ctr:      '>1-1.5% (clicks ÷ impressions)',
+          },
+        },
+      };
+      saveBrands(bd);
+      console.log('[startup] Trusted Rituals full creator page configured');
+    }
+  } catch(e) { console.error('[startup] Trusted Rituals setup error:', e.message); }
 
   // Ensure TikTok TC test brand exists (hidden from /creators index via listed:false)
   try {
