@@ -11377,15 +11377,16 @@ async function creatorsLoadGhlMap() {
     const r = await fetch('/api/creators/ghl-map');
     const json = await r.json();
     const mapData = json.map || json; // debug wrapper returns {map, _debug}
-    if (json._debug) console.log('[ghl-map debug]', json._debug);
+    console.log('[ghl-map] json keys:', Object.keys(json));
+    console.log('[ghl-map] mapData keys count:', Object.keys(mapData).length);
+    console.log('[ghl-map] debug:', json._debug);
     if (typeof mapData === 'object' && !json.error) {
       Object.assign(_creators.ghlMap, mapData);
-      // Rebuild discordByGhl with whatever Discord members are already loaded
-      // (Discord and ghlMap load in parallel — whichever finishes last wins)
+      console.log('[ghl-map] ghlMap after assign:', Object.keys(_creators.ghlMap).length);
       _creatorsRebuildDiscordMap();
       creatorsRender(false);
     }
-  } catch (_) {}
+  } catch (err) { console.error('[ghl-map] error:', err); }
 }
 
 function _creatorsRebuildDiscordMap() {
