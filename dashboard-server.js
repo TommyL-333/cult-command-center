@@ -415,11 +415,12 @@ app.get('/creators', (req, res) => {
 // GET /creators/:brandSlug/welcome — post-signup welcome page
 app.get('/creators/:brandSlug/welcome', (req, res) => {
   const { brandSlug } = req.params;
+  const handle = (req.query.handle || '').replace(/^@/, '').trim();
   const brands = loadBrands();
   const brand  = (brands.clients || []).find(b => b.creatorPage?.slug === brandSlug);
   if (!brand || !brand.creatorPage) return res.status(404).send('Page not found');
   res.set('Content-Type', 'text/html');
-  res.send(renderWelcomePage(brand, brand.creatorPage));
+  res.send(renderWelcomePage(brand, brand.creatorPage, handle));
 });
 
 // GET /creators/:brandSlug — public creator interest page
@@ -650,7 +651,8 @@ app.post('/api/creator-pages/submit', express.json(), async (req, res) => {
     }
 
     console.log(`[creator-pages] Submission for ${brand.name}: ${email} (${handle ? '@'+handle : 'no handle'})`);
-    res.json({ ok: true, contactId, welcomeUrl: `/creators/${brandSlug}/welcome` });
+    const handleParam = handle ? `?handle=${encodeURIComponent('@' + handle.replace(/^@/, ''))}` : '';
+    res.json({ ok: true, contactId, welcomeUrl: `/creators/${brandSlug}/welcome${handleParam}` });
   } catch(e) {
     console.error('[creator-pages/submit]', e.response?.data || e.message);
     res.status(500).json({ ok: false, error: 'Submission failed — please try again' });
@@ -8976,7 +8978,13 @@ function renderCreatorPage(brand, cp) {
   if (inc.leaderboard?.enabled) {
     const places = inc.leaderboard.places || inc.leaderboard.prizes || [];
     const topPrize = places[0];
-    if (topPrize) rewardLines.push({ val: `$${topPrize} top prize`, desc: `monthly leaderboard${inc.leaderboard.threshold ? ` — $${Number(inc.leaderboard.threshold).toLocaleString()} min GMV` : ''}` });
+    if (topPrize) {
+      const ordinals = ['1st', '2nd', '3rd'];
+      const tierStr = places.length > 1
+        ? places.map((p, i) => `${ordinals[i] || `${i+1}th`} $${p}`).join(' · ')
+        : `$${topPrize} top prize`;
+      rewardLines.push({ val: tierStr, desc: `monthly leaderboard${inc.leaderboard.threshold ? ` — $${Number(inc.leaderboard.threshold).toLocaleString()} min GMV to qualify` : ''}` });
+    }
   }
 
   return `<!DOCTYPE html>
@@ -9139,7 +9147,7 @@ document.getElementById('cpForm').addEventListener('submit', async function(e) {
 </html>`;
 }
 
-function renderWelcomePage(brand, cp) {
+function renderWelcomePage(brand, cp, creatorHandle = '') {
   const accent   = cp.accentColor || '#00f2ea';
   const ar       = hexToRgb(accent);
   const name     = brand.name || 'Brand';
@@ -9491,6 +9499,53 @@ ${talkingHtml ? `
   </div>
 </div>` : ''}
 
+${cp.productRequestEnabled ? `
+<hr class="page-divider">
+<div class="section">
+  <div class="section-inner" style="max-width:600px">
+    <div class="section-label" style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:${accent};margin-bottom:10px">Product Requests</div>
+    <div class="section-title">Want to try something specific?</div>
+    <div class="section-sub">Select a product below or tell us what you'd like from the catalog. We'll get it sorted.</div>
+    <form id="product-req-form" style="margin-top:20px">
+      ${creatorHandle ? `<input type="hidden" id="pr-handle" value="${creatorHandle.replace(/"/g,'&quot;')}">` : `
+      <div style="margin-bottom:14px">
+        <label style="display:block;font-size:12px;font-weight:700;color:rgba(255,255,255,.5);margin-bottom:6px;letter-spacing:.04em;text-transform:uppercase">Your TikTok Handle</label>
+        <input id="pr-handle" type="text" placeholder="@yourhandle" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:12px 14px;color:#fff;font-size:14px;outline:none" required>
+      </div>`}
+      ${(cp.catalogProducts || []).length ? `
+      <div style="margin-bottom:14px">
+        <div style="font-size:12px;font-weight:700;color:rgba(255,255,255,.5);margin-bottom:10px;letter-spacing:.04em;text-transform:uppercase">Available Products</div>
+        <div id="pr-products" style="display:flex;flex-direction:column;gap:8px">
+          ${(cp.catalogProducts || []).map((p, i) => `
+          <label style="display:flex;align-items:center;gap:12px;background:rgba(255,255,255,.03);border:1.5px solid rgba(255,255,255,.08);border-radius:12px;padding:14px 16px;cursor:pointer;transition:border-color .15s" class="pr-product-label" data-i="${i}">
+            <input type="checkbox" name="product" value="${p.name.replace(/"/g,'&quot;')}" style="width:16px;height:16px;accent-color:${accent};flex-shrink:0">
+            <div>
+              <div style="font-size:14px;font-weight:700">${p.name}</div>
+              ${p.description ? `<div style="font-size:12px;color:rgba(255,255,255,.4);margin-top:2px;line-height:1.4">${p.description}</div>` : ''}
+            </div>
+          </label>`).join('')}
+        </div>
+      </div>` : ''}
+      <div style="margin-bottom:14px">
+        <label style="display:block;font-size:12px;font-weight:700;color:rgba(255,255,255,.5);margin-bottom:6px;letter-spacing:.04em;text-transform:uppercase">Other products from the catalog?</label>
+        <input id="pr-other" type="text" placeholder="e.g. Collagen, Keto supplement…" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:12px 14px;color:#fff;font-size:14px;outline:none">
+      </div>
+      <div style="margin-bottom:20px">
+        <label style="display:block;font-size:12px;font-weight:700;color:rgba(255,255,255,.5);margin-bottom:6px;letter-spacing:.04em;text-transform:uppercase">Anything else to add?</label>
+        <textarea id="pr-note" rows="3" placeholder="Content angles you're planning, audience info, special requests…" style="width:100%;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:12px 14px;color:#fff;font-size:14px;outline:none;resize:vertical;line-height:1.5"></textarea>
+      </div>
+      <button type="submit" id="pr-submit" style="width:100%;background:${accent};color:#000;font-size:14px;font-weight:900;border:none;border-radius:12px;padding:16px;cursor:pointer;letter-spacing:.02em;transition:opacity .15s">
+        Send Request
+      </button>
+      <div id="pr-success" style="display:none;text-align:center;padding:20px;background:rgba(0,210,122,.08);border:1px solid rgba(0,210,122,.2);border-radius:12px;margin-top:4px">
+        <div style="font-size:22px;margin-bottom:8px">✅</div>
+        <div style="font-size:15px;font-weight:700;color:#00d27a">Request sent!</div>
+        <div style="font-size:13px;color:rgba(255,255,255,.5);margin-top:4px">We'll follow up within 24 hours.</div>
+      </div>
+    </form>
+  </div>
+</div>` : ''}
+
 <footer>Powered by <a href="https://cultcontent.cc" target="_blank">Cult Content</a></footer>
 
 <script>
@@ -9498,12 +9553,80 @@ function toggleScript(i){
   var c=document.getElementById('sc'+i);
   if(c)c.classList.toggle('open');
 }
+// Product request form
+(function(){
+  var form=document.getElementById('product-req-form');
+  if(!form)return;
+  // Highlight selected product cards
+  document.querySelectorAll('.pr-product-label').forEach(function(lbl){
+    var cb=lbl.querySelector('input[type=checkbox]');
+    if(cb)cb.addEventListener('change',function(){
+      lbl.style.borderColor=cb.checked?'rgba(${ar},.5)':'rgba(255,255,255,.08)';
+    });
+  });
+  form.addEventListener('submit',async function(e){
+    e.preventDefault();
+    var btn=document.getElementById('pr-submit');
+    var handleEl=document.getElementById('pr-handle');
+    var handle=(handleEl?handleEl.value:'').replace(/^@/,'').trim();
+    if(!handle){handleEl&&(handleEl.style.borderColor='rgba(255,80,80,.6)');return;}
+    var products=Array.from(document.querySelectorAll('#pr-products input:checked')).map(function(c){return c.value;});
+    var other=(document.getElementById('pr-other')||{}).value||'';
+    var note=(document.getElementById('pr-note')||{}).value||'';
+    btn.disabled=true;btn.textContent='Sending…';
+    try{
+      var r=await fetch('/api/creator-pages/${cp.slug || ''}/product-request',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({handle,products,otherProducts:other,note}),
+      });
+      if(r.ok){
+        form.style.display='none';
+        document.getElementById('pr-success').style.display='block';
+      }else{btn.disabled=false;btn.textContent='Send Request';}
+    }catch(_){btn.disabled=false;btn.textContent='Send Request';}
+  });
+})();
 </script>
 </body>
 </html>`;
 }
 
 // (Public /creators/:brandSlug and /api/creator-pages/submit are registered before requireAuth above)
+
+// POST /api/creator-pages/:slug/product-request — creator requests a product from the catalog
+// Pings the Cult Content ops Lark channel with the request details
+app.post('/api/creator-pages/:slug/product-request', async (req, res) => {
+  const { slug } = req.params;
+  const { handle = '', products = [], otherProducts = '', note = '' } = req.body || {};
+  const cleanHandle = handle.replace(/^@/, '').trim();
+  if (!cleanHandle) return res.status(400).json({ ok: false, error: 'handle required' });
+
+  const brands = loadBrands();
+  const brand  = (brands.clients || []).find(b => b.creatorPage?.slug === slug);
+  if (!brand) return res.status(404).json({ ok: false, error: 'Brand not found' });
+
+  const lines = [
+    `📦 Product Request — ${brand.name}`,
+    `Creator: @${cleanHandle}`,
+  ];
+  if (products.length)  lines.push(`Products: ${products.join(', ')}`);
+  if (otherProducts)    lines.push(`Other: ${otherProducts}`);
+  if (note)             lines.push(`Note: ${note}`);
+
+  try {
+    await axios.post(`${CFG.railwayUrl}/command`, {
+      text:    lines.join('\n'),
+      context: 'Product Request',
+      source:  'Creator Welcome Page',
+    }, { timeout: 10000 });
+    console.log(`[product-request] ${brand.name} — @${cleanHandle}: ${[...products, otherProducts].filter(Boolean).join(', ')}`);
+    res.json({ ok: true });
+  } catch(e) {
+    console.error('[product-request] Lark error:', e.message);
+    res.status(500).json({ ok: false, error: 'Failed to send request' });
+  }
+});
 
 // GET /api/creator-pages/:slug/brief — public, returns the generated creator brief for a brand
 app.get('/api/creator-pages/:slug/brief', (req, res) => {
@@ -9792,7 +9915,7 @@ app.listen(CFG.port, () => {
     const BRAND_DEFAULTS = {
       'diamandia':       { shopId: 8595, tc: { commission: 25, heroProductId: '1729491556857975130' } },
       'trusted rituals': { shopId: 8974, tc: { commission: 25, heroProductId: '1732230831415267648' } },
-      'approved science':{ shopId: 8913 },
+      'approved science':{ shopId: 8913, tc: { commission: 20, heroProductId: '1731392689812508843' } },
     };
     const bd = loadBrands(); let dirty = false;
     for (const client of (bd.clients || [])) {
@@ -9995,6 +10118,176 @@ app.listen(CFG.port, () => {
   } catch(e) { console.error('[startup] Trusted Rituals setup error:', e.message); }
 
   // Ensure TikTok TC test brand exists (hidden from /creators index via listed:false)
+  // Approved Science — full creator page setup
+  try {
+    const bd = loadBrands();
+    const as = (bd.clients || []).find(b => (b.name || '').toLowerCase().trim() === 'approved science');
+    if (as && !as.creatorPage?.productRequestEnabled) {
+      const existingCp = as.creatorPage || {};
+      Object.assign(as, {
+        industry:       'Health supplements — 10-year-old brand, Amazon-first, expanding to TikTok Shop',
+        products:       'Hero: Parastrin (science-backed parasite cleanse, 60 capsules). Also: Shilajit 500mg (energy, strength, stamina, focus), Appetite Suppressant (Gymnema Sylvestre + African Mango, 60 capsules). 100+ samples/month budget.',
+        audience:       'Health-conscious adults 25–45 interested in gut health, detox, energy, and weight management. Predominantly Amazon buyers already familiar with the brand.',
+        voice:          'Science-backed, credibility-forward. Lab-coat confidence without being cold — Approved Science has 10 years of proof points. Accessible and educational.',
+        contentPillars: 'Parasite cleanse awareness & gut health education, Energy & performance with Shilajit, Weight management & appetite control, Supplement unboxing & demos, Before/after transformation stories',
+        proofPoints:    '10+ years in market. Strong Amazon presence with thousands of verified reviews. Science-backed formulas. Manufactured in the USA. Multiple supplement categories with proven product-market fit.',
+        cta:            'Link in bio to shop',
+      });
+      as.shopId = as.shopId || 8913;
+      as.creatorPage = {
+        ...existingCp,
+        slug:            existingCp.slug || 'approved-science',
+        active:          true,
+        listed:          true,
+        accentColor:     '#2E7EFB',
+        headline:        'Earn 20% Commission + Up to $875 in Bonuses',
+        subheadline:     'Join the Approved Science TikTok Shop Creator Program',
+        tcCommission:    20,
+        tcHeroProductId: '1731392689812508843', // Parastrin
+        earnPotential:   875,
+        welcomeMessage:  'You\'re in the Approved Science Creator Program. Your sample is on its way — explore the full catalog and request any products you want to feature.',
+        welcomeSteps: [
+          'Apply for the campaigns below to unlock your cash bonuses',
+          'Your sample will ship within 3–5 business days',
+          'Request any additional products from the catalog using the form below',
+          'Post your first video and start earning 20% commission on every sale',
+        ],
+        incentives: {
+          cashback:    { enabled: true, amount: 100, unitsRequired: 0, description: 'Hit $100 in GMV and earn $100 cash back' },
+          volumeBonus: { enabled: true, bonus: 100, videoCount: 10, description: 'Post 10 videos and earn a one-time $100 cash bonus' },
+          leaderboard: { enabled: true, places: [500, 250, 125], threshold: 1000, description: 'Monthly leaderboard — $1,000 min GMV to qualify' },
+        },
+        campaigns: {
+          cashbackUrl:      existingCp.campaigns?.cashbackUrl      || '',
+          quantityVideoUrl: existingCp.campaigns?.quantityVideoUrl || '',
+          leaderboardUrl:   existingCp.campaigns?.leaderboardUrl   || '',
+        },
+        productRequestEnabled: true,
+        catalogProducts: [
+          { name: 'Parastrin — Parasite Cleanse',          description: '60 capsules · science-backed digestive & intestinal support formula' },
+          { name: 'Shilajit — Energy & Focus',             description: '500mg shilajit with fulvic acid · vegan & non-GMO · 1 month supply' },
+          { name: 'Appetite Suppressant',                  description: 'Gymnema Sylvestre + African Mango · 60 capsules' },
+        ],
+        products: [
+          { name: 'Parastrin (60 Capsules)',       description: 'Science-backed parasite cleanse and digestive support formula',                    url: existingCp.products?.[0]?.url || '' },
+          { name: 'Shilajit 500mg (1 Month)',      description: 'Energy, strength, stamina & focus — with fulvic acid, vegan & non-GMO',           url: existingCp.products?.[1]?.url || '' },
+          { name: 'Appetite Suppressant (60 Caps)',description: 'Gymnema Sylvestre + African Mango blend for natural weight management support',    url: existingCp.products?.[2]?.url || '' },
+        ],
+        usps: [
+          '10+ years of proven Amazon sales — thousands of verified reviews',
+          '20% commission on every sale you drive',
+          'Free samples shipped directly to you',
+          'Science-backed formulas manufactured in the USA',
+          'Request any product from the full catalog',
+          'Monthly cash bonuses for top performers',
+        ],
+        talkingPoints: 'Parasites affect up to 1 in 3 people globally — most don\'t know they have one\nGut health is the #1 health trend on TikTok — parasite cleanse content goes viral\nParastrin uses science-backed ingredients in clinical doses\nShilajit has been used in Ayurvedic medicine for thousands of years\n500mg with fulvic acid for maximum absorption\n10+ years of real customer reviews on Amazon backing every product\nMade in the USA to strict supplement standards',
+        brief: {
+          niche:          'Health & Wellness Supplements',
+          targetAudience: 'Health-conscious adults 25–45 interested in gut health, energy, and weight management. Amazon shoppers who trust established supplement brands.',
+          mainProblem:    'Most people don\'t associate their bloating, fatigue, brain fog, or digestive issues with parasites — yet it\'s one of the most overlooked root causes. Parastrin makes the parasite cleanse conversation approachable and science-backed.',
+          hooks: [
+            { text: 'Doctors won\'t tell you this but 1 in 3 people have a parasite and don\'t know it', type: 'curiosity' },
+            { text: 'I did a parasite cleanse for 30 days and the results shocked me', type: 'transformation' },
+            { text: 'If you have constant bloating, fatigue, or brain fog — watch this', type: 'pain-point' },
+            { text: 'The gut health trend everyone is talking about and the science behind it', type: 'curiosity' },
+            { text: 'Why I switched from random gut supplements to a proper parasite cleanse protocol', type: 'transformation' },
+            { text: 'This is what Approved Science Parastrin actually does to your digestive system', type: 'curiosity' },
+            { text: 'POV: you finally figured out why your stomach has been off for months', type: 'social-proof' },
+            { text: 'The supplement brand with 10 years of Amazon reviews that most TikTok creators haven\'t found yet', type: 'myth-bust' },
+          ],
+          frameworks: [
+            {
+              name:    'Symptom → Root Cause → Solution',
+              why:     'Parasite cleanse content converts best when the viewer recognizes their own symptoms first — make them think "that\'s literally me" before you introduce the product',
+              outline: [
+                'Hook: List 3–5 symptoms (bloating, fatigue, brain fog, skin issues, cravings) — "if you have any of these you need to hear this"',
+                'Root cause reveal: "Most of the time it\'s gut health. And one of the most overlooked causes is parasites — 1 in 3 people have them"',
+                'Introduce Parastrin: "Approved Science has a science-backed cleanse formula. 10 years on Amazon, thousands of reviews, and it\'s now on TikTok Shop"',
+                'Social proof: "I\'ve been using it for 30 days and here\'s what I noticed…"',
+                'CTA: "Link in bio — they offer free samples right now"',
+              ],
+            },
+            {
+              name:    'Trust Bridge (Amazon → TikTok Shop)',
+              why:     'Approved Science has massive Amazon credibility that most TikTok viewers don\'t know about — this bridge makes the product feel established rather than trendy',
+              outline: [
+                'Open with Amazon proof: "This brand has been on Amazon for over 10 years with thousands of verified reviews"',
+                '"They just launched on TikTok Shop and creators can get free samples right now"',
+                'Show the product: unbox it, explain what it does simply',
+                '"20% commission — I genuinely recommend this to everyone asking me about gut health"',
+                'CTA with urgency: "Free samples are limited — grab yours through my link"',
+              ],
+            },
+            {
+              name:    'Shilajit Demo & Energy Check-In',
+              why:     'Shilajit is a hot supplement on TikTok — the visual of the resin or capsules plus an energy check-in narrative is highly engaging',
+              outline: [
+                'Hook: "I\'ve been taking this for 30 days to test the energy claims — here\'s my honest update"',
+                'Explain what shilajit is: "Used in Ayurvedic medicine for thousands of years. 500mg with fulvic acid for maximum absorption"',
+                'Show Approved Science\'s version: "Vegan, non-GMO, made in the USA — and it\'s the most affordable quality shilajit I\'ve found"',
+                'Real talk: "Energy is genuinely different. I\'m not exaggerating for views — I track this stuff"',
+                'CTA: "Link in bio — they have free samples through TikTok Shop right now"',
+              ],
+            },
+          ],
+          sampleScripts: [
+            {
+              framework: 'PAS',
+              title:     'The Parasite Cleanse Reveal',
+              duration:  '~35 seconds',
+              script:    '[HOOK] If you have unexplained bloating, constant fatigue, brain fog, or weird skin stuff — I need you to hear this.\n\n[PROBLEM] Most people write these off as stress or diet. But one of the most overlooked root causes is parasites. Up to 1 in 3 people have them and genuinely don\'t know.\n\n[SOLUTION] I\'ve been using Approved Science Parastrin for 30 days. It\'s a science-backed parasite cleanse formula that\'s been on Amazon for over 10 years — thousands of real reviews. And it just launched on TikTok Shop with free samples.\n\n[CTA] Link in my bio before the free samples run out. Your gut health is worth the 30 seconds it takes to grab it.',
+            },
+            {
+              framework: 'Trust Bridge',
+              title:     'The Amazon-to-TikTok Discovery',
+              duration:  '~30 seconds',
+              script:    '[HOOK] This supplement brand has been on Amazon for over 10 years and most TikTok creators have no idea it exists.\n\n[BRIDGE] Approved Science just launched on TikTok Shop and they\'re offering free samples to creators right now. I\'m talking Shilajit, parasite cleanse, appetite support — all science-backed formulas with real Amazon proof.\n\n[DEMO] I got the Parastrin and the Shilajit. Shilajit is 500mg with fulvic acid — the version that actually absorbs. The Parastrin is a proper 30-day gut cleanse protocol.\n\n[CTA] 20% commission and free samples. Link in bio — this is the supplement program I\'ve been looking for.',
+            },
+          ],
+          talkingPoints: {
+            benefits: [
+              'Parastrin: science-backed parasite cleanse for digestive & intestinal support',
+              'Shilajit: 500mg with fulvic acid — clinically dosed for energy, strength, and focus',
+              'Appetite Suppressant: Gymnema Sylvestre + African Mango for natural weight management',
+              '10+ years of Amazon sales — real verified reviews at scale',
+              'Made in the USA to strict supplement manufacturing standards',
+              '20% commission + free samples for all creators',
+            ],
+            objections: [
+              '"Is this a real brand?" — Yes. 10+ years on Amazon, thousands of verified reviews, proven product-market fit before TikTok existed.',
+              '"Do I need a parasite cleanse?" — Frame it as gut health optimization, not something scary. The content angle is curiosity and self-care.',
+              '"Why not just buy a cheaper supplement?" — Approved Science uses quality ingredients at clinical doses. The Amazon reviews prove it delivers.',
+            ],
+            powerPhrases: [
+              '10 years of Amazon proof',
+              'Science-backed, not trendy',
+              '1 in 3 people have a parasite and don\'t know it',
+            ],
+          },
+          doAndDont: {
+            dos: [
+              'Lead with relatable symptoms — make viewers self-identify before introducing the product',
+              'Lean on the 10-year Amazon track record as your credibility anchor',
+              'Show the capsules on camera — clean, professional packaging builds trust',
+              'Be honest about your timeline — "I\'ve been taking this for X days" is more credible than "instant results"',
+              'Mention free samples — it\'s the strongest CTA for a supplement product',
+            ],
+            donts: [
+              'Don\'t make direct disease or cure claims — stick to "supports", "promotes", "may help"',
+              'Don\'t sensationalize parasites in a fear-based way — keep it educational and empowering',
+              'Don\'t skip the credibility hook — the 10-year Amazon history is what separates this from random supplements',
+              'Don\'t rush the content — supplement trust videos need at least 30 seconds to build credibility',
+            ],
+          },
+          benchmarks: { hookRate: '>30%', holdRate: '>10-15%', ctr: '>1-1.5%' },
+        },
+      };
+      saveBrands(bd);
+      console.log('[startup] Approved Science creator page configured');
+    }
+  } catch(e) { console.error('[startup] Approved Science setup error:', e.message); }
+
   try {
     const bd = loadBrands();
     const TEST_SLUG = 'tc-test';
