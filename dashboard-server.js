@@ -9846,6 +9846,7 @@ app.listen(CFG.port, () => {
         headline:        'Earn 25% Commission + Up to $2,850 in Bonuses',
         subheadline:     'Join the Trusted Rituals TikTok Shop Creator Program',
         tcCommission:    25,
+        tcHeroProductId: '1732230831415267648', // Mullein Honey Sticks
         earnPotential:   2850,
         welcomeMessage:  'You\'re officially in the Trusted Rituals Creator Program. Your sample ships May 29 — use the hooks and scripts below to make content that converts.',
         welcomeSteps:    [
