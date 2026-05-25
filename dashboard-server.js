@@ -9824,7 +9824,7 @@ app.listen(CFG.port, () => {
   try {
     const bd = loadBrands();
     const tr = (bd.clients || []).find(b => (b.name || '').toLowerCase().trim() === 'trusted rituals');
-    if (tr && !tr.creatorPage?.brief) {
+    if (tr && (!tr.creatorPage?.brief || tr.creatorPage?.incentives?.cashback?.target === 6)) {
       // Brand-level fields
       Object.assign(tr, {
         industry:       'Wellness supplements — respiratory health & lung support',
@@ -9857,7 +9857,7 @@ app.listen(CFG.port, () => {
         ],
         blitzTiers:      [{ gmv: 1000, bonus: 650 }, { gmv: 750, bonus: 500 }, { gmv: 375, bonus: 250 }],
         incentives: {
-          cashback:    { enabled: true,  amount: 100, target: 6 },
+          cashback:    { enabled: true,  amount: 100, unitsRequired: 6 },
           volumeBonus: { enabled: true,  bonus: 100,  videoCount: 10 },
           leaderboard: { enabled: true,  places: [2000], threshold: 5000 },
         },
