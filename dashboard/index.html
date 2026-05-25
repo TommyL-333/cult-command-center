@@ -11423,6 +11423,7 @@ function creatorsRender(append = false) {
   let rows = creatorsNameFilter(_creators.data);
 
   // Apply client-side filters
+  // (filteredRows is kept in sync so select-all only selects visible results)
   const f = _creators.filters;
 
   if (f.discord || f.hasName || f.hasPhone || f.min30dGmv > 0 || f.minFollowers > 0 || f.shop !== 'all') {
@@ -11469,6 +11470,9 @@ function creatorsRender(append = false) {
     total_videos:  (a, b) => (_creators.reacherMap[b.handle]?.total_videos    || 0) - (_creators.reacherMap[a.handle]?.total_videos    || 0),
   };
   if (sortFns[f.sort]) rows = [...rows].sort(sortFns[f.sort]);
+
+  // Keep filtered+sorted rows available for select-all
+  _creators.filteredRows = rows;
 
   // Update filter count badge
   const countEl = document.getElementById('creatorsFilterCount');
@@ -11601,7 +11605,8 @@ function creatorsToggleSelect(handleKey) {
 
 function creatorsSelectAll(checked) {
   if (checked) {
-    _creators.data.forEach(c => _creators.selected.add((c.handle || '').toLowerCase()));
+    // Only select rows that pass the current filters, not the entire dataset
+    (_creators.filteredRows || _creators.data).forEach(c => _creators.selected.add((c.handle || c.ghl_id || '').toLowerCase()));
   } else {
     _creators.selected.clear();
   }
