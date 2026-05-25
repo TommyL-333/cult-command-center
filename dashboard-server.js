@@ -3835,14 +3835,22 @@ app.post('/api/creators/performance', async (req, res) => {
 // GET /api/creators/ghl-map — TikTok handle → GHL contact info (10-min cache)
 // Fetches all contacts tagged "affiliate" (GHL tag filter, not text search).
 // Maps handle → {id, name, phone, email, tags, discordUsername}
-app.get('/api/creators/ghl-map', async (req, res) => {
-  try {
-    const data = await (async () => {
-      const TIKTOK_FIELD = '39UVa4ENm3OeOiafUU1c';
+// In-memory GHL map cache — populated on first request, refreshed every 30 min.
+// A single promise lock prevents concurrent builds (e.g. if the user reloads
+// mid-fetch, subsequent requests wait for the in-flight build rather than
+// starting another 200-call loop).
+let _ghlMapCache    = null;
+let _ghlMapCacheAt  = 0;
+let _ghlMapBuilding = null; // promise while build in progress
+const GHL_MAP_TTL   = 30 * 60_000;
 
-      // GHL's GET /contacts/ doesn't support tag filtering via query params in v2021-07-28.
-      // Paginate through all contacts — the TikTok handle check below naturally limits
-      // the map to creator contacts (anyone without a handle is skipped).
+app.get('/api/creators/ghl-map', async (req, res) => {
+  if (_ghlMapCache && (Date.now() - _ghlMapCacheAt) < GHL_MAP_TTL) {
+    return res.json(_ghlMapCache);
+  }
+  if (!_ghlMapBuilding) {
+    _ghlMapBuilding = (async () => {
+      const TIKTOK_FIELD = '39UVa4ENm3OeOiafUU1c';
       const allContacts = [];
       let startAfter = null;
       let startAfterId = null;
@@ -3907,8 +3915,14 @@ app.get('/api/creators/ghl-map', async (req, res) => {
           discordUsername: discordUsername,
         };
       }
-      return { map, _debug: { total_fetched: allContacts.length, mapped: Object.keys(map).length, with_phone: Object.values(map).filter(v => v.phone).length } };
-    })();
+      const result = { map, _debug: { total_fetched: allContacts.length, mapped: Object.keys(map).length, with_phone: Object.values(map).filter(v => v.phone).length } };
+      _ghlMapCache   = result;
+      _ghlMapCacheAt = Date.now();
+      return result;
+    })().finally(() => { _ghlMapBuilding = null; });
+  }
+  try {
+    const data = await _ghlMapBuilding;
     res.json(data);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
