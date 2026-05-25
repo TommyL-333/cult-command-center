@@ -452,25 +452,36 @@ async function sendCreatorTC(brand, brands, brandIdx, creatorHandle) {
     console.log(`${label} skip — no commission rate configured`); return;
   }
 
-  // 1. Fetch products from Reacher (no TikTok Shop token needed)
+  // 1. Build product list for TC
+  //    If a hero product is set on the brand, use only that one.
+  //    Otherwise fall back to all Reacher products (capped at 10).
+  const commissionDecimal = tcCommission / 100;
   let tcProducts = [];
-  try {
-    const { data: prodResp } = await axios.post(
-      `${CFG.railwayUrl}/affiliate/shops/${brand.shopId}/products`,
-      { page: 1, page_size: 20 },
-      { timeout: 15_000 }
-    );
-    const rawProducts = (prodResp?.data || []);
-    const commissionDecimal = tcCommission / 100;
-    tcProducts = rawProducts.slice(0, 10).map(p => ({
-      product_id:      String(p.product_id || p.id),
-      commission_rate: commissionDecimal,
-    }));
-  } catch(e) {
-    console.error(`${label} Reacher products fetch error:`, e.message);
+
+  if (cp.tcHeroProductId) {
+    // Use only the configured hero product
+    tcProducts = [{ product_id: String(cp.tcHeroProductId), commission_rate: commissionDecimal }];
+    console.log(`${label} using hero product ${cp.tcHeroProductId}`);
+  } else {
+    // No hero set — fetch all products from Reacher as a fallback
+    try {
+      const { data: prodResp } = await axios.post(
+        `${CFG.railwayUrl}/affiliate/shops/${brand.shopId}/products`,
+        { page: 1, page_size: 20 },
+        { timeout: 15_000 }
+      );
+      const rawProducts = prodResp?.data || [];
+      tcProducts = rawProducts.slice(0, 10).map(p => ({
+        product_id:      String(p.product_id || p.id),
+        commission_rate: commissionDecimal,
+      }));
+    } catch(e) {
+      console.error(`${label} Reacher products fetch error:`, e.message);
+    }
   }
+
   if (!tcProducts.length) {
-    console.log(`${label} skip — no products found in Reacher for shop ${brand.shopId}`); return;
+    console.log(`${label} skip — no products found for shop ${brand.shopId}`); return;
   }
 
   // 3. Route TC creation through the Railway scheduler (which holds REACHER_API_KEY)
@@ -9581,20 +9592,38 @@ app.listen(CFG.port, () => {
     }
   } catch(e) { console.error('[startup] test brand cleanup error:', e.message); }
 
-  // Backfill Reacher shopIds for known brands (idempotent — skips if already set)
+  // Backfill Reacher shopIds + TC config for known brands (idempotent — skips if already set)
   try {
-    const KNOWN_SHOP_IDS = { 'diamandia': 8595, 'trusted rituals': 8974, 'approved science': 8913 };
+    const BRAND_DEFAULTS = {
+      'diamandia':       { shopId: 8595, tc: { commission: 25, heroProductId: '1729491556857975130' } },
+      'trusted rituals': { shopId: 8974 },
+      'approved science':{ shopId: 8913 },
+    };
     const bd = loadBrands(); let dirty = false;
     for (const client of (bd.clients || [])) {
       const key = (client.name || '').toLowerCase().trim();
-      if (KNOWN_SHOP_IDS[key] && !client.shopId) {
-        client.shopId = KNOWN_SHOP_IDS[key];
+      const defaults = BRAND_DEFAULTS[key];
+      if (!defaults) continue;
+      if (defaults.shopId && !client.shopId) {
+        client.shopId = defaults.shopId;
         dirty = true;
-        console.log(`[startup] Set shopId=${KNOWN_SHOP_IDS[key]} for ${client.name}`);
+        console.log(`[startup] Set shopId=${defaults.shopId} for ${client.name}`);
+      }
+      if (defaults.tc) {
+        const cp = client.creatorPage || {};
+        if (!cp.tcCommission || !cp.tcHeroProductId) {
+          client.creatorPage = {
+            ...cp,
+            tcCommission:    cp.tcCommission    ?? defaults.tc.commission,
+            tcHeroProductId: cp.tcHeroProductId ?? defaults.tc.heroProductId,
+          };
+          dirty = true;
+          console.log(`[startup] Set TC config for ${client.name}: ${defaults.tc.commission}% commission, hero=${defaults.tc.heroProductId}`);
+        }
       }
     }
     if (dirty) saveBrands(bd);
-  } catch(e) { console.error('[startup] shopId backfill error:', e.message); }
+  } catch(e) { console.error('[startup] brand defaults backfill error:', e.message); }
 
   // Startup diagnostics — log data file sizes so we can verify persistence
   try {
