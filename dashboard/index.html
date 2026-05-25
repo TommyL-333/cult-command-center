@@ -2607,9 +2607,9 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
 
           <select id="creatorsSort" class="agent-input" style="font-size:12px;padding:6px 10px;"
             onchange="creatorsApplyFilter()">
-            <option value="total_shop_gmv">Sort: GMV</option>
+            <option value="overall_gmv">Sort: Lifetime GMV</option>
+            <option value="total_shop_gmv">Sort: Your Shops GMV</option>
             <option value="follower_count">Sort: Followers</option>
-            <option value="overall_gmv">Sort: Overall GMV</option>
             <option value="total_videos">Sort: Videos</option>
             <option value="total_views">Sort: Views</option>
           </select>
@@ -2674,7 +2674,8 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
               <th>NAME</th>
               <th style="text-align:right;">FOLLOWERS</th>
               <th>BRANDS</th>
-              <th style="text-align:right;" title="All-time GMV for your shops">YOUR SHOPS GMV</th>
+              <th style="text-align:right;" title="Creator's lifetime TikTok GMV across all shops globally">LIFETIME GMV</th>
+              <th style="text-align:right;" title="All-time GMV driven through your shops specifically">YOUR SHOPS GMV</th>
               <th style="text-align:right;" title="GMV in the last 30 days">30D GMV</th>
               <th style="text-align:right;">VIDEOS</th>
               <th style="text-align:center;">DISCORD</th>
@@ -2682,7 +2683,7 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
             </tr>
           </thead>
           <tbody id="creatorsTableBody">
-            <tr><td colspan="10" style="text-align:center;padding:40px;color:var(--muted);">Click Community tab to load creators…</td></tr>
+            <tr><td colspan="11" style="text-align:center;padding:40px;color:var(--muted);">Click Community tab to load creators…</td></tr>
           </tbody>
         </table>
       </div>
@@ -11209,7 +11210,7 @@ const _creators = {
   filters: {
     shop: 'all',
     search: '',
-    sort: 'total_shop_gmv',
+    sort: 'overall_gmv',
     minFollowers: 0,
     discord: '',
     hasName: false,
@@ -11235,7 +11236,7 @@ function creatorsApplyFilter() {
   // Server-side filters → re-fetch from Reacher
   _creators.filters.shop         = document.getElementById('creatorsShopFilter')?.value   || 'all';
   _creators.filters.search       = document.getElementById('creatorsSearch')?.value        || '';
-  _creators.filters.sort         = document.getElementById('creatorsSort')?.value          || 'total_shop_gmv';
+  _creators.filters.sort         = document.getElementById('creatorsSort')?.value          || 'overall_gmv';
   _creators.filters.minFollowers = Number(document.getElementById('creatorsMinFollowers')?.value) || 0;
   // Also sync client-side filters while we're here
   _creatorsReadClientFilters();
@@ -11344,7 +11345,7 @@ async function creatorsLoad(append = false) {
 
   } catch (e) {
     const body = document.getElementById('creatorsTableBody');
-    if (body) body.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--red);">Error: ${x(e.message)}</td></tr>`;
+    if (body) body.innerHTML = `<tr><td colspan="11" style="text-align:center;padding:32px;color:var(--red);">Error: ${x(e.message)}</td></tr>`;
   } finally {
     _creators.loading = false;
   }
@@ -11478,7 +11479,7 @@ function creatorsRender(append = false) {
   }
 
   if (!rows.length) {
-    body.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:var(--muted);">No creators match the current filters</td></tr>`;
+    body.innerHTML = `<tr><td colspan="11" style="text-align:center;padding:40px;color:var(--muted);">No creators match the current filters</td></tr>`;
     creatorsUpdateActionBar();
     return;
   }
@@ -11512,6 +11513,7 @@ function creatorsRender(append = false) {
       : `<span style="color:#f59e0b;font-size:10px" title="Follower data not available from Reacher">—</span>`;
 
     // GMV — show real value or a muted dash
+    const lifetimeGmv = c.overall_gmv > 0 ? fmtMoney(c.overall_gmv) : `<span style="color:var(--muted)">—</span>`;
     const shopGmv = c.total_shop_gmv > 0 ? fmtMoney(c.total_shop_gmv) : `<span style="color:var(--muted)">—</span>`;
     const perf    = _creators.perf30d[handleKey];
     const gmv30d  = perf
@@ -11563,6 +11565,7 @@ function creatorsRender(append = false) {
       <td>${creatorName}</td>
       <td style="text-align:right;font-variant-numeric:tabular-nums;">${followers}</td>
       <td>${brandPills}</td>
+      <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--teal);opacity:0.85;">${lifetimeGmv}</td>
       <td style="text-align:right;font-variant-numeric:tabular-nums;color:var(--gold);">${shopGmv}</td>
       <td style="text-align:right;font-variant-numeric:tabular-nums;color:${perf ? 'var(--green)' : 'var(--muted)'};">${gmv30d}</td>
       <td style="text-align:right;font-variant-numeric:tabular-nums;">${videos}</td>
