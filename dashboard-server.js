@@ -8980,10 +8980,13 @@ function renderCreatorPage(brand, cp) {
     const topPrize = places[0];
     if (topPrize) {
       const ordinals = ['1st', '2nd', '3rd'];
-      const tierStr = places.length > 1
-        ? places.map((p, i) => `${ordinals[i] || `${i+1}th`} $${p}`).join(' · ')
-        : `$${topPrize} top prize`;
-      rewardLines.push({ val: tierStr, desc: `monthly leaderboard${inc.leaderboard.threshold ? ` — $${Number(inc.leaderboard.threshold).toLocaleString()} min GMV to qualify` : ''}` });
+      const extraTiers = places.length > 1
+        ? places.slice(1).map((p, i) => `${ordinals[i + 1] || `${i+2}nd`} $${p}`).join(', ')
+        : '';
+      const descParts = [`monthly leaderboard`];
+      if (inc.leaderboard.threshold) descParts.push(`$${Number(inc.leaderboard.threshold).toLocaleString()} min GMV`);
+      if (extraTiers) descParts.push(extraTiers);
+      rewardLines.push({ val: `$${topPrize} top prize`, desc: descParts.join(' — ') });
     }
   }
 
