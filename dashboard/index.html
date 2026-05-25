@@ -11511,9 +11511,10 @@ function creatorsRender(append = false) {
   const html = pageRows.map(c => {
     const handle    = c.handle || '';
     const handleKey = handle.toLowerCase();
+    const selKey    = c.ghl_id || handleKey; // always unique — ghl_id is the canonical selection key
     const ttUrl     = `https://www.tiktok.com/@${handle}`;
     const reacher   = _creators.reacherMap[handleKey];
-    const isSel     = _creators.selected.has(handleKey);
+    const isSel     = _creators.selected.has(selKey);
 
     // Followers — from Reacher enrichment
     const followerRaw = reacher?.follower_count;
@@ -11559,7 +11560,7 @@ function creatorsRender(append = false) {
 
     return `<tr style="${isSel ? 'background:rgba(0,212,200,0.06);' : ''}">
       <td style="width:28px;padding:8px 6px;">
-        <input type="checkbox" ${isSel ? 'checked' : ''} onchange="creatorsToggleSelect('${handleKey}')"
+        <input type="checkbox" ${isSel ? 'checked' : ''} onchange="creatorsToggleSelect('${selKey}')"
           style="width:14px;height:14px;accent-color:var(--teal);cursor:pointer;">
       </td>
       <td>${creatorName}</td>
@@ -11606,7 +11607,7 @@ function creatorsToggleSelect(handleKey) {
 function creatorsSelectAll(checked) {
   if (checked) {
     // Only select rows that pass the current filters, not the entire dataset
-    (_creators.filteredRows || _creators.data).forEach(c => _creators.selected.add((c.handle || c.ghl_id || '').toLowerCase()));
+    (_creators.filteredRows || _creators.data).forEach(c => _creators.selected.add(c.ghl_id || (c.handle || '').toLowerCase()));
   } else {
     _creators.selected.clear();
   }
@@ -11620,8 +11621,8 @@ function creatorsUpdateActionBar() {
   const n = _creators.selected.size;
   if (n > 0) {
     bar.style.display = 'flex';
-    const smsable = [..._creators.selected].filter(h => {
-      const c = _creators.data.find(d => (d.handle || '').toLowerCase() === h);
+    const smsable = [..._creators.selected].filter(key => {
+      const c = _creators.data.find(d => d.ghl_id === key || (d.handle || '').toLowerCase() === key);
       return c?.phone;
     }).length;
     countEl.textContent = `${n} selected${smsable < n ? ` · ${smsable} have phone numbers` : ''}`;
@@ -11635,9 +11636,9 @@ function creatorsSmsOpen() {
   if (!modal) return;
 
   // Build list of selected creators from primary GHL data
-  const recipients = [..._creators.selected].map(h => {
-    const c = _creators.data.find(d => (d.handle || '').toLowerCase() === h);
-    return c ? { id: c.ghl_id, name: c.name, phone: c.phone, handle: h, hasPhone: !!c.phone } : null;
+  const recipients = [..._creators.selected].map(key => {
+    const c = _creators.data.find(d => d.ghl_id === key || (d.handle || '').toLowerCase() === key);
+    return c ? { id: c.ghl_id, name: c.name, phone: c.phone, handle: c.handle || '', hasPhone: !!c.phone } : null;
   }).filter(Boolean);
 
   const withPhone    = recipients.filter(r => r.hasPhone);
@@ -11673,7 +11674,7 @@ async function creatorsSmsSend() {
   if (!msg) return;
 
   const contacts = [..._creators.selected]
-    .map(h => _creators.data.find(d => (d.handle || '').toLowerCase() === h))
+    .map(key => _creators.data.find(d => d.ghl_id === key || (d.handle || '').toLowerCase() === key))
     .filter(c => c?.phone)
     .map(c => ({ id: c.ghl_id, name: c.name, phone: c.phone }));
 
