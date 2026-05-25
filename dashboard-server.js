@@ -3868,8 +3868,9 @@ app.get('/api/creators/ghl-map', async (req, res) => {
         if (!startAfterId) break;
       }
 
-      // Build handle → contact map
+      // Build handle → contact map AND affiliateList in one pass
       const map = {};
+      const affiliateList = [];
       for (const c of allContacts) {
         // Determine TikTok handle: custom field URL takes priority, then contactName
         let handle = '';
@@ -3887,7 +3888,6 @@ app.get('/api/creators/ghl-map', async (req, res) => {
             handle = candidate.toLowerCase();
           }
         }
-        if (!handle) continue;
 
         // Extract discord username from discord: tags
         let discordUsername = '';
@@ -3906,16 +3906,34 @@ app.get('/api/creators/ghl-map', async (req, res) => {
           || firstName.includes(' ')
           || (firstName && firstName.toLowerCase() !== handle && !/^[\w.]+$/.test(firstName));
         const fullName = looksLikeName ? rawFull : '';
-        map[handle] = {
-          id:              c.id,
-          name:            fullName,
-          phone:           c.phone || '',
-          email:           c.email || '',
-          tags:            c.tags  || [],
-          discordUsername: discordUsername,
-        };
+
+        // Add to handle map (only contacts with a resolved handle)
+        if (handle) {
+          map[handle] = {
+            id:              c.id,
+            name:            fullName,
+            phone:           c.phone || '',
+            email:           c.email || '',
+            tags:            c.tags  || [],
+            discordUsername: discordUsername,
+          };
+        }
+
+        // Add to affiliateList if tagged "affiliate" (case-insensitive)
+        const isAffiliate = (c.tags || []).some(t => t.toLowerCase() === 'affiliate');
+        if (isAffiliate) {
+          affiliateList.push({
+            ghl_id:          c.id,
+            handle:          handle || '',
+            name:            fullName,
+            phone:           c.phone || '',
+            email:           c.email || '',
+            tags:            c.tags  || [],
+            discordUsername: discordUsername,
+          });
+        }
       }
-      const result = { map, _debug: { total_fetched: allContacts.length, mapped: Object.keys(map).length, with_phone: Object.values(map).filter(v => v.phone).length } };
+      const result = { map, affiliateList, _debug: { total_fetched: allContacts.length, mapped: Object.keys(map).length, affiliates: affiliateList.length, with_phone: Object.values(map).filter(v => v.phone).length } };
       _ghlMapCache   = result;
       _ghlMapCacheAt = Date.now();
       return result;
@@ -3924,6 +3942,58 @@ app.get('/api/creators/ghl-map', async (req, res) => {
   try {
     const data = await _ghlMapBuilding;
     res.json(data);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/creators/affiliate-list — returns all GHL affiliate contacts from cache
+app.get('/api/creators/affiliate-list', async (req, res) => {
+  try {
+    // Wait for in-flight build if needed
+    if (!_ghlMapCache && _ghlMapBuilding) await _ghlMapBuilding;
+    if (!_ghlMapCache) return res.status(503).json({ error: 'GHL map not loaded yet — try again in a moment' });
+    const list = _ghlMapCache.affiliateList || [];
+    res.json({ data: list, total: list.length });
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/creators/reacher-enrichment — all Reacher creators as handle→data map (30-min cache)
+let _reacherEnrichCache   = null;
+let _reacherEnrichCacheAt = 0;
+const REACHER_ENRICH_TTL  = 30 * 60_000;
+
+app.get('/api/creators/reacher-enrichment', async (req, res) => {
+  try {
+    if (_reacherEnrichCache && (Date.now() - _reacherEnrichCacheAt) < REACHER_ENRICH_TTL) {
+      return res.json(_reacherEnrichCache);
+    }
+    const r = await axios.post(
+      `${CFG.railwayUrl}/affiliate/creators/all`,
+      { shop: 'all', page: 1, page_size: 5000 },
+      { timeout: 120_000 }
+    );
+    const creators = r.data?.data || r.data || [];
+    const map = {};
+    const shopSet = new Map();
+    for (const c of creators) {
+      const h = (c.creator_handle || '').replace(/^@/, '').toLowerCase();
+      if (!h) continue;
+      map[h] = {
+        follower_count:  c.follower_count  || 0,
+        overall_gmv:     c.overall_gmv     || 0,
+        total_shop_gmv:  c.total_shop_gmv  || 0,
+        total_videos:    c.total_videos    || 0,
+        total_views:     c.total_views     || 0,
+        shops:           c.shops           || [],
+      };
+      for (const s of (c.shops || [])) {
+        if (s.shop_name && !shopSet.has(s.shop_name)) shopSet.set(s.shop_name, s);
+      }
+    }
+    const shops = [...shopSet.values()];
+    const result = { map, shops };
+    _reacherEnrichCache   = result;
+    _reacherEnrichCacheAt = Date.now();
+    res.json(result);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
