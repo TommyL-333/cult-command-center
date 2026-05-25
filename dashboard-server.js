@@ -438,32 +438,66 @@ app.get('/creators/:brandSlug', (req, res) => {
 // Fetches the brand's enrolled TikTok Shop affiliate products, builds a
 // single-creator TC automation in Reacher, and fires it off.
 // Runs fire-and-forget — errors are logged but never surface to the creator.
-async function sendCreatorTC(brand, brands, brandIdx, creatorHandle) {
+async function sendCreatorTC(brand, brands, brandIdx, creatorHandle, tiktokOpenId = null) {
   const label = `[creator-tc:${brand.name}→@${creatorHandle}]`;
   const cp = brand.creatorPage || {};
 
-  // Need a Reacher shopId — tcCommission falls back to brand.commissionRate if not set on creator page
-  if (!brand.shopId) {
-    console.log(`${label} skip — no Reacher shopId on brand`); return;
-  }
   // tcCommission is a percentage (e.g. 25 = 25%). Fall back to brand.commissionRate (decimal, e.g. 0.1)
   const tcCommission = cp.tcCommission || (brand.commissionRate ? Math.round(brand.commissionRate * 100) : 0);
   if (!tcCommission) {
     console.log(`${label} skip — no commission rate configured`); return;
   }
 
-  // 1. Build product list for TC
-  //    If a hero product is set on the brand, use only that one.
-  //    Otherwise fall back to all Reacher products (capped at 10).
   const commissionDecimal = tcCommission / 100;
-  let tcProducts = [];
 
+  // ── Path A: Direct TikTok Shop invite (requires creator open_id + brand shop token) ──
+  // Cleaner, faster, no Reacher dependency — used when creator connected TikTok via OAuth
+  if (tiktokOpenId) {
+    const shopTok = brand.tiktokShopToken;
+    if (!shopTok?.access_token) {
+      console.log(`${label} no brand TikTok Shop token — falling through to Reacher`);
+    } else {
+      // Build product list (hero product or fallback to first product in brand's TTS catalog)
+      let productIds = [];
+      if (cp.tcHeroProductId) {
+        productIds = [String(cp.tcHeroProductId)];
+        console.log(`${label} TikTok direct invite: hero product ${cp.tcHeroProductId}`);
+      } else {
+        try {
+          const prodResp = await ttsBrandPost(brand, brands, brandIdx, '/affiliate/seller/202309/products/search', { page_size: 1 });
+          const first = prodResp?.data?.products?.[0];
+          if (first?.product_id) productIds = [String(first.product_id)];
+        } catch(e) { console.error(`${label} TTS product fetch error:`, e.message); }
+      }
+      if (!productIds.length) {
+        console.log(`${label} no products found — skipping direct invite`); return;
+      }
+      try {
+        const resp = await ttsBrandPost(brand, brands, brandIdx, '/affiliate/seller/202309/creators/invite', {
+          creator_open_id: tiktokOpenId,
+          product_ids:     productIds,
+          commission_rate: commissionDecimal,
+        });
+        console.log(`${label} TikTok direct TC invite sent:`, resp?.data || 'ok');
+        return;
+      } catch(e) {
+        console.error(`${label} TikTok direct invite error:`, e.response?.data || e.message);
+        console.log(`${label} falling through to Reacher TC`);
+      }
+    }
+  }
+
+  // ── Path B: Reacher Target Collaboration (handle-based, no open_id needed) ──
+  if (!brand.shopId) {
+    console.log(`${label} skip — no Reacher shopId on brand`); return;
+  }
+
+  // Build product list
+  let tcProducts = [];
   if (cp.tcHeroProductId) {
-    // Use only the configured hero product
     tcProducts = [{ product_id: String(cp.tcHeroProductId), commission_rate: commissionDecimal }];
-    console.log(`${label} using hero product ${cp.tcHeroProductId}`);
+    console.log(`${label} Reacher TC: hero product ${cp.tcHeroProductId}`);
   } else {
-    // No hero set — fetch all products from Reacher as a fallback
     try {
       const { data: prodResp } = await axios.post(
         `${CFG.railwayUrl}/affiliate/shops/${brand.shopId}/products`,
@@ -484,7 +518,6 @@ async function sendCreatorTC(brand, brands, brandIdx, creatorHandle) {
     console.log(`${label} skip — no products found for shop ${brand.shopId}`); return;
   }
 
-  // 3. Route TC creation through the Railway scheduler (which holds REACHER_API_KEY)
   const message = `Hi! We'd love to collaborate with you on ${brand.name}. We offer ${tcCommission}% commission on our TikTok Shop products — click to view the details and accept the invite!`;
   try {
     const { data } = await axios.post(`${CFG.railwayUrl}/affiliate/tc-invite`, {
@@ -495,7 +528,7 @@ async function sendCreatorTC(brand, brands, brandIdx, creatorHandle) {
       message,
       commission: tcCommission,
     }, { timeout: 20_000 });
-    console.log(`${label} TC automation created:`, data?.automation_id || 'ok');
+    console.log(`${label} Reacher TC automation created:`, data?.automation_id || 'ok');
   } catch(e) {
     console.error(`${label} TC invite error:`, e.response?.data || e.message);
   }
@@ -504,7 +537,7 @@ async function sendCreatorTC(brand, brands, brandIdx, creatorHandle) {
 // POST /api/creator-pages/submit — public creator interest form submission
 app.post('/api/creator-pages/submit', express.json(), async (req, res) => {
   try {
-    const { brandSlug, name, firstName: fFirst, lastName: fLast, email, phone, tiktokHandle, discordUsername, followerRange, gmv, niche, message } = req.body || {};
+    const { brandSlug, name, firstName: fFirst, lastName: fLast, email, phone, tiktokHandle, tiktokOpenId, discordUsername, followerRange, gmv, niche, message } = req.body || {};
     // Support both "name" (full name) and "firstName"/"lastName" separately
     let firstName = fFirst || '';
     let lastName  = fLast  || '';
@@ -611,7 +644,8 @@ app.post('/api/creator-pages/submit', express.json(), async (req, res) => {
     // Auto-send TC invite (fire-and-forget)
     if (handle) {
       const brandIdx = brands.clients.findIndex(b => b.creatorPage?.slug === brandSlug);
-      sendCreatorTC(brand, brands, brandIdx, handle)
+      const openId   = (tiktokOpenId || '').trim() || null;
+      sendCreatorTC(brand, brands, brandIdx, handle, openId)
         .catch(e => console.error('[creator-pages] TC fire error:', e.message));
     }
 
@@ -620,6 +654,92 @@ app.post('/api/creator-pages/submit', express.json(), async (req, res) => {
   } catch(e) {
     console.error('[creator-pages/submit]', e.response?.data || e.message);
     res.status(500).json({ ok: false, error: 'Submission failed — please try again' });
+  }
+});
+
+// ── Creator page TikTok Display API OAuth — registered BEFORE requireAuth ─────
+// Allows creators to connect their TikTok account via a popup on the creator page.
+// The callback postMessages their open_id back to the parent window.
+
+// GET /api/creator-tiktok/auth?slug=SLUG — opens as a popup, starts TikTok OAuth
+app.get('/api/creator-tiktok/auth', (req, res) => {
+  const { slug } = req.query;
+  if (!slug) return res.status(400).send('<h2>Missing slug</h2>');
+  const clientKey = process.env.TIKTOK_CLIENT_KEY;
+  if (!clientKey) return res.status(500).send('<h2>TikTok auth not configured on server</h2>');
+  const brands = loadBrands();
+  const brand  = (brands.clients || []).find(b => b.creatorPage?.slug === slug);
+  if (!brand || !brand.creatorPage?.showTikTokConnect) return res.status(404).send('<h2>Page not found</h2>');
+
+  const state = crypto.randomBytes(20).toString('hex');
+  creatorTikTokStates.set(state, { slug, ts: Date.now() });
+  // Prune states older than 10 minutes
+  for (const [k, v] of creatorTikTokStates) { if (Date.now() - v.ts > 600_000) creatorTikTokStates.delete(k); }
+
+  const redirectUri = process.env.CREATOR_TIKTOK_REDIRECT_URI || `${CREATOR_BASE_URL}/api/creator-tiktok/callback`;
+  const params = new URLSearchParams({
+    client_key:    clientKey,
+    scope:         'user.info.basic',
+    response_type: 'code',
+    redirect_uri:  redirectUri,
+    state,
+  });
+  res.redirect(`https://www.tiktok.com/v2/auth/authorize/?${params.toString()}`);
+});
+
+// GET /api/creator-tiktok/callback — TikTok redirects here with auth code
+// Exchanges code for access token, extracts open_id, postMessages back to parent popup opener
+app.get('/api/creator-tiktok/callback', async (req, res) => {
+  const { code, state, error, error_description } = req.query;
+  const errPage = (msg) => `<!DOCTYPE html><html><head><title>TikTok Auth</title></head><body style="font-family:sans-serif;text-align:center;padding:60px;background:#12101a;color:#fff">
+    <p style="color:#ff5b5b">${msg}</p>
+    <script>window.opener&&window.opener.postMessage({tiktokError:${JSON.stringify(msg)}},'*');setTimeout(()=>window.close(),2000);</script>
+  </body></html>`;
+
+  if (error) return res.send(errPage(error_description || error));
+
+  const stateData = creatorTikTokStates.get(state);
+  if (!stateData) return res.send(errPage('Session expired — please try connecting again.'));
+  creatorTikTokStates.delete(state);
+
+  const clientKey   = process.env.TIKTOK_CLIENT_KEY;
+  const clientSecret = process.env.TIKTOK_CLIENT_SECRET;
+  const redirectUri = process.env.CREATOR_TIKTOK_REDIRECT_URI || `${CREATOR_BASE_URL}/api/creator-tiktok/callback`;
+
+  try {
+    const { data: tok } = await axios.post(
+      'https://open.tiktokapis.com/v2/oauth/token/',
+      new URLSearchParams({ client_key: clientKey, client_secret: clientSecret, code, grant_type: 'authorization_code', redirect_uri: redirectUri }),
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+    );
+    if (tok.error) throw new Error(tok.error_description || tok.error);
+
+    const openId = tok.open_id || '';
+
+    // Fetch the creator's TikTok handle from Display API
+    let tiktokHandle = '';
+    try {
+      const { data: uInfo } = await axios.get('https://open.tiktokapis.com/v2/user/info/', {
+        headers: { Authorization: `Bearer ${tok.access_token}` },
+        params:  { fields: 'open_id,username,display_name' },
+      });
+      tiktokHandle = uInfo?.data?.user?.username || uInfo?.data?.user?.display_name || '';
+    } catch(_) {}
+
+    res.send(`<!DOCTYPE html><html><head><title>TikTok Connected</title></head><body style="font-family:sans-serif;text-align:center;padding:60px;background:#12101a;color:#fff">
+      <h2 style="color:#00f2ea">TikTok Connected!</h2>
+      ${tiktokHandle ? `<p>@${tiktokHandle}</p>` : ''}
+      <p style="color:#7a7268;font-size:13px">Closing window...</p>
+      <script>
+        if (window.opener) {
+          window.opener.postMessage({ tiktokOpenId: ${JSON.stringify(openId)}, tiktokHandle: ${JSON.stringify(tiktokHandle)} }, '*');
+          setTimeout(() => window.close(), 800);
+        }
+      </script>
+    </body></html>`);
+  } catch(e) {
+    console.error('[creator-tiktok/callback] error:', e.message);
+    res.send(errPage('Connection failed: ' + e.message));
   }
 });
 
@@ -2384,7 +2504,8 @@ function recordSnap(platform, handle, metrics) {
 
 // ─── TikTok token helpers ──────────────────────────────────────────────────────
 const TIKTOK_API_BASE = 'https://open.tiktokapis.com/v2';
-const tiktokAuthState = new Map(); // PKCE state store (short-lived, in-memory)
+const tiktokAuthState     = new Map(); // PKCE state store (short-lived, in-memory)
+const creatorTikTokStates = new Map(); // State store for creator page TikTok Display API OAuth
 
 function loadTikTokTokens() {
   try { if (fs.existsSync(TIKTOK_TOKENS_FILE)) return JSON.parse(fs.readFileSync(TIKTOK_TOKENS_FILE, 'utf8')); }
@@ -8741,7 +8862,7 @@ function extractTikTokVideoId(url) {
 
 function renderOpportunitiesPage() {
   const brands = loadBrands();
-  const opportunities = (brands.clients || []).filter(b => b.creatorPage?.slug && b.creatorPage?.active !== false);
+  const opportunities = (brands.clients || []).filter(b => b.creatorPage?.slug && b.creatorPage?.active !== false && b.creatorPage?.listed !== false);
 
   const cards = opportunities.map(brand => {
     const cp         = brand.creatorPage;
@@ -8938,6 +9059,19 @@ ${rewardLines.length ? `
           <input name="discordUsername" placeholder="yourname">
           <div class="f-hint">Needed to unlock your Verified Creator role.</div>
         </div>
+        ${cp.showTikTokConnect ? `
+        <input type="hidden" name="tiktokOpenId" id="tiktokOpenIdField">
+        <div class="f-row" style="margin-top:4px">
+          <label>TikTok Account <span style="font-size:10px;color:rgba(255,255,255,.4);font-weight:500">(optional — speeds up your TC invite)</span></label>
+          <button type="button" id="ttConnectBtn" onclick="connectTikTok()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:13px 18px;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.12);border-radius:10px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;transition:border-color .2s">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.28 6.28 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.82a8.18 8.18 0 004.78 1.52V6.89a4.85 4.85 0 01-1.01-.2z"/></svg>
+            Connect TikTok
+          </button>
+          <div id="ttConnectedBadge" style="display:none;align-items:center;gap:8px;padding:10px 14px;background:rgba(0,242,234,.08);border:1px solid rgba(0,242,234,.25);border-radius:10px;color:#00f2ea;font-size:13px;font-weight:600;margin-top:6px">
+            <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+            <span id="ttHandleDisplay">TikTok Connected</span>
+          </div>
+        </div>` : ''}
         <div class="f-err" id="cpErr"></div>
         <button type="submit" class="btn-submit" id="cpBtn">Join Now</button>
       </form>
@@ -8948,6 +9082,35 @@ ${rewardLines.length ? `
 <footer>Powered by <a href="https://cultcontent.cc" target="_blank">Cult Content</a> — TikTok Shop Creator Agency</footer>
 
 <script>
+${cp.showTikTokConnect ? `
+var _ttOpenId = '';
+function connectTikTok() {
+  var popup = window.open('/api/creator-tiktok/auth?slug=${cp.slug}', 'tiktok-auth', 'width=520,height=680,scrollbars=yes');
+  if (!popup) { alert('Please allow popups for this site to connect TikTok.'); return; }
+  function onMsg(e) {
+    if (!e.data) return;
+    if (e.data.tiktokOpenId) {
+      _ttOpenId = e.data.tiktokOpenId;
+      document.getElementById('tiktokOpenIdField').value = _ttOpenId;
+      var badge = document.getElementById('ttConnectedBadge');
+      var btn   = document.getElementById('ttConnectBtn');
+      badge.style.display = 'flex';
+      btn.style.display = 'none';
+      if (e.data.tiktokHandle) {
+        document.getElementById('ttHandleDisplay').textContent = '@' + e.data.tiktokHandle + ' connected ✓';
+        // Pre-fill TikTok handle field if empty
+        var hField = document.querySelector('input[name="tiktokHandle"]');
+        if (hField && !hField.value) hField.value = '@' + e.data.tiktokHandle;
+      }
+      window.removeEventListener('message', onMsg);
+    } else if (e.data.tiktokError) {
+      console.warn('TikTok connect error:', e.data.tiktokError);
+      window.removeEventListener('message', onMsg);
+    }
+  }
+  window.addEventListener('message', onMsg);
+}
+` : ''}
 document.getElementById('cpForm').addEventListener('submit', async function(e) {
   e.preventDefault();
   var btn = document.getElementById('cpBtn');
@@ -9624,6 +9787,42 @@ app.listen(CFG.port, () => {
     }
     if (dirty) saveBrands(bd);
   } catch(e) { console.error('[startup] brand defaults backfill error:', e.message); }
+
+  // Ensure TikTok TC test brand exists (hidden from /creators index via listed:false)
+  try {
+    const bd = loadBrands();
+    const TEST_SLUG = 'tc-test';
+    const exists = (bd.clients || []).some(b => b.creatorPage?.slug === TEST_SLUG);
+    if (!exists) {
+      bd.clients = bd.clients || [];
+      bd.clients.push({
+        id:        'tctestbrand001',
+        createdAt: new Date().toISOString(),
+        name:      'TC Test Brand',
+        industry:  'Internal test — TikTok OAuth + direct TC invite flow',
+        products:  'Test only',
+        audience:  'Internal',
+        voice:     'Internal',
+        contentPillars: 'Internal',
+        proofPoints:    'Internal',
+        cta:            'Test',
+        tiktokHandle:   'TBD',
+        shopId:         8595, // Diamandia shop — for Reacher fallback testing
+        creatorPage: {
+          slug:             TEST_SLUG,
+          active:           true,
+          listed:           false,  // Hidden from /creators index
+          showTikTokConnect: true,
+          accentColor:      '#00f2ea',
+          headline:         'TC Test — Connect TikTok',
+          tcCommission:     25,
+          tcHeroProductId:  '1729491556857975130',
+        },
+      });
+      saveBrands(bd);
+      console.log(`[startup] Created hidden test brand: /creators/${TEST_SLUG}`);
+    }
+  } catch(e) { console.error('[startup] TC test brand setup error:', e.message); }
 
   // Startup diagnostics — log data file sizes so we can verify persistence
   try {
