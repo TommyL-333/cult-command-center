@@ -10122,8 +10122,9 @@ app.listen(CFG.port, () => {
   try {
     const bd = loadBrands();
     const as = (bd.clients || []).find(b => (b.name || '').toLowerCase().trim() === 'approved science');
-    const asHasShilajit = (as?.creatorPage?.catalogProducts || []).some(p => /shilajit/i.test(p.name));
-    if (as && (!as.creatorPage?.productRequestEnabled || asHasShilajit)) {
+    const asNeedsUpdate = !as?.creatorPage?.productRequestEnabled
+      || (as?.creatorPage?.catalogProducts || []).some(p => /shilajit|parastrin/i.test(p.name));
+    if (as && asNeedsUpdate) {
       const existingCp = as.creatorPage || {};
       Object.assign(as, {
         industry:       'Health supplements — 10-year-old brand, Amazon-first, expanding to TikTok Shop',
@@ -10164,9 +10165,7 @@ app.listen(CFG.port, () => {
           leaderboardUrl:   existingCp.campaigns?.leaderboardUrl   || '',
         },
         productRequestEnabled: true,
-        catalogProducts: [
-          { name: 'Parastrin — Parasite Cleanse', description: '60 capsules · science-backed digestive & intestinal support formula' },
-        ],
+        catalogProducts: [], // Parastrin is the default for all creators — this form is for requesting other catalog products
         products: [
           { name: 'Parastrin (60 Capsules)', description: 'Science-backed parasite cleanse and digestive support formula', url: existingCp.products?.[0]?.url || '' },
         ],
