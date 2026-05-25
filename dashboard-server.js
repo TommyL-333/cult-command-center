@@ -665,8 +665,8 @@ app.post('/api/creator-pages/submit', express.json(), async (req, res) => {
 app.get('/api/creator-tiktok/auth', (req, res) => {
   const { slug } = req.query;
   if (!slug) return res.status(400).send('<h2>Missing slug</h2>');
-  const clientKey = process.env.TIKTOK_CLIENT_KEY;
-  if (!clientKey) return res.status(500).send('<h2>TikTok auth not configured on server</h2>');
+  const clientKey = process.env.CREATOR_TIKTOK_CLIENT_KEY;
+  if (!clientKey) return res.status(500).send('<h2>TikTok creator auth not configured — add CREATOR_TIKTOK_CLIENT_KEY to env vars</h2>');
   const brands = loadBrands();
   const brand  = (brands.clients || []).find(b => b.creatorPage?.slug === slug);
   if (!brand || !brand.creatorPage?.showTikTokConnect) return res.status(404).send('<h2>Page not found</h2>');
@@ -702,9 +702,9 @@ app.get('/api/creator-tiktok/callback', async (req, res) => {
   if (!stateData) return res.send(errPage('Session expired — please try connecting again.'));
   creatorTikTokStates.delete(state);
 
-  const clientKey   = process.env.TIKTOK_CLIENT_KEY;
-  const clientSecret = process.env.TIKTOK_CLIENT_SECRET;
-  const redirectUri = process.env.CREATOR_TIKTOK_REDIRECT_URI || `${CREATOR_BASE_URL}/api/creator-tiktok/callback`;
+  const clientKey    = process.env.CREATOR_TIKTOK_CLIENT_KEY;
+  const clientSecret = process.env.CREATOR_TIKTOK_CLIENT_SECRET;
+  const redirectUri  = process.env.CREATOR_TIKTOK_REDIRECT_URI || `${CREATOR_BASE_URL}/api/creator-tiktok/callback`;
 
   try {
     const { data: tok } = await axios.post(
