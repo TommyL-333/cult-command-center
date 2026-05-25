@@ -10264,10 +10264,10 @@ app.listen(CFG.port, () => {
           doAndDont: {
             dos: [
               'Lead with relatable symptoms — make viewers self-identify before introducing the product',
-              'Lean on the 10-year Amazon track record as your credibility anchor',
-              'Show the capsules on camera — clean, professional packaging builds trust',
-              'Be honest about your timeline — "I\'ve been taking this for X days" is more credible than "instant results"',
-              'Mention free samples — it\'s the strongest CTA for a supplement product',
+              'Use your personal results as the credibility anchor — "I\'ve been taking this for X days and here\'s what I noticed" outperforms any brand claim',
+              'Show the capsules on camera — the physical product on screen increases purchase intent',
+              'Be honest about your timeline — gradual, real progress is more convincing than overnight transformations',
+              'Drive to the shop link with urgency — limited stock, a discount, or a time-bound offer converts better than a generic "link in bio"',
             ],
             donts: [
               'Don\'t make direct disease or cure claims — stick to "supports", "promotes", "may help"',
