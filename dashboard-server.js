@@ -3849,20 +3849,17 @@ function _ensureGhlMap() {
   if (_ghlMapCache && (Date.now() - _ghlMapCacheAt) < GHL_MAP_TTL) return Promise.resolve(_ghlMapCache);
   if (!_ghlMapBuilding) {
     _ghlMapBuilding = (async () => {
-      // Dynamically resolve the TikTok handle custom field ID so we don't rely
-      // on a hardcoded UUID that could be wrong or differ between locations.
-      let TIKTOK_FIELD = '39UVa4ENm3OeOiafUU1c'; // fallback
-      try {
-        const { data: cfData } = await ghl.get(`/locations/${CFG.locationId}/customFields`);
-        const ttField = (cfData?.customFields || []).find(f =>
-          (f.fieldKey || f.key || '').toLowerCase() === 'tiktok_handle' ||
-          (f.name || '').toLowerCase().includes('tiktok')
-        );
-        if (ttField?.id) TIKTOK_FIELD = ttField.id;
-        console.log('[ghl-map] tiktok custom field:', ttField?.id, ttField?.name, ttField?.fieldKey);
-      } catch (e) {
-        console.warn('[ghl-map] could not fetch custom fields, using hardcoded UUID:', e.message);
-      }
+      // Known TikTok-related custom field IDs for this GHL location.
+      // tiktok_handle  → trnSmiM9oilkdQSInRPn  (primary — set by creator forms)
+      // tiktok_username→ e6rnLj4npciYrjOd4OwC  (fallback)
+      // tiktok_profile_link → fWDq18dESQmKaiNwgJWU (fallback, may be full URL)
+      // tiktok_url     → 39UVa4ENm3OeOiafUU1c  (old fallback)
+      const TIKTOK_HANDLE_FIELDS = new Set([
+        'trnSmiM9oilkdQSInRPn',
+        'e6rnLj4npciYrjOd4OwC',
+        'fWDq18dESQmKaiNwgJWU',
+        '39UVa4ENm3OeOiafUU1c',
+      ]);
       const allContacts = [];
       let startAfter = null;
       let startAfterId = null;
@@ -3893,12 +3890,13 @@ function _ensureGhlMap() {
         const isHandleLike = s => /^[\w.]{3,30}$/.test(s);
         const customFields = c.customFields || [];
 
-        // Priority 1: known TikTok field by resolved UUID
-        const ttField = customFields.find(f => f.id === TIKTOK_FIELD);
-        const ttUrl = typeof ttField?.value === 'string' ? ttField.value : '';
-        if (ttUrl) {
-          const m = ttUrl.match(/(?:tiktok\.com\/@?|^@?)([\w.]{3,30})/i);
-          if (m) handle = m[1].toLowerCase();
+        // Priority 1: known TikTok fields by UUID (handle, username, profile link, url)
+        for (const f of customFields) {
+          if (!TIKTOK_HANDLE_FIELDS.has(f.id)) continue;
+          const v = typeof f.value === 'string' ? f.value.trim() : '';
+          if (!v) continue;
+          const m = v.match(/tiktok\.com\/@?([\w.]{3,30})/i) || v.match(/^@?([\w.]{3,30})$/);
+          if (m) { handle = m[1].toLowerCase(); break; }
         }
 
         // Priority 2: scan all custom field values for anything TikTok-shaped
