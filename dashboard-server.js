@@ -3833,7 +3833,8 @@ app.post('/api/creators/performance', async (req, res) => {
 });
 
 // GET /api/creators/ghl-map — TikTok handle → GHL contact info (10-min cache)
-// Fetches contacts tagged "Reacher:" OR "affiliate" and maps handle → {id, name, phone, email, tags, discordUsername}
+// Fetches contacts tagged "Reacher:", "affiliate", OR "creator-interested" (creator page signups)
+// Maps handle → {id, name, phone, email, tags, discordUsername}
 app.get('/api/creators/ghl-map', async (req, res) => {
   try {
     const data = await cached('creators_ghl_map', 10 * 60_000, async () => {
@@ -3860,14 +3861,16 @@ app.get('/api/creators/ghl-map', async (req, res) => {
         return contacts;
       }
 
-      // Fetch both tag groups and dedupe by contact ID
-      const [reacherContacts, affiliateContacts] = await Promise.all([
+      // Fetch all tag groups and dedupe by contact ID
+      // creator-interested-* covers creator page signups (tagged by /creator-onboard endpoint)
+      const [reacherContacts, affiliateContacts, creatorInterestedContacts] = await Promise.all([
         fetchByTag('Reacher:').catch(() => []),
         fetchByTag('affiliate').catch(() => []),
+        fetchByTag('creator-interested').catch(() => []),
       ]);
       const seen = new Set();
       const allContacts = [];
-      for (const c of [...reacherContacts, ...affiliateContacts]) {
+      for (const c of [...reacherContacts, ...affiliateContacts, ...creatorInterestedContacts]) {
         if (!seen.has(c.id)) { seen.add(c.id); allContacts.push(c); }
       }
 
@@ -3917,6 +3920,49 @@ app.get('/api/creators/ghl-map', async (req, res) => {
     });
     res.json(data);
   } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// GET /api/discord/creator-members — list all Discord server members with the Creator role
+// Returns { members: [{username, globalName, userId}] } — used to show Discord status in the creator DB.
+// Results are cached for 5 minutes.
+app.get('/api/discord/creator-members', async (req, res) => {
+  try {
+    const data = await cached('discord_creator_members', 5 * 60_000, async () => {
+      const botToken = process.env.DISCORD_BOT_TOKEN;
+      const guildId  = process.env.DISCORD_GUILD_ID;
+      const roleId   = process.env.DISCORD_CREATOR_ROLE_ID;
+      if (!botToken || !guildId) throw new Error('Discord bot credentials not configured');
+
+      // Paginate through all guild members (Discord returns up to 1000 per page)
+      const members = [];
+      let after = '0';
+      while (true) {
+        const { data: batch } = await axios.get(
+          `https://discord.com/api/v10/guilds/${guildId}/members`,
+          { params: { limit: 1000, after }, headers: { Authorization: `Bot ${botToken}` } }
+        );
+        if (!batch || batch.length === 0) break;
+        for (const m of batch) {
+          // If we have a Creator role filter, only include role members; otherwise include all
+          const hasRole = roleId ? (m.roles || []).includes(roleId) : true;
+          if (hasRole) {
+            members.push({
+              userId:     m.user.id,
+              username:   (m.user.username   || '').toLowerCase(),
+              globalName: (m.user.global_name || m.nick || '').toLowerCase(),
+            });
+          }
+        }
+        if (batch.length < 1000) break;
+        after = batch[batch.length - 1].user.id;
+      }
+      return { members };
+    });
+    res.json(data);
+  } catch (e) {
+    console.error('[discord/creator-members]', e.message);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // POST /api/creators/sms — bulk SMS to GHL contacts
