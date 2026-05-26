@@ -397,8 +397,8 @@ app.post('/api/webhooks/ghl-to-instantly', async (req, res) => {
       last_name:   get('last_name',  'lastName'),
       company_name: get('company_name', 'companyName'),
       custom_variables: {
-        tiktok_handle: get('tiktok_handle'),
-        location:      get('location', 'city'),
+        tiktok_handle: get('tiktok_handle') || undefined,
+        location:      custom.location || b.city || undefined,
       }
     };
 
