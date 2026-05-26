@@ -1620,44 +1620,36 @@ app.get('/portal-admin/clients', requirePortalAdmin, async (req, res) => {
   const CANCELLED_STATUSES = new Set([140, 121, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND']);
 
   // Fetch live net GMV using the brand's TikTok Shop token (order.read scope — all orders, not just affiliate)
+  // NOTE: Never falls back to Reacher — Reacher is affiliate-only and always shows lower numbers
   async function fetchNetGmv(brand, brandIdx) {
-    if (!brand.tiktokShopToken?.access_token && !brand.shopId) return brand.cachedNetGmv ?? null;
+    if (!brand.tiktokShopToken?.access_token) return brand.cachedNetGmv ?? null;
     let netGmv = null;
-    // Use /order/202309/orders/search — standard order.read scope, covers ALL shop orders
-    if (brand.tiktokShopToken?.access_token) {
-      try {
-        const now   = Math.floor(Date.now() / 1000);
-        const start = now - 30 * 24 * 60 * 60;
-        const resp  = await ttsBrandPost(brand, brands, brandIdx, '/order/202309/orders/search', {}, {
-          create_time_ge: start,
-          create_time_lt: now,
-          page_size: 100,
-          sort_field: 'create_time',
-          sort_order: 'DESC',
-        });
-        const orders = resp?.data?.orders || resp?.data?.order_list || [];
-        const CANCEL = new Set([140, 121, 4, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND']);
-        netGmv = 0;
-        for (const o of orders) {
-          const status = o.order_status ?? o.status;
-          if (status !== undefined && CANCEL.has(status)) continue;
-          netGmv += parseFloat(
-            o.payment_info?.sub_total ??
-            o.payment_info?.total_amount ??
-            o.total_amount ?? 0
-          );
-        }
-      } catch(e) {
-        console.error(`[admin/clients] TikTok orders error for ${brand.name}:`, e.message);
+    try {
+      const now   = Math.floor(Date.now() / 1000);
+      const start = now - 30 * 24 * 60 * 60;
+      const resp  = await ttsBrandPost(brand, brands, brandIdx, '/order/202309/orders/search', {}, {
+        create_time_ge: start,
+        create_time_lt: now,
+        page_size: 100,
+        sort_field: 'create_time',
+        sort_order: 'DESC',
+      });
+      console.log(`[admin/clients] TikTok orders raw for ${brand.name}:`, JSON.stringify(resp?.data).slice(0, 300));
+      const orders = resp?.data?.orders || resp?.data?.order_list || [];
+      const CANCEL = new Set([140, 121, 4, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND']);
+      netGmv = 0;
+      for (const o of orders) {
+        const status = o.order_status ?? o.status;
+        if (status !== undefined && CANCEL.has(status)) continue;
+        netGmv += parseFloat(
+          o.payment_info?.sub_total ??
+          o.payment_info?.total_amount ??
+          o.total_amount ?? 0
+        );
       }
-    }
-    // Fallback: Reacher summary
-    if (netGmv === null && brand.shopId) {
-      try {
-        netGmv = parseFloat((await axios.get(`${CFG.railwayUrl}/affiliate/shops/${brand.shopId}/summary`, { timeout: 8000 })).data?.gmv || 0);
-      } catch(e) {
-        console.error(`[admin/clients] Reacher fallback failed for ${brand.name}:`, e.message);
-      }
+      console.log(`[admin/clients] ${brand.name} net GMV = ${netGmv} (${orders.length} orders)`);
+    } catch(e) {
+      console.error(`[admin/clients] TikTok orders error for ${brand.name}:`, e.message);
     }
     if (netGmv !== null) {
       try {
@@ -1804,12 +1796,12 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
         const shopId = brand.shopId;
 
         // GMV: TikTok Shop orders search (order.read scope — covers all orders, not just affiliate)
+        // NOTE: No Reacher fallback — Reacher is affiliate-only and shows lower numbers
         let gmv = 0, activeCreators = 0;
         try {
           const now   = Math.floor(Date.now() / 1000);
           const start = now - 30 * 24 * 60 * 60;
-          const CANCELLED = new Set([140, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND']);
-          // Fetch all non-cancelled statuses in one call (no status filter = all statuses)
+          const CANCELLED = new Set([140, 121, 4, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND']);
           const ordersRes = await ttsBrandPost(brand, brands, brandIdx, '/order/202309/orders/search', {}, {
             create_time_ge: start,
             create_time_lt: now,
@@ -1817,6 +1809,7 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
             sort_field: 'create_time',
             sort_order: 'DESC',
           });
+          console.log(`[client/me] TikTok orders raw for ${brand.name}:`, JSON.stringify(ordersRes?.data).slice(0, 300));
           const orders = ordersRes?.data?.orders || ordersRes?.data?.order_list || [];
           for (const o of orders) {
             const status = o.order_status ?? o.status;
@@ -1827,16 +1820,9 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
               o.total_amount ?? 0
             );
           }
+          console.log(`[client/me] ${brand.name} net GMV = ${gmv} (${orders.length} orders)`);
         } catch(e) {
           console.error('[client/me] TikTok orders error:', e.message);
-          // Fallback to Reacher summary
-          if (shopId) {
-            try {
-              const s = (await axios.get(`${CFG.railwayUrl}/affiliate/shops/${shopId}/summary`, { timeout: 8000 })).data;
-              gmv            = parseFloat(s.gmv           || 0);
-              activeCreators = parseInt(s.active_creators || 0, 10);
-            } catch(_) {}
-          }
         }
 
         // Active creators from Reacher
