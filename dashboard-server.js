@@ -1619,23 +1619,15 @@ app.get('/portal-admin/clients', requirePortalAdmin, async (req, res) => {
   const brands = loadBrands();
   const CANCELLED_STATUSES = new Set([140, 121, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND']);
 
-  // Fetch live net GMV for all TikTok-connected brands in parallel
+  // Fetch live net GMV from Reacher summary for all brands with a shopId
   async function fetchNetGmv(brand, brandIdx) {
-    if (!brand.tiktokShopToken?.access_token) return null;
+    if (!brand.shopId) return brand.cachedNetGmv ?? null;
     try {
-      const now   = Math.floor(Date.now() / 1000);
-      const start = now - 30 * 24 * 60 * 60;
-      const resp  = await ttsBrandPost(brand, brands, brandIdx, '/affiliate/seller/202309/orders/search', {
-        create_time_ge: start, create_time_lt: now, page_size: 100,
-      });
-      const orders = resp?.data?.affiliate_orders || resp?.data?.orders || [];
-      let netGmv = 0;
-      for (const o of orders) {
-        const status = o.order_status ?? o.status;
-        if (status !== undefined && CANCELLED_STATUSES.has(status)) continue;
-        netGmv += parseFloat(o.payment_info?.sub_total ?? o.sale_amount ?? o.payment_info?.original_total_product_price ?? o.total_amount ?? 0);
-      }
-      // Persist to cache
+      const resp = await axios.get(
+        `${CFG.railwayUrl}/affiliate/shops/${brand.shopId}/summary`,
+        { timeout: 10000 }
+      );
+      const netGmv = parseFloat(resp.data?.gmv || 0);
       try {
         const snap = loadBrands();
         if (snap.clients[brandIdx]) { snap.clients[brandIdx].cachedNetGmv = netGmv; snap.clients[brandIdx].cachedGmvAt = Date.now(); saveBrands(snap); }
@@ -1775,83 +1767,58 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
       saveBrands(brands);
     }
 
-    // TikTok Shop stats — use brand's own token if available, else skip
+    // TikTok Shop stats — pull from Reacher summary (authoritative) + TikTok token for top creators
     let tiktokStats = null, tiktokFunnel = null, tiktokConnected = false;
     if (brand.tiktokShopToken?.access_token) {
       tiktokConnected = true;
       try {
-        const now   = Math.floor(Date.now() / 1000);
-        const start = now - 30 * 24 * 60 * 60;
-        const [ordersRes, creatorsRes] = await Promise.allSettled([
-          ttsBrandPost(brand, brands, brandIdx, '/affiliate/seller/202309/orders/search', {
-            create_time_ge: start,
-            create_time_lt: now,
-            page_size: 100,
-          }),
-          ttsBrandPost(brand, brands, brandIdx, '/affiliate/seller/202309/creators/search', {
-            page_size: 50,
-          }),
-        ]);
+        const shopId = brand.shopId;
 
-        let gmv = 0, orderCount = 0;
-        const creatorMap = {};
-        // Cancelled statuses: 140 = Cancelled, 121 = Cancelled by buyer, "CANCELLED"
-        const CANCELLED_STATUSES = new Set([140, 121, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND']);
-        if (ordersRes.status === 'fulfilled') {
-          const affOrders = ordersRes.value?.data?.affiliate_orders || ordersRes.value?.data?.orders || [];
-          for (const o of affOrders) {
-            // Skip cancelled/refunded orders — net GMV only
-            const status = o.order_status ?? o.status;
-            if (status !== undefined && CANCELLED_STATUSES.has(status)) continue;
-            // Use sub_total (excl. tax/shipping) if available, else fall back to sale_amount
-            const amt = parseFloat(
-              o.payment_info?.sub_total ??
-              o.sale_amount ??
-              o.payment_info?.original_total_product_price ??
-              o.total_amount ?? 0
+        // Primary GMV source: Reacher summary (accurate net GMV, excludes refunds/cancellations)
+        let gmv = 0, activeCreators = 0;
+        if (shopId) {
+          try {
+            const summaryRes = await axios.get(
+              `${CFG.railwayUrl}/affiliate/shops/${shopId}/summary`,
+              { timeout: 10000 }
             );
-            gmv += amt;
-            orderCount++;
-            const handle = o.creator_handle || o.creator_username || o.creator_open_id;
-            if (handle) {
-              if (!creatorMap[handle]) creatorMap[handle] = { handle, gmv: 0, orders: 0 };
-              creatorMap[handle].gmv    += amt;
-              creatorMap[handle].orders += 1;
-            }
+            const s = summaryRes.data;
+            gmv            = parseFloat(s.gmv            || 0);
+            activeCreators = parseInt(s.active_creators  || 0, 10);
+          } catch(e) {
+            console.error('[client/me] Reacher summary error:', e.message);
           }
         }
 
-        let activeCreators = 0;
-        const allCreators = [];
-        if (creatorsRes.status === 'fulfilled') {
-          const list = creatorsRes.value?.data?.creators || [];
-          activeCreators = list.length;
-          for (const c of list) {
-            allCreators.push({
-              handle: c.creator_handle || c.username || c.creator_open_id,
-              gmv:    parseFloat(c.sale_amount ?? c.gmv ?? 0),
-            });
-          }
-        }
+        tiktokStats = { gmv, orders: 0, active_creators: activeCreators };
 
-        tiktokStats = { gmv, orders: orderCount, active_creators: activeCreators };
-
-        // Cache GMV in brands.json so admin dashboard can show it without extra API calls
+        // Cache net GMV
         try {
           const bSnap = loadBrands();
           const bIdx  = bSnap.clients.findIndex(b => b.id === brand.id);
           if (bIdx !== -1) {
-            bSnap.clients[bIdx].cachedNetGmv   = gmv;
-            bSnap.clients[bIdx].cachedGmvAt    = Date.now();
+            bSnap.clients[bIdx].cachedNetGmv = gmv;
+            bSnap.clients[bIdx].cachedGmvAt  = Date.now();
             saveBrands(bSnap);
           }
         } catch(_) {}
 
-        // Top creators: merge affiliate orders map with creator list, sort by GMV
-        const topCreatorsArr = Object.values(creatorMap).sort((a, b) => b.gmv - a.gmv).slice(0, 6);
-        if (!topCreatorsArr.length) {
-          allCreators.sort((a, b) => b.gmv - a.gmv);
-          topCreatorsArr.push(...allCreators.slice(0, 6));
+        // Top creators: fetch from Reacher creators endpoint
+        const topCreatorsArr = [];
+        if (shopId) {
+          try {
+            const tcRes = await axios.get(
+              `${CFG.railwayUrl}/affiliate/shops/${shopId}/creators/top`,
+              { timeout: 10000 }
+            );
+            const list = tcRes.data?.creators || tcRes.data?.data || [];
+            topCreatorsArr.push(...list.slice(0, 6).map(c => ({
+              handle: c.creator_handle || c.username,
+              gmv:    parseFloat(c.gmv || c.shop_gmv || c.sale_amount || 0),
+            })));
+          } catch(_) {}
+        }
+        if (true) { // keep scope consistent
         }
 
         tiktokFunnel = { top_creators: topCreatorsArr, top_videos: [] };
