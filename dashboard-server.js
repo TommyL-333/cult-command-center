@@ -401,7 +401,7 @@ app.post('/api/webhooks/ghl-to-instantly', async (req, res) => {
       }
     };
 
-    if (!payload.campaign_id || !payload.email) {
+    if (!payload.campaign || !payload.email) {
       return res.status(400).json({ error: 'Missing campaign_id or email', received: b });
     }
 
