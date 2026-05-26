@@ -390,7 +390,7 @@ app.post('/api/webhooks/ghl-to-instantly', async (req, res) => {
     const get = (...keys) => { for (const k of keys) if (b[k]) return b[k]; return ''; };
 
     const payload = {
-      campaign_id: get('campaign_id'),
+      campaign:    get('campaign_id'),   // Instantly v2 uses "campaign" not "campaign_id"
       email:       get('email'),
       first_name:  get('first_name', 'firstName'),
       last_name:   get('last_name',  'lastName'),
