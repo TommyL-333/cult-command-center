@@ -1619,24 +1619,45 @@ app.get('/portal-admin/clients', requirePortalAdmin, async (req, res) => {
   const brands = loadBrands();
   const CANCELLED_STATUSES = new Set([140, 121, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND']);
 
-  // Fetch live net GMV from Reacher summary for all brands with a shopId
+  // Fetch live net GMV using the brand's TikTok Shop token (finance orders = all orders, not just affiliate)
   async function fetchNetGmv(brand, brandIdx) {
-    if (!brand.shopId) return brand.cachedNetGmv ?? null;
-    try {
-      const resp = await axios.get(
-        `${CFG.railwayUrl}/affiliate/shops/${brand.shopId}/summary`,
-        { timeout: 10000 }
-      );
-      const netGmv = parseFloat(resp.data?.gmv || 0);
+    if (!brand.tiktokShopToken?.access_token && !brand.shopId) return brand.cachedNetGmv ?? null;
+    let netGmv = null;
+    // Try TikTok Shop finance orders first (uses brand's own app token)
+    if (brand.tiktokShopToken?.access_token) {
+      try {
+        const now   = Math.floor(Date.now() / 1000);
+        const start = now - 30 * 24 * 60 * 60;
+        const resp  = await ttsBrandPost(brand, brands, brandIdx, '/finance/202309/orders/search', {}, {
+          create_time_ge: start, create_time_lt: now,
+        });
+        const orders  = resp?.data?.finance_orders || resp?.data?.orders || [];
+        const CANCEL  = new Set([140, 121, 4, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND']);
+        netGmv = 0;
+        for (const o of orders) {
+          const status = o.order_status ?? o.status;
+          if (status !== undefined && CANCEL.has(status)) continue;
+          netGmv += parseFloat(o.original_price ?? o.seller_income ?? o.total_amount ?? 0);
+        }
+      } catch(e) {
+        console.error(`[admin/clients] TikTok finance error for ${brand.name}:`, e.message);
+      }
+    }
+    // Fallback: Reacher summary
+    if (netGmv === null && brand.shopId) {
+      try {
+        netGmv = parseFloat((await axios.get(`${CFG.railwayUrl}/affiliate/shops/${brand.shopId}/summary`, { timeout: 8000 })).data?.gmv || 0);
+      } catch(e) {
+        console.error(`[admin/clients] Reacher fallback failed for ${brand.name}:`, e.message);
+      }
+    }
+    if (netGmv !== null) {
       try {
         const snap = loadBrands();
         if (snap.clients[brandIdx]) { snap.clients[brandIdx].cachedNetGmv = netGmv; snap.clients[brandIdx].cachedGmvAt = Date.now(); saveBrands(snap); }
       } catch(_) {}
-      return netGmv;
-    } catch(e) {
-      console.error(`[admin/clients] GMV fetch failed for ${brand.name}:`, e.message);
-      return brand.cachedNetGmv ?? null;
     }
+    return netGmv ?? (brand.cachedNetGmv ?? null);
   }
 
   const gmvResults = await Promise.allSettled(
@@ -1774,20 +1795,41 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
       try {
         const shopId = brand.shopId;
 
-        // Primary GMV source: Reacher summary (accurate net GMV, excludes refunds/cancellations)
+        // Primary GMV source: TikTok Shop finance orders (all orders, not just affiliate links)
         let gmv = 0, activeCreators = 0;
-        if (shopId) {
-          try {
-            const summaryRes = await axios.get(
-              `${CFG.railwayUrl}/affiliate/shops/${shopId}/summary`,
-              { timeout: 10000 }
-            );
-            const s = summaryRes.data;
-            gmv            = parseFloat(s.gmv            || 0);
-            activeCreators = parseInt(s.active_creators  || 0, 10);
-          } catch(e) {
-            console.error('[client/me] Reacher summary error:', e.message);
+        try {
+          const now   = Math.floor(Date.now() / 1000);
+          const start = now - 30 * 24 * 60 * 60;
+          const financeRes = await ttsBrandPost(brand, brands, brandIdx, '/finance/202309/orders/search', {}, {
+            create_time_ge: start,
+            create_time_lt: now,
+          });
+          const orders = financeRes?.data?.finance_orders || financeRes?.data?.orders || [];
+          const CANCELLED = new Set([140, 121, 4, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND']);
+          for (const o of orders) {
+            const status = o.order_status ?? o.status;
+            if (status !== undefined && CANCELLED.has(status)) continue;
+            // original_price = product subtotal (excl. platform fees/shipping)
+            gmv += parseFloat(o.original_price ?? o.seller_income ?? o.total_amount ?? 0);
           }
+        } catch(e) {
+          console.error('[client/me] TikTok finance orders error:', e.message);
+          // Fallback to Reacher summary if TikTok finance API fails
+          if (shopId) {
+            try {
+              const s = (await axios.get(`${CFG.railwayUrl}/affiliate/shops/${shopId}/summary`, { timeout: 8000 })).data;
+              gmv            = parseFloat(s.gmv           || 0);
+              activeCreators = parseInt(s.active_creators || 0, 10);
+            } catch(_) {}
+          }
+        }
+
+        // Active creators from Reacher (TikTok affiliate API doesn't give a clean count)
+        if (shopId && activeCreators === 0) {
+          try {
+            const s = (await axios.get(`${CFG.railwayUrl}/affiliate/shops/${shopId}/summary`, { timeout: 8000 })).data;
+            activeCreators = parseInt(s.active_creators || 0, 10);
+          } catch(_) {}
         }
 
         tiktokStats = { gmv, orders: 0, active_creators: activeCreators };
