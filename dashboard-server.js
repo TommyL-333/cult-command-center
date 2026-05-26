@@ -1738,6 +1738,20 @@ app.post('/portal-admin/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/portal-admin'));
 });
 
+// GET /portal-admin/debug-brands — list all brand IDs + token status
+app.get('/portal-admin/debug-brands', requirePortalAdmin, (req, res) => {
+  const brands = loadBrands();
+  res.json((brands.clients || []).map(b => ({
+    id:           b.id,
+    name:         b.name,
+    hasToken:     !!b.tiktokShopToken?.access_token,
+    shopCipher:   !!b.tiktokShopToken?.shop_cipher,
+    tokenExpires: b.tiktokShopToken?.expires_at ? new Date(b.tiktokShopToken.expires_at).toISOString() : null,
+    cachedNetGmv: b.cachedNetGmv ?? null,
+    shopId:       b.shopId || null,
+  })));
+});
+
 // GET /portal-admin/debug-gmv/:brandId — raw TikTok order API response for a brand
 app.get('/portal-admin/debug-gmv/:brandId', requirePortalAdmin, async (req, res) => {
   const brands   = loadBrands();
