@@ -413,7 +413,7 @@ app.post('/api/webhooks/ghl-to-instantly', async (req, res) => {
       }
     });
 
-    console.log(`[instantly-relay] Added lead ${payload.email} to campaign ${payload.campaign_id}`);
+    console.log(`[instantly-relay] Added lead ${payload.email} to campaign ${payload.campaign} | lead_id: ${resp.data.id}`);
     res.json({ ok: true, lead_id: resp.data.id });
   } catch (err) {
     const detail = err.response?.data || err.message;
