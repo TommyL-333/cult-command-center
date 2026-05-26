@@ -370,6 +370,57 @@ app.post('/api/webhooks/ghl-client-onboard', async (req, res) => {
   }
 });
 
+// ─── GHL → Instantly lead relay ──────────────────────────────────────────────
+// GHL webhook action calls this endpoint; we extract the contact fields and
+// forward them to Instantly in the correct format. Verified by WEBHOOK_SECRET.
+app.post('/api/webhooks/ghl-to-instantly', async (req, res) => {
+  const secret = process.env.WEBHOOK_SECRET;
+  if (secret && req.query.secret !== secret) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const INSTANTLY_API_KEY = process.env.INSTANTLY_API_KEY;
+  if (!INSTANTLY_API_KEY) {
+    return res.status(500).json({ error: 'INSTANTLY_API_KEY not configured' });
+  }
+
+  try {
+    const b = req.body;
+    // GHL sends fields under various casings depending on workflow config
+    const get = (...keys) => { for (const k of keys) if (b[k]) return b[k]; return ''; };
+
+    const payload = {
+      campaign_id: get('campaign_id'),
+      email:       get('email'),
+      first_name:  get('first_name', 'firstName'),
+      last_name:   get('last_name',  'lastName'),
+      company_name: get('company_name', 'companyName'),
+      custom_variables: {
+        tiktok_handle: get('tiktok_handle'),
+        location:      get('location', 'city'),
+      }
+    };
+
+    if (!payload.campaign_id || !payload.email) {
+      return res.status(400).json({ error: 'Missing campaign_id or email', received: b });
+    }
+
+    const resp = await axios.post('https://api.instantly.ai/api/v2/leads', payload, {
+      headers: {
+        'Authorization': `Bearer ${INSTANTLY_API_KEY}`,
+        'Content-Type': 'application/json'
+      }
+    });
+
+    console.log(`[instantly-relay] Added lead ${payload.email} to campaign ${payload.campaign_id}`);
+    res.json({ ok: true, lead_id: resp.data.id });
+  } catch (err) {
+    const detail = err.response?.data || err.message;
+    console.error('[instantly-relay] error:', detail);
+    res.status(500).json({ error: detail });
+  }
+});
+
 // Public routes — registered BEFORE requireAuth so no login needed
 app.use('/uploads', express.static(UPLOAD_DIR));
 
