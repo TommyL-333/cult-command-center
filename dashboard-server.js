@@ -387,7 +387,8 @@ app.post('/api/webhooks/ghl-to-instantly', async (req, res) => {
   try {
     const b = req.body;
     // GHL sends fields under various casings depending on workflow config
-    const get = (...keys) => { for (const k of keys) if (b[k]) return b[k]; return ''; };
+    const custom = b.customData || {};
+    const get = (...keys) => { for (const k of keys) { if (b[k]) return b[k]; if (custom[k]) return custom[k]; } return ''; };
 
     const payload = {
       campaign:    get('campaign_id'),   // Instantly v2 uses "campaign" not "campaign_id"
