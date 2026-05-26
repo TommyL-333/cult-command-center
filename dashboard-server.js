@@ -1611,30 +1611,64 @@ app.post('/portal-admin/login', express.json(), (req, res) => {
 });
 
 // GET /portal-admin/clients — returns client list as JSON (admin only)
-app.get('/portal-admin/clients', requirePortalAdmin, (req, res) => {
+app.get('/portal-admin/clients', requirePortalAdmin, async (req, res) => {
   // If Accept is text/html, serve the admin page
   if (req.headers.accept?.includes('text/html')) {
     return res.sendFile(path.join(__dirname, 'dashboard', 'portal-admin.html'));
   }
   const brands = loadBrands();
-  const clients = (brands.clients || []).map(b => {
-    const gmv          = b.cachedNetGmv || 0;
-    const commRate     = b.commissionRate ?? 0.10;
-    const revShare     = parseFloat((gmv * commRate).toFixed(2));
+  const CANCELLED_STATUSES = new Set([140, 121, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND']);
+
+  // Fetch live net GMV for all TikTok-connected brands in parallel
+  async function fetchNetGmv(brand, brandIdx) {
+    if (!brand.tiktokShopToken?.access_token) return null;
+    try {
+      const now   = Math.floor(Date.now() / 1000);
+      const start = now - 30 * 24 * 60 * 60;
+      const resp  = await ttsBrandPost(brand, brands, brandIdx, '/affiliate/seller/202309/orders/search', {
+        create_time_ge: start, create_time_lt: now, page_size: 100,
+      });
+      const orders = resp?.data?.affiliate_orders || resp?.data?.orders || [];
+      let netGmv = 0;
+      for (const o of orders) {
+        const status = o.order_status ?? o.status;
+        if (status !== undefined && CANCELLED_STATUSES.has(status)) continue;
+        netGmv += parseFloat(o.payment_info?.sub_total ?? o.sale_amount ?? o.payment_info?.original_total_product_price ?? o.total_amount ?? 0);
+      }
+      // Persist to cache
+      try {
+        const snap = loadBrands();
+        if (snap.clients[brandIdx]) { snap.clients[brandIdx].cachedNetGmv = netGmv; snap.clients[brandIdx].cachedGmvAt = Date.now(); saveBrands(snap); }
+      } catch(_) {}
+      return netGmv;
+    } catch(e) {
+      console.error(`[admin/clients] GMV fetch failed for ${brand.name}:`, e.message);
+      return brand.cachedNetGmv ?? null;
+    }
+  }
+
+  const gmvResults = await Promise.allSettled(
+    (brands.clients || []).map((b, i) => fetchNetGmv(b, i))
+  );
+
+  const clients = (brands.clients || []).map((b, i) => {
+    const liveGmv  = gmvResults[i]?.status === 'fulfilled' ? gmvResults[i].value : null;
+    const gmv      = liveGmv ?? b.cachedNetGmv ?? 0;
+    const commRate = b.commissionRate ?? 0.10;
     return {
-      id:              b.id,
-      name:            b.name,
-      email:           b.loginEmail || '',
-      hasPassword:     !!b.passwordHash,
-      tiktokConnected: !!(b.tiktokShopToken?.access_token),
-      bufferConnected: !!b.bufferConnected,
-      arcadsConnected: !!b.arcadsConnected,
+      id:               b.id,
+      name:             b.name,
+      email:            b.loginEmail || '',
+      hasPassword:      !!b.passwordHash,
+      tiktokConnected:  !!(b.tiktokShopToken?.access_token),
+      bufferConnected:  !!b.bufferConnected,
+      arcadsConnected:  !!b.arcadsConnected,
       storistaConnected: !!b.storistaConnected,
-      onboardedAt:     b.onboardedAt || null,
+      onboardedAt:      b.onboardedAt || null,
       gmv,
-      commissionRate:  commRate,
-      revShare,
-      cachedGmvAt:     b.cachedGmvAt || null,
+      commissionRate:   commRate,
+      revShare:         parseFloat((gmv * commRate).toFixed(2)),
+      cachedGmvAt:      b.cachedGmvAt || null,
     };
   });
   res.json({ ok: true, clients });
