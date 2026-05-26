@@ -161,6 +161,39 @@
       flex-shrink: 0;
     }
 
+    /* GMV row */
+    .gmv-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      background: rgba(0,0,0,0.2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+    }
+    .gmv-block { }
+    .gmv-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .gmv-val {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--teal);
+      line-height: 1;
+    }
+    .gmv-val.rev { color: var(--gold); }
+    .gmv-val.empty { color: var(--muted); font-size: 0.88rem; font-weight: 400; }
+    .gmv-freshness {
+      font-size: 0.65rem;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
     /* View button */
     .view-btn {
       display: block;
@@ -248,6 +281,22 @@
     } catch(_) { return ''; }
   }
 
+  function fmtMoney(n) {
+    if (!n && n !== 0) return null;
+    if (n >= 1000) return '$' + (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k';
+    return '$' + n.toFixed(2).replace(/\.00$/, '');
+  }
+
+  function timeAgo(ts) {
+    if (!ts) return '';
+    const mins = Math.floor((Date.now() - ts) / 60000);
+    if (mins < 2)   return 'just now';
+    if (mins < 60)  return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24)   return `${hrs}h ago`;
+    return `${Math.floor(hrs / 24)}d ago`;
+  }
+
   function badge(condition, yesLabel, noLabel) {
     if (condition) {
       return `<span class="badge yes"><span class="dot"></span>${esc(yesLabel)}</span>`;
@@ -297,6 +346,17 @@
           ${c.bufferConnected ? badge(true, 'Buffer', 'Buffer') : ''}
           ${c.arcadsConnected ? badge(true, 'Arcads', 'Arcads') : ''}
           ${c.storistaConnected ? badge(true, 'Storista', 'Storista') : ''}
+        </div>
+        <div class="gmv-row">
+          <div class="gmv-block">
+            <div class="gmv-label">30-Day GMV</div>
+            ${c.gmv ? `<div class="gmv-val">${fmtMoney(c.gmv)}</div>` : `<div class="gmv-val empty">No data</div>`}
+            ${c.cachedGmvAt ? `<div class="gmv-freshness">Updated ${timeAgo(c.cachedGmvAt)}</div>` : ''}
+          </div>
+          <div class="gmv-block">
+            <div class="gmv-label">Rev Share (${Math.round(c.commissionRate * 100)}%)</div>
+            ${c.gmv ? `<div class="gmv-val rev">${fmtMoney(c.revShare)}</div>` : `<div class="gmv-val empty">—</div>`}
+          </div>
         </div>
         <button class="view-btn" onclick="impersonate('${esc(c.id)}', this)">
           View Dashboard →

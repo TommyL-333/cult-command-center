@@ -1617,17 +1617,26 @@ app.get('/portal-admin/clients', requirePortalAdmin, (req, res) => {
     return res.sendFile(path.join(__dirname, 'dashboard', 'portal-admin.html'));
   }
   const brands = loadBrands();
-  const clients = (brands.clients || []).map(b => ({
-    id:              b.id,
-    name:            b.name,
-    email:           b.loginEmail || '',
-    hasPassword:     !!b.passwordHash,
-    tiktokConnected: !!(b.tiktokShopToken?.access_token),
-    bufferConnected: !!b.bufferConnected,
-    arcadsConnected: !!b.arcadsConnected,
-    storistaConnected: !!b.storistaConnected,
-    onboardedAt:     b.onboardedAt || null,
-  }));
+  const clients = (brands.clients || []).map(b => {
+    const gmv          = b.cachedGmv || 0;
+    const commRate     = b.commissionRate ?? 0.10;
+    const revShare     = parseFloat((gmv * commRate).toFixed(2));
+    return {
+      id:              b.id,
+      name:            b.name,
+      email:           b.loginEmail || '',
+      hasPassword:     !!b.passwordHash,
+      tiktokConnected: !!(b.tiktokShopToken?.access_token),
+      bufferConnected: !!b.bufferConnected,
+      arcadsConnected: !!b.arcadsConnected,
+      storistaConnected: !!b.storistaConnected,
+      onboardedAt:     b.onboardedAt || null,
+      gmv,
+      commissionRate:  commRate,
+      revShare,
+      cachedGmvAt:     b.cachedGmvAt || null,
+    };
+  });
   res.json({ ok: true, clients });
 });
 
@@ -1781,6 +1790,17 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
         }
 
         tiktokStats = { gmv, orders: orderCount, active_creators: activeCreators };
+
+        // Cache GMV in brands.json so admin dashboard can show it without extra API calls
+        try {
+          const bSnap = loadBrands();
+          const bIdx  = bSnap.clients.findIndex(b => b.id === brand.id);
+          if (bIdx !== -1) {
+            bSnap.clients[bIdx].cachedGmv   = gmv;
+            bSnap.clients[bIdx].cachedGmvAt = Date.now();
+            saveBrands(bSnap);
+          }
+        } catch(_) {}
 
         // Top creators: merge affiliate orders map with creator list, sort by GMV
         const topCreatorsArr = Object.values(creatorMap).sort((a, b) => b.gmv - a.gmv).slice(0, 6);
