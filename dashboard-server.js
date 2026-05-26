@@ -1674,6 +1674,7 @@ app.get('/portal-admin/clients', requirePortalAdmin, async (req, res) => {
       email:            b.loginEmail || '',
       hasPassword:      !!b.passwordHash,
       tiktokConnected:  !!(b.tiktokShopToken?.access_token),
+      hasShopCipher:    !!(b.tiktokShopToken?.shop_cipher),
       bufferConnected:  !!b.bufferConnected,
       arcadsConnected:  !!b.arcadsConnected,
       storistaConnected: !!b.storistaConnected,
@@ -1719,6 +1720,18 @@ app.post('/portal-admin/set-email', requirePortalAdmin, express.json(), (req, re
   brands.clients[idx].loginEmail = email.toLowerCase().trim();
   saveBrands(brands);
   res.json({ ok: true, name: brands.clients[idx].name, loginEmail: brands.clients[idx].loginEmail });
+});
+
+// POST /portal-admin/clear-tiktok/:brandId — wipe broken TikTok token so brand can reconnect
+app.post('/portal-admin/clear-tiktok/:brandId', requirePortalAdmin, (req, res) => {
+  const brands   = loadBrands();
+  const brandIdx = (brands.clients || []).findIndex(b => b.id === req.params.brandId);
+  if (brandIdx === -1) return res.status(404).json({ error: 'Brand not found' });
+  const name = brands.clients[brandIdx].name;
+  delete brands.clients[brandIdx].tiktokShopToken;
+  brands.clients[brandIdx].tiktokConnected = false;
+  saveBrands(brands);
+  res.json({ ok: true, name, message: `TikTok token cleared for ${name}. Brand must reconnect from their dashboard.` });
 });
 
 // POST /portal-admin/clear-password — reset a client password so they can set a new one
@@ -1913,9 +1926,11 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
     }
 
     // TikTok Shop stats — pull from Reacher summary (authoritative) + TikTok token for top creators
-    let tiktokStats = null, tiktokFunnel = null, tiktokConnected = false;
+    let tiktokStats = null, tiktokFunnel = null, tiktokConnected = false, tiktokNeedsReconnect = false;
     if (brand.tiktokShopToken?.access_token) {
       tiktokConnected = true;
+      // If no shop_cipher, the token is incomplete — brand needs to reconnect
+      if (!brand.tiktokShopToken?.shop_cipher) tiktokNeedsReconnect = true;
       try {
         const shopId = brand.shopId;
 
@@ -1947,6 +1962,7 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
           console.log(`[client/me] ${brand.name} net GMV = ${gmv} (${orders.length} orders)`);
         } catch(e) {
           console.error('[client/me] TikTok orders error:', e.message);
+          if (e.response?.status === 401 || e.message?.includes('401')) tiktokNeedsReconnect = true;
         }
 
         // Active creators from Reacher
@@ -2039,7 +2055,7 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
           storistaConnected: !!brand.storistaConnected,
         },
       },
-      tiktok: { connected: tiktokConnected, stats: tiktokStats, funnel: tiktokFunnel },
+      tiktok: { connected: tiktokConnected, needsReconnect: tiktokNeedsReconnect, stats: tiktokStats, funnel: tiktokFunnel },
       tasks,
       adminImpersonating: req.session.adminImpersonating || null,
     });

@@ -342,7 +342,10 @@
         </div>
         <div class="badge-row">
           ${badge(c.hasPassword, 'Password set', 'Password not set')}
-          ${badge(c.tiktokConnected, 'TikTok connected', 'TikTok not connected')}
+          ${c.tiktokConnected && !c.hasShopCipher
+            ? `<span class="badge no" style="cursor:pointer;border-color:rgba(201,168,76,0.4);color:#c9a84c" onclick="clearTikTok('${esc(c.id)}',this)" title="Token missing shop_cipher — click to clear so brand can reconnect">⚠️ TikTok (broken)</span>`
+            : badge(c.tiktokConnected, 'TikTok connected', 'TikTok not connected')
+          }
           ${c.bufferConnected ? badge(true, 'Buffer', 'Buffer') : ''}
           ${c.arcadsConnected ? badge(true, 'Arcads', 'Arcads') : ''}
           ${c.storistaConnected ? badge(true, 'Storista', 'Storista') : ''}
@@ -363,6 +366,17 @@
         </button>
       </div>
     `).join('');
+  }
+
+  async function clearTikTok(brandId, el) {
+    if (!confirm('Clear TikTok token? The brand will need to reconnect from their dashboard.')) return;
+    el.textContent = '…';
+    try {
+      const res  = await fetch(`/portal-admin/clear-tiktok/${brandId}`, { method: 'POST' });
+      const data = await res.json();
+      if (data.ok) { alert(`Done — ${data.name} can now reconnect TikTok.`); load(); }
+      else alert(data.error || 'Failed');
+    } catch(e) { alert('Network error'); }
   }
 
   async function impersonate(brandId, btn) {

@@ -358,6 +358,15 @@
     <a href="/client/tiktok/auth" style="display:inline-block;background:#00f2ea;color:#12101a;font-weight:700;font-size:0.85rem;border-radius:8px;padding:10px 20px;text-decoration:none;white-space:nowrap;">Connect →</a>
   </div>
 
+  <!-- TikTok reconnect banner (shown when connected but GMV is 0 / data missing) -->
+  <div id="tiktokReconnectBanner" style="display:none;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.25);border-radius:14px;padding:16px 20px;margin-bottom:24px;align-items:center;justify-content:space-between;gap:16px;">
+    <div>
+      <div style="font-weight:700;color:#c9a84c;margin-bottom:3px;">⚠️ TikTok Shop — Reconnection Needed</div>
+      <div style="font-size:0.81rem;color:#94a3b8;">Your connection expired. Reconnect to restore live GMV and stats.</div>
+    </div>
+    <a href="/client/tiktok/auth" style="display:inline-block;background:#c9a84c;color:#12101a;font-weight:700;font-size:0.84rem;border-radius:8px;padding:9px 18px;text-decoration:none;white-space:nowrap;">Reconnect →</a>
+  </div>
+
   <!-- TikTok Stats -->
   <div class="section-label mb-20">TikTok Shop · Last 30 Days</div>
   <div class="stats-row mb-32">
@@ -827,9 +836,12 @@
       if (adminBrandName) adminBrandName.textContent = adminImpersonating;
     }
 
-    // Connect banner
+    // Connect / reconnect banners
     const banner = document.getElementById('tiktokConnectBanner');
+    const reconnectBanner = document.getElementById('tiktokReconnectBanner');
     if (banner) banner.style.display = tiktok?.connected ? 'none' : 'flex';
+    // Show reconnect banner if connected but needsReconnect flag is set
+    if (reconnectBanner) reconnectBanner.style.display = (tiktok?.connected && tiktok?.needsReconnect) ? 'flex' : 'none';
 
     // Stats
     const s = tiktok?.stats;
