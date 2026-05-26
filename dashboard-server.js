@@ -1738,6 +1738,41 @@ app.post('/portal-admin/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/portal-admin'));
 });
 
+// POST /portal-admin/fix-shop-cipher/:brandId — fetch + store missing shop_cipher for a brand
+app.post('/portal-admin/fix-shop-cipher/:brandId', requirePortalAdmin, async (req, res) => {
+  const brands   = loadBrands();
+  const brandIdx = (brands.clients || []).findIndex(b => b.id === req.params.brandId);
+  if (brandIdx === -1) return res.status(404).json({ error: 'Brand not found' });
+  const brand = brands.clients[brandIdx];
+  const tok   = brand.tiktokShopToken;
+  if (!tok?.access_token) return res.status(400).json({ error: 'No access token for this brand' });
+
+  const appKey = process.env.TIKTOK_SHOP_APP_KEY;
+  try {
+    const allParams = { app_key: appKey, timestamp: Math.floor(Date.now() / 1000) };
+    allParams.sign  = signTTShop('/authorization/202309/shops', allParams, '');
+    const shopRes   = await axios.get(`${TTS_BASE}/authorization/202309/shops`, {
+      params:  allParams,
+      headers: { 'content-type': 'application/json', 'x-tts-access-token': tok.access_token },
+    });
+    const shop = shopRes.data?.data?.shops?.[0];
+    if (!shop) return res.json({ ok: false, raw: shopRes.data, message: 'No shop returned' });
+
+    brands.clients[brandIdx].tiktokShopToken = {
+      ...tok,
+      shop_cipher: shop.cipher,
+      shop_id:     shop.id,
+      shop_name:   shop.name,
+      shop_region: shop.region,
+    };
+    if (!brands.clients[brandIdx].shopId) brands.clients[brandIdx].shopId = shop.id;
+    saveBrands(brands);
+    res.json({ ok: true, shop_name: shop.name, shop_cipher: shop.cipher, shop_id: shop.id });
+  } catch(e) {
+    res.status(500).json({ error: e.message, raw: e.response?.data });
+  }
+});
+
 // GET /portal-admin/debug-brands — list all brand IDs + token status
 app.get('/portal-admin/debug-brands', requirePortalAdmin, (req, res) => {
   const brands = loadBrands();
