@@ -451,12 +451,41 @@ async function sendCreatorTC(brand, brands, brandIdx, creatorHandle, tiktokOpenI
 
   const commissionDecimal = tcCommission / 100;
 
+  // ── Path A.5: Look up creator open_id by handle if not provided ──
+  // Searches TikTok's creator database using the brand's own token.
+  // Runs before Path A so we can use direct invite even when creator didn't do OAuth.
+  const shopTok = brand.tiktokShopToken;
+  if (!tiktokOpenId && creatorHandle && shopTok?.access_token && shopTok?.shop_cipher) {
+    const cleanHandle = creatorHandle.replace(/^@/, '').toLowerCase();
+    try {
+      // Search affiliated creators first (fast, no quota cost)
+      const searchResp = await ttsBrandPost(brand, brands, brandIdx, '/affiliate/seller/202309/creators/search', {
+        creator_handle: cleanHandle,
+        page_size: 10,
+      });
+      const creators = searchResp?.data?.creators || [];
+      const match = creators.find(c =>
+        (c.creator_handle || c.username || '').toLowerCase().replace(/^@/, '') === cleanHandle
+      );
+      if (match?.creator_open_id) {
+        tiktokOpenId = match.creator_open_id;
+        console.log(`${label} resolved open_id ${tiktokOpenId} via handle lookup`);
+      } else {
+        console.log(`${label} creator @${cleanHandle} not found in affiliated creators (${creators.length} returned) — will fall back to Reacher TC`);
+      }
+    } catch(e) {
+      console.error(`${label} creator handle lookup error:`, e.message);
+    }
+  }
+
   // ── Path A: Direct TikTok Shop invite (requires creator open_id + brand shop token) ──
   // Cleaner, faster, no Reacher dependency — used when creator connected TikTok via OAuth
+  // or when open_id was resolved above via handle lookup
   if (tiktokOpenId) {
-    const shopTok = brand.tiktokShopToken;
     if (!shopTok?.access_token) {
       console.log(`${label} no brand TikTok Shop token — falling through to Reacher`);
+    } else if (!shopTok?.shop_cipher) {
+      console.log(`${label} brand token missing shop_cipher — falling through to Reacher`);
     } else {
       // Build product list (hero product or fallback to first product in brand's TTS catalog)
       let productIds = [];
