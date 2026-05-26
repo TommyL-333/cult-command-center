@@ -1738,28 +1738,62 @@ app.post('/portal-admin/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/portal-admin'));
 });
 
-// POST /portal-admin/fix-shop-cipher/:brandId — fetch + store missing shop_cipher for a brand
+// POST /portal-admin/fix-shop-cipher/:brandId — refresh token + fetch + store shop_cipher for a brand
 app.post('/portal-admin/fix-shop-cipher/:brandId', requirePortalAdmin, async (req, res) => {
-  const brands   = loadBrands();
+  let brands   = loadBrands();
   const brandIdx = (brands.clients || []).findIndex(b => b.id === req.params.brandId);
   if (brandIdx === -1) return res.status(404).json({ error: 'Brand not found' });
-  const brand = brands.clients[brandIdx];
-  const tok   = brand.tiktokShopToken;
-  if (!tok?.access_token) return res.status(400).json({ error: 'No access token for this brand' });
 
   const appKey = process.env.TIKTOK_SHOP_APP_KEY;
+  const appSecret = process.env.TIKTOK_SHOP_APP_SECRET;
+
+  // Step 1: always try to refresh the token first (force refresh regardless of expires_at)
+  const tok = brands.clients[brandIdx].tiktokShopToken;
+  if (!tok?.access_token && !tok?.refresh_token) return res.status(400).json({ error: 'No token for this brand' });
+
+  let activeToken = tok.access_token;
+  if (tok.refresh_token) {
+    try {
+      const { data: rd } = await axios.get('https://auth.tiktok-shops.com/api/v2/token/refresh', {
+        params: { app_key: appKey, app_secret: appSecret, refresh_token: tok.refresh_token, grant_type: 'refresh_token' },
+      });
+      if (rd?.code === 0 && rd?.data?.access_token) {
+        const expireVal = rd.data.access_token_expire_in;
+        const expiresAt = expireVal > 9_000_000_000 ? expireVal * 1000 : Date.now() + (expireVal || 86400) * 1000;
+        brands = loadBrands(); // reload in case of concurrent writes
+        brands.clients[brandIdx].tiktokShopToken = {
+          ...brands.clients[brandIdx].tiktokShopToken,
+          access_token:  rd.data.access_token,
+          refresh_token: rd.data.refresh_token || tok.refresh_token,
+          expires_at:    expiresAt,
+        };
+        saveBrands(brands);
+        activeToken = rd.data.access_token;
+        console.log(`[fix-shop-cipher] Token refreshed for ${brands.clients[brandIdx].name}, expires ${new Date(expiresAt).toISOString()}`);
+      } else {
+        console.warn(`[fix-shop-cipher] Token refresh failed for brand ${req.params.brandId}:`, rd);
+        return res.json({ ok: false, step: 'token_refresh', message: 'Token refresh failed — brand must reconnect TikTok', raw: rd });
+      }
+    } catch(e) {
+      console.error(`[fix-shop-cipher] Refresh error:`, e.message, e.response?.data);
+      return res.json({ ok: false, step: 'token_refresh', message: e.message, raw: e.response?.data });
+    }
+  }
+
+  // Step 2: fetch shop cipher with fresh token
   try {
     const allParams = { app_key: appKey, timestamp: Math.floor(Date.now() / 1000) };
     allParams.sign  = signTTShop('/authorization/202309/shops', allParams, '');
     const shopRes   = await axios.get(`${TTS_BASE}/authorization/202309/shops`, {
       params:  allParams,
-      headers: { 'content-type': 'application/json', 'x-tts-access-token': tok.access_token },
+      headers: { 'content-type': 'application/json', 'x-tts-access-token': activeToken },
     });
     const shop = shopRes.data?.data?.shops?.[0];
-    if (!shop) return res.json({ ok: false, raw: shopRes.data, message: 'No shop returned' });
+    if (!shop) return res.json({ ok: false, step: 'shop_fetch', raw: shopRes.data, message: 'No shop returned from TikTok' });
 
+    brands = loadBrands();
     brands.clients[brandIdx].tiktokShopToken = {
-      ...tok,
+      ...brands.clients[brandIdx].tiktokShopToken,
       shop_cipher: shop.cipher,
       shop_id:     shop.id,
       shop_name:   shop.name,
@@ -1769,7 +1803,7 @@ app.post('/portal-admin/fix-shop-cipher/:brandId', requirePortalAdmin, async (re
     saveBrands(brands);
     res.json({ ok: true, shop_name: shop.name, shop_cipher: shop.cipher, shop_id: shop.id });
   } catch(e) {
-    res.status(500).json({ error: e.message, raw: e.response?.data });
+    res.status(500).json({ error: e.message, step: 'shop_fetch', raw: e.response?.data });
   }
 });
 
@@ -2345,10 +2379,13 @@ app.get('/api/tiktokshop/callback', async (req, res) => {
     if (data?.code !== 0 || !data?.data?.access_token) {
       return res.status(500).json({ error: 'Token exchange failed', raw: data });
     }
+    // TikTok returns access_token_expire_in as an absolute Unix timestamp (seconds), not a duration
+    const expireVal = data.data.access_token_expire_in;
+    const expiresAt = expireVal > 9_000_000_000 ? expireVal * 1000 : Date.now() + (expireVal || 86400) * 1000;
     const tokenData = {
       access_token:  data.data.access_token,
       refresh_token: data.data.refresh_token,
-      expires_at:    Date.now() + (data.data.access_token_expire_in || 86400) * 1000,
+      expires_at:    expiresAt,
       open_id:       data.data.open_id,
     };
     // Fetch shop info
@@ -7361,11 +7398,13 @@ async function refreshBrandShopToken(brand, brands, brandIdx) {
       },
     });
     if (data?.code === 0 && data?.data?.access_token) {
+      const expireVal = data.data.access_token_expire_in;
+      const expiresAt = expireVal > 9_000_000_000 ? expireVal * 1000 : Date.now() + (expireVal || 86400) * 1000;
       brand.tiktokShopToken = {
         ...t,
         access_token:  data.data.access_token,
         refresh_token: data.data.refresh_token || t.refresh_token,
-        expires_at:    Date.now() + (data.data.access_token_expire_in || 86400) * 1000,
+        expires_at:    expiresAt,
       };
       brands.clients[brandIdx] = brand;
       saveBrands(brands);
