@@ -1619,28 +1619,36 @@ app.get('/portal-admin/clients', requirePortalAdmin, async (req, res) => {
   const brands = loadBrands();
   const CANCELLED_STATUSES = new Set([140, 121, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND']);
 
-  // Fetch live net GMV using the brand's TikTok Shop token (finance orders = all orders, not just affiliate)
+  // Fetch live net GMV using the brand's TikTok Shop token (order.read scope — all orders, not just affiliate)
   async function fetchNetGmv(brand, brandIdx) {
     if (!brand.tiktokShopToken?.access_token && !brand.shopId) return brand.cachedNetGmv ?? null;
     let netGmv = null;
-    // Try TikTok Shop finance orders first (uses brand's own app token)
+    // Use /order/202309/orders/search — standard order.read scope, covers ALL shop orders
     if (brand.tiktokShopToken?.access_token) {
       try {
         const now   = Math.floor(Date.now() / 1000);
         const start = now - 30 * 24 * 60 * 60;
-        const resp  = await ttsBrandPost(brand, brands, brandIdx, '/finance/202309/orders/search', {}, {
-          create_time_ge: start, create_time_lt: now,
+        const resp  = await ttsBrandPost(brand, brands, brandIdx, '/order/202309/orders/search', {}, {
+          create_time_ge: start,
+          create_time_lt: now,
+          page_size: 100,
+          sort_field: 'create_time',
+          sort_order: 'DESC',
         });
-        const orders  = resp?.data?.finance_orders || resp?.data?.orders || [];
-        const CANCEL  = new Set([140, 121, 4, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND']);
+        const orders = resp?.data?.orders || resp?.data?.order_list || [];
+        const CANCEL = new Set([140, 121, 4, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND']);
         netGmv = 0;
         for (const o of orders) {
           const status = o.order_status ?? o.status;
           if (status !== undefined && CANCEL.has(status)) continue;
-          netGmv += parseFloat(o.original_price ?? o.seller_income ?? o.total_amount ?? 0);
+          netGmv += parseFloat(
+            o.payment_info?.sub_total ??
+            o.payment_info?.total_amount ??
+            o.total_amount ?? 0
+          );
         }
       } catch(e) {
-        console.error(`[admin/clients] TikTok finance error for ${brand.name}:`, e.message);
+        console.error(`[admin/clients] TikTok orders error for ${brand.name}:`, e.message);
       }
     }
     // Fallback: Reacher summary
@@ -1795,26 +1803,33 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
       try {
         const shopId = brand.shopId;
 
-        // Primary GMV source: TikTok Shop finance orders (all orders, not just affiliate links)
+        // GMV: TikTok Shop orders search (order.read scope — covers all orders, not just affiliate)
         let gmv = 0, activeCreators = 0;
         try {
           const now   = Math.floor(Date.now() / 1000);
           const start = now - 30 * 24 * 60 * 60;
-          const financeRes = await ttsBrandPost(brand, brands, brandIdx, '/finance/202309/orders/search', {}, {
+          const CANCELLED = new Set([140, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND']);
+          // Fetch all non-cancelled statuses in one call (no status filter = all statuses)
+          const ordersRes = await ttsBrandPost(brand, brands, brandIdx, '/order/202309/orders/search', {}, {
             create_time_ge: start,
             create_time_lt: now,
+            page_size: 100,
+            sort_field: 'create_time',
+            sort_order: 'DESC',
           });
-          const orders = financeRes?.data?.finance_orders || financeRes?.data?.orders || [];
-          const CANCELLED = new Set([140, 121, 4, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND']);
+          const orders = ordersRes?.data?.orders || ordersRes?.data?.order_list || [];
           for (const o of orders) {
             const status = o.order_status ?? o.status;
-            if (status !== undefined && CANCELLED.has(status)) continue;
-            // original_price = product subtotal (excl. platform fees/shipping)
-            gmv += parseFloat(o.original_price ?? o.seller_income ?? o.total_amount ?? 0);
+            if (CANCELLED.has(status)) continue;
+            gmv += parseFloat(
+              o.payment_info?.sub_total ??
+              o.payment_info?.total_amount ??
+              o.total_amount ?? 0
+            );
           }
         } catch(e) {
-          console.error('[client/me] TikTok finance orders error:', e.message);
-          // Fallback to Reacher summary if TikTok finance API fails
+          console.error('[client/me] TikTok orders error:', e.message);
+          // Fallback to Reacher summary
           if (shopId) {
             try {
               const s = (await axios.get(`${CFG.railwayUrl}/affiliate/shops/${shopId}/summary`, { timeout: 8000 })).data;
@@ -1824,7 +1839,7 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
           }
         }
 
-        // Active creators from Reacher (TikTok affiliate API doesn't give a clean count)
+        // Active creators from Reacher
         if (shopId && activeCreators === 0) {
           try {
             const s = (await axios.get(`${CFG.railwayUrl}/affiliate/shops/${shopId}/summary`, { timeout: 8000 })).data;
