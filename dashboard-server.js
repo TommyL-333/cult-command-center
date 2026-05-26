@@ -1738,6 +1738,47 @@ app.post('/portal-admin/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/portal-admin'));
 });
 
+// GET /portal-admin/debug-gmv/:brandId — raw TikTok order API response for a brand
+app.get('/portal-admin/debug-gmv/:brandId', requirePortalAdmin, async (req, res) => {
+  const brands   = loadBrands();
+  const brandIdx = (brands.clients || []).findIndex(b => b.id === req.params.brandId);
+  if (brandIdx === -1) return res.status(404).json({ error: 'Brand not found' });
+  const brand = brands.clients[brandIdx];
+  const tok   = brand.tiktokShopToken;
+  const info  = {
+    name:          brand.name,
+    hasToken:      !!tok?.access_token,
+    hasShopCipher: !!tok?.shop_cipher,
+    tokenExpiresAt: tok?.expires_at ? new Date(tok.expires_at).toISOString() : null,
+    tokenExpired:  tok?.expires_at ? Date.now() > tok.expires_at : null,
+    shopId:        brand.shopId || null,
+    cachedNetGmv:  brand.cachedNetGmv ?? null,
+    cachedGmvAt:   brand.cachedGmvAt  ? new Date(brand.cachedGmvAt).toISOString() : null,
+  };
+  if (!tok?.access_token) return res.json({ info, error: 'No token' });
+  const now   = Math.floor(Date.now() / 1000);
+  const start = now - 30 * 24 * 60 * 60;
+  try {
+    // Try token refresh if expired
+    if (tok.expires_at && Date.now() > tok.expires_at - 120_000) {
+      await refreshBrandShopToken(brand, brands, brandIdx);
+    }
+    const freshBrand = loadBrands().clients[brandIdx];
+    const resp = await ttsBrandPost(freshBrand, brands, brandIdx, '/order/202309/orders/search', {}, {
+      create_time_ge: start,
+      create_time_lt: now,
+      page_size: 20,
+      sort_field: 'create_time',
+      sort_order: 'DESC',
+    });
+    const orders = resp?.data?.orders || resp?.data?.order_list || [];
+    const sample = orders.slice(0, 2);
+    res.json({ info, resp_code: resp?.code, resp_message: resp?.message, order_count: orders.length, sample_orders: sample, full_data_keys: resp?.data ? Object.keys(resp.data) : [] });
+  } catch(e) {
+    res.json({ info, error: e.message, axiosResponse: e.response?.data });
+  }
+});
+
 // Human-readable labels for Growth Partners task keys
 const GP_TASK_LABELS = {
   contract_signed:      'Contract signed',
