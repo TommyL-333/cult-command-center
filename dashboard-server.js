@@ -1618,7 +1618,7 @@ app.get('/portal-admin/clients', requirePortalAdmin, (req, res) => {
   }
   const brands = loadBrands();
   const clients = (brands.clients || []).map(b => {
-    const gmv          = b.cachedGmv || 0;
+    const gmv          = b.cachedNetGmv || 0;
     const commRate     = b.commissionRate ?? 0.10;
     const revShare     = parseFloat((gmv * commRate).toFixed(2));
     return {
@@ -1761,12 +1761,23 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
 
         let gmv = 0, orderCount = 0;
         const creatorMap = {};
+        // Cancelled statuses: 140 = Cancelled, 121 = Cancelled by buyer, "CANCELLED"
+        const CANCELLED_STATUSES = new Set([140, 121, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND']);
         if (ordersRes.status === 'fulfilled') {
           const affOrders = ordersRes.value?.data?.affiliate_orders || ordersRes.value?.data?.orders || [];
-          orderCount = affOrders.length;
           for (const o of affOrders) {
-            const amt = parseFloat(o.sale_amount ?? o.payment_info?.original_total_product_price ?? o.total_amount ?? 0);
+            // Skip cancelled/refunded orders — net GMV only
+            const status = o.order_status ?? o.status;
+            if (status !== undefined && CANCELLED_STATUSES.has(status)) continue;
+            // Use sub_total (excl. tax/shipping) if available, else fall back to sale_amount
+            const amt = parseFloat(
+              o.payment_info?.sub_total ??
+              o.sale_amount ??
+              o.payment_info?.original_total_product_price ??
+              o.total_amount ?? 0
+            );
             gmv += amt;
+            orderCount++;
             const handle = o.creator_handle || o.creator_username || o.creator_open_id;
             if (handle) {
               if (!creatorMap[handle]) creatorMap[handle] = { handle, gmv: 0, orders: 0 };
@@ -1796,8 +1807,8 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
           const bSnap = loadBrands();
           const bIdx  = bSnap.clients.findIndex(b => b.id === brand.id);
           if (bIdx !== -1) {
-            bSnap.clients[bIdx].cachedGmv   = gmv;
-            bSnap.clients[bIdx].cachedGmvAt = Date.now();
+            bSnap.clients[bIdx].cachedNetGmv   = gmv;
+            bSnap.clients[bIdx].cachedGmvAt    = Date.now();
             saveBrands(bSnap);
           }
         } catch(_) {}
