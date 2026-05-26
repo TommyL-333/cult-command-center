@@ -406,6 +406,164 @@ app.post('/api/onboard/submit', express.json({ limit: '2mb' }), async (req, res)
   runOnboardingPipeline(req.body).catch(e => console.error('[onboard] pipeline error:', e.message));
 });
 
+// ─── Legal pages (required for TikTok Login Kit approval) ────────────────────
+app.get('/terms', (req, res) => {
+  res.set('Content-Type', 'text/html');
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Terms of Service — Cult Content</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0a0f;color:#e2e8f0;line-height:1.7;padding:0}
+.wrap{max-width:760px;margin:0 auto;padding:60px 24px 100px}
+.logo{font-size:1.1rem;font-weight:800;color:#00f2ea;letter-spacing:-.01em;margin-bottom:48px;display:block}
+h1{font-size:2rem;font-weight:900;margin-bottom:8px;letter-spacing:-.02em}
+.updated{font-size:.82rem;color:#64748b;margin-bottom:40px}
+h2{font-size:1.05rem;font-weight:700;color:#fff;margin:36px 0 10px}
+p,li{font-size:.93rem;color:#94a3b8;margin-bottom:10px}
+ul{padding-left:20px;margin-bottom:10px}
+a{color:#00f2ea;text-decoration:none}
+footer{margin-top:60px;padding-top:24px;border-top:1px solid rgba(255,255,255,.07);font-size:.8rem;color:#475569}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="logo" href="https://cultcontent.cc">Cult Content</a>
+  <h1>Terms of Service</h1>
+  <p class="updated">Last updated: May 26, 2026</p>
+
+  <p>These Terms of Service ("Terms") govern your use of the Cult Content creator platform ("Service") operated by Cult Content LLC ("we," "us," or "our"). By accessing or using the Service, you agree to be bound by these Terms.</p>
+
+  <h2>1. The Service</h2>
+  <p>Cult Content is a TikTok Shop creator affiliate management platform. We connect brands with content creators, facilitate Target Collaboration invitations, and provide performance analytics. The Service includes our creator signup pages, brand dashboards, and related tools.</p>
+
+  <h2>2. TikTok Account Connection</h2>
+  <p>As part of the creator signup process, you may be asked to connect your TikTok account. This connection uses TikTok's official OAuth authorization and Login Kit. By connecting your TikTok account, you authorize us to:</p>
+  <ul>
+    <li>Retrieve your TikTok user ID (open_id) and public username</li>
+    <li>Use your TikTok user ID to send you a Target Collaboration invitation via TikTok Shop on behalf of the brand you are applying to work with</li>
+  </ul>
+  <p>We do not post to your TikTok account, access your messages, or store your TikTok credentials. You may revoke this connection at any time through your TikTok app settings under "Manage app permissions."</p>
+
+  <h2>3. Creator Obligations</h2>
+  <p>As a creator using the Service, you agree to:</p>
+  <ul>
+    <li>Provide accurate information during signup</li>
+    <li>Comply with TikTok's Community Guidelines and Terms of Service</li>
+    <li>Comply with applicable advertising disclosure requirements (FTC guidelines)</li>
+    <li>Not misrepresent your identity, follower count, or engagement metrics</li>
+  </ul>
+
+  <h2>4. Commission and Payments</h2>
+  <p>Commission rates, payment terms, and payout schedules are governed by the individual brand agreements within TikTok Shop's affiliate system. Cult Content is not responsible for commission payments, which are processed directly through TikTok Shop.</p>
+
+  <h2>5. Intellectual Property</h2>
+  <p>Content you create remains your property. By participating in brand campaigns, you grant the brand a license to use your content as agreed in the TikTok Shop collaboration terms. Cult Content's platform, branding, and tools are owned by Cult Content LLC.</p>
+
+  <h2>6. Disclaimers</h2>
+  <p>The Service is provided "as is" without warranties of any kind. We do not guarantee earnings, campaign availability, or uninterrupted access to the platform. TikTok Shop features and API availability are subject to TikTok's own terms and policies.</p>
+
+  <h2>7. Limitation of Liability</h2>
+  <p>To the fullest extent permitted by law, Cult Content LLC shall not be liable for any indirect, incidental, or consequential damages arising from your use of the Service.</p>
+
+  <h2>8. Changes to Terms</h2>
+  <p>We may update these Terms from time to time. Continued use of the Service after changes constitutes acceptance of the updated Terms.</p>
+
+  <h2>9. Contact</h2>
+  <p>Questions about these Terms? Email us at <a href="mailto:hello@cultcontent.cc">hello@cultcontent.cc</a>.</p>
+
+  <footer>© 2026 Cult Content LLC · <a href="/privacy">Privacy Policy</a> · <a href="/terms">Terms of Service</a></footer>
+</div>
+</body>
+</html>`);
+});
+
+app.get('/privacy', (req, res) => {
+  res.set('Content-Type', 'text/html');
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Privacy Policy — Cult Content</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0a0f;color:#e2e8f0;line-height:1.7;padding:0}
+.wrap{max-width:760px;margin:0 auto;padding:60px 24px 100px}
+.logo{font-size:1.1rem;font-weight:800;color:#00f2ea;letter-spacing:-.01em;margin-bottom:48px;display:block}
+h1{font-size:2rem;font-weight:900;margin-bottom:8px;letter-spacing:-.02em}
+.updated{font-size:.82rem;color:#64748b;margin-bottom:40px}
+h2{font-size:1.05rem;font-weight:700;color:#fff;margin:36px 0 10px}
+p,li{font-size:.93rem;color:#94a3b8;margin-bottom:10px}
+ul{padding-left:20px;margin-bottom:10px}
+a{color:#00f2ea;text-decoration:none}
+footer{margin-top:60px;padding-top:24px;border-top:1px solid rgba(255,255,255,.07);font-size:.8rem;color:#475569}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="logo" href="https://cultcontent.cc">Cult Content</a>
+  <h1>Privacy Policy</h1>
+  <p class="updated">Last updated: May 26, 2026</p>
+
+  <p>Cult Content LLC ("we," "us," or "our") operates the Cult Content creator platform. This Privacy Policy explains how we collect, use, and protect your information when you use our Service.</p>
+
+  <h2>1. Information We Collect</h2>
+  <p>When you sign up as a creator, we collect:</p>
+  <ul>
+    <li><strong>Contact information:</strong> Name, email address, phone number</li>
+    <li><strong>Social media handles:</strong> TikTok username, Discord username</li>
+    <li><strong>Performance data:</strong> Follower range, GMV range, content niche (self-reported)</li>
+    <li><strong>TikTok account data (if you connect TikTok):</strong> TikTok user ID (open_id) and public username, obtained via TikTok's official Login Kit OAuth</li>
+  </ul>
+
+  <h2>2. How We Use TikTok Data</h2>
+  <p>If you choose to connect your TikTok account, we use the data solely to:</p>
+  <ul>
+    <li>Send you a Target Collaboration invitation on TikTok Shop on behalf of the brand whose creator program you applied to</li>
+    <li>Associate your TikTok identity with your creator profile in our system</li>
+  </ul>
+  <p>We do not sell, share, or transfer your TikTok data to third parties. We do not use your TikTok data for advertising or profiling beyond the specific collaboration invitation described above. Your TikTok credentials are never stored — only the user ID returned by TikTok's OAuth system.</p>
+  <p>You can revoke TikTok's access to our app at any time via <strong>TikTok app → Settings → Security → Manage app permissions</strong>.</p>
+
+  <h2>3. How We Use Other Information</h2>
+  <ul>
+    <li><strong>Email / Phone:</strong> To add you to the brand's CRM (GoHighLevel) and send campaign updates</li>
+    <li><strong>Discord username:</strong> To grant you a Verified Creator role in the brand's Discord server</li>
+    <li><strong>Performance data:</strong> To match creators with appropriate brand campaigns</li>
+  </ul>
+
+  <h2>4. Data Sharing</h2>
+  <p>We share your information only with:</p>
+  <ul>
+    <li>The brand whose creator program you applied to</li>
+    <li>GoHighLevel (our CRM provider) for contact management</li>
+    <li>TikTok Shop, to send the Target Collaboration invitation</li>
+  </ul>
+  <p>We do not sell your personal data.</p>
+
+  <h2>5. Data Retention</h2>
+  <p>We retain your information for as long as you are active in the creator program. You may request deletion at any time by emailing <a href="mailto:hello@cultcontent.cc">hello@cultcontent.cc</a>.</p>
+
+  <h2>6. Security</h2>
+  <p>We use industry-standard security practices to protect your data. Data is stored on encrypted servers. TikTok OAuth tokens are stored securely and used only to perform authorized actions.</p>
+
+  <h2>7. Children's Privacy</h2>
+  <p>Our Service is not directed at children under 13. We do not knowingly collect personal information from children under 13.</p>
+
+  <h2>8. Changes to This Policy</h2>
+  <p>We may update this Privacy Policy from time to time. We will notify users of significant changes via email or a notice on the platform.</p>
+
+  <h2>9. Contact</h2>
+  <p>For privacy questions or data deletion requests, contact us at <a href="mailto:hello@cultcontent.cc">hello@cultcontent.cc</a>.</p>
+
+  <footer>© 2026 Cult Content LLC · <a href="/privacy">Privacy Policy</a> · <a href="/terms">Terms of Service</a></footer>
+</div>
+</body>
+</html>`);
+});
+
 // GET /creators — public opportunities gallery (all active brand pages)
 app.get('/creators', (req, res) => {
   res.set('Content-Type', 'text/html');
