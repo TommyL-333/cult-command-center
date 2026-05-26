@@ -692,6 +692,34 @@ app.post('/api/creator-pages/submit', express.json(), async (req, res) => {
 // Allows creators to connect their TikTok account via a popup on the creator page.
 // The callback postMessages their open_id back to the parent window.
 
+// ─── Creator TikTok OAuth via Shop app (no separate Display API key needed) ───
+// In-memory store: pendingToken → { formData, brandSlug, ts }
+const pendingCreatorSignups = new Map();
+
+// POST /api/creator-pages/pending — store form data, return TikTok Shop OAuth URL
+// Called by the creator signup form before redirecting to TikTok
+app.post('/api/creator-pages/pending', express.json(), (req, res) => {
+  const { brandSlug, name, email, phone, tiktokHandle, discordUsername, followerRange, gmv, niche, message } = req.body || {};
+  if (!brandSlug || !name || !email) return res.status(400).json({ error: 'Missing required fields' });
+
+  const brands = loadBrands();
+  const brand  = (brands.clients || []).find(b => b.creatorPage?.slug === brandSlug);
+  if (!brand) return res.status(404).json({ error: 'Brand not found' });
+
+  const appKey = process.env.TIKTOK_SHOP_APP_KEY;
+  if (!appKey) return res.status(500).json({ error: 'TikTok app not configured' });
+
+  const token = crypto.randomBytes(20).toString('hex');
+  pendingCreatorSignups.set(token, { formData: req.body, brandSlug, ts: Date.now() });
+  // Prune stale entries (> 30 min)
+  for (const [k, v] of pendingCreatorSignups) { if (Date.now() - v.ts > 1_800_000) pendingCreatorSignups.delete(k); }
+
+  const state       = Buffer.from(JSON.stringify({ type: 'creator', token, brandSlug })).toString('base64');
+  const redirectUri = process.env.TIKTOK_SHOP_REDIRECT_URI || 'https://portal.cultcontent.cc/api/tiktokshop/callback';
+  const authUrl     = `https://auth.tiktok-shops.com/oauth/authorize?app_key=${encodeURIComponent(appKey)}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${encodeURIComponent(state)}`;
+  res.json({ ok: true, authUrl });
+});
+
 // GET /api/creator-tiktok/auth?slug=SLUG — opens as a popup, starts TikTok OAuth
 app.get('/api/creator-tiktok/auth', (req, res) => {
   const { slug } = req.query;
@@ -2411,8 +2439,9 @@ app.get('/api/tiktokshop/callback', async (req, res) => {
   if (!authCode) return res.status(400).send('Missing auth_code');
 
   let brandId = null;
+  let stateObj = null;
   if (state) {
-    try { brandId = JSON.parse(Buffer.from(state, 'base64').toString()).brandId; } catch (_) {}
+    try { stateObj = JSON.parse(Buffer.from(state, 'base64').toString()); brandId = stateObj.brandId || null; } catch (_) {}
   }
 
   const appKey    = process.env.TIKTOK_SHOP_APP_KEY;
@@ -2433,7 +2462,45 @@ app.get('/api/tiktokshop/callback', async (req, res) => {
       expires_at:    expiresAt,
       open_id:       data.data.open_id,
     };
-    // Fetch shop info
+
+    // ── Creator signup flow — state has { type:'creator', token, brandSlug } ──
+    if (stateObj?.type === 'creator' && stateObj?.token) {
+      const pending = pendingCreatorSignups.get(stateObj.token);
+      pendingCreatorSignups.delete(stateObj.token);
+      if (!pending) {
+        return res.send(`<html><body style="font-family:sans-serif;padding:40px;background:#12101a;color:#e2e8f0;text-align:center">
+          <h2 style="color:#ff5b5b">Session expired</h2>
+          <p>Please go back and fill out the form again.</p>
+          <p><a href="/creators/${stateObj.brandSlug || ''}" style="color:#00f2ea">← Back</a></p>
+        </body></html>`);
+      }
+      // Complete creator signup with the resolved open_id
+      const formData = { ...pending.formData, tiktokOpenId: tokenData.open_id };
+      console.log(`[creator-signup] TikTok OAuth completed for @${formData.tiktokHandle}, open_id=${tokenData.open_id}`);
+      // Run the full submit pipeline (fire-and-forget)
+      try {
+        const fakeReq = { body: formData };
+        // Reuse the same logic as /api/creator-pages/submit — call the pipeline directly
+        const brands = loadBrands();
+        const brand  = (brands.clients || []).find(b => b.creatorPage?.slug === pending.brandSlug);
+        const handle = (formData.tiktokHandle || '').replace(/^@/, '').trim();
+        if (brand && handle) {
+          const brandIdx = brands.clients.findIndex(b => b.id === brand.id);
+          // Fire TC invite with open_id — will use Path A (direct, instant)
+          sendCreatorTC(brand, brands, brandIdx, handle, tokenData.open_id).catch(e =>
+            console.error('[creator-signup] TC error:', e.message)
+          );
+        }
+        // Also run full onboarding pipeline (GHL, Discord, etc.)
+        runOnboardingPipeline(formData).catch(e => console.error('[creator-signup] pipeline error:', e.message));
+      } catch(e) {
+        console.error('[creator-signup] error:', e.message);
+      }
+      const welcomeUrl = `/creators/${pending.brandSlug}/welcome?handle=${encodeURIComponent(formData.tiktokHandle || '')}`;
+      return res.redirect(welcomeUrl);
+    }
+
+    // Fetch shop info (for brand/seller OAuth — not creator flow)
     let shopName = 'Unknown';
     try {
       const allParams = { app_key: appKey, timestamp: Math.floor(Date.now() / 1000) };
@@ -9507,21 +9574,11 @@ ${rewardLines.length ? `
           <input name="discordUsername" placeholder="yourname">
           <div class="f-hint">Needed to unlock your Verified Creator role.</div>
         </div>
-        ${cp.showTikTokConnect ? `
-        <input type="hidden" name="tiktokOpenId" id="tiktokOpenIdField">
-        <div class="f-row" style="margin-top:4px">
-          <label>TikTok Account <span style="font-size:10px;color:rgba(255,255,255,.4);font-weight:500">(optional — speeds up your TC invite)</span></label>
-          <button type="button" id="ttConnectBtn" onclick="connectTikTok()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:13px 18px;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.12);border-radius:10px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;transition:border-color .2s">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.28 6.28 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.82a8.18 8.18 0 004.78 1.52V6.89a4.85 4.85 0 01-1.01-.2z"/></svg>
-            Connect TikTok
-          </button>
-          <div id="ttConnectedBadge" style="display:none;align-items:center;gap:8px;padding:10px 14px;background:rgba(0,242,234,.08);border:1px solid rgba(0,242,234,.25);border-radius:10px;color:#00f2ea;font-size:13px;font-weight:600;margin-top:6px">
-            <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
-            <span id="ttHandleDisplay">TikTok Connected</span>
-          </div>
-        </div>` : ''}
         <div class="f-err" id="cpErr"></div>
-        <button type="submit" class="btn-submit" id="cpBtn">Join Now</button>
+        <button type="submit" class="btn-submit" id="cpBtn">
+          <span id="cpBtnText">Connect TikTok &amp; Join</span>
+        </button>
+        <div style="margin-top:10px;text-align:center;font-size:11px;color:rgba(255,255,255,.25)">You'll be redirected to TikTok to verify your account, then brought right back.</div>
       </form>
     </div>
   </div>
@@ -9530,55 +9587,24 @@ ${rewardLines.length ? `
 <footer>Powered by <a href="https://cultcontent.cc" target="_blank">Cult Content</a> — TikTok Shop Creator Agency</footer>
 
 <script>
-${cp.showTikTokConnect ? `
-var _ttOpenId = '';
-function connectTikTok() {
-  var popup = window.open('/api/creator-tiktok/auth?slug=${cp.slug}', 'tiktok-auth', 'width=520,height=680,scrollbars=yes');
-  if (!popup) { alert('Please allow popups for this site to connect TikTok.'); return; }
-  function onMsg(e) {
-    if (!e.data) return;
-    if (e.data.tiktokOpenId) {
-      _ttOpenId = e.data.tiktokOpenId;
-      document.getElementById('tiktokOpenIdField').value = _ttOpenId;
-      var badge = document.getElementById('ttConnectedBadge');
-      var btn   = document.getElementById('ttConnectBtn');
-      badge.style.display = 'flex';
-      btn.style.display = 'none';
-      if (e.data.tiktokHandle) {
-        document.getElementById('ttHandleDisplay').textContent = '@' + e.data.tiktokHandle + ' connected ✓';
-        // Pre-fill TikTok handle field if empty
-        var hField = document.querySelector('input[name="tiktokHandle"]');
-        if (hField && !hField.value) hField.value = '@' + e.data.tiktokHandle;
-      }
-      window.removeEventListener('message', onMsg);
-    } else if (e.data.tiktokError) {
-      console.warn('TikTok connect error:', e.data.tiktokError);
-      window.removeEventListener('message', onMsg);
-    }
-  }
-  window.addEventListener('message', onMsg);
-}
-` : ''}
 document.getElementById('cpForm').addEventListener('submit', async function(e) {
   e.preventDefault();
-  var btn = document.getElementById('cpBtn');
-  var err = document.getElementById('cpErr');
-  btn.disabled = true; btn.textContent = 'Submitting...'; err.style.display = 'none';
+  var btn    = document.getElementById('cpBtn');
+  var btnTxt = document.getElementById('cpBtnText');
+  var err    = document.getElementById('cpErr');
+  btn.disabled = true; btnTxt.textContent = 'Saving…'; err.style.display = 'none';
   var data = Object.fromEntries(new FormData(this));
   data.brandSlug = '${cp.slug}';
   try {
-    var r = await fetch('/api/creator-pages/submit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+    // Save form data server-side, get back TikTok OAuth URL
+    var r = await fetch('/api/creator-pages/pending', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
     var d = await r.json();
-    if (d.ok && d.welcomeUrl) {
-      window.location.href = d.welcomeUrl;
-    } else if (d.ok) {
-      btn.textContent = 'Done!';
-    } else {
-      throw new Error(d.error || 'Unknown error');
-    }
+    if (!d.ok || !d.authUrl) throw new Error(d.error || 'Could not start TikTok connect');
+    btnTxt.textContent = 'Redirecting to TikTok…';
+    window.location.href = d.authUrl;
   } catch(ex) {
-    btn.disabled = false; btn.textContent = 'Join Now';
-    err.textContent = ex.message || 'Something went wrong - please try again.';
+    btn.disabled = false; btnTxt.textContent = 'Connect TikTok & Join';
+    err.textContent = ex.message || 'Something went wrong — please try again.';
     err.style.display = 'block';
   }
 });
