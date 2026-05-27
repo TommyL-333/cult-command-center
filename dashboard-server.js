@@ -8297,7 +8297,7 @@ app.get('/api/fireflies/meetings', async (req, res) => {
   if (!keys.length) return res.json({ connected: false, error: 'FIREFLIES_API_KEY not set' });
 
   const fromDate = new Date();
-  fromDate.setDate(fromDate.getDate() - 7);
+  fromDate.setDate(fromDate.getDate() - 30);
   const fromDateStr = fromDate.toISOString().split('T')[0];
 
   const query = `query {
