@@ -1516,11 +1516,11 @@ let ffMeetings = null;
 let ffLoaded   = false;
 
 async function preloadFireflies(force) {
-  // Allow retry if previous load returned not-connected (server may have been mid-restart)
-  if (ffLoaded && !force && ffMeetings?.connected !== false) return;
-  ffLoaded = true;
+  if (ffLoaded && !force && ffMeetings?.connected && (ffMeetings?.meetings?.length > 0)) return;
+  ffLoaded = false;
   const r = await fetch(`${BASE}/api/fireflies/meetings?days=30`).then(d => d.json()).catch(() => null);
   ffMeetings = r;
+  if (r?.connected && r?.meetings?.length > 0) ffLoaded = true;
   renderFirefliesList();
 }
 
@@ -1541,7 +1541,7 @@ function renderFirefliesList() {
     (mt.title || '').toLowerCase().includes(query) ||
     (mt.participants || []).some(p => p.toLowerCase().includes(query))
   ) : allMeetings;
-  if (!allMeetings.length) { inner.innerHTML = `<div style="font-size:.75rem;color:var(--muted);padding:4px">No meetings in the last ${m.days || 30} days.</div>`; return; }
+  if (!allMeetings.length) { inner.innerHTML = `<div style="font-size:.75rem;color:var(--muted);padding:4px;display:flex;align-items:center;gap:10px">No meetings in the last ${m.days || 30} days. <button class="btn btn-ghost btn-sm" style="font-size:.65rem" onclick="preloadFireflies(true)">↻ Retry</button></div>`; return; }
   if (!meetings.length) { inner.innerHTML = '<div style="font-size:.75rem;color:var(--muted);padding:4px">No meetings match your search.</div>'; return; }
   const headerLabel = `<div style="font-size:.65rem;color:var(--muted2);padding:4px 10px 6px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between">
     <span>Last ${m.days || 30} days${m.accountCount > 1 ? ` · ${m.accountCount} accounts` : ''}</span>
