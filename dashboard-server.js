@@ -8296,12 +8296,13 @@ app.get('/api/fireflies/meetings', async (req, res) => {
   const keys = [process.env.FIREFLIES_API_KEY, process.env.FIREFLIES_API_KEY_2].filter(Boolean);
   if (!keys.length) return res.json({ connected: false, error: 'FIREFLIES_API_KEY not set' });
 
+  const days = Math.min(parseInt(req.query.days) || 30, 180);
   const fromDate = new Date();
-  fromDate.setDate(fromDate.getDate() - 7);
+  fromDate.setDate(fromDate.getDate() - days);
   const fromDateStr = fromDate.toISOString().split('T')[0]; // YYYY-MM-DD
 
   const query = `query {
-    transcripts(limit: 50, fromDate: "${fromDateStr}") {
+    transcripts(limit: 200, fromDate: "${fromDateStr}") {
       id title date participants
       summary { short_summary action_items }
     }
@@ -8338,7 +8339,7 @@ app.get('/api/fireflies/meetings', async (req, res) => {
       participants: t.participants || [],
       summary:      t.summary || {},
     }));
-    res.json({ connected: true, meetings, fromDate: fromDateStr, accountCount: keys.length });
+    res.json({ connected: true, meetings, fromDate: fromDateStr, days, accountCount: keys.length });
   } catch (err) {
     console.error('fireflies:', err.response?.data || err.message);
     res.json({ connected: false, error: err.response?.data?.message || err.message });
