@@ -225,7 +225,7 @@ app.use((req, res, next) => {
       next();
     });
   } else {
-    express.json()(req, res, next);
+    express.json({ limit: '10mb' })(req, res, next);
   }
 });
 
@@ -8355,6 +8355,24 @@ app.get('/api/fireflies/meetings', async (req, res) => {
 
 // ─── Fireflies.ai — full transcript for one meeting ──────────────────────────
 app.get('/api/fireflies/transcript/:id', async (req, res) => {
+  const ffId = req.params.id;
+
+  // Check local store first — works for any meeting regardless of API key date limits
+  const local = loadClientMeetings();
+  const localMeeting = (local.meetings || []).find(m => m.fireflyId === ffId || m.id === `ff_${ffId}` || m.id === ffId);
+  if (localMeeting?.notes) {
+    return res.json({
+      id:           ffId,
+      title:        localMeeting.title,
+      date:         localMeeting.date,
+      participants: localMeeting.participants || [],
+      summary:      { short_summary: localMeeting.summary || '', action_items: (localMeeting.actionItems || []).map(a => `- ${a.task}`).join('\n') },
+      transcript:   localMeeting.notes,
+      sentenceCount: localMeeting.notes.split('\n').length,
+      source:       'local',
+    });
+  }
+
   const keys = [process.env.FIREFLIES_API_KEY, process.env.FIREFLIES_API_KEY_2].filter(Boolean);
   if (!keys.length) return res.status(400).json({ error: 'FIREFLIES_API_KEY not set' });
   const query = `query Transcript($id: String!) {
@@ -8366,17 +8384,16 @@ app.get('/api/fireflies/transcript/:id', async (req, res) => {
   }`;
   const tryFetch = async (key) => {
     const r = await axios.post('https://api.fireflies.ai/graphql',
-      { query, variables: { id: req.params.id } },
+      { query, variables: { id: ffId } },
       { headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' } }
     );
     return r.data?.data?.transcript || null;
   };
   try {
-    // Try all accounts — transcript may live on any of them
     let t = null;
     for (const key of keys) {
       t = await tryFetch(key).catch(() => null);
-      if (t?.sentences?.length) break; // found it
+      if (t?.sentences?.length) break;
     }
     if (!t) return res.status(404).json({ error: 'Transcript not found on any connected account' });
     const lines = (t.sentences || []).map(s => `${s.speaker_name || 'Unknown'}: ${s.text}`);
