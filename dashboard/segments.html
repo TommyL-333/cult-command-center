@@ -1514,6 +1514,13 @@ let selectedMeetings = []; // { mt, transcript }
 async function preloadFireflies(force) {
   if (ffLoaded && !force && ffMeetings?.connected && (ffMeetings?.meetings?.length > 0)) return;
   ffLoaded = false;
+  // Kick off background sync to populate local store (doesn't block the picker)
+  fetch(`${BASE}/api/meetings/sync-fireflies`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ days: 365 })
+  }).then(r => r.json()).then(d => {
+    if (d.added > 0) preloadFireflies(true); // refresh list if new meetings came in
+  }).catch(() => {});
   const r = await fetch(`${BASE}/api/fireflies/meetings`).then(d => d.json()).catch(() => null);
   ffMeetings = r;
   if (r?.connected && r?.meetings?.length > 0) ffLoaded = true;
