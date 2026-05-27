@@ -8296,13 +8296,8 @@ app.get('/api/fireflies/meetings', async (req, res) => {
   const keys = [process.env.FIREFLIES_API_KEY, process.env.FIREFLIES_API_KEY_2].filter(Boolean);
   if (!keys.length) return res.json({ connected: false, error: 'FIREFLIES_API_KEY not set' });
 
-  const days = Math.min(parseInt(req.query.days) || 30, 180);
-  const fromDate = new Date();
-  fromDate.setDate(fromDate.getDate() - days);
-  const fromDateStr = fromDate.toISOString().split('T')[0]; // YYYY-MM-DD
-
   const query = `query {
-    transcripts(limit: 100, fromDate: "${fromDateStr}") {
+    transcripts(limit: 100) {
       id title date participants
       summary { short_summary action_items }
     }
@@ -8314,7 +8309,7 @@ app.get('/api/fireflies/meetings', async (req, res) => {
       { headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' } }
     );
     if (r.data?.errors) console.error('[fireflies/meetings] GraphQL errors:', JSON.stringify(r.data.errors));
-    console.log(`[fireflies/meetings] key=...${key.slice(-6)} transcripts=${r.data?.data?.transcripts?.length ?? 'null'} fromDate=${fromDateStr}`);
+    console.log(`[fireflies/meetings] key=...${key.slice(-6)} transcripts=${r.data?.data?.transcripts?.length ?? 'null'}`);
     return r.data?.data?.transcripts || [];
   };
 
@@ -8341,7 +8336,7 @@ app.get('/api/fireflies/meetings', async (req, res) => {
       participants: t.participants || [],
       summary:      t.summary || {},
     }));
-    res.json({ connected: true, meetings, fromDate: fromDateStr, days, accountCount: keys.length, _debug: results.map(r => r.status === 'fulfilled' ? { count: r.value.length } : { error: r.reason?.message }) });
+    res.json({ connected: true, meetings, accountCount: keys.length });
   } catch (err) {
     console.error('fireflies:', err.response?.data || err.message);
     res.json({ connected: false, error: err.response?.data?.message || err.message });
