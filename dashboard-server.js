@@ -2087,6 +2087,37 @@ app.post('/portal-admin/fix-shop-cipher/:brandId', requirePortalAdmin, async (re
   }
 });
 
+// POST /portal-admin/regenerate-brief/:slug — regenerate creator brief for a brand
+app.post('/portal-admin/regenerate-brief/:slug', requirePortalAdmin, async (req, res) => {
+  const brands = loadBrands();
+  const idx    = brands.clients.findIndex(b => b.creatorPage?.slug === req.params.slug);
+  if (idx === -1) return res.status(404).json({ ok: false, error: 'Brand not found' });
+  const brand = brands.clients[idx];
+  try {
+    const cp = brand.creatorPage || {};
+    const formData = {
+      brandName:       brand.name,
+      brandMission:    brand.brandMission || cp.pitch || '',
+      targetAudience:  cp.targetAudience  || brand.targetAudience  || '',
+      mainProblem:     cp.mainProblem     || brand.mainProblem     || '',
+      buyerObjections: cp.buyerObjections || brand.buyerObjections || '',
+      customerResults: cp.customerResults || brand.customerResults || '',
+      products:        (cp.products || brand.products || []).map(p => ({ name: p.name || p.title, description: p.description || p.shopifyDescription || '' })),
+    };
+    const aiContent   = brand.aiContent   || null;
+    const shopifyData = brand.shopifyData || null;
+    const brief = await generateCreatorBrief(formData, shopifyData, aiContent);
+    if (!brief) return res.status(500).json({ ok: false, error: 'Brief generation returned null — check ANTHROPIC_API_KEY' });
+    brands.clients[idx].creatorPage.brief = brief;
+    saveBrands(brands);
+    console.log(`[regenerate-brief] Brief regenerated for ${brand.name}`);
+    res.json({ ok: true, brand: brand.name, brief });
+  } catch (e) {
+    console.error('[regenerate-brief] error:', e.message);
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
 // GET /portal-admin/debug-brands — list all brand IDs + token status
 app.get('/portal-admin/debug-brands', requirePortalAdmin, (req, res) => {
   const brands = loadBrands();
@@ -10359,38 +10390,6 @@ app.post('/api/creator-pages/:slug/product-request', async (req, res) => {
   } catch(e) {
     console.error('[product-request] Lark error:', e.message);
     res.status(500).json({ ok: false, error: 'Failed to send request' });
-  }
-});
-
-// POST /portal-admin/regenerate-brief/:slug — regenerate creator brief for a brand
-app.post('/portal-admin/regenerate-brief/:slug', requirePortalAdmin, async (req, res) => {
-  const brands = loadBrands();
-  const idx    = brands.clients.findIndex(b => b.creatorPage?.slug === req.params.slug);
-  if (idx === -1) return res.status(404).json({ ok: false, error: 'Brand not found' });
-  const brand = brands.clients[idx];
-  try {
-    // Build formData from stored brand config — fields live on creatorPage after onboarding
-    const cp = brand.creatorPage || {};
-    const formData = {
-      brandName:       brand.name,
-      brandMission:    brand.brandMission || cp.pitch || '',
-      targetAudience:  cp.targetAudience  || brand.targetAudience  || '',
-      mainProblem:     cp.mainProblem     || brand.mainProblem     || '',
-      buyerObjections: cp.buyerObjections || brand.buyerObjections || '',
-      customerResults: cp.customerResults || brand.customerResults || '',
-      products:        (cp.products || brand.products || []).map(p => ({ name: p.name || p.title, description: p.description || p.shopifyDescription || '' })),
-    };
-    const aiContent   = brand.aiContent   || null;
-    const shopifyData = brand.shopifyData || null;
-    const brief = await generateCreatorBrief(formData, shopifyData, aiContent);
-    if (!brief) return res.status(500).json({ ok: false, error: 'Brief generation returned null — check ANTHROPIC_API_KEY' });
-    brands.clients[idx].creatorPage.brief = brief;
-    saveBrands(brands);
-    console.log(`[regenerate-brief] Brief regenerated for ${brand.name}`);
-    res.json({ ok: true, brand: brand.name, brief });
-  } catch (e) {
-    console.error('[regenerate-brief] error:', e.message);
-    res.status(500).json({ ok: false, error: e.message });
   }
 });
 
