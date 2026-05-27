@@ -8313,6 +8313,8 @@ app.get('/api/fireflies/meetings', async (req, res) => {
       { query },
       { headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' } }
     );
+    if (r.data?.errors) console.error('[fireflies/meetings] GraphQL errors:', JSON.stringify(r.data.errors));
+    console.log(`[fireflies/meetings] key=...${key.slice(-6)} transcripts=${r.data?.data?.transcripts?.length ?? 'null'} fromDate=${fromDateStr}`);
     return r.data?.data?.transcripts || [];
   };
 
@@ -8339,7 +8341,7 @@ app.get('/api/fireflies/meetings', async (req, res) => {
       participants: t.participants || [],
       summary:      t.summary || {},
     }));
-    res.json({ connected: true, meetings, fromDate: fromDateStr, days, accountCount: keys.length });
+    res.json({ connected: true, meetings, fromDate: fromDateStr, days, accountCount: keys.length, _debug: results.map(r => r.status === 'fulfilled' ? { count: r.value.length } : { error: r.reason?.message }) });
   } catch (err) {
     console.error('fireflies:', err.response?.data || err.message);
     res.json({ connected: false, error: err.response?.data?.message || err.message });
