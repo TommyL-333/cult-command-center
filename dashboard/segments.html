@@ -622,6 +622,10 @@ main{max-width:1400px;margin:0 auto;padding:24px 20px;}
           </div>
           <!-- Fireflies picker dropdown -->
           <div id="ff-picker" style="display:none;margin-bottom:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden">
+            <div style="padding:6px 8px;border-bottom:1px solid var(--border)">
+              <input id="ff-search" type="text" placeholder="Search meetings…" oninput="renderFirefliesList()"
+                style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:5px 8px;font-size:.75rem;color:var(--text);outline:none">
+            </div>
             <div id="ff-picker-inner" style="padding:8px;max-height:220px;overflow-y:auto">
               <div style="font-size:.75rem;color:var(--muted);padding:4px">Loading meetings…</div>
             </div>
@@ -1531,11 +1535,17 @@ function renderFirefliesList() {
     </div>`;
     return;
   }
-  const meetings = m.meetings || [];
-  if (!meetings.length) { inner.innerHTML = '<div style="font-size:.75rem;color:var(--muted);padding:4px">No meetings in the last 7 days.</div>'; return; }
+  const query = (document.getElementById('ff-search')?.value || '').toLowerCase().trim();
+  const allMeetings = m.meetings || [];
+  const meetings = query ? allMeetings.filter(mt =>
+    (mt.title || '').toLowerCase().includes(query) ||
+    (mt.participants || []).some(p => p.toLowerCase().includes(query))
+  ) : allMeetings;
+  if (!allMeetings.length) { inner.innerHTML = '<div style="font-size:.75rem;color:var(--muted);padding:4px">No meetings in the last 7 days.</div>'; return; }
+  if (!meetings.length) { inner.innerHTML = '<div style="font-size:.75rem;color:var(--muted);padding:4px">No meetings match your search.</div>'; return; }
   const headerLabel = `<div style="font-size:.65rem;color:var(--muted2);padding:4px 10px 6px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between">
     <span>Last 7 days${m.accountCount > 1 ? ` · ${m.accountCount} accounts` : ''}</span>
-    <span>${meetings.length} meeting${meetings.length !== 1 ? 's' : ''}</span>
+    <span>${meetings.length}${query ? `/${allMeetings.length}` : ''} meeting${meetings.length !== 1 ? 's' : ''}</span>
   </div>`;
   inner.innerHTML = headerLabel + meetings.map(mt => {
     const date = mt.date ? new Date(mt.date).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
@@ -1553,7 +1563,10 @@ function toggleFirefliesPicker() {
   const picker = document.getElementById('ff-picker');
   const open = picker.style.display === 'none';
   picker.style.display = open ? 'block' : 'none';
-  if (open) preloadFireflies();
+  if (open) {
+    preloadFireflies();
+    setTimeout(() => { const s = document.getElementById('ff-search'); if (s) { s.value = ''; s.focus(); } }, 50);
+  }
 }
 
 async function selectFirefliesMeeting(idx) {
