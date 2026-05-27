@@ -622,9 +622,10 @@ main{max-width:1400px;margin:0 auto;padding:24px 20px;}
           </div>
           <!-- Fireflies picker dropdown -->
           <div id="ff-picker" style="display:none;margin-bottom:8px;background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden">
-            <div style="padding:6px 8px;border-bottom:1px solid var(--border)">
+            <div style="padding:6px 8px;border-bottom:1px solid var(--border);display:flex;gap:6px;align-items:center">
               <input id="ff-search" type="text" placeholder="Search meetings…" oninput="renderFirefliesList()"
-                style="width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:5px 8px;font-size:.75rem;color:var(--text);outline:none">
+                style="flex:1;min-width:0;background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:5px 8px;font-size:.75rem;color:var(--text);outline:none">
+              <button id="ff-sync-btn" class="btn btn-ghost btn-sm" style="font-size:.65rem;white-space:nowrap;flex-shrink:0" onclick="ffSyncMeetings(this)" title="Pull more meeting history">🔥 Sync</button>
             </div>
             <div id="ff-picker-inner" style="padding:8px;max-height:220px;overflow-y:auto">
               <div style="font-size:.75rem;color:var(--muted);padding:4px">Loading meetings…</div>
@@ -1557,6 +1558,25 @@ function renderFirefliesList() {
       <div style="color:var(--muted2);font-size:.68rem;margin-top:2px">${date}${attendees ? ' · ' + esc(attendees) : ''}</div>
     </div>`;
   }).join('');
+}
+
+async function ffSyncMeetings(btn) {
+  const orig = btn.textContent;
+  btn.textContent = '⏳ Syncing…';
+  btn.disabled = true;
+  try {
+    const r = await fetch(`${BASE}/api/meetings/sync-fireflies`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ days: 90 })
+    }).then(d => d.json());
+    ffLoaded = false;
+    await preloadFireflies(true);
+    btn.textContent = r.added > 0 ? `✓ +${r.added}` : '✓ Done';
+  } catch(e) {
+    btn.textContent = '✗ Error';
+  } finally {
+    setTimeout(() => { btn.textContent = orig; btn.disabled = false; }, 2500);
+  }
 }
 
 function toggleFirefliesPicker() {
