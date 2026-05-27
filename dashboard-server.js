@@ -2088,22 +2088,31 @@ app.post('/portal-admin/fix-shop-cipher/:brandId', requirePortalAdmin, async (re
 });
 
 // POST /portal-admin/regenerate-brief/:slug — regenerate creator brief for a brand
-app.post('/portal-admin/regenerate-brief/:slug', requirePortalAdmin, async (req, res) => {
+// Body can include override fields: targetAudience, mainProblem, buyerObjections, customerResults, products, brandMission
+app.post('/portal-admin/regenerate-brief/:slug', requirePortalAdmin, express.json(), async (req, res) => {
   const brands = loadBrands();
   const idx    = brands.clients.findIndex(b => b.creatorPage?.slug === req.params.slug);
   if (idx === -1) return res.status(404).json({ ok: false, error: 'Brand not found' });
   const brand = brands.clients[idx];
   try {
     const cp = brand.creatorPage || {};
+    const ov = req.body || {}; // overrides from request body take priority
     const formData = {
       brandName:       brand.name,
-      brandMission:    brand.brandMission || cp.pitch || '',
-      targetAudience:  cp.targetAudience  || brand.targetAudience  || '',
-      mainProblem:     cp.mainProblem     || brand.mainProblem     || '',
-      buyerObjections: cp.buyerObjections || brand.buyerObjections || '',
-      customerResults: cp.customerResults || brand.customerResults || '',
-      products:        (cp.products || brand.products || []).map(p => ({ name: p.name || p.title, description: p.description || p.shopifyDescription || '' })),
+      brandMission:    ov.brandMission    || brand.brandMission  || cp.pitch           || '',
+      targetAudience:  ov.targetAudience  || cp.targetAudience   || brand.targetAudience  || '',
+      mainProblem:     ov.mainProblem     || cp.mainProblem      || brand.mainProblem     || '',
+      buyerObjections: ov.buyerObjections || cp.buyerObjections  || brand.buyerObjections || '',
+      customerResults: ov.customerResults || cp.customerResults  || brand.customerResults || '',
+      products:        (ov.products || cp.products || brand.products || []).map(p => ({ name: p.name || p.title, description: p.description || p.shopifyDescription || '' })),
     };
+    // Save any overrides back to the brand so future regenerations use them
+    if (ov.targetAudience)  brands.clients[idx].creatorPage.targetAudience  = ov.targetAudience;
+    if (ov.mainProblem)     brands.clients[idx].creatorPage.mainProblem     = ov.mainProblem;
+    if (ov.buyerObjections) brands.clients[idx].creatorPage.buyerObjections = ov.buyerObjections;
+    if (ov.customerResults) brands.clients[idx].creatorPage.customerResults = ov.customerResults;
+    if (ov.products)        brands.clients[idx].creatorPage.products        = ov.products;
+
     const aiContent   = brand.aiContent   || null;
     const shopifyData = brand.shopifyData || null;
     const brief = await generateCreatorBrief(formData, shopifyData, aiContent);
