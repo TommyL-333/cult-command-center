@@ -8302,7 +8302,7 @@ app.get('/api/fireflies/meetings', async (req, res) => {
   const fromDateStr = fromDate.toISOString().split('T')[0]; // YYYY-MM-DD
 
   const query = `query {
-    transcripts(limit: 200, fromDate: "${fromDateStr}") {
+    transcripts(limit: 100, fromDate: "${fromDateStr}") {
       id title date participants
       summary { short_summary action_items }
     }

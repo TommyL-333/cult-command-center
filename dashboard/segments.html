@@ -1541,7 +1541,7 @@ function renderFirefliesList() {
     (mt.title || '').toLowerCase().includes(query) ||
     (mt.participants || []).some(p => p.toLowerCase().includes(query))
   ) : allMeetings;
-  if (!allMeetings.length) { inner.innerHTML = '<div style="font-size:.75rem;color:var(--muted);padding:4px">No meetings in the last 7 days.</div>'; return; }
+  if (!allMeetings.length) { inner.innerHTML = `<div style="font-size:.75rem;color:var(--muted);padding:4px">No meetings in the last ${m.days || 30} days.</div>`; return; }
   if (!meetings.length) { inner.innerHTML = '<div style="font-size:.75rem;color:var(--muted);padding:4px">No meetings match your search.</div>'; return; }
   const headerLabel = `<div style="font-size:.65rem;color:var(--muted2);padding:4px 10px 6px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between">
     <span>Last ${m.days || 30} days${m.accountCount > 1 ? ` · ${m.accountCount} accounts` : ''}</span>
