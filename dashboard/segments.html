@@ -1544,7 +1544,7 @@ function renderFirefliesList() {
   if (!allMeetings.length) { inner.innerHTML = `<div style="font-size:.75rem;color:var(--muted);padding:4px;display:flex;align-items:center;gap:10px">No meetings found. <button class="btn btn-ghost btn-sm" style="font-size:.65rem" onclick="preloadFireflies(true)">↻ Retry</button></div>`; return; }
   if (!meetings.length) { inner.innerHTML = '<div style="font-size:.75rem;color:var(--muted);padding:4px">No meetings match your search.</div>'; return; }
   const headerLabel = `<div style="font-size:.65rem;color:var(--muted2);padding:4px 10px 6px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between">
-    <span>Recent meetings${m.accountCount > 1 ? ` · ${m.accountCount} accounts` : ''}</span>
+    <span>Last 7 days${m.accountCount > 1 ? ` · ${m.accountCount} accounts` : ''}</span>
     <span>${meetings.length}${query ? `/${allMeetings.length}` : ''} meeting${meetings.length !== 1 ? 's' : ''}</span>
   </div>`;
   inner.innerHTML = headerLabel + meetings.map(mt => {

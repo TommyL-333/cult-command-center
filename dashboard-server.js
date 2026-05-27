@@ -8296,8 +8296,12 @@ app.get('/api/fireflies/meetings', async (req, res) => {
   const keys = [process.env.FIREFLIES_API_KEY, process.env.FIREFLIES_API_KEY_2].filter(Boolean);
   if (!keys.length) return res.json({ connected: false, error: 'FIREFLIES_API_KEY not set' });
 
+  const fromDate = new Date();
+  fromDate.setDate(fromDate.getDate() - 7);
+  const fromDateStr = fromDate.toISOString().split('T')[0];
+
   const query = `query {
-    transcripts(limit: 100) {
+    transcripts(limit: 50, fromDate: "${fromDateStr}") {
       id title date participants
       summary { short_summary action_items }
     }
@@ -8309,7 +8313,6 @@ app.get('/api/fireflies/meetings', async (req, res) => {
       { headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' } }
     );
     if (r.data?.errors) console.error('[fireflies/meetings] GraphQL errors:', JSON.stringify(r.data.errors));
-    console.log(`[fireflies/meetings] key=...${key.slice(-6)} transcripts=${r.data?.data?.transcripts?.length ?? 'null'}`);
     return r.data?.data?.transcripts || [];
   };
 
