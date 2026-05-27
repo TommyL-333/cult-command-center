@@ -6284,7 +6284,7 @@ app.post('/api/meetings/sync-fireflies', requireAuth, async (req, res) => {
     const keys = [process.env.FIREFLIES_API_KEY, process.env.FIREFLIES_API_KEY_2].filter(Boolean);
     if (!keys.length) return res.status(400).json({ ok: false, error: 'FIREFLIES_API_KEY not set' });
 
-    const days  = req.body?.days || 90; // default 90 days to catch older meetings
+    const days  = req.body?.days || 365; // default 365 days
     const since = new Date(Date.now() - days * 86400000).toISOString().split('T')[0];
 
     // Fetch meeting list from all Fireflies accounts

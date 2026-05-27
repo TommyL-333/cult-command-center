@@ -631,14 +631,8 @@ main{max-width:1400px;margin:0 auto;padding:24px 20px;}
               <div style="font-size:.75rem;color:var(--muted);padding:4px">Loading meetings…</div>
             </div>
           </div>
-          <!-- Selected meeting badge -->
-          <div id="selected-meeting-row" style="display:none" class="selected-meeting-badge">
-            <div>
-              <div id="selected-meeting-title" style="font-weight:600;color:var(--text)"></div>
-              <div id="selected-meeting-meta" style="font-size:.65rem;color:var(--muted);margin-top:2px"></div>
-            </div>
-            <button onclick="clearSelectedMeeting()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:0 4px">✕</button>
-          </div>
+          <!-- Selected meetings list (multi-select) -->
+          <div id="selected-meetings-list" style="display:none;margin-top:6px;display:flex;flex-direction:column;gap:4px"></div>
           <!-- Optional extra context -->
           <div style="margin-top:8px">
             <button onclick="toggleExtraContext()" id="extra-ctx-toggle-btn" style="font-size:.68rem;color:var(--muted);background:none;border:none;cursor:pointer;text-decoration:underline;padding:0">+ Add context or notes</button>
@@ -1515,6 +1509,7 @@ function copyPricingToProposal() {
 // ── Fireflies meeting picker ───────────────────────────────────────────────────
 let ffMeetings = null;
 let ffLoaded   = false;
+let selectedMeetings = []; // { mt, transcript }
 
 async function preloadFireflies(force) {
   if (ffLoaded && !force && ffMeetings?.connected && (ffMeetings?.meetings?.length > 0)) return;
@@ -1567,7 +1562,7 @@ async function ffSyncMeetings(btn) {
   try {
     const r = await fetch(`${BASE}/api/meetings/sync-fireflies`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ days: 90 })
+      body: JSON.stringify({ days: 365 })
     }).then(d => d.json());
     ffLoaded = false;
     await preloadFireflies(true);
@@ -1589,52 +1584,77 @@ function toggleFirefliesPicker() {
   }
 }
 
+function renderSelectedMeetings() {
+  const list = document.getElementById('selected-meetings-list');
+  if (!selectedMeetings.length) { list.style.display = 'none'; list.innerHTML = ''; return; }
+  list.style.display = 'flex';
+  list.innerHTML = selectedMeetings.map((s, i) => {
+    const attendees = (s.mt.participants || []).filter(e => !e.includes('cultcontent')).join(', ');
+    const date = s.mt.date ? new Date(s.mt.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+    return `<div class="selected-meeting-badge" style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-weight:600;color:var(--text);font-size:.74rem">${esc(s.mt.title)}</div>
+        <div style="font-size:.65rem;color:var(--muted);margin-top:2px">${[date, attendees].filter(Boolean).join(' · ')}</div>
+      </div>
+      <button onclick="removeSelectedMeeting(${i})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:.8rem;padding:0 4px">✕</button>
+    </div>`;
+  }).join('');
+  // Rebuild combined transcript
+  document.getElementById('proposal-input').value = selectedMeetings.map(s => s.transcript).join('\n\n---\n\n');
+  const analyzeBtn = document.getElementById('analyze-btn');
+  analyzeBtn.disabled = false;
+  analyzeBtn.textContent = `📊 Analyze & Extract Metrics${selectedMeetings.length > 1 ? ` (${selectedMeetings.length} meetings)` : ''}`;
+}
+
+function removeSelectedMeeting(i) {
+  selectedMeetings.splice(i, 1);
+  renderSelectedMeetings();
+  if (!selectedMeetings.length) {
+    document.getElementById('analyze-btn').disabled = true;
+    document.getElementById('analyze-btn').textContent = '📊 Analyze & Extract Metrics';
+  }
+}
+
 async function selectFirefliesMeeting(idx) {
   const mt = (ffMeetings?.meetings || [])[idx];
   if (!mt) return;
 
+  // Don't add duplicates
+  if (selectedMeetings.some(s => s.mt.id === mt.id)) {
+    document.getElementById('ff-picker').style.display = 'none';
+    return;
+  }
+
   document.getElementById('ff-picker').style.display = 'none';
 
-  // Show selected meeting badge in step 1
-  const attendees = (mt.participants || []).filter(e => !e.includes('cultcontent')).join(', ');
-  const date = mt.date ? new Date(mt.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
-  document.getElementById('selected-meeting-title').textContent = mt.title;
-  document.getElementById('selected-meeting-meta').textContent = [date, attendees].filter(Boolean).join(' · ');
-  document.getElementById('selected-meeting-row').style.display = 'flex';
-
-  // Show loading state on analyze button
   const analyzeBtn = document.getElementById('analyze-btn');
   analyzeBtn.disabled = true;
   analyzeBtn.textContent = '⏳ Loading transcript…';
 
-  const header = [
-    `Meeting: ${mt.title} (${date})`,
-    attendees ? `With: ${attendees}` : '',
-    '',
-  ].filter(Boolean).join('\n');
+  const attendees = (mt.participants || []).filter(e => !e.includes('cultcontent')).join(', ');
+  const date = mt.date ? new Date(mt.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+  const header = [`Meeting: ${mt.title} (${date})`, attendees ? `With: ${attendees}` : '', ''].filter(Boolean).join('\n');
 
+  let transcript = '';
   try {
     const r = await fetch(`${BASE}/api/fireflies/transcript/${mt.id}`);
     const d = await r.json();
     if (d.error) throw new Error(d.error);
-
     const parts = [header];
     if (d.transcript) parts.push(d.transcript);
     if (d.summary?.short_summary) parts.push(`\n--- Summary ---\n${d.summary.short_summary}`);
     if (d.summary?.action_items)  parts.push(`\n--- Action Items ---\n${d.summary.action_items}`);
-
-    document.getElementById('proposal-input').value = parts.join('\n').trim();
+    transcript = parts.join('\n').trim();
   } catch(e) {
     const summary = mt.summary?.short_summary || '';
     const actions = mt.summary?.action_items  || '';
-    document.getElementById('proposal-input').value = [header, summary, actions ? `\nAction items:\n${actions}` : ''].filter(Boolean).join('\n').trim();
+    transcript = [header, summary, actions ? `\nAction items:\n${actions}` : ''].filter(Boolean).join('\n').trim();
     console.warn('Full transcript unavailable, using summary:', e.message);
   }
 
-  // Auto-trigger extraction now that transcript is ready
-  analyzeBtn.textContent = '📊 Analyze & Extract Metrics';
-  analyzeBtn.disabled = false;
-  extractMetrics();
+  selectedMeetings.push({ mt, transcript });
+  renderSelectedMeetings();
+  if (selectedMeetings.length === 1) extractMetrics();
 }
 
 // ── Proposal generator ─────────────────────────────────────────────────────────
@@ -2122,8 +2142,9 @@ function showProposalStep(n, msg) {
 function goBackToStep1() { showProposalStep(1); }
 
 function clearSelectedMeeting() {
+  selectedMeetings = [];
   document.getElementById('proposal-input').value = '';
-  document.getElementById('selected-meeting-row').style.display = 'none';
+  renderSelectedMeetings();
   document.getElementById('analyze-btn').disabled = true;
   document.getElementById('analyze-btn').textContent = '📊 Analyze & Extract Metrics';
   showProposalStep(1);
