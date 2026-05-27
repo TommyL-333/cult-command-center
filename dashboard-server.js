@@ -8317,28 +8317,35 @@ app.get('/api/fireflies/meetings', async (req, res) => {
   };
 
   try {
-    // Fetch from all configured Fireflies accounts in parallel
+    // Fetch live meetings from Fireflies API (7-day window)
     const results = await Promise.allSettled(keys.map(fetchFromKey));
     const seen = new Set();
     const allMeetings = [];
     for (const result of results) {
       if (result.status !== 'fulfilled') continue;
       for (const t of result.value) {
-        if (seen.has(t.id)) continue; // dedupe across accounts
+        if (seen.has(t.id)) continue;
         seen.add(t.id);
-        allMeetings.push(t);
+        allMeetings.push({ id: t.id, title: t.title || 'Untitled Meeting', date: t.date, participants: t.participants || [], summary: t.summary || {} });
       }
+    }
+    // Merge in locally-synced meetings from client-meetings.json (full history)
+    const local = loadClientMeetings();
+    for (const m of (local.meetings || [])) {
+      const ffId = m.fireflyId || m.id?.replace(/^ff_/, '');
+      if (!ffId || seen.has(ffId)) continue;
+      seen.add(ffId);
+      allMeetings.push({
+        id:           ffId,
+        title:        m.title || 'Untitled Meeting',
+        date:         m.date ? new Date(m.date).getTime() : 0,
+        participants: m.participants || [],
+        summary:      m.summary ? { short_summary: m.summary } : {},
+      });
     }
     // Sort newest first
     allMeetings.sort((a, b) => (b.date || 0) - (a.date || 0));
-    const meetings = allMeetings.map((t, i) => ({
-      _idx:         i,
-      id:           t.id,
-      title:        t.title || 'Untitled Meeting',
-      date:         t.date,
-      participants: t.participants || [],
-      summary:      t.summary || {},
-    }));
+    const meetings = allMeetings.map((t, i) => ({ ...t, _idx: i }));
     res.json({ connected: true, meetings, accountCount: keys.length });
   } catch (err) {
     console.error('fireflies:', err.response?.data || err.message);
