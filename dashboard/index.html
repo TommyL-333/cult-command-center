@@ -2627,6 +2627,15 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
         </div>
         <!-- Row 2: client-side filters (no re-fetch) -->
         <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 20px;background:rgba(0,0,0,0.07);">
+          <select id="creatorsSignupBrand" class="agent-input" style="font-size:12px;padding:5px 10px;"
+            onchange="creatorsClientFilter()">
+            <option value="">Signed up for: All</option>
+            <option value="trusted-rituals">Trusted Rituals</option>
+            <option value="approved-science">Approved Science</option>
+            <option value="diamandia">DIAMANDIA</option>
+            <option value="alpha-flow">Alpha Flow</option>
+          </select>
+
           <select id="creatorsDiscordFilter" class="agent-input" style="font-size:12px;padding:5px 10px;"
             onchange="creatorsClientFilter()">
             <option value="">Discord: All</option>
@@ -11215,6 +11224,7 @@ const _creators = {
     sort: 'name',
     minFollowers: 0,
     discord: '',
+    signupBrand: '',
     hasName: false,
     hasPhone: false,
     min30dGmv: 0,
@@ -11251,10 +11261,11 @@ function creatorsClientFilter() {
 }
 
 function _creatorsReadClientFilters() {
-  _creators.filters.discord   = document.getElementById('creatorsDiscordFilter')?.value || '';
-  _creators.filters.min30dGmv = Number(document.getElementById('creators30dGmvFilter')?.value) || 0;
-  _creators.filters.hasName   = document.getElementById('creatorsHasName')?.checked  || false;
-  _creators.filters.hasPhone  = document.getElementById('creatorsHasPhone')?.checked || false;
+  _creators.filters.discord      = document.getElementById('creatorsDiscordFilter')?.value || '';
+  _creators.filters.signupBrand  = document.getElementById('creatorsSignupBrand')?.value   || '';
+  _creators.filters.min30dGmv    = Number(document.getElementById('creators30dGmvFilter')?.value) || 0;
+  _creators.filters.hasName      = document.getElementById('creatorsHasName')?.checked  || false;
+  _creators.filters.hasPhone     = document.getElementById('creatorsHasPhone')?.checked || false;
 }
 
 async function creatorsLoad(append = false) {
@@ -11426,13 +11437,19 @@ function creatorsRender(append = false) {
   // (filteredRows is kept in sync so select-all only selects visible results)
   const f = _creators.filters;
 
-  if (f.discord || f.hasName || f.hasPhone || f.min30dGmv > 0 || f.minFollowers > 0 || f.shop !== 'all') {
+  if (f.discord || f.signupBrand || f.hasName || f.hasPhone || f.min30dGmv > 0 || f.minFollowers > 0 || f.shop !== 'all') {
     rows = rows.filter(c => {
       const h = (c.handle || '').toLowerCase();
       const reacher = _creators.reacherMap[h];
 
       if (f.hasName  && !c.name)  return false;
       if (f.hasPhone && !c.phone) return false;
+
+      // Filter by brand signup tag (e.g. "trusted-rituals-affiliate")
+      if (f.signupBrand) {
+        const tag = `${f.signupBrand}-affiliate`;
+        if (!(c.tags || []).some(t => t.toLowerCase() === tag)) return false;
+      }
 
       if (f.minFollowers > 0 && (reacher?.follower_count || 0) < f.minFollowers) return false;
 
@@ -11477,7 +11494,7 @@ function creatorsRender(append = false) {
   // Update filter count badge
   const countEl = document.getElementById('creatorsFilterCount');
   if (countEl) {
-    const active = [f.discord, f.hasName, f.hasPhone, f.min30dGmv > 0, f.shop !== 'all', f.minFollowers > 0].filter(Boolean).length;
+    const active = [f.discord, f.signupBrand, f.hasName, f.hasPhone, f.min30dGmv > 0, f.shop !== 'all', f.minFollowers > 0].filter(Boolean).length;
     countEl.textContent = active > 0 ? `${rows.length} shown` : '';
   }
 
@@ -11536,10 +11553,25 @@ function creatorsRender(append = false) {
       ? `<span style="font-size:11px;color:var(--text)">${x(c.name)}</span>`
       : `<span style="font-size:10px;color:var(--muted)">—</span>`;
 
-    const brandPills = (reacher?.shops || []).map(s => {
+    // Reacher shop pills (have sold for this brand)
+    const reacherPills = (reacher?.shops || []).map(s => {
       const idx = shopColorMap[s.shop_name] ?? 0;
       return `<span class="brand-pill" style="background:${PILL_COLORS[idx]};color:${PILL_TEXT[idx]};border-color:${PILL_TEXT[idx]}44;">${x(s.shop_name)}</span>`;
     }).join('');
+
+    // GHL signup brand pills (signed up via form for this brand)
+    const BRAND_SLUG_LABELS = {
+      'trusted-rituals':  'Trusted Rituals',
+      'approved-science': 'Approved Science',
+      'diamandia':        'DIAMANDIA',
+      'alpha-flow':       'Alpha Flow',
+    };
+    const signupPills = Object.entries(BRAND_SLUG_LABELS)
+      .filter(([slug]) => (c.tags || []).some(t => t.toLowerCase() === `${slug}-affiliate`))
+      .map(([, label]) => `<span class="brand-pill" style="background:rgba(168,85,247,0.12);color:#c084fc;border-color:#c084fc44;font-style:italic;" title="Signed up via form">${x(label)} ✎</span>`)
+      .join('');
+
+    const brandPills = reacherPills + signupPills;
 
     const crmBtn = c.ghl_id
       ? `<a href="https://app.profitibull.com/v2/location/c216j58Vx9XxYa7WYMiA/contacts/detail/${c.ghl_id}" target="_blank" title="${x(c.name)}" style="color:var(--teal);font-size:14px;text-decoration:none;">🔗</a>`
