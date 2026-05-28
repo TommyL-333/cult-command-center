@@ -3083,29 +3083,32 @@ app.post('/api/client/storista/upload', requireClientSession, clientUpload.singl
   const filePath  = req.file.path;
   let tempFile    = true;
 
-  try {
-    // Step 1 — pre-sign
-    const presignRes = await axios.post(
-      'https://api-v2.storista.io/v1/tiktok/media/presign',
-      { filename, content_type: req.file.mimetype || 'video/mp4' },
-      { headers: { 'x-api-key': apiKey, 'Content-Type': 'application/json' } }
-    );
-    const presign = presignRes.data;
+  const s = axios.create({
+    baseURL: 'https://api-v2.storista.io',
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    timeout: 30_000,
+  });
 
-    // Step 2 — PUT to S3
-    const fileStream = fs.createReadStream(filePath);
-    await axios.put(presign.upload_url, fileStream, {
-      headers: { 'Content-Type': req.file.mimetype || 'video/mp4', 'Content-Length': req.file.size },
-      maxBodyLength: Infinity, maxContentLength: Infinity,
+  try {
+    const stat = fs.statSync(filePath);
+
+    // Step 1 — pre-sign (same path as admin route)
+    const { data: presign } = await s.post('/v1/media/pre-sign', {
+      filename, content_type: 'video/mp4', size: stat.size,
     });
 
-    // Step 3 — create media
-    const mediaRes = await axios.post(
-      'https://api-v2.storista.io/v1/tiktok/media',
-      { filename, upload_id: presign.upload_id, content_type: req.file.mimetype || 'video/mp4' },
-      { headers: { 'x-api-key': apiKey, 'Content-Type': 'application/json' } }
-    );
-    const media = mediaRes.data;
+    // Step 2 — PUT to S3
+    const fileBuffer = fs.readFileSync(filePath);
+    await axios.put(presign.upload_url, fileBuffer, {
+      headers: { 'Content-Type': 'video/mp4', 'Content-Length': stat.size, 'x-amz-content-sha256': 'UNSIGNED-PAYLOAD' },
+      maxBodyLength: Infinity, maxContentLength: Infinity, timeout: 120_000,
+    });
+
+    // Step 3 — create media record
+    const { data: media } = await s.post('/v1/media/', {
+      data: { upload_id: presign.upload_id, name: filename },
+    });
+
     if (tempFile) fs.unlinkSync(filePath);
     res.json({ ok: true, media_id: media.id || media.upload_id || presign.upload_id, filename });
   } catch (e) {
