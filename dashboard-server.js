@@ -2070,12 +2070,13 @@ app.post('/portal-admin/fix-shop-cipher/:brandId', requirePortalAdmin, async (re
   }
 
   // Step 2: fetch shop cipher with fresh token
+  // access_token must be a query param (excluded from sign per TikTok spec)
   try {
-    const allParams = { app_key: appKey, timestamp: Math.floor(Date.now() / 1000) };
+    const allParams = { app_key: appKey, timestamp: Math.floor(Date.now() / 1000), access_token: activeToken };
     allParams.sign  = signTTShop('/authorization/202309/shops', allParams, '');
     const shopRes   = await axios.get(`${TTS_BASE}/authorization/202309/shops`, {
       params:  allParams,
-      headers: { 'content-type': 'application/json', 'x-tts-access-token': activeToken },
+      headers: { 'content-type': 'application/json' },
     });
     const shop = shopRes.data?.data?.shops?.[0];
     if (!shop) return res.json({ ok: false, step: 'shop_fetch', raw: shopRes.data, message: 'No shop returned from TikTok' });
@@ -2760,14 +2761,15 @@ app.get('/api/tiktokshop/callback', async (req, res) => {
     }
 
     // Fetch shop info (for brand/seller OAuth — not creator flow)
+    // access_token must be a query param (excluded from sign per TikTok spec)
     let shopName = 'Unknown';
     let shopCipherError = null;
     try {
-      const allParams = { app_key: appKey, timestamp: Math.floor(Date.now() / 1000) };
+      const allParams = { app_key: appKey, timestamp: Math.floor(Date.now() / 1000), access_token: tokenData.access_token };
       allParams.sign = signTTShop('/authorization/202309/shops', allParams, '');
       const shopRes = await axios.get(`${TTS_BASE}/authorization/202309/shops`, {
         params: allParams,
-        headers: { 'content-type': 'application/json', 'x-tts-access-token': tokenData.access_token },
+        headers: { 'content-type': 'application/json' },
       });
       console.log('[tiktokshop] shop fetch response:', JSON.stringify(shopRes.data));
       const shop = shopRes.data?.data?.shops?.[0];
@@ -7918,16 +7920,18 @@ app.get('/api/tiktokshop/callback', async (req, res) => {
     };
 
     // Fetch shop cipher using the new token directly
+    // access_token must be a query param (excluded from sign per TikTok spec)
     let shopName = 'Unknown';
     try {
       const allParams = {
-        app_key:   process.env.TIKTOK_SHOP_APP_KEY || '',
-        timestamp: Math.floor(Date.now() / 1000),
+        app_key:      process.env.TIKTOK_SHOP_APP_KEY || '',
+        timestamp:    Math.floor(Date.now() / 1000),
+        access_token: tokenData.access_token,
       };
       allParams.sign = signTTShop('/authorization/202309/shops', allParams, '');
       const shopRes = await axios.get(`${TTS_BASE}/authorization/202309/shops`, {
         params: allParams,
-        headers: { 'content-type': 'application/json', 'x-tts-access-token': tokenData.access_token },
+        headers: { 'content-type': 'application/json' },
       });
       const shop = shopRes.data?.data?.shops?.[0];
       if (shop) {
