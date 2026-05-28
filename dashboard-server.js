@@ -2831,11 +2831,17 @@ app.get('/api/client/storista/accounts', requireClientSession, async (req, res) 
     const brands = loadBrands();
     const brand = brands.clients.find(b => b.id === req.session.clientBrandId);
     const apiKey = brand?.storistaApiKey || process.env.STORISTA_API_KEY;
-    if (!apiKey) return res.json({ ok: true, accounts: [] });
+    if (!apiKey) return res.json({ ok: false, error: 'No Storista API key found for this brand', accounts: [] });
     const { data } = await axios.get('https://api-v2.storista.io/v1/tiktok/accounts',
       { headers: { Authorization: `Bearer ${apiKey}` } });
-    res.json({ ok: true, accounts: data?.accounts || data || [] });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+    console.log('[storista] accounts raw response:', JSON.stringify(data).slice(0, 300));
+    // Handle various response shapes: { accounts: [] } or { data: [] } or [] directly
+    const accounts = data?.accounts || data?.data?.accounts || data?.data || (Array.isArray(data) ? data : []);
+    res.json({ ok: true, accounts, _raw: data });
+  } catch(e) {
+    console.error('[storista] accounts error:', e.response?.status, JSON.stringify(e.response?.data).slice(0,200), e.message);
+    res.status(e.response?.status || 500).json({ error: e.response?.data || e.message, accounts: [] });
+  }
 });
 
 // GET /api/client/storista/products/:account

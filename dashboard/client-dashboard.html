@@ -1805,13 +1805,18 @@
   }
 
   async function loadStoristaAccounts() {
+    const sel = document.getElementById('storistaAccount');
     try {
-      const r = await fetch('/api/client/storista/accounts');
+      const r    = await fetch('/api/client/storista/accounts');
       const data = await r.json();
+      console.log('[storista] accounts response:', data);
       const accounts = data.accounts || [];
-      const sel = document.getElementById('storistaAccount');
+      if (!r.ok || data.error) {
+        sel.innerHTML = `<option value="">Error: ${esc(data.error || 'Failed to load')}</option>`;
+        return;
+      }
       if (!accounts.length) {
-        sel.innerHTML = '<option value="">No TikTok accounts found</option>';
+        sel.innerHTML = '<option value="">No TikTok accounts in Storista — connect one at storista.io</option>';
         return;
       }
       sel.innerHTML = accounts.map(a => {
@@ -1821,7 +1826,8 @@
       }).join('');
       onStoristaAccountChange();
     } catch(e) {
-      document.getElementById('storistaAccount').innerHTML = '<option value="">Failed to load</option>';
+      sel.innerHTML = '<option value="">Failed to load accounts</option>';
+      console.error('[storista] accounts fetch error:', e);
     }
   }
 
