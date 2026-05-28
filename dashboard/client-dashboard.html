@@ -1832,7 +1832,7 @@
         return;
       }
       sel.innerHTML = accounts.map(a => {
-        const val   = a.username || a.handle || a.id || '';
+        const val   = a.username || a.handle || a.id || a.name || '';
         const label = a.display_name || a.name || a.username || a.handle || val;
         return `<option value="${esc(val)}">${esc(label)}</option>`;
       }).join('');
