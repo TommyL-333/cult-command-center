@@ -2070,13 +2070,16 @@ app.post('/portal-admin/fix-shop-cipher/:brandId', requirePortalAdmin, async (re
   }
 
   // Step 2: fetch shop cipher with fresh token
-  // access_token must be a query param (excluded from sign per TikTok spec)
+  // /authorization/202309/shops signs WITH access_token included + requires header too
   try {
-    const allParams = { app_key: appKey, timestamp: Math.floor(Date.now() / 1000), access_token: activeToken };
-    allParams.sign  = signTTShop('/authorization/202309/shops', allParams, '');
+    const _fixParams = { app_key: appKey, timestamp: Math.floor(Date.now() / 1000), access_token: activeToken };
+    const _fixSecret = process.env.TIKTOK_SHOP_APP_SECRET || '';
+    const _fixSorted = Object.keys(_fixParams).filter(k => k !== 'sign').sort();
+    const _fixStr    = _fixSorted.map(k => `${k}${_fixParams[k]}`).join('');
+    _fixParams.sign  = crypto.createHmac('sha256', _fixSecret).update(`${_fixSecret}/authorization/202309/shops${_fixStr}`).digest('hex').toUpperCase();
     const shopRes   = await axios.get(`${TTS_BASE}/authorization/202309/shops`, {
-      params:  allParams,
-      headers: { 'content-type': 'application/json' },
+      params:  _fixParams,
+      headers: { 'content-type': 'application/json', 'x-tts-access-token': activeToken },
     });
     const shop = shopRes.data?.data?.shops?.[0];
     if (!shop) return res.json({ ok: false, step: 'shop_fetch', raw: shopRes.data, message: 'No shop returned from TikTok' });
@@ -2761,15 +2764,20 @@ app.get('/api/tiktokshop/callback', async (req, res) => {
     }
 
     // Fetch shop info (for brand/seller OAuth — not creator flow)
-    // access_token must be a query param (excluded from sign per TikTok spec)
+    // /authorization/202309/shops signs WITH access_token included (unlike other endpoints)
+    // and requires BOTH x-tts-access-token header AND access_token query param
     let shopName = 'Unknown';
     let shopCipherError = null;
     try {
       const allParams = { app_key: appKey, timestamp: Math.floor(Date.now() / 1000), access_token: tokenData.access_token };
-      allParams.sign = signTTShop('/authorization/202309/shops', allParams, '');
+      const sortedKeys = Object.keys(allParams).filter(k => k !== 'sign').sort();
+      const paramStr = sortedKeys.map(k => `${k}${allParams[k]}`).join('');
+      const appSecret = process.env.TIKTOK_SHOP_APP_SECRET || '';
+      const base = `${appSecret}/authorization/202309/shops${paramStr}`;
+      allParams.sign = crypto.createHmac('sha256', appSecret).update(base).digest('hex').toUpperCase();
       const shopRes = await axios.get(`${TTS_BASE}/authorization/202309/shops`, {
         params: allParams,
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', 'x-tts-access-token': tokenData.access_token },
       });
       console.log('[tiktokshop] shop fetch response:', JSON.stringify(shopRes.data));
       const shop = shopRes.data?.data?.shops?.[0];
@@ -7920,18 +7928,18 @@ app.get('/api/tiktokshop/callback', async (req, res) => {
     };
 
     // Fetch shop cipher using the new token directly
-    // access_token must be a query param (excluded from sign per TikTok spec)
+    // /authorization/202309/shops signs WITH access_token included + requires header too
     let shopName = 'Unknown';
     try {
-      const allParams = {
-        app_key:      process.env.TIKTOK_SHOP_APP_KEY || '',
-        timestamp:    Math.floor(Date.now() / 1000),
-        access_token: tokenData.access_token,
-      };
-      allParams.sign = signTTShop('/authorization/202309/shops', allParams, '');
+      const _appKey2    = process.env.TIKTOK_SHOP_APP_KEY    || '';
+      const _appSecret2 = process.env.TIKTOK_SHOP_APP_SECRET || '';
+      const allParams = { app_key: _appKey2, timestamp: Math.floor(Date.now() / 1000), access_token: tokenData.access_token };
+      const _sortedKeys2 = Object.keys(allParams).filter(k => k !== 'sign').sort();
+      const _paramStr2   = _sortedKeys2.map(k => `${k}${allParams[k]}`).join('');
+      allParams.sign = crypto.createHmac('sha256', _appSecret2).update(`${_appSecret2}/authorization/202309/shops${_paramStr2}`).digest('hex').toUpperCase();
       const shopRes = await axios.get(`${TTS_BASE}/authorization/202309/shops`, {
         params: allParams,
-        headers: { 'content-type': 'application/json' },
+        headers: { 'content-type': 'application/json', 'x-tts-access-token': tokenData.access_token },
       });
       const shop = shopRes.data?.data?.shops?.[0];
       if (shop) {
