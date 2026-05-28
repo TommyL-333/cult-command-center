@@ -276,6 +276,7 @@ app.post('/api/webhooks/ghl-client-onboard', async (req, res) => {
       name:        brandName,
       contactName: `${firstName} ${lastName}`.trim(),
       email,
+      loginEmail:  email,
       phone,
       website,
       industry:    '',
@@ -1811,8 +1812,9 @@ app.post('/client/login', clientLoginLimiter, express.json(), async (req, res) =
     const { email, password } = req.body || {};
     if (!email) return res.status(400).json({ error: 'Email required' });
     const brands = loadBrands();
+    const normalised = email.toLowerCase().trim();
     const brand = (brands.clients || []).find(
-      b => b.loginEmail && b.loginEmail.toLowerCase() === email.toLowerCase().trim()
+      b => (b.loginEmail || b.email || '').toLowerCase() === normalised
     );
     if (!brand) return res.status(401).json({ error: 'No account found for that email.' });
     // No password yet — prompt client to create one
@@ -1834,8 +1836,9 @@ app.post('/client/set-password', clientLoginLimiter, express.json(), async (req,
     if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
     if (password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters.' });
     const brands = loadBrands();
+    const normalised2 = email.toLowerCase().trim();
     const idx = (brands.clients || []).findIndex(
-      b => b.loginEmail && b.loginEmail.toLowerCase() === email.toLowerCase().trim()
+      b => (b.loginEmail || b.email || '').toLowerCase() === normalised2
     );
     if (idx === -1) return res.status(401).json({ error: 'No account found for that email.' });
     if (brands.clients[idx].passwordHash) return res.status(400).json({ error: 'Password already set. Use your existing password to log in.' });
