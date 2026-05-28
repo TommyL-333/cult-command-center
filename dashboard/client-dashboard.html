@@ -2034,43 +2034,71 @@
     btn.disabled = false;
   }
 
-  async function generateStoristaCaption(i) {
+  function generateStoristaCaption(i) {
     const item = _storistaFiles[i];
-    if (!item) return;
+    if (!item) return Promise.resolve();
 
     const btn    = document.getElementById(`storistaGenBtn_${i}`);
     const status = document.getElementById(`storistaGenStatus_${i}`);
     const input  = document.getElementById(`storistaCaption_${i}`);
 
     if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
-    if (status) { status.style.display = 'block'; status.style.color = 'var(--muted)'; status.textContent = 'Transcribing…'; }
+    if (status) { status.style.display = 'block'; status.style.color = 'var(--muted)'; status.textContent = 'Uploading…'; }
 
-    try {
-      const productSel  = document.getElementById('storistaProduct');
-      const productName = productSel?.selectedIndex > 0
-        ? productSel.options[productSel.selectedIndex].text : '';
+    const productSel  = document.getElementById('storistaProduct');
+    const productName = productSel?.selectedIndex > 0
+      ? productSel.options[productSel.selectedIndex].text : '';
 
-      const fd = new FormData();
-      fd.append('video', item.file, item.filename);
-      if (productName) fd.append('productName', productName);
+    const fd = new FormData();
+    fd.append('video', item.file, item.filename);
+    if (productName) fd.append('productName', productName);
 
-      if (status) status.textContent = 'Generating caption…';
-      const r    = await fetch('/api/client/storista/generate-caption', { method: 'POST', body: fd });
-      const data = await r.json();
+    return new Promise((resolve) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/client/storista/generate-caption');
 
-      if (data.ok && data.caption) {
-        item.caption = data.caption;
-        if (input) input.value = data.caption;
-        if (status) { status.style.color = 'var(--green)'; status.textContent = '✓ Caption ready'; }
-        setTimeout(() => { if (status) status.style.display = 'none'; }, 3000);
-      } else {
-        if (status) { status.style.color = 'var(--red)'; status.textContent = data.error || 'Caption generation failed'; }
-      }
-    } catch(e) {
-      if (status) { status.style.color = 'var(--red)'; status.textContent = 'Error: ' + e.message; }
-    } finally {
-      if (btn) { btn.disabled = false; btn.textContent = '✨'; }
-    }
+      // Show upload progress
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable && status) {
+          const pct = Math.round((e.loaded / e.total) * 100);
+          status.textContent = pct < 100 ? `Uploading… ${pct}%` : 'Transcribing…';
+        }
+      };
+
+      xhr.onload = () => {
+        try {
+          const data = JSON.parse(xhr.responseText);
+          if (data.ok && data.caption) {
+            item.caption = data.caption;
+            if (input) input.value = data.caption;
+            if (status) { status.style.color = 'var(--green)'; status.textContent = '✓ Caption ready'; }
+            setTimeout(() => { if (status) status.style.display = 'none'; }, 3000);
+          } else {
+            const err = typeof data.error === 'object' ? JSON.stringify(data.error) : (data.error || 'Failed');
+            if (status) { status.style.color = 'var(--red)'; status.textContent = err; }
+          }
+        } catch(e) {
+          if (status) { status.style.color = 'var(--red)'; status.textContent = 'Bad response from server'; }
+        }
+        if (btn) { btn.disabled = false; btn.textContent = '✨'; }
+        resolve();
+      };
+
+      xhr.onerror = () => {
+        if (status) { status.style.color = 'var(--red)'; status.textContent = 'Network error'; }
+        if (btn) { btn.disabled = false; btn.textContent = '✨'; }
+        resolve();
+      };
+
+      xhr.ontimeout = () => {
+        if (status) { status.style.color = 'var(--red)'; status.textContent = 'Timed out — video may be too large'; }
+        if (btn) { btn.disabled = false; btn.textContent = '✨'; }
+        resolve();
+      };
+
+      xhr.timeout = 180_000; // 3 min max
+      xhr.send(fd);
+    });
   }
 
   async function generateAllStoristaCaptions() {
