@@ -459,6 +459,21 @@ app.post('/api/onboard/submit', express.json({ limit: '2mb' }), async (req, res)
   runOnboardingPipeline(req.body).catch(e => console.error('[onboard] pipeline error:', e.message));
 });
 
+// ─── Favicon — proxy from CDN so browsers always load it correctly ────────────
+app.get('/favicon.png', async (req, res) => {
+  try {
+    const r = await axios.get(
+      'https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png',
+      { responseType: 'arraybuffer', timeout: 8000 }
+    );
+    res.set('Content-Type', 'image/png');
+    res.set('Cache-Control', 'public, max-age=86400');
+    res.send(r.data);
+  } catch(e) {
+    res.status(404).end();
+  }
+});
+
 // ─── Legal pages (required for TikTok Login Kit approval) ────────────────────
 app.get('/terms', (req, res) => {
   res.set('Content-Type', 'text/html');
@@ -467,7 +482,7 @@ app.get('/terms', (req, res) => {
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Terms of Service — Cult Content</title>
-<link rel="icon" type="image/png" href="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png">
+<link rel="icon" type="image/png" href="/favicon.png">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0a0f;color:#e2e8f0;line-height:1.7;padding:0}
@@ -543,7 +558,7 @@ app.get('/privacy', (req, res) => {
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Privacy Policy — Cult Content</title>
-<link rel="icon" type="image/png" href="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png">
+<link rel="icon" type="image/png" href="/favicon.png">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0a0f;color:#e2e8f0;line-height:1.7;padding:0}
@@ -9738,7 +9753,7 @@ function renderOpportunitiesPage() {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Manifest Abundance — TikTok Creator Opportunities</title>
-<link rel="icon" type="image/png" href="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png">
+<link rel="icon" type="image/png" href="/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -9828,7 +9843,7 @@ function renderCreatorPage(brand, cp) {
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Partner with ${name} — Creator Program</title>
-<link rel="icon" type="image/png" href="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png">
+<link rel="icon" type="image/png" href="/favicon.png">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
@@ -10128,7 +10143,7 @@ function renderWelcomePage(brand, cp, creatorHandle = '') {
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Welcome — ${name} Creator Program</title>
-<link rel="icon" type="image/png" href="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png">
+<link rel="icon" type="image/png" href="/favicon.png">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0a0f;color:#fff;min-height:100vh;padding:48px 20px}
