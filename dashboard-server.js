@@ -10743,9 +10743,9 @@ app.listen(CFG.port, () => {
     if (poDirty) { savePendingOnboards(po); console.log('[startup] Fixed Lode WTR cashback in pending onboards'); }
   } catch(e) { console.error('[startup] Lode WTR cashback fix error:', e.message); }
 
-  // One-time cleanup — remove test/placeholder brands
+  // One-time cleanup — remove stale placeholder brands (NOT Organic Social Marketing — used for testing)
   try {
-    const testNames = ['test brand', 'test', 'organic social marketing'];
+    const testNames = ['test brand', 'test'];
     const bd = loadBrands();
     const before = (bd.clients || []).length;
     bd.clients = (bd.clients || []).filter(b => !testNames.includes((b.name || '').toLowerCase().trim()));
@@ -10754,6 +10754,34 @@ app.listen(CFG.port, () => {
       console.log(`[startup] Removed ${before - bd.clients.length} test brand(s)`);
     }
   } catch(e) { console.error('[startup] test brand cleanup error:', e.message); }
+
+  // Ensure Organic Social Marketing exists as Tommy's test brand
+  try {
+    const bd = loadBrands();
+    const existing = (bd.clients || []).find(b => (b.name || '').toLowerCase().trim() === 'organic social marketing');
+    if (!existing) {
+      bd.clients = bd.clients || [];
+      bd.clients.push({
+        id:          'orgsocsmarketing001',
+        createdAt:   new Date().toISOString(),
+        name:        'Organic Social Marketing',
+        contactName: 'Tommy Lynch',
+        email:       'tommy@cultcontent.cc',
+        loginEmail:  'tommy@cultcontent.cc',
+        industry:    'Internal test shop',
+        products:    'Test',
+        audience:    'Internal',
+        voice:       'Internal',
+        contentPillars: 'Internal',
+        tiktokHandle: '',
+        cta:         '',
+        source:      'internal',
+        commissionRate: 0.2,
+      });
+      saveBrands(bd);
+      console.log('[startup] Created Organic Social Marketing test brand');
+    }
+  } catch(e) { console.error('[startup] Organic Social Marketing setup error:', e.message); }
 
   // Backfill Reacher shopIds + TC config for known brands (idempotent — skips if already set)
   try {
