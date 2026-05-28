@@ -837,11 +837,17 @@
 
           <!-- Upload queue -->
           <div id="storistaQueueWrap" style="display:none;margin-top:18px;">
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
               <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);">
                 Videos to Post (<span id="storistaQueueCount">0</span>)
               </div>
-              <button onclick="clearStoristaQueue()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:0.78rem;padding:0;">✕ Clear all</button>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <button id="storistaGenAllBtn" onclick="generateAllStoristaCaptions()"
+                  style="background:rgba(0,242,234,0.08);border:1px solid rgba(0,242,234,0.25);color:var(--teal);cursor:pointer;border-radius:6px;padding:5px 12px;font-size:0.78rem;font-weight:700;">
+                  ✨ Generate all captions
+                </button>
+                <button onclick="clearStoristaQueue()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:0.78rem;padding:0;">✕ Clear all</button>
+              </div>
             </div>
             <div id="storistaQueueList" style="display:flex;flex-direction:column;gap:8px;"></div>
           </div>
@@ -1872,12 +1878,18 @@
 
     document.getElementById('storistaQueueList').innerHTML = _storistaFiles.map((item, i) => `
       <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;">
-        <div style="flex:1;min-width:160px;">
+        <div style="flex:1;min-width:180px;">
           <div style="font-size:0.8rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:300px;" title="${esc(item.filename)}">${esc(item.filename)}</div>
-          <input type="text" class="schedule-input" style="margin-top:6px;width:100%;font-size:0.78rem;"
-            placeholder="Caption override (optional)"
-            value="${esc(item.caption)}"
-            oninput="_storistaFiles[${i}].caption=this.value">
+          <div style="display:flex;gap:6px;align-items:center;margin-top:6px;">
+            <input type="text" class="schedule-input" id="storistaCaption_${i}" style="flex:1;font-size:0.78rem;"
+              placeholder="Caption (click ✨ to auto-generate)"
+              value="${esc(item.caption)}"
+              oninput="_storistaFiles[${i}].caption=this.value">
+            <button id="storistaGenBtn_${i}" onclick="generateStoristaCaption(${i})"
+              title="Generate caption from video transcript"
+              style="background:rgba(0,242,234,0.08);border:1px solid rgba(0,242,234,0.2);color:var(--teal);cursor:pointer;border-radius:6px;padding:5px 10px;font-size:0.8rem;white-space:nowrap;flex-shrink:0;">✨</button>
+          </div>
+          <div id="storistaGenStatus_${i}" style="font-size:0.71rem;color:var(--muted);margin-top:3px;display:none;"></div>
         </div>
         <div style="min-width:170px;">
           <div style="font-size:0.7rem;color:var(--muted);margin-bottom:4px;">Post time</div>
@@ -1991,6 +2003,54 @@
       status.textContent = `Schedule error: ${e.message}`;
     }
     btn.disabled = false;
+  }
+
+  async function generateStoristaCaption(i) {
+    const item = _storistaFiles[i];
+    if (!item) return;
+
+    const btn    = document.getElementById(`storistaGenBtn_${i}`);
+    const status = document.getElementById(`storistaGenStatus_${i}`);
+    const input  = document.getElementById(`storistaCaption_${i}`);
+
+    if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+    if (status) { status.style.display = 'block'; status.style.color = 'var(--muted)'; status.textContent = 'Transcribing…'; }
+
+    try {
+      const productSel  = document.getElementById('storistaProduct');
+      const productName = productSel?.selectedIndex > 0
+        ? productSel.options[productSel.selectedIndex].text : '';
+
+      const fd = new FormData();
+      fd.append('video', item.file, item.filename);
+      if (productName) fd.append('productName', productName);
+
+      if (status) status.textContent = 'Generating caption…';
+      const r    = await fetch('/api/client/storista/generate-caption', { method: 'POST', body: fd });
+      const data = await r.json();
+
+      if (data.ok && data.caption) {
+        item.caption = data.caption;
+        if (input) input.value = data.caption;
+        if (status) { status.style.color = 'var(--green)'; status.textContent = '✓ Caption ready'; }
+        setTimeout(() => { if (status) status.style.display = 'none'; }, 3000);
+      } else {
+        if (status) { status.style.color = 'var(--red)'; status.textContent = data.error || 'Caption generation failed'; }
+      }
+    } catch(e) {
+      if (status) { status.style.color = 'var(--red)'; status.textContent = 'Error: ' + e.message; }
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = '✨'; }
+    }
+  }
+
+  async function generateAllStoristaCaptions() {
+    const btn = document.getElementById('storistaGenAllBtn');
+    if (btn) { btn.disabled = true; btn.textContent = '⏳ Generating…'; }
+    for (let i = 0; i < _storistaFiles.length; i++) {
+      await generateStoristaCaption(i);
+    }
+    if (btn) { btn.disabled = false; btn.textContent = '✨ Generate all captions'; }
   }
 
   async function loadStoristaServerQueue() {

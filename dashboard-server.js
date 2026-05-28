@@ -2898,6 +2898,86 @@ app.get('/api/client/storista/queue', requireClientSession, (req, res) => {
   res.json({ ok: true, queue });
 });
 
+// POST /api/client/storista/generate-caption
+// Accepts a video file → extracts audio (ffmpeg) → Whisper transcript → Claude TikTok caption
+app.post('/api/client/storista/generate-caption', requireClientSession, upload.single('video'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ ok: false, error: 'Video file required' });
+
+  const OPENAI_KEY    = process.env.OPENAI_API_KEY;
+  const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+  if (!OPENAI_KEY) {
+    try { fs.unlinkSync(req.file.path); } catch(_) {}
+    return res.status(500).json({ ok: false, error: 'OPENAI_API_KEY not configured' });
+  }
+
+  const brands = loadBrands();
+  const brand  = brands.clients.find(b => b.id === req.session.clientBrandId);
+
+  const videoPath = req.file.path;
+  const audioPath = videoPath.replace(/\.[^.]+$/, '') + '_audio.mp3';
+
+  try {
+    // 1. Extract audio with ffmpeg (mono 64k — plenty for speech)
+    await new Promise((resolve, reject) => {
+      ffmpeg(videoPath)
+        .noVideo()
+        .audioChannels(1)
+        .audioBitrate('64k')
+        .format('mp3')
+        .on('error', reject)
+        .on('end', resolve)
+        .save(audioPath);
+    });
+
+    // 2. Transcribe with Whisper
+    const FormData = require('form-data');
+    const fd = new FormData();
+    fd.append('file', fs.createReadStream(audioPath), { filename: 'audio.mp3', contentType: 'audio/mpeg' });
+    fd.append('model', 'whisper-1');
+    const whisperRes = await axios.post('https://api.openai.com/v1/audio/transcriptions', fd, {
+      headers: { ...fd.getHeaders(), Authorization: `Bearer ${OPENAI_KEY}` },
+      timeout: 120_000,
+    });
+    const transcript = whisperRes.data.text || '';
+
+    // 3. Generate TikTok caption + hashtags with Claude
+    let caption = transcript;
+    if (ANTHROPIC_KEY && transcript) {
+      const brandName   = brand?.name   || '';
+      const productName = req.body.productName || '';
+      const anthropic   = new Anthropic({ apiKey: ANTHROPIC_KEY });
+      const msg = await anthropic.messages.create({
+        model: 'claude-haiku-4-5',
+        max_tokens: 300,
+        messages: [{
+          role: 'user',
+          content: `You are a TikTok content creator writing a short caption for a TikTok Shop product video.
+
+Brand: ${brandName}${productName ? `\nProduct: ${productName}` : ''}
+Video transcript: "${transcript}"
+
+Write a TikTok caption that:
+- Is 1-3 sentences, punchy and conversational
+- Highlights the key benefit or moment shown in the video
+- Ends with 5-8 relevant hashtags (mix of niche + broad TikTok Shop tags like #TikTokMadeMeBuyIt)
+- Keep total caption under 220 characters
+
+Return ONLY the caption text with hashtags. No explanation, no quotes around it.`
+        }],
+      });
+      caption = msg.content[0]?.text?.trim() || transcript;
+    }
+
+    res.json({ ok: true, caption, transcript });
+  } catch (e) {
+    console.error('[storista] generate-caption error:', e.message);
+    res.json({ ok: false, error: e.response?.data?.error?.message || e.message, caption: '', transcript: '' });
+  } finally {
+    try { if (fs.existsSync(videoPath)) fs.unlinkSync(videoPath); } catch(_) {}
+    try { if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath); } catch(_) {}
+  }
+});
+
 // POST /api/client/storista/schedule — bulk-add jobs to the queue
 app.post('/api/client/storista/schedule', requireClientSession, (req, res) => {
   const { items } = req.body;
