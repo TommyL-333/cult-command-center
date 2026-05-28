@@ -3876,6 +3876,48 @@ Return ONLY the caption text with hashtags. No explanation, no quotes.`
   }
 });
 
+// POST /api/client/storista/caption-from-transcript
+// Lightweight JSON endpoint — takes a transcript string and returns a TikTok caption via Claude
+// The client sends the video to /api/whisper-transcribe first, then sends the transcript here
+app.post('/api/client/storista/caption-from-transcript', requireClientSession, express.json(), async (req, res) => {
+  const { transcript, productName } = req.body || {};
+  if (!transcript) return res.status(400).json({ ok: false, error: 'transcript required' });
+
+  const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+  if (!ANTHROPIC_KEY) return res.json({ ok: true, caption: transcript }); // fallback: just use transcript
+
+  const brands = loadBrands();
+  const brand  = brands.clients.find(b => b.id === req.session.clientBrandId);
+
+  try {
+    const anthropic = new Anthropic({ apiKey: ANTHROPIC_KEY });
+    const msg = await anthropic.messages.create({
+      model: 'claude-haiku-4-5',
+      max_tokens: 300,
+      messages: [{
+        role: 'user',
+        content: `You are a TikTok content creator writing a caption for a TikTok Shop product video.
+
+Brand: ${brand?.name || ''}${productName ? `\nProduct: ${productName}` : ''}
+Video transcript: "${transcript}"
+
+Write a TikTok caption that:
+- Is 1-3 sentences, punchy and conversational
+- Highlights the key benefit or moment shown in the video
+- Ends with 5-8 relevant hashtags (mix of niche + broad tags like #TikTokMadeMeBuyIt)
+- Keep total caption under 220 characters
+
+Return ONLY the caption text with hashtags. No explanation, no quotes.`
+      }],
+    });
+    const caption = msg.content[0]?.text?.trim() || transcript;
+    res.json({ ok: true, caption });
+  } catch (e) {
+    console.error('[storista] caption-from-transcript error:', e.message);
+    res.json({ ok: false, error: e.message, caption: transcript });
+  }
+});
+
 // POST /api/proposals/publish — saves HTML to UPLOAD_DIR (public via CF bypass) and returns a shareable link
 app.post('/api/proposals/publish', express.json({ limit: '5mb' }), (req, res) => {
   try {

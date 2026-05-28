@@ -2042,61 +2042,85 @@
     const status = document.getElementById(`storistaGenStatus_${i}`);
     const input  = document.getElementById(`storistaCaption_${i}`);
 
-    if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
-    if (status) { status.style.display = 'block'; status.style.color = 'var(--muted)'; status.textContent = 'Uploading…'; }
-
     const productSel  = document.getElementById('storistaProduct');
     const productName = productSel?.selectedIndex > 0
       ? productSel.options[productSel.selectedIndex].text : '';
 
-    const fd = new FormData();
-    fd.append('video', item.file, item.filename);
-    if (productName) fd.append('productName', productName);
+    if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
 
+    const setStatus = (msg, color) => {
+      if (!status) return;
+      status.style.display = 'block';
+      status.style.color   = color || 'var(--muted)';
+      status.textContent   = msg;
+    };
+
+    setStatus('Uploading…');
+
+    // Step 1 — send video file as "audio" to /api/whisper-transcribe (handles MP4 natively)
     return new Promise((resolve) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open('POST', '/api/client/storista/generate-caption');
+      const fd = new FormData();
+      fd.append('audio', item.file, item.filename);
 
-      // Show upload progress
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', '/api/whisper-transcribe');
+
       xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable && status) {
+        if (e.lengthComputable) {
           const pct = Math.round((e.loaded / e.total) * 100);
-          status.textContent = pct < 100 ? `Uploading… ${pct}%` : 'Transcribing…';
+          setStatus(pct < 100 ? `Uploading… ${pct}%` : 'Transcribing…');
         }
       };
 
-      xhr.onload = () => {
+      xhr.onload = async () => {
         try {
           const data = JSON.parse(xhr.responseText);
-          if (data.ok && data.caption) {
-            item.caption = data.caption;
-            if (input) input.value = data.caption;
-            if (status) { status.style.color = 'var(--green)'; status.textContent = '✓ Caption ready'; }
-            setTimeout(() => { if (status) status.style.display = 'none'; }, 3000);
-          } else {
-            const err = typeof data.error === 'object' ? JSON.stringify(data.error) : (data.error || 'Failed');
-            if (status) { status.style.color = 'var(--red)'; status.textContent = err; }
+          if (!data.ok || !data.text) {
+            setStatus(data.error || 'Transcription failed', 'var(--red)');
+            if (btn) { btn.disabled = false; btn.textContent = '✨'; }
+            return resolve();
           }
-        } catch(e) {
-          if (status) { status.style.color = 'var(--red)'; status.textContent = 'Bad response from server'; }
+
+          // Step 2 — send transcript to lightweight caption endpoint
+          setStatus('Generating caption…');
+          try {
+            const capRes = await fetch('/api/client/storista/caption-from-transcript', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ transcript: data.text, productName })
+            });
+            const capData = await capRes.json();
+            const caption = capData.caption || data.text;
+            item.caption = caption;
+            if (input) input.value = caption;
+            setStatus('✓ Caption ready', 'var(--green)');
+            setTimeout(() => { if (status) status.style.display = 'none'; }, 3000);
+          } catch (capErr) {
+            // Fallback: use raw transcript as caption
+            item.caption = data.text;
+            if (input) input.value = data.text;
+            setStatus('✓ Transcript ready (caption API error)', 'var(--yellow)');
+          }
+        } catch (e) {
+          setStatus('Bad response from server', 'var(--red)');
         }
         if (btn) { btn.disabled = false; btn.textContent = '✨'; }
         resolve();
       };
 
       xhr.onerror = () => {
-        if (status) { status.style.color = 'var(--red)'; status.textContent = 'Network error'; }
+        setStatus('Network error', 'var(--red)');
         if (btn) { btn.disabled = false; btn.textContent = '✨'; }
         resolve();
       };
 
       xhr.ontimeout = () => {
-        if (status) { status.style.color = 'var(--red)'; status.textContent = 'Timed out — video may be too large'; }
+        setStatus('Timed out — video may be too large', 'var(--red)');
         if (btn) { btn.disabled = false; btn.textContent = '✨'; }
         resolve();
       };
 
-      xhr.timeout = 180_000; // 3 min max
+      xhr.timeout = 120_000; // 2 min — just the Whisper upload+transcription
       xhr.send(fd);
     });
   }
