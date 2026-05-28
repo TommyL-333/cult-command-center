@@ -2076,8 +2076,13 @@
   async function generateAllStoristaCaptions() {
     const btn = document.getElementById('storistaGenAllBtn');
     if (btn) { btn.disabled = true; btn.textContent = '⏳ Generating…'; }
-    for (let i = 0; i < _storistaFiles.length; i++) {
-      await generateStoristaCaption(i);
+    const CONCURRENCY = 4;
+    for (let i = 0; i < _storistaFiles.length; i += CONCURRENCY) {
+      const batch = [];
+      for (let j = i; j < Math.min(i + CONCURRENCY, _storistaFiles.length); j++) {
+        batch.push(generateStoristaCaption(j));
+      }
+      await Promise.all(batch);
     }
     if (btn) { btn.disabled = false; btn.textContent = '✨ Generate all captions'; }
   }

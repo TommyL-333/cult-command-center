@@ -3827,6 +3827,7 @@ app.post('/api/client/storista/generate-caption', requireClientSession, upload.s
     await new Promise((resolve, reject) => {
       ffmpeg(videoPath)
         .noVideo().audioChannels(1).audioBitrate('64k').format('mp3')
+        .outputOptions(['-t', '90'])   // cap at 90s — enough for any TikTok caption
         .on('error', reject).on('end', resolve).save(audioPath);
     });
 
