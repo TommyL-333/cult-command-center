@@ -3127,22 +3127,23 @@ app.post('/api/client/storista/generate-caption', requireClientSession, clientUp
     return res.status(500).json({ ok: false, error: 'OPENAI_API_KEY not configured' });
   }
 
-  if (req.file.size > 25 * 1024 * 1024) {
-    try { fs.unlinkSync(req.file.path); } catch(_) {}
-    return res.json({ ok: false, error: `File too large for Whisper (${(req.file.size / 1024 / 1024).toFixed(0)} MB — limit 25 MB)` });
-  }
-
-  const brands = loadBrands();
-  const brand  = brands.clients.find(b => b.id === req.session.clientBrandId);
+  const brands    = loadBrands();
+  const brand     = brands.clients.find(b => b.id === req.session.clientBrandId);
   const videoPath = req.file.path;
+  const audioPath = videoPath.replace(/\.[^.]+$/, '') + '_audio.mp3';
 
   try {
+    // Extract audio via ffmpeg — caps at 90 s, 64kbps mono → typically < 1 MB even for large videos
+    await new Promise((resolve, reject) => {
+      ffmpeg(videoPath)
+        .noVideo().audioChannels(1).audioBitrate('64k').format('mp3')
+        .outputOptions(['-t', '90'])
+        .on('error', reject).on('end', resolve).save(audioPath);
+    });
+
     const FormData = require('form-data');
     const fd = new FormData();
-    fd.append('file', fs.createReadStream(videoPath), {
-      filename: req.file.originalname || 'video.mp4',
-      contentType: req.file.mimetype || 'video/mp4',
-    });
+    fd.append('file', fs.createReadStream(audioPath), { filename: 'audio.mp3', contentType: 'audio/mpeg' });
     fd.append('model', 'whisper-1');
     const whisperRes = await axios.post('https://api.openai.com/v1/audio/transcriptions', fd, {
       headers: { ...fd.getHeaders(), Authorization: `Bearer ${OPENAI_KEY}` },
@@ -3181,6 +3182,7 @@ Return ONLY the caption text with hashtags. No explanation, no quotes.`
     res.json({ ok: false, error: e.response?.data?.error?.message || e.message, caption: '', transcript: '' });
   } finally {
     try { if (fs.existsSync(videoPath)) fs.unlinkSync(videoPath); } catch(_) {}
+    try { if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath); } catch(_) {}
   }
 });
 
