@@ -790,7 +790,7 @@
               </select>
               <div id="storistaAccountStatus" style="font-size:0.72rem;color:var(--muted);margin-top:4px;"></div>
             </div>
-            <div style="flex:1;min-width:180px;">
+            <div id="storistaProductWrap" style="flex:1;min-width:180px;">
               <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px;">Tag Product <span style="font-weight:400;text-transform:none;">(optional)</span></div>
               <select id="storistaProduct" class="schedule-input" style="width:100%;padding:8px 10px;">
                 <option value="">No product tag</option>
@@ -1825,7 +1825,7 @@
       }
 
       const accounts = data.accounts || [];
-      if (status) status.textContent = `Raw keys: ${Object.keys(data._raw || data).join(', ')} | accounts: ${accounts.length}`;
+      if (status) status.textContent = '';
 
       if (!accounts.length) {
         sel.innerHTML = '<option value="">No TikTok accounts found in Storista</option>';
@@ -1854,18 +1854,24 @@
     try {
       const r    = await fetch(`/api/client/storista/products/${encodeURIComponent(account)}`);
       const data = await r.json();
-      console.log('[storista] products response:', JSON.stringify(data).slice(0, 300));
       const products = data.products || [];
-      if (status) status.textContent = `Products raw keys: ${(data._rawKeys || []).join(', ')} | count: ${products.length}`;
-      sel.innerHTML = '<option value="">No product tag</option>' +
-        products.map(p => {
-          const id   = p.id || p.product_id || '';
-          const name = p.name || p.title || id;
-          return `<option value="${esc(id)}">${esc(name)}</option>`;
-        }).join('');
+      if (!products.length) {
+        // Hide product selector if none available
+        document.getElementById('storistaProductWrap').style.display = 'none';
+        if (status) { status.style.color = 'var(--muted)'; status.textContent = '✓ trustedrituals connected — no products to tag'; }
+      } else {
+        document.getElementById('storistaProductWrap').style.display = '';
+        sel.innerHTML = '<option value="">No product tag</option>' +
+          products.map(p => {
+            const id   = p.id || p.product_id || '';
+            const name = p.name || p.title || id;
+            return `<option value="${esc(id)}">${esc(name)}</option>`;
+          }).join('');
+        if (status) { status.style.color = 'var(--green)'; status.textContent = `✓ ${products.length} product${products.length !== 1 ? 's' : ''} available`; }
+      }
     } catch(e) {
-      sel.innerHTML = '<option value="">No product tag</option>';
-      if (status) { status.style.color = 'var(--red)'; status.textContent = 'Products error: ' + e.message; }
+      document.getElementById('storistaProductWrap').style.display = 'none';
+      if (status) { status.style.color = 'var(--muted)'; status.textContent = '✓ Connected — product tagging unavailable'; }
     }
   }
 
