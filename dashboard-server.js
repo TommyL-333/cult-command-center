@@ -2752,6 +2752,7 @@ app.get('/api/tiktokshop/callback', async (req, res) => {
 
     // Fetch shop info (for brand/seller OAuth — not creator flow)
     let shopName = 'Unknown';
+    let shopCipherError = null;
     try {
       const allParams = { app_key: appKey, timestamp: Math.floor(Date.now() / 1000) };
       allParams.sign = signTTShop('/authorization/202309/shops', allParams, '');
@@ -2759,6 +2760,7 @@ app.get('/api/tiktokshop/callback', async (req, res) => {
         params: allParams,
         headers: { 'content-type': 'application/json', 'x-tts-access-token': tokenData.access_token },
       });
+      console.log('[tiktokshop] shop fetch response:', JSON.stringify(shopRes.data));
       const shop = shopRes.data?.data?.shops?.[0];
       if (shop) {
         tokenData.shop_cipher = shop.cipher;
@@ -2766,13 +2768,29 @@ app.get('/api/tiktokshop/callback', async (req, res) => {
         tokenData.shop_name   = shop.name;
         tokenData.shop_region = shop.region;
         shopName = shop.name;
+      } else {
+        shopCipherError = `TikTok returned no shops. code=${shopRes.data?.code} message=${shopRes.data?.message}`;
+        console.warn('[tiktokshop] shop fetch returned empty shops:', JSON.stringify(shopRes.data));
       }
-    } catch (e) { console.warn('[tiktokshop] shop cipher fetch failed:', e.message); }
+    } catch (e) {
+      shopCipherError = e.response?.data ? JSON.stringify(e.response.data) : e.message;
+      console.warn('[tiktokshop] shop cipher fetch failed:', shopCipherError);
+    }
 
     if (brandId) {
       const brands = loadBrands();
       const bi = brands.clients.findIndex(b => b.id === brandId);
       if (bi !== -1) { brands.clients[bi].tiktokShopToken = tokenData; saveBrands(brands); }
+      if (shopCipherError) {
+        return res.send(`
+          <html><body style="font-family:sans-serif;padding:40px;background:#12101a;color:#e2e8f0">
+            <h2 style="color:#f0a500">⚠️ TikTok account connected, but shop not found</h2>
+            <p>Your TikTok account was authorized, but we couldn't link it to a TikTok Shop seller account.</p>
+            <p style="color:#64748b;font-size:0.85rem">Make sure you're logging in with the TikTok account that's connected to your Seller Center. If your shop is still being set up, try again once it's active.</p>
+            <p style="color:#64748b;font-size:0.75rem;margin-top:16px">Debug: ${shopCipherError}</p>
+            <p><a href="/client/dashboard" style="color:#00f2ea">← Back to your dashboard</a></p>
+          </body></html>`);
+      }
       return res.send(`
         <html><body style="font-family:sans-serif;padding:40px;background:#12101a;color:#e2e8f0">
           <h2 style="color:#00f2ea">✅ TikTok Shop connected!</h2>
