@@ -2851,131 +2851,12 @@ app.get('/api/client/storista/products/:account', requireClientSession, async (r
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// POST /api/client/storista/upload — upload a video using the brand's Storista key
-app.post('/api/client/storista/upload', requireClientSession, upload.single('video'), async (req, res) => {
-  const brands = loadBrands();
-  const brand  = brands.clients.find(b => b.id === req.session.clientBrandId);
-  const apiKey = brand?.storistaApiKey;
-  if (!apiKey) return res.status(400).json({ error: 'Storista not connected' });
-
-  let filePath = null, tempFile = false;
-  try {
-    if (req.file) { filePath = req.file.path; tempFile = true; }
-    else return res.status(400).json({ error: 'Video file required' });
-
-    const stat     = fs.statSync(filePath);
-    const filename = req.file.originalname || req.body.filename || 'video.mp4';
-    const s = axios.create({
-      baseURL: STORISTA_BASE,
-      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-      timeout: 30_000,
-    });
-
-    const { data: presign } = await s.post('/v1/media/pre-sign', {
-      filename, content_type: 'video/mp4', size: stat.size,
-    });
-    const fileBuffer = fs.readFileSync(filePath);
-    await axios.put(presign.upload_url, fileBuffer, {
-      headers: { 'Content-Type': 'video/mp4', 'Content-Length': stat.size, 'x-amz-content-sha256': 'UNSIGNED-PAYLOAD' },
-      maxBodyLength: Infinity, maxContentLength: Infinity, timeout: 120_000,
-    });
-    const { data: media } = await s.post('/v1/media/', { data: { upload_id: presign.upload_id, name: filename } });
-
-    if (tempFile) fs.unlinkSync(filePath);
-    res.json({ ok: true, media_id: media.id || media.upload_id || presign.upload_id, filename });
-  } catch (e) {
-    if (tempFile && filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    console.error('[storista] client upload error:', e.response?.data || e.message);
-    res.status(e.response?.status || 500).json({ error: e.response?.data || e.message });
-  }
-});
-
 // GET /api/client/storista/queue — get the brand's scheduled video queue
 app.get('/api/client/storista/queue', requireClientSession, (req, res) => {
   const brands = loadBrands();
   const brand  = brands.clients.find(b => b.id === req.session.clientBrandId);
   const queue  = (brand?.storistaQueue || []).sort((a, b) => new Date(a.scheduledFor) - new Date(b.scheduledFor));
   res.json({ ok: true, queue });
-});
-
-// POST /api/client/storista/generate-caption
-// Accepts a video file → extracts audio (ffmpeg) → Whisper transcript → Claude TikTok caption
-app.post('/api/client/storista/generate-caption', requireClientSession, upload.single('video'), async (req, res) => {
-  if (!req.file) return res.status(400).json({ ok: false, error: 'Video file required' });
-
-  const OPENAI_KEY    = process.env.OPENAI_API_KEY;
-  const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
-  if (!OPENAI_KEY) {
-    try { fs.unlinkSync(req.file.path); } catch(_) {}
-    return res.status(500).json({ ok: false, error: 'OPENAI_API_KEY not configured' });
-  }
-
-  const brands = loadBrands();
-  const brand  = brands.clients.find(b => b.id === req.session.clientBrandId);
-
-  const videoPath = req.file.path;
-  const audioPath = videoPath.replace(/\.[^.]+$/, '') + '_audio.mp3';
-
-  try {
-    // 1. Extract audio with ffmpeg (mono 64k — plenty for speech)
-    await new Promise((resolve, reject) => {
-      ffmpeg(videoPath)
-        .noVideo()
-        .audioChannels(1)
-        .audioBitrate('64k')
-        .format('mp3')
-        .on('error', reject)
-        .on('end', resolve)
-        .save(audioPath);
-    });
-
-    // 2. Transcribe with Whisper
-    const FormData = require('form-data');
-    const fd = new FormData();
-    fd.append('file', fs.createReadStream(audioPath), { filename: 'audio.mp3', contentType: 'audio/mpeg' });
-    fd.append('model', 'whisper-1');
-    const whisperRes = await axios.post('https://api.openai.com/v1/audio/transcriptions', fd, {
-      headers: { ...fd.getHeaders(), Authorization: `Bearer ${OPENAI_KEY}` },
-      timeout: 120_000,
-    });
-    const transcript = whisperRes.data.text || '';
-
-    // 3. Generate TikTok caption + hashtags with Claude
-    let caption = transcript;
-    if (ANTHROPIC_KEY && transcript) {
-      const brandName   = brand?.name   || '';
-      const productName = req.body.productName || '';
-      const anthropic   = new Anthropic({ apiKey: ANTHROPIC_KEY });
-      const msg = await anthropic.messages.create({
-        model: 'claude-haiku-4-5',
-        max_tokens: 300,
-        messages: [{
-          role: 'user',
-          content: `You are a TikTok content creator writing a short caption for a TikTok Shop product video.
-
-Brand: ${brandName}${productName ? `\nProduct: ${productName}` : ''}
-Video transcript: "${transcript}"
-
-Write a TikTok caption that:
-- Is 1-3 sentences, punchy and conversational
-- Highlights the key benefit or moment shown in the video
-- Ends with 5-8 relevant hashtags (mix of niche + broad TikTok Shop tags like #TikTokMadeMeBuyIt)
-- Keep total caption under 220 characters
-
-Return ONLY the caption text with hashtags. No explanation, no quotes around it.`
-        }],
-      });
-      caption = msg.content[0]?.text?.trim() || transcript;
-    }
-
-    res.json({ ok: true, caption, transcript });
-  } catch (e) {
-    console.error('[storista] generate-caption error:', e.message);
-    res.json({ ok: false, error: e.response?.data?.error?.message || e.message, caption: '', transcript: '' });
-  } finally {
-    try { if (fs.existsSync(videoPath)) fs.unlinkSync(videoPath); } catch(_) {}
-    try { if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath); } catch(_) {}
-  }
 });
 
 // POST /api/client/storista/schedule — bulk-add jobs to the queue
@@ -3873,6 +3754,114 @@ const upload = multer({
             || file.mimetype === 'application/octet-stream';
     cb(null, ok);
   },
+});
+
+// POST /api/client/storista/upload — upload a video using the brand's Storista key
+app.post('/api/client/storista/upload', requireClientSession, upload.single('video'), async (req, res) => {
+  const brands = loadBrands();
+  const brand  = brands.clients.find(b => b.id === req.session.clientBrandId);
+  const apiKey = brand?.storistaApiKey;
+  if (!apiKey) return res.status(400).json({ error: 'Storista not connected' });
+
+  let filePath = null, tempFile = false;
+  try {
+    if (req.file) { filePath = req.file.path; tempFile = true; }
+    else return res.status(400).json({ error: 'Video file required' });
+
+    const stat     = fs.statSync(filePath);
+    const filename = req.file.originalname || req.body.filename || 'video.mp4';
+    const s = axios.create({
+      baseURL: STORISTA_BASE,
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      timeout: 30_000,
+    });
+
+    const { data: presign } = await s.post('/v1/media/pre-sign', {
+      filename, content_type: 'video/mp4', size: stat.size,
+    });
+    const fileBuffer = fs.readFileSync(filePath);
+    await axios.put(presign.upload_url, fileBuffer, {
+      headers: { 'Content-Type': 'video/mp4', 'Content-Length': stat.size, 'x-amz-content-sha256': 'UNSIGNED-PAYLOAD' },
+      maxBodyLength: Infinity, maxContentLength: Infinity, timeout: 120_000,
+    });
+    const { data: media } = await s.post('/v1/media/', { data: { upload_id: presign.upload_id, name: filename } });
+
+    if (tempFile) fs.unlinkSync(filePath);
+    res.json({ ok: true, media_id: media.id || media.upload_id || presign.upload_id, filename });
+  } catch (e) {
+    if (tempFile && filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    console.error('[storista] client upload error:', e.response?.data || e.message);
+    res.status(e.response?.status || 500).json({ error: e.response?.data || e.message });
+  }
+});
+
+// POST /api/client/storista/generate-caption
+// Accepts a video file → extracts audio (ffmpeg) → Whisper transcript → Claude TikTok caption
+app.post('/api/client/storista/generate-caption', requireClientSession, upload.single('video'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ ok: false, error: 'Video file required' });
+
+  const OPENAI_KEY    = process.env.OPENAI_API_KEY;
+  const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+  if (!OPENAI_KEY) {
+    try { fs.unlinkSync(req.file.path); } catch(_) {}
+    return res.status(500).json({ ok: false, error: 'OPENAI_API_KEY not configured' });
+  }
+
+  const brands = loadBrands();
+  const brand  = brands.clients.find(b => b.id === req.session.clientBrandId);
+  const videoPath = req.file.path;
+  const audioPath = videoPath.replace(/\.[^.]+$/, '') + '_audio.mp3';
+
+  try {
+    await new Promise((resolve, reject) => {
+      ffmpeg(videoPath)
+        .noVideo().audioChannels(1).audioBitrate('64k').format('mp3')
+        .on('error', reject).on('end', resolve).save(audioPath);
+    });
+
+    const FormData = require('form-data');
+    const fd = new FormData();
+    fd.append('file', fs.createReadStream(audioPath), { filename: 'audio.mp3', contentType: 'audio/mpeg' });
+    fd.append('model', 'whisper-1');
+    const whisperRes = await axios.post('https://api.openai.com/v1/audio/transcriptions', fd, {
+      headers: { ...fd.getHeaders(), Authorization: `Bearer ${OPENAI_KEY}` },
+      timeout: 120_000,
+    });
+    const transcript = whisperRes.data.text || '';
+
+    let caption = transcript;
+    if (ANTHROPIC_KEY && transcript) {
+      const anthropic = new Anthropic({ apiKey: ANTHROPIC_KEY });
+      const msg = await anthropic.messages.create({
+        model: 'claude-haiku-4-5',
+        max_tokens: 300,
+        messages: [{
+          role: 'user',
+          content: `You are a TikTok content creator writing a caption for a TikTok Shop product video.
+
+Brand: ${brand?.name || ''}${req.body.productName ? `\nProduct: ${req.body.productName}` : ''}
+Video transcript: "${transcript}"
+
+Write a TikTok caption that:
+- Is 1-3 sentences, punchy and conversational
+- Highlights the key benefit or moment shown in the video
+- Ends with 5-8 relevant hashtags (mix of niche + broad tags like #TikTokMadeMeBuyIt)
+- Keep total caption under 220 characters
+
+Return ONLY the caption text with hashtags. No explanation, no quotes.`
+        }],
+      });
+      caption = msg.content[0]?.text?.trim() || transcript;
+    }
+
+    res.json({ ok: true, caption, transcript });
+  } catch (e) {
+    console.error('[storista] generate-caption error:', e.message);
+    res.json({ ok: false, error: e.response?.data?.error?.message || e.message, caption: '', transcript: '' });
+  } finally {
+    try { if (fs.existsSync(videoPath)) fs.unlinkSync(videoPath); } catch(_) {}
+    try { if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath); } catch(_) {}
+  }
 });
 
 // POST /api/proposals/publish — saves HTML to UPLOAD_DIR (public via CF bypass) and returns a shareable link
