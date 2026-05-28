@@ -9755,9 +9755,20 @@ h1{font-family:'Montserrat',sans-serif;font-size:clamp(36px,6vw,68px);font-weigh
 .opp-card:hover{border-color:rgba(255,255,255,.18)!important;transform:translateY(-3px);box-shadow:0 16px 40px rgba(0,0,0,.35);}
 footer{border-top:1px solid rgba(255,255,255,.05);padding:24px;text-align:center;font-size:11px;color:rgba(255,255,255,.18);}
 footer a{color:#00f2ea;text-decoration:none;}
+.site-nav{display:flex;align-items:center;padding:16px 24px;border-bottom:1px solid rgba(255,255,255,.05);}
+.nav-logo{display:flex;align-items:center;gap:10px;text-decoration:none;}
+.nav-logo img{width:36px;height:36px;border-radius:8px;object-fit:cover;}
+.nav-logo-text{font-size:.9rem;font-weight:800;color:#00f2ea;letter-spacing:-.01em;}
 </style>
 </head>
 <body>
+
+<nav class="site-nav">
+  <a class="nav-logo" href="https://cultcontent.cc" target="_blank">
+    <img src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png" alt="Cult Content">
+    <span class="nav-logo-text">Cult Content</span>
+  </a>
+</nav>
 
 <div class="hero">
   <div class="eyebrow">✦ TikTok Shop Creator Program</div>
