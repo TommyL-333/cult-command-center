@@ -2780,6 +2780,8 @@ app.get('/api/tiktokshop/callback', async (req, res) => {
     let shopName = 'Unknown';
     let shopCipherError = null;
     try {
+      const _dbgSecret = process.env.TIKTOK_SHOP_APP_SECRET || '';
+      console.log('[tiktokshop] active secret prefix:', _dbgSecret.slice(0,6), 'len:', _dbgSecret.length);
       const allParams = { app_key: appKey, timestamp: Math.floor(Date.now() / 1000) };
       allParams.sign = signTTShop('/authorization/202309/shops', allParams, '');
       const shopRes = await axios.get(`${TTS_BASE}/authorization/202309/shops`, {
