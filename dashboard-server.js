@@ -2250,7 +2250,7 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
     if (brand.tiktokShopToken?.access_token) {
       tiktokConnected = true;
       // If no shop_cipher, the token is incomplete — brand needs to reconnect
-      if (!brand.tiktokShopToken?.shop_cipher) tiktokNeedsReconnect = true;
+      // shop_cipher is optional for single-shop sellers — don't force reconnect just for missing cipher
       try {
         const shopId = brand.shopId;
 
@@ -7816,11 +7816,12 @@ async function refreshBrandShopToken(brand, brands, brandIdx) {
 
 async function ttsBrandRequest(brandToken, method, apiPath, params = {}, body = null) {
   const allParams = {
-    app_key:     process.env.TIKTOK_SHOP_APP_KEY || '',
-    timestamp:   Math.floor(Date.now() / 1000),
-    shop_cipher: brandToken.shop_cipher,
+    app_key:   process.env.TIKTOK_SHOP_APP_KEY || '',
+    timestamp: Math.floor(Date.now() / 1000),
     ...params,
   };
+  // Only include shop_cipher if it exists — single-shop sellers work without it
+  if (brandToken.shop_cipher) allParams.shop_cipher = brandToken.shop_cipher;
   allParams.sign = signTTShop(apiPath, allParams, body);
   const config = {
     method,
