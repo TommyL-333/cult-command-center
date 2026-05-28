@@ -798,12 +798,6 @@
             </div>
           </div>
 
-          <!-- Shared caption -->
-          <div style="margin-bottom:16px;">
-            <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px;">Default Caption</div>
-            <textarea class="caption-area" id="storistaSharedCaption" placeholder="Caption applied to all videos (can override per video below)…" style="height:76px"></textarea>
-          </div>
-
           <!-- Drop zone -->
           <div class="drop-zone" id="storistaDropZone"
             onclick="document.getElementById('storistaFileInput').click()"
@@ -1968,7 +1962,6 @@
   async function submitStoristaSchedule() {
     const account   = document.getElementById('storistaAccount').value;
     const productId = document.getElementById('storistaProduct').value;
-    const shared    = document.getElementById('storistaSharedCaption').value.trim();
 
     if (!account) return alert('Select a TikTok account first.');
     const missing = _storistaFiles.filter(f => !f.scheduledFor);
@@ -2000,7 +1993,7 @@
           filename:     item.filename,
           account,
           productId,
-          caption:      item.caption.trim() || shared,
+          caption:      item.caption.trim(),
           scheduledFor: new Date(item.scheduledFor).toISOString(),
         });
       } catch(e) {
