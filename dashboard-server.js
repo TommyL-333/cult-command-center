@@ -2775,6 +2775,7 @@ app.get('/api/tiktokshop/callback', async (req, res) => {
       const appSecret = process.env.TIKTOK_SHOP_APP_SECRET || '';
       const base = `${appSecret}/authorization/202309/shops${paramStr}`;
       allParams.sign = crypto.createHmac('sha256', appSecret).update(base).digest('hex').toUpperCase();
+      console.log('[tiktokshop] sign debug — appKey len:', (appKey||'').length, 'appSecret len:', appSecret.length, 'paramStr:', paramStr.replace(tokenData.access_token, '[TOKEN]'), 'sign:', allParams.sign.slice(0,8)+'...');
       const shopRes = await axios.get(`${TTS_BASE}/authorization/202309/shops`, {
         params: allParams,
         headers: { 'content-type': 'application/json', 'x-tts-access-token': tokenData.access_token },
