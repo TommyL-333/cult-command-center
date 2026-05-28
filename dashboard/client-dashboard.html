@@ -1855,12 +1855,11 @@
       const r    = await fetch(`/api/client/storista/products/${encodeURIComponent(account)}`);
       const data = await r.json();
       const products = data.products || [];
+      document.getElementById('storistaProductWrap').style.display = '';
       if (!products.length) {
-        // Hide product selector if none available
-        document.getElementById('storistaProductWrap').style.display = 'none';
-        if (status) { status.style.color = 'var(--muted)'; status.textContent = '✓ trustedrituals connected — no products to tag'; }
+        sel.innerHTML = '<option value="">No products found</option>';
+        if (status) { status.style.color = 'var(--muted)'; status.textContent = '✓ Connected — no products in this account'; }
       } else {
-        document.getElementById('storistaProductWrap').style.display = '';
         sel.innerHTML = '<option value="">No product tag</option>' +
           products.map(p => {
             const id   = p.id || p.product_id || '';
@@ -1870,8 +1869,9 @@
         if (status) { status.style.color = 'var(--green)'; status.textContent = `✓ ${products.length} product${products.length !== 1 ? 's' : ''} available`; }
       }
     } catch(e) {
-      document.getElementById('storistaProductWrap').style.display = 'none';
-      if (status) { status.style.color = 'var(--muted)'; status.textContent = '✓ Connected — product tagging unavailable'; }
+      document.getElementById('storistaProductWrap').style.display = '';
+      sel.innerHTML = '<option value="">No product tag</option>';
+      if (status) { status.style.color = 'var(--red)'; status.textContent = 'Products error: ' + e.message; }
     }
   }
 

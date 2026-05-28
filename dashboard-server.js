@@ -2851,7 +2851,7 @@ app.get('/api/client/storista/products/:account', requireClientSession, async (r
     const brand = brands.clients.find(b => b.id === req.session.clientBrandId);
     const apiKey = brand?.storistaApiKey || process.env.STORISTA_API_KEY;
     if (!apiKey) return res.json({ ok: true, products: [] });
-    const { data } = await axios.get(`https://api-v2.storista.io/v1/tiktok/${req.params.account}/products`,
+    const { data } = await axios.get(`https://api-v2.storista.io/v1/tiktok/accounts/${req.params.account}/products`,
       { headers: { Authorization: `Bearer ${apiKey}` } });
     console.log('[storista] products raw response keys:', Object.keys(data || {}).join(', '));
     const products = data?.products || data?.creator_products || data?.items || data?.data?.products || data?.data || (Array.isArray(data) ? data : []);
@@ -5125,13 +5125,13 @@ setInterval(async () => {
     });
     for (const job of due) {
       try {
-        const { data: created } = await s.post(`/v1/tiktok/${job.account}/videos`, {
+        const { data: created } = await s.post(`/v1/tiktok/accounts/${job.account}/videos`, {
           video_id:   job.mediaId,
           product_id: job.productId || '',
           caption:    job.caption   || '',
         });
         const vid_id = created.id || created.video_id;
-        await s.post(`/v1/tiktok/${job.account}/videos/${vid_id}/publish`);
+        await s.post(`/v1/tiktok/accounts/${job.account}/videos/${vid_id}/publish`);
         job.status      = 'published';
         job.publishedAt = new Date().toISOString();
         changed = true;
@@ -7628,7 +7628,7 @@ app.get('/api/storista/accounts', async (req, res) => {
 // GET /api/storista/products/:account — list TikTok Shop products for an account
 app.get('/api/storista/products/:account', async (req, res) => {
   try {
-    const { data } = await storistaClient().get(`/v1/tiktok/${req.params.account}/products`);
+    const { data } = await storistaClient().get(`/v1/tiktok/accounts/${req.params.account}/products`);
     res.json(data);
   } catch (e) {
     res.status(e.response?.status || 500).json({ error: e.response?.data || e.message });
@@ -7702,7 +7702,7 @@ app.post('/api/storista/publish', async (req, res) => {
     const s = storistaClient();
 
     // 1. Create video record
-    const { data: created } = await s.post(`/v1/tiktok/${account}/videos`, {
+    const { data: created } = await s.post(`/v1/tiktok/accounts/${account}/videos`, {
       video_id,
       product_id: product_id || '',
       product:    product    || '',
@@ -7713,7 +7713,7 @@ app.post('/api/storista/publish', async (req, res) => {
     const vid_id = created.id || created.video_id;
 
     // 2. Publish it
-    await s.post(`/v1/tiktok/${account}/videos/${vid_id}/publish`);
+    await s.post(`/v1/tiktok/accounts/${account}/videos/${vid_id}/publish`);
 
     res.json({ ok: true, video_id: vid_id, account });
   } catch (e) {
@@ -7726,7 +7726,7 @@ app.post('/api/storista/publish', async (req, res) => {
 app.get('/api/storista/status/:account/:videoId', async (req, res) => {
   try {
     const { data } = await storistaClient().get(
-      `/v1/tiktok/${req.params.account}/videos/${req.params.videoId}`
+      `/v1/tiktok/accounts/${req.params.account}/videos/${req.params.videoId}`
     );
     res.json(data);
   } catch (e) {
