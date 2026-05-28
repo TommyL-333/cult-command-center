@@ -2835,8 +2835,8 @@ app.get('/api/client/storista/accounts', requireClientSession, async (req, res) 
     const { data } = await axios.get('https://api-v2.storista.io/v1/tiktok/accounts',
       { headers: { Authorization: `Bearer ${apiKey}` } });
     console.log('[storista] accounts raw response:', JSON.stringify(data).slice(0, 300));
-    // Handle various response shapes: { accounts: [] } or { data: [] } or [] directly
-    const accounts = data?.accounts || data?.data?.accounts || data?.data || (Array.isArray(data) ? data : []);
+    // Handle various response shapes from Storista
+    const accounts = data?.creator_accounts || data?.accounts || data?.data?.accounts || data?.data || (Array.isArray(data) ? data : []);
     res.json({ ok: true, accounts, _raw: data });
   } catch(e) {
     console.error('[storista] accounts error:', e.response?.status, JSON.stringify(e.response?.data).slice(0,200), e.message);
