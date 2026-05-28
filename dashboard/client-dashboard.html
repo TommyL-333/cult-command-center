@@ -763,14 +763,105 @@
       </div>
     </div>
 
-    <!-- Section C: Storista -->
+    <!-- Section C: Storista Batch Scheduler -->
     <div class="cs-section">
       <div class="cs-card">
-        <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;">
-          <div class="cs-card-title" style="margin-bottom:0;">🛍 Storista — TikTok Shop Video Publishing</div>
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+          <div class="cs-card-title" style="margin-bottom:0;">🛍 TikTok Shop Publisher</div>
           <span id="storistaConnBadge" class="conn-badge disconnected">● Not connected</span>
         </div>
-        <p style="font-size:0.82rem;color:var(--muted);margin-bottom:0;line-height:1.6">Post videos directly to TikTok Shop and tag your products — turning content into shoppable moments. Connect Storista in the Connections panel above to get started.</p>
+
+        <!-- Not connected -->
+        <div id="storistaNotConn">
+          <p style="font-size:0.82rem;color:var(--muted);line-height:1.6;margin:0">
+            Connect Storista in the <strong>Connections</strong> panel above to schedule and publish TikTok Shop videos directly from here.
+          </p>
+        </div>
+
+        <!-- Connected -->
+        <div id="storistaConnUI" style="display:none">
+
+          <!-- Account + Product row -->
+          <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px;">
+            <div style="flex:1;min-width:180px;">
+              <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px;">TikTok Account</div>
+              <select id="storistaAccount" class="schedule-input" style="width:100%;padding:8px 10px;" onchange="onStoristaAccountChange()">
+                <option value="">Loading…</option>
+              </select>
+            </div>
+            <div style="flex:1;min-width:180px;">
+              <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px;">Tag Product <span style="font-weight:400;text-transform:none;">(optional)</span></div>
+              <select id="storistaProduct" class="schedule-input" style="width:100%;padding:8px 10px;">
+                <option value="">No product tag</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Shared caption -->
+          <div style="margin-bottom:16px;">
+            <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px;">Default Caption</div>
+            <textarea class="caption-area" id="storistaSharedCaption" placeholder="Caption applied to all videos (can override per video below)…" style="height:76px"></textarea>
+          </div>
+
+          <!-- Drop zone -->
+          <div class="drop-zone" id="storistaDropZone"
+            onclick="document.getElementById('storistaFileInput').click()"
+            ondragover="storistaOnDragOver(event)"
+            ondragleave="storistaOnDragLeave(event)"
+            ondrop="storistaOnDrop(event)">
+            <div class="drop-zone-text">Drag &amp; drop videos here</div>
+            <div class="drop-zone-hint">or click to browse — select multiple files at once</div>
+            <button class="upload-file-btn" type="button">Add Videos</button>
+          </div>
+          <input type="file" id="storistaFileInput" accept="video/*" multiple style="display:none" onchange="storistaOnFilesAdded(event)">
+
+          <!-- Auto-schedule panel (shown when files are queued) -->
+          <div id="storistaAutoPanel" style="display:none;background:rgba(0,242,234,0.04);border:1px solid rgba(0,242,234,0.15);border-radius:10px;padding:14px 16px;margin-top:14px;">
+            <div style="font-size:0.8rem;font-weight:700;color:var(--teal);margin-bottom:10px;">⚡ Auto-Schedule</div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+              <div>
+                <div style="font-size:0.7rem;color:var(--muted);margin-bottom:4px;">Date</div>
+                <input type="date" id="storistaAutoDate" class="schedule-input">
+              </div>
+              <div>
+                <div style="font-size:0.7rem;color:var(--muted);margin-bottom:4px;">Start</div>
+                <input type="time" id="storistaAutoStart" value="08:00" class="schedule-input">
+              </div>
+              <div>
+                <div style="font-size:0.7rem;color:var(--muted);margin-bottom:4px;">End</div>
+                <input type="time" id="storistaAutoEnd" value="22:00" class="schedule-input">
+              </div>
+              <button class="post-now-btn" style="padding:8px 16px;font-size:0.82rem;" onclick="applyStoristaAutoSchedule()">Spread Evenly</button>
+            </div>
+          </div>
+
+          <!-- Upload queue -->
+          <div id="storistaQueueWrap" style="display:none;margin-top:18px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+              <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);">
+                Videos to Post (<span id="storistaQueueCount">0</span>)
+              </div>
+              <button onclick="clearStoristaQueue()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:0.78rem;padding:0;">✕ Clear all</button>
+            </div>
+            <div id="storistaQueueList" style="display:flex;flex-direction:column;gap:8px;"></div>
+          </div>
+
+          <!-- Submit -->
+          <div id="storistaSubmitWrap" style="display:none;margin-top:18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+            <button class="post-now-btn" id="storistaSubmitBtn" onclick="submitStoristaSchedule()">Upload &amp; Schedule All</button>
+            <div id="storistaSubmitStatus" style="font-size:0.82rem;color:var(--muted);"></div>
+          </div>
+
+          <!-- Server-side scheduled queue -->
+          <div style="margin-top:28px;padding-top:22px;border-top:1px solid var(--border);">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+              <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);">Scheduled Queue</div>
+              <button class="refresh-btn" onclick="loadStoristaServerQueue()">↻ Refresh</button>
+            </div>
+            <div id="storistaServerQueue"><span class="empty">Loading…</span></div>
+          </div>
+
+        </div><!-- /storistaConnUI -->
       </div>
     </div>
 
@@ -1075,6 +1166,7 @@
     if (name === 'content-studio' && !window._channelsLoaded) loadChannels();
     if (name === 'content-studio' && !window._arcadsLoaded) loadArcads();
     if (name === 'content-studio' && window._data?.brand) wizardInitBrandSummary();
+    if (name === 'content-studio' && !window._storistaLoaded) initStorista(window._data?.brand);
   }
 
   // ─── Affiliate URL ──────────────────────────────────────────────────────────
@@ -1633,12 +1725,14 @@
       if (stConn) document.getElementById('connInputStorista').placeholder = '••••••••  (saved)';
     }
 
-    // Storista section badge
+    // Storista section badge + show/hide the full UI
     const $stBadge = document.getElementById('storistaConnBadge');
     if ($stBadge) {
       $stBadge.textContent = stConn ? '● Connected' : '● Not connected';
       $stBadge.className = 'conn-badge ' + (stConn ? 'connected' : 'disconnected');
     }
+    document.getElementById('storistaNotConn').style.display = stConn ? 'none' : '';
+    document.getElementById('storistaConnUI').style.display  = stConn ? '' : 'none';
   }
 
   async function saveConnection(service) {
@@ -1676,11 +1770,272 @@
         if (service === 'arcads')  window._data.brand.connections.arcadsConnected  = true;
         if (service === 'storista') window._data.brand.connections.storistaConnected = true;
         renderConnections(window._data.brand);
+        // If we just connected Storista and the tab is open, load its data
+        if (service === 'storista') {
+          window._storistaLoaded = false;
+          initStorista(window._data.brand);
+        }
         setTimeout(() => { msgEl.textContent = ''; }, 3000);
       } else {
         msgEl.style.color = 'var(--red)'; msgEl.textContent = data.error || 'Save failed';
       }
     } catch(e) { msgEl.style.color='var(--red)'; msgEl.textContent='Network error'; }
+  }
+
+  // ─── Storista Batch Scheduler ───────────────────────────────────────────────
+  let _storistaFiles = []; // [{ file, filename, caption, scheduledFor }]
+
+  function initStorista(brand) {
+    const isConn = !!(brand?.connections?.storistaConnected || brand?.storistaConnected);
+    document.getElementById('storistaNotConn').style.display  = isConn ? 'none' : '';
+    document.getElementById('storistaConnUI').style.display   = isConn ? ''     : 'none';
+    if (!isConn) return;
+    window._storistaLoaded = true;
+    // Default auto-schedule date to tomorrow
+    const tom = new Date(); tom.setDate(tom.getDate() + 1);
+    document.getElementById('storistaAutoDate').value = tom.toISOString().split('T')[0];
+    loadStoristaAccounts();
+    loadStoristaServerQueue();
+  }
+
+  async function loadStoristaAccounts() {
+    try {
+      const r = await fetch('/api/client/storista/accounts');
+      const data = await r.json();
+      const accounts = data.accounts || [];
+      const sel = document.getElementById('storistaAccount');
+      if (!accounts.length) {
+        sel.innerHTML = '<option value="">No TikTok accounts found</option>';
+        return;
+      }
+      sel.innerHTML = accounts.map(a => {
+        const val   = a.username || a.handle || a.id || '';
+        const label = a.display_name || a.name || a.username || a.handle || val;
+        return `<option value="${esc(val)}">${esc(label)}</option>`;
+      }).join('');
+      onStoristaAccountChange();
+    } catch(e) {
+      document.getElementById('storistaAccount').innerHTML = '<option value="">Failed to load</option>';
+    }
+  }
+
+  async function onStoristaAccountChange() {
+    const account = document.getElementById('storistaAccount').value;
+    if (!account) return;
+    const sel = document.getElementById('storistaProduct');
+    sel.innerHTML = '<option value="">Loading products…</option>';
+    try {
+      const r = await fetch(`/api/client/storista/products/${encodeURIComponent(account)}`);
+      const data = await r.json();
+      const products = data.products || [];
+      sel.innerHTML = '<option value="">No product tag</option>' +
+        products.map(p => {
+          const id   = p.id || p.product_id || '';
+          const name = p.name || p.title || id;
+          return `<option value="${esc(id)}">${esc(name)}</option>`;
+        }).join('');
+    } catch(e) {
+      sel.innerHTML = '<option value="">No product tag</option>';
+    }
+  }
+
+  function storistaOnDragOver(e) {
+    e.preventDefault();
+    document.getElementById('storistaDropZone').classList.add('dragover');
+  }
+  function storistaOnDragLeave(e) {
+    document.getElementById('storistaDropZone').classList.remove('dragover');
+  }
+  function storistaOnDrop(e) {
+    e.preventDefault();
+    document.getElementById('storistaDropZone').classList.remove('dragover');
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('video/'));
+    storistaAddFiles(files);
+  }
+  function storistaOnFilesAdded(e) {
+    storistaAddFiles(Array.from(e.target.files));
+    e.target.value = '';
+  }
+  function storistaAddFiles(files) {
+    for (const file of files) {
+      _storistaFiles.push({ file, filename: file.name, caption: '', scheduledFor: '' });
+    }
+    renderStoristaQueue();
+  }
+
+  function renderStoristaQueue() {
+    const count = _storistaFiles.length;
+    document.getElementById('storistaQueueCount').textContent = count;
+    document.getElementById('storistaQueueWrap').style.display  = count ? '' : 'none';
+    document.getElementById('storistaAutoPanel').style.display  = count ? '' : 'none';
+    document.getElementById('storistaSubmitWrap').style.display = count ? '' : 'none';
+
+    document.getElementById('storistaQueueList').innerHTML = _storistaFiles.map((item, i) => `
+      <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;">
+        <div style="flex:1;min-width:160px;">
+          <div style="font-size:0.8rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:300px;" title="${esc(item.filename)}">${esc(item.filename)}</div>
+          <input type="text" class="schedule-input" style="margin-top:6px;width:100%;font-size:0.78rem;"
+            placeholder="Caption override (optional)"
+            value="${esc(item.caption)}"
+            oninput="_storistaFiles[${i}].caption=this.value">
+        </div>
+        <div style="min-width:170px;">
+          <div style="font-size:0.7rem;color:var(--muted);margin-bottom:4px;">Post time</div>
+          <input type="datetime-local" class="schedule-input" style="font-size:0.78rem;"
+            value="${item.scheduledFor}"
+            oninput="_storistaFiles[${i}].scheduledFor=this.value">
+        </div>
+        <button onclick="storistaRemoveFile(${i})"
+          style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:2px 4px;flex-shrink:0;">✕</button>
+      </div>
+    `).join('');
+  }
+
+  function storistaRemoveFile(i) {
+    _storistaFiles.splice(i, 1);
+    renderStoristaQueue();
+  }
+  function clearStoristaQueue() {
+    _storistaFiles = [];
+    renderStoristaQueue();
+  }
+
+  function applyStoristaAutoSchedule() {
+    const date  = document.getElementById('storistaAutoDate').value;
+    const start = document.getElementById('storistaAutoStart').value;
+    const end   = document.getElementById('storistaAutoEnd').value;
+    if (!date || !start || !end) return alert('Set date, start time, and end time first.');
+    const count = _storistaFiles.length;
+    if (!count) return;
+
+    const [sh, sm] = start.split(':').map(Number);
+    const [eh, em] = end.split(':').map(Number);
+    const totalMin = (eh * 60 + em) - (sh * 60 + sm);
+    if (totalMin <= 0) return alert('End time must be after start time.');
+
+    const interval = count === 1 ? 0 : totalMin / (count - 1);
+    _storistaFiles.forEach((item, i) => {
+      const offsetMin = Math.round((sh * 60 + sm) + i * interval);
+      const h = Math.floor(offsetMin / 60).toString().padStart(2, '0');
+      const m = (offsetMin % 60).toString().padStart(2, '0');
+      item.scheduledFor = `${date}T${h}:${m}`;
+    });
+    renderStoristaQueue();
+  }
+
+  async function submitStoristaSchedule() {
+    const account   = document.getElementById('storistaAccount').value;
+    const productId = document.getElementById('storistaProduct').value;
+    const shared    = document.getElementById('storistaSharedCaption').value.trim();
+
+    if (!account) return alert('Select a TikTok account first.');
+    const missing = _storistaFiles.filter(f => !f.scheduledFor);
+    if (missing.length) {
+      return alert(`${missing.length} video(s) have no schedule time. Use "Spread Evenly" or set times manually.`);
+    }
+
+    const btn    = document.getElementById('storistaSubmitBtn');
+    const status = document.getElementById('storistaSubmitStatus');
+    btn.disabled = true;
+
+    const total     = _storistaFiles.length;
+    const completed = [];
+
+    for (let i = 0; i < total; i++) {
+      const item = _storistaFiles[i];
+      status.style.color = 'var(--muted)';
+      status.textContent = `Uploading ${i + 1} of ${total}: ${item.filename}…`;
+
+      try {
+        const fd = new FormData();
+        fd.append('video', item.file, item.filename);
+        const r    = await fetch('/api/client/storista/upload', { method: 'POST', body: fd });
+        const data = await r.json();
+        if (!r.ok || !data.ok) throw new Error(data.error?.message || data.error || 'Upload failed');
+
+        completed.push({
+          mediaId:      data.media_id,
+          filename:     item.filename,
+          account,
+          productId,
+          caption:      item.caption.trim() || shared,
+          scheduledFor: new Date(item.scheduledFor).toISOString(),
+        });
+      } catch(e) {
+        status.style.color = 'var(--red)';
+        status.textContent = `Failed on "${item.filename}": ${e.message}`;
+        btn.disabled = false;
+        return;
+      }
+    }
+
+    // All uploaded — schedule them
+    status.style.color = 'var(--muted)';
+    status.textContent = 'Saving schedule…';
+    try {
+      const r    = await fetch('/api/client/storista/schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: completed }),
+      });
+      const data = await r.json();
+      if (!r.ok || !data.ok) throw new Error(data.error || 'Schedule save failed');
+
+      status.style.color = 'var(--green)';
+      status.textContent = `✓ ${total} video${total !== 1 ? 's' : ''} scheduled!`;
+      _storistaFiles = [];
+      renderStoristaQueue();
+      setTimeout(() => { status.textContent = ''; loadStoristaServerQueue(); }, 2000);
+    } catch(e) {
+      status.style.color = 'var(--red)';
+      status.textContent = `Schedule error: ${e.message}`;
+    }
+    btn.disabled = false;
+  }
+
+  async function loadStoristaServerQueue() {
+    const el = document.getElementById('storistaServerQueue');
+    if (!el) return;
+    try {
+      const r    = await fetch('/api/client/storista/queue');
+      const data = await r.json();
+      const queue = data.queue || [];
+
+      if (!queue.length) {
+        el.innerHTML = '<span class="empty">No scheduled videos yet.</span>';
+        return;
+      }
+
+      const icon  = { scheduled: '🕐', published: '✅', failed: '❌' };
+      const color = { scheduled: 'var(--muted)', published: 'var(--green)', failed: 'var(--red)' };
+
+      el.innerHTML = `<div style="display:flex;flex-direction:column;gap:6px;">` +
+        queue.map(job => `
+          <div style="display:flex;align-items:center;gap:10px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 14px;flex-wrap:wrap;">
+            <div style="font-size:1rem;flex-shrink:0;">${icon[job.status] || '🕐'}</div>
+            <div style="flex:1;min-width:120px;overflow:hidden;">
+              <div style="font-size:0.82rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(job.filename)}</div>
+              <div style="font-size:0.72rem;color:var(--muted);margin-top:2px;">${job.caption ? esc(job.caption.slice(0,70)) + (job.caption.length > 70 ? '…' : '') : '—'}</div>
+            </div>
+            <div style="text-align:right;flex-shrink:0;">
+              <div style="font-size:0.78rem;font-weight:700;color:${color[job.status] || 'var(--muted)'};">${job.status}</div>
+              <div style="font-size:0.7rem;color:var(--muted);">${
+                job.status === 'published'
+                  ? new Date(job.publishedAt).toLocaleString()
+                  : new Date(job.scheduledFor).toLocaleString()
+              }</div>
+            </div>
+            ${job.status === 'scheduled' ? `<button onclick="deleteStoristaJob('${job.id}')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;flex-shrink:0;">✕</button>` : ''}
+          </div>
+        `).join('') + `</div>`;
+    } catch(e) {
+      el.innerHTML = '<span class="empty">Failed to load queue.</span>';
+    }
+  }
+
+  async function deleteStoristaJob(jobId) {
+    await fetch(`/api/client/storista/queue/${jobId}`, { method: 'DELETE' }).catch(() => {});
+    loadStoristaServerQueue();
   }
 
   load();

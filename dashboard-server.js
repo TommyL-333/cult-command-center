@@ -2851,6 +2851,94 @@ app.get('/api/client/storista/products/:account', requireClientSession, async (r
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// POST /api/client/storista/upload — upload a video using the brand's Storista key
+app.post('/api/client/storista/upload', requireClientSession, upload.single('video'), async (req, res) => {
+  const brands = loadBrands();
+  const brand  = brands.clients.find(b => b.id === req.session.clientBrandId);
+  const apiKey = brand?.storistaApiKey;
+  if (!apiKey) return res.status(400).json({ error: 'Storista not connected' });
+
+  let filePath = null, tempFile = false;
+  try {
+    if (req.file) { filePath = req.file.path; tempFile = true; }
+    else return res.status(400).json({ error: 'Video file required' });
+
+    const stat     = fs.statSync(filePath);
+    const filename = req.file.originalname || req.body.filename || 'video.mp4';
+    const s = axios.create({
+      baseURL: STORISTA_BASE,
+      headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      timeout: 30_000,
+    });
+
+    const { data: presign } = await s.post('/v1/media/pre-sign', {
+      filename, content_type: 'video/mp4', size: stat.size,
+    });
+    const fileBuffer = fs.readFileSync(filePath);
+    await axios.put(presign.upload_url, fileBuffer, {
+      headers: { 'Content-Type': 'video/mp4', 'Content-Length': stat.size, 'x-amz-content-sha256': 'UNSIGNED-PAYLOAD' },
+      maxBodyLength: Infinity, maxContentLength: Infinity, timeout: 120_000,
+    });
+    const { data: media } = await s.post('/v1/media/', { data: { upload_id: presign.upload_id, name: filename } });
+
+    if (tempFile) fs.unlinkSync(filePath);
+    res.json({ ok: true, media_id: media.id || media.upload_id || presign.upload_id, filename });
+  } catch (e) {
+    if (tempFile && filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    console.error('[storista] client upload error:', e.response?.data || e.message);
+    res.status(e.response?.status || 500).json({ error: e.response?.data || e.message });
+  }
+});
+
+// GET /api/client/storista/queue — get the brand's scheduled video queue
+app.get('/api/client/storista/queue', requireClientSession, (req, res) => {
+  const brands = loadBrands();
+  const brand  = brands.clients.find(b => b.id === req.session.clientBrandId);
+  const queue  = (brand?.storistaQueue || []).sort((a, b) => new Date(a.scheduledFor) - new Date(b.scheduledFor));
+  res.json({ ok: true, queue });
+});
+
+// POST /api/client/storista/schedule — bulk-add jobs to the queue
+app.post('/api/client/storista/schedule', requireClientSession, (req, res) => {
+  const { items } = req.body;
+  if (!Array.isArray(items) || !items.length) return res.status(400).json({ error: 'items array required' });
+
+  const brands = loadBrands();
+  const bi = brands.clients.findIndex(b => b.id === req.session.clientBrandId);
+  if (bi === -1) return res.status(404).json({ error: 'Brand not found' });
+  const brand = brands.clients[bi];
+  if (!brand.storistaApiKey) return res.status(400).json({ error: 'Storista not connected' });
+
+  if (!brand.storistaQueue) brand.storistaQueue = [];
+  const jobs = items.map(item => ({
+    id:           crypto.randomUUID(),
+    mediaId:      item.mediaId,
+    filename:     item.filename || 'video.mp4',
+    account:      item.account,
+    productId:    item.productId || '',
+    caption:      item.caption  || '',
+    scheduledFor: item.scheduledFor,
+    status:       'scheduled',
+    createdAt:    new Date().toISOString(),
+    publishedAt:  null,
+    error:        null,
+  }));
+  brand.storistaQueue.push(...jobs);
+  saveBrands(brands);
+  res.json({ ok: true, jobs });
+});
+
+// DELETE /api/client/storista/queue/:jobId — remove a scheduled job
+app.delete('/api/client/storista/queue/:jobId', requireClientSession, (req, res) => {
+  const brands = loadBrands();
+  const bi = brands.clients.findIndex(b => b.id === req.session.clientBrandId);
+  if (bi === -1) return res.status(404).json({ error: 'Brand not found' });
+  const brand = brands.clients[bi];
+  brand.storistaQueue = (brand.storistaQueue || []).filter(j => j.id !== req.params.jobId);
+  saveBrands(brands);
+  res.json({ ok: true });
+});
+
 // ─── Creator Onboarding (PUBLIC — called from cultcontent.cc) ────────────────
 // CORS preflight
 app.options('/api/creator-onboard', (req, res) => {
@@ -4939,6 +5027,44 @@ setInterval(() => {
       runAgent(agent).catch(e => console.error('[scheduler] Error:', e.message));
     }
   }
+}, 60_000);
+
+// ── Storista scheduled publisher — runs every 60 s, publishes due videos ─────
+setInterval(async () => {
+  const now = Date.now();
+  const brands = loadBrands();
+  let changed = false;
+  for (const brand of (brands.clients || [])) {
+    if (!brand.storistaApiKey || !brand.storistaQueue?.length) continue;
+    const due = brand.storistaQueue.filter(j => j.status === 'scheduled' && new Date(j.scheduledFor).getTime() <= now);
+    if (!due.length) continue;
+    const s = axios.create({
+      baseURL: STORISTA_BASE,
+      headers: { Authorization: `Bearer ${brand.storistaApiKey}`, 'Content-Type': 'application/json' },
+      timeout: 30_000,
+    });
+    for (const job of due) {
+      try {
+        const { data: created } = await s.post(`/v1/tiktok/${job.account}/videos`, {
+          video_id:   job.mediaId,
+          product_id: job.productId || '',
+          caption:    job.caption   || '',
+        });
+        const vid_id = created.id || created.video_id;
+        await s.post(`/v1/tiktok/${job.account}/videos/${vid_id}/publish`);
+        job.status      = 'published';
+        job.publishedAt = new Date().toISOString();
+        changed = true;
+        console.log(`[storista-sched] Published "${job.filename}" for ${brand.name}`);
+      } catch (e) {
+        job.status = 'failed';
+        job.error  = e.response?.data?.message || e.message;
+        changed    = true;
+        console.error(`[storista-sched] Failed "${job.filename}" for ${brand.name}:`, job.error);
+      }
+    }
+  }
+  if (changed) saveBrands(brands);
 }, 60_000);
 
 // ─── Affiliate Agent routes ──────────────────────────────────────────────────
