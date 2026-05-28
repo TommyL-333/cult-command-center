@@ -467,13 +467,13 @@ app.get('/terms', (req, res) => {
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Terms of Service — Cult Content</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230a0a0f'/%3E%3Ctext x='16' y='23' text-anchor='middle' font-family='sans-serif' font-size='16' font-weight='800' fill='%2300f2ea'%3ECC%3C/text%3E%3C/svg%3E">
+<link rel="icon" type="image/png" href="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0a0f;color:#e2e8f0;line-height:1.7;padding:0}
 .wrap{max-width:760px;margin:0 auto;padding:60px 24px 100px}
-.logo{display:flex;align-items:center;gap:10px;text-decoration:none;margin-bottom:48px;width:fit-content}
-.logo-icon{width:36px;height:36px;background:rgba(0,242,234,.12);border:1px solid rgba(0,242,234,.25);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#00f2ea;flex-shrink:0;font-family:-apple-system,sans-serif}
+.logo{display:flex;align-items:center;gap:12px;text-decoration:none;margin-bottom:48px;width:fit-content}
+.logo-icon{width:48px;height:48px;border-radius:10px;object-fit:cover;flex-shrink:0}
 .logo-text{font-size:1rem;font-weight:800;color:#00f2ea;letter-spacing:-.01em}
 h1{font-size:2rem;font-weight:900;margin-bottom:8px;letter-spacing:-.02em}
 .updated{font-size:.82rem;color:#64748b;margin-bottom:40px}
@@ -486,7 +486,7 @@ footer{margin-top:60px;padding-top:24px;border-top:1px solid rgba(255,255,255,.0
 </head>
 <body>
 <div class="wrap">
-  <a class="logo" href="https://cultcontent.cc"><span class="logo-icon">CC</span><span class="logo-text">Cult Content</span></a>
+  <a class="logo" href="https://cultcontent.cc"><img class="logo-icon" src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png" alt="Cult Content"><span class="logo-text">Cult Content</span></a>
   <h1>Terms of Service</h1>
   <p class="updated">Last updated: May 26, 2026</p>
 
@@ -543,13 +543,13 @@ app.get('/privacy', (req, res) => {
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Privacy Policy — Cult Content</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230a0a0f'/%3E%3Ctext x='16' y='23' text-anchor='middle' font-family='sans-serif' font-size='16' font-weight='800' fill='%2300f2ea'%3ECC%3C/text%3E%3C/svg%3E">
+<link rel="icon" type="image/png" href="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0a0f;color:#e2e8f0;line-height:1.7;padding:0}
 .wrap{max-width:760px;margin:0 auto;padding:60px 24px 100px}
-.logo{display:flex;align-items:center;gap:10px;text-decoration:none;margin-bottom:48px;width:fit-content}
-.logo-icon{width:36px;height:36px;background:rgba(0,242,234,.12);border:1px solid rgba(0,242,234,.25);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#00f2ea;flex-shrink:0;font-family:-apple-system,sans-serif}
+.logo{display:flex;align-items:center;gap:12px;text-decoration:none;margin-bottom:48px;width:fit-content}
+.logo-icon{width:48px;height:48px;border-radius:10px;object-fit:cover;flex-shrink:0}
 .logo-text{font-size:1rem;font-weight:800;color:#00f2ea;letter-spacing:-.01em}
 h1{font-size:2rem;font-weight:900;margin-bottom:8px;letter-spacing:-.02em}
 .updated{font-size:.82rem;color:#64748b;margin-bottom:40px}
@@ -562,7 +562,7 @@ footer{margin-top:60px;padding-top:24px;border-top:1px solid rgba(255,255,255,.0
 </head>
 <body>
 <div class="wrap">
-  <a class="logo" href="https://cultcontent.cc"><span class="logo-icon">CC</span><span class="logo-text">Cult Content</span></a>
+  <a class="logo" href="https://cultcontent.cc"><img class="logo-icon" src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png" alt="Cult Content"><span class="logo-text">Cult Content</span></a>
   <h1>Privacy Policy</h1>
   <p class="updated">Last updated: May 26, 2026</p>
 
@@ -9738,7 +9738,7 @@ function renderOpportunitiesPage() {
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Manifest Abundance — TikTok Creator Opportunities</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230a0a0f'/%3E%3Ctext x='16' y='23' text-anchor='middle' font-family='sans-serif' font-size='16' font-weight='800' fill='%2300f2ea'%3ECC%3C/text%3E%3C/svg%3E">
+<link rel="icon" type="image/png" href="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -9817,7 +9817,7 @@ function renderCreatorPage(brand, cp) {
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Partner with ${name} — Creator Program</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230a0a0f'/%3E%3Ctext x='16' y='23' text-anchor='middle' font-family='sans-serif' font-size='16' font-weight='800' fill='%2300f2ea'%3ECC%3C/text%3E%3C/svg%3E">
+<link rel="icon" type="image/png" href="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 html{scroll-behavior:smooth}
@@ -10117,7 +10117,7 @@ function renderWelcomePage(brand, cp, creatorHandle = '') {
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Welcome — ${name} Creator Program</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230a0a0f'/%3E%3Ctext x='16' y='23' text-anchor='middle' font-family='sans-serif' font-size='16' font-weight='800' fill='%2300f2ea'%3ECC%3C/text%3E%3C/svg%3E">
+<link rel="icon" type="image/png" href="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0a0f;color:#fff;min-height:100vh;padding:48px 20px}
