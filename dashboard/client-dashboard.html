@@ -2057,13 +2057,13 @@
 
     setStatus('Uploading…');
 
-    // Step 1 — send video file as "audio" to /api/whisper-transcribe (handles MP4 natively)
-    return new Promise((resolve) => {
-      const fd = new FormData();
-      fd.append('audio', item.file, item.filename);
+    const fd = new FormData();
+    fd.append('video', item.file, item.filename);
+    if (productName) fd.append('productName', productName);
 
+    return new Promise((resolve) => {
       const xhr = new XMLHttpRequest();
-      xhr.open('POST', '/api/whisper-transcribe');
+      xhr.open('POST', '/api/client/storista/generate-caption');
 
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable) {
@@ -2072,34 +2072,17 @@
         }
       };
 
-      xhr.onload = async () => {
+      xhr.onload = () => {
         try {
           const data = JSON.parse(xhr.responseText);
-          if (!data.ok || !data.text) {
-            setStatus(data.error || 'Transcription failed', 'var(--red)');
-            if (btn) { btn.disabled = false; btn.textContent = '✨'; }
-            return resolve();
-          }
-
-          // Step 2 — send transcript to lightweight caption endpoint
-          setStatus('Generating caption…');
-          try {
-            const capRes = await fetch('/api/client/storista/caption-from-transcript', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ transcript: data.text, productName })
-            });
-            const capData = await capRes.json();
-            const caption = capData.caption || data.text;
-            item.caption = caption;
-            if (input) input.value = caption;
+          if (data.ok && data.caption) {
+            item.caption = data.caption;
+            if (input) input.value = data.caption;
             setStatus('✓ Caption ready', 'var(--green)');
             setTimeout(() => { if (status) status.style.display = 'none'; }, 3000);
-          } catch (capErr) {
-            // Fallback: use raw transcript as caption
-            item.caption = data.text;
-            if (input) input.value = data.text;
-            setStatus('✓ Transcript ready (caption API error)', 'var(--yellow)');
+          } else {
+            const err = typeof data.error === 'object' ? JSON.stringify(data.error) : (data.error || 'Failed');
+            setStatus(err, 'var(--red)');
           }
         } catch (e) {
           setStatus('Bad response from server', 'var(--red)');
@@ -2120,7 +2103,7 @@
         resolve();
       };
 
-      xhr.timeout = 120_000; // 2 min — just the Whisper upload+transcription
+      xhr.timeout = 180_000; // 3 min
       xhr.send(fd);
     });
   }

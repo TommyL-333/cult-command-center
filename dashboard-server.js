@@ -3807,7 +3807,7 @@ app.post('/api/client/storista/upload', requireClientSession, upload.single('vid
 });
 
 // POST /api/client/storista/generate-caption
-// Accepts a video file → extracts audio (ffmpeg) → Whisper transcript → Claude TikTok caption
+// Accepts a video file → sends directly to Whisper (handles MP4 natively, no ffmpeg) → Claude caption
 app.post('/api/client/storista/generate-caption', requireClientSession, upload.single('video'), async (req, res) => {
   if (!req.file) return res.status(400).json({ ok: false, error: 'Video file required' });
 
@@ -3818,22 +3818,24 @@ app.post('/api/client/storista/generate-caption', requireClientSession, upload.s
     return res.status(500).json({ ok: false, error: 'OPENAI_API_KEY not configured' });
   }
 
+  // Whisper rejects files > 25 MB
+  if (req.file.size > 25 * 1024 * 1024) {
+    try { fs.unlinkSync(req.file.path); } catch(_) {}
+    return res.json({ ok: false, error: `File too large for Whisper (${(req.file.size / 1024 / 1024).toFixed(0)} MB — limit 25 MB)` });
+  }
+
   const brands = loadBrands();
   const brand  = brands.clients.find(b => b.id === req.session.clientBrandId);
   const videoPath = req.file.path;
-  const audioPath = videoPath.replace(/\.[^.]+$/, '') + '_audio.mp3';
 
   try {
-    await new Promise((resolve, reject) => {
-      ffmpeg(videoPath)
-        .noVideo().audioChannels(1).audioBitrate('64k').format('mp3')
-        .outputOptions(['-t', '90'])   // cap at 90s — enough for any TikTok caption
-        .on('error', reject).on('end', resolve).save(audioPath);
-    });
-
+    // Send MP4 directly to Whisper — no ffmpeg extraction needed
     const FormData = require('form-data');
     const fd = new FormData();
-    fd.append('file', fs.createReadStream(audioPath), { filename: 'audio.mp3', contentType: 'audio/mpeg' });
+    fd.append('file', fs.createReadStream(videoPath), {
+      filename: req.file.originalname || 'video.mp4',
+      contentType: req.file.mimetype || 'video/mp4',
+    });
     fd.append('model', 'whisper-1');
     const whisperRes = await axios.post('https://api.openai.com/v1/audio/transcriptions', fd, {
       headers: { ...fd.getHeaders(), Authorization: `Bearer ${OPENAI_KEY}` },
@@ -3872,7 +3874,6 @@ Return ONLY the caption text with hashtags. No explanation, no quotes.`
     res.json({ ok: false, error: e.response?.data?.error?.message || e.message, caption: '', transcript: '' });
   } finally {
     try { if (fs.existsSync(videoPath)) fs.unlinkSync(videoPath); } catch(_) {}
-    try { if (fs.existsSync(audioPath)) fs.unlinkSync(audioPath); } catch(_) {}
   }
 });
 
