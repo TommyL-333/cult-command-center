@@ -788,6 +788,7 @@
               <select id="storistaAccount" class="schedule-input" style="width:100%;padding:8px 10px;" onchange="onStoristaAccountChange()">
                 <option value="">Loading…</option>
               </select>
+              <div id="storistaAccountStatus" style="font-size:0.72rem;color:var(--muted);margin-top:4px;"></div>
             </div>
             <div style="flex:1;min-width:180px;">
               <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px;">Tag Product <span style="font-weight:400;text-transform:none;">(optional)</span></div>
@@ -1739,6 +1740,15 @@
     }
     document.getElementById('storistaNotConn').style.display = stConn ? 'none' : '';
     document.getElementById('storistaConnUI').style.display  = stConn ? '' : 'none';
+    // Load accounts eagerly whenever we know Storista is connected
+    if (stConn && !window._storistaLoaded) {
+      window._storistaLoaded = true;
+      const tom = new Date(); tom.setDate(tom.getDate() + 1);
+      const dateEl = document.getElementById('storistaAutoDate');
+      if (dateEl) dateEl.value = tom.toISOString().split('T')[0];
+      loadStoristaAccounts();
+      loadStoristaServerQueue();
+    }
   }
 
   async function saveConnection(service) {
@@ -1805,18 +1815,26 @@
   }
 
   async function loadStoristaAccounts() {
-    const sel = document.getElementById('storistaAccount');
+    const sel    = document.getElementById('storistaAccount');
+    const status = document.getElementById('storistaAccountStatus');
+    if (status) status.textContent = 'Loading accounts…';
     try {
       const r    = await fetch('/api/client/storista/accounts');
       const data = await r.json();
-      console.log('[storista] accounts response:', data);
-      const accounts = data.accounts || [];
+      console.log('[storista] accounts response:', JSON.stringify(data));
+
       if (!r.ok || data.error) {
-        sel.innerHTML = `<option value="">Error: ${esc(data.error || 'Failed to load')}</option>`;
+        const msg = typeof data.error === 'object' ? JSON.stringify(data.error) : (data.error || 'Failed to load');
+        sel.innerHTML = `<option value="">Error — see status below</option>`;
+        if (status) { status.style.color = 'var(--red)'; status.textContent = 'Error: ' + msg; }
         return;
       }
+
+      const accounts = data.accounts || [];
+      if (status) status.textContent = `Raw keys: ${Object.keys(data._raw || data).join(', ')} | accounts: ${accounts.length}`;
+
       if (!accounts.length) {
-        sel.innerHTML = '<option value="">No TikTok accounts in Storista — connect one at storista.io</option>';
+        sel.innerHTML = '<option value="">No TikTok accounts found in Storista</option>';
         return;
       }
       sel.innerHTML = accounts.map(a => {
@@ -1824,9 +1842,11 @@
         const label = a.display_name || a.name || a.username || a.handle || val;
         return `<option value="${esc(val)}">${esc(label)}</option>`;
       }).join('');
+      if (status) { status.style.color = 'var(--green)'; status.textContent = `✓ ${accounts.length} account${accounts.length !== 1 ? 's' : ''} loaded`; }
       onStoristaAccountChange();
     } catch(e) {
       sel.innerHTML = '<option value="">Failed to load accounts</option>';
+      if (status) { status.style.color = 'var(--red)'; status.textContent = 'Network error: ' + e.message; }
       console.error('[storista] accounts fetch error:', e);
     }
   }
