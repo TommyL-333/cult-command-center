@@ -1854,12 +1854,15 @@
   async function onStoristaAccountChange() {
     const account = document.getElementById('storistaAccount').value;
     if (!account) return;
-    const sel = document.getElementById('storistaProduct');
+    const sel    = document.getElementById('storistaProduct');
+    const status = document.getElementById('storistaAccountStatus');
     sel.innerHTML = '<option value="">Loading products…</option>';
     try {
-      const r = await fetch(`/api/client/storista/products/${encodeURIComponent(account)}`);
+      const r    = await fetch(`/api/client/storista/products/${encodeURIComponent(account)}`);
       const data = await r.json();
+      console.log('[storista] products response:', JSON.stringify(data).slice(0, 300));
       const products = data.products || [];
+      if (status) status.textContent = `Products raw keys: ${(data._rawKeys || []).join(', ')} | count: ${products.length}`;
       sel.innerHTML = '<option value="">No product tag</option>' +
         products.map(p => {
           const id   = p.id || p.product_id || '';
@@ -1868,6 +1871,7 @@
         }).join('');
     } catch(e) {
       sel.innerHTML = '<option value="">No product tag</option>';
+      if (status) { status.style.color = 'var(--red)'; status.textContent = 'Products error: ' + e.message; }
     }
   }
 

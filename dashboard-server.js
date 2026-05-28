@@ -2853,8 +2853,13 @@ app.get('/api/client/storista/products/:account', requireClientSession, async (r
     if (!apiKey) return res.json({ ok: true, products: [] });
     const { data } = await axios.get(`https://api-v2.storista.io/v1/tiktok/${req.params.account}/products`,
       { headers: { Authorization: `Bearer ${apiKey}` } });
-    res.json({ ok: true, products: data?.products || data || [] });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+    console.log('[storista] products raw response keys:', Object.keys(data || {}).join(', '));
+    const products = data?.products || data?.creator_products || data?.items || data?.data?.products || data?.data || (Array.isArray(data) ? data : []);
+    res.json({ ok: true, products, _rawKeys: Object.keys(data || {}) });
+  } catch(e) {
+    console.error('[storista] products error:', e.response?.status, e.message);
+    res.status(500).json({ error: e.message, products: [] });
+  }
 });
 
 // GET /api/client/storista/queue — get the brand's scheduled video queue
