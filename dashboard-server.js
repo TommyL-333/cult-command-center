@@ -5257,15 +5257,30 @@ setInterval(async () => {
       timeout: 15_000,
     });
 
-    // Log the full media list once per brand per tick (helps diagnose what Storista sees)
+    // Log the full media list + TikTok video list once per brand per tick
     try {
       const { data: mediaList } = await sGet('/v1/media/');
       const results = mediaList.results || mediaList;
-      console.log(`[storista-sched] Media list for ${brand.name}:`, Array.isArray(results)
-        ? results.map(m => `id=${m.id} name=${m.name} file_url=${!!m.file_url} w=${m.width} h=${m.height}`).join(', ')
-        : JSON.stringify(mediaList).slice(0, 300));
+      console.log(`[storista-sched] Media list for ${brand.name} (${Array.isArray(results) ? results.length : '?'} items):`,
+        Array.isArray(results) && results.length
+          ? results.map(m => `id=${m.id} name=${m.name} file_url=${!!m.file_url} w=${m.width} h=${m.height}`).join(', ')
+          : JSON.stringify(mediaList).slice(0, 300));
     } catch (listErr) {
       console.log(`[storista-sched] Media list error:`, listErr.response?.status, JSON.stringify(listErr.response?.data).slice(0, 200));
+    }
+    // Also log TikTok videos list
+    const account = due[0]?.account;
+    if (account) {
+      try {
+        const { data: vidList } = await sGet(`/v1/tiktok/accounts/${account}/videos`);
+        const vids = vidList.results || vidList;
+        console.log(`[storista-sched] TikTok videos for ${account} (${Array.isArray(vids) ? vids.length : '?'}):`,
+          Array.isArray(vids) && vids.length
+            ? vids.map(v => `id=${v.id} status=${v.status} video.id=${v.video?.id}`).join(', ')
+            : JSON.stringify(vidList).slice(0, 300));
+      } catch (vErr) {
+        console.log(`[storista-sched] TikTok video list error:`, vErr.response?.status, JSON.stringify(vErr.response?.data).slice(0, 200));
+      }
     }
 
     for (const job of due) {
