@@ -1893,10 +1893,19 @@
     e.target.value = '';
   }
   function storistaAddFiles(files) {
+    const startIdx = _storistaFiles.length;
     for (const file of files) {
       _storistaFiles.push({ file, filename: file.name, caption: '', scheduledFor: '' });
     }
     renderStoristaQueue();
+    // Auto-generate captions for newly added files, 2 at a time
+    (async () => {
+      const indices = Array.from({ length: files.length }, (_, k) => startIdx + k);
+      const CONCURRENCY = 2;
+      for (let i = 0; i < indices.length; i += CONCURRENCY) {
+        await Promise.all(indices.slice(i, i + CONCURRENCY).map(idx => generateStoristaCaption(idx)));
+      }
+    })();
   }
 
   function renderStoristaQueue() {
@@ -1912,7 +1921,7 @@
           <div style="font-size:0.8rem;font-weight:600;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:300px;" title="${esc(item.filename)}">${esc(item.filename)}</div>
           <div style="display:flex;gap:6px;align-items:center;margin-top:6px;">
             <input type="text" class="schedule-input" id="storistaCaption_${i}" style="flex:1;font-size:0.78rem;"
-              placeholder="Caption (click ✨ to auto-generate)"
+              placeholder="Generating caption…"
               value="${esc(item.caption)}"
               oninput="_storistaFiles[${i}].caption=this.value">
             <button id="storistaGenBtn_${i}" onclick="generateStoristaCaption(${i})"
