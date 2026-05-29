@@ -2911,6 +2911,23 @@ app.delete('/api/client/storista/queue/:jobId', requireClientSession, (req, res)
   res.json({ ok: true });
 });
 
+// POST /api/client/storista/queue/:jobId/retry — reset a failed job to scheduled
+app.post('/api/client/storista/queue/:jobId/retry', requireClientSession, (req, res) => {
+  const brands = loadBrands();
+  const bi = brands.clients.findIndex(b => b.id === req.session.clientBrandId);
+  if (bi === -1) return res.status(404).json({ error: 'Brand not found' });
+  const brand = brands.clients[bi];
+  const job = (brand.storistaQueue || []).find(j => j.id === req.params.jobId);
+  if (!job) return res.status(404).json({ error: 'Job not found' });
+  job.status  = 'scheduled';
+  job.retries = 0;
+  job.error   = undefined;
+  // Reset scheduledFor to now+1min so it fires on the next tick
+  job.scheduledFor = new Date(Date.now() + 60_000).toISOString();
+  saveBrands(brands);
+  res.json({ ok: true });
+});
+
 // ─── Creator Onboarding (PUBLIC — called from cultcontent.cc) ────────────────
 // CORS preflight
 app.options('/api/creator-onboard', (req, res) => {
@@ -5196,27 +5213,51 @@ setInterval(async () => {
     if (!brand.storistaApiKey || !brand.storistaQueue?.length) continue;
     const due = brand.storistaQueue.filter(j => j.status === 'scheduled' && new Date(j.scheduledFor).getTime() <= now);
     if (!due.length) continue;
+    const authHeader = `Bearer ${brand.storistaApiKey}`;
     const s = axios.create({
       baseURL: STORISTA_BASE,
-      headers: { Authorization: `Bearer ${brand.storistaApiKey}`, 'Content-Type': 'application/json' },
+      headers: { Authorization: authHeader, 'Content-Type': 'application/json' },
       timeout: 30_000,
+    });
+    // GET helper — no Content-Type so FastAPI doesn't try to parse a body
+    const sGet = (path) => axios.get(`${STORISTA_BASE}${path}`, {
+      headers: { Authorization: authHeader, Accept: 'application/json' },
+      timeout: 15_000,
     });
     for (const job of due) {
       try {
-        // Check media status before attempting to create TikTok video
+        // Check media readiness — only proceed when file_url is populated
+        let mediaReady = false;
         try {
-          const { data: mediaCheck } = await s.get(`/v1/media/${job.mediaId}`);
-          console.log(`[storista-sched] Media ${job.mediaId} status check:`, JSON.stringify(mediaCheck).slice(0, 200));
+          const { data: mediaCheck } = await sGet(`/v1/media/${job.mediaId}`);
+          console.log(`[storista-sched] Media ${job.mediaId}:`, JSON.stringify(mediaCheck).slice(0, 300));
+          mediaReady = !!mediaCheck.file_url;
+          if (!mediaReady) {
+            job.retries = (job.retries || 0) + 1;
+            if (job.retries >= 20) {
+              job.status = 'failed';
+              job.error  = `Media ${job.mediaId} never processed (no file_url after ${job.retries} retries)`;
+              console.error(`[storista-sched] Giving up on "${job.filename}":`, job.error);
+            } else {
+              console.log(`[storista-sched] Media ${job.mediaId} not ready (no file_url), retry ${job.retries}/20`);
+            }
+            changed = true;
+            continue;
+          }
         } catch (mediaErr) {
+          // If we can't check media status, fall through and try the create anyway
           console.log(`[storista-sched] Media ${job.mediaId} GET error:`, mediaErr.response?.status, JSON.stringify(mediaErr.response?.data).slice(0, 200));
         }
 
-        const { data: created } = await s.post(`/v1/tiktok/accounts/${job.account}/videos`, {
-          video_id:     parseInt(job.mediaId, 10),  // must be integer
+        const createPayload = {
+          video_id:     parseInt(job.mediaId, 10),  // must be integer — Storista media ID
           caption:      job.caption   || '',
           product_id:   job.productId || '',
           product_link: 'SHOP NOW',                 // required CTA, max 20 chars
-        });
+        };
+        console.log(`[storista-sched] Creating TikTok video for "${job.filename}" account=${job.account} payload=`, JSON.stringify(createPayload));
+        const { data: created } = await s.post(`/v1/tiktok/accounts/${job.account}/videos`, createPayload);
+        console.log(`[storista-sched] TikTok video created:`, JSON.stringify(created).slice(0, 300));
         const vid_id = created.id || created.video_id;
         await s.post(`/v1/tiktok/accounts/${job.account}/videos/${vid_id}/publish`);
         job.status      = 'published';
@@ -5229,6 +5270,7 @@ setInterval(async () => {
         const errMsg  = detail
           ? (Array.isArray(detail) ? detail.map(d => d.msg || d.msg).join('; ') : String(detail))
           : (errBody ? JSON.stringify(errBody) : e.message);
+        console.error(`[storista-sched] Error for "${job.filename}" (status ${e.response?.status}):`, errMsg, '| full body:', JSON.stringify(errBody).slice(0, 400));
 
         // "Video not found" means Storista is still processing the media — retry up to 15 times
         const isProcessing = typeof errMsg === 'string' && /not found/i.test(errMsg);
