@@ -3109,12 +3109,12 @@ app.post('/api/client/storista/upload', requireClientSession, clientUpload.singl
       maxBodyLength: Infinity, maxContentLength: Infinity, timeout: 120_000,
     });
 
-    // Step 3 — /v1/media is a list endpoint; the upload_id from pre-sign IS the video reference.
-    // Log the full presign to confirm public_url format.
-    console.log('[storista] using upload_id as media_id:', upload_id);
+    // Step 3 — create media record; body is flat (no data wrapper), returns { id: integer, ... }
+    const { data: media } = await s.post('/v1/media/', { upload_id, name: filename });
+    console.log('[storista] media created, id:', media.id);
 
     if (tempFile) fs.unlinkSync(filePath);
-    res.json({ ok: true, media_id: upload_id, filename });
+    res.json({ ok: true, media_id: media.id, filename });
   } catch (e) {
     if (tempFile && filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath);
     const errDetail = e.response?.data;
@@ -5204,9 +5204,10 @@ setInterval(async () => {
     for (const job of due) {
       try {
         const { data: created } = await s.post(`/v1/tiktok/accounts/${job.account}/videos`, {
-          video_id:   job.mediaId,
-          product_id: job.productId || '',
-          caption:    job.caption   || '',
+          video_id:     parseInt(job.mediaId, 10),  // must be integer
+          caption:      job.caption   || '',
+          product_id:   job.productId || '',
+          product_link: 'SHOP NOW',                 // required CTA, max 20 chars
         });
         const vid_id = created.id || created.video_id;
         await s.post(`/v1/tiktok/accounts/${job.account}/videos/${vid_id}/publish`);
