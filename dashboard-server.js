@@ -2383,7 +2383,7 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
           storistaConnected: !!brand.storistaConnected,
         },
       },
-      tiktok: { connected: tiktokConnected, needsReconnect: tiktokNeedsReconnect, stats: tiktokStats, funnel: tiktokFunnel },
+      tiktok: { connected: tiktokConnected, needsReconnect: tiktokNeedsReconnect || (tiktokConnected && !brand.tiktokShopToken?.shop_cipher), hasShopCipher: !!(brand.tiktokShopToken?.shop_cipher), stats: tiktokStats, funnel: tiktokFunnel },
       tasks,
       adminImpersonating: req.session.adminImpersonating || null,
     });

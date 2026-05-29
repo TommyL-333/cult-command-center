@@ -932,8 +932,20 @@
     const banner = document.getElementById('tiktokConnectBanner');
     const reconnectBanner = document.getElementById('tiktokReconnectBanner');
     if (banner) banner.style.display = tiktok?.connected ? 'none' : 'flex';
-    // Show reconnect banner if connected but needsReconnect flag is set
-    if (reconnectBanner) reconnectBanner.style.display = (tiktok?.connected && tiktok?.needsReconnect) ? 'flex' : 'none';
+    // Show reconnect banner if connected but needsReconnect flag is set (includes missing shop_cipher)
+    if (reconnectBanner) {
+      const show = tiktok?.connected && tiktok?.needsReconnect;
+      reconnectBanner.style.display = show ? 'flex' : 'none';
+      // Tailor the message: missing shop_cipher = incomplete auth vs expired token
+      if (show) {
+        const subEl = reconnectBanner.querySelector('div > div:last-child');
+        if (subEl) {
+          subEl.textContent = tiktok?.hasShopCipher === false
+            ? 'Your TikTok connection is incomplete — please reconnect to finish linking your shop.'
+            : 'Your connection expired. Reconnect to restore live GMV and stats.';
+        }
+      }
+    }
 
     // Stats
     const s = tiktok?.stats;
