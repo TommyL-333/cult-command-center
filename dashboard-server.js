@@ -3112,7 +3112,7 @@ app.post('/api/client/storista/upload', requireClientSession, clientUpload.singl
     // Step 3 — create media record
     const mediaBody = { data: { upload_id, name: filename } };
     console.log('[storista] media create body:', JSON.stringify(mediaBody));
-    const { data: media } = await s.post('/v1/media/', mediaBody);
+    const { data: media } = await s.post('/v1/media', mediaBody);
     console.log('[storista] media create response:', JSON.stringify(media).slice(0, 200));
 
     if (tempFile) fs.unlinkSync(filePath);
@@ -7760,7 +7760,7 @@ app.post('/api/storista/upload', upload.single('video'), async (req, res) => {
     });
 
     // 3. Create media record
-    const { data: media } = await s.post('/v1/media/', {
+    const { data: media } = await s.post('/v1/media', {
       data: { upload_id: presign.upload_id, name: filename },
     });
 
