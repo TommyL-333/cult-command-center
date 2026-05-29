@@ -426,6 +426,10 @@ app.post('/api/webhooks/ghl-to-instantly', async (req, res) => {
 // Public routes — registered BEFORE requireAuth so no login needed
 app.use('/uploads', express.static(UPLOAD_DIR));
 
+// Public proposals — shareable HTML files, no auth required
+const PROPOSALS_DIR = path.join(__dirname, 'proposals');
+app.use('/proposals', express.static(PROPOSALS_DIR));
+
 // Catch missing /uploads/* files BEFORE the auth wall — prevents the 401 "sign in" page
 // showing for files that no longer exist on the volume (e.g. after a Railway redeploy).
 app.get('/uploads/*', (req, res) => {
