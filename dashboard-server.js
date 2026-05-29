@@ -2862,6 +2862,24 @@ app.get('/api/client/storista/products/:account', requireClientSession, async (r
   }
 });
 
+// GET /api/client/storista/debug — list Storista media and TikTok videos for this brand
+app.get('/api/client/storista/debug', requireClientSession, async (req, res) => {
+  const brands = loadBrands();
+  const brand  = brands.clients.find(b => b.id === req.session.clientBrandId);
+  const apiKey = brand?.storistaApiKey;
+  if (!apiKey) return res.status(400).json({ error: 'No Storista API key' });
+  const headers = { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' };
+  try {
+    const [mediaRes, videosRes] = await Promise.all([
+      axios.get('https://api-v2.storista.io/v1/media/', { headers, timeout: 15_000 }),
+      axios.get(`https://api-v2.storista.io/v1/tiktok/accounts/trustedrituals/videos`, { headers, timeout: 15_000 }),
+    ]);
+    res.json({ media: mediaRes.data, videos: videosRes.data });
+  } catch (e) {
+    res.json({ error: e.message, status: e.response?.status, data: e.response?.data });
+  }
+});
+
 // GET /api/client/storista/queue — get the brand's scheduled video queue
 app.get('/api/client/storista/queue', requireClientSession, (req, res) => {
   const brands = loadBrands();
