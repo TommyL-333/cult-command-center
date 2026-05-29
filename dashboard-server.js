@@ -2926,6 +2926,31 @@ app.delete('/api/client/storista/queue/:jobId', requireClientSession, (req, res)
   res.json({ ok: true });
 });
 
+// GET /api/admin/brands-list — list brand IDs + names for batch scripts
+app.get('/api/admin/brands-list', (req, res) => {
+  const secret = process.env.ADMIN_BATCH_SECRET || 'cult-batch-2026';
+  if (req.headers['x-admin-secret'] !== secret) return res.status(401).json({ error: 'Unauthorized' });
+  const brands = loadBrands();
+  res.json({ brands: (brands.clients || []).map(b => ({ id: b.id, name: b.name })) });
+});
+
+// POST /api/admin/storista/batch-inject — inject pre-built jobs into a brand's queue
+// Auth: X-Admin-Secret header matching ADMIN_BATCH_SECRET env var
+app.post('/api/admin/storista/batch-inject', express.json({ limit: '10mb' }), (req, res) => {
+  const secret = process.env.ADMIN_BATCH_SECRET || 'cult-batch-2026';
+  if (req.headers['x-admin-secret'] !== secret) return res.status(401).json({ error: 'Unauthorized' });
+  const { brandId, jobs } = req.body || {};
+  if (!brandId || !Array.isArray(jobs)) return res.status(400).json({ error: 'brandId and jobs[] required' });
+  const brands = loadBrands();
+  const bi = brands.clients.findIndex(b => b.id === brandId);
+  if (bi === -1) return res.status(404).json({ error: 'Brand not found' });
+  if (!brands.clients[bi].storistaQueue) brands.clients[bi].storistaQueue = [];
+  brands.clients[bi].storistaQueue.push(...jobs);
+  saveBrands(brands);
+  console.log(`[batch-inject] Added ${jobs.length} jobs to ${brands.clients[bi].name}`);
+  res.json({ ok: true, added: jobs.length });
+});
+
 // POST /api/client/storista/queue/:jobId/retry — reset a failed job to scheduled
 app.post('/api/client/storista/queue/:jobId/retry', requireClientSession, (req, res) => {
   const brands = loadBrands();
