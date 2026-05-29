@@ -1918,7 +1918,7 @@ app.get('/portal-admin/clients', requirePortalAdmin, async (req, res) => {
     try {
       const now   = Math.floor(Date.now() / 1000);
       const start = now - 30 * 24 * 60 * 60;
-      const resp  = await ttsBrandPost(brand, brands, brandIdx, '/order/202309/orders/search', {}, {
+      const resp  = await ttsBrandPost(brand, brands, brandIdx, '/order/202309/orders/search', {
         create_time_ge: start,
         create_time_lt: now,
         page_size: 100,
@@ -2191,7 +2191,7 @@ app.get('/portal-admin/debug-gmv/:brandId', requirePortalAdmin, async (req, res)
       await refreshBrandShopToken(brand, brands, brandIdx);
     }
     const freshBrand = loadBrands().clients[brandIdx];
-    const resp = await ttsBrandPost(freshBrand, brands, brandIdx, '/order/202309/orders/search', {}, {
+    const resp = await ttsBrandPost(freshBrand, brands, brandIdx, '/order/202309/orders/search', {
       create_time_ge: start,
       create_time_lt: now,
       page_size: 20,
@@ -2272,7 +2272,7 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
           const now   = Math.floor(Date.now() / 1000);
           const start = now - 30 * 24 * 60 * 60;
           const CANCELLED = new Set([140, 121, 4, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND']);
-          const ordersRes = await ttsBrandPost(brand, brands, brandIdx, '/order/202309/orders/search', {}, {
+          const ordersRes = await ttsBrandPost(brand, brands, brandIdx, '/order/202309/orders/search', {
             create_time_ge: start,
             create_time_lt: now,
             page_size: 100,
@@ -8428,7 +8428,7 @@ app.get('/api/tiktokshop/orders', async (req, res) => {
     const params = { order_status, page_size, sort_field, sort_order };
     if (cursor) params.cursor = cursor;
 
-    const data = await ttsPost('/order/202309/orders/search', {}, params);
+    const data = await ttsPost('/order/202309/orders/search', params);
     res.json(data);
   } catch (e) {
     res.status(500).json({ error: e.response?.data || e.message });
@@ -8476,7 +8476,7 @@ app.get('/api/tiktokshop/finance/summary', async (req, res) => {
     if (start_date) params.create_time_ge = Math.floor(new Date(start_date).getTime() / 1000);
     if (end_date)   params.create_time_lt = Math.floor(new Date(end_date).getTime() / 1000);
 
-    const data = await ttsPost('/finance/202309/orders/search', {}, params);
+    const data = await ttsPost('/finance/202309/orders/search', params);
     res.json(data);
   } catch (e) {
     res.status(500).json({ error: e.response?.data || e.message });
