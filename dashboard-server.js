@@ -3113,8 +3113,12 @@ app.post('/api/client/storista/upload', requireClientSession, clientUpload.singl
     res.json({ ok: true, media_id: media.id || media.upload_id || presign.upload_id, filename });
   } catch (e) {
     if (tempFile && filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    console.error('[storista] client upload error:', e.response?.data || e.message);
-    res.status(e.response?.status || 500).json({ error: e.response?.data || e.message });
+    const errDetail = e.response?.data;
+    const errMsg    = errDetail
+      ? (typeof errDetail === 'string' ? errDetail : JSON.stringify(errDetail))
+      : e.message;
+    console.error('[storista] client upload error:', errMsg);
+    res.status(e.response?.status || 500).json({ error: errMsg });
   }
 });
 
