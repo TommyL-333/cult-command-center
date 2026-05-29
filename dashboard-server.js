@@ -3109,15 +3109,12 @@ app.post('/api/client/storista/upload', requireClientSession, clientUpload.singl
       maxBodyLength: Infinity, maxContentLength: Infinity, timeout: 120_000,
     });
 
-    // Step 3 — create media record
-    const mediaBody = { data: { upload_id, name: filename } };
-    console.log('[storista] media create body:', JSON.stringify(mediaBody));
-    const { data: media } = await s.post('/v1/media', mediaBody);
-    console.log('[storista] media create response:', JSON.stringify(media).slice(0, 200));
+    // Step 3 — /v1/media is a list endpoint; the upload_id from pre-sign IS the video reference.
+    // Log the full presign to confirm public_url format.
+    console.log('[storista] using upload_id as media_id:', upload_id);
 
     if (tempFile) fs.unlinkSync(filePath);
-    const media_id = media.id || media.video_id || media.upload_id || upload_id;
-    res.json({ ok: true, media_id, filename });
+    res.json({ ok: true, media_id: upload_id, filename });
   } catch (e) {
     if (tempFile && filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath);
     const errDetail = e.response?.data;
@@ -5219,7 +5216,8 @@ setInterval(async () => {
         console.log(`[storista-sched] Published "${job.filename}" for ${brand.name}`);
       } catch (e) {
         job.status = 'failed';
-        job.error  = e.response?.data?.message || e.message;
+        const errBody = e.response?.data;
+        job.error  = errBody ? JSON.stringify(errBody) : e.message;
         changed    = true;
         console.error(`[storista-sched] Failed "${job.filename}" for ${brand.name}:`, job.error);
       }
