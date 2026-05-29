@@ -3123,7 +3123,7 @@ app.post('/api/client/storista/upload', requireClientSession, clientUpload.singl
     const fileBuffer = fs.readFileSync(filePath);
     console.log(`[storista] uploading ${Math.round(stat.size / 1024 / 1024)}MB to S3 upload_id=${upload_id}`);
     const s3Res = await axios.put(upload_url, fileBuffer, {
-      headers: { 'Content-Type': 'video/mp4', 'Content-Length': stat.size },
+      headers: { 'Content-Type': 'video/mp4', 'Content-Length': stat.size, 'x-amz-content-sha256': 'UNSIGNED-PAYLOAD' },
       maxBodyLength: Infinity, maxContentLength: Infinity, timeout: 300_000,
     });
     console.log('[storista] S3 PUT status:', s3Res.status, s3Res.statusText);
