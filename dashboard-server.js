@@ -3121,14 +3121,28 @@ app.post('/api/client/storista/upload', requireClientSession, clientUpload.singl
 
     // Step 2 — PUT to S3
     const fileBuffer = fs.readFileSync(filePath);
-    await axios.put(upload_url, fileBuffer, {
-      headers: { 'Content-Type': 'video/mp4', 'Content-Length': stat.size, 'x-amz-content-sha256': 'UNSIGNED-PAYLOAD' },
-      maxBodyLength: Infinity, maxContentLength: Infinity, timeout: 120_000,
+    console.log(`[storista] uploading ${Math.round(stat.size / 1024 / 1024)}MB to S3 upload_id=${upload_id}`);
+    const s3Res = await axios.put(upload_url, fileBuffer, {
+      headers: { 'Content-Type': 'video/mp4', 'Content-Length': stat.size },
+      maxBodyLength: Infinity, maxContentLength: Infinity, timeout: 300_000,
     });
+    console.log('[storista] S3 PUT status:', s3Res.status, s3Res.statusText);
 
     // Step 3 — create media record; body is flat (no data wrapper), returns { id: integer, ... }
     const { data: media } = await s.post('/v1/media/', { upload_id, name: filename });
-    console.log('[storista] media created, id:', media.id);
+    console.log('[storista] media created full response:', JSON.stringify(media).slice(0, 400));
+
+    // Step 4 — verify media is accessible (quick GET to confirm Storista accepted it)
+    await new Promise(r => setTimeout(r, 2000));
+    try {
+      const { data: verify } = await axios.get(`https://api-v2.storista.io/v1/media/${media.id}`, {
+        headers: { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' },
+        timeout: 10_000,
+      });
+      console.log('[storista] media verify GET:', JSON.stringify(verify).slice(0, 300));
+    } catch (verErr) {
+      console.warn('[storista] media verify FAILED (may still be processing):', verErr.response?.status, JSON.stringify(verErr.response?.data));
+    }
 
     if (tempFile) fs.unlinkSync(filePath);
     res.json({ ok: true, media_id: media.id, filename });
