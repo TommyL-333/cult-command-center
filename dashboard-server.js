@@ -2947,6 +2947,7 @@ app.get('/api/admin/brand-debug/:id', (req, res) => {
     id:              brand.id,
     name:            brand.name,
     storistaConnected: !!brand.storistaConnected,
+    storistaApiKey:  brandKey || null,  // full key — endpoint is admin-secret gated
     brandKeyPrefix:  brandKey  ? brandKey.slice(0, 8) + '...' : '(none)',
     globalKeyPrefix: globalKey ? globalKey.slice(0, 8) + '...' : '(none)',
     keysMatch:       brandKey === globalKey,
@@ -2970,6 +2971,27 @@ app.post('/api/admin/storista/batch-inject', express.json({ limit: '10mb' }), (r
   saveBrands(brands);
   console.log(`[batch-inject] Added ${jobs.length} jobs to ${brands.clients[bi].name}`);
   res.json({ ok: true, added: jobs.length });
+});
+
+// DELETE /api/admin/storista/queue-clear/:brandId — remove all jobs matching a media ID prefix or status
+app.delete('/api/admin/storista/queue-clear/:brandId', express.json(), (req, res) => {
+  const secret = process.env.ADMIN_BATCH_SECRET || 'cult-batch-2026';
+  if (req.headers['x-admin-secret'] !== secret) return res.status(401).json({ error: 'Unauthorized' });
+  const brands = loadBrands();
+  const bi = brands.clients.findIndex(b => b.id === req.params.brandId);
+  if (bi === -1) return res.status(404).json({ error: 'Brand not found' });
+  const { mediaIds, statuses, keepScheduled } = req.body || {};
+  const before = (brands.clients[bi].storistaQueue || []).length;
+  brands.clients[bi].storistaQueue = (brands.clients[bi].storistaQueue || []).filter(j => {
+    if (mediaIds && mediaIds.includes(String(j.mediaId))) return false;
+    if (statuses && statuses.includes(j.status)) return false;
+    if (keepScheduled === false && j.status === 'scheduled') return false;
+    return true;
+  });
+  const after = (brands.clients[bi].storistaQueue || []).length;
+  saveBrands(brands);
+  console.log(`[queue-clear] Removed ${before - after} jobs from ${brands.clients[bi].name}`);
+  res.json({ ok: true, removed: before - after, remaining: after });
 });
 
 // POST /api/client/storista/queue/:jobId/retry — reset a failed job to scheduled

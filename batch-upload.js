@@ -13,14 +13,16 @@ const crypto  = require('crypto');
 const axios   = require('axios');
 
 // ── Config ─────────────────────────────────────────────────────────────────
-const STORISTA_KEY  = process.env.STORISTA_API_KEY || '';
-const STORISTA_BASE = 'https://api-v2.storista.io';
-const DASHBOARD_URL = 'https://manifest.cultcontent.cc';
-const ADMIN_SECRET  = process.env.ADMIN_BATCH_SECRET || 'cult-batch-2026';
-const BRAND_ID      = process.env.TRUSTED_RITUALS_BRAND_ID || 'trusted-rituals'; // override if needed
+// STORISTA_KEY: auto-fetched from server (brand-specific key) or falls back to env var
+let STORISTA_KEY     = process.env.STORISTA_API_KEY || '';
+const STORISTA_BASE  = 'https://api-v2.storista.io';
+// Use Railway direct URL (bypasses Cloudflare Access)
+const DASHBOARD_URL  = process.env.DASHBOARD_DIRECT_URL || 'https://cult-command-center-production.up.railway.app';
+const ADMIN_SECRET   = process.env.ADMIN_BATCH_SECRET || 'cult-batch-2026';
+const BRAND_ID       = process.env.TRUSTED_RITUALS_BRAND_ID || 'trusted-rituals'; // override if needed
 const TIKTOK_ACCOUNT = 'trustedrituals';
-const PRODUCT_ID    = '1732230831415267648';
-const VIDEO_DIR     = '/Users/tommylynch/Downloads/OneDrive_1_5-28-2026';
+const PRODUCT_ID     = '1732230831415267648';
+const VIDEO_DIR      = '/Users/tommylynch/Downloads/OneDrive_1_5-28-2026';
 
 // ── Caption map (video filename → caption) ─────────────────────────────────
 const CAPTIONS = {
@@ -112,18 +114,22 @@ const CAPTIONS = {
     `POV: You stopped thinking constant throat clearing was "just normal"\n2 weeks. 10 seconds every morning. Now my throat feels clearer & I'm not that person anymore.\n#Mullein #WellnessRoutine #BreathingBetter #BeyondHoney #TikTokMadeMeTryIt`,
 };
 
-// ── Helpers ────────────────────────────────────────────────────────────────
-const s = axios.create({
-  baseURL: STORISTA_BASE,
-  headers: { Authorization: `Bearer ${STORISTA_KEY}`, 'Content-Type': 'application/json' },
-  timeout: 30_000,
-});
+// ── Upload helpers ─────────────────────────────────────────────────────────
+// Build Storista axios instance (called after STORISTA_KEY is resolved)
+function makeStoristaClient() {
+  return axios.create({
+    baseURL: STORISTA_BASE,
+    headers: { Authorization: `Bearer ${STORISTA_KEY}`, 'Content-Type': 'application/json' },
+    timeout: 30_000,
+  });
+}
+let s = null; // initialized after key is resolved
 
 async function uploadVideo(filePath, filename) {
+  if (!s) s = makeStoristaClient();
   const stat = fs.statSync(filePath);
   console.log(`  pre-signing ${filename} (${Math.round(stat.size / 1024 / 1024)}MB)...`);
 
-  // Step 1: pre-sign
   const { data: presign } = await s.post('/v1/media/pre-sign', {
     filename, content_type: 'video/mp4', size: stat.size,
   });
@@ -131,7 +137,6 @@ async function uploadVideo(filePath, filename) {
   const upload_url = presign.upload_url || presign.url || presign.presigned_url;
   if (!upload_url) throw new Error(`No upload_url: ${JSON.stringify(presign)}`);
 
-  // Step 2: S3 PUT
   console.log(`  uploading to S3...`);
   const buf = fs.readFileSync(filePath);
   await axios.put(upload_url, buf, {
@@ -139,7 +144,6 @@ async function uploadVideo(filePath, filename) {
     maxBodyLength: Infinity, maxContentLength: Infinity, timeout: 300_000,
   });
 
-  // Step 3: create media record
   console.log(`  creating media record...`);
   const { data: media } = await s.post('/v1/media/', { upload_id, name: filename });
   console.log(`  ✓ media id=${media.id}`);
@@ -148,10 +152,8 @@ async function uploadVideo(filePath, filename) {
 
 // ── Main ───────────────────────────────────────────────────────────────────
 (async () => {
-  if (!STORISTA_KEY) { console.error('STORISTA_API_KEY not set'); process.exit(1); }
-
-  // Resolve brand ID from server
-  console.log('Fetching brand list from dashboard...');
+  // Resolve brand ID AND brand-specific Storista key from server
+  console.log('Fetching brand config from dashboard...');
   let brandId = BRAND_ID;
   try {
     const r = await axios.get(`${DASHBOARD_URL}/api/admin/brands-list`, {
@@ -160,6 +162,22 @@ async function uploadVideo(filePath, filename) {
     const tr = (r.data.brands || []).find(b => b.name?.toLowerCase().includes('trusted'));
     if (tr) { brandId = tr.id; console.log(`Brand ID: ${brandId}`); }
   } catch(e) { console.log('Could not fetch brand list, using default:', brandId); }
+
+  // Fetch brand-specific Storista key (so we upload to the right account)
+  try {
+    const r = await axios.get(`${DASHBOARD_URL}/api/admin/brand-debug/${brandId}`, {
+      headers: { 'x-admin-secret': ADMIN_SECRET }, timeout: 10_000,
+    });
+    if (r.data.storistaApiKey) {
+      STORISTA_KEY = r.data.storistaApiKey;
+      console.log(`Using brand Storista key: ${STORISTA_KEY.slice(0, 8)}... (keysMatch=${r.data.keysMatch})`);
+    } else {
+      console.warn('Brand has no storistaApiKey — falling back to global key');
+    }
+  } catch(e) { console.log('Could not fetch brand key, using env key:', e.message); }
+
+  if (!STORISTA_KEY) { console.error('STORISTA_API_KEY not set and brand key not found'); process.exit(1); }
+  s = makeStoristaClient();
 
   const files = Object.keys(CAPTIONS);
   const jobs  = [];
