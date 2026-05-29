@@ -5203,6 +5203,14 @@ setInterval(async () => {
     });
     for (const job of due) {
       try {
+        // Check media status before attempting to create TikTok video
+        try {
+          const { data: mediaCheck } = await s.get(`/v1/media/${job.mediaId}`);
+          console.log(`[storista-sched] Media ${job.mediaId} status check:`, JSON.stringify(mediaCheck).slice(0, 200));
+        } catch (mediaErr) {
+          console.log(`[storista-sched] Media ${job.mediaId} GET error:`, mediaErr.response?.status, JSON.stringify(mediaErr.response?.data).slice(0, 200));
+        }
+
         const { data: created } = await s.post(`/v1/tiktok/accounts/${job.account}/videos`, {
           video_id:     parseInt(job.mediaId, 10),  // must be integer
           caption:      job.caption   || '',
