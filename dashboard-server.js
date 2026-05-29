@@ -3092,25 +3092,32 @@ app.post('/api/client/storista/upload', requireClientSession, clientUpload.singl
   try {
     const stat = fs.statSync(filePath);
 
-    // Step 1 — pre-sign (same path as admin route)
+    // Step 1 — pre-sign
     const { data: presign } = await s.post('/v1/media/pre-sign', {
       filename, content_type: 'video/mp4', size: stat.size,
     });
+    console.log('[storista] presign response keys:', Object.keys(presign), JSON.stringify(presign).slice(0, 300));
+
+    const upload_id = presign.upload_id || presign.id || presign.key || presign.media_id;
+    const upload_url = presign.upload_url || presign.url || presign.presigned_url;
+    if (!upload_url) throw new Error(`Presign missing upload_url — got: ${JSON.stringify(presign)}`);
 
     // Step 2 — PUT to S3
     const fileBuffer = fs.readFileSync(filePath);
-    await axios.put(presign.upload_url, fileBuffer, {
+    await axios.put(upload_url, fileBuffer, {
       headers: { 'Content-Type': 'video/mp4', 'Content-Length': stat.size, 'x-amz-content-sha256': 'UNSIGNED-PAYLOAD' },
       maxBodyLength: Infinity, maxContentLength: Infinity, timeout: 120_000,
     });
 
     // Step 3 — create media record
-    const { data: media } = await s.post('/v1/media/', {
-      data: { upload_id: presign.upload_id, name: filename },
-    });
+    const mediaBody = { data: { upload_id, name: filename } };
+    console.log('[storista] media create body:', JSON.stringify(mediaBody));
+    const { data: media } = await s.post('/v1/media/', mediaBody);
+    console.log('[storista] media create response:', JSON.stringify(media).slice(0, 200));
 
     if (tempFile) fs.unlinkSync(filePath);
-    res.json({ ok: true, media_id: media.id || media.upload_id || presign.upload_id, filename });
+    const media_id = media.id || media.video_id || media.upload_id || upload_id;
+    res.json({ ok: true, media_id, filename });
   } catch (e) {
     if (tempFile && filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath);
     const errDetail = e.response?.data;
