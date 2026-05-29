@@ -2934,6 +2934,27 @@ app.get('/api/admin/brands-list', (req, res) => {
   res.json({ brands: (brands.clients || []).map(b => ({ id: b.id, name: b.name })) });
 });
 
+// GET /api/admin/brand-debug/:id — show brand storista key prefix for debugging
+app.get('/api/admin/brand-debug/:id', (req, res) => {
+  const secret = process.env.ADMIN_BATCH_SECRET || 'cult-batch-2026';
+  if (req.headers['x-admin-secret'] !== secret) return res.status(401).json({ error: 'Unauthorized' });
+  const brands = loadBrands();
+  const brand = (brands.clients || []).find(b => b.id === req.params.id);
+  if (!brand) return res.status(404).json({ error: 'Brand not found' });
+  const globalKey = process.env.STORISTA_API_KEY || '';
+  const brandKey  = brand.storistaApiKey || '';
+  res.json({
+    id:              brand.id,
+    name:            brand.name,
+    storistaConnected: !!brand.storistaConnected,
+    brandKeyPrefix:  brandKey  ? brandKey.slice(0, 8) + '...' : '(none)',
+    globalKeyPrefix: globalKey ? globalKey.slice(0, 8) + '...' : '(none)',
+    keysMatch:       brandKey === globalKey,
+    queueLength:     (brand.storistaQueue || []).length,
+    queueStatuses:   (brand.storistaQueue || []).reduce((acc, j) => { acc[j.status] = (acc[j.status]||0)+1; return acc; }, {}),
+  });
+});
+
 // POST /api/admin/storista/batch-inject — inject pre-built jobs into a brand's queue
 // Auth: X-Admin-Secret header matching ADMIN_BATCH_SECRET env var
 app.post('/api/admin/storista/batch-inject', express.json({ limit: '10mb' }), (req, res) => {
