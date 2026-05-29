@@ -5256,29 +5256,30 @@ setInterval(async () => {
       headers: { Authorization: authHeader, Accept: 'application/json' },
       timeout: 15_000,
     });
+
+    // Log the full media list once per brand per tick (helps diagnose what Storista sees)
+    try {
+      const { data: mediaList } = await sGet('/v1/media/');
+      const results = mediaList.results || mediaList;
+      console.log(`[storista-sched] Media list for ${brand.name}:`, Array.isArray(results)
+        ? results.map(m => `id=${m.id} name=${m.name} file_url=${!!m.file_url} w=${m.width} h=${m.height}`).join(', ')
+        : JSON.stringify(mediaList).slice(0, 300));
+    } catch (listErr) {
+      console.log(`[storista-sched] Media list error:`, listErr.response?.status, JSON.stringify(listErr.response?.data).slice(0, 200));
+    }
+
     for (const job of due) {
       try {
-        // Check media readiness — only proceed when file_url is populated
-        let mediaReady = false;
+        // Check media readiness via GET (returns 404 while still processing)
+        let mediaFound = false;
         try {
           const { data: mediaCheck } = await sGet(`/v1/media/${job.mediaId}`);
           console.log(`[storista-sched] Media ${job.mediaId}:`, JSON.stringify(mediaCheck).slice(0, 300));
-          mediaReady = !!mediaCheck.file_url;
-          if (!mediaReady) {
-            job.retries = (job.retries || 0) + 1;
-            if (job.retries >= 20) {
-              job.status = 'failed';
-              job.error  = `Media ${job.mediaId} never processed (no file_url after ${job.retries} retries)`;
-              console.error(`[storista-sched] Giving up on "${job.filename}":`, job.error);
-            } else {
-              console.log(`[storista-sched] Media ${job.mediaId} not ready (no file_url), retry ${job.retries}/20`);
-            }
-            changed = true;
-            continue;
-          }
+          mediaFound = true;
         } catch (mediaErr) {
-          // If we can't check media status, fall through and try the create anyway
-          console.log(`[storista-sched] Media ${job.mediaId} GET error:`, mediaErr.response?.status, JSON.stringify(mediaErr.response?.data).slice(0, 200));
+          const status = mediaErr.response?.status;
+          console.log(`[storista-sched] Media ${job.mediaId} GET ${status}:`, JSON.stringify(mediaErr.response?.data).slice(0, 200));
+          // 404 = still processing or failed; fall through and try the create
         }
 
         const createPayload = {
