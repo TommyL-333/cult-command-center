@@ -2973,6 +2973,36 @@ app.post('/api/admin/storista/batch-inject', express.json({ limit: '10mb' }), (r
   res.json({ ok: true, added: jobs.length });
 });
 
+// GET /api/admin/storista/queue/:brandId — list all jobs in brand's queue
+app.get('/api/admin/storista/queue/:brandId', (req, res) => {
+  const secret = process.env.ADMIN_BATCH_SECRET || 'cult-batch-2026';
+  if (req.headers['x-admin-secret'] !== secret) return res.status(401).json({ error: 'Unauthorized' });
+  const brands = loadBrands();
+  const brand = (brands.clients || []).find(b => b.id === req.params.brandId);
+  if (!brand) return res.status(404).json({ error: 'Brand not found' });
+  const queue = (brand.storistaQueue || []).map(j => ({
+    id: j.id, filename: j.filename, mediaId: j.mediaId,
+    status: j.status, scheduledFor: j.scheduledFor, retries: j.retries,
+    tiktokVideoId: j.tiktokVideoId || null,
+  }));
+  res.json({ brandId: brand.id, name: brand.name, total: queue.length, queue });
+});
+
+// PATCH /api/admin/storista/queue-reset-stuck/:brandId — reset 'processing' jobs back to 'scheduled'
+app.patch('/api/admin/storista/queue-reset-stuck/:brandId', (req, res) => {
+  const secret = process.env.ADMIN_BATCH_SECRET || 'cult-batch-2026';
+  if (req.headers['x-admin-secret'] !== secret) return res.status(401).json({ error: 'Unauthorized' });
+  const brands = loadBrands();
+  const bi = brands.clients.findIndex(b => b.id === req.params.brandId);
+  if (bi === -1) return res.status(404).json({ error: 'Brand not found' });
+  let reset = 0;
+  for (const job of (brands.clients[bi].storistaQueue || [])) {
+    if (job.status === 'processing') { job.status = 'scheduled'; reset++; }
+  }
+  saveBrands(brands);
+  res.json({ ok: true, reset });
+});
+
 // DELETE /api/admin/storista/queue-clear/:brandId — remove all jobs matching a media ID prefix or status
 app.delete('/api/admin/storista/queue-clear/:brandId', express.json(), (req, res) => {
   const secret = process.env.ADMIN_BATCH_SECRET || 'cult-batch-2026';
@@ -5300,6 +5330,26 @@ setInterval(() => {
     }
   }
 }, 60_000);
+
+// ── On startup: reset any jobs stuck in 'processing' back to 'scheduled' ─────
+// (happens when server restarts mid-publish)
+{
+  const brands = loadBrands();
+  let resetCount = 0;
+  for (const b of (brands.clients || [])) {
+    if (!b.storistaQueue?.length) continue;
+    for (const job of b.storistaQueue) {
+      if (job.status === 'processing') {
+        job.status = 'scheduled';
+        resetCount++;
+      }
+    }
+  }
+  if (resetCount > 0) {
+    saveBrands(brands);
+    console.log(`[storista-startup] Reset ${resetCount} stuck 'processing' job(s) back to 'scheduled'`);
+  }
+}
 
 // ── Storista scheduled publisher — runs every 60 s, publishes due videos ─────
 setInterval(async () => {
