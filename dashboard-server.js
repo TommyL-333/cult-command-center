@@ -2832,7 +2832,7 @@ app.get('/api/client/storista/accounts', requireClientSession, async (req, res) 
     const brand = brands.clients.find(b => b.id === req.session.clientBrandId);
     const apiKey = brand?.storistaApiKey || process.env.STORISTA_API_KEY;
     if (!apiKey) return res.json({ ok: false, error: 'No Storista API key found for this brand', accounts: [] });
-    const { data } = await axios.get('https://api-v2.storista.io/v1/tiktok/accounts',
+    const { data } = await axios.get('https://api-v2.dev.storista.io/v1/tiktok/accounts',
       { headers: { Authorization: `Bearer ${apiKey}` } });
     console.log('[storista] accounts raw response:', JSON.stringify(data).slice(0, 300));
     // Handle various response shapes from Storista
@@ -2851,7 +2851,7 @@ app.get('/api/client/storista/products/:account', requireClientSession, async (r
     const brand = brands.clients.find(b => b.id === req.session.clientBrandId);
     const apiKey = brand?.storistaApiKey || process.env.STORISTA_API_KEY;
     if (!apiKey) return res.json({ ok: true, products: [] });
-    const { data } = await axios.get(`https://api-v2.storista.io/v1/tiktok/accounts/${req.params.account}/products`,
+    const { data } = await axios.get(`https://api-v2.dev.storista.io/v1/tiktok/accounts/${req.params.account}/products`,
       { headers: { Authorization: `Bearer ${apiKey}` } });
     console.log('[storista] products raw response keys:', Object.keys(data || {}).join(', '));
     const products = data?.products || data?.creator_products || data?.items || data?.data?.products || data?.data || (Array.isArray(data) ? data : []);
@@ -2871,8 +2871,8 @@ app.get('/api/client/storista/debug', requireClientSession, async (req, res) => 
   const headers = { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' };
   try {
     const [mediaRes, videosRes] = await Promise.all([
-      axios.get('https://api-v2.storista.io/v1/media/', { headers, timeout: 15_000 }),
-      axios.get(`https://api-v2.storista.io/v1/tiktok/accounts/trustedrituals/videos`, { headers, timeout: 15_000 }),
+      axios.get('https://api-v2.dev.storista.io/v1/media/', { headers, timeout: 15_000 }),
+      axios.get(`https://api-v2.dev.storista.io/v1/tiktok/accounts/trustedrituals/videos`, { headers, timeout: 15_000 }),
     ]);
     res.json({ media: mediaRes.data, videos: videosRes.data });
   } catch (e) {
@@ -3119,7 +3119,7 @@ app.post('/api/client/storista/upload', requireClientSession, clientUpload.singl
   let tempFile    = true;
 
   const s = axios.create({
-    baseURL: 'https://api-v2.storista.io',
+    baseURL: 'https://api-v2.dev.storista.io',
     headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
     timeout: 30_000,
   });
@@ -3153,7 +3153,7 @@ app.post('/api/client/storista/upload', requireClientSession, clientUpload.singl
     // Step 4 — verify media is accessible (quick GET to confirm Storista accepted it)
     await new Promise(r => setTimeout(r, 2000));
     try {
-      const { data: verify } = await axios.get(`https://api-v2.storista.io/v1/media/${media.id}`, {
+      const { data: verify } = await axios.get(`https://api-v2.dev.storista.io/v1/media/${media.id}`, {
         headers: { Authorization: `Bearer ${apiKey}`, Accept: 'application/json' },
         timeout: 10_000,
       });
@@ -5307,11 +5307,34 @@ setInterval(async () => {
         const { data: created } = await s.post(`/v1/tiktok/accounts/${job.account}/videos`, createPayload);
         console.log(`[storista-sched] TikTok video created:`, JSON.stringify(created).slice(0, 300));
         const vid_id = created.id || created.video_id;
-        await s.post(`/v1/tiktok/accounts/${job.account}/videos/${vid_id}/publish`);
-        job.status      = 'published';
+        const { data: publishRes } = await s.post(`/v1/tiktok/accounts/${job.account}/videos/${vid_id}/publish`);
+        console.log(`[storista-sched] Publish response:`, JSON.stringify(publishRes).slice(0, 300));
+
+        // Poll for READY status (Storista runs validation/pre-checks after publish)
+        let ready = false;
+        for (let poll = 0; poll < 12; poll++) {
+          await new Promise(r => setTimeout(r, 5000));
+          try {
+            const { data: statusCheck } = await sGet(`/v1/tiktok/accounts/${job.account}/videos/${vid_id}`);
+            console.log(`[storista-sched] Status poll ${poll + 1}: status=${statusCheck.status} status_text=${statusCheck.status_text}`);
+            if (statusCheck.status === 'READY' || statusCheck.status === 'PUBLISHED') {
+              ready = true;
+              break;
+            }
+            if (statusCheck.reject_reason) {
+              throw new Error(`Rejected: ${statusCheck.reject_reason} — ${statusCheck.status_text}`);
+            }
+          } catch (pollErr) {
+            if (pollErr.message?.startsWith('Rejected:')) throw pollErr;
+            console.log(`[storista-sched] Status poll error:`, pollErr.message);
+          }
+        }
+
+        job.status      = ready ? 'published' : 'processing';
         job.publishedAt = new Date().toISOString();
+        job.tiktokVideoId = vid_id;
         changed = true;
-        console.log(`[storista-sched] Published "${job.filename}" for ${brand.name}`);
+        console.log(`[storista-sched] "${job.filename}" for ${brand.name}: ${ready ? 'PUBLISHED ✓' : 'PROCESSING (check back later)'}`);
       } catch (e) {
         const errBody = e.response?.data;
         const detail  = errBody?.detail;
@@ -7793,7 +7816,7 @@ app.post('/api/reports/send', async (req, res) => {
 });
 
 // ─── Storista — TikTok Shop Video Publishing ──────────────────────────────────
-const STORISTA_BASE = 'https://api-v2.storista.io';
+const STORISTA_BASE = 'https://api-v2.dev.storista.io';
 
 function storistaClient() {
   return axios.create({
