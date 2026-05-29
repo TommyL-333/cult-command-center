@@ -5339,7 +5339,10 @@ setInterval(() => {
   for (const b of (brands.clients || [])) {
     if (!b.storistaQueue?.length) continue;
     for (const job of b.storistaQueue) {
-      if (job.status === 'processing') {
+      // Only reset 'processing' jobs that never got a tiktokVideoId — those are truly orphaned.
+      // Jobs that DO have a tiktokVideoId were submitted to TikTok; leave them as 'processing'
+      // so the polling scheduler (below) can pick them up and check their final status.
+      if (job.status === 'processing' && !job.tiktokVideoId) {
         job.status = 'scheduled';
         resetCount++;
       }
@@ -5424,6 +5427,14 @@ setInterval(async () => {
         const vid_id = created.id || created.video_id;
         const { data: publishRes } = await s.post(`/v1/tiktok/accounts/${job.account}/videos/${vid_id}/publish`, {});
         console.log(`[storista-sched] Publish response:`, JSON.stringify(publishRes).slice(0, 300));
+
+        // Mark as 'processing' + save IMMEDIATELY before polling so concurrent ticks don't re-pick this job
+        // (polling takes ~60s, which is the same as the tick interval — without this early save the next
+        // tick fires, sees status=scheduled, and submits a duplicate video)
+        job.status = 'processing';
+        job.tiktokVideoId = vid_id;
+        changed = true;
+        saveBrands(brands);
 
         // Poll for READY status (Storista runs validation/pre-checks after publish)
         let ready = false;
