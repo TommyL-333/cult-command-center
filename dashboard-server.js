@@ -1940,7 +1940,7 @@ app.get('/portal-admin/clients', requirePortalAdmin, async (req, res) => {
       }
       console.log(`[admin/clients] ${brand.name} net GMV = ${netGmv} (${orders.length} orders)`);
     } catch(e) {
-      console.error(`[admin/clients] TikTok orders error for ${brand.name}:`, e.message);
+      console.error(`[admin/clients] TikTok orders error for ${brand.name}:`, e.message, '| body:', JSON.stringify(e.response?.data).slice(0, 300));
     }
     if (netGmv !== null) {
       try {
@@ -2292,7 +2292,7 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
           }
           console.log(`[client/me] ${brand.name} net GMV = ${gmv} (${orders.length} orders)`);
         } catch(e) {
-          console.error('[client/me] TikTok orders error:', e.message);
+          console.error('[client/me] TikTok orders error:', e.message, '| body:', JSON.stringify(e.response?.data).slice(0, 300));
           if (e.response?.status === 401 || e.message?.includes('401')) tiktokNeedsReconnect = true;
         }
 
@@ -5307,7 +5307,7 @@ setInterval(async () => {
         const { data: created } = await s.post(`/v1/tiktok/accounts/${job.account}/videos`, createPayload);
         console.log(`[storista-sched] TikTok video created:`, JSON.stringify(created).slice(0, 300));
         const vid_id = created.id || created.video_id;
-        const { data: publishRes } = await s.post(`/v1/tiktok/accounts/${job.account}/videos/${vid_id}/publish`);
+        const { data: publishRes } = await s.post(`/v1/tiktok/accounts/${job.account}/videos/${vid_id}/publish`, {});
         console.log(`[storista-sched] Publish response:`, JSON.stringify(publishRes).slice(0, 300));
 
         // Poll for READY status (Storista runs validation/pre-checks after publish)
