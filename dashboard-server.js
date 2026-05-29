@@ -8105,9 +8105,9 @@ function signTTShop(apiPath, params, body = '') {
     .sort();
   const paramStr = sorted.map(k => `${k}${params[k]}`).join('');
   const bodyStr  = typeof body === 'string' ? body : (body ? JSON.stringify(body) : '');
-  const base     = `${appSecret}${apiPath}${paramStr}${bodyStr}`;
+  const base     = `${appSecret}${apiPath}${paramStr}${bodyStr}${appSecret}`;
   console.log(`[tts-sign] path=${apiPath} keys=[${sorted.join(',')}] base=${base.slice(0, 120)}...`);
-  return crypto.createHmac('sha256', appSecret).update(base).digest('hex').toLowerCase();
+  return crypto.createHmac('sha256', appSecret).update(base).digest('hex');
 }
 
 // ── Build common query params + sign ──────────────────────────────────────────
