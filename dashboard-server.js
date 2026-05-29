@@ -1921,10 +1921,9 @@ app.get('/portal-admin/clients', requirePortalAdmin, async (req, res) => {
       const resp  = await ttsBrandPost(brand, brands, brandIdx, '/order/202309/orders/search', {
         create_time_ge: start,
         create_time_lt: now,
-        page_size: 100,
         sort_field: 'create_time',
         sort_order: 'DESC',
-      });
+      }, { page_size: 100 });
       console.log(`[admin/clients] TikTok orders raw for ${brand.name}:`, JSON.stringify(resp?.data).slice(0, 300));
       const orders = resp?.data?.orders || resp?.data?.order_list || [];
       const CANCEL = new Set([140, 121, 4, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND']);
@@ -2194,10 +2193,9 @@ app.get('/portal-admin/debug-gmv/:brandId', requirePortalAdmin, async (req, res)
     const resp = await ttsBrandPost(freshBrand, brands, brandIdx, '/order/202309/orders/search', {
       create_time_ge: start,
       create_time_lt: now,
-      page_size: 20,
       sort_field: 'create_time',
       sort_order: 'DESC',
-    });
+    }, { page_size: 20 });
     const orders = resp?.data?.orders || resp?.data?.order_list || [];
     const sample = orders.slice(0, 2);
     res.json({ info, resp_code: resp?.code, resp_message: resp?.message, order_count: orders.length, sample_orders: sample, full_data_keys: resp?.data ? Object.keys(resp.data) : [] });
@@ -2275,10 +2273,9 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
           const ordersRes = await ttsBrandPost(brand, brands, brandIdx, '/order/202309/orders/search', {
             create_time_ge: start,
             create_time_lt: now,
-            page_size: 100,
             sort_field: 'create_time',
             sort_order: 'DESC',
-          });
+          }, { page_size: 100 });
           console.log(`[client/me] TikTok orders raw for ${brand.name}:`, JSON.stringify(ordersRes?.data).slice(0, 300));
           const orders = ordersRes?.data?.orders || ordersRes?.data?.order_list || [];
           for (const o of orders) {
@@ -8425,10 +8422,12 @@ app.get('/api/tiktokshop/orders', async (req, res) => {
       cursor,
     } = req.query;
 
-    const params = { order_status, page_size, sort_field, sort_order };
+    // page_size is a query param; filters go in body
+    const body   = { order_status, sort_field, sort_order };
+    const params = { page_size };
     if (cursor) params.cursor = cursor;
 
-    const data = await ttsPost('/order/202309/orders/search', params);
+    const data = await ttsPost('/order/202309/orders/search', body, params);
     res.json(data);
   } catch (e) {
     res.status(500).json({ error: e.response?.data || e.message });
