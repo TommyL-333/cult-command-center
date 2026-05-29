@@ -1979,6 +1979,7 @@
     const productId = document.getElementById('storistaProduct').value;
 
     if (!account) return alert('Select a TikTok account first.');
+    if (!productId) return alert('Select a product to tag — product_id is required by TikTok Shop.');
     const missing = _storistaFiles.filter(f => !f.scheduledFor);
     if (missing.length) {
       return alert(`${missing.length} video(s) have no schedule time. Use "Spread Evenly" or set times manually.`);

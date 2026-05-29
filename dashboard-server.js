@@ -5216,11 +5216,24 @@ setInterval(async () => {
         changed = true;
         console.log(`[storista-sched] Published "${job.filename}" for ${brand.name}`);
       } catch (e) {
-        job.status = 'failed';
         const errBody = e.response?.data;
-        job.error  = errBody ? JSON.stringify(errBody) : e.message;
-        changed    = true;
-        console.error(`[storista-sched] Failed "${job.filename}" for ${brand.name}:`, job.error);
+        const detail  = errBody?.detail;
+        const errMsg  = detail
+          ? (Array.isArray(detail) ? detail.map(d => d.msg || d.msg).join('; ') : String(detail))
+          : (errBody ? JSON.stringify(errBody) : e.message);
+
+        // "Video not found" means Storista is still processing the media — retry up to 15 times
+        const isProcessing = typeof errMsg === 'string' && /not found/i.test(errMsg);
+        job.retries = (job.retries || 0) + 1;
+        if (isProcessing && job.retries < 15) {
+          console.log(`[storista-sched] Media not ready for "${job.filename}" (retry ${job.retries}/15) — will retry next tick`);
+          // leave status as 'scheduled' so it retries
+        } else {
+          job.status = 'failed';
+          job.error  = errMsg;
+          console.error(`[storista-sched] Failed "${job.filename}" for ${brand.name}:`, errMsg);
+        }
+        changed = true;
       }
     }
   }
