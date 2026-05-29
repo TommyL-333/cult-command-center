@@ -8097,7 +8097,7 @@ const TTS_BASE = 'https://open-api.tiktokglobalshop.com';
 // 1. Collect all query params (exclude "sign" and "access_token")
 // 2. Sort by key name alphabetically
 // 3. Build base string: {app_secret}{api_path}{key1}{val1}{key2}{val2}...{body}
-// 4. HMAC-SHA256(app_secret, base_string) → uppercase hex
+// 4. HMAC-SHA256(app_secret, base_string) → lowercase hex
 function signTTShop(apiPath, params, body = '') {
   const appSecret = process.env.TIKTOK_SHOP_APP_SECRET || '';
   const sorted = Object.keys(params)
@@ -8106,7 +8106,7 @@ function signTTShop(apiPath, params, body = '') {
   const paramStr = sorted.map(k => `${k}${params[k]}`).join('');
   const bodyStr  = typeof body === 'string' ? body : (body ? JSON.stringify(body) : '');
   const base     = `${appSecret}${apiPath}${paramStr}${bodyStr}`;
-  return crypto.createHmac('sha256', appSecret).update(base).digest('hex').toUpperCase();
+  return crypto.createHmac('sha256', appSecret).update(base).digest('hex').toLowerCase();
 }
 
 // ── Build common query params + sign ──────────────────────────────────────────
