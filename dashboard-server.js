@@ -2995,8 +2995,10 @@ app.get('/api/admin/storista/queue/:brandId', (req, res) => {
   if (!brand) return res.status(404).json({ error: 'Brand not found' });
   const queue = (brand.storistaQueue || []).map(j => ({
     id: j.id, filename: j.filename, mediaId: j.mediaId,
+    caption: j.caption || '', productId: j.productId || '', account: j.account || '',
     status: j.status, scheduledFor: j.scheduledFor, retries: j.retries,
-    tiktokVideoId: j.tiktokVideoId || null,
+    tiktokVideoId: j.tiktokVideoId || null, publishedAt: j.publishedAt || null,
+    error: j.error || null,
   }));
   res.json({ brandId: brand.id, name: brand.name, total: queue.length, queue });
 });
