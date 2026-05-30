@@ -428,7 +428,16 @@ app.use('/uploads', express.static(UPLOAD_DIR));
 
 // Public proposals — shareable HTML files, no auth required
 const PROPOSALS_DIR = path.join(__dirname, 'proposals');
-app.use('/proposals', express.static(PROPOSALS_DIR, { extensions: ['html'] }));
+app.get('/proposals/:slug', (req, res) => {
+  const filePath = path.join(PROPOSALS_DIR, req.params.slug + '.html');
+  console.log(`[proposals] GET /proposals/${req.params.slug} → ${filePath}`);
+  if (!fs.existsSync(filePath)) {
+    console.log(`[proposals] NOT FOUND: ${filePath}`);
+    return res.status(404).send('Proposal not found');
+  }
+  res.setHeader('Content-Type', 'text/html');
+  res.sendFile(filePath);
+});
 
 // Catch missing /uploads/* files BEFORE the auth wall — prevents the 401 "sign in" page
 // showing for files that no longer exist on the volume (e.g. after a Railway redeploy).
