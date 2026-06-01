@@ -2939,12 +2939,28 @@ app.delete('/api/client/storista/queue/:jobId', requireClientSession, (req, res)
   res.json({ ok: true });
 });
 
-// GET /api/admin/brands-list — list brand IDs + names for batch scripts
+// GET /api/admin/brands-list — list brand IDs + names + connection status
 app.get('/api/admin/brands-list', (req, res) => {
   const secret = process.env.ADMIN_BATCH_SECRET || 'cult-batch-2026';
   if (req.headers['x-admin-secret'] !== secret) return res.status(401).json({ error: 'Unauthorized' });
   const brands = loadBrands();
-  res.json({ brands: (brands.clients || []).map(b => ({ id: b.id, name: b.name })) });
+  const now = Date.now();
+  res.json({ brands: (brands.clients || []).map(b => {
+    const tok = b.tiktokShopToken;
+    const hasToken   = !!(tok?.access_token);
+    const hasCipher  = !!(tok?.shop_cipher);
+    const expired    = tok?.expires_at ? tok.expires_at < now : false;
+    const tiktokStatus = !hasToken ? 'not_connected'
+                       : expired   ? 'expired'
+                       : !hasCipher ? 'missing_cipher'
+                       : 'ok';
+    return {
+      id: b.id, name: b.name,
+      tiktokStatus,
+      hasToken, hasCipher, expired,
+      expiresAt: tok?.expires_at ? new Date(tok.expires_at).toISOString() : null,
+    };
+  })});
 });
 
 // GET /api/admin/brand-debug/:id — show brand storista key prefix for debugging
