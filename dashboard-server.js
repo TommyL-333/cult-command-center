@@ -870,7 +870,7 @@ app.post('/api/creator-pages/submit', express.json(), async (req, res) => {
           type: 'SMS',
           conversationId,
           contactId,
-          message: `Welcome to the Cult Content creator community, ${firstName}! You're in 🎉\n\nHere's everything you need:\n→ Discord: ${discordLink}\n→ Skool: https://www.skool.com/cult-content\n→ Brand opportunities: ${CREATOR_BASE_URL}/creators\n\nText this number anytime if you need us.`,
+          message: `Welcome to the Cult Content creator community, ${firstName}! You're in 👁️‼️\n\nHere's everything you need:\n→ Discord: ${discordLink}\n→ Skool: https://www.skool.com/cult-content\n→ Brand opportunities: ${CREATOR_BASE_URL}/creators\n\nText this number anytime if you need us.`,
         }, { headers: ghlH });
       })
       .catch(e => console.error('[creator-pages] SMS error:', e.response?.data || e.message));
@@ -3222,7 +3222,7 @@ app.post('/api/creator-onboard', express.json(), async (req, res) => {
         type: 'SMS',
         conversationId,
         contactId,
-        message: `Welcome to the Cult Content creator community, ${firstName}! You're in 🎉\n\nHere's everything you need:\n→ Discord: ${discordLink}\n→ Skool: https://www.skool.com/cult-content\n→ Brand opportunities: ${CREATOR_BASE_URL}/creators\n\nText this number anytime if you need us.`,
+        message: `Welcome to the Cult Content creator community, ${firstName}! You're in 👁️‼️\n\nHere's everything you need:\n→ Discord: ${discordLink}\n→ Skool: https://www.skool.com/cult-content\n→ Brand opportunities: ${CREATOR_BASE_URL}/creators\n\nText this number anytime if you need us.`,
       }, { headers: ghlHeaders });
       results.sms = { ok: true };
     } catch (e) {
