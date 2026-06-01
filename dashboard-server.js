@@ -2123,6 +2123,24 @@ app.post('/portal-admin/fix-shop-cipher/:brandId', requirePortalAdmin, async (re
   }
 });
 
+// PATCH /portal-admin/campaign-links/:brandId — update campaign links without CF Access
+app.patch('/portal-admin/campaign-links/:brandId', requirePortalAdmin, express.json(), (req, res) => {
+  const brands = loadBrands();
+  const idx = (brands.clients || []).findIndex(b => b.id === req.params.brandId);
+  if (idx === -1) return res.status(404).json({ error: 'Brand not found' });
+  if (!brands.clients[idx].creatorPage) brands.clients[idx].creatorPage = {};
+  const cp = brands.clients[idx].creatorPage;
+  if (!cp.campaigns) cp.campaigns = {};
+  const { cashbackUrl, quantityVideoUrl, leaderboardUrl, blitzUrl } = req.body;
+  if (cashbackUrl      !== undefined) cp.campaigns.cashbackUrl      = cashbackUrl      || null;
+  if (quantityVideoUrl !== undefined) cp.campaigns.quantityVideoUrl = quantityVideoUrl || null;
+  if (leaderboardUrl   !== undefined) cp.campaigns.leaderboardUrl   = leaderboardUrl   || null;
+  if (blitzUrl         !== undefined) cp.campaigns.blitzUrl         = blitzUrl         || null;
+  cp.updatedAt = new Date().toISOString();
+  saveBrands(brands);
+  res.json({ ok: true, campaigns: cp.campaigns });
+});
+
 // POST /portal-admin/regenerate-brief/:slug — regenerate creator brief for a brand
 // Body can include override fields: targetAudience, mainProblem, buyerObjections, customerResults, products, brandMission
 app.post('/portal-admin/regenerate-brief/:slug', requirePortalAdmin, express.json(), async (req, res) => {
