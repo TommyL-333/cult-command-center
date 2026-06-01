@@ -3169,12 +3169,27 @@ app.post('/api/creator-onboard', express.json(), async (req, res) => {
   let contactId = null;
   const ghlHeaders = { Authorization: `Bearer ${process.env.GHL_API_KEY}`, Version: '2021-07-28', 'Content-Type': 'application/json' };
 
+  // 0 — Log submission to persistent file FIRST (before any API calls can fail)
+  try {
+    const logEntry = JSON.stringify({
+      ts: new Date().toISOString(),
+      name, tiktokHandle, email, phone: cleanPhone, discordUsername
+    }) + '\n';
+    const logPath = process.env.VOLUME_PATH
+      ? `${process.env.VOLUME_PATH}/creator-onboard-submissions.log`
+      : '/tmp/creator-onboard-submissions.log';
+    fs.appendFileSync(logPath, logEntry);
+  } catch (logErr) {
+    console.error('[creator-onboard] log write failed:', logErr.message);
+  }
+  console.log(`[creator-onboard] submission: name="${name}" email="${email}" phone="${cleanPhone}" tiktok="${tiktokHandle}"`);
+
   // 1 — Create GHL contact
   try {
     const payload = {
       firstName, lastName, email,
       phone: cleanPhone,
-      tags: ['affiliate'],
+      tags: ['affiliate', 'creator-community-form'],
       locationId: process.env.GHL_LOC_ID,
     };
     if (handle) payload.customFields = [{ key: 'tiktok_handle', field_value: `@${handle}` }];
