@@ -3206,11 +3206,18 @@ app.post('/api/creator-onboard', express.json(), async (req, res) => {
     try {
       const discordLink = process.env.DISCORD_INVITE_URL || 'https://discord.gg/a5WNMe8Xuu';
       // Upsert conversation to get conversationId
-      const convoRes = await axios.post('https://services.leadconnectorhq.com/conversations/', {
-        locationId: process.env.GHL_LOC_ID,
-        contactId,
-      }, { headers: ghlHeaders });
-      const conversationId = convoRes.data?.conversationId || convoRes.data?.id;
+      // GHL returns a non-2xx when conversation already exists but still gives us the ID
+      let conversationId;
+      try {
+        const convoRes = await axios.post('https://services.leadconnectorhq.com/conversations/', {
+          locationId: process.env.GHL_LOC_ID,
+          contactId,
+        }, { headers: ghlHeaders });
+        conversationId = convoRes.data?.conversationId || convoRes.data?.id;
+      } catch (ce) {
+        conversationId = ce.response?.data?.conversationId;
+        if (!conversationId) throw ce;
+      }
       await axios.post('https://services.leadconnectorhq.com/conversations/messages', {
         type: 'SMS',
         conversationId,
