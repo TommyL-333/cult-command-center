@@ -3167,10 +3167,10 @@ app.post('/api/creator-onboard', express.json(), async (req, res) => {
 
   const results = { ghl: null, sms: null, discord: null };
   let contactId = null;
+  const ghlHeaders = { Authorization: `Bearer ${process.env.GHL_API_KEY}`, Version: '2021-07-28', 'Content-Type': 'application/json' };
 
   // 1 — Create GHL contact
   try {
-    const ghlHeaders = { Authorization: `Bearer ${process.env.GHL_API_KEY}`, Version: '2021-07-28', 'Content-Type': 'application/json' };
     const payload = {
       firstName, lastName, email,
       phone: cleanPhone,
