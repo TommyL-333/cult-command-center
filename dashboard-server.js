@@ -856,13 +856,23 @@ app.post('/api/creator-pages/submit', express.json(), async (req, res) => {
       await ghl.post(`/contacts/${contactId}/notes`, { body: noteLines.join('\n'), userId: '' }).catch(() => {});
     }
 
-    // SMS
+    // SMS (upsert conversation first to avoid needing conversationProviderId)
     if (contactId && cleanPhone) {
-      axios.post('https://services.leadconnectorhq.com/conversations/messages/outbound', {
-        type: 'SMS',
+      const discordLink = process.env.DISCORD_INVITE_URL || 'https://discord.gg/a5WNMe8Xuu';
+      const ghlH = { Authorization: `Bearer ${process.env.GHL_API_KEY}`, Version: '2021-07-28', 'Content-Type': 'application/json' };
+      axios.post('https://services.leadconnectorhq.com/conversations/', {
+        locationId: process.env.GHL_LOC_ID,
         contactId,
-        message: `Welcome to the cult ${firstName}! We are here to serve you, if you need us, just text this number. Access all of our brand opportunities here: ${CREATOR_BASE_URL}/creators`,
-      }, { headers: { Authorization: `Bearer ${process.env.GHL_API_KEY}`, Version: '2021-04-15', 'Content-Type': 'application/json' } })
+      }, { headers: ghlH })
+      .then(r => {
+        const conversationId = r.data?.conversationId || r.data?.id;
+        return axios.post('https://services.leadconnectorhq.com/conversations/messages', {
+          type: 'SMS',
+          conversationId,
+          contactId,
+          message: `Welcome to the Cult Content creator community, ${firstName}! You're in 🎉\n\nHere's everything you need:\n→ Discord: ${discordLink}\n→ Skool: https://www.skool.com/cult-content\n→ Brand opportunities: ${CREATOR_BASE_URL}/creators\n\nText this number anytime if you need us.`,
+        }, { headers: ghlH });
+      })
       .catch(e => console.error('[creator-pages] SMS error:', e.response?.data || e.message));
     }
 
@@ -3160,6 +3170,7 @@ app.post('/api/creator-onboard', express.json(), async (req, res) => {
 
   // 1 — Create GHL contact
   try {
+    const ghlHeaders = { Authorization: `Bearer ${process.env.GHL_API_KEY}`, Version: '2021-07-28', 'Content-Type': 'application/json' };
     const payload = {
       firstName, lastName, email,
       phone: cleanPhone,
@@ -3168,26 +3179,44 @@ app.post('/api/creator-onboard', express.json(), async (req, res) => {
     };
     if (handle) payload.customFields = [{ key: 'tiktok_handle', field_value: `@${handle}` }];
 
-    const ghlRes = await axios.post('https://services.leadconnectorhq.com/contacts/', payload, {
-      headers: { Authorization: `Bearer ${process.env.GHL_API_KEY}`, Version: '2021-04-15', 'Content-Type': 'application/json' },
-    });
-    contactId = ghlRes.data?.contact?.id;
-    results.ghl = { ok: true, contactId };
+    try {
+      const ghlRes = await axios.post('https://services.leadconnectorhq.com/contacts/', payload, { headers: ghlHeaders });
+      contactId = ghlRes.data?.contact?.id;
+      results.ghl = { ok: true, contactId };
+    } catch (e) {
+      // GHL rejects duplicate contacts but returns the existing contactId in the error
+      const dupId = e.response?.data?.meta?.contactId;
+      if (dupId) {
+        contactId = dupId;
+        // Update phone/tags on the existing contact
+        await axios.put(`https://services.leadconnectorhq.com/contacts/${contactId}`, payload, { headers: ghlHeaders }).catch(() => {});
+        results.ghl = { ok: true, contactId, note: 'existing contact updated' };
+      } else {
+        results.ghl = { ok: false, error: e.response?.data || e.message };
+        console.error('[creator-onboard] GHL error:', e.response?.data || e.message);
+      }
+    }
   } catch (e) {
     results.ghl = { ok: false, error: e.response?.data || e.message };
     console.error('[creator-onboard] GHL error:', e.response?.data || e.message);
   }
 
-  // 2 — Send GHL SMS
+  // 2 — Send GHL SMS (upsert conversation first, then send via conversationId)
   if (contactId) {
     try {
-      await axios.post('https://services.leadconnectorhq.com/conversations/messages/outbound', {
-        type: 'SMS',
+      const discordLink = process.env.DISCORD_INVITE_URL || 'https://discord.gg/a5WNMe8Xuu';
+      // Upsert conversation to get conversationId
+      const convoRes = await axios.post('https://services.leadconnectorhq.com/conversations/', {
+        locationId: process.env.GHL_LOC_ID,
         contactId,
-        message: `Welcome to the cult ${firstName}! We are here to serve you, if you need us, just text this number. Access all of our brand opportunities here: ${CREATOR_BASE_URL}/creators`,
-      }, {
-        headers: { Authorization: `Bearer ${process.env.GHL_API_KEY}`, Version: '2021-04-15', 'Content-Type': 'application/json' },
-      });
+      }, { headers: ghlHeaders });
+      const conversationId = convoRes.data?.conversationId || convoRes.data?.id;
+      await axios.post('https://services.leadconnectorhq.com/conversations/messages', {
+        type: 'SMS',
+        conversationId,
+        contactId,
+        message: `Welcome to the Cult Content creator community, ${firstName}! You're in 🎉\n\nHere's everything you need:\n→ Discord: ${discordLink}\n→ Skool: https://www.skool.com/cult-content\n→ Brand opportunities: ${CREATOR_BASE_URL}/creators\n\nText this number anytime if you need us.`,
+      }, { headers: ghlHeaders });
       results.sms = { ok: true };
     } catch (e) {
       results.sms = { ok: false, error: e.response?.data || e.message };
@@ -3250,7 +3279,7 @@ app.post('/api/creator-onboard', express.json(), async (req, res) => {
 
   // 4 — Lark alert
   try {
-    const larkToken = await getLarkToken();
+    const larkToken = await getLarkTenantToken();
     const discordStr = discordUsername ? `@${discordUsername.replace(/^@/,'')}` : 'not provided';
     const tiktokStr  = handle ? `@${handle}` : 'not provided';
     await axios.post('https://open.larksuite.com/open-apis/im/v1/messages?receive_id_type=chat_id', {
