@@ -2974,6 +2974,8 @@ app.get('/api/admin/brands-list', (req, res) => {
                        : 'ok';
     return {
       id: b.id, name: b.name,
+      loginEmail: b.loginEmail || b.email || null,
+      hasPassword: !!b.passwordHash,
       tiktokStatus,
       hasToken, hasCipher, expired,
       expiresAt: tok?.expires_at ? new Date(tok.expires_at).toISOString() : null,
@@ -3071,6 +3073,42 @@ app.delete('/api/admin/storista/queue-clear/:brandId', express.json(), (req, res
   saveBrands(brands);
   console.log(`[queue-clear] Removed ${before - after} jobs from ${brands.clients[bi].name}`);
   res.json({ ok: true, removed: before - after, remaining: after });
+});
+
+// POST /api/admin/storista/sync-processing/:brandId — re-check all 'processing' jobs against Storista
+app.post('/api/admin/storista/sync-processing/:brandId', async (req, res) => {
+  const secret = process.env.ADMIN_BATCH_SECRET || 'cult-batch-2026';
+  if (req.headers['x-admin-secret'] !== secret) return res.status(401).json({ error: 'Unauthorized' });
+  const brands = loadBrands();
+  const brand = (brands.clients || []).find(b => b.id === req.params.brandId);
+  if (!brand) return res.status(404).json({ error: 'Brand not found' });
+  if (!brand.storistaApiKey) return res.status(400).json({ error: 'No Storista API key for brand' });
+  const pending = (brand.storistaQueue || []).filter(j => j.status === 'processing' && j.tiktokVideoId);
+  if (!pending.length) return res.json({ ok: true, checked: 0, results: [] });
+  const authHeader = `Bearer ${brand.storistaApiKey}`;
+  const sGet = (p) => axios.get(`${STORISTA_BASE}${p}`, {
+    headers: { Authorization: authHeader, Accept: 'application/json' },
+    timeout: 15_000,
+  });
+  const results = [];
+  for (const job of pending) {
+    try {
+      const { data: st } = await sGet(`/v1/tiktok/accounts/${job.account}/videos/${job.tiktokVideoId}`);
+      const prev = job.status;
+      if (st.status === 'READY' || st.status === 'PUBLISHED') {
+        job.status = 'published';
+        job.publishedAt = job.publishedAt || new Date().toISOString();
+      } else if (st.status === 'REJECTED') {
+        job.status = 'failed';
+        job.error = st.reject_reason || 'Rejected by TikTok';
+      }
+      results.push({ id: job.id, filename: job.filename, tiktokVideoId: job.tiktokVideoId, storistaStatus: st.status, prev, now: job.status });
+    } catch (e) {
+      results.push({ id: job.id, filename: job.filename, tiktokVideoId: job.tiktokVideoId, error: e.message });
+    }
+  }
+  saveBrands(brands);
+  res.json({ ok: true, checked: pending.length, results });
 });
 
 // POST /api/client/storista/queue/:jobId/retry — reset a failed job to scheduled
@@ -5410,6 +5448,38 @@ setInterval(async () => {
   let changed = false;
   for (const brand of (brands.clients || [])) {
     if (!brand.storistaApiKey || !brand.storistaQueue?.length) continue;
+
+    // ── Re-check 'processing' jobs that have a tiktokVideoId but never confirmed ──
+    // These are jobs that were submitted to TikTok but the 60s polling window expired.
+    // Storista processes asynchronously — check their current status now.
+    const pendingCheck = brand.storistaQueue.filter(j => j.status === 'processing' && j.tiktokVideoId);
+    if (pendingCheck.length) {
+      const authHeader = `Bearer ${brand.storistaApiKey}`;
+      const sGet = (p) => axios.get(`${STORISTA_BASE}${p}`, {
+        headers: { Authorization: authHeader, Accept: 'application/json' },
+        timeout: 15_000,
+      });
+      for (const job of pendingCheck) {
+        try {
+          const { data: st } = await sGet(`/v1/tiktok/accounts/${job.account}/videos/${job.tiktokVideoId}`);
+          if (st.status === 'READY' || st.status === 'PUBLISHED') {
+            job.status = 'published';
+            job.publishedAt = job.publishedAt || new Date().toISOString();
+            changed = true;
+            console.log(`[storista-sched] Late-confirm published: "${job.filename}" (vid ${job.tiktokVideoId})`);
+          } else if (st.status === 'REJECTED') {
+            job.status = 'failed';
+            job.error = st.reject_reason || 'Rejected by TikTok';
+            changed = true;
+            console.log(`[storista-sched] Confirmed rejected: "${job.filename}" (vid ${job.tiktokVideoId}) — ${job.error}`);
+          }
+          // PROCESSING → leave as-is, check again next tick
+        } catch (e) {
+          console.log(`[storista-sched] Re-check error for vid ${job.tiktokVideoId}:`, e.message);
+        }
+      }
+    }
+
     const due = brand.storistaQueue.filter(j => j.status === 'scheduled' && new Date(j.scheduledFor).getTime() <= now);
     if (!due.length) continue;
     const authHeader = `Bearer ${brand.storistaApiKey}`;
