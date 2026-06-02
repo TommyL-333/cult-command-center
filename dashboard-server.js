@@ -8943,6 +8943,100 @@ app.post('/api/tiktokshop/webhook', express.raw({ type: '*/*' }), (req, res) => 
   }
 });
 
+// ── GET /api/tiktokshop/brand-promotions?brandId=X&status=ONGOING ────────────
+app.get('/api/tiktokshop/brand-promotions', requireAuth, async (req, res) => {
+  const { brandId, status = 'ONGOING' } = req.query;
+  const brands = loadBrands();
+  const brandIdx = (brands.clients || []).findIndex(b => b.id === brandId);
+  if (brandIdx === -1) return res.status(404).json({ error: 'Brand not found' });
+  const brand = brands.clients[brandIdx];
+  if (!brand.tiktokShopToken?.access_token) return res.status(400).json({ error: 'Brand not connected to TikTok Shop' });
+  try {
+    const resp = await ttsBrandGet(brand, brands, brandIdx, '/promotion/202309/promotions', {
+      promotion_status: status,
+      page_size: 50,
+    });
+    res.json({ ok: true, promotions: resp?.data?.promotions || [], total: resp?.data?.total_count || 0 });
+  } catch (e) {
+    console.error('[promotions] list error:', e.response?.data || e.message);
+    res.status(500).json({ ok: false, error: e.response?.data?.message || e.message });
+  }
+});
+
+// ── POST /api/tiktokshop/brand-promotions ────────────────────────────────────
+app.post('/api/tiktokshop/brand-promotions', requireAuth, express.json(), async (req, res) => {
+  const { brandId, title, promotionType, beginTime, endTime, productList } = req.body || {};
+  if (!brandId || !title || !beginTime || !endTime || !productList?.length)
+    return res.status(400).json({ ok: false, error: 'Missing required fields' });
+  const brands = loadBrands();
+  const brandIdx = (brands.clients || []).findIndex(b => b.id === brandId);
+  if (brandIdx === -1) return res.status(404).json({ error: 'Brand not found' });
+  const brand = brands.clients[brandIdx];
+  if (!brand.tiktokShopToken?.access_token) return res.status(400).json({ error: 'Brand not connected to TikTok Shop' });
+  try {
+    const body = {
+      title,
+      promotion_type: promotionType || 3,
+      begin_time: Math.floor(new Date(beginTime).getTime() / 1000),
+      end_time:   Math.floor(new Date(endTime).getTime() / 1000),
+      product_level: 'SKU',
+      product_list: productList,
+    };
+    const resp = await ttsBrandPost(brand, brands, brandIdx, '/promotion/202309/promotions', body);
+    if (resp?.code !== 0) throw new Error(resp?.message || 'TikTok API error');
+    res.json({ ok: true, promotion: resp?.data });
+  } catch (e) {
+    console.error('[promotions] create error:', e.response?.data || e.message);
+    res.status(500).json({ ok: false, error: e.response?.data?.message || e.message });
+  }
+});
+
+// ── DELETE /api/tiktokshop/brand-promotions/:promoId?brandId=X ───────────────
+app.delete('/api/tiktokshop/brand-promotions/:promoId', requireAuth, async (req, res) => {
+  const { brandId } = req.query;
+  const { promoId } = req.params;
+  const brands = loadBrands();
+  const brandIdx = (brands.clients || []).findIndex(b => b.id === brandId);
+  if (brandIdx === -1) return res.status(404).json({ error: 'Brand not found' });
+  const brand = brands.clients[brandIdx];
+  if (!brand.tiktokShopToken?.access_token) return res.status(400).json({ error: 'Brand not connected to TikTok Shop' });
+  try {
+    const t = brand.tiktokShopToken;
+    const resp = await ttsBrandRequest(t, 'DELETE', `/promotion/202309/promotions/${promoId}`, {});
+    res.json({ ok: true, data: resp?.data });
+  } catch (e) {
+    console.error('[promotions] delete error:', e.response?.data || e.message);
+    res.status(500).json({ ok: false, error: e.response?.data?.message || e.message });
+  }
+});
+
+// ── GET /api/tiktokshop/brand-products?brandId=X ────────────────────────────
+// Used by promotion form product picker
+app.get('/api/tiktokshop/brand-products', requireAuth, async (req, res) => {
+  const { brandId } = req.query;
+  const brands = loadBrands();
+  const brandIdx = (brands.clients || []).findIndex(b => b.id === brandId);
+  if (brandIdx === -1) return res.status(404).json({ error: 'Brand not found' });
+  const brand = brands.clients[brandIdx];
+  if (!brand.tiktokShopToken?.access_token) return res.status(400).json({ error: 'Brand not connected to TikTok Shop' });
+  try {
+    const resp = await ttsBrandPost(brand, brands, brandIdx, '/product/202309/products/search', { page_size: 50 });
+    const products = (resp?.data?.products || []).map(p => ({
+      product_id: p.product_id,
+      title: p.title,
+      skus: (p.skus || []).map(s => ({
+        sku_id: s.id || s.sku_id,
+        name: (s.sales_attributes || []).map(a => a.value_name).filter(Boolean).join(' / ') || 'Default',
+        price: s.price?.original_price || s.price?.sale_price || '0',
+      })),
+    }));
+    res.json({ ok: true, products });
+  } catch (e) {
+    console.error('[brand-products] error:', e.response?.data || e.message);
+    res.status(500).json({ ok: false, error: e.response?.data?.message || e.message });
+  }
+});
+
 // ─── Video — Cross-platform stats ─────────────────────────────────────────────
 app.get('/api/video/cross-platform-stats', async (req, res) => {
   const force = req.query.force === '1';

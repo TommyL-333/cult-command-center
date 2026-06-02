@@ -594,6 +594,34 @@
     .gen-status.done      { background:rgba(0,210,122,0.1);  color:var(--green); }
     .gen-status.failed    { background:rgba(255,107,107,0.1); color:var(--red); }
     .gen-status.queued    { background:rgba(0,0,0,0.06);      color:var(--muted); }
+
+    /* ─── Promotions tab ─────────────────────────────────────────── */
+    .promo-brand-pills { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:20px; }
+    .promo-brand-pill { padding:6px 14px; border-radius:20px; border:1px solid var(--border); background:var(--surface); color:var(--muted); font-size:12px; cursor:pointer; transition:all .15s; }
+    .promo-brand-pill.active { border-color:var(--teal); color:var(--teal); background:rgba(0,242,234,.08); }
+    .promo-brand-pill.no-token { opacity:0.4; cursor:not-allowed; }
+    .promo-status-tabs { display:flex; gap:0; border-bottom:1px solid var(--border); margin-bottom:20px; }
+    .promo-status-tab { padding:8px 18px; background:none; border:none; border-bottom:2px solid transparent; color:var(--muted); font-size:12px; cursor:pointer; }
+    .promo-status-tab.active { color:var(--teal); border-bottom-color:var(--teal); }
+    .promo-table { width:100%; border-collapse:collapse; font-size:12px; }
+    .promo-table th { padding:8px 12px; text-align:left; color:var(--muted); font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; border-bottom:1px solid var(--border); }
+    .promo-table td { padding:10px 12px; border-bottom:1px solid rgba(255,255,255,.04); vertical-align:middle; }
+    .promo-table tr:last-child td { border-bottom:none; }
+    .promo-table tr:hover td { background:rgba(255,255,255,.02); }
+    .promo-badge { display:inline-block; padding:2px 8px; border-radius:4px; font-size:10px; font-weight:700; letter-spacing:.06em; }
+    .promo-badge.ongoing { background:rgba(34,197,94,.15); color:#22c55e; }
+    .promo-badge.upcoming { background:rgba(245,158,11,.15); color:#f59e0b; }
+    .promo-badge.ended { background:rgba(255,255,255,.06); color:var(--muted); }
+    /* Promo form slide-in */
+    .promo-form-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:200; }
+    .promo-form-overlay.open { display:flex; align-items:flex-start; justify-content:flex-end; }
+    .promo-form-panel { background:#1e1c2a; width:480px; max-width:90vw; height:100vh; overflow-y:auto; padding:28px; border-left:1px solid var(--border); }
+    .promo-form-panel h3 { margin:0 0 6px; font-size:16px; font-weight:700; }
+    .promo-form-panel .form-row { margin-bottom:16px; }
+    .promo-form-panel label { display:block; font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.08em; margin-bottom:5px; }
+    .promo-product-row { display:flex; align-items:center; gap:8px; padding:8px 0; border-bottom:1px solid var(--border); }
+    .promo-product-row:last-child { border-bottom:none; }
+    .promo-sku-price { width:90px; }
   </style>
 </head>
 <body>
@@ -620,6 +648,7 @@
   <button class="tab-btn" data-tab="shopops">Shop Ops Agent</button>
   <button class="tab-btn" data-tab="paidmedia">Paid Media Agent</button>
   <button class="tab-btn" data-tab="shortvideo">Short Video Agent</button>
+  <button class="tab-btn" data-tab="promotions">🎯 Promotions</button>
   <button class="tab-btn" data-tab="agents">Ops</button>
   <button class="tab-btn" data-tab="inbox">Inbox</button>
   <button class="tab-btn" data-tab="community">Community</button>
@@ -2742,6 +2771,113 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
   </div>
 </section>
 
+<!-- ─── Promotions Tab ───────────────────────────────────────────────── -->
+<section class="tab-pane" id="tab-promotions">
+
+  <div class="sec-header mb24">
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+      <h2 class="sec-title">Promotions</h2>
+      <span id="promoTotalBadge" class="badge b-active" style="font-size:11px;">—</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <span class="muted mono" id="promoLastUpdated" style="font-size:11px;">—</span>
+      <button class="btn btn-ghost" onclick="promoRefresh()">↺ Refresh</button>
+      <button class="btn btn-teal" onclick="promoOpenForm()">+ New Promotion</button>
+    </div>
+  </div>
+
+  <!-- Brand pills -->
+  <div class="promo-brand-pills" id="promoBrandPills">
+    <span class="muted" style="font-size:12px;">Loading brands…</span>
+  </div>
+
+  <!-- Status sub-tabs -->
+  <div class="promo-status-tabs">
+    <button class="promo-status-tab active" data-status="ONGOING" onclick="promoSetStatus(this,'ONGOING')">Active</button>
+    <button class="promo-status-tab" data-status="UPCOMING" onclick="promoSetStatus(this,'UPCOMING')">Upcoming</button>
+    <button class="promo-status-tab" data-status="ENDED" onclick="promoSetStatus(this,'ENDED')">Ended</button>
+  </div>
+
+  <!-- Promotions table -->
+  <div class="card" id="promoTableCard">
+    <div id="promoTableWrap" style="overflow-x:auto;">
+      <div id="promoEmptyState" style="text-align:center;padding:48px 0;color:var(--muted);font-size:13px;">
+        Select a brand to view promotions
+      </div>
+      <table class="promo-table" id="promoTable" style="display:none;">
+        <thead>
+          <tr>
+            <th>Title</th>
+            <th>Type</th>
+            <th>Status</th>
+            <th>Start</th>
+            <th>End</th>
+            <th>Products</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="promoTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</section>
+
+<!-- ─── New Promotion Slide-in Form ──────────────────────────────────── -->
+<div class="promo-form-overlay" id="promoFormOverlay" onclick="promoCloseForm(event)">
+  <div class="promo-form-panel" onclick="event.stopPropagation()">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+      <h3>New Promotion</h3>
+      <button class="btn btn-ghost" onclick="promoCloseForm()" style="padding:4px 10px;">✕</button>
+    </div>
+
+    <div class="form-row">
+      <label>Brand</label>
+      <select class="agent-input" id="promoFormBrand" onchange="promoFormBrandChanged()">
+        <option value="">Select brand…</option>
+      </select>
+    </div>
+
+    <div class="form-row">
+      <label>Title</label>
+      <input class="agent-input" type="text" id="promoFormTitle" placeholder="e.g. Summer Flash Sale" style="width:100%;box-sizing:border-box;">
+    </div>
+
+    <div class="form-row">
+      <label>Type</label>
+      <select class="agent-input" id="promoFormType">
+        <option value="3">Flash Sale</option>
+        <option value="4">Limited Time Offer</option>
+      </select>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+      <div>
+        <label style="display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px;">Start Time</label>
+        <input class="agent-input" type="datetime-local" id="promoFormStart" style="width:100%;box-sizing:border-box;">
+      </div>
+      <div>
+        <label style="display:block;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px;">End Time</label>
+        <input class="agent-input" type="datetime-local" id="promoFormEnd" style="width:100%;box-sizing:border-box;">
+      </div>
+    </div>
+
+    <div class="form-row">
+      <label>Products &amp; Discounted Prices</label>
+      <div id="promoFormProductsWrap" style="color:var(--muted);font-size:12px;padding:12px;border:1px solid var(--border);border-radius:8px;min-height:48px;">
+        Select a brand first
+      </div>
+    </div>
+
+    <div id="promoFormError" style="display:none;color:var(--red);font-size:12px;margin-bottom:12px;"></div>
+
+    <div style="display:flex;gap:10px;">
+      <button class="btn btn-teal" onclick="promoSubmitForm()" id="promoFormSubmitBtn" style="flex:1;">Create Promotion</button>
+      <button class="btn btn-ghost" onclick="promoCloseForm()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ Affiliate Copy Generator Modal ════════════════════════════════════════ -->
 <div id="affiliateCopyModal" style="display:none;position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,0.65);backdrop-filter:blur(4px);overflow-y:auto;" onclick="if(event.target===this)gpCloseAffiliateCopy()">
   <div style="max-width:700px;margin:40px auto;padding:0 16px 80px;">
@@ -2914,6 +3050,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     if (btn.dataset.tab === 'pipeline')    renderPerformance();
     if (btn.dataset.tab === 'growth')      gpInit();
     if (btn.dataset.tab === 'community')   creatorsInit();
+    if (btn.dataset.tab === 'promotions' && !_promoState.brands.length) initPromotionsTab();
   });
 });
 
@@ -11708,6 +11845,272 @@ async function creatorsSmsSend() {
     btn.textContent = 'Send SMS';
     btn.disabled = false;
   }
+}
+
+// ══════════════════════════════════════════════════
+// PROMOTIONS TAB
+// ══════════════════════════════════════════════════
+
+let _promoState = {
+  activeBrandId: null,
+  activeStatus: 'ONGOING',
+  brands: [],   // brands with TikTok Shop token
+  products: {}, // cache: brandId → products array
+};
+
+async function initPromotionsTab() {
+  // Load brands that have TikTok Shop connected
+  try {
+    const r = await fetch('/api/brands');
+    const d = await r.json();
+    const clients = d.clients || d || [];
+    _promoState.brands = clients.filter(b => b.tiktokShopToken?.access_token);
+    renderPromoBrandPills();
+    renderPromoFormBrands();
+    if (_promoState.brands.length > 0) {
+      selectPromoBrand(_promoState.brands[0].id);
+    }
+  } catch(e) {
+    console.error('[promos] init error:', e);
+  }
+}
+
+function renderPromoBrandPills() {
+  const wrap = document.getElementById('promoBrandPills');
+  if (!wrap) return;
+  if (!_promoState.brands.length) {
+    wrap.innerHTML = '<span class="muted" style="font-size:12px;">No brands with TikTok Shop connected</span>';
+    return;
+  }
+  wrap.innerHTML = _promoState.brands.map(b => `
+    <button class="promo-brand-pill ${b.id === _promoState.activeBrandId ? 'active' : ''}"
+            onclick="selectPromoBrand('${b.id}')">
+      ${b.name}
+    </button>
+  `).join('');
+}
+
+function renderPromoFormBrands() {
+  const sel = document.getElementById('promoFormBrand');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Select brand…</option>' +
+    _promoState.brands.map(b => `<option value="${b.id}">${b.name}</option>`).join('');
+}
+
+async function selectPromoBrand(brandId) {
+  _promoState.activeBrandId = brandId;
+  renderPromoBrandPills();
+  await loadPromotions();
+}
+
+function promoSetStatus(btn, status) {
+  document.querySelectorAll('.promo-status-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  _promoState.activeStatus = status;
+  if (_promoState.activeBrandId) loadPromotions();
+}
+
+async function loadPromotions() {
+  if (!_promoState.activeBrandId) return;
+  const empty = document.getElementById('promoEmptyState');
+  const table = document.getElementById('promoTable');
+  const tbody = document.getElementById('promoTableBody');
+  if (empty) { empty.style.display = 'block'; empty.textContent = 'Loading…'; }
+  if (table) table.style.display = 'none';
+
+  try {
+    const r = await fetch(`/api/tiktokshop/brand-promotions?brandId=${_promoState.activeBrandId}&status=${_promoState.activeStatus}`);
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Failed to load');
+
+    const promos = d.promotions || [];
+    document.getElementById('promoTotalBadge').textContent = promos.length + ' promotion' + (promos.length !== 1 ? 's' : '');
+    document.getElementById('promoLastUpdated').textContent = 'Updated ' + new Date().toLocaleTimeString();
+
+    if (!promos.length) {
+      if (empty) { empty.style.display = 'block'; empty.textContent = 'No ' + _promoState.activeStatus.toLowerCase() + ' promotions'; }
+      if (table) table.style.display = 'none';
+      return;
+    }
+
+    if (empty) empty.style.display = 'none';
+    if (table) table.style.display = 'table';
+
+    tbody.innerHTML = promos.map(p => {
+      const statusClass = p.status === 'ONGOING' ? 'ongoing' : p.status === 'UPCOMING' ? 'upcoming' : 'ended';
+      const typeLabel = p.promotion_type == 3 ? 'Flash Sale' : p.promotion_type == 4 ? 'LTO' : 'Promo';
+      const start = p.begin_time ? new Date(p.begin_time * 1000).toLocaleDateString() : '—';
+      const end   = p.end_time   ? new Date(p.end_time   * 1000).toLocaleDateString() : '—';
+      const productCount = (p.product_list || []).length;
+      return `<tr>
+        <td style="font-weight:600;color:var(--text);">${escHtml(p.title || p.promotion_id || '—')}</td>
+        <td><span class="badge" style="font-size:10px;">${typeLabel}</span></td>
+        <td><span class="promo-badge ${statusClass}">${p.status || '—'}</span></td>
+        <td class="mono muted">${start}</td>
+        <td class="mono muted">${end}</td>
+        <td class="muted">${productCount} product${productCount !== 1 ? 's' : ''}</td>
+        <td>
+          ${p.status !== 'ENDED' ? `<button class="btn btn-ghost" style="font-size:11px;padding:3px 10px;color:var(--red);" onclick="promoDelete('${p.promotion_id}')">Remove</button>` : ''}
+        </td>
+      </tr>`;
+    }).join('');
+  } catch(e) {
+    if (empty) { empty.style.display = 'block'; empty.textContent = 'Error: ' + e.message; }
+    if (table) table.style.display = 'none';
+  }
+}
+
+function promoRefresh() {
+  loadPromotions();
+}
+
+// ── Form ────────────────────────────────────────────────────────
+function promoOpenForm() {
+  // Pre-select current brand
+  const sel = document.getElementById('promoFormBrand');
+  if (sel && _promoState.activeBrandId) {
+    sel.value = _promoState.activeBrandId;
+    promoFormBrandChanged();
+  }
+  document.getElementById('promoFormOverlay').classList.add('open');
+  // Default dates: now → now+24h
+  const now = new Date();
+  const later = new Date(now.getTime() + 24 * 3600 * 1000);
+  const fmt = d => d.toISOString().slice(0,16);
+  document.getElementById('promoFormStart').value = fmt(now);
+  document.getElementById('promoFormEnd').value   = fmt(later);
+  document.getElementById('promoFormError').style.display = 'none';
+}
+
+function promoCloseForm(e) {
+  if (e && e.target !== document.getElementById('promoFormOverlay')) return;
+  document.getElementById('promoFormOverlay').classList.remove('open');
+}
+
+async function promoFormBrandChanged() {
+  const brandId = document.getElementById('promoFormBrand').value;
+  const wrap = document.getElementById('promoFormProductsWrap');
+  if (!brandId) { wrap.innerHTML = '<span class="muted">Select a brand first</span>'; return; }
+  wrap.innerHTML = '<span class="muted" style="font-size:12px;">Loading products…</span>';
+
+  // Use cache if available
+  if (_promoState.products[brandId]) {
+    renderPromoProductPicker(brandId, _promoState.products[brandId]);
+    return;
+  }
+  try {
+    const r = await fetch(`/api/tiktokshop/brand-products?brandId=${brandId}`);
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Failed to load products');
+    _promoState.products[brandId] = d.products || [];
+    renderPromoProductPicker(brandId, _promoState.products[brandId]);
+  } catch(e) {
+    wrap.innerHTML = `<span style="color:var(--red);font-size:12px;">Error loading products: ${e.message}</span>`;
+  }
+}
+
+function renderPromoProductPicker(brandId, products) {
+  const wrap = document.getElementById('promoFormProductsWrap');
+  if (!products.length) { wrap.innerHTML = '<span class="muted">No active products found</span>'; return; }
+
+  wrap.innerHTML = products.slice(0, 20).map(p => {
+    const skuRows = p.skus.map(s => `
+      <div class="promo-product-row" style="margin-left:16px;font-size:11px;">
+        <input type="checkbox" class="promo-sku-check" data-product-id="${escHtml(p.product_id)}" data-sku-id="${escHtml(s.sku_id)}" data-orig="${escHtml(s.price)}" style="margin-right:6px;">
+        <span style="flex:1;color:var(--muted);">${escHtml(s.name)}</span>
+        <span class="muted" style="margin-right:6px;">was $${s.price}</span>
+        <input type="number" class="agent-input promo-sku-price" placeholder="Sale $" step="0.01" min="0.01" data-sku-id="${escHtml(s.sku_id)}" style="width:80px;font-size:11px;padding:3px 6px;">
+      </div>
+    `).join('');
+    return `
+      <div style="margin-bottom:10px;">
+        <div style="font-size:12px;font-weight:600;color:var(--text);padding:4px 0;">${escHtml(p.title)}</div>
+        ${skuRows}
+      </div>
+    `;
+  }).join('');
+}
+
+async function promoSubmitForm() {
+  const brandId = document.getElementById('promoFormBrand').value;
+  const title   = document.getElementById('promoFormTitle').value.trim();
+  const type    = parseInt(document.getElementById('promoFormType').value);
+  const start   = document.getElementById('promoFormStart').value;
+  const end     = document.getElementById('promoFormEnd').value;
+  const errEl   = document.getElementById('promoFormError');
+  const btn     = document.getElementById('promoFormSubmitBtn');
+
+  if (!brandId) return showPromoError('Please select a brand');
+  if (!title)   return showPromoError('Please enter a promotion title');
+  if (!start || !end) return showPromoError('Please set start and end times');
+
+  // Collect selected SKUs
+  const checked = document.querySelectorAll('.promo-sku-check:checked');
+  if (!checked.length) return showPromoError('Select at least one SKU to put on promotion');
+
+  // Build product_list
+  const productMap = {};
+  let hasError = false;
+  checked.forEach(cb => {
+    const productId = cb.dataset.productId;
+    const skuId     = cb.dataset.skuId;
+    const priceInput = document.querySelector(`.promo-sku-price[data-sku-id="${skuId}"]`);
+    const price = priceInput?.value?.trim();
+    if (!price || isNaN(parseFloat(price))) { showPromoError('Enter sale price for all selected SKUs'); hasError = true; return; }
+    if (!productMap[productId]) productMap[productId] = { product_id: productId, sku_list: [] };
+    productMap[productId].sku_list.push({
+      sku_id: skuId,
+      activity_price: { amount: parseFloat(price).toFixed(2), currency: 'USD' },
+      available_stock: 999,
+    });
+  });
+  if (hasError) return;
+
+  const productList = Object.values(productMap);
+  if (!productList.length) return;
+
+  btn.disabled = true; btn.textContent = 'Creating…';
+  errEl.style.display = 'none';
+
+  try {
+    const r = await fetch('/api/tiktokshop/brand-promotions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ brandId, title, promotionType: type, beginTime: start, endTime: end, productList }),
+    });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Failed to create');
+    document.getElementById('promoFormOverlay').classList.remove('open');
+    _promoState.activeBrandId = brandId;
+    renderPromoBrandPills();
+    await loadPromotions();
+  } catch(e) {
+    showPromoError(e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Create Promotion';
+  }
+}
+
+function showPromoError(msg) {
+  const el = document.getElementById('promoFormError');
+  if (el) { el.textContent = msg; el.style.display = 'block'; }
+}
+
+async function promoDelete(promoId) {
+  if (!_promoState.activeBrandId) return;
+  if (!confirm('Remove this promotion from TikTok Shop?')) return;
+  try {
+    const r = await fetch(`/api/tiktokshop/brand-promotions/${promoId}?brandId=${_promoState.activeBrandId}`, { method: 'DELETE' });
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.error || 'Failed to delete');
+    await loadPromotions();
+  } catch(e) {
+    alert('Delete failed: ' + e.message);
+  }
+}
+
+function escHtml(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 </script>
 </body>
