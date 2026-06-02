@@ -3299,18 +3299,15 @@ app.post('/api/creator-onboard', express.json(), async (req, res) => {
     scheduleDiscordRetry(3); // retry up to 3 more times (5, 10, 15 min)
   }
 
-  // 4 — Lark alert
+  // 4 — Lark alert (proxied through cultcontent-server which holds the right bot credentials)
   try {
-    const larkToken = await getLarkTenantToken();
     const discordStr = discordUsername ? `@${discordUsername.replace(/^@/,'')}` : 'not provided';
     const tiktokStr  = handle ? `@${handle}` : 'not provided';
-    await axios.post('https://open.larksuite.com/open-apis/im/v1/messages?receive_id_type=chat_id', {
-      receive_id: process.env.LARK_ALERT_CHAT_ID,
-      msg_type: 'text',
-      content: JSON.stringify({ text:
-        `New Creator Signup\nName: ${name}\nTikTok: ${tiktokStr}\nEmail: ${email}\nPhone: ${phone}\nDiscord: ${discordStr}`
-      }),
-    }, { headers: { Authorization: `Bearer ${larkToken}`, 'Content-Type': 'application/json' } });
+    await axios.post(`${CFG.railwayUrl}/command`, {
+      text: `👁️‼️ New Creator Signup\nName: ${name}\nTikTok: ${tiktokStr}\nEmail: ${email}\nPhone: ${phone}\nDiscord: ${discordStr}`,
+      context: 'Creator Community',
+      source: 'cultcontent.cc/creators',
+    }, { timeout: 8000 });
   } catch(e) {
     console.error('[creator-onboard] Lark error:', e.response?.data || e.message);
   }
