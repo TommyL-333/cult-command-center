@@ -10979,17 +10979,19 @@ async function ccSave(id, btn) {
   try {
     if (c._type === 'live') {
       // Update creator page (incentives + commission)
-      await fetch(`/api/creator-pages/${id}`, {
+      const cpRes = await fetch(`/api/creator-pages/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ incentives: inc, tcCommission: tcComm }),
-      }).then(r => r.json());
+      });
+      if (!cpRes.ok) { const e = await cpRes.json().catch(() => ({})); throw new Error(e.error || `Creator page save failed (${cpRes.status})`); }
       // Update campaign links
-      await fetch(`/api/brands/${id}/campaign-links`, {
+      const clRes = await fetch(`/api/brands/${id}/campaign-links`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cashbackUrl: camCb || null, quantityVideoUrl: camVb || null, leaderboardUrl: camLb || null }),
-      }).then(r => r.json());
+      });
+      if (!clRes.ok) { const e = await clRes.json().catch(() => ({})); throw new Error(e.error || `Campaign links save failed (${clRes.status})`); }
     } else if (c.pendingId) {
       // Update pending onboard formData
       const existing = _pobData[c.pendingId] || {};
