@@ -8954,12 +8954,11 @@ app.get('/api/tiktokshop/brand-promotions', requireAuth, async (req, res) => {
   const brand = brands.clients[brandIdx];
   if (!brand.tiktokShopToken?.access_token) return res.status(400).json({ error: 'Brand not connected to TikTok Shop' });
   try {
-    const resp = await ttsBrandGet(brand, brands, brandIdx, '/promotion/202309/activities', {
+    const resp = await ttsBrandPost(brand, brands, brandIdx, '/promotion/202309/activities/search', {
       activity_status: status,
       page_size: 50,
     });
     console.log('[promotions] list raw response:', JSON.stringify(resp?.data).slice(0, 300));
-    // Response may use 'activities' or 'promotions' key depending on API version
     const items = resp?.data?.activities || resp?.data?.promotions || [];
     res.json({ ok: true, promotions: items, total: resp?.data?.total_count || items.length });
   } catch (e) {
