@@ -8955,12 +8955,21 @@ app.get('/api/tiktokshop/brand-promotions', requireAuth, async (req, res) => {
   if (!brand.tiktokShopToken?.access_token) return res.status(400).json({ error: 'Brand not connected to TikTok Shop' });
   try {
     const resp = await ttsBrandPost(brand, brands, brandIdx, '/promotion/202309/activities/search', {
-      activity_status: status,
-      page_size: 50,
+      page_size: 100,
     });
-    console.log('[promotions] list raw response:', JSON.stringify(resp?.data).slice(0, 300));
-    const items = resp?.data?.activities || resp?.data?.promotions || [];
-    res.json({ ok: true, promotions: items, total: resp?.data?.total_count || items.length });
+    console.log('[promotions] list raw response:', JSON.stringify(resp?.data).slice(0, 500));
+    const allItems = resp?.data?.activities || resp?.data?.promotions || [];
+    const now = Math.floor(Date.now() / 1000);
+    // Filter by timestamps since TikTok may not support status filter in body
+    const filtered = allItems.filter(a => {
+      const begin = a.begin_time || a.start_time || 0;
+      const end   = a.end_time   || a.finish_time || 0;
+      if (status === 'UPCOMING') return begin > now;
+      if (status === 'ONGOING')  return begin <= now && end >= now;
+      if (status === 'ENDED')    return end < now;
+      return true;
+    });
+    res.json({ ok: true, promotions: filtered, total: filtered.length });
   } catch (e) {
     console.error('[promotions] list error:', e.response?.data || e.message);
     res.status(500).json({ ok: false, error: e.response?.data?.message || e.message });
