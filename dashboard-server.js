@@ -8944,6 +8944,8 @@ app.post('/api/tiktokshop/webhook', express.raw({ type: '*/*' }), (req, res) => 
 });
 
 // ── GET /api/tiktokshop/brand-promotions?brandId=X&status=ONGOING ────────────
+// Uses the new TikTok Shop "Activity" API (Create Activity endpoint family)
+// activity_status values: UPCOMING, ONGOING, ENDED
 app.get('/api/tiktokshop/brand-promotions', requireAuth, async (req, res) => {
   const { brandId, status = 'ONGOING' } = req.query;
   const brands = loadBrands();
@@ -8952,11 +8954,14 @@ app.get('/api/tiktokshop/brand-promotions', requireAuth, async (req, res) => {
   const brand = brands.clients[brandIdx];
   if (!brand.tiktokShopToken?.access_token) return res.status(400).json({ error: 'Brand not connected to TikTok Shop' });
   try {
-    const resp = await ttsBrandGet(brand, brands, brandIdx, '/promotion/202309/promotions', {
-      promotion_status: status,
+    const resp = await ttsBrandGet(brand, brands, brandIdx, '/promotion/202309/activities', {
+      activity_status: status,
       page_size: 50,
     });
-    res.json({ ok: true, promotions: resp?.data?.promotions || [], total: resp?.data?.total_count || 0 });
+    console.log('[promotions] list raw response:', JSON.stringify(resp?.data).slice(0, 300));
+    // Response may use 'activities' or 'promotions' key depending on API version
+    const items = resp?.data?.activities || resp?.data?.promotions || [];
+    res.json({ ok: true, promotions: items, total: resp?.data?.total_count || items.length });
   } catch (e) {
     console.error('[promotions] list error:', e.response?.data || e.message);
     res.status(500).json({ ok: false, error: e.response?.data?.message || e.message });
@@ -8964,6 +8969,7 @@ app.get('/api/tiktokshop/brand-promotions', requireAuth, async (req, res) => {
 });
 
 // ── POST /api/tiktokshop/brand-promotions ────────────────────────────────────
+// activity_type: PRODUCT_DISCOUNT or FLASH_DEAL
 app.post('/api/tiktokshop/brand-promotions', requireAuth, express.json(), async (req, res) => {
   const { brandId, title, promotionType, beginTime, endTime, productList } = req.body || {};
   if (!brandId || !title || !beginTime || !endTime || !productList?.length)
@@ -8974,17 +8980,22 @@ app.post('/api/tiktokshop/brand-promotions', requireAuth, express.json(), async 
   const brand = brands.clients[brandIdx];
   if (!brand.tiktokShopToken?.access_token) return res.status(400).json({ error: 'Brand not connected to TikTok Shop' });
   try {
+    // Map legacy type numbers to new activity_type strings
+    const typeMap = { '3': 'FLASH_DEAL', '4': 'PRODUCT_DISCOUNT' };
+    const activityType = typeMap[String(promotionType)] || 'PRODUCT_DISCOUNT';
     const body = {
       title,
-      promotion_type: promotionType || 3,
+      activity_type: activityType,
       begin_time: Math.floor(new Date(beginTime).getTime() / 1000),
       end_time:   Math.floor(new Date(endTime).getTime() / 1000),
       product_level: 'SKU',
       product_list: productList,
     };
-    const resp = await ttsBrandPost(brand, brands, brandIdx, '/promotion/202309/promotions', body);
-    if (resp?.code !== 0) throw new Error(resp?.message || 'TikTok API error');
-    res.json({ ok: true, promotion: resp?.data });
+    console.log('[promotions] create body:', JSON.stringify(body).slice(0, 300));
+    const resp = await ttsBrandPost(brand, brands, brandIdx, '/promotion/202309/activities', body);
+    console.log('[promotions] create response:', JSON.stringify(resp).slice(0, 300));
+    if (resp?.code !== 0) throw new Error(resp?.message || `TikTok error code ${resp?.code}`);
+    res.json({ ok: true, activity: resp?.data });
   } catch (e) {
     console.error('[promotions] create error:', e.response?.data || e.message);
     res.status(500).json({ ok: false, error: e.response?.data?.message || e.message });
@@ -9002,7 +9013,8 @@ app.delete('/api/tiktokshop/brand-promotions/:promoId', requireAuth, async (req,
   if (!brand.tiktokShopToken?.access_token) return res.status(400).json({ error: 'Brand not connected to TikTok Shop' });
   try {
     const t = brand.tiktokShopToken;
-    const resp = await ttsBrandRequest(t, 'DELETE', `/promotion/202309/promotions/${promoId}`, {});
+    const resp = await ttsBrandRequest(t, 'DELETE', `/promotion/202309/activities/${promoId}`, {});
+    console.log('[promotions] delete response:', JSON.stringify(resp).slice(0, 200));
     res.json({ ok: true, data: resp?.data });
   } catch (e) {
     console.error('[promotions] delete error:', e.response?.data || e.message);

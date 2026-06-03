@@ -2846,8 +2846,8 @@ SKU	Date	Sample Reqs	Video Views	Add To Cart	Orders"></textarea>
     <div class="form-row">
       <label>Type</label>
       <select class="agent-input" id="promoFormType">
-        <option value="3">Flash Sale</option>
-        <option value="4">Limited Time Offer</option>
+        <option value="3">Flash Deal</option>
+        <option value="4">Product Discount</option>
       </select>
     </div>
 
@@ -11957,26 +11957,15 @@ async function loadPromotions() {
       </tr>`;
     }).join('');
   } catch(e) {
-    const isScope = e.message && (e.message.includes('no schema') || e.message.includes('scope') || e.message.includes('permission'));
     if (empty) {
       empty.style.display = 'block';
-      if (isScope) {
-        const brand = _promoState.brands.find(b => b.id === _promoState.activeBrandId);
-        empty.innerHTML = `
-          <div style="max-width:440px;margin:0 auto;text-align:center;">
-            <div style="font-size:28px;margin-bottom:12px;">🔒</div>
-            <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:8px;">Promotions API scope not enabled</div>
-            <div style="font-size:12px;color:var(--muted);margin-bottom:20px;line-height:1.6;">
-              The TikTok Shop <code style="background:rgba(255,255,255,.08);padding:1px 5px;border-radius:3px;">seller.promotion.read</code> scope hasn't been approved for this app yet.
-              Manage promotions directly in TikTok Shop Seller Center in the meantime.
-            </div>
-            <a href="https://seller-us.tiktok.com/promotion" target="_blank" class="btn btn-teal" style="display:inline-flex;align-items:center;gap:6px;text-decoration:none;">
-              Open Seller Center Promotions ↗
-            </a>
-          </div>`;
-      } else {
-        empty.textContent = 'Error: ' + e.message;
-      }
+      empty.innerHTML = `
+        <div style="max-width:440px;margin:0 auto;text-align:center;">
+          <div style="font-size:12px;color:var(--red);margin-bottom:14px;">Error: ${escHtml(e.message)}</div>
+          <a href="https://seller-us.tiktok.com/promotion" target="_blank" class="btn btn-ghost" style="display:inline-flex;align-items:center;gap:6px;text-decoration:none;font-size:12px;">
+            Open Seller Center Promotions ↗
+          </a>
+        </div>`;
     }
     if (table) table.style.display = 'none';
   }
