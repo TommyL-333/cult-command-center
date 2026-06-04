@@ -12454,4 +12454,47 @@ app.listen(CFG.port, () => {
   } catch(e) {
     console.error('[startup] resume pipelines error:', e.message);
   }
+
+  // ─── Ensure Stripe billing products exist (idempotent) ─────────────────────
+  if (stripe) {
+    (async () => {
+      try {
+        const STRIPE_META_FILE = path.join(DATA_DIR, 'stripe-products.json');
+        let meta = {};
+        if (fs.existsSync(STRIPE_META_FILE)) {
+          try { meta = JSON.parse(fs.readFileSync(STRIPE_META_FILE, 'utf8')); } catch(_) {}
+        }
+
+        const ensureProduct = async (key, name, description) => {
+          if (meta[key]) return meta[key]; // already created
+          // Search for existing product by metadata key
+          const list = await stripe.products.search({ query: `metadata['cc_product_key']:'${key}'`, limit: 1 });
+          if (list.data.length > 0) {
+            meta[key] = list.data[0].id;
+            return meta[key];
+          }
+          const prod = await stripe.products.create({ name, description, metadata: { cc_product_key: key, source: 'cult-content-billing' } });
+          meta[key] = prod.id;
+          console.log(`[stripe] Created product: ${name} (${prod.id})`);
+          return prod.id;
+        };
+
+        await ensureProduct('retainer',  'Monthly Retainer',   'Cult Content monthly management retainer fee');
+        await ensureProduct('gmv_share', 'GMV Revenue Share',  'Cult Content performance-based TikTok Shop GMV share');
+
+        // Create a Stripe product for each billing tier
+        for (const tier of BILLING_TIERS) {
+          const tierKey = `tier_${tier.retainer}_${Math.round(tier.commRate * 100)}pct`;
+          const tierName = `Cult Content — $${tier.retainer.toLocaleString()}/mo + ${Math.round(tier.commRate * 100)}% GMV`;
+          const tierDesc = `Monthly retainer: $${tier.retainer.toLocaleString()} | GMV revenue share: ${Math.round(tier.commRate * 100)}%`;
+          await ensureProduct(tierKey, tierName, tierDesc);
+        }
+
+        fs.writeFileSync(STRIPE_META_FILE, JSON.stringify(meta, null, 2));
+        console.log('[stripe] Billing products verified ✓');
+      } catch(e) {
+        console.error('[stripe] Product setup error:', e.message);
+      }
+    })();
+  }
 });
