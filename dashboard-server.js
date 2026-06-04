@@ -3819,29 +3819,33 @@ app.get('/api/admin/shop-metrics-probe/:brandId', async (req, res) => {
   const thisWkParams  = { start_date_ge: week1S, end_date_lt: today };
   const lastWkParams  = { start_date_ge: week2S, end_date_lt: week1S };
 
+  // Product/video endpoints use version 202605 (different from shop which uses 202509)
+  const prodParams = { ...thisWkParams, page_size: 10 };
   const endpoints = [
-    // Shop performance (confirmed working)
-    ['GET', '/analytics/202509/shop/performance',               thisWkParams],
-    // Product performance — try all path variants
-    ['GET', '/analytics/202509/product/performance',            thisWkParams],
-    ['GET', '/analytics/202509/product/performance_list',       thisWkParams],
-    ['GET', '/analytics/202509/products/performance',           thisWkParams],
-    ['GET', '/analytics/202509/product/performance_summary',    thisWkParams],
-    ['GET', '/analytics/202509/product/list',                   thisWkParams],
-    ['GET', '/analytics/202509/product/sales_performance',      thisWkParams],
-    // Video performance — try all path variants
-    ['GET', '/analytics/202509/video/performance',              thisWkParams],
-    ['GET', '/analytics/202509/video/performance_list',         thisWkParams],
-    ['GET', '/analytics/202509/videos/performance',             thisWkParams],
-    ['GET', '/analytics/202509/video/performance_summary',      thisWkParams],
-    ['GET', '/analytics/202509/video/list',                     thisWkParams],
-    ['GET', '/analytics/202509/video/sales_performance',        thisWkParams],
-    // Live performance
-    ['GET', '/analytics/202509/live/performance',               thisWkParams],
-    ['GET', '/analytics/202509/live/performance_list',          thisWkParams],
-    // Creator / content
-    ['GET', '/analytics/202509/content/performance',            thisWkParams],
-    ['GET', '/analytics/202509/creator/performance',            thisWkParams],
+    // Shop performance (confirmed working, v202509)
+    ['GET', '/analytics/202509/shop/performance',                  thisWkParams],
+    // Product performance — v202605, all path variants
+    ['GET', '/analytics/202605/product/performance',               prodParams],
+    ['GET', '/analytics/202605/product/performance_list',          prodParams],
+    ['GET', '/analytics/202605/products/performance',              prodParams],
+    ['GET', '/analytics/202605/product/performance_summary',       prodParams],
+    ['GET', '/analytics/202605/product/list',                      prodParams],
+    ['GET', '/analytics/202605/product/sales_performance',         prodParams],
+    ['GET', '/analytics/202605/product/top_performance',           prodParams],
+    // Video performance — v202605, all path variants
+    ['GET', '/analytics/202605/video/performance',                 prodParams],
+    ['GET', '/analytics/202605/video/performance_list',            prodParams],
+    ['GET', '/analytics/202605/videos/performance',                prodParams],
+    ['GET', '/analytics/202605/video/performance_summary',         prodParams],
+    ['GET', '/analytics/202605/video/list',                        prodParams],
+    ['GET', '/analytics/202605/video/sales_performance',           prodParams],
+    ['GET', '/analytics/202605/video/top_performance',             prodParams],
+    // Live — v202605
+    ['GET', '/analytics/202605/live/performance',                  prodParams],
+    ['GET', '/analytics/202605/live/performance_list',             prodParams],
+    // Creator / content — v202605
+    ['GET', '/analytics/202605/content/performance',               prodParams],
+    ['GET', '/analytics/202605/creator/performance',               prodParams],
   ];
 
   for (const [method, path, params] of endpoints) {
