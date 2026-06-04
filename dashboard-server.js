@@ -3750,24 +3750,28 @@ app.get('/api/admin/shop-metrics-probe/:brandId', async (req, res) => {
   const weekAgo = now - 7 * 86400;
   const twoWeeksAgo = now - 14 * 86400;
 
-  // Try every known shop performance / analytics endpoint variant
+  // Scope data.shop_analytics.public.read (948484) is enabled — probe correct paths
   const dateStr = (ts) => new Date(ts * 1000).toISOString().slice(0,10).replace(/-/g,'');
   const dateISO = (ts) => new Date(ts * 1000).toISOString().slice(0,10);
+  const startDate = dateISO(weekAgo);
+  const endDate   = dateISO(now);
   const endpoints = [
-    // Shop/seller performance score variants
-    ['GET',  '/seller/202309/performance',          {}],
-    ['GET',  '/seller/202312/performance',          {}],
-    ['GET',  '/seller/202406/performance',          {}],
-    ['GET',  '/performance/202309/seller',          {}],
-    ['GET',  '/performance/202309/shop',            {}],
-    // With date params
-    ['GET',  '/seller/202309/performance',          { start_date: dateStr(weekAgo), end_date: dateStr(now) }],
-    ['GET',  '/seller/202309/performance',          { date_range: { start_date: dateISO(weekAgo), end_date: dateISO(now) } }],
-    // Analytics variants
-    ['POST', '/analytics/202309/shop_overview',    { date_range: { start_date: dateISO(weekAgo), end_date: dateISO(now) } }],
-    ['POST', '/analytics/202312/shop_overview',    { date_range: { start_date: dateISO(weekAgo), end_date: dateISO(now) } }],
-    ['POST', '/analytics/202406/shop_overview',    { date_range: { start_date: dateISO(weekAgo), end_date: dateISO(now) } }],
-    ['GET',  '/analytics/202309/shop_performance', {}],
+    // data.* scope — base path likely /data/
+    ['GET',  '/data/202309/shop_performance',          { start_date: startDate, end_date: endDate }],
+    ['GET',  '/data/202312/shop_performance',          { start_date: startDate, end_date: endDate }],
+    ['GET',  '/data/202406/shop_performance',          { start_date: startDate, end_date: endDate }],
+    ['GET',  '/data/202309/product_performance_list',  { start_date: startDate, end_date: endDate }],
+    ['GET',  '/data/202406/product_performance_list',  { start_date: startDate, end_date: endDate }],
+    // analytics prefix variants
+    ['GET',  '/analytics/202309/shop_performance',     { start_date: startDate, end_date: endDate }],
+    ['GET',  '/analytics/202406/shop_performance',     { start_date: startDate, end_date: endDate }],
+    ['GET',  '/analytics/202406/product_performance',  { start_date: startDate, end_date: endDate }],
+    // seller prefix (already tried but now scope is confirmed)
+    ['GET',  '/seller/202309/performance',             { start_date: startDate, end_date: endDate }],
+    ['GET',  '/seller/202406/performance',             { start_date: startDate, end_date: endDate }],
+    // shop_analytics prefix
+    ['GET',  '/shop_analytics/202309/shop_performance', { start_date: startDate, end_date: endDate }],
+    ['GET',  '/shop_analytics/202406/shop_performance', { start_date: startDate, end_date: endDate }],
   ];
   for (const [method, path, body] of endpoints) {
     const key = `${method} ${path}${Object.keys(body).length ? ' '+JSON.stringify(body).slice(0,40) : ''}`;
