@@ -3750,32 +3750,27 @@ app.get('/api/admin/shop-metrics-probe/:brandId', async (req, res) => {
   const weekAgo = now - 7 * 86400;
   const twoWeeksAgo = now - 14 * 86400;
 
-  // Scope data.shop_analytics.public.read (948484) confirmed enabled.
-  // 40006 = schema validation mismatch — try bare calls + different param shapes
-  const ds  = (ts) => new Date(ts * 1000).toISOString().slice(0,10).replace(/-/g,''); // YYYYMMDD
-  const di  = (ts) => new Date(ts * 1000).toISOString().slice(0,10);                  // YYYY-MM-DD
-  const yd  = ds(now - 86400); // yesterday YYYYMMDD
+  // Scope confirmed. 40006 on every GET — try POST + different path shapes
+  const ds = (ts) => new Date(ts * 1000).toISOString().slice(0,10).replace(/-/g,''); // YYYYMMDD
+  const yd = ds(now - 86400);
   const endpoints = [
-    // No params at all — maybe it returns latest data
-    ['GET', '/analytics/202309/shop_performance',  {}],
-    ['GET', '/analytics/202312/shop_performance',  {}],
-    ['GET', '/analytics/202406/shop_performance',  {}],
-    // YYYYMMDD format
-    ['GET', '/analytics/202309/shop_performance',  { start_date: ds(weekAgo), end_date: ds(now) }],
-    ['GET', '/analytics/202406/shop_performance',  { start_date: ds(weekAgo), end_date: ds(now) }],
-    // Single date (query_date = yesterday)
-    ['GET', '/analytics/202309/shop_performance',  { query_date: yd }],
-    ['GET', '/analytics/202406/shop_performance',  { query_date: yd }],
-    ['GET', '/analytics/202406/shop_performance',  { date: yd }],
-    // date_type param (1=daily, 2=weekly, 3=monthly)
-    ['GET', '/analytics/202406/shop_performance',  { date_type: 1, start_date: ds(weekAgo), end_date: ds(now) }],
-    ['GET', '/analytics/202406/shop_performance',  { date_type: '1', start_date: ds(weekAgo), end_date: yd }],
-    // seller/performance with no params
-    ['GET', '/seller/202309/performance',          {}],
-    ['GET', '/seller/202406/performance',          {}],
-    // product performance list — no params or YYYYMMDD
-    ['GET', '/analytics/202406/products_performance_list', { start_date: ds(weekAgo), end_date: yd }],
-    ['GET', '/analytics/202406/product_performance_list',  { start_date: ds(weekAgo), end_date: yd }],
+    // POST variants (TikTok sometimes uses POST for analytics)
+    ['POST', '/analytics/202309/shop_performance',         { start_date: ds(weekAgo), end_date: ds(now) }],
+    ['POST', '/analytics/202312/shop_performance',         { start_date: ds(weekAgo), end_date: ds(now) }],
+    ['POST', '/analytics/202406/shop_performance',         { start_date: ds(weekAgo), end_date: ds(now) }],
+    // Slash-separated path variants
+    ['GET',  '/analytics/202406/shop/performance',         {}],
+    ['GET',  '/analytics/202309/shop/performance',         {}],
+    ['POST', '/analytics/202406/shop/performance',         { start_date: ds(weekAgo), end_date: ds(now) }],
+    // Plural shops
+    ['GET',  '/analytics/202406/shops/performance',        {}],
+    ['POST', '/analytics/202406/shops/performance',        { start_date: ds(weekAgo), end_date: ds(now) }],
+    // product performance (POST)
+    ['POST', '/analytics/202406/product_performance_list', { start_date: ds(weekAgo), end_date: yd, page_size: 10 }],
+    ['POST', '/analytics/202406/products_performance_list',{ start_date: ds(weekAgo), end_date: yd, page_size: 10 }],
+    // video performance (POST)
+    ['POST', '/analytics/202406/video_performance_list',   { start_date: ds(weekAgo), end_date: yd, page_size: 10 }],
+    ['POST', '/analytics/202406/videos_performance_list',  { start_date: ds(weekAgo), end_date: yd, page_size: 10 }],
   ];
   for (const [method, path, body] of endpoints) {
     const key = `${method} ${path}${Object.keys(body).length ? ' '+JSON.stringify(body).slice(0,40) : ''}`;
