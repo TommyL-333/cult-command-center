@@ -4294,15 +4294,25 @@ Return ONLY the caption text with hashtags. No explanation, no quotes.`
   }
 });
 
-// ─── ONE-TIME SEED: Diamandia creator page — REMOVE AFTER USE ─────────────────
-// Protected by GHL_API_KEY. Accessible via raw Railway URL (bypasses CF Access).
+// ─── ONE-TIME SEED: list brands for ID lookup ──────────────────────────────
+app.get('/api/__seed/list-brands', (req, res) => {
+  if (req.headers['x-seed-token'] !== process.env.GHL_API_KEY) return res.status(403).json({ error: 'forbidden' });
+  const brands = loadBrands();
+  res.json(brands.clients.map(b => ({ id: b.id, name: b.name, referralCode: b.referralCode, hasCreatorPage: !!b.creatorPage })));
+});
+
+// ─── ONE-TIME SEED: Diamandia creator page ─────────────────────────────────
 app.post('/api/__seed/diamandia-page', express.json(), (req, res) => {
   if (req.headers['x-seed-token'] !== process.env.GHL_API_KEY) {
     return res.status(403).json({ error: 'forbidden' });
   }
   const brands = loadBrands();
-  const idx = brands.clients.findIndex(b => b.id === 'mo78a8oxlg7z');
-  if (idx === -1) return res.status(404).json({ error: 'Diamandia brand not found' });
+  // Try by provided brandId, then by hardcoded local ID, then by name/referralCode
+  const brandId = req.body?.brandId;
+  const idx = brandId
+    ? brands.clients.findIndex(b => b.id === brandId)
+    : brands.clients.findIndex(b => b.id === 'mo78a8oxlg7z' || (b.referralCode||'').toLowerCase() === 'diamandia' || (b.name||'').toLowerCase().includes('diamandia'));
+  if (idx === -1) return res.status(404).json({ error: 'Diamandia brand not found', brands: brands.clients.map(b=>({id:b.id,name:b.name})) });
 
   const BRIEF = {
     niche: 'Health',
