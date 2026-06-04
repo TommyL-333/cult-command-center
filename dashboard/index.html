@@ -1130,35 +1130,41 @@
         <button class="btn btn-ghost" onclick="ubLoadConversations(true)" style="font-size:12px;padding:6px 14px">↻</button>
       </div>
 
-      <!-- 2-panel layout -->
-      <div style="display:grid;grid-template-columns:300px 1fr;gap:0;border:1px solid var(--border);border-radius:12px;overflow:hidden;height:600px">
+      <!-- 2-panel layout wrapper -->
+      <div style="border:1px solid var(--border);border-radius:12px;overflow:hidden">
 
-        <!-- Left: conversation list -->
-        <div style="border-right:1px solid var(--border);display:flex;flex-direction:column;background:var(--card)">
-          <div style="padding:10px 14px;border-bottom:1px solid var(--border);font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em">Conversations</div>
-          <div id="ub-conv-list" style="flex:1;overflow-y:auto;font-size:13px">
-            <div style="padding:20px;text-align:center;color:var(--muted);font-style:italic">Loading…</div>
-          </div>
-        </div>
+        <!-- Grid: conv list + thread (fixed height, both columns scroll internally) -->
+        <div style="display:grid;grid-template-columns:300px 1fr;gap:0;height:520px">
 
-        <!-- Right: thread + reply -->
-        <div style="display:flex;flex-direction:column;background:var(--card);overflow:hidden;min-height:0">
-          <!-- Thread header -->
-          <div id="ub-thread-header" style="padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;min-height:49px">
-            <div style="color:var(--muted);font-size:13px;font-style:italic">Select a conversation</div>
-          </div>
-          <!-- Messages -->
-          <div id="ub-thread-msgs" style="flex:1;min-height:0;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:10px">
-          </div>
-          <!-- Reply composer -->
-          <div id="ub-reply-box" style="border-top:1px solid var(--border);padding:12px 14px;display:none;flex-shrink:0">
-            <div style="display:flex;gap:8px;align-items:flex-end">
-              <textarea id="ub-reply-text" class="agent-input" rows="3" style="flex:1;font-size:13px;resize:none;line-height:1.5;padding:8px 12px" placeholder="Type a reply…" onkeydown="if(event.key==='Enter'&&event.metaKey)ubSendReply()"></textarea>
-              <button class="btn btn-teal" onclick="ubSendReply()" style="font-size:12px;font-weight:700;padding:7px 16px;white-space:nowrap;align-self:flex-end">Send →</button>
+          <!-- Left: conversation list -->
+          <div style="border-right:1px solid var(--border);display:flex;flex-direction:column;background:var(--card);overflow:hidden">
+            <div style="padding:10px 14px;border-bottom:1px solid var(--border);font-size:10px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;flex-shrink:0">Conversations</div>
+            <div id="ub-conv-list" style="flex:1;min-height:0;overflow-y:auto;font-size:13px">
+              <div style="padding:20px;text-align:center;color:var(--muted);font-style:italic">Loading…</div>
             </div>
-            <div id="ub-reply-status" style="font-size:11px;color:var(--muted);margin-top:6px;min-height:16px"></div>
+          </div>
+
+          <!-- Right: thread messages only -->
+          <div style="display:flex;flex-direction:column;background:var(--card);overflow:hidden">
+            <!-- Thread header -->
+            <div id="ub-thread-header" style="padding:12px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;min-height:49px;flex-shrink:0">
+              <div style="color:var(--muted);font-size:13px;font-style:italic">Select a conversation</div>
+            </div>
+            <!-- Messages -->
+            <div id="ub-thread-msgs" style="flex:1;min-height:0;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:10px">
+            </div>
           </div>
         </div>
+
+        <!-- Reply composer — outside the fixed-height grid so it's never clipped -->
+        <div id="ub-reply-box" style="border-top:1px solid var(--border);padding:12px 14px;display:none;background:var(--card)">
+          <div style="display:flex;gap:8px;align-items:flex-end">
+            <textarea id="ub-reply-text" class="agent-input" rows="3" style="flex:1;font-size:13px;resize:none;line-height:1.5;padding:8px 12px" placeholder="Type a reply…" onkeydown="if(event.key==='Enter'&&event.metaKey)ubSendReply()"></textarea>
+            <button class="btn btn-teal" onclick="ubSendReply()" style="font-size:12px;font-weight:700;padding:7px 16px;white-space:nowrap;align-self:flex-end">Send →</button>
+          </div>
+          <div id="ub-reply-status" style="font-size:11px;color:var(--muted);margin-top:6px;min-height:16px"></div>
+        </div>
+
       </div>
     </div>
 
