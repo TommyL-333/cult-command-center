@@ -2066,35 +2066,58 @@ app.get('/portal-admin/shop-metrics/:brandId', requirePortalAdmin, async (req, r
     return { gmv, orders, aov: orders > 0 ? gmv / orders : 0 };
   }
 
-  // Fetch TikTok Shop Analytics API (scope: data.shop_analytics.public.read)
-  // Path: /analytics/202509/shop/performance  Date format: YYYY-MM-DD
-  // Response structure: data.performance.intervals[0].{ sales, traffic }
-  //   traffic.avg_page_views       — product page views (proxy for impressions)
-  //   traffic.avg_visitors         — unique visitors
-  //   traffic.avg_conversation_rate — conversion rate (0–1 float)
-  //   sales.gmv.overall.amount     — GMV string
-  //   sales.orders_count           — order count
-  async function fetchShopAnalytics(startDateStr, endDateStr) {
+  // ── Analytics helper: shop-level traffic + conversion ────────────────────────
+  // GET /analytics/202509/shop/performance  (YYYY-MM-DD dates)
+  // Returns: traffic.avg_conversation_rate (conv rate 0–1), traffic.avg_page_views, traffic.avg_visitors
+  async function fetchShopPerf(startDateStr, endDateStr) {
     try {
       const r = await ttsBrandGet(brand, brands, bi, '/analytics/202509/shop/performance',
         { start_date_ge: startDateStr, end_date_lt: endDateStr });
       const d = r?.data?.data || r?.data;
       const interval = d?.performance?.intervals?.[0];
       if (!interval) return null;
-      console.log(`[analytics] ${brand.name} interval:`, JSON.stringify(interval).slice(0, 400));
       const traffic = interval.traffic || {};
       const sales   = interval.sales   || {};
       return {
-        pageViews:   traffic.avg_page_views        != null ? Number(traffic.avg_page_views)        : null,
-        visitors:    traffic.avg_visitors           != null ? Number(traffic.avg_visitors)           : null,
-        convRate:    traffic.avg_conversation_rate  != null ? parseFloat(traffic.avg_conversation_rate) : null,
-        gmv:         parseFloat(sales.gmv?.overall?.amount)   || null,
-        orders:      sales.orders_count             != null ? Number(sales.orders_count)             : null,
-        itemsSold:   sales.items_sold               != null ? Number(sales.items_sold)               : null,
-        refunds:     parseFloat(sales.refunds?.amount)         || null,
+        convRate:  traffic.avg_conversation_rate != null ? parseFloat(traffic.avg_conversation_rate) : null,
+        pageViews: traffic.avg_page_views        != null ? Number(traffic.avg_page_views)            : null,
+        visitors:  traffic.avg_visitors          != null ? Number(traffic.avg_visitors)              : null,
       };
     } catch(e) {
-      console.log(`[analytics] ${brand.name} failed: code=${e.response?.data?.code} msg=${e.response?.data?.message}`);
+      console.log(`[analytics/shop] ${brand.name} failed:`, e.response?.data?.message);
+      return null;
+    }
+  }
+
+  // ── Analytics helper: product-level impressions + CTR ────────────────────────
+  // GET /analytics/202605/shop_products/performance  (YYYY-MM-DD dates)
+  // Paginates up to 3 pages; sums total_performance.product_impressions across all products,
+  // computes weighted-average CTR (impressions-weighted).
+  async function fetchProductPerf(startDateStr, endDateStr) {
+    try {
+      let totalImpressions = 0, weightedCtr = 0, pageToken = null;
+      for (let page = 0; page < 3; page++) {
+        const params = { start_date_ge: startDateStr, end_date_lt: endDateStr, page_size: 50 };
+        if (pageToken) params.page_token = pageToken;
+        const r = await ttsBrandGet(brand, brands, bi, '/analytics/202605/shop_products/performance', params);
+        const d = r?.data?.data || r?.data;
+        const products = d?.products || [];
+        for (const p of products) {
+          const tp = p.total_performance || {};
+          const imp = Number(tp.product_impressions) || 0;
+          const ctr = parseFloat(tp.ctr) || 0;
+          totalImpressions += imp;
+          weightedCtr      += imp * ctr;
+        }
+        pageToken = d?.next_page_token;
+        if (!pageToken || products.length === 0) break;
+      }
+      return {
+        impressions: totalImpressions > 0 ? totalImpressions : null,
+        ctr:         totalImpressions > 0 ? weightedCtr / totalImpressions : null,
+      };
+    } catch(e) {
+      console.log(`[analytics/products] ${brand.name} failed:`, e.response?.data?.message);
       return null;
     }
   }
@@ -2108,11 +2131,13 @@ app.get('/portal-admin/shop-metrics/:brandId', requirePortalAdmin, async (req, r
     const w1S    = ds(week1);
     const w2S    = ds(week2);
 
-    const [thisWeek, lastWeek, analyticsThis, analyticsLast] = await Promise.all([
+    const [thisWeek, lastWeek, shopThis, shopLast, prodThis, prodLast] = await Promise.all([
       fetchWeekMetrics(week1, now),
       fetchWeekMetrics(week2, week1),
-      fetchShopAnalytics(w1S, todayS),
-      fetchShopAnalytics(w2S, w1S),
+      fetchShopPerf(w1S, todayS),
+      fetchShopPerf(w2S, w1S),
+      fetchProductPerf(w1S, todayS),
+      fetchProductPerf(w2S, w1S),
     ]);
 
     function trend(curr, prev) {
@@ -2124,20 +2149,30 @@ app.get('/portal-admin/shop-metrics/:brandId', requirePortalAdmin, async (req, r
     }
 
     const analytics = {
-      thisWeek: analyticsThis  || {},
-      lastWeek: analyticsLast  || {},
+      thisWeek: {
+        convRate:    shopThis?.convRate    ?? null,
+        pageViews:   shopThis?.pageViews   ?? null,
+        visitors:    shopThis?.visitors    ?? null,
+        impressions: prodThis?.impressions ?? null,
+        ctr:         prodThis?.ctr         ?? null,
+      },
+      lastWeek: {
+        convRate:    shopLast?.convRate    ?? null,
+        impressions: prodLast?.impressions ?? null,
+        ctr:         prodLast?.ctr         ?? null,
+      },
     };
 
     res.json({
       ok: true,
       thisWeek, lastWeek,
       trends: {
-        gmv:        trend(thisWeek.gmv,    lastWeek.gmv),
-        orders:     trend(thisWeek.orders, lastWeek.orders),
-        aov:        trend(thisWeek.aov,    lastWeek.aov),
-        pageViews: trend(analytics.thisWeek.pageViews, analytics.lastWeek.pageViews),
-        visitors:  trend(analytics.thisWeek.visitors,  analytics.lastWeek.visitors),
-        convRate:  trend(analytics.thisWeek.convRate,  analytics.lastWeek.convRate),
+        gmv:         trend(thisWeek.gmv,             lastWeek.gmv),
+        orders:      trend(thisWeek.orders,          lastWeek.orders),
+        aov:         trend(thisWeek.aov,             lastWeek.aov),
+        impressions: trend(analytics.thisWeek.impressions, analytics.lastWeek.impressions),
+        ctr:         trend(analytics.thisWeek.ctr,         analytics.lastWeek.ctr),
+        convRate:    trend(analytics.thisWeek.convRate,    analytics.lastWeek.convRate),
       },
       analytics,
     });
