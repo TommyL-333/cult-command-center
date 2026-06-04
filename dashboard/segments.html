@@ -616,8 +616,7 @@ main{max-width:1400px;margin:0 auto;padding:24px 20px;}
         <input type="number" id="m-cvr" style="display:none" value="2">
         <input type="number" id="m-samples" style="display:none" value="75">
         <input type="number" id="m-retainers" style="display:none" value="1000">
-        <input type="number" id="m-retainer-per-creator" style="display:none" value="300">
-        <input type="number" id="m-revenue-per-video" style="display:none" value="75">
+        <input type="number" id="m-cost-per-video" style="display:none" value="75">
 
         <!-- ── STEP 1: Select Meeting ── -->
         <div id="proposal-step1">
@@ -722,13 +721,8 @@ main{max-width:1400px;margin:0 auto;padding:24px 20px;}
                 <span id="badge-rv-views" class="source-badge"></span>
               </div>
               <div class="review-row" style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border)">
-                <label>Avg retainer / creator ($)</label>
-                <input type="number" id="rv-retainer-per-creator" value="300" oninput="updateEconomicsLive()">
-                <span class="source-badge pill-muted" style="font-size:.58rem;font-weight:700;color:var(--muted)">est</span>
-              </div>
-              <div class="review-row">
-                <label>Revenue / retainer video ($)</label>
-                <input type="number" id="rv-revenue-per-video" value="75" oninput="updateEconomicsLive()">
+                <label>Cost per retainer video ($)</label>
+                <input type="number" id="rv-cost-per-video" value="75" oninput="updateEconomicsLive()">
                 <span class="source-badge pill-muted" style="font-size:.58rem;font-weight:700;color:var(--muted)">est</span>
               </div>
             </div>
@@ -2462,17 +2456,14 @@ function getMetrics() {
   const ctr = v('m-ctr') / 100 || 0.03;
   const cvr = v('m-cvr') / 100 || 0.015;
 
-  const impressions = creators * videosPerCreator * avgViews;
-  const purchases = Math.round(impressions * ctr * cvr);
-  const organicGMV = purchases * sellingPrice;
   const affiliateRetainers = v('m-retainers') || 1000;
-  const retainerPerCreator = v('m-retainer-per-creator') || 300;
-  const revenuePerVideoRetainer = v('m-revenue-per-video') || 75;
-  const retainerCreators = retainerPerCreator > 0 ? Math.floor(affiliateRetainers / retainerPerCreator) : 0;
-  const retainerVideosPerMonth = retainerCreators * videosPerCreator;
-  const retainerGMV = retainerVideosPerMonth * revenuePerVideoRetainer;
-  const monthlyGMV = organicGMV + retainerGMV;
-  const grossMonthlyProfit = grossProfitPerOrder * purchases + (grossProfitPerOrder * (retainerGMV / (sellingPrice || 1)));
+  const costPerVideo = v('m-cost-per-video') || 75;
+  const retainerVideos = costPerVideo > 0 ? Math.floor(affiliateRetainers / costPerVideo) : 0;
+  const totalVideos = creators * videosPerCreator + retainerVideos;
+  const impressions = totalVideos * avgViews;
+  const purchases = Math.round(impressions * ctr * cvr);
+  const monthlyGMV = purchases * sellingPrice;
+  const grossMonthlyProfit = grossProfitPerOrder * purchases;
   const teamCost = teamFee + (revSharePct * monthlyGMV);
   const sampleCost = (shipping + cogs) * monthlySamples;
   const returns = monthlyGMV * 0.02;
@@ -2505,7 +2496,7 @@ function getMetrics() {
     listPrice, promoPct, sellingPrice, shipping, cogs,
     affCommPct, adspendPct, tikTokFeePct,
     creators, videosPerCreator, avgViews, ctr, cvr,
-    monthlySamples, sampleDerivedCreators, affiliateRetainers, retainerPerCreator, revenuePerVideoRetainer, retainerCreators, retainerVideosPerMonth, retainerGMV, organicGMV, teamFee, revSharePct,
+    monthlySamples, sampleDerivedCreators, affiliateRetainers, costPerVideo, retainerVideos, totalVideos, teamFee, revSharePct,
     // Per-order
     affComm, tikTokFee, adspend, totalCostPerOrder, grossProfitPerOrder, grossMarginPct,
     // Monthly
@@ -2888,14 +2879,10 @@ function updateEconomicsLive() {
   const grossProfit = sellingPrice - shipping - cogs - affComm - tikTokFee;
   const grossMarginPct = sellingPrice > 0 ? grossProfit / sellingPrice : null;
 
-  // Retainer GMV calculation
-  const affRetainers  = v('rv-retainers') || 0;
-  const retainerPerCreator = v('rv-retainer-per-creator') || 300;
-  const revenuePerVideo    = v('rv-revenue-per-video') || 75;
-  const retainerCreators   = retainerPerCreator > 0 ? Math.floor(affRetainers / retainerPerCreator) : 0;
-  const videosPerCreator   = 4; // assumed monthly cadence for retained creators
-  const retainerVideos     = retainerCreators * videosPerCreator;
-  const retainerGMV        = retainerVideos * revenuePerVideo;
+  // Retainer video count
+  const affRetainers   = v('rv-retainers') || 0;
+  const costPerVideo   = v('rv-cost-per-video') || 75;
+  const retainerVids   = costPerVideo > 0 ? Math.floor(affRetainers / costPerVideo) : 0;
 
   const liveEl = document.getElementById('economics-live-body');
   if (liveEl) {
@@ -2905,10 +2892,10 @@ function updateEconomicsLive() {
       const hasCOGS = cogs > 0;
       const marginColor = grossMarginPct === null ? '#64748b' : grossMarginPct >= 0.20 ? '#10b981' : grossMarginPct >= 0.05 ? '#f59e0b' : '#ef4444';
       const marginNote = grossMarginPct === null ? '' : grossMarginPct >= 0.20 ? ' ✅ Healthy' : grossMarginPct >= 0.05 ? ' ⚠ Thin' : grossMarginPct < 0 ? ' ⛔ Negative' : '';
-      const retainerLine = retainerGMV > 0
+      const retainerLine = retainerVids > 0
         ? `<div class="econ-row" style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px;color:var(--accent)">
-             <span>+ Retainer GMV est. <span style="font-size:.65rem;color:var(--muted)">(${retainerCreators} creators × ${retainerVideos} vids × $${revenuePerVideo})</span></span>
-             <span style="font-weight:700">+$${retainerGMV.toLocaleString()}/mo</span>
+             <span>+ Retainer videos <span style="font-size:.65rem;color:var(--muted)">($${affRetainers.toLocaleString()} ÷ $${costPerVideo}/video = ${retainerVids} videos added to pool)</span></span>
+             <span style="font-weight:700">${retainerVids} extra videos</span>
            </div>` : '';
       liveEl.innerHTML = `
         <div class="econ-row"><span>Selling price</span><span style="font-weight:600">$${sellingPrice.toFixed(2)}</span></div>
@@ -2993,8 +2980,7 @@ async function confirmAndGenerate(forceDiagnostic = false) {
   setM('m-affcomm',   confirmedMetrics.affiliateCommPct);
   setM('m-samples',   confirmedMetrics.monthlySamples);
   setM('m-retainers', confirmedMetrics.affiliateRetainers);
-  setM('m-retainer-per-creator', v('rv-retainer-per-creator') || 300);
-  setM('m-revenue-per-video',    v('rv-revenue-per-video') || 75);
+  setM('m-cost-per-video', v('rv-cost-per-video') || 75);
   setM('m-videos',    6);
   setM('m-views',     confirmedMetrics.avgViews || 8000);
   setM('m-ctr',       3);
