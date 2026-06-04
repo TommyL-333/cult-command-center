@@ -2041,43 +2041,78 @@ async function fetchNetGmvForBrand(brand, brandsObj, brandIdx, opts = {}) {
   const start = opts.startTs ?? (now - 30 * 24 * 60 * 60);
   let netGmv  = null;
 
-  // Orders search (finance/202309 requires scope we don't have; use order/202309)
-  try {
-    const resp = await ttsBrandPost(brand, brandsObj, brandIdx, '/order/202309/orders/search', {
-      create_time_ge: start,
-      create_time_lt: now,
-      sort_field: 'create_time',
-      sort_order: 'DESC',
-    }, { page_size: 100 });
-    const orders = resp?.data?.orders || resp?.data?.order_list || [];
-    if (orders.length > 0) {
-      console.log(`[gmv] ${brand.name} first order keys:`, JSON.stringify(orders[0]));
-    } else {
-      console.log(`[gmv] ${brand.name} orders: 0 results`);
+  // Cancelled/refunded statuses only — do NOT include 121 (In Transit) or 122 (Delivered)
+  const CANCEL_STATUS = new Set([140, 4, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND', 'REVERSE_PENDING', 'REVERSE_COMPLETE']);
+
+  // Helper: extract order amount from any known field layout
+  function extractAmount(o) {
+    // Top-level sale_amount (affiliate order style)
+    if (o.sale_amount != null && parseFloat(o.sale_amount) > 0) return parseFloat(o.sale_amount);
+    // payment_info object — try all known field names
+    const pi = o.payment_info;
+    if (pi) {
+      const candidates = [
+        pi.sub_total, pi.total_amount, pi.paid_amount,
+        pi.original_total_product_price, pi.product_total_amount,
+        pi.seller_income, pi.settlement_amount,
+      ];
+      for (const c of candidates) {
+        const v = parseFloat(c);
+        if (!isNaN(v) && v > 0) return v;
+      }
     }
-    const CANCEL = new Set([140, 121, 4, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND']);
-    netGmv = 0;
-    for (const o of orders) {
-      const status = o.order_status ?? o.status;
-      if (status !== undefined && CANCEL.has(status)) continue;
-      // Try payment_info fields first, then line_items fallback
-      const fromPaymentInfo = parseFloat(
-        o.payment_info?.sub_total ??
-        o.payment_info?.total_amount ??
-        o.payment_info?.original_total_product_price ??
-        o.payment_info?.paid_amount ??
-        o.total_amount ??
-        o.total_price ?? 0
-      ) || 0;
-      // Line items fallback: sum sku_sale_price * quantity
-      const fromLineItems = (o.line_items || []).reduce((sum, item) => {
-        const price = parseFloat(item.sku_sale_price ?? item.sale_price ?? item.original_price ?? 0) || 0;
-        const qty   = parseInt(item.quantity ?? 1, 10) || 1;
+    // Top-level fallback fields
+    const topLevel = [o.total_amount, o.total_price, o.order_amount, o.amount];
+    for (const c of topLevel) {
+      const v = parseFloat(c);
+      if (!isNaN(v) && v > 0) return v;
+    }
+    // Line items fallback: sum unit price × qty
+    const items = o.line_items || o.skus || [];
+    if (items.length > 0) {
+      return items.reduce((sum, item) => {
+        const price = parseFloat(
+          item.sku_sale_price ?? item.sale_price ?? item.sku_unit_original_price ??
+          item.original_price ?? item.price ?? 0
+        ) || 0;
+        const qty = parseInt(item.quantity ?? item.sku_quantity ?? 1, 10) || 1;
         return sum + price * qty;
       }, 0);
-      netGmv += fromPaymentInfo > 0 ? fromPaymentInfo : fromLineItems;
     }
-    console.log(`[gmv] ${brand.name} orders GMV = ${netGmv} (${orders.length} orders)`);
+    return 0;
+  }
+
+  // Orders search with pagination (finance/202309 requires scope we don't have; use order/202309)
+  try {
+    let pageToken = null;
+    let totalOrders = 0;
+    let pageNum = 0;
+    netGmv = 0;
+    let firstOrderLogged = false;
+
+    while (pageNum++ < 20) { // max 20 pages = 2000 orders
+      const body = { create_time_ge: start, create_time_lt: now, sort_field: 'create_time', sort_order: 'DESC' };
+      if (pageToken) body.page_token = pageToken;
+      const resp = await ttsBrandPost(brand, brandsObj, brandIdx, '/order/202309/orders/search', body, { page_size: 100 });
+      const orders = resp?.data?.orders || resp?.data?.order_list || [];
+
+      if (!firstOrderLogged && orders.length > 0) {
+        console.log(`[gmv] ${brand.name} sample order:`, JSON.stringify(orders[0]).slice(0, 800));
+        firstOrderLogged = true;
+      }
+
+      for (const o of orders) {
+        const status = o.order_status ?? o.status;
+        if (status !== undefined && CANCEL_STATUS.has(status)) continue;
+        netGmv += extractAmount(o);
+      }
+      totalOrders += orders.length;
+
+      const nextToken = resp?.data?.next_page_token || resp?.data?.page_token;
+      if (!nextToken || orders.length === 0) break;
+      pageToken = nextToken;
+    }
+    console.log(`[gmv] ${brand.name} GMV = $${netGmv.toFixed(2)} (${totalOrders} orders, ${pageNum} page(s))`);
   } catch(e) {
     console.error(`[gmv] orders error for ${brand.name}:`, e.message, '| body:', JSON.stringify(e.response?.data || '').slice(0, 300));
   }
@@ -2371,6 +2406,26 @@ app.post('/portal-admin/billing/send/:brandId', requirePortalAdmin, express.json
   } catch (err) {
     console.error('[BILLING] Stripe error:', err.message);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /portal-admin/debug/order-sample/:brandId — returns raw first order to diagnose field mapping
+app.get('/portal-admin/debug/order-sample/:brandId', requirePortalAdmin, async (req, res) => {
+  const brands   = loadBrands();
+  const brandIdx = (brands.clients || []).findIndex(b => b.id === req.params.brandId);
+  if (brandIdx === -1) return res.status(404).json({ error: 'Brand not found' });
+  const brand = brands.clients[brandIdx];
+  if (!brand.tiktokShopToken?.access_token) return res.json({ error: 'No TikTok token' });
+  try {
+    const now   = Math.floor(Date.now() / 1000);
+    const start = now - 90 * 24 * 60 * 60; // 90 days back
+    const resp  = await ttsBrandPost(brand, brands, brandIdx, '/order/202309/orders/search', {
+      create_time_ge: start, create_time_lt: now, sort_field: 'create_time', sort_order: 'DESC',
+    }, { page_size: 5 });
+    const orders = resp?.data?.orders || resp?.data?.order_list || [];
+    res.json({ total: orders.length, sample: orders.slice(0, 2) });
+  } catch(e) {
+    res.status(500).json({ error: e.message, body: e.response?.data });
   }
 });
 
