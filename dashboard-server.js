@@ -2066,20 +2066,94 @@ app.get('/portal-admin/shop-metrics/:brandId', requirePortalAdmin, async (req, r
     return { gmv, orders, aov: orders > 0 ? gmv / orders : 0 };
   }
 
+  // Fetch TikTok Shop Analytics API (scope: data.shop_analytics.public.read)
+  // Confirmed path/params from TikTok API Testing Tool: /analytics/202509/shop/performance
+  // with start_date_ge + end_date_lt (YYYYMMDD strings)
+  const ANALYTICS_VERSIONS = ['202509', '202506', '202412', '202309'];
+  async function fetchShopAnalytics(startDateStr, endDateStr) {
+    const params = { start_date_ge: startDateStr, end_date_lt: endDateStr };
+    for (const ver of ANALYTICS_VERSIONS) {
+      try {
+        const r = await ttsBrandGet(brand, brands, bi, `/analytics/${ver}/shop/performance`, params);
+        const d = r?.data?.data || r?.data;
+        if (d && typeof d === 'object' && Object.keys(d).length > 0) {
+          console.log(`[analytics] ${brand.name} v${ver} shop/performance:`, JSON.stringify(d).slice(0, 300));
+          return d;
+        }
+      } catch(e) {
+        // Try next version
+        console.log(`[analytics] ${brand.name} v${ver} failed: code=${e.response?.data?.code} msg=${e.response?.data?.message}`);
+      }
+    }
+    return null;
+  }
+
   try {
-    const now   = Math.floor(Date.now() / 1000);
-    const week1 = now - 7 * 86400;
-    const week2 = week1 - 7 * 86400;
-    const [thisWeek, lastWeek] = await Promise.all([
+    const now    = Math.floor(Date.now() / 1000);
+    const week1  = now - 7 * 86400;
+    const week2  = week1 - 7 * 86400;
+    const ds     = (ts) => new Date(ts * 1000).toISOString().slice(0,10).replace(/-/g,''); // YYYYMMDD
+    const todayS = ds(now);
+    const w1S    = ds(week1);
+    const w2S    = ds(week2);
+
+    const [thisWeek, lastWeek, analyticsThis, analyticsLast] = await Promise.all([
       fetchWeekMetrics(week1, now),
       fetchWeekMetrics(week2, week1),
+      fetchShopAnalytics(w1S, todayS),
+      fetchShopAnalytics(w2S, w1S),
     ]);
+
     function trend(curr, prev) {
-      if (!prev) return curr > 0 ? { dir: 'up', pct: null } : { dir: 'flat', pct: null };
-      const pct = ((curr - prev) / prev) * 100;
+      if (curr == null || curr === '') return { dir: 'flat', pct: null };
+      const c = parseFloat(curr), p = parseFloat(prev);
+      if (!p) return c > 0 ? { dir: 'up', pct: null } : { dir: 'flat', pct: null };
+      const pct = ((c - p) / p) * 100;
       return { dir: pct > 1 ? 'up' : pct < -1 ? 'down' : 'flat', pct: Math.round(Math.abs(pct)) };
     }
-    res.json({ ok: true, thisWeek, lastWeek, trends: { gmv: trend(thisWeek.gmv, lastWeek.gmv), orders: trend(thisWeek.orders, lastWeek.orders), aov: trend(thisWeek.aov, lastWeek.aov) } });
+
+    // Extract analytics fields — TikTok may use various key names
+    function pick(obj, ...keys) {
+      if (!obj) return null;
+      for (const k of keys) {
+        const v = obj[k];
+        if (v != null && v !== '') return v;
+      }
+      return null;
+    }
+
+    const analytics = {
+      thisWeek: {
+        impressions:     pick(analyticsThis, 'impression_count', 'impressions', 'product_impression_count'),
+        clicks:          pick(analyticsThis, 'click_count', 'clicks', 'product_click_count'),
+        ctr:             pick(analyticsThis, 'click_through_rate', 'ctr', 'product_click_rate'),
+        convRate:        pick(analyticsThis, 'conversion_rate', 'cvr', 'order_conversion_rate', 'buyer_conversion_rate'),
+        perfScore:       pick(analyticsThis, 'performance_score', 'shop_performance_score', 'overall_score', 'score'),
+        gmvAnalytics:    pick(analyticsThis, 'gmv', 'total_gmv', 'gmv_amount'),
+      },
+      lastWeek: {
+        impressions:     pick(analyticsLast, 'impression_count', 'impressions', 'product_impression_count'),
+        ctr:             pick(analyticsLast, 'click_through_rate', 'ctr', 'product_click_rate'),
+        convRate:        pick(analyticsLast, 'conversion_rate', 'cvr', 'order_conversion_rate', 'buyer_conversion_rate'),
+        perfScore:       pick(analyticsLast, 'performance_score', 'shop_performance_score', 'overall_score', 'score'),
+      },
+      raw: analyticsThis, // include raw for debugging
+    };
+
+    res.json({
+      ok: true,
+      thisWeek, lastWeek,
+      trends: {
+        gmv:        trend(thisWeek.gmv,    lastWeek.gmv),
+        orders:     trend(thisWeek.orders, lastWeek.orders),
+        aov:        trend(thisWeek.aov,    lastWeek.aov),
+        impressions: trend(analytics.thisWeek.impressions, analytics.lastWeek.impressions),
+        ctr:         trend(analytics.thisWeek.ctr,         analytics.lastWeek.ctr),
+        convRate:    trend(analytics.thisWeek.convRate,    analytics.lastWeek.convRate),
+        perfScore:   trend(analytics.thisWeek.perfScore,   analytics.lastWeek.perfScore),
+      },
+      analytics,
+    });
   } catch(e) {
     res.json({ ok: false, error: e.message });
   }
@@ -3735,7 +3809,8 @@ app.get('/api/admin/shop-metrics/:brandId', async (req, res) => {
 });
 
 // GET /api/admin/shop-metrics-probe/:brandId — probe TikTok Shop analytics endpoints
-// Temporary diagnostic endpoint to discover what data is available
+// Tests correct paths discovered from TikTok API Testing Tool:
+//   /analytics/202509/shop/performance  params: start_date_ge, end_date_lt (YYYYMMDD)
 app.get('/api/admin/shop-metrics-probe/:brandId', async (req, res) => {
   const secret = process.env.ADMIN_BATCH_SECRET || 'cult-batch-2026';
   if (req.headers['x-admin-secret'] !== secret) return res.status(401).json({ error: 'Unauthorized' });
@@ -3747,48 +3822,38 @@ app.get('/api/admin/shop-metrics-probe/:brandId', async (req, res) => {
 
   const results = {};
   const now = Math.floor(Date.now() / 1000);
-  const weekAgo = now - 7 * 86400;
-  const twoWeeksAgo = now - 14 * 86400;
-
-  // Try recent API versions + v1/v2 style paths
   const ds = (ts) => new Date(ts * 1000).toISOString().slice(0,10).replace(/-/g,''); // YYYYMMDD
-  const yd = ds(now - 86400);
-  const sd = ds(weekAgo);
-  const ed = ds(now);
+  const today  = ds(now);
+  const week1S = ds(now - 7 * 86400);
+  const week2S = ds(now - 14 * 86400);
+
+  // Confirmed correct format from TikTok API Testing Tool:
+  // - Path: /analytics/{version}/shop/performance  (slash, not underscore)
+  // - Version: 202509
+  // - Params: start_date_ge, end_date_lt (YYYYMMDD strings)
+  const thisWkParams  = { start_date_ge: week1S, end_date_lt: today };
+  const lastWkParams  = { start_date_ge: week2S, end_date_lt: week1S };
+
   const endpoints = [
-    // Recent version dates in path
-    ['GET', '/analytics/202501/shop_performance',  { start_date: sd, end_date: yd }],
-    ['GET', '/analytics/202502/shop_performance',  { start_date: sd, end_date: yd }],
-    ['GET', '/analytics/202503/shop_performance',  { start_date: sd, end_date: yd }],
-    ['GET', '/analytics/202504/shop_performance',  { start_date: sd, end_date: yd }],
-    ['GET', '/analytics/202505/shop_performance',  { start_date: sd, end_date: yd }],
-    ['GET', '/analytics/202506/shop_performance',  { start_date: sd, end_date: yd }],
-    // v1/v2 style
-    ['GET', '/v1/analytics/shop_performance',      { start_date: sd, end_date: yd }],
-    ['GET', '/v2/analytics/shop_performance',      { start_date: sd, end_date: yd }],
-    // Try the API testing tool pattern — maybe it uses a completely different base
-    // Some TikTok Shop analytics APIs are at api.tiktokshop.com instead of open-api.tiktokglobalshop.com
-    // Can only test via our base URL but let's try different sub-paths
-    ['GET', '/analytics/202309/shop_performance',  {}],  // no params — returns validation error with hint
-    ['GET', '/analytics/202406/shop_performance',  {}],  // no params
-    ['GET', '/analytics/202506/shop_performance',  {}],  // no params
-    // Maybe the scope key prefix is the path prefix
-    // data.shop_analytics.public.read -> /data/shop_analytics/...
-    ['GET', '/data/shop_analytics/202309/shop_performance', { start_date: sd, end_date: yd }],
-    ['GET', '/data/shop_analytics/202406/shop_performance', { start_date: sd, end_date: yd }],
-    // Maybe it's just a simple /performance endpoint
-    ['GET', '/analytics/202309/performance',       { start_date: sd, end_date: yd }],
-    ['GET', '/analytics/202406/performance',       { start_date: sd, end_date: yd }],
+    // Primary — correct path/version/params from API Testing Tool
+    ['GET', '/analytics/202509/shop/performance',          thisWkParams],
+    ['GET', '/analytics/202509/shop/performance',          lastWkParams],
+    // Also probe product + video performance lists
+    ['GET', '/analytics/202509/product/performance_list',  thisWkParams],
+    ['GET', '/analytics/202509/video/performance_list',    thisWkParams],
+    // Fallback version variations in case 202509 isn't accepted for this shop
+    ['GET', '/analytics/202506/shop/performance',          thisWkParams],
+    ['GET', '/analytics/202412/shop/performance',          thisWkParams],
+    ['GET', '/analytics/202309/shop/performance',          thisWkParams],
   ];
-  for (const [method, path, body] of endpoints) {
-    const key = `${method} ${path}${Object.keys(body).length ? ' '+JSON.stringify(body).slice(0,40) : ''}`;
+
+  for (const [method, path, params] of endpoints) {
+    const key = `${method} ${path} ${JSON.stringify(params)}`;
     try {
-      const r = method === 'GET'
-        ? await ttsBrandGet(brand, brands, bi, path, body)
-        : await ttsBrandPost(brand, brands, bi, path, body);
+      const r = await ttsBrandGet(brand, brands, bi, path, params);
       results[key] = { ok: true, data: r.data };
     } catch(e) {
-      results[key] = { error: e.response?.status, code: e.response?.data?.code, msg: e.response?.data?.message };
+      results[key] = { error: e.response?.status, code: e.response?.data?.code, msg: e.response?.data?.message, raw: e.response?.data };
     }
   }
 

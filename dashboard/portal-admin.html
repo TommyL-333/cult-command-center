@@ -554,20 +554,20 @@
             <div class="metric-val empty" id="m-aov-${esc(c.id)}">—</div>
             <div class="metric-trend flat" id="m-aov-trend-${esc(c.id)}"></div>
           </div>
-          <div class="metric-block" style="opacity:0.5" title="Requires TikTok Analytics API product">
+          <div class="metric-block" id="m-impressions-block-${esc(c.id)}">
             <div class="metric-label">Impressions</div>
-            <div class="metric-val empty">—</div>
-            <div class="metric-na">Needs Analytics scope</div>
+            <div class="metric-val empty" id="m-impressions-${esc(c.id)}">—</div>
+            <div class="metric-trend flat" id="m-impressions-trend-${esc(c.id)}"></div>
           </div>
-          <div class="metric-block" style="opacity:0.5" title="Requires TikTok Analytics API product">
+          <div class="metric-block" id="m-ctr-block-${esc(c.id)}">
             <div class="metric-label">CTR</div>
-            <div class="metric-val empty">—</div>
-            <div class="metric-na">Needs Analytics scope</div>
+            <div class="metric-val empty" id="m-ctr-${esc(c.id)}">—</div>
+            <div class="metric-trend flat" id="m-ctr-trend-${esc(c.id)}"></div>
           </div>
-          <div class="metric-block" style="opacity:0.5" title="Requires TikTok Analytics API product">
+          <div class="metric-block" id="m-conv-block-${esc(c.id)}">
             <div class="metric-label">Conv. Rate</div>
-            <div class="metric-val empty">—</div>
-            <div class="metric-na">Needs Analytics scope</div>
+            <div class="metric-val empty" id="m-conv-${esc(c.id)}">—</div>
+            <div class="metric-trend flat" id="m-conv-trend-${esc(c.id)}"></div>
           </div>
         </div>` : ''}
         <button class="view-btn" onclick="impersonate('${esc(c.id)}', this)">
@@ -599,9 +599,60 @@
         }
       }
 
-      setMetric(`m-gmv-${brandId}`,    d.thisWeek.gmv    > 0 ? fmtMoney(d.thisWeek.gmv)            : '$0',   d.trends.gmv);
-      setMetric(`m-orders-${brandId}`, d.thisWeek.orders > 0 ? String(d.thisWeek.orders) + ' orders' : '0',   d.trends.orders);
-      setMetric(`m-aov-${brandId}`,    d.thisWeek.aov    > 0 ? fmtMoney(d.thisWeek.aov)             : '$0',   d.trends.aov);
+      function fmtNum(n) {
+        if (n == null) return null;
+        const v = parseFloat(n);
+        if (isNaN(v)) return null;
+        if (v >= 1_000_000) return (v / 1_000_000).toFixed(1) + 'M';
+        if (v >= 1_000) return (v / 1_000).toFixed(1) + 'K';
+        return String(Math.round(v));
+      }
+
+      function fmtPct(n) {
+        if (n == null) return null;
+        const v = parseFloat(n);
+        if (isNaN(v)) return null;
+        // TikTok may return as 0-100 or 0-1
+        const pct = v > 1 ? v : v * 100;
+        return pct.toFixed(2) + '%';
+      }
+
+      // Order-based metrics (always available)
+      setMetric(`m-gmv-${brandId}`,    d.thisWeek.gmv    > 0 ? fmtMoney(d.thisWeek.gmv)             : '$0',   d.trends.gmv);
+      setMetric(`m-orders-${brandId}`, d.thisWeek.orders > 0 ? String(d.thisWeek.orders) + ' orders' : '0',    d.trends.orders);
+      setMetric(`m-aov-${brandId}`,    d.thisWeek.aov    > 0 ? fmtMoney(d.thisWeek.aov)              : '$0',   d.trends.aov);
+
+      // Analytics API metrics (from TikTok Shop Analytics scope)
+      const a = d.analytics?.thisWeek;
+      if (a) {
+        const impVal  = fmtNum(a.impressions);
+        const ctrVal  = fmtPct(a.ctr);
+        const convVal = fmtPct(a.convRate);
+
+        if (impVal  != null) setMetric(`m-impressions-${brandId}`, impVal,  d.trends.impressions);
+        if (ctrVal  != null) setMetric(`m-ctr-${brandId}`,         ctrVal,  d.trends.ctr);
+        if (convVal != null) setMetric(`m-conv-${brandId}`,        convVal, d.trends.convRate);
+
+        // If analytics came back empty, mark blocks as dimmed with a note
+        if (impVal == null) {
+          const blk = document.getElementById(`m-impressions-block-${brandId}`);
+          if (blk) blk.style.opacity = '0.45';
+          const tEl = document.getElementById(`m-impressions-trend-${brandId}`);
+          if (tEl) { tEl.className = 'metric-na'; tEl.textContent = 'analytics pending'; }
+        }
+        if (ctrVal == null) {
+          const blk = document.getElementById(`m-ctr-block-${brandId}`);
+          if (blk) blk.style.opacity = '0.45';
+          const tEl = document.getElementById(`m-ctr-trend-${brandId}`);
+          if (tEl) { tEl.className = 'metric-na'; tEl.textContent = 'analytics pending'; }
+        }
+        if (convVal == null) {
+          const blk = document.getElementById(`m-conv-block-${brandId}`);
+          if (blk) blk.style.opacity = '0.45';
+          const tEl = document.getElementById(`m-conv-trend-${brandId}`);
+          if (tEl) { tEl.className = 'metric-na'; tEl.textContent = 'analytics pending'; }
+        }
+      }
     } catch(e) { /* silent fail */ }
   }
 
