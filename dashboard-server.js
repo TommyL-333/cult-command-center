@@ -3750,27 +3750,25 @@ app.get('/api/admin/shop-metrics-probe/:brandId', async (req, res) => {
   const weekAgo = now - 7 * 86400;
   const twoWeeksAgo = now - 14 * 86400;
 
-  // Scope confirmed. 40006 on every GET — try POST + different path shapes
+  // /analytics/shop/performance is a real path — version goes in query param, not URL
   const ds = (ts) => new Date(ts * 1000).toISOString().slice(0,10).replace(/-/g,''); // YYYYMMDD
   const yd = ds(now - 86400);
   const endpoints = [
-    // POST variants (TikTok sometimes uses POST for analytics)
-    ['POST', '/analytics/202309/shop_performance',         { start_date: ds(weekAgo), end_date: ds(now) }],
-    ['POST', '/analytics/202312/shop_performance',         { start_date: ds(weekAgo), end_date: ds(now) }],
-    ['POST', '/analytics/202406/shop_performance',         { start_date: ds(weekAgo), end_date: ds(now) }],
-    // Slash-separated path variants
-    ['GET',  '/analytics/202406/shop/performance',         {}],
-    ['GET',  '/analytics/202309/shop/performance',         {}],
-    ['POST', '/analytics/202406/shop/performance',         { start_date: ds(weekAgo), end_date: ds(now) }],
-    // Plural shops
-    ['GET',  '/analytics/202406/shops/performance',        {}],
-    ['POST', '/analytics/202406/shops/performance',        { start_date: ds(weekAgo), end_date: ds(now) }],
-    // product performance (POST)
-    ['POST', '/analytics/202406/product_performance_list', { start_date: ds(weekAgo), end_date: yd, page_size: 10 }],
-    ['POST', '/analytics/202406/products_performance_list',{ start_date: ds(weekAgo), end_date: yd, page_size: 10 }],
-    // video performance (POST)
-    ['POST', '/analytics/202406/video_performance_list',   { start_date: ds(weekAgo), end_date: yd, page_size: 10 }],
-    ['POST', '/analytics/202406/videos_performance_list',  { start_date: ds(weekAgo), end_date: yd, page_size: 10 }],
+    // version as query param (various formats)
+    ['GET',  '/analytics/shop/performance',               { version: '202309', start_date: ds(weekAgo), end_date: ds(now) }],
+    ['GET',  '/analytics/shop/performance',               { version: '202312', start_date: ds(weekAgo), end_date: ds(now) }],
+    ['GET',  '/analytics/shop/performance',               { version: '202406', start_date: ds(weekAgo), end_date: ds(now) }],
+    ['GET',  '/analytics/shop/performance',               { version: '20230901', start_date: ds(weekAgo), end_date: ds(now) }],
+    ['GET',  '/analytics/shop/performance',               { version: '20240601', start_date: ds(weekAgo), end_date: ds(now) }],
+    // bare with no date — maybe returns today
+    ['GET',  '/analytics/shop/performance',               { version: '202309' }],
+    ['GET',  '/analytics/shop/performance',               { version: '202406' }],
+    // POST variants
+    ['POST', '/analytics/shop/performance',               { version: '202406', start_date: ds(weekAgo), end_date: ds(now) }],
+    // product & video performance — same pattern
+    ['GET',  '/analytics/product/performance_list',       { version: '202406', start_date: ds(weekAgo), end_date: yd }],
+    ['GET',  '/analytics/shop/product_performance_list',  { version: '202406', start_date: ds(weekAgo), end_date: yd }],
+    ['GET',  '/analytics/video/performance_list',         { version: '202406', start_date: ds(weekAgo), end_date: yd }],
   ];
   for (const [method, path, body] of endpoints) {
     const key = `${method} ${path}${Object.keys(body).length ? ' '+JSON.stringify(body).slice(0,40) : ''}`;
