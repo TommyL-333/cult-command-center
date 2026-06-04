@@ -3605,6 +3605,67 @@ app.post('/api/admin/storista/sync-processing/:brandId', async (req, res) => {
   res.json({ ok: true, checked: pending.length, results });
 });
 
+// GET /api/admin/shop-metrics-probe/:brandId — probe TikTok Shop analytics endpoints
+// Temporary diagnostic endpoint to discover what data is available
+app.get('/api/admin/shop-metrics-probe/:brandId', async (req, res) => {
+  const secret = process.env.ADMIN_BATCH_SECRET || 'cult-batch-2026';
+  if (req.headers['x-admin-secret'] !== secret) return res.status(401).json({ error: 'Unauthorized' });
+  const brands = loadBrands();
+  const bi = (brands.clients || []).findIndex(b => b.id === req.params.brandId);
+  if (bi === -1) return res.status(404).json({ error: 'Brand not found' });
+  const brand = brands.clients[bi];
+  if (!brand.tiktokShopToken?.access_token) return res.status(400).json({ error: 'No TikTok token' });
+
+  const results = {};
+  const now = Math.floor(Date.now() / 1000);
+  const weekAgo = now - 7 * 86400;
+  const twoWeeksAgo = now - 14 * 86400;
+
+  // Try seller performance score
+  try {
+    const r = await ttsBrandGet(brand, brands, bi, '/seller/202309/performance', {});
+    results.sellerPerformance = r.data;
+  } catch(e) {
+    results.sellerPerformance = { error: e.response?.status, msg: JSON.stringify(e.response?.data).slice(0,200) };
+  }
+
+  // Try product analytics (this week)
+  try {
+    const r = await ttsBrandPost(brand, brands, bi, '/product/202309/analytics', {
+      page_size: 10,
+      start_date: new Date(weekAgo * 1000).toISOString().slice(0,10).replace(/-/g,''),
+      end_date:   new Date(now * 1000).toISOString().slice(0,10).replace(/-/g,''),
+    });
+    results.productAnalytics202309 = r.data;
+  } catch(e) {
+    results.productAnalytics202309 = { error: e.response?.status, msg: JSON.stringify(e.response?.data).slice(0,300) };
+  }
+
+  // Try traffic analytics
+  try {
+    const r = await ttsBrandPost(brand, brands, bi, '/analytics/202312/traffic', {
+      page_size: 10,
+      date_range: { start_date: new Date(weekAgo * 1000).toISOString().slice(0,10), end_date: new Date(now * 1000).toISOString().slice(0,10) },
+    });
+    results.traffic202312 = r.data;
+  } catch(e) {
+    results.traffic202312 = { error: e.response?.status, msg: JSON.stringify(e.response?.data).slice(0,300) };
+  }
+
+  // Try shop overview/analytics
+  try {
+    const r = await ttsBrandPost(brand, brands, bi, '/seller/202309/shop/analysis', {
+      start_date: new Date(weekAgo * 1000).toISOString().slice(0,10).replace(/-/g,''),
+      end_date:   new Date(now * 1000).toISOString().slice(0,10).replace(/-/g,''),
+    });
+    results.shopAnalysis = r.data;
+  } catch(e) {
+    results.shopAnalysis = { error: e.response?.status, msg: JSON.stringify(e.response?.data).slice(0,300) };
+  }
+
+  res.json(results);
+});
+
 // POST /api/client/storista/queue/:jobId/retry — reset a failed job to scheduled
 app.post('/api/client/storista/queue/:jobId/retry', requireClientSession, (req, res) => {
   const brands = loadBrands();
