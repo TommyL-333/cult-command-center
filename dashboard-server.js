@@ -2707,6 +2707,10 @@ app.post('/api/client/billing/change-tier', requireClientSession, express.json()
     const effective = new Date(now.getFullYear(), now.getMonth() + 1, 1);
     const effectiveLabel = effective.toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
 
+    const brandName = brands.clients[brandIdx].name;
+    const oldRetainer = brands.clients[brandIdx].retainer ?? brands.clients[brandIdx].contractValue ?? 1500;
+    const oldCommRate = brands.clients[brandIdx].commissionRate ?? 0.10;
+
     brands.clients[brandIdx].pendingTierChange = {
       retainer:     tier.retainer,
       commRate:     tier.commRate,
@@ -2716,7 +2720,17 @@ app.post('/api/client/billing/change-tier', requireClientSession, express.json()
     };
     saveBrands(brands);
 
-    console.log(`[BILLING] ${brands.clients[brandIdx].name} requested tier change → $${tier.retainer} + ${Math.round(tier.commRate*100)}% GMV (effective ${effectiveLabel})`);
+    console.log(`[BILLING] ${brandName} requested tier change → $${tier.retainer} + ${Math.round(tier.commRate*100)}% GMV (effective ${effectiveLabel})`);
+
+    // Lark alert
+    const oldPlan = `$${oldRetainer.toLocaleString()}/mo + ${Math.round(oldCommRate * 100)}% GMV`;
+    const newPlan = `$${tier.retainer.toLocaleString()}/mo + ${Math.round(tier.commRate * 100)}% GMV`;
+    axios.post(`${CFG.railwayUrl}/command`, {
+      text: `💳 *Plan Change Request* — ${brandName}\nFrom: ${oldPlan}\nTo: ${newPlan}\nEffective: ${effectiveLabel}`,
+      context: 'Billing',
+      source:  'Client Portal',
+    }, { timeout: 5000 }).catch(() => {});
+
     res.json({ ok: true, effectiveLabel, tier });
   } catch (err) {
     console.error('[client/billing/change-tier] error:', err.message);
