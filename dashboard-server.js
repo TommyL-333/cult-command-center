@@ -3750,25 +3750,35 @@ app.get('/api/admin/shop-metrics-probe/:brandId', async (req, res) => {
   const weekAgo = now - 7 * 86400;
   const twoWeeksAgo = now - 14 * 86400;
 
-  // /analytics/shop/performance is a real path — version goes in query param, not URL
+  // Try recent API versions + v1/v2 style paths
   const ds = (ts) => new Date(ts * 1000).toISOString().slice(0,10).replace(/-/g,''); // YYYYMMDD
   const yd = ds(now - 86400);
+  const sd = ds(weekAgo);
+  const ed = ds(now);
   const endpoints = [
-    // version as query param (various formats)
-    ['GET',  '/analytics/shop/performance',               { version: '202309', start_date: ds(weekAgo), end_date: ds(now) }],
-    ['GET',  '/analytics/shop/performance',               { version: '202312', start_date: ds(weekAgo), end_date: ds(now) }],
-    ['GET',  '/analytics/shop/performance',               { version: '202406', start_date: ds(weekAgo), end_date: ds(now) }],
-    ['GET',  '/analytics/shop/performance',               { version: '20230901', start_date: ds(weekAgo), end_date: ds(now) }],
-    ['GET',  '/analytics/shop/performance',               { version: '20240601', start_date: ds(weekAgo), end_date: ds(now) }],
-    // bare with no date — maybe returns today
-    ['GET',  '/analytics/shop/performance',               { version: '202309' }],
-    ['GET',  '/analytics/shop/performance',               { version: '202406' }],
-    // POST variants
-    ['POST', '/analytics/shop/performance',               { version: '202406', start_date: ds(weekAgo), end_date: ds(now) }],
-    // product & video performance — same pattern
-    ['GET',  '/analytics/product/performance_list',       { version: '202406', start_date: ds(weekAgo), end_date: yd }],
-    ['GET',  '/analytics/shop/product_performance_list',  { version: '202406', start_date: ds(weekAgo), end_date: yd }],
-    ['GET',  '/analytics/video/performance_list',         { version: '202406', start_date: ds(weekAgo), end_date: yd }],
+    // Recent version dates in path
+    ['GET', '/analytics/202501/shop_performance',  { start_date: sd, end_date: yd }],
+    ['GET', '/analytics/202502/shop_performance',  { start_date: sd, end_date: yd }],
+    ['GET', '/analytics/202503/shop_performance',  { start_date: sd, end_date: yd }],
+    ['GET', '/analytics/202504/shop_performance',  { start_date: sd, end_date: yd }],
+    ['GET', '/analytics/202505/shop_performance',  { start_date: sd, end_date: yd }],
+    ['GET', '/analytics/202506/shop_performance',  { start_date: sd, end_date: yd }],
+    // v1/v2 style
+    ['GET', '/v1/analytics/shop_performance',      { start_date: sd, end_date: yd }],
+    ['GET', '/v2/analytics/shop_performance',      { start_date: sd, end_date: yd }],
+    // Try the API testing tool pattern — maybe it uses a completely different base
+    // Some TikTok Shop analytics APIs are at api.tiktokshop.com instead of open-api.tiktokglobalshop.com
+    // Can only test via our base URL but let's try different sub-paths
+    ['GET', '/analytics/202309/shop_performance',  {}],  // no params — returns validation error with hint
+    ['GET', '/analytics/202406/shop_performance',  {}],  // no params
+    ['GET', '/analytics/202506/shop_performance',  {}],  // no params
+    // Maybe the scope key prefix is the path prefix
+    // data.shop_analytics.public.read -> /data/shop_analytics/...
+    ['GET', '/data/shop_analytics/202309/shop_performance', { start_date: sd, end_date: yd }],
+    ['GET', '/data/shop_analytics/202406/shop_performance', { start_date: sd, end_date: yd }],
+    // Maybe it's just a simple /performance endpoint
+    ['GET', '/analytics/202309/performance',       { start_date: sd, end_date: yd }],
+    ['GET', '/analytics/202406/performance',       { start_date: sd, end_date: yd }],
   ];
   for (const [method, path, body] of endpoints) {
     const key = `${method} ${path}${Object.keys(body).length ? ' '+JSON.stringify(body).slice(0,40) : ''}`;
