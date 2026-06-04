@@ -254,6 +254,8 @@
     .billing-total .amt { font-size: 1.1rem; font-weight: 800; color: var(--teal); }
     .gmv-edit { background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 0.82rem; padding: 3px 7px; width: 100px; text-align: right; font-family: inherit; outline: none; }
     .gmv-edit:focus { border-color: var(--teal); }
+    .billing-email-input { background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); font-size: 0.75rem; padding: 3px 8px; width: 100%; box-sizing: border-box; margin-top: 4px; font-family: inherit; outline: none; }
+    .billing-email-input:focus { border-color: var(--teal); color: var(--text); }
     .send-btn {
       width: 100%;
       background: var(--teal);
@@ -524,29 +526,39 @@
     grid.innerHTML = previews.map(p => {
       const alreadySent = !!p.lastInvoicedAt;
       const noEmail     = !p.billingEmail;
-      const noTotal     = p.total <= 0;
       const sentAgo     = p.lastInvoicedAt ? timeAgo(p.lastInvoicedAt) : null;
+      const commPct     = Math.round(p.commRate * 100);
       return `
       <div class="billing-card${alreadySent ? ' sent' : ''}" id="bc-${esc(p.id)}">
         <div>
           <div class="billing-name">${esc(p.name)}</div>
-          <div class="billing-email">${esc(p.billingEmail) || '<em>No billing email</em>'}</div>
+          ${noEmail
+            ? `<input class="billing-email-input" type="email" id="email-${esc(p.id)}" placeholder="Billing email (required)" value="">`
+            : `<div class="billing-email">${esc(p.billingEmail)}</div>`
+          }
         </div>
-        ${noEmail ? `<div class="no-email-warn">⚠️ No email — add billingEmail or loginEmail to brands.json</div>` : ''}
 
         <div>
           <div class="billing-line">
             <span class="lbl">Monthly Retainer</span>
-            <span class="amt">${p.retainer > 0 ? '$'+p.retainer.toLocaleString() : '<em style="color:#64748b">—</em>'}</span>
-          </div>
-          <div class="billing-line">
-            <span class="lbl">30-Day GMV <span style="font-size:0.72rem;color:#64748b">(${Math.round(p.commRate*100)}% share)</span></span>
-            <span class="amt" style="display:flex;align-items:center;gap:6px;">
-              $<input class="gmv-edit" type="number" id="gmv-${esc(p.id)}" value="${p.gmv.toFixed(2)}" oninput="recalcCard('${esc(p.id)}',${p.retainer},${p.commRate})">
+            <span class="amt" style="display:flex;align-items:center;gap:4px;">
+              $<input class="gmv-edit" type="number" id="ret-${esc(p.id)}" value="${p.retainer}" oninput="recalcCard('${esc(p.id)}')">
             </span>
           </div>
           <div class="billing-line">
-            <span class="lbl">Rev Share</span>
+            <span class="lbl">30-Day GMV</span>
+            <span class="amt" style="display:flex;align-items:center;gap:4px;">
+              $<input class="gmv-edit" type="number" id="gmv-${esc(p.id)}" value="${p.gmv.toFixed(2)}" oninput="recalcCard('${esc(p.id)}')">
+            </span>
+          </div>
+          <div class="billing-line">
+            <span class="lbl">Rev Share %</span>
+            <span class="amt" style="display:flex;align-items:center;gap:4px;">
+              <input class="gmv-edit" type="number" id="comm-${esc(p.id)}" value="${commPct}" min="0" max="100" oninput="recalcCard('${esc(p.id)}')">%
+            </span>
+          </div>
+          <div class="billing-line">
+            <span class="lbl">Rev Share Amount</span>
             <span class="amt" id="rs-${esc(p.id)}">$${p.revShare.toFixed(2)}</span>
           </div>
         </div>
@@ -557,8 +569,7 @@
         </div>
 
         <button class="send-btn${alreadySent ? ' sent' : ''}" id="sendbtn-${esc(p.id)}"
-          onclick="sendInvoice('${esc(p.id)}','${esc(p.name)}')"
-          ${noEmail || noTotal ? 'disabled' : ''}>
+          onclick="sendInvoice('${esc(p.id)}','${esc(p.name)}')">
           ${alreadySent ? `✓ Sent ${sentAgo} — Resend?` : '✅ Approve &amp; Send Invoice'}
         </button>
         ${p.lastInvoiceUrl ? `<a class="invoice-link" href="${esc(p.lastInvoiceUrl)}" target="_blank">🔗 View last invoice ↗</a>` : ''}
@@ -566,29 +577,39 @@
     }).join('');
   }
 
-  function recalcCard(id, retainer, commRate) {
-    const gmvEl = document.getElementById(`gmv-${id}`);
-    const rsEl  = document.getElementById(`rs-${id}`);
-    const totEl = document.getElementById(`tot-${id}`);
-    const gmv     = parseFloat(gmvEl?.value || 0);
+  function recalcCard(id) {
+    const retainer = parseFloat(document.getElementById(`ret-${id}`)?.value  || 0);
+    const gmv      = parseFloat(document.getElementById(`gmv-${id}`)?.value  || 0);
+    const commPct  = parseFloat(document.getElementById(`comm-${id}`)?.value || 0);
+    const commRate = commPct / 100;
     const revShare = parseFloat((gmv * commRate).toFixed(2));
     const total    = parseFloat((retainer + revShare).toFixed(2));
+    const rsEl  = document.getElementById(`rs-${id}`);
+    const totEl = document.getElementById(`tot-${id}`);
     if (rsEl)  rsEl.textContent  = '$' + revShare.toFixed(2);
     if (totEl) totEl.textContent = '$' + total.toFixed(2);
   }
 
   async function sendInvoice(brandId, name) {
-    const btn   = document.getElementById(`sendbtn-${brandId}`);
-    const gmvEl = document.getElementById(`gmv-${brandId}`);
-    const gmv   = parseFloat(gmvEl?.value || 0);
-    if (!confirm(`Send invoice to ${name}?\n\nThis will create a Stripe invoice and email it to the client immediately.`)) return;
+    const btn      = document.getElementById(`sendbtn-${brandId}`);
+    const retainer = parseFloat(document.getElementById(`ret-${brandId}`)?.value  || 0);
+    const gmv      = parseFloat(document.getElementById(`gmv-${brandId}`)?.value  || 0);
+    const commPct  = parseFloat(document.getElementById(`comm-${brandId}`)?.value || 0);
+    const commRate = commPct / 100;
+    // If billing email was entered inline (no-email case), read it
+    const emailEl  = document.getElementById(`email-${brandId}`);
+    const emailOverride = emailEl?.value?.trim() || null;
+    if (emailEl && !emailOverride) { emailEl.style.borderColor = '#ff3b30'; emailEl.focus(); return; }
+    const total = retainer + parseFloat((gmv * commRate).toFixed(2));
+    if (total <= 0) { alert('Total is $0 — add a retainer or GMV before sending.'); return; }
+    if (!confirm(`Send invoice to ${name}?\n\nTotal: $${total.toFixed(2)}\n\nThis will create a Stripe invoice and email it to the client immediately.`)) return;
     btn.disabled = true;
     btn.textContent = 'Sending…';
     try {
       const res  = await fetch(`/portal-admin/billing/send/${brandId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ gmv }),
+        body: JSON.stringify({ gmv, retainer, commRate, ...(emailOverride ? { billingEmail: emailOverride } : {}) }),
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || 'Failed');

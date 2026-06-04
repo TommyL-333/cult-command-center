@@ -2094,7 +2094,12 @@ app.get('/portal-admin/billing/preview', requirePortalAdmin, (req, res) => {
   const now    = new Date();
   const period = now.toLocaleString('en-US', { month: 'long', year: 'numeric' });
 
-  const previews = (brands.clients || []).map(b => {
+  // Only include active clients (Contract Signed or no pipelineStage = original clients)
+  const active = (brands.clients || []).filter(b =>
+    !b.pipelineStage || b.pipelineStage === 'Contract Signed'
+  );
+
+  const previews = active.map(b => {
     const bill = clientBilling(b);
     return {
       id:           b.id,
@@ -2129,13 +2134,15 @@ app.post('/portal-admin/billing/send/:brandId', requirePortalAdmin, express.json
   const now  = new Date();
   const period = now.toLocaleString('en-US', { month: 'long', year: 'numeric' });
 
-  // Allow override of GMV from request body (in case admin wants to adjust)
-  const overrideGmv = req.body?.gmv != null ? parseFloat(req.body.gmv) : null;
-  const finalGmv    = overrideGmv ?? bill.gmv;
-  const finalRevShare = parseFloat((finalGmv * bill.commRate).toFixed(2));
-  const finalTotal    = parseFloat((bill.retainer + finalRevShare).toFixed(2));
+  // Allow override of retainer, commRate, GMV, billingEmail from request body
+  const finalRetainer = req.body?.retainer    != null ? parseFloat(req.body.retainer)    : bill.retainer;
+  const finalCommRate = req.body?.commRate     != null ? parseFloat(req.body.commRate)    : bill.commRate;
+  const finalGmv      = req.body?.gmv          != null ? parseFloat(req.body.gmv)         : bill.gmv;
+  const finalEmail    = req.body?.billingEmail?.trim() || bill.billingEmail;
+  const finalRevShare = parseFloat((finalGmv * finalCommRate).toFixed(2));
+  const finalTotal    = parseFloat((finalRetainer + finalRevShare).toFixed(2));
 
-  if (!bill.billingEmail) return res.status(400).json({ error: 'No billing email for this client' });
+  if (!finalEmail) return res.status(400).json({ error: 'No billing email for this client' });
   if (finalTotal <= 0)    return res.status(400).json({ error: 'Invoice total is $0 — nothing to bill' });
 
   try {
@@ -2144,7 +2151,7 @@ app.post('/portal-admin/billing/send/:brandId', requirePortalAdmin, express.json
     if (!customerId) {
       const customer = await stripe.customers.create({
         name:  b.name,
-        email: bill.billingEmail,
+        email: finalEmail,
         metadata: { brandId: b.id, source: 'cult-content-billing' },
       });
       customerId = customer.id;
@@ -2161,11 +2168,11 @@ app.post('/portal-admin/billing/send/:brandId', requirePortalAdmin, express.json
     });
 
     // 3. Add line items
-    if (bill.retainer > 0) {
+    if (finalRetainer > 0) {
       await stripe.invoiceItems.create({
         customer:   customerId,
         invoice:    invoice.id,
-        amount:     Math.round(bill.retainer * 100), // cents
+        amount:     Math.round(finalRetainer * 100), // cents
         currency:   'usd',
         description: `Monthly Retainer — ${period}`,
       });
@@ -2177,7 +2184,7 @@ app.post('/portal-admin/billing/send/:brandId', requirePortalAdmin, express.json
         invoice:    invoice.id,
         amount:     Math.round(finalRevShare * 100),
         currency:   'usd',
-        description: `GMV Revenue Share (${Math.round(bill.commRate * 100)}% of $${finalGmv.toLocaleString()} GMV) — ${period}`,
+        description: `GMV Revenue Share (${Math.round(finalCommRate * 100)}% of $${finalGmv.toLocaleString()} GMV) — ${period}`,
       });
     }
 
@@ -2192,13 +2199,13 @@ app.post('/portal-admin/billing/send/:brandId', requirePortalAdmin, express.json
     brands.clients[brandIdx].lastInvoicedAt   = Date.now();
     saveBrands(brands);
 
-    console.log(`[BILLING] Sent invoice ${finalized.id} to ${b.name} (${bill.billingEmail}) — $${finalTotal}`);
+    console.log(`[BILLING] Sent invoice ${finalized.id} to ${b.name} (${finalEmail}) — $${finalTotal}`);
     res.json({
       ok:         true,
       invoiceId:  finalized.id,
       invoiceUrl: finalized.hosted_invoice_url,
       total:      finalTotal,
-      email:      bill.billingEmail,
+      email:      finalEmail,
     });
   } catch (err) {
     console.error('[BILLING] Stripe error:', err.message);
