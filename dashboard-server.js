@@ -3820,16 +3820,28 @@ app.get('/api/admin/shop-metrics-probe/:brandId', async (req, res) => {
   const lastWkParams  = { start_date_ge: week2S, end_date_lt: week1S };
 
   const endpoints = [
-    // Primary — correct path/version/params from API Testing Tool
-    ['GET', '/analytics/202509/shop/performance',          thisWkParams],
-    ['GET', '/analytics/202509/shop/performance',          lastWkParams],
-    // Also probe product + video performance lists
-    ['GET', '/analytics/202509/product/performance_list',  thisWkParams],
-    ['GET', '/analytics/202509/video/performance_list',    thisWkParams],
-    // Fallback version variations in case 202509 isn't accepted for this shop
-    ['GET', '/analytics/202506/shop/performance',          thisWkParams],
-    ['GET', '/analytics/202412/shop/performance',          thisWkParams],
-    ['GET', '/analytics/202309/shop/performance',          thisWkParams],
+    // Shop performance (confirmed working)
+    ['GET', '/analytics/202509/shop/performance',               thisWkParams],
+    // Product performance — try all path variants
+    ['GET', '/analytics/202509/product/performance',            thisWkParams],
+    ['GET', '/analytics/202509/product/performance_list',       thisWkParams],
+    ['GET', '/analytics/202509/products/performance',           thisWkParams],
+    ['GET', '/analytics/202509/product/performance_summary',    thisWkParams],
+    ['GET', '/analytics/202509/product/list',                   thisWkParams],
+    ['GET', '/analytics/202509/product/sales_performance',      thisWkParams],
+    // Video performance — try all path variants
+    ['GET', '/analytics/202509/video/performance',              thisWkParams],
+    ['GET', '/analytics/202509/video/performance_list',         thisWkParams],
+    ['GET', '/analytics/202509/videos/performance',             thisWkParams],
+    ['GET', '/analytics/202509/video/performance_summary',      thisWkParams],
+    ['GET', '/analytics/202509/video/list',                     thisWkParams],
+    ['GET', '/analytics/202509/video/sales_performance',        thisWkParams],
+    // Live performance
+    ['GET', '/analytics/202509/live/performance',               thisWkParams],
+    ['GET', '/analytics/202509/live/performance_list',          thisWkParams],
+    // Creator / content
+    ['GET', '/analytics/202509/content/performance',            thisWkParams],
+    ['GET', '/analytics/202509/creator/performance',            thisWkParams],
   ];
 
   for (const [method, path, params] of endpoints) {
