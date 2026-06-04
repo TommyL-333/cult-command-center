@@ -1151,7 +1151,7 @@
           <div id="ub-thread-msgs" style="flex:1;min-height:0;overflow-y:auto;padding:16px 18px;display:flex;flex-direction:column;gap:10px">
           </div>
           <!-- Reply composer -->
-          <div id="ub-reply-box" style="border-top:1px solid var(--border);padding:12px 14px;display:none">
+          <div id="ub-reply-box" style="border-top:1px solid var(--border);padding:12px 14px;display:none;flex-shrink:0">
             <div style="display:flex;gap:8px;align-items:flex-end">
               <textarea id="ub-reply-text" class="agent-input" rows="3" style="flex:1;font-size:13px;resize:none;line-height:1.5;padding:8px 12px" placeholder="Type a reply…" onkeydown="if(event.key==='Enter'&&event.metaKey)ubSendReply()"></textarea>
               <button class="btn btn-teal" onclick="ubSendReply()" style="font-size:12px;font-weight:700;padding:7px 16px;white-space:nowrap;align-self:flex-end">Send →</button>
@@ -5326,7 +5326,7 @@ async function ubOpenThread(handle) {
   const reply  = document.getElementById('ub-reply-box');
   if (header) header.innerHTML = `<div style="font-size:14px;font-weight:800">@${x(handle.replace(/^@/,''))}</div><div style="font-size:11px;color:var(--muted);margin-left:auto">⌘+Enter to send</div>`;
   if (msgs)   msgs.innerHTML = '<div style="color:var(--muted);font-style:italic;font-size:13px">Loading messages…</div>';
-  if (reply)  reply.style.display = '';
+  if (reply)  reply.style.display = 'block';
   try {
     const shopId = document.getElementById('ub-shop')?.value || '';
     const encodedHandle = encodeURIComponent(handle);
