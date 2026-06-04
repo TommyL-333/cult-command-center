@@ -194,6 +194,53 @@
       margin-top: 4px;
     }
 
+    /* Metrics grid */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .metric-block {
+      background: rgba(0,0,0,0.2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+    }
+    .metric-label {
+      font-size: 0.6rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 5px;
+    }
+    .metric-val {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #e2e8f0;
+      line-height: 1;
+    }
+    .metric-val.empty { color: var(--muted); font-size: 0.8rem; font-weight: 400; }
+    .metric-trend {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 0.68rem;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+    .metric-trend.up   { color: #00d27a; }
+    .metric-trend.down { color: #ff5b5b; }
+    .metric-trend.flat { color: var(--muted); }
+    .metric-na {
+      font-size: 0.62rem;
+      color: var(--muted);
+      margin-top: 4px;
+      font-style: italic;
+    }
+    .metrics-loading { font-size: 0.75rem; color: var(--muted); text-align: center; padding: 8px 0; }
+
     /* View button */
     .view-btn {
       display: block;
@@ -490,11 +537,72 @@
             ${c.gmv ? `<div class="gmv-val rev">${fmtMoney(c.revShare)}</div>` : `<div class="gmv-val empty">—</div>`}
           </div>
         </div>
+        ${c.tiktokConnected ? `
+        <div class="metrics-grid" id="metrics-${esc(c.id)}">
+          <div class="metric-block">
+            <div class="metric-label">This Wk GMV</div>
+            <div class="metric-val empty" id="m-gmv-${esc(c.id)}">—</div>
+            <div class="metric-trend flat" id="m-gmv-trend-${esc(c.id)}"></div>
+          </div>
+          <div class="metric-block">
+            <div class="metric-label">This Wk Orders</div>
+            <div class="metric-val empty" id="m-orders-${esc(c.id)}">—</div>
+            <div class="metric-trend flat" id="m-orders-trend-${esc(c.id)}"></div>
+          </div>
+          <div class="metric-block">
+            <div class="metric-label">Avg Order Val</div>
+            <div class="metric-val empty" id="m-aov-${esc(c.id)}">—</div>
+            <div class="metric-trend flat" id="m-aov-trend-${esc(c.id)}"></div>
+          </div>
+          <div class="metric-block" style="opacity:0.5" title="Requires TikTok Analytics API product">
+            <div class="metric-label">Impressions</div>
+            <div class="metric-val empty">—</div>
+            <div class="metric-na">Needs Analytics scope</div>
+          </div>
+          <div class="metric-block" style="opacity:0.5" title="Requires TikTok Analytics API product">
+            <div class="metric-label">CTR</div>
+            <div class="metric-val empty">—</div>
+            <div class="metric-na">Needs Analytics scope</div>
+          </div>
+          <div class="metric-block" style="opacity:0.5" title="Requires TikTok Analytics API product">
+            <div class="metric-label">Conv. Rate</div>
+            <div class="metric-val empty">—</div>
+            <div class="metric-na">Needs Analytics scope</div>
+          </div>
+        </div>` : ''}
         <button class="view-btn" onclick="impersonate('${esc(c.id)}', this)">
           View Dashboard →
         </button>
       </div>
     `).join('');
+
+    // Lazy-load WoW metrics for each connected brand
+    clients.filter(c => c.tiktokConnected).forEach(c => loadMetrics(c.id));
+  }
+
+  async function loadMetrics(brandId) {
+    try {
+      const res = await fetch(`/portal-admin/shop-metrics/${brandId}`);
+      if (!res.ok) return;
+      const d = await res.json();
+      if (!d.ok || d.noToken) return;
+
+      function setMetric(id, val, trendObj) {
+        const el = document.getElementById(id);
+        if (el) { el.textContent = val; el.classList.remove('empty'); }
+        const tEl = document.getElementById(id + '-trend');
+        if (tEl && trendObj) {
+          const { dir, pct } = trendObj;
+          tEl.className = `metric-trend ${dir}`;
+          const arrow = dir === 'up' ? '↑' : dir === 'down' ? '↓' : '→';
+          tEl.textContent = pct != null ? `${arrow} ${pct}% vs last wk` : `${arrow} vs last wk`;
+        }
+      }
+
+      setMetric(`m-gmv-${brandId}`,    d.thisWeek.gmv    > 0 ? fmtMoney(d.thisWeek.gmv)            : '$0',   d.trends.gmv);
+      setMetric(`m-orders-${brandId}`, d.thisWeek.orders > 0 ? String(d.thisWeek.orders) + ' orders' : '0',   d.trends.orders);
+      setMetric(`m-aov-${brandId}`,    d.thisWeek.aov    > 0 ? fmtMoney(d.thisWeek.aov)             : '$0',   d.trends.aov);
+    } catch(e) { /* silent fail */ }
   }
 
   async function clearTikTok(brandId, el) {

@@ -2031,6 +2031,60 @@ app.post('/portal-admin/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/portal-admin'));
 });
 
+// GET /portal-admin/shop-metrics/:brandId — WoW shop metrics proxy (portal admin session auth)
+app.get('/portal-admin/shop-metrics/:brandId', requirePortalAdmin, async (req, res) => {
+  // Proxy to the admin API endpoint (reuses same logic, avoids duplicating auth)
+  const brands = loadBrands();
+  const bi = (brands.clients || []).findIndex(b => b.id === req.params.brandId);
+  if (bi === -1) return res.status(404).json({ error: 'Brand not found' });
+  const brand = brands.clients[bi];
+  if (!brand.tiktokShopToken?.access_token) return res.json({ ok: true, noToken: true });
+
+  const CANCEL_STATUSES = new Set([140, 4, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND', 'REVERSE_PENDING', 'REVERSE_COMPLETE']);
+  async function fetchWeekMetrics(startTs, endTs) {
+    let gmv = 0, orders = 0, pageToken = null;
+    for (let page = 0; page < 10; page++) {
+      const body = { create_time_ge: startTs, create_time_lt: endTs, sort_field: 'create_time', sort_order: 'DESC' };
+      if (pageToken) body.page_token = pageToken;
+      try {
+        const resp = await ttsBrandPost(brand, brands, bi, '/order/202309/orders/search', body, { page_size: 100 });
+        const list = resp?.data?.orders || resp?.data?.order_list || [];
+        for (const o of list) {
+          if (o.is_sample_order) continue;
+          const status = o.order_status ?? o.status;
+          if (status !== undefined && CANCEL_STATUSES.has(status)) continue;
+          orders++;
+          const payment = o.payment || {};
+          const amt = parseFloat(payment.sub_total ?? payment.original_total_product_price ?? 0) || 0;
+          gmv += amt;
+        }
+        const nextToken = resp?.data?.next_page_token;
+        if (!nextToken || list.length === 0) break;
+        pageToken = nextToken;
+      } catch(e) { break; }
+    }
+    return { gmv, orders, aov: orders > 0 ? gmv / orders : 0 };
+  }
+
+  try {
+    const now   = Math.floor(Date.now() / 1000);
+    const week1 = now - 7 * 86400;
+    const week2 = week1 - 7 * 86400;
+    const [thisWeek, lastWeek] = await Promise.all([
+      fetchWeekMetrics(week1, now),
+      fetchWeekMetrics(week2, week1),
+    ]);
+    function trend(curr, prev) {
+      if (!prev) return curr > 0 ? { dir: 'up', pct: null } : { dir: 'flat', pct: null };
+      const pct = ((curr - prev) / prev) * 100;
+      return { dir: pct > 1 ? 'up' : pct < -1 ? 'down' : 'flat', pct: Math.round(Math.abs(pct)) };
+    }
+    res.json({ ok: true, thisWeek, lastWeek, trends: { gmv: trend(thisWeek.gmv, lastWeek.gmv), orders: trend(thisWeek.orders, lastWeek.orders), aov: trend(thisWeek.aov, lastWeek.aov) } });
+  } catch(e) {
+    res.json({ ok: false, error: e.message });
+  }
+});
+
 // ─── Shared GMV Fetch ─────────────────────────────────────────────────────────
 // Fetches net product sales from TikTok Shop orders API.
 // opts.startTs / opts.endTs allow custom date ranges (default: rolling 30 days).
@@ -3603,6 +3657,81 @@ app.post('/api/admin/storista/sync-processing/:brandId', async (req, res) => {
   }
   saveBrands(brands);
   res.json({ ok: true, checked: pending.length, results });
+});
+
+// GET /api/admin/shop-metrics/:brandId — WoW GMV + order metrics for admin portal
+// Returns this week vs last week for GMV, orders, and AOV
+app.get('/api/admin/shop-metrics/:brandId', async (req, res) => {
+  const secret = process.env.ADMIN_BATCH_SECRET || 'cult-batch-2026';
+  if (req.headers['x-admin-secret'] !== secret) return res.status(401).json({ error: 'Unauthorized' });
+  const brands = loadBrands();
+  const bi = (brands.clients || []).findIndex(b => b.id === req.params.brandId);
+  if (bi === -1) return res.status(404).json({ error: 'Brand not found' });
+  const brand = brands.clients[bi];
+  if (!brand.tiktokShopToken?.access_token) return res.json({ ok: true, noToken: true });
+
+  const CANCEL_STATUSES = new Set([140, 4, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND', 'REVERSE_PENDING', 'REVERSE_COMPLETE']);
+
+  async function fetchWeekMetrics(startTs, endTs) {
+    let gmv = 0, orders = 0, pageToken = null;
+    for (let page = 0; page < 10; page++) {
+      const body = { create_time_ge: startTs, create_time_lt: endTs, sort_field: 'create_time', sort_order: 'DESC' };
+      if (pageToken) body.page_token = pageToken;
+      try {
+        const resp = await ttsBrandPost(brand, brands, bi, '/order/202309/orders/search', body, { page_size: 100 });
+        const list = resp?.data?.orders || resp?.data?.order_list || [];
+        for (const o of list) {
+          if (o.is_sample_order) continue;
+          const status = o.order_status ?? o.status;
+          if (status !== undefined && CANCEL_STATUSES.has(status)) continue;
+          orders++;
+          // Extract amount
+          const payment = o.payment || {};
+          const amt = parseFloat(payment.sub_total ?? payment.original_total_product_price ?? payment.total_amount ?? 0) || 0;
+          const discount = parseFloat(payment.seller_discount ?? payment.platform_discount ?? 0) || 0;
+          gmv += amt > 0 ? amt : 0;
+        }
+        const nextToken = resp?.data?.next_page_token || resp?.data?.page_token;
+        if (!nextToken || list.length === 0) break;
+        pageToken = nextToken;
+      } catch(e) {
+        if (e.response?.status === 401) throw e;
+        break;
+      }
+    }
+    return { gmv, orders, aov: orders > 0 ? gmv / orders : 0 };
+  }
+
+  try {
+    const now   = Math.floor(Date.now() / 1000);
+    const week1 = now - 7 * 86400;   // start of this week
+    const week2 = week1 - 7 * 86400; // start of last week
+
+    const [thisWeek, lastWeek] = await Promise.all([
+      fetchWeekMetrics(week1, now),
+      fetchWeekMetrics(week2, week1),
+    ]);
+
+    function trend(curr, prev) {
+      if (!prev || prev === 0) return curr > 0 ? { dir: 'up', pct: null } : { dir: 'flat', pct: null };
+      const pct = ((curr - prev) / prev) * 100;
+      return { dir: pct > 1 ? 'up' : pct < -1 ? 'down' : 'flat', pct: Math.round(Math.abs(pct)) };
+    }
+
+    res.json({
+      ok: true,
+      thisWeek,
+      lastWeek,
+      trends: {
+        gmv:    trend(thisWeek.gmv,    lastWeek.gmv),
+        orders: trend(thisWeek.orders, lastWeek.orders),
+        aov:    trend(thisWeek.aov,    lastWeek.aov),
+      },
+      analyticsUnavailable: true, // CTR / impressions / score require Analytics API product
+    });
+  } catch(e) {
+    res.json({ ok: false, error: e.message });
+  }
 });
 
 // GET /api/admin/shop-metrics-probe/:brandId — probe TikTok Shop analytics endpoints
