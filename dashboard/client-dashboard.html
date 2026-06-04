@@ -2453,8 +2453,7 @@
 
     _selectedTier = { retainer, commRate };
     const name = `$${retainer.toLocaleString()}/mo + ${Math.round(commRate * 100)}% GMV`;
-    document.getElementById('tierChangeName').textContent = name;
-    document.getElementById('tierChangeInfo').innerHTML = `Switch to <span>${name}</span> — takes effect on ${d.cycle.nextBillingLabel}`;
+    document.getElementById('tierChangeInfo').innerHTML = `Switch to <span style="color:var(--teal);font-weight:700">${name}</span> — takes effect ${d.cycle.nextBillingLabel}`;
     document.getElementById('tierChangeBar').classList.add('open');
     document.getElementById('tierChangeMsg').textContent = '';
   }
