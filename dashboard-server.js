@@ -3621,46 +3621,25 @@ app.get('/api/admin/shop-metrics-probe/:brandId', async (req, res) => {
   const weekAgo = now - 7 * 86400;
   const twoWeeksAgo = now - 14 * 86400;
 
-  // Try seller performance score
-  try {
-    const r = await ttsBrandGet(brand, brands, bi, '/seller/202309/performance', {});
-    results.sellerPerformance = r.data;
-  } catch(e) {
-    results.sellerPerformance = { error: e.response?.status, msg: JSON.stringify(e.response?.data).slice(0,200) };
-  }
-
-  // Try product analytics (this week)
-  try {
-    const r = await ttsBrandPost(brand, brands, bi, '/product/202309/analytics', {
-      page_size: 10,
-      start_date: new Date(weekAgo * 1000).toISOString().slice(0,10).replace(/-/g,''),
-      end_date:   new Date(now * 1000).toISOString().slice(0,10).replace(/-/g,''),
-    });
-    results.productAnalytics202309 = r.data;
-  } catch(e) {
-    results.productAnalytics202309 = { error: e.response?.status, msg: JSON.stringify(e.response?.data).slice(0,300) };
-  }
-
-  // Try traffic analytics
-  try {
-    const r = await ttsBrandPost(brand, brands, bi, '/analytics/202312/traffic', {
-      page_size: 10,
-      date_range: { start_date: new Date(weekAgo * 1000).toISOString().slice(0,10), end_date: new Date(now * 1000).toISOString().slice(0,10) },
-    });
-    results.traffic202312 = r.data;
-  } catch(e) {
-    results.traffic202312 = { error: e.response?.status, msg: JSON.stringify(e.response?.data).slice(0,300) };
-  }
-
-  // Try shop overview/analytics
-  try {
-    const r = await ttsBrandPost(brand, brands, bi, '/seller/202309/shop/analysis', {
-      start_date: new Date(weekAgo * 1000).toISOString().slice(0,10).replace(/-/g,''),
-      end_date:   new Date(now * 1000).toISOString().slice(0,10).replace(/-/g,''),
-    });
-    results.shopAnalysis = r.data;
-  } catch(e) {
-    results.shopAnalysis = { error: e.response?.status, msg: JSON.stringify(e.response?.data).slice(0,300) };
+  // Try every known analytics / performance endpoint variant
+  const endpoints = [
+    ['GET',  '/seller/202309/performance',            {}],
+    ['GET',  '/seller/202312/performance',            {}],
+    ['POST', '/product/202309/data_analytics',        { page_size: 10, start_date: new Date(weekAgo*1000).toISOString().slice(0,10).replace(/-/g,''), end_date: new Date(now*1000).toISOString().slice(0,10).replace(/-/g,'') }],
+    ['POST', '/analytics/202312/product_overview',   { date_range: { start_date: new Date(weekAgo*1000).toISOString().slice(0,10), end_date: new Date(now*1000).toISOString().slice(0,10) } }],
+    ['POST', '/analytics/202406/shop_overview',      { date_range: { start_date: new Date(weekAgo*1000).toISOString().slice(0,10), end_date: new Date(now*1000).toISOString().slice(0,10) } }],
+    ['GET',  '/shop/202309/performance',             {}],
+    ['POST', '/seller/202309/data_report',           { report_type: 1, start_date: new Date(weekAgo*1000).toISOString().slice(0,10).replace(/-/g,''), end_date: new Date(now*1000).toISOString().slice(0,10).replace(/-/g,'') }],
+  ];
+  for (const [method, path, body] of endpoints) {
+    try {
+      const r = method === 'GET'
+        ? await ttsBrandGet(brand, brands, bi, path, {})
+        : await ttsBrandPost(brand, brands, bi, path, body);
+      results[path] = { ok: true, data: r.data };
+    } catch(e) {
+      results[path] = { error: e.response?.status, code: e.response?.data?.code, msg: e.response?.data?.message };
+    }
   }
 
   res.json(results);
