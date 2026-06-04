@@ -2264,7 +2264,7 @@ app.get('/portal-admin/billing/setup-link/:brandId', requirePortalAdmin, async (
     }
     const session = await stripe.billingPortal.sessions.create({
       customer:   customerId,
-      return_url: 'https://portal.cultcontent.cc/portal-admin',
+      return_url: 'https://portal.cultcontent.cc/client/dashboard',
     });
     res.json({ ok: true, url: session.url });
   } catch(e) {
