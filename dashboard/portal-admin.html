@@ -232,6 +232,15 @@
       color: var(--teal);
     }
 
+    /* Billing sub-tabs */
+    .billing-subtab { background: transparent; border: 1px solid var(--border); border-radius: 8px; color: var(--muted); font-size: 0.78rem; font-weight: 600; padding: 5px 14px; cursor: pointer; font-family: inherit; transition: all 0.15s; }
+    .billing-subtab.active { background: var(--teal); color: var(--bg); border-color: var(--teal); }
+    .billing-subtab:not(.active):hover { border-color: var(--teal); color: var(--teal); }
+
+    /* Countdown chip */
+    .billing-countdown { font-size: 0.78rem; color: var(--muted); background: rgba(201,168,76,0.1); border: 1px solid rgba(201,168,76,0.25); border-radius: 20px; padding: 4px 12px; display: inline-block; }
+    .billing-countdown strong { color: var(--gold); }
+
     /* Billing cards */
     .billing-card {
       background: var(--card);
@@ -256,6 +265,11 @@
     .gmv-edit:focus { border-color: var(--teal); }
     .billing-email-input { background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); font-size: 0.75rem; padding: 3px 8px; width: 100%; box-sizing: border-box; margin-top: 4px; font-family: inherit; outline: none; }
     .billing-email-input:focus { border-color: var(--teal); color: var(--text); }
+    /* Payment method badge */
+    .pm-badge { display:inline-flex; align-items:center; gap:5px; font-size:0.72rem; font-weight:600; border-radius:12px; padding:3px 9px; }
+    .pm-badge.has-pm { background: rgba(0,210,122,0.12); color: var(--green); border: 1px solid rgba(0,210,122,0.25); }
+    .pm-badge.no-pm  { background: rgba(255,204,0,0.1); color: var(--yellow); border: 1px solid rgba(255,204,0,0.25); cursor:pointer; }
+    .pm-badge.no-pm:hover { background: rgba(255,204,0,0.18); }
     .send-btn {
       width: 100%;
       background: var(--teal);
@@ -273,9 +287,22 @@
     .send-btn:hover { opacity: 0.88; }
     .send-btn:disabled { opacity: 0.45; cursor: default; }
     .send-btn.sent { background: var(--green); }
+    .send-btn.charge { background: var(--gold); color: #12101a; }
     .invoice-link { font-size: 0.75rem; color: var(--teal); text-decoration: none; text-align: center; display: block; margin-top: 4px; }
     .invoice-link:hover { text-decoration: underline; }
     .no-email-warn { font-size: 0.75rem; color: #ffcc00; background: rgba(255,204,0,0.08); border: 1px solid rgba(255,204,0,0.2); border-radius: 6px; padding: 5px 10px; }
+
+    /* Billing history table */
+    .hist-table { width:100%; border-collapse:collapse; font-size:0.8rem; }
+    .hist-table th { text-align:left; color:var(--muted); font-weight:600; padding:6px 10px; border-bottom:1px solid var(--border); }
+    .hist-table td { padding:7px 10px; border-bottom:1px solid rgba(255,255,255,0.04); }
+    .hist-table tr:last-child td { border-bottom:none; }
+    .hist-client-header { font-weight:700; font-size:0.88rem; padding: 16px 0 6px; }
+    .hist-status { display:inline-block; border-radius:10px; padding:2px 8px; font-size:0.7rem; font-weight:700; }
+    .hist-status.paid  { background:rgba(0,210,122,0.15); color:var(--green); }
+    .hist-status.open  { background:rgba(255,204,0,0.12); color:var(--yellow); }
+    .hist-status.void  { background:rgba(100,116,139,0.15); color:#64748b; }
+    .hist-status.uncollectible { background:rgba(255,59,48,0.12); color:var(--red); }
 
     /* Empty / loading states */
     .empty-state {
@@ -342,14 +369,30 @@
 
   <!-- Billing view -->
   <div id="viewBilling" style="display:none;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
       <div>
         <div style="font-size:1.05rem;font-weight:700;" id="billingPeriod">Loading…</div>
-        <div style="font-size:0.78rem;color:var(--muted);margin-top:3px;">Review each invoice below, then approve to send via Stripe. Clients receive an email with a hosted payment link (card or ACH bank debit).</div>
+        <div style="font-size:0.78rem;color:var(--muted);margin-top:3px;" id="billingSubtitle">Fetching billing data…</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span class="billing-countdown" id="billingCountdown" style="display:none;"></span>
+        <button class="billing-subtab active" id="bstabCurrent" onclick="setBillingTab('current')">Current Month</button>
+        <button class="billing-subtab" id="bstabHistory" onclick="setBillingTab('history')">History</button>
       </div>
     </div>
-    <div id="billingGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;">
-      <div class="empty-state"><span class="spinner"></span>Loading billing data…</div>
+
+    <!-- Current month cards -->
+    <div id="billingCurrent">
+      <div id="billingGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;">
+        <div class="empty-state"><span class="spinner"></span>Loading billing data…</div>
+      </div>
+    </div>
+
+    <!-- History -->
+    <div id="billingHistory" style="display:none;">
+      <div id="billingHistoryContent">
+        <div class="empty-state"><span class="spinner"></span>Loading history…</div>
+      </div>
     </div>
   </div>
 </main>
@@ -503,6 +546,14 @@
     if (v === 'billing' && !window._billingLoaded) loadBilling();
   }
 
+  function setBillingTab(tab) {
+    document.getElementById('billingCurrent').style.display = tab === 'current' ? '' : 'none';
+    document.getElementById('billingHistory').style.display = tab === 'history' ? '' : 'none';
+    document.getElementById('bstabCurrent').classList.toggle('active', tab === 'current');
+    document.getElementById('bstabHistory').classList.toggle('active', tab === 'history');
+    if (tab === 'history' && !window._historyLoaded) loadHistory();
+  }
+
   // ── Billing ─────────────────────────────────────────────────────────────────
   async function loadBilling() {
     window._billingLoaded = true;
@@ -512,7 +563,18 @@
       if (res.status === 401) { window.location.href = '/portal-admin'; return; }
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || 'Failed');
+
       document.getElementById('billingPeriod').textContent = `${data.period} Invoices`;
+      document.getElementById('billingSubtitle').textContent =
+        `Data: ${data.dataPeriod} · Review each invoice, then approve to charge or send.`;
+
+      // Countdown chip
+      const cdEl = document.getElementById('billingCountdown');
+      if (data.daysUntilBilling != null) {
+        cdEl.innerHTML = `Next invoice: <strong>${data.nextBillingLabel}</strong> in <strong>${data.daysUntilBilling}d</strong>`;
+        cdEl.style.display = 'inline-block';
+      }
+
       renderBilling(data.previews || []);
     } catch(err) {
       grid.innerHTML = `<div class="empty-state">Could not load billing data — ${err.message}</div>`;
@@ -524,18 +586,30 @@
     if (!previews.length) { grid.innerHTML = '<div class="empty-state">No clients to bill.</div>'; return; }
 
     grid.innerHTML = previews.map(p => {
-      const alreadySent = !!p.lastInvoicedAt;
-      const noEmail     = !p.billingEmail;
-      const sentAgo     = p.lastInvoicedAt ? timeAgo(p.lastInvoicedAt) : null;
-      const commPct     = Math.round(p.commRate * 100);
+      const alreadySent  = !!p.lastInvoicedAt;
+      const noEmail      = !p.billingEmail;
+      const sentAgo      = p.lastInvoicedAt ? timeAgo(p.lastInvoicedAt) : null;
+      const commPct      = Math.round(p.commRate * 100);
+      const hasPM        = !!p.hasPaymentMethod;
+      const pmBadge      = hasPM
+        ? `<span class="pm-badge has-pm">💳 Auto-charge on file</span>`
+        : `<span class="pm-badge no-pm" onclick="openSetupLink('${esc(p.id)}','${esc(p.name)}')">⚠️ No payment method — click to add</span>`;
+      const btnLabel     = alreadySent
+        ? `✓ ${sentAgo} — Resend?`
+        : hasPM ? `⚡ Charge Now` : `✅ Approve &amp; Send Invoice`;
+      const btnClass     = `send-btn${alreadySent ? ' sent' : hasPM ? ' charge' : ''}`;
+
       return `
       <div class="billing-card${alreadySent ? ' sent' : ''}" id="bc-${esc(p.id)}">
-        <div>
-          <div class="billing-name">${esc(p.name)}</div>
-          ${noEmail
-            ? `<input class="billing-email-input" type="email" id="email-${esc(p.id)}" placeholder="Billing email (required)" value="">`
-            : `<div class="billing-email">${esc(p.billingEmail)}</div>`
-          }
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;">
+          <div>
+            <div class="billing-name">${esc(p.name)}</div>
+            ${noEmail
+              ? `<input class="billing-email-input" type="email" id="email-${esc(p.id)}" placeholder="Billing email (required)" value="">`
+              : `<div class="billing-email">${esc(p.billingEmail)}</div>`
+            }
+          </div>
+          ${pmBadge}
         </div>
 
         <div>
@@ -546,7 +620,7 @@
             </span>
           </div>
           <div class="billing-line">
-            <span class="lbl">30-Day GMV</span>
+            <span class="lbl">Net Sales (${esc(p.dataPeriod || p.period)})</span>
             <span class="amt" style="display:flex;align-items:center;gap:4px;">
               $<input class="gmv-edit" type="number" id="gmv-${esc(p.id)}" value="${p.gmv.toFixed(2)}" oninput="recalcCard('${esc(p.id)}')">
             </span>
@@ -568,9 +642,9 @@
           <span class="amt" id="tot-${esc(p.id)}">$${p.total.toFixed(2)}</span>
         </div>
 
-        <button class="send-btn${alreadySent ? ' sent' : ''}" id="sendbtn-${esc(p.id)}"
-          onclick="sendInvoice('${esc(p.id)}','${esc(p.name)}')">
-          ${alreadySent ? `✓ Sent ${sentAgo} — Resend?` : '✅ Approve &amp; Send Invoice'}
+        <button class="${btnClass}" id="sendbtn-${esc(p.id)}"
+          onclick="sendInvoice('${esc(p.id)}','${esc(p.name)}',${hasPM})">
+          ${btnLabel}
         </button>
         ${p.lastInvoiceUrl ? `<a class="invoice-link" href="${esc(p.lastInvoiceUrl)}" target="_blank">🔗 View last invoice ↗</a>` : ''}
       </div>`;
@@ -590,21 +664,31 @@
     if (totEl) totEl.textContent = '$' + total.toFixed(2);
   }
 
-  async function sendInvoice(brandId, name) {
+  async function openSetupLink(brandId, name) {
+    const res  = await fetch(`/portal-admin/billing/setup-link/${brandId}`);
+    const data = await res.json();
+    if (data.ok && data.url) {
+      window.open(data.url, '_blank');
+    } else {
+      alert('Could not generate setup link: ' + (data.error || 'Unknown error'));
+    }
+  }
+
+  async function sendInvoice(brandId, name, hasPM) {
     const btn      = document.getElementById(`sendbtn-${brandId}`);
     const retainer = parseFloat(document.getElementById(`ret-${brandId}`)?.value  || 0);
     const gmv      = parseFloat(document.getElementById(`gmv-${brandId}`)?.value  || 0);
     const commPct  = parseFloat(document.getElementById(`comm-${brandId}`)?.value || 0);
     const commRate = commPct / 100;
-    // If billing email was entered inline (no-email case), read it
     const emailEl  = document.getElementById(`email-${brandId}`);
     const emailOverride = emailEl?.value?.trim() || null;
     if (emailEl && !emailOverride) { emailEl.style.borderColor = '#ff3b30'; emailEl.focus(); return; }
     const total = retainer + parseFloat((gmv * commRate).toFixed(2));
     if (total <= 0) { alert('Total is $0 — add a retainer or GMV before sending.'); return; }
-    if (!confirm(`Send invoice to ${name}?\n\nTotal: $${total.toFixed(2)}\n\nThis will create a Stripe invoice and email it to the client immediately.`)) return;
+    const action = hasPM ? `charge $${total.toFixed(2)} to their card/bank on file` : `send a $${total.toFixed(2)} invoice by email`;
+    if (!confirm(`${name}: ${action}?\n\nThis action cannot be undone.`)) return;
     btn.disabled = true;
-    btn.textContent = 'Sending…';
+    btn.textContent = hasPM ? 'Charging…' : 'Sending…';
     try {
       const res  = await fetch(`/portal-admin/billing/send/${brandId}`, {
         method: 'POST',
@@ -613,21 +697,67 @@
       });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || 'Failed');
+      btn.classList.remove('charge');
       btn.classList.add('sent');
-      btn.textContent = '✓ Invoice Sent!';
+      btn.textContent = data.charged ? '⚡ Charged!' : '✓ Invoice Sent!';
       btn.disabled = false;
-      // Add invoice link
       const card = document.getElementById(`bc-${brandId}`);
       let link = card.querySelector('.invoice-link');
       if (!link) { link = document.createElement('a'); link.className = 'invoice-link'; card.appendChild(link); }
       link.href = data.invoiceUrl;
       link.target = '_blank';
-      link.textContent = '🔗 View invoice ↗';
+      link.textContent = data.charged ? '🔗 View receipt ↗' : '🔗 View invoice ↗';
+      // Invalidate history cache so it refreshes next time
+      window._historyLoaded = false;
     } catch(err) {
       alert('Error: ' + err.message);
       btn.disabled = false;
-      btn.textContent = '✅ Approve & Send Invoice';
+      btn.textContent = hasPM ? '⚡ Charge Now' : '✅ Approve & Send Invoice';
     }
+  }
+
+  // ── Billing History ──────────────────────────────────────────────────────────
+  async function loadHistory() {
+    window._historyLoaded = true;
+    const el = document.getElementById('billingHistoryContent');
+    try {
+      const res  = await fetch('/portal-admin/billing/history');
+      if (res.status === 401) { window.location.href = '/portal-admin'; return; }
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || 'Failed');
+      renderHistory(data.clients || []);
+    } catch(err) {
+      el.innerHTML = `<div class="empty-state">Could not load history — ${err.message}</div>`;
+    }
+  }
+
+  function renderHistory(clients) {
+    const el = document.getElementById('billingHistoryContent');
+    const hasAny = clients.some(c => c.invoices?.length > 0);
+    if (!hasAny) { el.innerHTML = '<div class="empty-state">No invoice history yet.</div>'; return; }
+
+    el.innerHTML = clients.filter(c => c.invoices?.length > 0).map(c => {
+      const rows = c.invoices.map(inv => {
+        const date   = inv.paidAt || inv.created;
+        const dateStr = date ? new Date(date * 1000).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }) : '—';
+        const statusClass = inv.status === 'paid' ? 'paid' : inv.status === 'open' ? 'open' : inv.status === 'void' ? 'void' : 'uncollectible';
+        const method = inv.method === 'charge_automatically' ? '⚡ Auto' : '📧 Invoice';
+        return `<tr>
+          <td>${esc(inv.period) || '—'}</td>
+          <td>$${inv.amountPaid}</td>
+          <td><span class="hist-status ${statusClass}">${esc(inv.status)}</span></td>
+          <td>${dateStr}</td>
+          <td>${method}</td>
+          <td>${inv.hostedUrl ? `<a href="${esc(inv.hostedUrl)}" target="_blank" style="color:var(--teal);text-decoration:none;font-size:0.75rem;">View ↗</a>` : '—'}</td>
+        </tr>`;
+      }).join('');
+      return `
+        <div class="hist-client-header">${esc(c.name)}</div>
+        <table class="hist-table">
+          <thead><tr><th>Period</th><th>Amount</th><th>Status</th><th>Date</th><th>Method</th><th></th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+    }).join('');
   }
 
   load();

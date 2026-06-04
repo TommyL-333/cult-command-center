@@ -2032,87 +2032,54 @@ app.post('/portal-admin/logout', (req, res) => {
 });
 
 // ─── Shared GMV Fetch ─────────────────────────────────────────────────────────
-// Fetches net product sales from TikTok Shop Finance API (Earnings Analytics).
-// Uses per-brand token. Falls back to regular orders search, then to cached value.
+// Fetches net product sales from TikTok Shop orders API.
+// opts.startTs / opts.endTs allow custom date ranges (default: rolling 30 days).
 // Always persists result to brands.json so billing preview can read it.
-async function fetchNetGmvForBrand(brand, brandsObj, brandIdx) {
+async function fetchNetGmvForBrand(brand, brandsObj, brandIdx, opts = {}) {
   if (!brand.tiktokShopToken?.access_token) return brand.cachedNetGmv ?? null;
-  const now   = Math.floor(Date.now() / 1000);
-  const start = now - 30 * 24 * 60 * 60;
+  const now   = opts.endTs   ?? Math.floor(Date.now() / 1000);
+  const start = opts.startTs ?? (now - 30 * 24 * 60 * 60);
   let netGmv  = null;
 
-  // Try 1: Finance orders search — matches "Finance → Earnings Analytics → Net Product Sales" in Seller Center
+  // Orders search (finance/202309 requires scope we don't have; use order/202309)
   try {
-    const resp = await ttsBrandPost(brand, brandsObj, brandIdx, '/finance/202309/orders/search', {
+    const resp = await ttsBrandPost(brand, brandsObj, brandIdx, '/order/202309/orders/search', {
       create_time_ge: start,
       create_time_lt: now,
-      page_size: 100,
-    });
-    console.log(`[gmv] ${brand.name} finance orders raw:`, JSON.stringify(resp?.data).slice(0, 400));
-    const orders = resp?.data?.orders || resp?.data?.finance_order_list || resp?.data?.list || [];
-    const CANCEL = new Set([140, 121, 4, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND']);
+      sort_field: 'create_time',
+      sort_order: 'DESC',
+    }, { page_size: 100 });
+    const orders = resp?.data?.orders || resp?.data?.order_list || [];
     if (orders.length > 0) {
-      netGmv = 0;
-      for (const o of orders) {
-        const status = o.order_status ?? o.status;
-        if (status !== undefined && CANCEL.has(status)) continue;
-        netGmv += parseFloat(
-          o.seller_income ??
-          o.net_product_sales ??
-          o.settlement_amount ??
-          o.payment_info?.sub_total ??
-          o.payment_info?.total_amount ??
-          o.total_amount ?? 0
-        );
-      }
-      console.log(`[gmv] ${brand.name} finance GMV = ${netGmv} (${orders.length} records)`);
+      console.log(`[gmv] ${brand.name} first order keys:`, JSON.stringify(orders[0]));
+    } else {
+      console.log(`[gmv] ${brand.name} orders: 0 results`);
     }
+    const CANCEL = new Set([140, 121, 4, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND']);
+    netGmv = 0;
+    for (const o of orders) {
+      const status = o.order_status ?? o.status;
+      if (status !== undefined && CANCEL.has(status)) continue;
+      // Try payment_info fields first, then line_items fallback
+      const fromPaymentInfo = parseFloat(
+        o.payment_info?.sub_total ??
+        o.payment_info?.total_amount ??
+        o.payment_info?.original_total_product_price ??
+        o.payment_info?.paid_amount ??
+        o.total_amount ??
+        o.total_price ?? 0
+      ) || 0;
+      // Line items fallback: sum sku_sale_price * quantity
+      const fromLineItems = (o.line_items || []).reduce((sum, item) => {
+        const price = parseFloat(item.sku_sale_price ?? item.sale_price ?? item.original_price ?? 0) || 0;
+        const qty   = parseInt(item.quantity ?? 1, 10) || 1;
+        return sum + price * qty;
+      }, 0);
+      netGmv += fromPaymentInfo > 0 ? fromPaymentInfo : fromLineItems;
+    }
+    console.log(`[gmv] ${brand.name} orders GMV = ${netGmv} (${orders.length} orders)`);
   } catch(e) {
-    console.error(`[gmv] finance orders error for ${brand.name}:`, e.message, '| body:', JSON.stringify(e.response?.data || '').slice(0, 300));
-  }
-
-  // Try 2: Regular orders search fallback
-  if (netGmv === null) {
-    try {
-      const resp = await ttsBrandPost(brand, brandsObj, brandIdx, '/order/202309/orders/search', {
-        create_time_ge: start,
-        create_time_lt: now,
-        sort_field: 'create_time',
-        sort_order: 'DESC',
-      }, { page_size: 100 });
-      const orders = resp?.data?.orders || resp?.data?.order_list || [];
-      // Log first order fully so we can see actual field names
-      if (orders.length > 0) {
-        console.log(`[gmv] ${brand.name} first order keys:`, JSON.stringify(orders[0]));
-      } else {
-        console.log(`[gmv] ${brand.name} orders: 0 results`);
-      }
-      const CANCEL = new Set([140, 121, 4, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND']);
-      netGmv = 0;
-      for (const o of orders) {
-        const status = o.order_status ?? o.status;
-        if (status !== undefined && CANCEL.has(status)) continue;
-        // Try payment_info fields first, then line_items fallback
-        const fromPaymentInfo = parseFloat(
-          o.payment_info?.sub_total ??
-          o.payment_info?.total_amount ??
-          o.payment_info?.original_total_product_price ??
-          o.payment_info?.paid_amount ??
-          o.total_amount ??
-          o.total_price ?? 0
-        ) || 0;
-        // Line items fallback: sum sale_price * quantity for each SKU
-        const fromLineItems = (o.line_items || []).reduce((sum, item) => {
-          const price = parseFloat(item.sku_sale_price ?? item.sale_price ?? item.original_price ?? 0) || 0;
-          const qty   = parseInt(item.quantity ?? 1, 10) || 1;
-          return sum + price * qty;
-        }, 0);
-        netGmv += fromPaymentInfo > 0 ? fromPaymentInfo : fromLineItems;
-      }
-      console.log(`[gmv] ${brand.name} orders GMV = ${netGmv} (${orders.length} orders)`);
-    } catch(e) {
-      console.error(`[gmv] orders error for ${brand.name}:`, e.message, '| body:', JSON.stringify(e.response?.data || '').slice(0, 300));
-    }
+    console.error(`[gmv] orders error for ${brand.name}:`, e.message, '| body:', JSON.stringify(e.response?.data || '').slice(0, 300));
   }
 
   // Persist to brands.json cache
@@ -2146,27 +2113,63 @@ function clientBilling(b) {
   return { retainer, commRate, gmv, revShare, total, billingEmail };
 }
 
-// GET /portal-admin/billing/preview — fetch live GMV + show pending invoice amounts for all active clients
-app.get('/portal-admin/billing/preview', requirePortalAdmin, async (req, res) => {
-  const brands = loadBrands();
-  const now    = new Date();
-  const period = now.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+// Shared helper: compute next billing date (1st of next month) and days until
+function billingCycle() {
+  const now  = new Date();
+  const next = new Date(now.getFullYear(), now.getMonth() + 1, 1); // 1st of next month
+  const msLeft = next.getTime() - now.getTime();
+  const daysLeft = Math.ceil(msLeft / (1000 * 60 * 60 * 24));
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  return {
+    period:        now.toLocaleString('en-US', { month: 'long', year: 'numeric' }),
+    monthStart:    Math.floor(monthStart.getTime() / 1000),
+    nowTs:         Math.floor(now.getTime() / 1000),
+    nextBillingDate: next.toISOString().slice(0, 10),       // e.g. "2026-07-01"
+    nextBillingLabel: next.toLocaleString('en-US', { month: 'long', day: 'numeric' }), // "July 1"
+    daysUntilBilling: daysLeft,
+    dataPeriod: `${now.toLocaleString('en-US', { month:'short', day:'numeric' })} – ${now.toLocaleString('en-US', { month:'short', day:'numeric' })}` // overwritten below
+  };
+}
 
-  // Only include active clients (Contract Signed or no pipelineStage = original clients)
-  const active = (brands.clients || []).filter(b =>
+// Shared helper: check if a Stripe customer has a saved payment method
+async function stripeHasPaymentMethod(customerId) {
+  if (!stripe || !customerId) return false;
+  try {
+    const cust = await stripe.customers.retrieve(customerId, {
+      expand: ['invoice_settings.default_payment_method', 'default_source'],
+    });
+    return !!(cust.invoice_settings?.default_payment_method || cust.default_source);
+  } catch(_) { return false; }
+}
+
+// GET /portal-admin/billing/preview — current-month GMV + invoice amounts + payment method status
+app.get('/portal-admin/billing/preview', requirePortalAdmin, async (req, res) => {
+  const cycle = billingCycle();
+  const now   = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  // dataPeriod label: "Jun 1–4" style
+  const startLabel = monthStart.toLocaleString('en-US', { month: 'short', day: 'numeric' });
+  const endLabel   = now.toLocaleString('en-US', { month: 'short', day: 'numeric' });
+  cycle.dataPeriod = startLabel === endLabel ? startLabel : `${startLabel}–${endLabel}`;
+
+  // Only include active clients
+  const allBrands = loadBrands();
+  const active = (allBrands.clients || []).filter(b =>
     !b.pipelineStage || b.pipelineStage === 'Contract Signed'
   );
 
-  // Fetch live GMV for all active clients in parallel (Finance → Earnings Analytics)
-  const allBrands = loadBrands();
-  const gmvResults = await Promise.allSettled(
-    active.map(b => {
+  // Fetch live GMV (current month) + payment method status in parallel
+  const [gmvResults, pmResults] = await Promise.all([
+    Promise.allSettled(active.map((b, i) => {
       const idx = (allBrands.clients || []).findIndex(c => c.id === b.id);
-      return fetchNetGmvForBrand(allBrands.clients[idx] || b, allBrands, idx);
-    })
-  );
+      return fetchNetGmvForBrand(allBrands.clients[idx] || b, allBrands, idx, {
+        startTs: cycle.monthStart, endTs: cycle.nowTs,
+      });
+    })),
+    Promise.allSettled(active.map(b => stripeHasPaymentMethod(b.stripeCustomerId))),
+  ]);
 
-  // Re-load brands after GMV fetch (fetchNetGmvForBrand saves updated cache)
+  // Re-load after GMV cache writes
   const freshBrands = loadBrands();
   const freshActive = (freshBrands.clients || []).filter(b =>
     !b.pipelineStage || b.pipelineStage === 'Contract Signed'
@@ -2174,30 +2177,99 @@ app.get('/portal-admin/billing/preview', requirePortalAdmin, async (req, res) =>
 
   const previews = freshActive.map((b, i) => {
     const liveGmv = gmvResults[i]?.status === 'fulfilled' ? gmvResults[i].value : null;
-    const bill = clientBilling(b);
-    const gmv  = liveGmv ?? bill.gmv;
-    const commRate  = bill.commRate;
-    const retainer  = bill.retainer;
-    const revShare  = parseFloat((gmv * commRate).toFixed(2));
-    const total     = parseFloat((retainer + revShare).toFixed(2));
+    const hasPaymentMethod = pmResults[i]?.status === 'fulfilled' ? pmResults[i].value : false;
+    const bill     = clientBilling(b);
+    const gmv      = liveGmv ?? bill.gmv;
+    const commRate = bill.commRate;
+    const retainer = bill.retainer;
+    const revShare = parseFloat((gmv * commRate).toFixed(2));
+    const total    = parseFloat((retainer + revShare).toFixed(2));
     return {
-      id:           b.id,
-      name:         b.name,
-      billingEmail: bill.billingEmail,
-      period,
+      id:               b.id,
+      name:             b.name,
+      billingEmail:     bill.billingEmail,
+      period:           cycle.period,
+      dataPeriod:       cycle.dataPeriod,
+      nextBillingDate:  cycle.nextBillingDate,
+      nextBillingLabel: cycle.nextBillingLabel,
+      daysUntilBilling: cycle.daysUntilBilling,
       retainer,
       gmv,
       commRate,
       revShare,
       total,
-      gmvUpdatedAt: b.cachedGmvAt || null,
+      hasPaymentMethod,
+      gmvUpdatedAt:     b.cachedGmvAt || null,
       stripeCustomerId: b.stripeCustomerId || null,
       lastInvoiceId:    b.lastInvoiceId || null,
       lastInvoiceUrl:   b.lastInvoiceUrl || null,
       lastInvoicedAt:   b.lastInvoicedAt || null,
     };
   });
-  res.json({ ok: true, period, previews });
+  res.json({ ok: true, period: cycle.period, dataPeriod: cycle.dataPeriod, nextBillingLabel: cycle.nextBillingLabel, daysUntilBilling: cycle.daysUntilBilling, previews });
+});
+
+// GET /portal-admin/billing/history — Stripe invoice history for all active clients
+app.get('/portal-admin/billing/history', requirePortalAdmin, async (req, res) => {
+  if (!stripe) return res.status(503).json({ error: 'Stripe not configured' });
+  const brands = loadBrands();
+  const active = (brands.clients || []).filter(b =>
+    !b.pipelineStage || b.pipelineStage === 'Contract Signed'
+  );
+  const results = await Promise.allSettled(active.map(async b => {
+    if (!b.stripeCustomerId) return { id: b.id, name: b.name, invoices: [] };
+    const list = await stripe.invoices.list({ customer: b.stripeCustomerId, limit: 24 });
+    return {
+      id:   b.id,
+      name: b.name,
+      invoices: list.data.map(inv => ({
+        id:         inv.id,
+        amountDue:  (inv.amount_due  / 100).toFixed(2),
+        amountPaid: (inv.amount_paid / 100).toFixed(2),
+        status:     inv.status,              // draft / open / paid / void / uncollectible
+        created:    inv.created,             // unix ts
+        paidAt:     inv.status_transitions?.paid_at || null,
+        dueDate:    inv.due_date || null,
+        hostedUrl:  inv.hosted_invoice_url || null,
+        period:     inv.description || inv.metadata?.period || '',
+        method:     inv.collection_method,   // send_invoice | charge_automatically
+      })),
+    };
+  }));
+  res.json({
+    ok: true,
+    clients: results.map(r => r.status === 'fulfilled' ? r.value : null).filter(Boolean),
+  });
+});
+
+// GET /portal-admin/billing/setup-link/:brandId — Stripe Customer Portal link so client can add payment method
+app.get('/portal-admin/billing/setup-link/:brandId', requirePortalAdmin, async (req, res) => {
+  if (!stripe) return res.status(503).json({ error: 'Stripe not configured' });
+  const brands   = loadBrands();
+  const brandIdx = (brands.clients || []).findIndex(b => b.id === req.params.brandId);
+  if (brandIdx === -1) return res.status(404).json({ error: 'Brand not found' });
+  const b    = brands.clients[brandIdx];
+  const bill = clientBilling(b);
+  try {
+    let customerId = b.stripeCustomerId;
+    if (!customerId) {
+      const cust = await stripe.customers.create({
+        name:     b.name,
+        email:    bill.billingEmail,
+        metadata: { brandId: b.id, source: 'cult-content-billing' },
+      });
+      customerId = cust.id;
+      brands.clients[brandIdx].stripeCustomerId = customerId;
+      saveBrands(brands);
+    }
+    const session = await stripe.billingPortal.sessions.create({
+      customer:   customerId,
+      return_url: 'https://portal.cultcontent.cc/portal-admin',
+    });
+    res.json({ ok: true, url: session.url });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // POST /portal-admin/billing/send/:brandId — create + finalize + send Stripe invoice
@@ -2236,55 +2308,65 @@ app.post('/portal-admin/billing/send/:brandId', requirePortalAdmin, express.json
       customerId = customer.id;
     }
 
-    // 2. Create invoice (send_invoice = email with hosted payment link; supports ACH)
+    // 2. Check for saved payment method → auto-charge if available
+    const hasPaymentMethod = await stripeHasPaymentMethod(customerId);
+    const collectionMethod = hasPaymentMethod ? 'charge_automatically' : 'send_invoice';
+
+    // 3. Create invoice
     const invoice = await stripe.invoices.create({
-      customer:           customerId,
-      collection_method:  'send_invoice',
-      days_until_due:     7,
-      description:        `Cult Content — ${period}`,
-      metadata:           { brandId: b.id, period, gmv: String(finalGmv) },
-      auto_advance:       false, // we'll finalize manually below
+      customer:          customerId,
+      collection_method: collectionMethod,
+      ...(collectionMethod === 'send_invoice' ? { days_until_due: 7 } : {}),
+      description:       `Cult Content — ${period}`,
+      metadata:          { brandId: b.id, period, gmv: String(finalGmv) },
+      auto_advance:      false,
     });
 
-    // 3. Add line items
+    // 4. Add line items
     if (finalRetainer > 0) {
       await stripe.invoiceItems.create({
-        customer:   customerId,
-        invoice:    invoice.id,
-        amount:     Math.round(finalRetainer * 100), // cents
-        currency:   'usd',
+        customer:    customerId,
+        invoice:     invoice.id,
+        amount:      Math.round(finalRetainer * 100),
+        currency:    'usd',
         description: `Monthly Retainer — ${period}`,
       });
     }
-
     if (finalRevShare > 0) {
       await stripe.invoiceItems.create({
-        customer:   customerId,
-        invoice:    invoice.id,
-        amount:     Math.round(finalRevShare * 100),
-        currency:   'usd',
+        customer:    customerId,
+        invoice:     invoice.id,
+        amount:      Math.round(finalRevShare * 100),
+        currency:    'usd',
         description: `GMV Revenue Share (${Math.round(finalCommRate * 100)}% of $${finalGmv.toLocaleString()} GMV) — ${period}`,
       });
     }
 
-    // 4. Finalize + send (triggers Stripe email to client)
+    // 5. Finalize — then either charge or send email
     const finalized = await stripe.invoices.finalizeInvoice(invoice.id, { auto_advance: false });
-    await stripe.invoices.sendInvoice(finalized.id);
+    let charged = false;
+    if (hasPaymentMethod) {
+      await stripe.invoices.pay(finalized.id);
+      charged = true;
+    } else {
+      await stripe.invoices.sendInvoice(finalized.id);
+    }
 
-    // 5. Persist stripeCustomerId + last invoice info
+    // 6. Persist
     brands.clients[brandIdx].stripeCustomerId = customerId;
     brands.clients[brandIdx].lastInvoiceId    = finalized.id;
     brands.clients[brandIdx].lastInvoiceUrl   = finalized.hosted_invoice_url;
     brands.clients[brandIdx].lastInvoicedAt   = Date.now();
     saveBrands(brands);
 
-    console.log(`[BILLING] Sent invoice ${finalized.id} to ${b.name} (${finalEmail}) — $${finalTotal}`);
+    console.log(`[BILLING] ${charged ? 'Charged' : 'Sent invoice to'} ${b.name} (${finalEmail}) — $${finalTotal}`);
     res.json({
       ok:         true,
       invoiceId:  finalized.id,
       invoiceUrl: finalized.hosted_invoice_url,
       total:      finalTotal,
       email:      finalEmail,
+      charged,
     });
   } catch (err) {
     console.error('[BILLING] Stripe error:', err.message);
