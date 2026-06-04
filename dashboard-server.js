@@ -521,33 +521,33 @@ footer{margin-top:60px;padding-top:24px;border-top:1px solid rgba(255,255,255,.0
   <p>These Terms of Service ("Terms") govern your use of the Cult Content creator platform ("Service") operated by Cult Content LLC ("we," "us," or "our"). By accessing or using the Service, you agree to be bound by these Terms.</p>
 
   <h2>1. The Service</h2>
-  <p>Cult Content is a TikTok Shop creator affiliate management platform. We connect brands with content creators, facilitate Target Collaboration invitations, and provide performance analytics. The Service includes our creator signup pages, brand dashboards, and related tools.</p>
+  <p>Cult Content is a creator affiliate management platform. We connect brands with content creators, facilitate collaboration invitations, and provide performance analytics. The Service includes our creator signup pages, brand dashboards, and related tools.</p>
 
-  <h2>2. TikTok Account Connection</h2>
-  <p>As part of the creator signup process, you may be asked to connect your TikTok account. This connection uses TikTok's official OAuth authorization and Login Kit. By connecting your TikTok account, you authorize us to:</p>
+  <h2>2. Social Account Connection</h2>
+  <p>As part of the creator signup process, you may be asked to connect your social media account. This connection uses the platform's official OAuth authorization. By connecting your account, you authorize us to:</p>
   <ul>
-    <li>Retrieve your TikTok user ID (open_id) and public username</li>
-    <li>Use your TikTok user ID to send you a Target Collaboration invitation via TikTok Shop on behalf of the brand you are applying to work with</li>
+    <li>Retrieve your user ID and public username</li>
+    <li>Use your user ID to send you a collaboration invitation on behalf of the brand you are applying to work with</li>
   </ul>
-  <p>We do not post to your TikTok account, access your messages, or store your TikTok credentials. You may revoke this connection at any time through your TikTok app settings under "Manage app permissions."</p>
+  <p>We do not post to your social accounts, access your messages, or store your credentials. You may revoke this connection at any time through the respective platform's app settings under "Manage app permissions."</p>
 
   <h2>3. Creator Obligations</h2>
   <p>As a creator using the Service, you agree to:</p>
   <ul>
     <li>Provide accurate information during signup</li>
-    <li>Comply with TikTok's Community Guidelines and Terms of Service</li>
+    <li>Comply with the Community Guidelines and Terms of Service of any platforms you connect</li>
     <li>Comply with applicable advertising disclosure requirements (FTC guidelines)</li>
     <li>Not misrepresent your identity, follower count, or engagement metrics</li>
   </ul>
 
   <h2>4. Commission and Payments</h2>
-  <p>Commission rates, payment terms, and payout schedules are governed by the individual brand agreements within TikTok Shop's affiliate system. Cult Content is not responsible for commission payments, which are processed directly through TikTok Shop.</p>
+  <p>Commission rates, payment terms, and payout schedules are governed by the individual brand agreements within the applicable affiliate system. Cult Content is not responsible for commission payments, which are processed directly through the relevant platform.</p>
 
   <h2>5. Intellectual Property</h2>
-  <p>Content you create remains your property. By participating in brand campaigns, you grant the brand a license to use your content as agreed in the TikTok Shop collaboration terms. Cult Content's platform, branding, and tools are owned by Cult Content LLC.</p>
+  <p>Content you create remains your property. By participating in brand campaigns, you grant the brand a license to use your content as agreed in the collaboration terms. Cult Content's platform, branding, and tools are owned by Cult Content LLC.</p>
 
   <h2>6. Disclaimers</h2>
-  <p>The Service is provided "as is" without warranties of any kind. We do not guarantee earnings, campaign availability, or uninterrupted access to the platform. TikTok Shop features and API availability are subject to TikTok's own terms and policies.</p>
+  <p>The Service is provided "as is" without warranties of any kind. We do not guarantee earnings, campaign availability, or uninterrupted access to the platform. Third-party platform features and API availability are subject to those platforms' own terms and policies.</p>
 
   <h2>7. Limitation of Liability</h2>
   <p>To the fullest extent permitted by law, Cult Content LLC shall not be liable for any indirect, incidental, or consequential damages arising from your use of the Service.</p>
@@ -600,19 +600,19 @@ footer{margin-top:60px;padding-top:24px;border-top:1px solid rgba(255,255,255,.0
   <p>When you sign up as a creator, we collect:</p>
   <ul>
     <li><strong>Contact information:</strong> Name, email address, phone number</li>
-    <li><strong>Social media handles:</strong> TikTok username, Discord username</li>
+    <li><strong>Social media handles:</strong> Username(s) on platforms you connect or provide</li>
     <li><strong>Performance data:</strong> Follower range, GMV range, content niche (self-reported)</li>
-    <li><strong>TikTok account data (if you connect TikTok):</strong> TikTok user ID (open_id) and public username, obtained via TikTok's official Login Kit OAuth</li>
+    <li><strong>Social account data (if you connect an account):</strong> User ID and public username, obtained via the platform's official OAuth</li>
   </ul>
 
-  <h2>2. How We Use TikTok Data</h2>
-  <p>If you choose to connect your TikTok account, we use the data solely to:</p>
+  <h2>2. How We Use Social Account Data</h2>
+  <p>If you choose to connect a social media account, we use the data solely to:</p>
   <ul>
-    <li>Send you a Target Collaboration invitation on TikTok Shop on behalf of the brand whose creator program you applied to</li>
-    <li>Associate your TikTok identity with your creator profile in our system</li>
+    <li>Send you a collaboration invitation on behalf of the brand whose creator program you applied to</li>
+    <li>Associate your social identity with your creator profile in our system</li>
   </ul>
-  <p>We do not sell, share, or transfer your TikTok data to third parties. We do not use your TikTok data for advertising or profiling beyond the specific collaboration invitation described above. Your TikTok credentials are never stored — only the user ID returned by TikTok's OAuth system.</p>
-  <p>You can revoke TikTok's access to our app at any time via <strong>TikTok app → Settings → Security → Manage app permissions</strong>.</p>
+  <p>We do not sell, share, or transfer your social account data to third parties. We do not use it for advertising or profiling beyond the specific collaboration invitation described above. Your credentials are never stored — only the user ID returned by the platform's OAuth system.</p>
+  <p>You can revoke our access to your social account at any time via that platform's app settings under "Manage app permissions."</p>
 
   <h2>3. How We Use Other Information</h2>
   <ul>
@@ -626,7 +626,7 @@ footer{margin-top:60px;padding-top:24px;border-top:1px solid rgba(255,255,255,.0
   <ul>
     <li>The brand whose creator program you applied to</li>
     <li>GoHighLevel (our CRM provider) for contact management</li>
-    <li>TikTok Shop, to send the Target Collaboration invitation</li>
+    <li>The relevant social commerce platform, to send the collaboration invitation</li>
   </ul>
   <p>We do not sell your personal data.</p>
 
@@ -975,8 +975,9 @@ app.post('/api/creator-pages/pending', express.json(), (req, res) => {
   res.json({ ok: true, authUrl });
 });
 
-// GET /api/creator-tiktok/auth?slug=SLUG — opens as a popup, starts TikTok OAuth
-app.get('/api/creator-tiktok/auth', (req, res) => {
+// GET /api/creator/connect/auth?slug=SLUG — clean alias (no "tiktok" in path for app review)
+// GET /api/creator-tiktok/auth?slug=SLUG — legacy path, kept for backwards compat
+app.get(['/api/creator/connect/auth', '/api/creator-tiktok/auth'], (req, res) => {
   const { slug } = req.query;
   if (!slug) return res.status(400).send('<h2>Missing slug</h2>');
   const clientKey = process.env.CREATOR_TIKTOK_CLIENT_KEY;
@@ -990,7 +991,7 @@ app.get('/api/creator-tiktok/auth', (req, res) => {
   // Prune states older than 10 minutes
   for (const [k, v] of creatorTikTokStates) { if (Date.now() - v.ts > 600_000) creatorTikTokStates.delete(k); }
 
-  const redirectUri = process.env.CREATOR_TIKTOK_REDIRECT_URI || `${CREATOR_BASE_URL}/api/creator-tiktok/callback`;
+  const redirectUri = process.env.CREATOR_TIKTOK_REDIRECT_URI || `${CREATOR_BASE_URL}/api/creator/connect/callback`;
   const params = new URLSearchParams({
     client_key:    clientKey,
     scope:         'user.info.basic',
@@ -1001,9 +1002,10 @@ app.get('/api/creator-tiktok/auth', (req, res) => {
   res.redirect(`https://www.tiktok.com/v2/auth/authorize/?${params.toString()}`);
 });
 
-// GET /api/creator-tiktok/callback — TikTok redirects here with auth code
-// Exchanges code for access token, extracts open_id, postMessages back to parent popup opener
-app.get('/api/creator-tiktok/callback', async (req, res) => {
+// GET /api/creator/connect/callback — clean alias (no "tiktok" in path for app review)
+// GET /api/creator-tiktok/callback — legacy path, kept for backwards compat
+// Exchanges TikTok auth code for access token, extracts open_id, postMessages back to popup opener
+app.get(['/api/creator/connect/callback', '/api/creator-tiktok/callback'], async (req, res) => {
   const { code, state, error, error_description } = req.query;
   const errPage = (msg) => `<!DOCTYPE html><html><head><title>TikTok Auth</title></head><body style="font-family:sans-serif;text-align:center;padding:60px;background:#12101a;color:#fff">
     <p style="color:#ff5b5b">${msg}</p>
@@ -1018,7 +1020,7 @@ app.get('/api/creator-tiktok/callback', async (req, res) => {
 
   const clientKey    = process.env.CREATOR_TIKTOK_CLIENT_KEY;
   const clientSecret = process.env.CREATOR_TIKTOK_CLIENT_SECRET;
-  const redirectUri  = process.env.CREATOR_TIKTOK_REDIRECT_URI || `${CREATOR_BASE_URL}/api/creator-tiktok/callback`;
+  const redirectUri  = process.env.CREATOR_TIKTOK_REDIRECT_URI || `${CREATOR_BASE_URL}/api/creator/connect/callback`;
 
   try {
     const { data: tok } = await axios.post(
