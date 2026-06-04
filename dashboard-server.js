@@ -19,6 +19,11 @@ const ffmpeg       = require('fluent-ffmpeg');
 const ffmpegPath   = require('@ffmpeg-installer/ffmpeg').path;
 ffmpeg.setFfmpegPath(ffmpegPath);
 
+// ─── Stripe (client billing) ──────────────────────────────────────────────────
+const stripe = process.env.STRIPE_SECRET_KEY
+  ? require('stripe')(process.env.STRIPE_SECRET_KEY)
+  : null;
+
 // ─── Data directory — use Railway Volume in prod, __dirname locally ───────────
 const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : __dirname;
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -2064,6 +2069,141 @@ app.post('/portal-admin/clear-password', requirePortalAdmin, express.json(), (re
 // POST /portal-admin/logout
 app.post('/portal-admin/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/portal-admin'));
+});
+
+// ─── Client Billing ───────────────────────────────────────────────────────────
+// Helper: normalize billing fields from brands.json (handles both old+new field names)
+function clientBilling(b) {
+  const retainer  = b.retainer ?? b.contractValue ?? 0;
+  const commRate  = b.commissionRate ?? ((b.gmvShare ?? 0) / 100);
+  const gmv       = b.cachedNetGmv ?? 0;
+  const revShare  = parseFloat((gmv * commRate).toFixed(2));
+  const total     = parseFloat((retainer + revShare).toFixed(2));
+  // Extract primary email from contacts string if no loginEmail
+  let billingEmail = b.billingEmail || b.loginEmail || '';
+  if (!billingEmail && b.contacts) {
+    const m = b.contacts.match(/[\w.+-]+@[\w.-]+\.\w+/);
+    if (m) billingEmail = m[0];
+  }
+  return { retainer, commRate, gmv, revShare, total, billingEmail };
+}
+
+// GET /portal-admin/billing/preview — show pending invoice amounts for all clients
+app.get('/portal-admin/billing/preview', requirePortalAdmin, (req, res) => {
+  const brands = loadBrands();
+  const now    = new Date();
+  const period = now.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+
+  const previews = (brands.clients || []).map(b => {
+    const bill = clientBilling(b);
+    return {
+      id:           b.id,
+      name:         b.name,
+      billingEmail: bill.billingEmail,
+      period,
+      retainer:     bill.retainer,
+      gmv:          bill.gmv,
+      commRate:     bill.commRate,
+      revShare:     bill.revShare,
+      total:        bill.total,
+      gmvUpdatedAt: b.cachedGmvAt || null,
+      stripeCustomerId: b.stripeCustomerId || null,
+      lastInvoiceId:    b.lastInvoiceId || null,
+      lastInvoiceUrl:   b.lastInvoiceUrl || null,
+      lastInvoicedAt:   b.lastInvoicedAt || null,
+    };
+  });
+  res.json({ ok: true, period, previews });
+});
+
+// POST /portal-admin/billing/send/:brandId — create + finalize + send Stripe invoice
+app.post('/portal-admin/billing/send/:brandId', requirePortalAdmin, express.json(), async (req, res) => {
+  if (!stripe) return res.status(503).json({ error: 'Stripe not configured — set STRIPE_SECRET_KEY' });
+
+  const brands   = loadBrands();
+  const brandIdx = (brands.clients || []).findIndex(b => b.id === req.params.brandId);
+  if (brandIdx === -1) return res.status(404).json({ error: 'Brand not found' });
+
+  const b    = brands.clients[brandIdx];
+  const bill = clientBilling(b);
+  const now  = new Date();
+  const period = now.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+
+  // Allow override of GMV from request body (in case admin wants to adjust)
+  const overrideGmv = req.body?.gmv != null ? parseFloat(req.body.gmv) : null;
+  const finalGmv    = overrideGmv ?? bill.gmv;
+  const finalRevShare = parseFloat((finalGmv * bill.commRate).toFixed(2));
+  const finalTotal    = parseFloat((bill.retainer + finalRevShare).toFixed(2));
+
+  if (!bill.billingEmail) return res.status(400).json({ error: 'No billing email for this client' });
+  if (finalTotal <= 0)    return res.status(400).json({ error: 'Invoice total is $0 — nothing to bill' });
+
+  try {
+    // 1. Create or retrieve Stripe customer
+    let customerId = b.stripeCustomerId;
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        name:  b.name,
+        email: bill.billingEmail,
+        metadata: { brandId: b.id, source: 'cult-content-billing' },
+      });
+      customerId = customer.id;
+    }
+
+    // 2. Create invoice (send_invoice = email with hosted payment link; supports ACH)
+    const invoice = await stripe.invoices.create({
+      customer:           customerId,
+      collection_method:  'send_invoice',
+      days_until_due:     7,
+      description:        `Cult Content — ${period}`,
+      metadata:           { brandId: b.id, period, gmv: String(finalGmv) },
+      auto_advance:       false, // we'll finalize manually below
+    });
+
+    // 3. Add line items
+    if (bill.retainer > 0) {
+      await stripe.invoiceItems.create({
+        customer:   customerId,
+        invoice:    invoice.id,
+        amount:     Math.round(bill.retainer * 100), // cents
+        currency:   'usd',
+        description: `Monthly Retainer — ${period}`,
+      });
+    }
+
+    if (finalRevShare > 0) {
+      await stripe.invoiceItems.create({
+        customer:   customerId,
+        invoice:    invoice.id,
+        amount:     Math.round(finalRevShare * 100),
+        currency:   'usd',
+        description: `GMV Revenue Share (${Math.round(bill.commRate * 100)}% of $${finalGmv.toLocaleString()} GMV) — ${period}`,
+      });
+    }
+
+    // 4. Finalize + send (triggers Stripe email to client)
+    const finalized = await stripe.invoices.finalizeInvoice(invoice.id, { auto_advance: false });
+    await stripe.invoices.sendInvoice(finalized.id);
+
+    // 5. Persist stripeCustomerId + last invoice info
+    brands.clients[brandIdx].stripeCustomerId = customerId;
+    brands.clients[brandIdx].lastInvoiceId    = finalized.id;
+    brands.clients[brandIdx].lastInvoiceUrl   = finalized.hosted_invoice_url;
+    brands.clients[brandIdx].lastInvoicedAt   = Date.now();
+    saveBrands(brands);
+
+    console.log(`[BILLING] Sent invoice ${finalized.id} to ${b.name} (${bill.billingEmail}) — $${finalTotal}`);
+    res.json({
+      ok:         true,
+      invoiceId:  finalized.id,
+      invoiceUrl: finalized.hosted_invoice_url,
+      total:      finalTotal,
+      email:      bill.billingEmail,
+    });
+  } catch (err) {
+    console.error('[BILLING] Stripe error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // POST /portal-admin/fix-shop-cipher/:brandId — refresh token + fetch + store shop_cipher for a brand

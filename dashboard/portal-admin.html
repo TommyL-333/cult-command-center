@@ -213,6 +213,68 @@
     .view-btn:hover { opacity: 0.88; }
     .view-btn:disabled { opacity: 0.5; cursor: default; }
 
+    /* View toggle */
+    .view-toggle {
+      padding: 7px 18px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+    .view-toggle.active {
+      background: rgba(0,242,234,0.12);
+      border-color: rgba(0,242,234,0.35);
+      color: var(--teal);
+    }
+
+    /* Billing cards */
+    .billing-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .billing-card.sent { border-color: rgba(0,210,122,0.3); }
+    .billing-name { font-size: 1rem; font-weight: 700; }
+    .billing-email { font-size: 0.75rem; color: var(--muted); margin-top:2px; }
+    .billing-line { display:flex; justify-content:space-between; font-size:0.82rem; padding: 5px 0; border-bottom: 1px solid var(--border); }
+    .billing-line:last-of-type { border-bottom: none; }
+    .billing-line .lbl { color: var(--muted); }
+    .billing-line .amt { font-weight: 600; color: var(--text); }
+    .billing-total { display:flex; justify-content:space-between; padding: 10px 0 4px; border-top: 1px solid var(--border); }
+    .billing-total .lbl { font-weight: 700; font-size: 0.9rem; }
+    .billing-total .amt { font-size: 1.1rem; font-weight: 800; color: var(--teal); }
+    .gmv-edit { background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 0.82rem; padding: 3px 7px; width: 100px; text-align: right; font-family: inherit; outline: none; }
+    .gmv-edit:focus { border-color: var(--teal); }
+    .send-btn {
+      width: 100%;
+      background: var(--teal);
+      color: var(--bg);
+      font-size: 0.85rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 9px;
+      padding: 11px;
+      cursor: pointer;
+      transition: opacity 0.15s;
+      font-family: inherit;
+      margin-top: auto;
+    }
+    .send-btn:hover { opacity: 0.88; }
+    .send-btn:disabled { opacity: 0.45; cursor: default; }
+    .send-btn.sent { background: var(--green); }
+    .invoice-link { font-size: 0.75rem; color: var(--teal); text-decoration: none; text-align: center; display: block; margin-top: 4px; }
+    .invoice-link:hover { text-decoration: underline; }
+    .no-email-warn { font-size: 0.75rem; color: #ffcc00; background: rgba(255,204,0,0.08); border: 1px solid rgba(255,204,0,0.2); border-radius: 6px; padding: 5px 10px; }
+
     /* Empty / loading states */
     .empty-state {
       text-align: center;
@@ -261,10 +323,32 @@
   <h1 class="page-title">Client Portal <span class="count-pill" id="clientCount">—</span></h1>
   <p class="page-sub">View and manage all brand accounts.</p>
 
+  <!-- View toggle -->
+  <div style="display:flex;gap:8px;margin-bottom:22px;">
+    <button class="view-toggle active" id="btnClients" onclick="setView('clients')">👤 Clients</button>
+    <button class="view-toggle" id="btnBilling" onclick="setView('billing')">💰 Billing</button>
+  </div>
+
   <div class="error-msg" id="errMsg"></div>
 
-  <div class="client-grid" id="clientGrid">
-    <div class="empty-state"><span class="spinner"></span>Loading clients…</div>
+  <!-- Clients view -->
+  <div id="viewClients">
+    <div class="client-grid" id="clientGrid">
+      <div class="empty-state"><span class="spinner"></span>Loading clients…</div>
+    </div>
+  </div>
+
+  <!-- Billing view -->
+  <div id="viewBilling" style="display:none;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
+      <div>
+        <div style="font-size:1.05rem;font-weight:700;" id="billingPeriod">Loading…</div>
+        <div style="font-size:0.78rem;color:var(--muted);margin-top:3px;">Review each invoice below, then approve to send via Stripe. Clients receive an email with a hosted payment link (card or ACH bank debit).</div>
+      </div>
+    </div>
+    <div id="billingGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;">
+      <div class="empty-state"><span class="spinner"></span>Loading billing data…</div>
+    </div>
   </div>
 </main>
 
@@ -406,6 +490,123 @@
   async function doLogout() {
     await fetch('/portal-admin/logout', { method: 'POST' });
     window.location.href = '/portal-admin';
+  }
+
+  // ── View toggle ────────────────────────────────────────────────────────────
+  function setView(v) {
+    document.getElementById('viewClients').style.display = v === 'clients' ? '' : 'none';
+    document.getElementById('viewBilling').style.display = v === 'billing' ? '' : 'none';
+    document.getElementById('btnClients').classList.toggle('active', v === 'clients');
+    document.getElementById('btnBilling').classList.toggle('active', v === 'billing');
+    if (v === 'billing' && !window._billingLoaded) loadBilling();
+  }
+
+  // ── Billing ─────────────────────────────────────────────────────────────────
+  async function loadBilling() {
+    window._billingLoaded = true;
+    const grid = document.getElementById('billingGrid');
+    try {
+      const res  = await fetch('/portal-admin/billing/preview');
+      if (res.status === 401) { window.location.href = '/portal-admin'; return; }
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || 'Failed');
+      document.getElementById('billingPeriod').textContent = `${data.period} Invoices`;
+      renderBilling(data.previews || []);
+    } catch(err) {
+      grid.innerHTML = `<div class="empty-state">Could not load billing data — ${err.message}</div>`;
+    }
+  }
+
+  function renderBilling(previews) {
+    const grid = document.getElementById('billingGrid');
+    if (!previews.length) { grid.innerHTML = '<div class="empty-state">No clients to bill.</div>'; return; }
+
+    grid.innerHTML = previews.map(p => {
+      const alreadySent = !!p.lastInvoicedAt;
+      const noEmail     = !p.billingEmail;
+      const noTotal     = p.total <= 0;
+      const sentAgo     = p.lastInvoicedAt ? timeAgo(p.lastInvoicedAt) : null;
+      return `
+      <div class="billing-card${alreadySent ? ' sent' : ''}" id="bc-${esc(p.id)}">
+        <div>
+          <div class="billing-name">${esc(p.name)}</div>
+          <div class="billing-email">${esc(p.billingEmail) || '<em>No billing email</em>'}</div>
+        </div>
+        ${noEmail ? `<div class="no-email-warn">⚠️ No email — add billingEmail or loginEmail to brands.json</div>` : ''}
+
+        <div>
+          <div class="billing-line">
+            <span class="lbl">Monthly Retainer</span>
+            <span class="amt">${p.retainer > 0 ? '$'+p.retainer.toLocaleString() : '<em style="color:#64748b">—</em>'}</span>
+          </div>
+          <div class="billing-line">
+            <span class="lbl">30-Day GMV <span style="font-size:0.72rem;color:#64748b">(${Math.round(p.commRate*100)}% share)</span></span>
+            <span class="amt" style="display:flex;align-items:center;gap:6px;">
+              $<input class="gmv-edit" type="number" id="gmv-${esc(p.id)}" value="${p.gmv.toFixed(2)}" oninput="recalcCard('${esc(p.id)}',${p.retainer},${p.commRate})">
+            </span>
+          </div>
+          <div class="billing-line">
+            <span class="lbl">Rev Share</span>
+            <span class="amt" id="rs-${esc(p.id)}">$${p.revShare.toFixed(2)}</span>
+          </div>
+        </div>
+
+        <div class="billing-total">
+          <span class="lbl">Total Due</span>
+          <span class="amt" id="tot-${esc(p.id)}">$${p.total.toFixed(2)}</span>
+        </div>
+
+        <button class="send-btn${alreadySent ? ' sent' : ''}" id="sendbtn-${esc(p.id)}"
+          onclick="sendInvoice('${esc(p.id)}','${esc(p.name)}')"
+          ${noEmail || noTotal ? 'disabled' : ''}>
+          ${alreadySent ? `✓ Sent ${sentAgo} — Resend?` : '✅ Approve &amp; Send Invoice'}
+        </button>
+        ${p.lastInvoiceUrl ? `<a class="invoice-link" href="${esc(p.lastInvoiceUrl)}" target="_blank">🔗 View last invoice ↗</a>` : ''}
+      </div>`;
+    }).join('');
+  }
+
+  function recalcCard(id, retainer, commRate) {
+    const gmvEl = document.getElementById(`gmv-${id}`);
+    const rsEl  = document.getElementById(`rs-${id}`);
+    const totEl = document.getElementById(`tot-${id}`);
+    const gmv     = parseFloat(gmvEl?.value || 0);
+    const revShare = parseFloat((gmv * commRate).toFixed(2));
+    const total    = parseFloat((retainer + revShare).toFixed(2));
+    if (rsEl)  rsEl.textContent  = '$' + revShare.toFixed(2);
+    if (totEl) totEl.textContent = '$' + total.toFixed(2);
+  }
+
+  async function sendInvoice(brandId, name) {
+    const btn   = document.getElementById(`sendbtn-${brandId}`);
+    const gmvEl = document.getElementById(`gmv-${brandId}`);
+    const gmv   = parseFloat(gmvEl?.value || 0);
+    if (!confirm(`Send invoice to ${name}?\n\nThis will create a Stripe invoice and email it to the client immediately.`)) return;
+    btn.disabled = true;
+    btn.textContent = 'Sending…';
+    try {
+      const res  = await fetch(`/portal-admin/billing/send/${brandId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ gmv }),
+      });
+      const data = await res.json();
+      if (!data.ok) throw new Error(data.error || 'Failed');
+      btn.classList.add('sent');
+      btn.textContent = '✓ Invoice Sent!';
+      btn.disabled = false;
+      // Add invoice link
+      const card = document.getElementById(`bc-${brandId}`);
+      let link = card.querySelector('.invoice-link');
+      if (!link) { link = document.createElement('a'); link.className = 'invoice-link'; card.appendChild(link); }
+      link.href = data.invoiceUrl;
+      link.target = '_blank';
+      link.textContent = '🔗 View invoice ↗';
+    } catch(err) {
+      alert('Error: ' + err.message);
+      btn.disabled = false;
+      btn.textContent = '✅ Approve & Send Invoice';
+    }
   }
 
   load();
