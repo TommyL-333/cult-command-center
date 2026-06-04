@@ -3855,19 +3855,28 @@ app.get('/api/admin/shop-metrics-probe/:brandId', async (req, res) => {
   const lastWkParams  = { start_date_ge: week2S, end_date_lt: week1S };
 
   const p202605 = { ...thisWkParams, page_size: 10 };
+  const noDate  = {};
   const endpoints = [
     // Shop performance (confirmed working, v202509)
     ['GET', '/analytics/202509/shop/performance',                  thisWkParams],
-    // Product performance (confirmed path from API Testing Tool: /analytics/{version}/shop_products/performance, v202605)
+    // Product performance (confirmed)
     ['GET', '/analytics/202605/shop_products/performance',         p202605],
-    // Video performance — try likely variants with correct version
+    // Video performance (confirmed)
     ['GET', '/analytics/202605/shop_videos/performance',           p202605],
-    ['GET', '/analytics/202605/video/performance',                 p202605],
-    ['GET', '/analytics/202605/videos/performance',                p202605],
-    ['GET', '/analytics/202605/shop_video/performance',            p202605],
-    // Live
-    ['GET', '/analytics/202605/live/performance',                  p202605],
-    ['GET', '/analytics/202605/shop_live/performance',             p202605],
+    // Shop performance SCORE — probe various likely paths/versions
+    ['GET', '/analytics/202509/shop/score',                        thisWkParams],
+    ['GET', '/analytics/202605/shop/score',                        thisWkParams],
+    ['GET', '/analytics/202509/shop/health',                       noDate],
+    ['GET', '/analytics/202605/shop/health',                       noDate],
+    ['GET', '/seller/202309/shop',                                 noDate],
+    ['GET', '/seller/202309/seller_performance',                   noDate],
+    ['GET', '/seller/202309/performance',                          thisWkParams],
+    ['GET', '/supply_chain/202309/shop_score',                     noDate],
+    ['GET', '/seller_score/202309/shop_score',                     noDate],
+    ['GET', '/analytics/202509/shop/performance_score',            thisWkParams],
+    ['GET', '/analytics/202605/shop/performance_score',            thisWkParams],
+    ['GET', '/analytics/202509/seller/performance',                thisWkParams],
+    ['GET', '/analytics/202605/seller/performance',                thisWkParams],
   ];
 
   for (const [method, path, params] of endpoints) {
