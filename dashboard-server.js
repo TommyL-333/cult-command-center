@@ -634,7 +634,7 @@ footer{margin-top:60px;padding-top:24px;border-top:1px solid rgba(255,255,255,.0
   <p>We retain your information for as long as you are active in the creator program. You may request deletion at any time by emailing <a href="mailto:hello@cultcontent.cc">hello@cultcontent.cc</a>.</p>
 
   <h2>6. Security</h2>
-  <p>We use industry-standard security practices to protect your data. Data is stored on encrypted servers. TikTok OAuth tokens are stored securely and used only to perform authorized actions.</p>
+  <p>We use industry-standard security practices to protect your data. Data is stored on encrypted servers. OAuth tokens are stored securely and used only to perform authorized actions.</p>
 
   <h2>7. Children's Privacy</h2>
   <p>Our Service is not directed at children under 13. We do not knowingly collect personal information from children under 13.</p>
