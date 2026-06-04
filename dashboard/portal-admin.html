@@ -554,15 +554,15 @@
             <div class="metric-val empty" id="m-aov-${esc(c.id)}">—</div>
             <div class="metric-trend flat" id="m-aov-trend-${esc(c.id)}"></div>
           </div>
-          <div class="metric-block" id="m-impressions-block-${esc(c.id)}">
-            <div class="metric-label">Impressions</div>
-            <div class="metric-val empty" id="m-impressions-${esc(c.id)}">—</div>
-            <div class="metric-trend flat" id="m-impressions-trend-${esc(c.id)}"></div>
+          <div class="metric-block" id="m-pageviews-block-${esc(c.id)}">
+            <div class="metric-label">Page Views</div>
+            <div class="metric-val empty" id="m-pageviews-${esc(c.id)}">—</div>
+            <div class="metric-trend flat" id="m-pageviews-trend-${esc(c.id)}"></div>
           </div>
-          <div class="metric-block" id="m-ctr-block-${esc(c.id)}">
-            <div class="metric-label">CTR</div>
-            <div class="metric-val empty" id="m-ctr-${esc(c.id)}">—</div>
-            <div class="metric-trend flat" id="m-ctr-trend-${esc(c.id)}"></div>
+          <div class="metric-block" id="m-visitors-block-${esc(c.id)}">
+            <div class="metric-label">Visitors</div>
+            <div class="metric-val empty" id="m-visitors-${esc(c.id)}">—</div>
+            <div class="metric-trend flat" id="m-visitors-trend-${esc(c.id)}"></div>
           </div>
           <div class="metric-block" id="m-conv-block-${esc(c.id)}">
             <div class="metric-label">Conv. Rate</div>
@@ -622,36 +622,27 @@
       setMetric(`m-orders-${brandId}`, d.thisWeek.orders > 0 ? String(d.thisWeek.orders) + ' orders' : '0',    d.trends.orders);
       setMetric(`m-aov-${brandId}`,    d.thisWeek.aov    > 0 ? fmtMoney(d.thisWeek.aov)              : '$0',   d.trends.aov);
 
-      // Analytics API metrics (from TikTok Shop Analytics scope)
+      // Analytics API metrics (TikTok Shop Analytics scope — /analytics/202509/shop/performance)
       const a = d.analytics?.thisWeek;
       if (a) {
-        const impVal  = fmtNum(a.impressions);
-        const ctrVal  = fmtPct(a.ctr);
-        const convVal = fmtPct(a.convRate);
+        const pvVal   = a.pageViews != null ? fmtNum(a.pageViews) : null;
+        const visVal  = a.visitors  != null ? fmtNum(a.visitors)  : null;
+        // convRate is 0–1 float (e.g. 0.0609 = 6.09%)
+        const convVal = a.convRate  != null ? (a.convRate * 100).toFixed(2) + '%' : null;
 
-        if (impVal  != null) setMetric(`m-impressions-${brandId}`, impVal,  d.trends.impressions);
-        if (ctrVal  != null) setMetric(`m-ctr-${brandId}`,         ctrVal,  d.trends.ctr);
-        if (convVal != null) setMetric(`m-conv-${brandId}`,        convVal, d.trends.convRate);
+        if (pvVal   != null) setMetric(`m-pageviews-${brandId}`, pvVal,   d.trends.pageViews);
+        if (visVal  != null) setMetric(`m-visitors-${brandId}`,  visVal,  d.trends.visitors);
+        if (convVal != null) setMetric(`m-conv-${brandId}`,      convVal, d.trends.convRate);
 
-        // If analytics came back empty, mark blocks as dimmed with a note
-        if (impVal == null) {
-          const blk = document.getElementById(`m-impressions-block-${brandId}`);
-          if (blk) blk.style.opacity = '0.45';
-          const tEl = document.getElementById(`m-impressions-trend-${brandId}`);
-          if (tEl) { tEl.className = 'metric-na'; tEl.textContent = 'analytics pending'; }
-        }
-        if (ctrVal == null) {
-          const blk = document.getElementById(`m-ctr-block-${brandId}`);
-          if (blk) blk.style.opacity = '0.45';
-          const tEl = document.getElementById(`m-ctr-trend-${brandId}`);
-          if (tEl) { tEl.className = 'metric-na'; tEl.textContent = 'analytics pending'; }
-        }
-        if (convVal == null) {
-          const blk = document.getElementById(`m-conv-block-${brandId}`);
-          if (blk) blk.style.opacity = '0.45';
-          const tEl = document.getElementById(`m-conv-trend-${brandId}`);
-          if (tEl) { tEl.className = 'metric-na'; tEl.textContent = 'analytics pending'; }
-        }
+        // Dim any blocks that got no data
+        [['pageviews', pvVal], ['visitors', visVal], ['conv', convVal]].forEach(([key, val]) => {
+          if (val == null) {
+            const blk = document.getElementById(`m-${key}-block-${brandId}`);
+            if (blk) blk.style.opacity = '0.45';
+            const tEl = document.getElementById(`m-${key}-trend-${brandId}`);
+            if (tEl) { tEl.className = 'metric-na'; tEl.textContent = 'no data'; }
+          }
+        });
       }
     } catch(e) { /* silent fail */ }
   }

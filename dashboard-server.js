@@ -2067,32 +2067,43 @@ app.get('/portal-admin/shop-metrics/:brandId', requirePortalAdmin, async (req, r
   }
 
   // Fetch TikTok Shop Analytics API (scope: data.shop_analytics.public.read)
-  // Path: /analytics/202509/shop/performance
-  // Date format: YYYY-MM-DD (regex: ^2[0-9]{3}-[0,1][0-9]-[0-3][0-9]$)
-  const ANALYTICS_VERSIONS = ['202509'];
+  // Path: /analytics/202509/shop/performance  Date format: YYYY-MM-DD
+  // Response structure: data.performance.intervals[0].{ sales, traffic }
+  //   traffic.avg_page_views       — product page views (proxy for impressions)
+  //   traffic.avg_visitors         — unique visitors
+  //   traffic.avg_conversation_rate — conversion rate (0–1 float)
+  //   sales.gmv.overall.amount     — GMV string
+  //   sales.orders_count           — order count
   async function fetchShopAnalytics(startDateStr, endDateStr) {
-    const params = { start_date_ge: startDateStr, end_date_lt: endDateStr };
-    for (const ver of ANALYTICS_VERSIONS) {
-      try {
-        const r = await ttsBrandGet(brand, brands, bi, `/analytics/${ver}/shop/performance`, params);
-        const d = r?.data?.data || r?.data;
-        if (d && typeof d === 'object' && Object.keys(d).length > 0) {
-          console.log(`[analytics] ${brand.name} v${ver} shop/performance:`, JSON.stringify(d).slice(0, 300));
-          return d;
-        }
-      } catch(e) {
-        // Try next version
-        console.log(`[analytics] ${brand.name} v${ver} failed: code=${e.response?.data?.code} msg=${e.response?.data?.message}`);
-      }
+    try {
+      const r = await ttsBrandGet(brand, brands, bi, '/analytics/202509/shop/performance',
+        { start_date_ge: startDateStr, end_date_lt: endDateStr });
+      const d = r?.data?.data || r?.data;
+      const interval = d?.performance?.intervals?.[0];
+      if (!interval) return null;
+      console.log(`[analytics] ${brand.name} interval:`, JSON.stringify(interval).slice(0, 400));
+      const traffic = interval.traffic || {};
+      const sales   = interval.sales   || {};
+      return {
+        pageViews:   traffic.avg_page_views        != null ? Number(traffic.avg_page_views)        : null,
+        visitors:    traffic.avg_visitors           != null ? Number(traffic.avg_visitors)           : null,
+        convRate:    traffic.avg_conversation_rate  != null ? parseFloat(traffic.avg_conversation_rate) : null,
+        gmv:         parseFloat(sales.gmv?.overall?.amount)   || null,
+        orders:      sales.orders_count             != null ? Number(sales.orders_count)             : null,
+        itemsSold:   sales.items_sold               != null ? Number(sales.items_sold)               : null,
+        refunds:     parseFloat(sales.refunds?.amount)         || null,
+      };
+    } catch(e) {
+      console.log(`[analytics] ${brand.name} failed: code=${e.response?.data?.code} msg=${e.response?.data?.message}`);
+      return null;
     }
-    return null;
   }
 
   try {
     const now    = Math.floor(Date.now() / 1000);
     const week1  = now - 7 * 86400;
     const week2  = week1 - 7 * 86400;
-    const ds     = (ts) => new Date(ts * 1000).toISOString().slice(0,10); // YYYY-MM-DD (TikTok requires dashes)
+    const ds     = (ts) => new Date(ts * 1000).toISOString().slice(0,10); // YYYY-MM-DD
     const todayS = ds(now);
     const w1S    = ds(week1);
     const w2S    = ds(week2);
@@ -2112,32 +2123,9 @@ app.get('/portal-admin/shop-metrics/:brandId', requirePortalAdmin, async (req, r
       return { dir: pct > 1 ? 'up' : pct < -1 ? 'down' : 'flat', pct: Math.round(Math.abs(pct)) };
     }
 
-    // Extract analytics fields — TikTok may use various key names
-    function pick(obj, ...keys) {
-      if (!obj) return null;
-      for (const k of keys) {
-        const v = obj[k];
-        if (v != null && v !== '') return v;
-      }
-      return null;
-    }
-
     const analytics = {
-      thisWeek: {
-        impressions:     pick(analyticsThis, 'impression_count', 'impressions', 'product_impression_count'),
-        clicks:          pick(analyticsThis, 'click_count', 'clicks', 'product_click_count'),
-        ctr:             pick(analyticsThis, 'click_through_rate', 'ctr', 'product_click_rate'),
-        convRate:        pick(analyticsThis, 'conversion_rate', 'cvr', 'order_conversion_rate', 'buyer_conversion_rate'),
-        perfScore:       pick(analyticsThis, 'performance_score', 'shop_performance_score', 'overall_score', 'score'),
-        gmvAnalytics:    pick(analyticsThis, 'gmv', 'total_gmv', 'gmv_amount'),
-      },
-      lastWeek: {
-        impressions:     pick(analyticsLast, 'impression_count', 'impressions', 'product_impression_count'),
-        ctr:             pick(analyticsLast, 'click_through_rate', 'ctr', 'product_click_rate'),
-        convRate:        pick(analyticsLast, 'conversion_rate', 'cvr', 'order_conversion_rate', 'buyer_conversion_rate'),
-        perfScore:       pick(analyticsLast, 'performance_score', 'shop_performance_score', 'overall_score', 'score'),
-      },
-      raw: analyticsThis, // include raw for debugging
+      thisWeek: analyticsThis  || {},
+      lastWeek: analyticsLast  || {},
     };
 
     res.json({
@@ -2147,10 +2135,9 @@ app.get('/portal-admin/shop-metrics/:brandId', requirePortalAdmin, async (req, r
         gmv:        trend(thisWeek.gmv,    lastWeek.gmv),
         orders:     trend(thisWeek.orders, lastWeek.orders),
         aov:        trend(thisWeek.aov,    lastWeek.aov),
-        impressions: trend(analytics.thisWeek.impressions, analytics.lastWeek.impressions),
-        ctr:         trend(analytics.thisWeek.ctr,         analytics.lastWeek.ctr),
-        convRate:    trend(analytics.thisWeek.convRate,    analytics.lastWeek.convRate),
-        perfScore:   trend(analytics.thisWeek.perfScore,   analytics.lastWeek.perfScore),
+        pageViews: trend(analytics.thisWeek.pageViews, analytics.lastWeek.pageViews),
+        visitors:  trend(analytics.thisWeek.visitors,  analytics.lastWeek.visitors),
+        convRate:  trend(analytics.thisWeek.convRate,  analytics.lastWeek.convRate),
       },
       analytics,
     });
