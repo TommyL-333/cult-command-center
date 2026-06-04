@@ -3750,28 +3750,32 @@ app.get('/api/admin/shop-metrics-probe/:brandId', async (req, res) => {
   const weekAgo = now - 7 * 86400;
   const twoWeeksAgo = now - 14 * 86400;
 
-  // Scope data.shop_analytics.public.read (948484) is enabled — probe correct paths
-  const dateStr = (ts) => new Date(ts * 1000).toISOString().slice(0,10).replace(/-/g,'');
-  const dateISO = (ts) => new Date(ts * 1000).toISOString().slice(0,10);
-  const startDate = dateISO(weekAgo);
-  const endDate   = dateISO(now);
+  // Scope data.shop_analytics.public.read (948484) confirmed enabled.
+  // 40006 = schema validation mismatch — try bare calls + different param shapes
+  const ds  = (ts) => new Date(ts * 1000).toISOString().slice(0,10).replace(/-/g,''); // YYYYMMDD
+  const di  = (ts) => new Date(ts * 1000).toISOString().slice(0,10);                  // YYYY-MM-DD
+  const yd  = ds(now - 86400); // yesterday YYYYMMDD
   const endpoints = [
-    // data.* scope — base path likely /data/
-    ['GET',  '/data/202309/shop_performance',          { start_date: startDate, end_date: endDate }],
-    ['GET',  '/data/202312/shop_performance',          { start_date: startDate, end_date: endDate }],
-    ['GET',  '/data/202406/shop_performance',          { start_date: startDate, end_date: endDate }],
-    ['GET',  '/data/202309/product_performance_list',  { start_date: startDate, end_date: endDate }],
-    ['GET',  '/data/202406/product_performance_list',  { start_date: startDate, end_date: endDate }],
-    // analytics prefix variants
-    ['GET',  '/analytics/202309/shop_performance',     { start_date: startDate, end_date: endDate }],
-    ['GET',  '/analytics/202406/shop_performance',     { start_date: startDate, end_date: endDate }],
-    ['GET',  '/analytics/202406/product_performance',  { start_date: startDate, end_date: endDate }],
-    // seller prefix (already tried but now scope is confirmed)
-    ['GET',  '/seller/202309/performance',             { start_date: startDate, end_date: endDate }],
-    ['GET',  '/seller/202406/performance',             { start_date: startDate, end_date: endDate }],
-    // shop_analytics prefix
-    ['GET',  '/shop_analytics/202309/shop_performance', { start_date: startDate, end_date: endDate }],
-    ['GET',  '/shop_analytics/202406/shop_performance', { start_date: startDate, end_date: endDate }],
+    // No params at all — maybe it returns latest data
+    ['GET', '/analytics/202309/shop_performance',  {}],
+    ['GET', '/analytics/202312/shop_performance',  {}],
+    ['GET', '/analytics/202406/shop_performance',  {}],
+    // YYYYMMDD format
+    ['GET', '/analytics/202309/shop_performance',  { start_date: ds(weekAgo), end_date: ds(now) }],
+    ['GET', '/analytics/202406/shop_performance',  { start_date: ds(weekAgo), end_date: ds(now) }],
+    // Single date (query_date = yesterday)
+    ['GET', '/analytics/202309/shop_performance',  { query_date: yd }],
+    ['GET', '/analytics/202406/shop_performance',  { query_date: yd }],
+    ['GET', '/analytics/202406/shop_performance',  { date: yd }],
+    // date_type param (1=daily, 2=weekly, 3=monthly)
+    ['GET', '/analytics/202406/shop_performance',  { date_type: 1, start_date: ds(weekAgo), end_date: ds(now) }],
+    ['GET', '/analytics/202406/shop_performance',  { date_type: '1', start_date: ds(weekAgo), end_date: yd }],
+    // seller/performance with no params
+    ['GET', '/seller/202309/performance',          {}],
+    ['GET', '/seller/202406/performance',          {}],
+    // product performance list — no params or YYYYMMDD
+    ['GET', '/analytics/202406/products_performance_list', { start_date: ds(weekAgo), end_date: yd }],
+    ['GET', '/analytics/202406/product_performance_list',  { start_date: ds(weekAgo), end_date: yd }],
   ];
   for (const [method, path, body] of endpoints) {
     const key = `${method} ${path}${Object.keys(body).length ? ' '+JSON.stringify(body).slice(0,40) : ''}`;
