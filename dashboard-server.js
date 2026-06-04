@@ -1940,48 +1940,8 @@ app.get('/portal-admin/clients', requirePortalAdmin, async (req, res) => {
   const brands = loadBrands();
   const CANCELLED_STATUSES = new Set([140, 121, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND']);
 
-  // Fetch live net GMV using the brand's TikTok Shop token (order.read scope — all orders, not just affiliate)
-  // NOTE: Never falls back to Reacher — Reacher is affiliate-only and always shows lower numbers
-  async function fetchNetGmv(brand, brandIdx) {
-    if (!brand.tiktokShopToken?.access_token) return brand.cachedNetGmv ?? null;
-    let netGmv = null;
-    try {
-      const now   = Math.floor(Date.now() / 1000);
-      const start = now - 30 * 24 * 60 * 60;
-      const resp  = await ttsBrandPost(brand, brands, brandIdx, '/order/202309/orders/search', {
-        create_time_ge: start,
-        create_time_lt: now,
-        sort_field: 'create_time',
-        sort_order: 'DESC',
-      }, { page_size: 100 });
-      console.log(`[admin/clients] TikTok orders raw for ${brand.name}:`, JSON.stringify(resp?.data).slice(0, 300));
-      const orders = resp?.data?.orders || resp?.data?.order_list || [];
-      const CANCEL = new Set([140, 121, 4, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND']);
-      netGmv = 0;
-      for (const o of orders) {
-        const status = o.order_status ?? o.status;
-        if (status !== undefined && CANCEL.has(status)) continue;
-        netGmv += parseFloat(
-          o.payment_info?.sub_total ??
-          o.payment_info?.total_amount ??
-          o.total_amount ?? 0
-        );
-      }
-      console.log(`[admin/clients] ${brand.name} net GMV = ${netGmv} (${orders.length} orders)`);
-    } catch(e) {
-      console.error(`[admin/clients] TikTok orders error for ${brand.name}:`, e.message, '| body:', JSON.stringify(e.response?.data).slice(0, 300));
-    }
-    if (netGmv !== null) {
-      try {
-        const snap = loadBrands();
-        if (snap.clients[brandIdx]) { snap.clients[brandIdx].cachedNetGmv = netGmv; snap.clients[brandIdx].cachedGmvAt = Date.now(); saveBrands(snap); }
-      } catch(_) {}
-    }
-    return netGmv ?? (brand.cachedNetGmv ?? null);
-  }
-
   const gmvResults = await Promise.allSettled(
-    (brands.clients || []).map((b, i) => fetchNetGmv(b, i))
+    (brands.clients || []).map((b, i) => fetchNetGmvForBrand(b, brands, i))
   );
 
   const clients = (brands.clients || []).map((b, i) => {
@@ -2071,6 +2031,88 @@ app.post('/portal-admin/logout', (req, res) => {
   req.session.destroy(() => res.redirect('/portal-admin'));
 });
 
+// ─── Shared GMV Fetch ─────────────────────────────────────────────────────────
+// Fetches net product sales from TikTok Shop Finance API (Earnings Analytics).
+// Uses per-brand token. Falls back to regular orders search, then to cached value.
+// Always persists result to brands.json so billing preview can read it.
+async function fetchNetGmvForBrand(brand, brandsObj, brandIdx) {
+  if (!brand.tiktokShopToken?.access_token) return brand.cachedNetGmv ?? null;
+  const now   = Math.floor(Date.now() / 1000);
+  const start = now - 30 * 24 * 60 * 60;
+  let netGmv  = null;
+
+  // Try 1: Finance orders search — matches "Finance → Earnings Analytics → Net Product Sales" in Seller Center
+  try {
+    const resp = await ttsBrandPost(brand, brandsObj, brandIdx, '/finance/202309/orders/search', {
+      create_time_ge: start,
+      create_time_lt: now,
+      page_size: 100,
+    });
+    console.log(`[gmv] ${brand.name} finance orders raw:`, JSON.stringify(resp?.data).slice(0, 400));
+    const orders = resp?.data?.orders || resp?.data?.finance_order_list || resp?.data?.list || [];
+    const CANCEL = new Set([140, 121, 4, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND']);
+    if (orders.length > 0) {
+      netGmv = 0;
+      for (const o of orders) {
+        const status = o.order_status ?? o.status;
+        if (status !== undefined && CANCEL.has(status)) continue;
+        netGmv += parseFloat(
+          o.seller_income ??
+          o.net_product_sales ??
+          o.settlement_amount ??
+          o.payment_info?.sub_total ??
+          o.payment_info?.total_amount ??
+          o.total_amount ?? 0
+        );
+      }
+      console.log(`[gmv] ${brand.name} finance GMV = ${netGmv} (${orders.length} records)`);
+    }
+  } catch(e) {
+    console.error(`[gmv] finance orders error for ${brand.name}:`, e.message, '| body:', JSON.stringify(e.response?.data || '').slice(0, 300));
+  }
+
+  // Try 2: Regular orders search fallback
+  if (netGmv === null) {
+    try {
+      const resp = await ttsBrandPost(brand, brandsObj, brandIdx, '/order/202309/orders/search', {
+        create_time_ge: start,
+        create_time_lt: now,
+        sort_field: 'create_time',
+        sort_order: 'DESC',
+      }, { page_size: 100 });
+      console.log(`[gmv] ${brand.name} orders raw:`, JSON.stringify(resp?.data).slice(0, 300));
+      const orders = resp?.data?.orders || resp?.data?.order_list || [];
+      const CANCEL = new Set([140, 121, 4, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND']);
+      netGmv = 0;
+      for (const o of orders) {
+        const status = o.order_status ?? o.status;
+        if (status !== undefined && CANCEL.has(status)) continue;
+        netGmv += parseFloat(
+          o.payment_info?.sub_total ??
+          o.payment_info?.total_amount ??
+          o.total_amount ?? 0
+        );
+      }
+      console.log(`[gmv] ${brand.name} orders GMV = ${netGmv} (${orders.length} orders)`);
+    } catch(e) {
+      console.error(`[gmv] orders error for ${brand.name}:`, e.message, '| body:', JSON.stringify(e.response?.data || '').slice(0, 300));
+    }
+  }
+
+  // Persist to brands.json cache
+  if (netGmv !== null) {
+    try {
+      const snap = loadBrands();
+      if (snap.clients[brandIdx]) {
+        snap.clients[brandIdx].cachedNetGmv = netGmv;
+        snap.clients[brandIdx].cachedGmvAt  = Date.now();
+        saveBrands(snap);
+      }
+    } catch(_) {}
+  }
+  return netGmv ?? (brand.cachedNetGmv ?? null);
+}
+
 // ─── Client Billing ───────────────────────────────────────────────────────────
 // Helper: normalize billing fields from brands.json (handles both old+new field names)
 function clientBilling(b) {
@@ -2088,8 +2130,8 @@ function clientBilling(b) {
   return { retainer, commRate, gmv, revShare, total, billingEmail };
 }
 
-// GET /portal-admin/billing/preview — show pending invoice amounts for all clients
-app.get('/portal-admin/billing/preview', requirePortalAdmin, (req, res) => {
+// GET /portal-admin/billing/preview — fetch live GMV + show pending invoice amounts for all active clients
+app.get('/portal-admin/billing/preview', requirePortalAdmin, async (req, res) => {
   const brands = loadBrands();
   const now    = new Date();
   const period = now.toLocaleString('en-US', { month: 'long', year: 'numeric' });
@@ -2099,18 +2141,39 @@ app.get('/portal-admin/billing/preview', requirePortalAdmin, (req, res) => {
     !b.pipelineStage || b.pipelineStage === 'Contract Signed'
   );
 
-  const previews = active.map(b => {
+  // Fetch live GMV for all active clients in parallel (Finance → Earnings Analytics)
+  const allBrands = loadBrands();
+  const gmvResults = await Promise.allSettled(
+    active.map(b => {
+      const idx = (allBrands.clients || []).findIndex(c => c.id === b.id);
+      return fetchNetGmvForBrand(allBrands.clients[idx] || b, allBrands, idx);
+    })
+  );
+
+  // Re-load brands after GMV fetch (fetchNetGmvForBrand saves updated cache)
+  const freshBrands = loadBrands();
+  const freshActive = (freshBrands.clients || []).filter(b =>
+    !b.pipelineStage || b.pipelineStage === 'Contract Signed'
+  );
+
+  const previews = freshActive.map((b, i) => {
+    const liveGmv = gmvResults[i]?.status === 'fulfilled' ? gmvResults[i].value : null;
     const bill = clientBilling(b);
+    const gmv  = liveGmv ?? bill.gmv;
+    const commRate  = bill.commRate;
+    const retainer  = bill.retainer;
+    const revShare  = parseFloat((gmv * commRate).toFixed(2));
+    const total     = parseFloat((retainer + revShare).toFixed(2));
     return {
       id:           b.id,
       name:         b.name,
       billingEmail: bill.billingEmail,
       period,
-      retainer:     bill.retainer,
-      gmv:          bill.gmv,
-      commRate:     bill.commRate,
-      revShare:     bill.revShare,
-      total:        bill.total,
+      retainer,
+      gmv,
+      commRate,
+      revShare,
+      total,
       gmvUpdatedAt: b.cachedGmvAt || null,
       stripeCustomerId: b.stripeCustomerId || null,
       lastInvoiceId:    b.lastInvoiceId || null,
@@ -2453,33 +2516,13 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
       try {
         const shopId = brand.shopId;
 
-        // GMV: TikTok Shop orders search (order.read scope — covers all orders, not just affiliate)
-        // NOTE: No Reacher fallback — Reacher is affiliate-only and shows lower numbers
+        // GMV: Use shared fetchNetGmvForBrand (Finance → Earnings Analytics, with orders fallback)
         let gmv = 0, activeCreators = 0;
         try {
-          const now   = Math.floor(Date.now() / 1000);
-          const start = now - 30 * 24 * 60 * 60;
-          const CANCELLED = new Set([140, 121, 4, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND']);
-          const ordersRes = await ttsBrandPost(brand, brands, brandIdx, '/order/202309/orders/search', {
-            create_time_ge: start,
-            create_time_lt: now,
-            sort_field: 'create_time',
-            sort_order: 'DESC',
-          }, { page_size: 100 });
-          console.log(`[client/me] TikTok orders raw for ${brand.name}:`, JSON.stringify(ordersRes?.data).slice(0, 300));
-          const orders = ordersRes?.data?.orders || ordersRes?.data?.order_list || [];
-          for (const o of orders) {
-            const status = o.order_status ?? o.status;
-            if (CANCELLED.has(status)) continue;
-            gmv += parseFloat(
-              o.payment_info?.sub_total ??
-              o.payment_info?.total_amount ??
-              o.total_amount ?? 0
-            );
-          }
-          console.log(`[client/me] ${brand.name} net GMV = ${gmv} (${orders.length} orders)`);
+          const liveGmv = await fetchNetGmvForBrand(brand, brands, brandIdx);
+          if (liveGmv !== null) gmv = liveGmv;
         } catch(e) {
-          console.error('[client/me] TikTok orders error:', e.message, '| body:', JSON.stringify(e.response?.data).slice(0, 300));
+          console.error('[client/me] GMV fetch error:', e.message);
           if (e.response?.status === 401 || e.message?.includes('401')) tiktokNeedsReconnect = true;
         }
 
@@ -2492,17 +2535,6 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
         }
 
         tiktokStats = { gmv, orders: 0, active_creators: activeCreators };
-
-        // Cache net GMV
-        try {
-          const bSnap = loadBrands();
-          const bIdx  = bSnap.clients.findIndex(b => b.id === brand.id);
-          if (bIdx !== -1) {
-            bSnap.clients[bIdx].cachedNetGmv = gmv;
-            bSnap.clients[bIdx].cachedGmvAt  = Date.now();
-            saveBrands(bSnap);
-          }
-        } catch(_) {}
 
         // Top creators: fetch from Reacher creators endpoint
         const topCreatorsArr = [];
@@ -11735,12 +11767,12 @@ app.listen(CFG.port, () => {
     }
   } catch(e) { console.error('[startup] Organic Social Marketing setup error:', e.message); }
 
-  // Backfill Reacher shopIds + TC config for known brands (idempotent — skips if already set)
+  // Backfill Reacher shopIds, TC config, and billing defaults for known brands (idempotent — skips if already set)
   try {
     const BRAND_DEFAULTS = {
-      'diamandia':       { shopId: 8595, tc: { commission: 25, heroProductId: '1729491556857975130' } },
-      'trusted rituals': { shopId: 8974, tc: { commission: 25, heroProductId: '1732230831415267648' } },
-      'approved science':{ shopId: 8913, tc: { commission: 20, heroProductId: '1731392689812508843' } },
+      'diamandia':       { shopId: 8595, contractValue: 1500, commissionRate: 0.1, tc: { commission: 25, heroProductId: '1729491556857975130' } },
+      'trusted rituals': { shopId: 8974, contractValue: 1500, commissionRate: 0.1, tc: { commission: 25, heroProductId: '1732230831415267648' } },
+      'approved science':{ shopId: 8913, contractValue: 1500, commissionRate: 0.1, tc: { commission: 20, heroProductId: '1731392689812508843' } },
     };
     const bd = loadBrands(); let dirty = false;
     for (const client of (bd.clients || [])) {
@@ -11751,6 +11783,16 @@ app.listen(CFG.port, () => {
         client.shopId = defaults.shopId;
         dirty = true;
         console.log(`[startup] Set shopId=${defaults.shopId} for ${client.name}`);
+      }
+      if (defaults.contractValue != null && client.contractValue == null && client.retainer == null) {
+        client.contractValue = defaults.contractValue;
+        dirty = true;
+        console.log(`[startup] Set contractValue=${defaults.contractValue} for ${client.name}`);
+      }
+      if (defaults.commissionRate != null && client.commissionRate == null) {
+        client.commissionRate = defaults.commissionRate;
+        dirty = true;
+        console.log(`[startup] Set commissionRate=${defaults.commissionRate} for ${client.name}`);
       }
       if (defaults.tc) {
         const cp = client.creatorPage || {};
