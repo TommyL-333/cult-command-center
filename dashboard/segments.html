@@ -389,6 +389,9 @@ main{max-width:1400px;margin:0 auto;padding:24px 20px;}
     <button class="seg-tab" onclick="switchSeg('growth-partners',this)">
       🚀 Growth Partners <span class="tab-cnt" id="cnt-growth-partners">—</span>
     </button>
+    <button class="seg-tab" onclick="switchSeg('signal-engine',this)">
+      ⚡ Signal Engine <span class="tab-cnt" id="cnt-signal-engine">—</span>
+    </button>
   </div>
 
   <!-- ═══════════ AFFILIATES ═══════════ -->
@@ -908,6 +911,237 @@ main{max-width:1400px;margin:0 auto;padding:24px 20px;}
       </table>
     </div>
   </div>
+
+  <!-- ═══════════ SIGNAL ENGINE ═══════════ -->
+  <div id="page-signal-engine" class="seg-page">
+
+    <!-- ICP Config bar -->
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:18px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="font-size:.8rem;font-weight:700;">ICP &amp; Sender Config</div>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('icp-body').classList.toggle('hidden')">Toggle</button>
+      </div>
+      <div id="icp-body" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
+        <div>
+          <label style="font-size:.65rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px;">ICP Company Type</label>
+          <input id="icp-company" type="text" placeholder="e.g. DTC brand, $5M-$50M rev" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:.78rem;outline:none;">
+        </div>
+        <div>
+          <label style="font-size:.65rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px;">Target Persona</label>
+          <input id="icp-persona" type="text" placeholder="e.g. Founder, Head of Growth" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:.78rem;outline:none;">
+        </div>
+        <div>
+          <label style="font-size:.65rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px;">Sender Name</label>
+          <input id="icp-sender-name" type="text" placeholder="e.g. Tommy Lynch" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:.78rem;outline:none;">
+        </div>
+        <div>
+          <label style="font-size:.65rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px;">Sender Company</label>
+          <input id="icp-sender-company" type="text" placeholder="e.g. Cult Content" style="width:100%;background:var(--card);border:1px solid var(--border);border-radius:6px;padding:6px 10px;color:var(--text);font-size:.78rem;outline:none;">
+        </div>
+      </div>
+    </div>
+
+    <!-- Stats bar -->
+    <div class="stats-bar cols-4" style="margin-bottom:18px;">
+      <div class="stat-card accent"><div class="stat-label">Total Prospects</div><div class="stat-val" id="se-cnt-total">0</div><div class="stat-sub">in engine</div></div>
+      <div class="stat-card green"><div class="stat-label">Hot (≥70)</div><div class="stat-val" id="se-cnt-hot">0</div><div class="stat-sub">heat score</div></div>
+      <div class="stat-card yellow"><div class="stat-label">Warm (40–69)</div><div class="stat-val" id="se-cnt-warm">0</div><div class="stat-sub">heat score</div></div>
+      <div class="stat-card"><div class="stat-label">Touches Logged</div><div class="stat-val" id="se-cnt-touches">0</div><div class="stat-sub">across all prospects</div></div>
+    </div>
+
+    <!-- Add prospect + table -->
+    <div class="section-hdr">
+      <div class="section-title">Prospect List</div>
+      <div class="section-actions">
+        <input id="se-search" type="text" placeholder="Search prospects…" oninput="seRender()" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:6px 12px;color:var(--text);font-size:.78rem;outline:none;width:180px;">
+        <button class="btn btn-primary btn-sm" onclick="seOpenAdd()">+ Add Prospect</button>
+      </div>
+    </div>
+
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:24px;">
+      <table class="data-table" id="se-table">
+        <thead><tr>
+          <th>Name</th><th>Company</th><th>Role</th>
+          <th>Heat Score</th><th>Direction</th>
+          <th>Touches</th><th>Next Channel</th><th>Status</th><th></th>
+        </tr></thead>
+        <tbody id="se-tbody"></tbody>
+      </table>
+      <div id="se-empty" style="text-align:center;padding:40px;color:var(--muted);font-size:.82rem;display:none;">No prospects yet — add one above.</div>
+    </div>
+
+    <!-- Signal detail panel (shown when prospect selected) -->
+    <div id="se-detail" style="display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+        <div>
+          <div id="se-detail-name" style="font-size:1rem;font-weight:800;"></div>
+          <div id="se-detail-meta" style="font-size:.75rem;color:var(--muted);margin-top:2px;"></div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button class="btn btn-ghost btn-sm" onclick="document.getElementById('se-detail').style.display='none';seActiveId=null;">✕ Close</button>
+          <button class="btn btn-orange btn-sm" onclick="seDeleteProspect(seActiveId)">Delete</button>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+
+        <!-- Signal scores -->
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px;">
+          <div style="font-size:.7rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px;">Signal Scores (0–100)</div>
+
+          <div style="margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+              <label style="font-size:.74rem;color:var(--muted);">Social Activity</label>
+              <span class="sig-val" id="sv-social">0</span>
+            </div>
+            <input type="range" min="0" max="100" value="0" id="ss-social" class="sig-slider" oninput="seScoreChange()" style="width:100%;accent-color:var(--accent);">
+            <textarea id="sn-social" placeholder="Summary: what are they posting / asking about?" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:5px 8px;color:var(--text);font-size:.7rem;resize:none;height:40px;font-family:inherit;outline:none;margin-top:4px;"></textarea>
+          </div>
+
+          <div style="margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+              <label style="font-size:.74rem;color:var(--muted);">Job Listings / Hiring</label>
+              <span class="sig-val" id="sv-jobs">0</span>
+            </div>
+            <input type="range" min="0" max="100" value="0" id="ss-jobs" class="sig-slider" oninput="seScoreChange()" style="width:100%;accent-color:var(--accent);">
+            <textarea id="sn-jobs" placeholder="Summary: what roles, what systems/workflows implied?" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:5px 8px;color:var(--text);font-size:.7rem;resize:none;height:40px;font-family:inherit;outline:none;margin-top:4px;"></textarea>
+          </div>
+
+          <div style="margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+              <label style="font-size:.74rem;color:var(--muted);">Growth / Press / Funding</label>
+              <span class="sig-val" id="sv-growth">0</span>
+            </div>
+            <input type="range" min="0" max="100" value="0" id="ss-growth" class="sig-slider" oninput="seScoreChange()" style="width:100%;accent-color:var(--accent);">
+            <textarea id="sn-growth" placeholder="Summary: funding rounds, expansions, initiatives?" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:5px 8px;color:var(--text);font-size:.7rem;resize:none;height:40px;font-family:inherit;outline:none;margin-top:4px;"></textarea>
+          </div>
+
+          <div style="margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+              <label style="font-size:.74rem;color:var(--muted);">Client / Customer Reviews</label>
+              <span class="sig-val" id="sv-reviews">0</span>
+            </div>
+            <input type="range" min="0" max="100" value="0" id="ss-reviews" class="sig-slider" oninput="seScoreChange()" style="width:100%;accent-color:var(--accent);">
+            <textarea id="sn-reviews" placeholder="Summary: public gaps you can fill?" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:5px 8px;color:var(--text);font-size:.7rem;resize:none;height:40px;font-family:inherit;outline:none;margin-top:4px;"></textarea>
+          </div>
+
+          <div style="margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+              <label style="font-size:.74rem;color:var(--muted);">Employee Sentiment (Glassdoor)</label>
+              <span class="sig-val" id="sv-glassdoor">0</span>
+            </div>
+            <input type="range" min="0" max="100" value="0" id="ss-glassdoor" class="sig-slider" oninput="seScoreChange()" style="width:100%;accent-color:var(--accent);">
+            <textarea id="sn-glassdoor" placeholder="Summary: workflow / tooling pain from employees?" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:5px 8px;color:var(--text);font-size:.7rem;resize:none;height:40px;font-family:inherit;outline:none;margin-top:4px;"></textarea>
+          </div>
+
+          <div style="margin-bottom:4px;">
+            <div style="display:flex;justify-content:space-between;margin-bottom:3px;">
+              <label style="font-size:.74rem;color:var(--muted);">Intent Data (topic surges)</label>
+              <span class="sig-val" id="sv-intent">0</span>
+            </div>
+            <input type="range" min="0" max="100" value="0" id="ss-intent" class="sig-slider" oninput="seScoreChange()" style="width:100%;accent-color:var(--accent);">
+            <textarea id="sn-intent" placeholder="Summary: Bombora-style topic surges, if available" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:5px 8px;color:var(--text);font-size:.7rem;resize:none;height:40px;font-family:inherit;outline:none;margin-top:4px;"></textarea>
+          </div>
+        </div>
+
+        <!-- Heat Score + message gen -->
+        <div style="display:flex;flex-direction:column;gap:14px;">
+
+          <!-- Heat Score display -->
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px;text-align:center;">
+            <div style="font-size:.7rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;">Heat Score</div>
+            <div id="se-heat-num" style="font-size:3rem;font-weight:900;line-height:1;margin-bottom:4px;">—</div>
+            <div id="se-heat-bar-wrap" style="background:var(--surface);border-radius:20px;height:8px;margin:10px 0;overflow:hidden;">
+              <div id="se-heat-bar" style="height:100%;width:0%;border-radius:20px;transition:width .3s,background .3s;background:var(--accent);"></div>
+            </div>
+            <div style="font-size:.72rem;color:var(--muted);margin-bottom:14px;">Direction</div>
+            <div style="display:flex;gap:8px;justify-content:center;">
+              <button id="dir-rising" class="btn btn-sm" onclick="seSetDir('rising')" style="background:rgba(16,185,129,.15);color:var(--green);border:1px solid rgba(16,185,129,.3);">↑ Rising</button>
+              <button id="dir-flat" class="btn btn-sm" onclick="seSetDir('flat')" style="background:var(--surface);color:var(--muted);border:1px solid var(--border);">→ Flat</button>
+              <button id="dir-declining" class="btn btn-sm" onclick="seSetDir('declining')" style="background:rgba(239,68,68,.1);color:var(--red);border:1px solid rgba(239,68,68,.25);">↓ Declining</button>
+            </div>
+            <div id="se-heat-label" style="font-size:.7rem;margin-top:12px;color:var(--muted);"></div>
+            <button class="btn btn-primary btn-sm" style="margin-top:14px;width:100%;" onclick="seSave()">Save Scores</button>
+          </div>
+
+          <!-- Message generator -->
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px;flex:1;">
+            <div style="font-size:.7rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;">Message Generator</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px;">
+              <div>
+                <label style="font-size:.65rem;color:var(--muted);display:block;margin-bottom:3px;">Channel</label>
+                <select id="se-channel" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text);font-size:.75rem;outline:none;">
+                  <option value="LINKEDIN_DM">LinkedIn DM</option>
+                  <option value="EMAIL">Email</option>
+                  <option value="LINKEDIN_COMMENT">LinkedIn Comment</option>
+                  <option value="SMS">SMS</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size:.65rem;color:var(--muted);display:block;margin-bottom:3px;">Touch #</label>
+                <input type="number" id="se-touch-num" min="1" max="25" value="1" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:6px 8px;color:var(--text);font-size:.75rem;outline:none;">
+              </div>
+            </div>
+            <div id="se-msg-json" style="background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:12px;font-size:.7rem;font-family:monospace;line-height:1.6;color:#94a3b8;white-space:pre-wrap;max-height:220px;overflow-y:auto;margin-bottom:10px;display:none;"></div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-ghost btn-sm" style="flex:1;" onclick="seGenMsg()">Build Prompt</button>
+              <button class="btn btn-primary btn-sm" style="flex:1;" onclick="seCopyMsg()">Copy to Clipboard</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 25-Touch Sequence Tracker -->
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+          <div style="font-size:.7rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em;">25-Touch Sequence</div>
+          <div style="font-size:.72rem;color:var(--muted);">Check off touches as they're sent</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;" id="se-phases"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Add Prospect Modal -->
+  <div id="se-add-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:600;align-items:center;justify-content:center;">
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:28px 32px;width:420px;max-width:95vw;">
+      <div style="font-size:.9rem;font-weight:700;margin-bottom:18px;">Add Prospect</div>
+      <div style="display:grid;gap:12px;">
+        <div>
+          <label style="font-size:.65rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px;">Full Name *</label>
+          <input id="se-add-name" type="text" placeholder="Jane Smith" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:.82rem;outline:none;">
+        </div>
+        <div>
+          <label style="font-size:.65rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px;">Company</label>
+          <input id="se-add-company" type="text" placeholder="Acme DTC" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:.82rem;outline:none;">
+        </div>
+        <div>
+          <label style="font-size:.65rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px;">Role / Title</label>
+          <input id="se-add-role" type="text" placeholder="Founder" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:.82rem;outline:none;">
+        </div>
+        <div>
+          <label style="font-size:.65rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px;">Email</label>
+          <input id="se-add-email" type="text" placeholder="jane@acme.com" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:.82rem;outline:none;">
+        </div>
+        <div>
+          <label style="font-size:.65rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:4px;">Source</label>
+          <select id="se-add-source" style="width:100%;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 12px;color:var(--text);font-size:.82rem;outline:none;">
+            <option value="Apollo">Apollo</option>
+            <option value="LinkedIn">LinkedIn</option>
+            <option value="Referral">Referral</option>
+            <option value="Inbound">Inbound</option>
+            <option value="Manual">Manual</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:20px;">
+        <button class="btn btn-ghost" style="flex:1;" onclick="document.getElementById('se-add-modal').style.display='none'">Cancel</button>
+        <button class="btn btn-primary" style="flex:1;" onclick="seAddProspect()">Add Prospect</button>
+      </div>
+    </div>
+  </div>
+
 </main>
 
 <script>
@@ -926,12 +1160,367 @@ const state = {
   socialProof: JSON.parse(localStorage.getItem('socialProof') || '{}'),
 };
 
+// ══════════════════════════════════════════════════════════════════════════════
+// SIGNAL ENGINE
+// ══════════════════════════════════════════════════════════════════════════════
+let seActiveId = null;
+const SE_KEY = 'signalEngine_prospects';
+
+function seLoad() { return JSON.parse(localStorage.getItem(SE_KEY) || '[]'); }
+function seSaveAll(arr) { localStorage.setItem(SE_KEY, JSON.stringify(arr)); }
+
+function seHeatColor(n) {
+  if (n >= 70) return '#10b981';
+  if (n >= 40) return '#f59e0b';
+  return '#ef4444';
+}
+
+function seCalcHeat(p) {
+  const keys = ['social','jobs','growth','reviews','glassdoor','intent'];
+  const vals = keys.map(k => (p.signals && p.signals[k]) || 0);
+  const nonZero = vals.filter(v => v > 0);
+  if (!nonZero.length) return 0;
+  const avg = nonZero.reduce((a,b) => a+b,0) / nonZero.length;
+  // Compound bonus: if 2+ signals corroborate (both > 40), add up to 10pts
+  const strong = nonZero.filter(v => v > 40).length;
+  const bonus = strong >= 2 ? Math.min(10, (strong - 1) * 4) : 0;
+  return Math.min(100, Math.round(avg + bonus));
+}
+
+function seUpdateStats() {
+  const all = seLoad();
+  const hot = all.filter(p => seCalcHeat(p) >= 70).length;
+  const warm = all.filter(p => { const h = seCalcHeat(p); return h >= 40 && h < 70; }).length;
+  const touches = all.reduce((t,p) => t + ((p.touches||[]).filter(Boolean).length), 0);
+  document.getElementById('se-cnt-total').textContent = all.length;
+  document.getElementById('se-cnt-hot').textContent = hot;
+  document.getElementById('se-cnt-warm').textContent = warm;
+  document.getElementById('se-cnt-touches').textContent = touches;
+  document.getElementById('cnt-signal-engine').textContent = all.length || '—';
+}
+
+function seRender() {
+  const all = seLoad();
+  const q = (document.getElementById('se-search')?.value || '').toLowerCase();
+  const filtered = q ? all.filter(p =>
+    (p.name||'').toLowerCase().includes(q) ||
+    (p.company||'').toLowerCase().includes(q)
+  ) : all;
+  const tbody = document.getElementById('se-tbody');
+  const empty = document.getElementById('se-empty');
+  if (!filtered.length) {
+    tbody.innerHTML = '';
+    if (empty) empty.style.display = 'block';
+    seUpdateStats();
+    return;
+  }
+  if (empty) empty.style.display = 'none';
+
+  // Sort by heat desc
+  filtered.sort((a,b) => seCalcHeat(b) - seCalcHeat(a));
+
+  const CHANNELS = ['Email','LinkedIn DM','LinkedIn View','LinkedIn Comment','SMS'];
+  tbody.innerHTML = filtered.map(p => {
+    const heat = seCalcHeat(p);
+    const col = seHeatColor(heat);
+    const dir = p.direction || 'flat';
+    const dirIcon = dir === 'rising' ? '↑' : dir === 'declining' ? '↓' : '→';
+    const dirCol = dir === 'rising' ? '#10b981' : dir === 'declining' ? '#ef4444' : '#64748b';
+    const touchCount = (p.touches||[]).filter(Boolean).length;
+    const nextTouch = (p.touches||[]).length;
+    const nextCh = CHANNELS[nextTouch % CHANNELS.length];
+    const statusPill = heat >= 70 ? '<span class="pill pill-green">Hot</span>'
+      : heat >= 40 ? '<span class="pill pill-yellow">Warm</span>'
+      : heat > 0 ? '<span class="pill pill-orange">Cold</span>'
+      : '<span class="pill pill-muted">Unscored</span>';
+    return `<tr style="cursor:pointer;" onclick="seOpenDetail('${p.id}')">
+      <td style="font-weight:600;">${p.name}</td>
+      <td>${p.company||'—'}</td>
+      <td style="color:var(--muted);">${p.role||'—'}</td>
+      <td><span style="font-size:1.05rem;font-weight:800;color:${col};">${heat || '—'}</span></td>
+      <td style="color:${dirCol};font-weight:700;">${dirIcon} ${dir}</td>
+      <td>${touchCount}/25</td>
+      <td style="color:var(--muted);font-size:.75rem;">${touchCount < 25 ? nextCh : 'Complete'}</td>
+      <td>${statusPill}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();seOpenDetail('${p.id}')">Score →</button></td>
+    </tr>`;
+  }).join('');
+  seUpdateStats();
+}
+
+function seOpenAdd() {
+  ['name','company','role','email'].forEach(f => document.getElementById('se-add-'+f).value = '');
+  document.getElementById('se-add-modal').style.display = 'flex';
+  document.getElementById('se-add-name').focus();
+}
+
+function seAddProspect() {
+  const name = document.getElementById('se-add-name').value.trim();
+  if (!name) { alert('Name is required'); return; }
+  const all = seLoad();
+  const p = {
+    id: Date.now().toString(),
+    name,
+    company: document.getElementById('se-add-company').value.trim(),
+    role: document.getElementById('se-add-role').value.trim(),
+    email: document.getElementById('se-add-email').value.trim(),
+    source: document.getElementById('se-add-source').value,
+    signals: {social:0,jobs:0,growth:0,reviews:0,glassdoor:0,intent:0},
+    notes: {social:'',jobs:'',growth:'',reviews:'',glassdoor:'',intent:''},
+    direction: 'flat',
+    touches: [],
+    createdAt: new Date().toISOString()
+  };
+  all.push(p);
+  seSaveAll(all);
+  document.getElementById('se-add-modal').style.display = 'none';
+  seRender();
+  seOpenDetail(p.id);
+}
+
+function seOpenDetail(id) {
+  const all = seLoad();
+  const p = all.find(x => x.id === id);
+  if (!p) return;
+  seActiveId = id;
+
+  document.getElementById('se-detail-name').textContent = p.name;
+  document.getElementById('se-detail-meta').textContent = [p.role, p.company, p.email].filter(Boolean).join(' · ');
+
+  // Populate sliders + notes
+  const keys = ['social','jobs','growth','reviews','glassdoor','intent'];
+  keys.forEach(k => {
+    const s = p.signals?.[k] || 0;
+    document.getElementById('ss-'+k).value = s;
+    document.getElementById('sv-'+k).textContent = s;
+    document.getElementById('sn-'+k).value = p.notes?.[k] || '';
+  });
+
+  seSetDir(p.direction || 'flat', false);
+  seScoreChange();
+
+  // Render phase tracker
+  seRenderPhases(p);
+
+  document.getElementById('se-detail').style.display = 'block';
+  document.getElementById('se-touch-num').value = (p.touches||[]).length + 1;
+  document.getElementById('se-msg-json').style.display = 'none';
+}
+
+function seScoreChange() {
+  const keys = ['social','jobs','growth','reviews','glassdoor','intent'];
+  keys.forEach(k => {
+    document.getElementById('sv-'+k).textContent = document.getElementById('ss-'+k).value;
+  });
+  // Compute heat from current slider values (not saved yet)
+  const vals = keys.map(k => parseInt(document.getElementById('ss-'+k).value)||0);
+  const nonZero = vals.filter(v => v > 0);
+  let heat = 0;
+  if (nonZero.length) {
+    const avg = nonZero.reduce((a,b) => a+b,0) / nonZero.length;
+    const strong = nonZero.filter(v => v > 40).length;
+    const bonus = strong >= 2 ? Math.min(10, (strong-1)*4) : 0;
+    heat = Math.min(100, Math.round(avg + bonus));
+  }
+  const col = seHeatColor(heat);
+  document.getElementById('se-heat-num').textContent = heat || '—';
+  document.getElementById('se-heat-num').style.color = heat ? col : 'var(--muted)';
+  document.getElementById('se-heat-bar').style.width = heat + '%';
+  document.getElementById('se-heat-bar').style.background = col;
+  const label = heat >= 70 ? 'Hot — work immediately'
+    : heat >= 40 ? 'Warm — queue within 48h'
+    : heat > 0 ? 'Cold — monitor, re-score later'
+    : 'No signals scored yet';
+  document.getElementById('se-heat-label').textContent = label;
+}
+
+function seSetDir(dir, save=false) {
+  ['rising','flat','declining'].forEach(d => {
+    const el = document.getElementById('dir-'+d);
+    if (!el) return;
+    el.style.opacity = d === dir ? '1' : '0.35';
+    el.style.transform = d === dir ? 'scale(1.04)' : '';
+  });
+  if (save && seActiveId) {
+    const all = seLoad();
+    const p = all.find(x => x.id === seActiveId);
+    if (p) { p.direction = dir; seSaveAll(all); seRender(); }
+  } else if (!save) {
+    // Just visual — actual dir applied on seSave
+    seActiveId && (window._seDir = dir);
+  }
+  window._seDir = dir;
+}
+
+function seSave() {
+  if (!seActiveId) return;
+  const all = seLoad();
+  const p = all.find(x => x.id === seActiveId);
+  if (!p) return;
+  const keys = ['social','jobs','growth','reviews','glassdoor','intent'];
+  keys.forEach(k => {
+    p.signals[k] = parseInt(document.getElementById('ss-'+k).value)||0;
+    p.notes[k] = document.getElementById('sn-'+k).value;
+  });
+  p.direction = window._seDir || p.direction;
+  seSaveAll(all);
+  seRender();
+  // Flash button
+  const btn = event.target;
+  btn.textContent = 'Saved ✓'; btn.style.background='var(--green)';
+  setTimeout(()=>{ btn.textContent='Save Scores'; btn.style.background=''; },1500);
+}
+
+function seDeleteProspect(id) {
+  if (!confirm('Delete this prospect?')) return;
+  const all = seLoad().filter(p => p.id !== id);
+  seSaveAll(all);
+  seActiveId = null;
+  document.getElementById('se-detail').style.display = 'none';
+  seRender();
+}
+
+// ── 25-touch phase tracker ─────────────────────────────────────────────────────
+const SE_PHASES = [
+  { label:'Phase 1 — Awareness', touches:[
+    {ch:'LinkedIn View', day:1}, {ch:'LinkedIn Comment', day:2},
+    {ch:'Email', day:3}, {ch:'LinkedIn DM', day:5}, {ch:'Email', day:7}
+  ]},
+  { label:'Phase 2 — Engagement', touches:[
+    {ch:'LinkedIn Comment', day:9}, {ch:'Email', day:10}, {ch:'LinkedIn DM', day:12},
+    {ch:'Email', day:14}, {ch:'LinkedIn View', day:15}, {ch:'Email', day:17}
+  ]},
+  { label:'Phase 3 — Pursuit', touches:[
+    {ch:'LinkedIn DM', day:19}, {ch:'Email', day:21}, {ch:'LinkedIn Comment', day:22},
+    {ch:'Email', day:24}, {ch:'LinkedIn DM', day:26}, {ch:'Email', day:28},
+    {ch:'LinkedIn View', day:30}
+  ]},
+  { label:'Phase 4 — Dynamic Budget', touches:[
+    {ch:'Email', day:33}, {ch:'LinkedIn DM', day:35}, {ch:'Email', day:38},
+    {ch:'LinkedIn Comment', day:40}, {ch:'Email', day:43}, {ch:'LinkedIn DM', day:46}
+  ]}
+];
+
+function seRenderPhases(p) {
+  const container = document.getElementById('se-phases');
+  const done = p.touches || [];
+  let globalIdx = 0;
+  container.innerHTML = SE_PHASES.map((phase, pi) => {
+    const items = phase.touches.map((t, ti) => {
+      const idx = globalIdx++;
+      const checked = done[idx] ? 'checked' : '';
+      return `<label style="display:flex;align-items:center;gap:6px;font-size:.72rem;color:${done[idx]?'var(--green)':'var(--muted)'};cursor:pointer;padding:3px 0;">
+        <input type="checkbox" ${checked} onchange="seToggleTouch('${p.id}',${idx},this.checked)" style="accent-color:var(--green);">
+        <span>Day ${t.day} — ${t.ch}</span>
+      </label>`;
+    }).join('');
+    const phDone = phase.touches.filter((_,ti)=> done[globalIdx - phase.touches.length + ti]).length;
+    return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px;">
+      <div style="font-size:.63rem;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.05em;margin-bottom:8px;">${phase.label}</div>
+      <div style="font-size:.65rem;color:var(--muted);margin-bottom:8px;">${phDone}/${phase.touches.length} sent</div>
+      ${items}
+    </div>`;
+  }).join('');
+}
+
+function seToggleTouch(id, idx, checked) {
+  const all = seLoad();
+  const p = all.find(x => x.id === id);
+  if (!p) return;
+  if (!p.touches) p.touches = [];
+  p.touches[idx] = checked;
+  seSaveAll(all);
+  seRender();
+  // Re-render phases in place
+  seRenderPhases(p);
+  document.getElementById('se-touch-num').value = p.touches.filter(Boolean).length + 1;
+}
+
+// ── Message generator ──────────────────────────────────────────────────────────
+function seGenMsg() {
+  if (!seActiveId) return;
+  const all = seLoad();
+  const p = all.find(x => x.id === seActiveId);
+  if (!p) return;
+
+  const keys = ['social','jobs','growth','reviews','glassdoor','intent'];
+  const sigLabels = {social:'social_activity',jobs:'job_listings',growth:'growth_announcements',reviews:'client_reviews',glassdoor:'employee_sentiment',intent:'intent_data'};
+  const signals = {};
+  keys.forEach(k => {
+    signals[sigLabels[k]] = {
+      score: parseInt(document.getElementById('ss-'+k).value)||0,
+      summary: document.getElementById('sn-'+k).value || ''
+    };
+  });
+
+  // Find strongest signal
+  const best = keys.reduce((a,b) =>
+    (parseInt(document.getElementById('ss-'+a).value)||0) >= (parseInt(document.getElementById('ss-'+b).value)||0) ? a : b
+  );
+
+  const senderName = document.getElementById('icp-sender-name')?.value || 'Tommy Lynch';
+  const senderCompany = document.getElementById('icp-sender-company')?.value || 'Cult Content';
+  const channel = document.getElementById('se-channel').value;
+  const touchNum = parseInt(document.getElementById('se-touch-num').value)||1;
+
+  const input = {
+    prospect: { name: p.name, company: p.company, role: p.role },
+    signals,
+    request: {
+      action: 'GENERATE_MESSAGE',
+      channel,
+      sender_name: senderName,
+      sender_company: senderCompany,
+      touch_number: touchNum
+    }
+  };
+
+  const prompt = `You are ConductorBot, an outreach message generator. Given the signals below, generate a ${channel.replace('_',' ')} message.
+
+Rules:
+- Lead with the single strongest qualifying signal as the hook
+- Keep it specific to what the signal actually says
+- Sender: ${senderName} from ${senderCompany} (inject naturally, never hardcode a pitch)
+- Touch #${touchNum} — ${touchNum <= 5 ? 'awareness phase, low pressure' : touchNum <= 11 ? 'engagement phase, reference a specific detail' : touchNum <= 18 ? 'pursuit phase, clearer ask' : 'dynamic phase, follow wherever engagement is highest'}
+- Output JSON only, matching this schema:
+
+{
+  "decision": "PROCEED" or "HOLD",
+  "selected_signal": "SIGNAL_TYPE",
+  "signal_score": 0,
+  "touch_angle": "PRIMARY_SIGNAL",
+  "message": { "body": "...", "cta_type": "SOFT_OPEN|DIRECT_ASK|FOLLOW_UP", "word_count": 0 },
+  "crm_instructions": { "log_note": "...", "tags_to_add": [] }
+}
+
+Input:
+${JSON.stringify(input, null, 2)}`;
+
+  const el = document.getElementById('se-msg-json');
+  el.textContent = prompt;
+  el.style.display = 'block';
+}
+
+function seCopyMsg() {
+  const el = document.getElementById('se-msg-json');
+  if (!el.textContent) { seGenMsg(); return; }
+  navigator.clipboard.writeText(el.textContent).then(() => {
+    const btn = event.target;
+    btn.textContent = 'Copied ✓'; btn.style.background='var(--green)';
+    setTimeout(()=>{ btn.textContent='Copy to Clipboard'; btn.style.background=''; },1500);
+  });
+}
+
+// Init signal engine
+seRender();
+
 // ── Tab switching ──────────────────────────────────────────────────────────────
 function switchSeg(seg, btn) {
   document.querySelectorAll('.seg-tab').forEach(t => t.classList.remove('active'));
   document.querySelectorAll('.seg-page').forEach(p => p.classList.remove('active'));
   btn.classList.add('active');
   document.getElementById('page-' + seg).classList.add('active');
+  if (seg === 'signal-engine') { seRender(); return; }
   if (!state[seg]) loadSegment(seg);
   // Pre-load Fireflies when Growth Partners tab opens
   if (seg === 'growth-partners') {
