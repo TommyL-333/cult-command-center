@@ -2589,6 +2589,141 @@ const GP_TASK_LABELS = {
   live_regular:         'Regular live cadence established',
 };
 
+// ─── Billing tiers (from client contract template) ───────────────────────────
+const BILLING_TIERS = [
+  { retainer: 1500, commRate: 0.10 },
+  { retainer: 2000, commRate: 0.09 },
+  { retainer: 2500, commRate: 0.08 },
+  { retainer: 3000, commRate: 0.07 },
+  { retainer: 3500, commRate: 0.06 },
+  { retainer: 4000, commRate: 0.05 },
+  { retainer: 4500, commRate: 0.04 },
+  { retainer: 5000, commRate: 0.03 },
+];
+
+// GET /api/client/billing — current tier, GMV, payment method, recent invoices
+app.get('/api/client/billing', requireClientSession, async (req, res) => {
+  try {
+    const brands   = loadBrands();
+    const brandIdx = (brands.clients || []).findIndex(b => b.id === req.session.clientBrandId);
+    if (brandIdx === -1) return res.status(404).json({ error: 'Brand not found' });
+    const brand = brands.clients[brandIdx];
+
+    const retainer  = brand.retainer  ?? brand.contractValue  ?? 1500;
+    const commRate  = brand.commissionRate ?? 0.10;
+    const gmv       = brand.cachedNetGmv ?? 0;
+    const revShare  = parseFloat((gmv * commRate).toFixed(2));
+
+    // Billing cycle info
+    const cycle = billingCycle();
+
+    // Payment method
+    const hasPaymentMethod = await stripeHasPaymentMethod(brand.stripeCustomerId);
+
+    // Recent invoices from Stripe
+    let invoices = [];
+    if (stripe && brand.stripeCustomerId) {
+      try {
+        const list = await stripe.invoices.list({ customer: brand.stripeCustomerId, limit: 12 });
+        invoices = list.data.map(inv => ({
+          id:      inv.id,
+          date:    new Date(inv.created * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+          amount:  inv.amount_paid / 100,
+          status:  inv.status,
+          url:     inv.hosted_invoice_url,
+          period:  inv.metadata?.period || '',
+        }));
+      } catch(_) {}
+    }
+
+    // Pending tier change (takes effect next month)
+    const pendingTier = brand.pendingTierChange || null;
+
+    res.json({
+      currentTier:  { retainer, commRate },
+      pendingTier,
+      gmv,
+      revShare,
+      tiers:        BILLING_TIERS,
+      cycle:        { period: cycle.period, nextBillingLabel: cycle.nextBillingLabel, daysUntilBilling: cycle.daysUntilBilling },
+      hasPaymentMethod,
+      portalUrl:    brand.stripeCustomerId && stripe ? null : null, // populated below
+      invoices,
+    });
+  } catch (err) {
+    console.error('[client/billing] error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// GET /api/client/billing/portal — Stripe Customer Portal link for client to add/update payment method
+app.get('/api/client/billing/portal', requireClientSession, async (req, res) => {
+  if (!stripe) return res.status(503).json({ error: 'Stripe not configured' });
+  try {
+    const brands   = loadBrands();
+    const brandIdx = (brands.clients || []).findIndex(b => b.id === req.session.clientBrandId);
+    if (brandIdx === -1) return res.status(404).json({ error: 'Brand not found' });
+    const brand = brands.clients[brandIdx];
+
+    let customerId = brand.stripeCustomerId;
+    if (!customerId) {
+      // Create a Stripe customer for this brand
+      const bill = clientBilling(brand);
+      const email = bill.billingEmail || brand.loginEmail || '';
+      const customer = await stripe.customers.create({
+        name:  brand.name,
+        ...(email ? { email } : {}),
+        metadata: { brandId: brand.id, source: 'cult-content-billing' },
+      });
+      customerId = customer.id;
+      brands.clients[brandIdx].stripeCustomerId = customerId;
+      saveBrands(brands);
+    }
+
+    const session = await stripe.billingPortal.sessions.create({
+      customer:   customerId,
+      return_url: `${CREATOR_BASE_URL}/client/dashboard`,
+    });
+    res.json({ url: session.url });
+  } catch (err) {
+    console.error('[client/billing/portal] error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/client/billing/change-tier — client selects a new billing tier
+app.post('/api/client/billing/change-tier', requireClientSession, express.json(), async (req, res) => {
+  try {
+    const { retainer, commRate } = req.body || {};
+    const tier = BILLING_TIERS.find(t => t.retainer === Number(retainer) && Math.abs(t.commRate - Number(commRate)) < 0.0001);
+    if (!tier) return res.status(400).json({ error: 'Invalid tier' });
+
+    const brands   = loadBrands();
+    const brandIdx = (brands.clients || []).findIndex(b => b.id === req.session.clientBrandId);
+    if (brandIdx === -1) return res.status(404).json({ error: 'Brand not found' });
+
+    // Compute effective date: 1st of next month
+    const now = new Date();
+    const effective = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    const effectiveLabel = effective.toLocaleString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+
+    brands.clients[brandIdx].pendingTierChange = {
+      retainer:     tier.retainer,
+      commRate:     tier.commRate,
+      requestedAt:  Date.now(),
+      effectiveDate: effective.toISOString().slice(0, 10),
+      effectiveLabel,
+    };
+    saveBrands(brands);
+
+    console.log(`[BILLING] ${brands.clients[brandIdx].name} requested tier change → $${tier.retainer} + ${Math.round(tier.commRate*100)}% GMV (effective ${effectiveLabel})`);
+    res.json({ ok: true, effectiveLabel, tier });
+  } catch (err) {
+    console.error('[client/billing/change-tier] error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/client/me — return brand data, TikTok stats, tasks, referral info
 app.get('/api/client/me', requireClientSession, async (req, res) => {
   try {

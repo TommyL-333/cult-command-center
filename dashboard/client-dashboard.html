@@ -323,6 +323,65 @@
     /* Step 5 scheduling */
     .schedule-success { background: rgba(0,210,122,0.08); border: 1px solid rgba(0,210,122,0.2); border-radius: 10px; padding: 16px; margin-bottom: 20px; font-size: 0.88rem; color: var(--green); }
     .step5-channel-list { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
+
+    /* Billing tab */
+    .billing-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 28px; }
+    .billing-title { font-size: 1.15rem; font-weight: 700; color: var(--text); }
+    .billing-cycle-chip { background: rgba(201,168,76,0.12); border: 1px solid rgba(201,168,76,0.25); color: var(--gold); font-size: 0.75rem; font-weight: 700; padding: 5px 12px; border-radius: 20px; }
+    .billing-summary-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 28px; }
+    @media (max-width: 700px) { .billing-summary-row { grid-template-columns: 1fr 1fr; } }
+    .billing-kpi { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px 16px; }
+    .billing-kpi-label { font-size: 0.69rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 8px; }
+    .billing-kpi-val { font-size: 1.7rem; font-weight: 700; line-height: 1; color: var(--text); }
+    .billing-kpi-val.teal { color: var(--teal); }
+    .billing-kpi-val.gold { color: var(--gold); }
+    .billing-kpi-sub { font-size: 0.71rem; color: var(--muted); margin-top: 5px; }
+    .pm-strip { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; margin-bottom: 28px; }
+    .pm-left { display: flex; align-items: center; gap: 10px; }
+    .pm-icon { font-size: 1.3rem; }
+    .pm-label { font-size: 0.88rem; font-weight: 600; color: var(--text); }
+    .pm-sub   { font-size: 0.73rem; color: var(--muted); margin-top: 2px; }
+    .pm-btn { background: var(--teal); color: var(--bg); font-size: 0.8rem; font-weight: 700; border: none; border-radius: 8px; padding: 9px 18px; cursor: pointer; white-space: nowrap; transition: opacity 0.15s; text-decoration: none; display: inline-block; }
+    .pm-btn:hover { opacity: 0.85; }
+    .pm-btn.secondary { background: transparent; border: 1px solid var(--border); color: var(--muted); }
+    .pm-btn.secondary:hover { border-color: var(--teal); color: var(--teal); }
+    .tiers-section { margin-bottom: 28px; }
+    .tiers-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    @media (max-width: 900px) { .tiers-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (max-width: 500px) { .tiers-grid { grid-template-columns: 1fr 1fr; } }
+    .tier-card { background: var(--card); border: 1.5px solid var(--border); border-radius: 12px; padding: 16px 14px; cursor: pointer; transition: border-color 0.15s, background 0.15s; position: relative; }
+    .tier-card:hover { border-color: rgba(0,242,234,0.4); }
+    .tier-card.current { border-color: var(--teal); background: rgba(0,242,234,0.04); }
+    .tier-card.pending { border-color: var(--gold); background: rgba(201,168,76,0.05); }
+    .tier-card.selected { border-color: var(--teal); background: rgba(0,242,234,0.07); }
+    .tier-badge { position: absolute; top: -1px; right: 10px; font-size: 0.63rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 2px 7px; border-radius: 0 0 6px 6px; }
+    .tier-badge.cur  { background: var(--teal); color: var(--bg); }
+    .tier-badge.pend { background: var(--gold); color: var(--bg); }
+    .tier-retainer { font-size: 1.35rem; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+    .tier-gmv { font-size: 0.84rem; color: var(--teal); font-weight: 600; }
+    .tier-desc { font-size: 0.7rem; color: var(--muted); margin-top: 5px; line-height: 1.4; }
+    .tier-change-bar { background: rgba(0,242,234,0.06); border: 1px solid rgba(0,242,234,0.2); border-radius: 10px; padding: 14px 18px; margin-top: 16px; display: none; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .tier-change-bar.open { display: flex; }
+    .tier-change-info { font-size: 0.84rem; color: var(--text); }
+    .tier-change-info span { color: var(--teal); font-weight: 700; }
+    .tier-change-btns { display: flex; gap: 8px; }
+    .tier-confirm-btn { background: var(--teal); color: var(--bg); font-size: 0.82rem; font-weight: 700; border: none; border-radius: 7px; padding: 8px 18px; cursor: pointer; transition: opacity 0.15s; }
+    .tier-confirm-btn:hover { opacity: 0.85; }
+    .tier-cancel-btn { background: transparent; border: 1px solid var(--border); color: var(--muted); font-size: 0.82rem; font-weight: 600; border-radius: 7px; padding: 8px 14px; cursor: pointer; }
+    .billing-history { background: var(--card); border: 1px solid var(--border); border-radius: 13px; overflow: hidden; }
+    .billing-history-header { display: flex; justify-content: space-between; align-items: center; padding: 18px 20px; border-bottom: 1px solid var(--border); }
+    .billing-history-title { font-size: 0.88rem; font-weight: 700; color: var(--text); }
+    .inv-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    .inv-table th { text-align: left; font-size: 0.67rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); padding: 12px 20px 10px; border-bottom: 1px solid var(--border); }
+    .inv-table td { padding: 11px 20px; border-bottom: 1px solid rgba(42,37,64,0.5); color: var(--text); vertical-align: middle; }
+    .inv-table tr:last-child td { border-bottom: none; }
+    .inv-status { display: inline-flex; align-items: center; gap: 5px; font-size: 0.72rem; font-weight: 700; padding: 3px 8px; border-radius: 20px; text-transform: capitalize; }
+    .inv-status.paid  { background: rgba(0,210,122,0.12); color: var(--green); }
+    .inv-status.open  { background: rgba(255,204,0,0.10); color: var(--yellow); }
+    .inv-status.draft { background: rgba(100,116,139,0.12); color: var(--muted); }
+    .inv-status.void  { background: rgba(255,59,48,0.10);  color: var(--red); }
+    .inv-view-btn { color: var(--teal); font-size: 0.79rem; text-decoration: none; font-weight: 600; }
+    .inv-view-btn:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -344,6 +403,7 @@
 <nav class="tab-bar">
   <button class="tab-btn active" onclick="switchTab('overview')">Overview</button>
   <button class="tab-btn" onclick="switchTab('content-studio')">Content Studio</button>
+  <button class="tab-btn" onclick="switchTab('billing')">Billing</button>
 </nav>
 
 <div id="tab-overview">
@@ -869,6 +929,91 @@
   </div>
 </div><!-- end #tab-content-studio -->
 
+<!-- ───────────────────────── Billing tab ──────────────────────────────── -->
+<div id="tab-billing" style="display:none">
+<main>
+
+  <div class="billing-header">
+    <div>
+      <div class="billing-title">Billing &amp; Plan</div>
+      <div style="font-size:0.8rem;color:var(--muted);margin-top:3px;" id="billingPeriodSub">Loading…</div>
+    </div>
+    <div class="billing-cycle-chip" id="billingCycleChip">—</div>
+  </div>
+
+  <!-- KPI row -->
+  <div class="billing-summary-row">
+    <div class="billing-kpi">
+      <div class="billing-kpi-label">Monthly Retainer</div>
+      <div class="billing-kpi-val gold" id="bkpiRetainer">—</div>
+      <div class="billing-kpi-sub">Billed upfront each month</div>
+    </div>
+    <div class="billing-kpi">
+      <div class="billing-kpi-label">GMV This Month</div>
+      <div class="billing-kpi-val teal" id="bkpiGmv">—</div>
+      <div class="billing-kpi-sub" id="bkpiGmvSub">TikTok Shop net sales</div>
+    </div>
+    <div class="billing-kpi">
+      <div class="billing-kpi-label">Est. GMV Share</div>
+      <div class="billing-kpi-val" id="bkpiRevShare">—</div>
+      <div class="billing-kpi-sub" id="bkpiRevShareSub">Billed retroactively</div>
+    </div>
+  </div>
+
+  <!-- Payment method strip -->
+  <div class="pm-strip" id="pmStrip">
+    <div class="pm-left">
+      <div class="pm-icon" id="pmIcon">💳</div>
+      <div>
+        <div class="pm-label" id="pmLabel">Loading payment method…</div>
+        <div class="pm-sub" id="pmSub"></div>
+      </div>
+    </div>
+    <button class="pm-btn" id="pmBtn" onclick="openBillingPortal()">Manage Payment</button>
+  </div>
+
+  <!-- Plan tiers -->
+  <div class="tiers-section">
+    <div class="section-label mb-20">Choose Your Plan</div>
+    <div class="tiers-grid" id="tiersGrid">
+      <!-- rendered by JS -->
+    </div>
+    <div class="tier-change-bar" id="tierChangeBar">
+      <div class="tier-change-info" id="tierChangeInfo">Switch to <span id="tierChangeName"></span></div>
+      <div class="tier-change-btns">
+        <button class="tier-cancel-btn" onclick="cancelTierChange()">Cancel</button>
+        <button class="tier-confirm-btn" onclick="confirmTierChange()">Confirm Change</button>
+      </div>
+    </div>
+    <div id="tierChangeMsg" style="font-size:0.8rem;margin-top:12px;min-height:18px;"></div>
+  </div>
+
+  <!-- Invoice history -->
+  <div class="billing-history">
+    <div class="billing-history-header">
+      <div class="billing-history-title">Invoice History</div>
+    </div>
+    <div id="invTableWrap">
+      <table class="inv-table" id="invTable">
+        <thead>
+          <tr>
+            <th>Period</th>
+            <th>Date</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="invTbody">
+          <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px;">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+</div><!-- end #tab-billing -->
+
 <script>
   function fmt$(n) {
     if (n == null || n === '') return '—';
@@ -1174,12 +1319,13 @@
     document.querySelectorAll('[id^="tab-"]').forEach(el => el.style.display = 'none');
     document.getElementById('tab-' + name).style.display = 'block';
     const btns = document.querySelectorAll('.tab-btn');
-    const labels = { 'overview': 'Overview', 'content-studio': 'Content Studio' };
+    const labels = { 'overview': 'Overview', 'content-studio': 'Content Studio', 'billing': 'Billing' };
     btns.forEach(b => { if (b.textContent.trim() === labels[name]) b.classList.add('active'); });
     if (name === 'content-studio' && !window._channelsLoaded) loadChannels();
     if (name === 'content-studio' && !window._arcadsLoaded) loadArcads();
     if (name === 'content-studio' && window._data?.brand) wizardInitBrandSummary();
     if (name === 'content-studio' && !window._storistaLoaded) initStorista(window._data?.brand);
+    if (name === 'billing' && !window._billingLoaded) loadBilling();
   }
 
   // ─── Affiliate URL ──────────────────────────────────────────────────────────
@@ -2204,6 +2350,167 @@
   }
 
   load();
+
+  // ─── Billing tab ───────────────────────────────────────────────────────────
+  let _billingData = null;
+  let _selectedTier = null;
+
+  async function loadBilling() {
+    window._billingLoaded = true;
+    try {
+      const r = await fetch('/api/client/billing');
+      if (!r.ok) throw new Error(await r.text());
+      const d = await r.json();
+      _billingData = d;
+      renderBilling(d);
+    } catch(e) {
+      document.getElementById('bkpiRetainer').textContent = '—';
+      console.error('[billing]', e);
+    }
+  }
+
+  function renderBilling(d) {
+    const { currentTier, pendingTier, gmv, revShare, tiers, cycle, hasPaymentMethod, invoices } = d;
+
+    // Header
+    document.getElementById('billingPeriodSub').textContent = `${cycle.period} · data through today`;
+    document.getElementById('billingCycleChip').textContent = `🗓 Next invoice in ${cycle.daysUntilBilling} day${cycle.daysUntilBilling === 1 ? '' : 's'} (${cycle.nextBillingLabel})`;
+
+    // KPIs
+    document.getElementById('bkpiRetainer').textContent = fmt$(currentTier.retainer);
+    document.getElementById('bkpiGmv').textContent = fmt$(gmv);
+    document.getElementById('bkpiRevShareSub').textContent = `${Math.round(currentTier.commRate * 100)}% of GMV — billed next month`;
+    document.getElementById('bkpiRevShare').textContent = fmt$(revShare);
+
+    // Payment method
+    const pmIcon  = document.getElementById('pmIcon');
+    const pmLabel = document.getElementById('pmLabel');
+    const pmSub   = document.getElementById('pmSub');
+    const pmBtn   = document.getElementById('pmBtn');
+    if (hasPaymentMethod) {
+      pmIcon.textContent  = '✅';
+      pmLabel.textContent = 'Payment method on file';
+      pmSub.textContent   = 'You will be charged automatically each month.';
+      pmBtn.textContent   = 'Update Payment Method';
+      pmBtn.className     = 'pm-btn secondary';
+    } else {
+      pmIcon.textContent  = '⚠️';
+      pmLabel.textContent = 'No payment method on file';
+      pmSub.textContent   = 'Add a card so invoices can be charged automatically.';
+      pmBtn.textContent   = 'Add Payment Method →';
+      pmBtn.className     = 'pm-btn';
+    }
+
+    // Tiers
+    const grid = document.getElementById('tiersGrid');
+    grid.innerHTML = tiers.map(t => {
+      const isCurrent = t.retainer === currentTier.retainer && Math.abs(t.commRate - currentTier.commRate) < 0.001;
+      const isPending = pendingTier && t.retainer === pendingTier.retainer && Math.abs(t.commRate - pendingTier.commRate) < 0.001;
+      let cls = 'tier-card';
+      if (isCurrent) cls += ' current';
+      else if (isPending) cls += ' pending';
+      const badge = isCurrent
+        ? `<div class="tier-badge cur">Current</div>`
+        : isPending
+          ? `<div class="tier-badge pend">Pending</div>`
+          : '';
+      const label = `$${(t.retainer/1000).toFixed(1).replace('.0','').replace(/(\d)(\.\d)/,'$1$2')}k + ${Math.round(t.commRate*100)}% GMV`;
+      return `<div class="${cls}" onclick="selectTier(${t.retainer},${t.commRate})" data-ret="${t.retainer}" data-comm="${t.commRate}">
+        ${badge}
+        <div class="tier-retainer">$${t.retainer.toLocaleString()}<span style="font-size:0.75rem;font-weight:400;color:var(--muted)">/mo</span></div>
+        <div class="tier-gmv">${Math.round(t.commRate*100)}% GMV share</div>
+        ${isCurrent ? '<div class="tier-desc" style="color:var(--teal);">Active plan</div>' : isPending ? `<div class="tier-desc" style="color:var(--gold);">Effective ${pendingTier.effectiveLabel}</div>` : ''}
+      </div>`;
+    }).join('');
+
+    // Invoices
+    const tbody = document.getElementById('invTbody');
+    if (!invoices || invoices.length === 0) {
+      tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px;">No invoices yet</td></tr>`;
+    } else {
+      tbody.innerHTML = invoices.map(inv => `
+        <tr>
+          <td>${inv.period || '—'}</td>
+          <td style="color:var(--muted)">${inv.date}</td>
+          <td style="font-weight:700">${fmt$(inv.amount)}</td>
+          <td><span class="inv-status ${inv.status}">${inv.status}</span></td>
+          <td>${inv.url ? `<a class="inv-view-btn" href="${inv.url}" target="_blank">View →</a>` : ''}</td>
+        </tr>`).join('');
+    }
+  }
+
+  function selectTier(retainer, commRate) {
+    const d = _billingData;
+    if (!d) return;
+    const isCurrent = retainer === d.currentTier.retainer && Math.abs(commRate - d.currentTier.commRate) < 0.001;
+    const isPending = d.pendingTier && retainer === d.pendingTier.retainer && Math.abs(commRate - d.pendingTier.commRate) < 0.001;
+    if (isCurrent && !isPending) return; // already on this plan, no pending change
+
+    // Highlight selected card
+    document.querySelectorAll('.tier-card').forEach(c => c.classList.remove('selected'));
+    const el = document.querySelector(`.tier-card[data-ret="${retainer}"][data-comm="${commRate}"]`);
+    if (el) el.classList.add('selected');
+
+    _selectedTier = { retainer, commRate };
+    const name = `$${retainer.toLocaleString()}/mo + ${Math.round(commRate * 100)}% GMV`;
+    document.getElementById('tierChangeName').textContent = name;
+    document.getElementById('tierChangeInfo').innerHTML = `Switch to <span>${name}</span> — takes effect on ${d.cycle.nextBillingLabel}`;
+    document.getElementById('tierChangeBar').classList.add('open');
+    document.getElementById('tierChangeMsg').textContent = '';
+  }
+
+  function cancelTierChange() {
+    _selectedTier = null;
+    document.querySelectorAll('.tier-card').forEach(c => c.classList.remove('selected'));
+    document.getElementById('tierChangeBar').classList.remove('open');
+    document.getElementById('tierChangeMsg').textContent = '';
+  }
+
+  async function confirmTierChange() {
+    if (!_selectedTier) return;
+    const btn = document.querySelector('.tier-confirm-btn');
+    btn.textContent = 'Saving…';
+    btn.disabled = true;
+    try {
+      const r = await fetch('/api/client/billing/change-tier', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(_selectedTier),
+      });
+      const json = await r.json();
+      if (!r.ok) throw new Error(json.error || 'Failed');
+      document.getElementById('tierChangeMsg').style.color = 'var(--green)';
+      document.getElementById('tierChangeMsg').textContent = `✓ Plan change confirmed — takes effect ${json.effectiveLabel}`;
+      document.getElementById('tierChangeBar').classList.remove('open');
+      _selectedTier = null;
+      // Reload billing data to reflect pending change
+      window._billingLoaded = false;
+      await loadBilling();
+    } catch(e) {
+      document.getElementById('tierChangeMsg').style.color = 'var(--red)';
+      document.getElementById('tierChangeMsg').textContent = e.message;
+    } finally {
+      btn.textContent = 'Confirm Change';
+      btn.disabled = false;
+    }
+  }
+
+  async function openBillingPortal() {
+    const btn = document.getElementById('pmBtn');
+    btn.textContent = 'Opening…';
+    btn.disabled = true;
+    try {
+      const r = await fetch('/api/client/billing/portal');
+      const json = await r.json();
+      if (!r.ok) throw new Error(json.error || 'Failed');
+      window.open(json.url, '_blank');
+    } catch(e) {
+      alert('Could not open billing portal: ' + e.message);
+    } finally {
+      btn.textContent = _billingData?.hasPaymentMethod ? 'Update Payment Method' : 'Add Payment Method →';
+      btn.disabled = false;
+    }
+  }
 </script>
 </body>
 </html>
