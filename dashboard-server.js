@@ -2048,8 +2048,8 @@ async function fetchNetGmvForBrand(brand, brandsObj, brandIdx, opts = {}) {
   function extractAmount(o) {
     // Top-level sale_amount (affiliate order style)
     if (o.sale_amount != null && parseFloat(o.sale_amount) > 0) return parseFloat(o.sale_amount);
-    // payment_info object — try all known field names
-    const pi = o.payment_info;
+    // payment / payment_info object — TikTok uses "payment" in v202309
+    const pi = o.payment || o.payment_info;
     if (pi) {
       const candidates = [
         pi.sub_total, pi.total_amount, pi.paid_amount,
@@ -2102,6 +2102,7 @@ async function fetchNetGmvForBrand(brand, brandsObj, brandIdx, opts = {}) {
       }
 
       for (const o of orders) {
+        if (o.is_sample_order) continue; // free creator samples — $0, exclude from GMV
         const status = o.order_status ?? o.status;
         if (status !== undefined && CANCEL_STATUS.has(status)) continue;
         netGmv += extractAmount(o);
