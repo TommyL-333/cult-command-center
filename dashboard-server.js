@@ -2080,18 +2080,34 @@ async function fetchNetGmvForBrand(brand, brandsObj, brandIdx) {
         sort_field: 'create_time',
         sort_order: 'DESC',
       }, { page_size: 100 });
-      console.log(`[gmv] ${brand.name} orders raw:`, JSON.stringify(resp?.data).slice(0, 300));
       const orders = resp?.data?.orders || resp?.data?.order_list || [];
+      // Log first order fully so we can see actual field names
+      if (orders.length > 0) {
+        console.log(`[gmv] ${brand.name} first order keys:`, JSON.stringify(orders[0]));
+      } else {
+        console.log(`[gmv] ${brand.name} orders: 0 results`);
+      }
       const CANCEL = new Set([140, 121, 4, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND']);
       netGmv = 0;
       for (const o of orders) {
         const status = o.order_status ?? o.status;
         if (status !== undefined && CANCEL.has(status)) continue;
-        netGmv += parseFloat(
+        // Try payment_info fields first, then line_items fallback
+        const fromPaymentInfo = parseFloat(
           o.payment_info?.sub_total ??
           o.payment_info?.total_amount ??
-          o.total_amount ?? 0
-        );
+          o.payment_info?.original_total_product_price ??
+          o.payment_info?.paid_amount ??
+          o.total_amount ??
+          o.total_price ?? 0
+        ) || 0;
+        // Line items fallback: sum sale_price * quantity for each SKU
+        const fromLineItems = (o.line_items || []).reduce((sum, item) => {
+          const price = parseFloat(item.sku_sale_price ?? item.sale_price ?? item.original_price ?? 0) || 0;
+          const qty   = parseInt(item.quantity ?? 1, 10) || 1;
+          return sum + price * qty;
+        }, 0);
+        netGmv += fromPaymentInfo > 0 ? fromPaymentInfo : fromLineItems;
       }
       console.log(`[gmv] ${brand.name} orders GMV = ${netGmv} (${orders.length} orders)`);
     } catch(e) {
@@ -11770,9 +11786,11 @@ app.listen(CFG.port, () => {
   // Backfill Reacher shopIds, TC config, and billing defaults for known brands (idempotent — skips if already set)
   try {
     const BRAND_DEFAULTS = {
-      'diamandia':       { shopId: 8595, contractValue: 1500, commissionRate: 0.1, tc: { commission: 25, heroProductId: '1729491556857975130' } },
-      'trusted rituals': { shopId: 8974, contractValue: 1500, commissionRate: 0.1, tc: { commission: 25, heroProductId: '1732230831415267648' } },
-      'approved science':{ shopId: 8913, contractValue: 1500, commissionRate: 0.1, tc: { commission: 20, heroProductId: '1731392689812508843' } },
+      'diamandia':            { shopId: 8595, contractValue: 1500, commissionRate: 0.1, tc: { commission: 25, heroProductId: '1729491556857975130' } },
+      'trusted rituals':      { shopId: 8974, contractValue: 1500, commissionRate: 0.1, tc: { commission: 25, heroProductId: '1732230831415267648' } },
+      'approved science':     { shopId: 8913, contractValue: 1500, commissionRate: 0.1, tc: { commission: 20, heroProductId: '1731392689812508843' } },
+      'lode wtr':             { contractValue: 1500, commissionRate: 0.1 },
+      'the perfect haircare': { contractValue: 1500, commissionRate: 0.1 },
     };
     const bd = loadBrands(); let dirty = false;
     for (const client of (bd.clients || [])) {
