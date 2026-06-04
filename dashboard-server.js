@@ -3819,34 +3819,20 @@ app.get('/api/admin/shop-metrics-probe/:brandId', async (req, res) => {
   const thisWkParams  = { start_date_ge: week1S, end_date_lt: today };
   const lastWkParams  = { start_date_ge: week2S, end_date_lt: week1S };
 
-  // Product/video endpoints: version 202605 may be a query param, not path segment
-  const vParam = { ...thisWkParams, version: '202605', page_size: 10 };
-  const vParamNoDate = { version: '202605', page_size: 10 };
+  const p202605 = { ...thisWkParams, page_size: 10 };
   const endpoints = [
-    // Shop performance (confirmed working, v202509 in path)
+    // Shop performance (confirmed working, v202509)
     ['GET', '/analytics/202509/shop/performance',                  thisWkParams],
-    // Product — version as query param (no version in path)
-    ['GET', '/analytics/product/performance',                      vParam],
-    ['GET', '/analytics/product/performance_list',                 vParam],
-    ['GET', '/analytics/product/sales_performance',                vParam],
-    ['GET', '/analytics/product/top_performance',                  vParam],
-    ['GET', '/analytics/products/performance_list',                vParam],
-    // Product — version in path (202605)
-    ['GET', '/analytics/202605/product/performance',               { ...thisWkParams, page_size: 10 }],
-    ['GET', '/analytics/202605/product/performance_list',          { ...thisWkParams, page_size: 10 }],
-    // Video — version as query param
-    ['GET', '/analytics/video/performance',                        vParam],
-    ['GET', '/analytics/video/performance_list',                   vParam],
-    ['GET', '/analytics/video/sales_performance',                  vParam],
-    ['GET', '/analytics/video/top_performance',                    vParam],
-    ['GET', '/analytics/videos/performance_list',                  vParam],
-    // Video — version in path (202605)
-    ['GET', '/analytics/202605/video/performance',                 { ...thisWkParams, page_size: 10 }],
-    ['GET', '/analytics/202605/video/performance_list',            { ...thisWkParams, page_size: 10 }],
-    // Live — version as query param
-    ['GET', '/analytics/live/performance',                         vParam],
-    ['GET', '/analytics/live/performance_list',                    vParam],
-    ['GET', '/analytics/202605/live/performance',                  { ...thisWkParams, page_size: 10 }],
+    // Product performance (confirmed path from API Testing Tool: /analytics/{version}/shop_products/performance, v202605)
+    ['GET', '/analytics/202605/shop_products/performance',         p202605],
+    // Video performance — try likely variants with correct version
+    ['GET', '/analytics/202605/shop_videos/performance',           p202605],
+    ['GET', '/analytics/202605/video/performance',                 p202605],
+    ['GET', '/analytics/202605/videos/performance',                p202605],
+    ['GET', '/analytics/202605/shop_video/performance',            p202605],
+    // Live
+    ['GET', '/analytics/202605/live/performance',                  p202605],
+    ['GET', '/analytics/202605/shop_live/performance',             p202605],
   ];
 
   for (const [method, path, params] of endpoints) {
