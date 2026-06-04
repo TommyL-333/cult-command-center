@@ -3750,24 +3750,34 @@ app.get('/api/admin/shop-metrics-probe/:brandId', async (req, res) => {
   const weekAgo = now - 7 * 86400;
   const twoWeeksAgo = now - 14 * 86400;
 
-  // Try every known analytics / performance endpoint variant
+  // Try every known shop performance / analytics endpoint variant
+  const dateStr = (ts) => new Date(ts * 1000).toISOString().slice(0,10).replace(/-/g,'');
+  const dateISO = (ts) => new Date(ts * 1000).toISOString().slice(0,10);
   const endpoints = [
-    ['GET',  '/seller/202309/performance',            {}],
-    ['GET',  '/seller/202312/performance',            {}],
-    ['POST', '/product/202309/data_analytics',        { page_size: 10, start_date: new Date(weekAgo*1000).toISOString().slice(0,10).replace(/-/g,''), end_date: new Date(now*1000).toISOString().slice(0,10).replace(/-/g,'') }],
-    ['POST', '/analytics/202312/product_overview',   { date_range: { start_date: new Date(weekAgo*1000).toISOString().slice(0,10), end_date: new Date(now*1000).toISOString().slice(0,10) } }],
-    ['POST', '/analytics/202406/shop_overview',      { date_range: { start_date: new Date(weekAgo*1000).toISOString().slice(0,10), end_date: new Date(now*1000).toISOString().slice(0,10) } }],
-    ['GET',  '/shop/202309/performance',             {}],
-    ['POST', '/seller/202309/data_report',           { report_type: 1, start_date: new Date(weekAgo*1000).toISOString().slice(0,10).replace(/-/g,''), end_date: new Date(now*1000).toISOString().slice(0,10).replace(/-/g,'') }],
+    // Shop/seller performance score variants
+    ['GET',  '/seller/202309/performance',          {}],
+    ['GET',  '/seller/202312/performance',          {}],
+    ['GET',  '/seller/202406/performance',          {}],
+    ['GET',  '/performance/202309/seller',          {}],
+    ['GET',  '/performance/202309/shop',            {}],
+    // With date params
+    ['GET',  '/seller/202309/performance',          { start_date: dateStr(weekAgo), end_date: dateStr(now) }],
+    ['GET',  '/seller/202309/performance',          { date_range: { start_date: dateISO(weekAgo), end_date: dateISO(now) } }],
+    // Analytics variants
+    ['POST', '/analytics/202309/shop_overview',    { date_range: { start_date: dateISO(weekAgo), end_date: dateISO(now) } }],
+    ['POST', '/analytics/202312/shop_overview',    { date_range: { start_date: dateISO(weekAgo), end_date: dateISO(now) } }],
+    ['POST', '/analytics/202406/shop_overview',    { date_range: { start_date: dateISO(weekAgo), end_date: dateISO(now) } }],
+    ['GET',  '/analytics/202309/shop_performance', {}],
   ];
   for (const [method, path, body] of endpoints) {
+    const key = `${method} ${path}${Object.keys(body).length ? ' '+JSON.stringify(body).slice(0,40) : ''}`;
     try {
       const r = method === 'GET'
-        ? await ttsBrandGet(brand, brands, bi, path, {})
+        ? await ttsBrandGet(brand, brands, bi, path, body)
         : await ttsBrandPost(brand, brands, bi, path, body);
-      results[path] = { ok: true, data: r.data };
+      results[key] = { ok: true, data: r.data };
     } catch(e) {
-      results[path] = { error: e.response?.status, code: e.response?.data?.code, msg: e.response?.data?.message };
+      results[key] = { error: e.response?.status, code: e.response?.data?.code, msg: e.response?.data?.message };
     }
   }
 
