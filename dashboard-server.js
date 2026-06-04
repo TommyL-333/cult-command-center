@@ -2290,8 +2290,8 @@ function clientBilling(b) {
   const gmv       = b.cachedNetGmv ?? 0;
   const revShare  = parseFloat((gmv * commRate).toFixed(2));
   const total     = parseFloat((retainer + revShare).toFixed(2));
-  // Extract primary email from contacts string if no loginEmail
-  let billingEmail = b.billingEmail || b.loginEmail || '';
+  // Billing email — intentionally does NOT fall back to loginEmail (that's Tommy's portal email for some brands)
+  let billingEmail = b.billingEmail || '';
   if (!billingEmail && b.contacts) {
     const m = b.contacts.match(/[\w.+-]+@[\w.-]+\.\w+/);
     if (m) billingEmail = m[0];
@@ -2338,10 +2338,13 @@ app.get('/portal-admin/billing/preview', requirePortalAdmin, async (req, res) =>
   const endLabel   = now.toLocaleString('en-US', { month: 'short', day: 'numeric' });
   cycle.dataPeriod = startLabel === endLabel ? startLabel : `${startLabel}–${endLabel}`;
 
-  // Only include active clients
+  // Only include active clients — exclude internal/test brands
+  const INTERNAL_IDS = new Set(['orgsocsmarketing001', 'tctestbrand001']);
   const allBrands = loadBrands();
   const active = (allBrands.clients || []).filter(b =>
-    !b.pipelineStage || b.pipelineStage === 'Contract Signed'
+    (!b.pipelineStage || b.pipelineStage === 'Contract Signed') &&
+    !INTERNAL_IDS.has(b.id) &&
+    b.source !== 'internal'
   );
 
   // Fetch live GMV (current month) + payment method status in parallel
@@ -2358,7 +2361,8 @@ app.get('/portal-admin/billing/preview', requirePortalAdmin, async (req, res) =>
   // Re-load after GMV cache writes
   const freshBrands = loadBrands();
   const freshActive = (freshBrands.clients || []).filter(b =>
-    !b.pipelineStage || b.pipelineStage === 'Contract Signed'
+    (!b.pipelineStage || b.pipelineStage === 'Contract Signed') &&
+    !INTERNAL_IDS.has(b.id) && b.source !== 'internal'
   );
 
   const previews = freshActive.map((b, i) => {
@@ -2390,6 +2394,7 @@ app.get('/portal-admin/billing/preview', requirePortalAdmin, async (req, res) =>
       lastInvoiceId:    b.lastInvoiceId || null,
       lastInvoiceUrl:   b.lastInvoiceUrl || null,
       lastInvoicedAt:   b.lastInvoicedAt || null,
+      pendingTierChange: b.pendingTierChange || null,
     };
   });
   res.json({ ok: true, period: cycle.period, dataPeriod: cycle.dataPeriod, nextBillingLabel: cycle.nextBillingLabel, daysUntilBilling: cycle.daysUntilBilling, previews });
@@ -2398,9 +2403,11 @@ app.get('/portal-admin/billing/preview', requirePortalAdmin, async (req, res) =>
 // GET /portal-admin/billing/history — Stripe invoice history for all active clients
 app.get('/portal-admin/billing/history', requirePortalAdmin, async (req, res) => {
   if (!stripe) return res.status(503).json({ error: 'Stripe not configured' });
+  const INTERNAL_IDS = new Set(['orgsocsmarketing001', 'tctestbrand001']);
   const brands = loadBrands();
   const active = (brands.clients || []).filter(b =>
-    !b.pipelineStage || b.pipelineStage === 'Contract Signed'
+    (!b.pipelineStage || b.pipelineStage === 'Contract Signed') &&
+    !INTERNAL_IDS.has(b.id) && b.source !== 'internal'
   );
   const results = await Promise.allSettled(active.map(async b => {
     if (!b.stripeCustomerId) return { id: b.id, name: b.name, invoices: [] };

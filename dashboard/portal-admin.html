@@ -753,6 +753,12 @@
         : hasPM ? `⚡ Charge Now` : `✅ Approve &amp; Send Invoice`;
       const btnClass     = `send-btn${alreadySent ? ' sent' : hasPM ? ' charge' : ''}`;
 
+      const pendingChip = p.pendingTierChange
+        ? `<div style="margin-top:8px;background:rgba(201,168,76,0.1);border:1px solid rgba(201,168,76,0.3);border-radius:6px;padding:5px 10px;font-size:0.73rem;color:#c9a84c;">
+            ⏳ Plan change requested: <strong>$${p.pendingTierChange.retainer.toLocaleString()}/mo + ${Math.round(p.pendingTierChange.commRate*100)}% GMV</strong> — effective ${esc(p.pendingTierChange.effectiveLabel)}
+           </div>`
+        : '';
+
       return `
       <div class="billing-card${alreadySent ? ' sent' : ''}" id="bc-${esc(p.id)}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;flex-wrap:wrap;">
@@ -765,6 +771,7 @@
           </div>
           ${pmBadge}
         </div>
+        ${pendingChip}
 
         <div>
           <div class="billing-line">
