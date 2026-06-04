@@ -2067,9 +2067,9 @@ app.get('/portal-admin/shop-metrics/:brandId', requirePortalAdmin, async (req, r
   }
 
   // Fetch TikTok Shop Analytics API (scope: data.shop_analytics.public.read)
-  // Confirmed path/params from TikTok API Testing Tool: /analytics/202509/shop/performance
-  // with start_date_ge + end_date_lt (YYYYMMDD strings)
-  const ANALYTICS_VERSIONS = ['202509', '202506', '202412', '202309'];
+  // Path: /analytics/202509/shop/performance
+  // Date format: YYYY-MM-DD (regex: ^2[0-9]{3}-[0,1][0-9]-[0-3][0-9]$)
+  const ANALYTICS_VERSIONS = ['202509'];
   async function fetchShopAnalytics(startDateStr, endDateStr) {
     const params = { start_date_ge: startDateStr, end_date_lt: endDateStr };
     for (const ver of ANALYTICS_VERSIONS) {
@@ -2092,7 +2092,7 @@ app.get('/portal-admin/shop-metrics/:brandId', requirePortalAdmin, async (req, r
     const now    = Math.floor(Date.now() / 1000);
     const week1  = now - 7 * 86400;
     const week2  = week1 - 7 * 86400;
-    const ds     = (ts) => new Date(ts * 1000).toISOString().slice(0,10).replace(/-/g,''); // YYYYMMDD
+    const ds     = (ts) => new Date(ts * 1000).toISOString().slice(0,10); // YYYY-MM-DD (TikTok requires dashes)
     const todayS = ds(now);
     const w1S    = ds(week1);
     const w2S    = ds(week2);
@@ -3810,7 +3810,7 @@ app.get('/api/admin/shop-metrics/:brandId', async (req, res) => {
 
 // GET /api/admin/shop-metrics-probe/:brandId — probe TikTok Shop analytics endpoints
 // Tests correct paths discovered from TikTok API Testing Tool:
-//   /analytics/202509/shop/performance  params: start_date_ge, end_date_lt (YYYYMMDD)
+//   /analytics/202509/shop/performance  params: start_date_ge, end_date_lt (YYYY-MM-DD)
 app.get('/api/admin/shop-metrics-probe/:brandId', async (req, res) => {
   const secret = process.env.ADMIN_BATCH_SECRET || 'cult-batch-2026';
   if (req.headers['x-admin-secret'] !== secret) return res.status(401).json({ error: 'Unauthorized' });
@@ -3822,15 +3822,13 @@ app.get('/api/admin/shop-metrics-probe/:brandId', async (req, res) => {
 
   const results = {};
   const now = Math.floor(Date.now() / 1000);
-  const ds = (ts) => new Date(ts * 1000).toISOString().slice(0,10).replace(/-/g,''); // YYYYMMDD
+  const ds = (ts) => new Date(ts * 1000).toISOString().slice(0,10); // YYYY-MM-DD (TikTok requires dashes)
   const today  = ds(now);
   const week1S = ds(now - 7 * 86400);
   const week2S = ds(now - 14 * 86400);
 
-  // Confirmed correct format from TikTok API Testing Tool:
-  // - Path: /analytics/{version}/shop/performance  (slash, not underscore)
-  // - Version: 202509
-  // - Params: start_date_ge, end_date_lt (YYYYMMDD strings)
+  // Confirmed: Path /analytics/202509/shop/performance, Version 202509
+  // Params: start_date_ge + end_date_lt as YYYY-MM-DD (regex ^2[0-9]{3}-[0,1][0-9]-[0-3][0-9]$)
   const thisWkParams  = { start_date_ge: week1S, end_date_lt: today };
   const lastWkParams  = { start_date_ge: week2S, end_date_lt: week1S };
 
