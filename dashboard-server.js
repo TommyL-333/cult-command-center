@@ -12456,40 +12456,16 @@ app.listen(CFG.port, () => {
     }
   } catch(e) { console.error('[startup] Approved Science setup error:', e.message); }
 
+  // Remove TC Test Brand (no longer needed)
   try {
     const bd = loadBrands();
-    const TEST_SLUG = 'tc-test';
-    const exists = (bd.clients || []).some(b => b.creatorPage?.slug === TEST_SLUG);
-    if (!exists) {
-      bd.clients = bd.clients || [];
-      bd.clients.push({
-        id:        'tctestbrand001',
-        createdAt: new Date().toISOString(),
-        name:      'TC Test Brand',
-        industry:  'Internal test — TikTok OAuth + direct TC invite flow',
-        products:  'Test only',
-        audience:  'Internal',
-        voice:     'Internal',
-        contentPillars: 'Internal',
-        proofPoints:    'Internal',
-        cta:            'Test',
-        tiktokHandle:   'TBD',
-        shopId:         8595, // Diamandia shop — for Reacher fallback testing
-        creatorPage: {
-          slug:             TEST_SLUG,
-          active:           true,
-          listed:           false,  // Hidden from /creators index
-          showTikTokConnect: true,
-          accentColor:      '#00f2ea',
-          headline:         'TC Test — Connect TikTok',
-          tcCommission:     25,
-          tcHeroProductId:  '1729491556857975130',
-        },
-      });
+    const before = (bd.clients || []).length;
+    bd.clients = (bd.clients || []).filter(b => b.id !== 'tctestbrand001' && b.name !== 'TC Test Brand');
+    if (bd.clients.length < before) {
       saveBrands(bd);
-      console.log(`[startup] Created hidden test brand: /creators/${TEST_SLUG}`);
+      console.log('[startup] Removed TC Test Brand');
     }
-  } catch(e) { console.error('[startup] TC test brand setup error:', e.message); }
+  } catch(e) { console.error('[startup] TC test brand removal error:', e.message); }
 
   // Startup diagnostics — log data file sizes so we can verify persistence
   try {
