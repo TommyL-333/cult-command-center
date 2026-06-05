@@ -3988,6 +3988,171 @@ app.post('/api/client/storista/queue/:jobId/retry', requireClientSession, (req, 
   res.json({ ok: true });
 });
 
+// ─── Brand Assets (Content Studio) ──────────────────────────────────────────
+
+// GET /api/client/products — TikTok Shop products for this brand (client session)
+app.get('/api/client/products', requireClientSession, async (req, res) => {
+  const brands = loadBrands();
+  const bi = brands.clients.findIndex(b => b.id === req.session.clientBrandId);
+  if (bi === -1) return res.status(404).json({ error: 'Brand not found' });
+  const brand = brands.clients[bi];
+  if (!brand.tiktokShopToken?.access_token) return res.json({ ok: true, products: [] });
+  try {
+    const r = await ttsBrandPost(brand, brands, bi, '/product/202309/products/search',
+      { status: ['ACTIVATE'], page_size: 50 });
+    const products = (r?.data?.products || []).map(p => ({
+      id:     p.id,
+      name:   p.title || p.name || 'Product',
+      images: (p.main_images || p.images || []).slice(0, 4).map(img => img.url_list?.[0] || img.url || img),
+    }));
+    res.json({ ok: true, products });
+  } catch(e) {
+    res.json({ ok: true, products: [], error: e.response?.data?.message || e.message });
+  }
+});
+
+// GET /api/client/assets — list brand's saved content assets
+app.get('/api/client/assets', requireClientSession, (req, res) => {
+  const brands = loadBrands();
+  const bi = brands.clients.findIndex(b => b.id === req.session.clientBrandId);
+  if (bi === -1) return res.status(404).json({ error: 'Brand not found' });
+  const brand = brands.clients[bi];
+  res.json({ ok: true, assets: brand.contentAssets || [] });
+});
+
+// POST /api/client/assets/upload — upload image or video asset, tag to a product
+// Must be after imageUpload/clientUpload defs — registered via lazy multer
+app.post('/api/client/assets/upload', requireClientSession, (req, res, next) => {
+  const multerAny = require('multer')({
+    storage: require('multer').diskStorage({
+      destination: (_, __, cb) => cb(null, UPLOAD_DIR),
+      filename:    (_, file, cb) => {
+        const ext  = path.extname(file.originalname) || '';
+        const base = path.basename(file.originalname, ext).replace(/[^a-z0-9_-]/gi, '_').slice(0, 60);
+        cb(null, `${Date.now()}_${base}${ext}`);
+      },
+    }),
+    limits: { fileSize: 500 * 1024 * 1024 },
+  }).single('asset');
+  multerAny(req, res, next);
+}, (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file received' });
+  const brands = loadBrands();
+  const bi = brands.clients.findIndex(b => b.id === req.session.clientBrandId);
+  if (bi === -1) return res.status(404).json({ error: 'Brand not found' });
+  const brand = brands.clients[bi];
+  if (!brand.contentAssets) brand.contentAssets = [];
+  const isVideo = /video/i.test(req.file.mimetype) || /\.(mp4|mov|avi|webm)$/i.test(req.file.originalname);
+  const asset = {
+    id:        crypto.randomUUID(),
+    productId: req.body.productId || null,
+    name:      req.file.originalname,
+    url:       `${PUBLIC_BASE_URL}/uploads/${req.file.filename}`,
+    type:      isVideo ? 'video' : 'image',
+    createdAt: new Date().toISOString(),
+  };
+  brand.contentAssets.push(asset);
+  saveBrands(brands);
+  res.json({ ok: true, asset });
+});
+
+// DELETE /api/client/assets/:assetId
+app.delete('/api/client/assets/:assetId', requireClientSession, (req, res) => {
+  const brands = loadBrands();
+  const bi = brands.clients.findIndex(b => b.id === req.session.clientBrandId);
+  if (bi === -1) return res.status(404).json({ error: 'Brand not found' });
+  const brand = brands.clients[bi];
+  const idx = (brand.contentAssets || []).findIndex(a => a.id === req.params.assetId);
+  if (idx === -1) return res.status(404).json({ error: 'Asset not found' });
+  const asset = brand.contentAssets[idx];
+  // Delete file
+  const filePath = path.join(UPLOAD_DIR, path.basename(asset.url.split('?')[0]));
+  if (filePath.startsWith(UPLOAD_DIR)) fs.unlink(filePath, () => {});
+  brand.contentAssets.splice(idx, 1);
+  saveBrands(brands);
+  res.json({ ok: true });
+});
+
+// POST /api/client/overlay/render — FFmpeg: burn text + logo overlays into a video
+// Body: { videoUrl, overlays: [{type:'text'|'logo', text, x, y, fontSize, color, bold, url, width}] }
+app.post('/api/client/overlay/render', requireClientSession, express.json({ limit: '1mb' }), async (req, res) => {
+  const { videoUrl, overlays = [] } = req.body || {};
+  if (!videoUrl) return res.status(400).json({ error: 'videoUrl required' });
+
+  // Resolve local path from URL
+  const filename = path.basename(videoUrl.split('?')[0]);
+  const inputPath = path.join(UPLOAD_DIR, filename);
+  if (!inputPath.startsWith(UPLOAD_DIR) || !fs.existsSync(inputPath)) {
+    return res.status(400).json({ error: 'Video file not found. Upload it first.' });
+  }
+
+  const outName = `overlay_${Date.now()}_${filename}`;
+  const outPath = path.join(UPLOAD_DIR, outName);
+
+  try {
+    await new Promise((resolve, reject) => {
+      const textOverlays = overlays.filter(o => o.type === 'text');
+      const logoOverlays = overlays.filter(o => o.type === 'logo');
+
+      let cmd = ffmpeg(inputPath);
+
+      // Add logo inputs
+      logoOverlays.forEach(lo => {
+        const logoFile = path.join(UPLOAD_DIR, path.basename((lo.url || '').split('?')[0]));
+        if (fs.existsSync(logoFile)) cmd = cmd.input(logoFile);
+      });
+
+      // Build filter complex
+      const filters = [];
+      let lastOutput = '0:v';
+
+      // Logo overlays first
+      logoOverlays.forEach((lo, i) => {
+        const logoFile = path.join(UPLOAD_DIR, path.basename((lo.url || '').split('?')[0]));
+        if (!fs.existsSync(logoFile)) return;
+        const w = lo.width || 80;
+        const x = lo.x ?? 10;
+        const y = lo.y ?? 10;
+        const outLabel = `logo${i}`;
+        filters.push(`[${i + 1}:v]scale=${w}:-1[scaled${i}]`);
+        filters.push(`[${lastOutput}][scaled${i}]overlay=${x}:${y}[${outLabel}]`);
+        lastOutput = outLabel;
+      });
+
+      // Text overlays
+      textOverlays.forEach((to, i) => {
+        const text   = (to.text || '').replace(/'/g, "'\\''").replace(/:/g, '\\:');
+        const x      = to.x ?? 50;
+        const y      = to.y ?? 100;
+        const size   = to.fontSize || 36;
+        const color  = (to.color || '#ffffff').replace('#', '');
+        const bold   = to.bold ? ':bold=1' : '';
+        const shadow = 'shadowcolor=black:shadowx=2:shadowy=2';
+        const outLabel = `txt${i}`;
+        filters.push(`[${lastOutput}]drawtext=text='${text}':x=${x}:y=${y}:fontsize=${size}:fontcolor=0x${color}:${shadow}${bold}[${outLabel}]`);
+        lastOutput = outLabel;
+      });
+
+      if (filters.length) {
+        cmd = cmd.complexFilter(filters, lastOutput);
+      }
+
+      cmd
+        .outputOptions(['-c:a', 'copy'])
+        .on('error', reject)
+        .on('end', resolve)
+        .save(outPath);
+    });
+
+    const outputUrl = `${PUBLIC_BASE_URL}/uploads/${outName}`;
+    res.json({ ok: true, outputUrl, filename: outName });
+  } catch(e) {
+    console.error('[overlay/render] error:', e.message);
+    if (fs.existsSync(outPath)) fs.unlink(outPath, () => {});
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── Creator Onboarding (PUBLIC — called from cultcontent.cc) ────────────────
 // CORS preflight
 app.options('/api/creator-onboard', (req, res) => {

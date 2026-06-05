@@ -162,6 +162,34 @@
     .cs-card { background: var(--card); border: 1px solid var(--border); border-radius: 13px; padding: 24px; }
     .cs-card-title { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 20px; }
 
+    /* Asset tiles */
+    .asset-tab { background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 20px; color: var(--muted); font-size: 0.75rem; font-weight: 600; padding: 5px 14px; cursor: pointer; transition: all 0.15s; }
+    .asset-tab.active { background: rgba(0,242,234,0.1); border-color: rgba(0,242,234,0.3); color: var(--teal); }
+    .asset-tile { position: relative; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; aspect-ratio: 1; cursor: pointer; transition: border-color 0.15s; }
+    .asset-tile:hover { border-color: rgba(0,242,234,0.3); }
+    .asset-tile img, .asset-tile video { width: 100%; height: 100%; object-fit: cover; }
+    .asset-tile .asset-badge { position: absolute; top: 5px; left: 5px; background: rgba(0,0,0,0.6); color: #fff; font-size: 0.6rem; font-weight: 700; padding: 2px 6px; border-radius: 10px; }
+    .asset-tile .asset-del { position: absolute; top: 5px; right: 5px; background: rgba(0,0,0,0.7); color: var(--red); border: none; border-radius: 50%; width: 22px; height: 22px; font-size: 0.7rem; cursor: pointer; display: none; align-items: center; justify-content: center; }
+    .asset-tile:hover .asset-del { display: flex; }
+
+    /* Create section */
+    .product-chip { display: inline-flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.04); border: 1px solid var(--border); border-radius: 10px; padding: 8px 12px; cursor: pointer; transition: all 0.15s; font-size: 0.82rem; }
+    .product-chip:hover { border-color: rgba(0,242,234,0.3); }
+    .product-chip.selected { border-color: var(--teal); background: rgba(0,242,234,0.08); color: var(--teal); }
+    .product-chip img { width: 32px; height: 32px; object-fit: cover; border-radius: 6px; }
+    .format-btn { background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-size: 0.84rem; font-weight: 600; padding: 10px 18px; cursor: pointer; transition: all 0.15s; }
+    .format-btn.active { border-color: var(--teal); background: rgba(0,242,234,0.08); color: var(--teal); }
+
+    /* Overlay editor */
+    .overlay-item { background: rgba(0,0,0,0.2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+    .overlay-item-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .overlay-input { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 0.82rem; padding: 5px 8px; flex: 1; min-width: 100px; }
+    .overlay-input-sm { width: 60px !important; flex: none !important; min-width: unset !important; }
+    .overlay-del { background: none; border: none; color: var(--red); cursor: pointer; font-size: 0.9rem; flex-shrink: 0; }
+    .overlay-label { font-size: 0.65rem; color: var(--muted); font-weight: 700; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 3px; }
+
+    @media (max-width: 600px) { #overlayEditorGrid { grid-template-columns: 1fr !important; } }
+
     /* Upload zone */
     .drop-zone { border: 2px dashed var(--border); border-radius: 10px; padding: 36px; text-align: center; cursor: pointer; transition: border-color 0.2s, background 0.2s; }
     .drop-zone:hover, .drop-zone.dragover { border-color: var(--teal); background: rgba(0,242,234,0.04); }
@@ -662,6 +690,119 @@
             <div class="conn-status-msg" id="connMsgStorista"></div>
           </div>
         </div>
+      </div>
+    </div>
+
+    <!-- Section: Brand Assets -->
+    <div class="cs-section">
+      <div class="cs-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:10px;flex-wrap:wrap;">
+          <div class="cs-card-title" style="margin-bottom:0;">🗂 Brand Assets</div>
+          <button class="refresh-btn" onclick="loadBrandAssets()">↻ Refresh</button>
+        </div>
+        <p style="font-size:0.82rem;color:var(--muted);margin-bottom:20px;line-height:1.5">Product images pulled from TikTok Shop. Upload additional images or videos per product to use in content creation.</p>
+
+        <!-- Product filter tabs -->
+        <div id="assetProductTabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;">
+          <button class="asset-tab active" onclick="filterAssets(null, this)">All</button>
+        </div>
+
+        <!-- Asset grid -->
+        <div id="assetGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:18px;">
+          <div class="empty" style="grid-column:1/-1;padding:24px 0;text-align:center;font-size:0.82rem;color:var(--muted);">Loading…</div>
+        </div>
+
+        <!-- Upload to asset library -->
+        <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:4px;">
+          <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:10px;">Upload Asset</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+            <select id="assetProductSelect" class="schedule-input" style="flex:1;min-width:140px;padding:8px 10px;">
+              <option value="">No product (general)</option>
+            </select>
+            <label class="post-now-btn" style="padding:9px 18px;cursor:pointer;font-size:0.82rem;">
+              + Upload
+              <input type="file" id="assetFileInput" accept="image/*,video/*" style="display:none" onchange="uploadAsset(this)">
+            </label>
+          </div>
+          <div id="assetUploadStatus" style="font-size:0.78rem;margin-top:8px;min-height:16px;"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section: Create -->
+    <div class="cs-section">
+      <div class="cs-card">
+        <div class="cs-card-title">✏️ Create</div>
+
+        <!-- Step 1: Product picker -->
+        <div style="margin-bottom:20px;">
+          <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:10px;">Step 1 — Select Product</div>
+          <div id="createProductGrid" style="display:flex;gap:10px;flex-wrap:wrap;">
+            <div class="empty" style="font-size:0.82rem;color:var(--muted);padding:12px 0;">Loading products…</div>
+          </div>
+        </div>
+
+        <!-- Step 2: Format picker (shown after product selected) -->
+        <div id="createFormatRow" style="display:none;margin-bottom:20px;border-top:1px solid var(--border);padding-top:18px;">
+          <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:10px;">Step 2 — Format</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="format-btn active" id="fmtTextOverlay" onclick="selectFormat('textOverlay', this)">✏️ Text Overlay</button>
+            <button class="format-btn" id="fmtCarousel" onclick="selectFormat('carousel', this)" style="opacity:0.5;cursor:not-allowed" disabled title="Coming soon">🖼 Carousel</button>
+            <button class="format-btn" id="fmtTalkingHead" onclick="selectFormat('talkingHead', this)" style="opacity:0.5;cursor:not-allowed" disabled title="Coming soon">🎙 Talking Head</button>
+          </div>
+        </div>
+
+        <!-- Text Overlay editor (shown when format = textOverlay) -->
+        <div id="createTextOverlay" style="display:none;border-top:1px solid var(--border);padding-top:18px;">
+          <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:12px;">Step 3 — Text Overlay Editor</div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;" id="overlayEditorGrid">
+
+            <!-- Left: video preview -->
+            <div>
+              <div style="font-size:0.7rem;color:var(--muted);margin-bottom:8px;">Video</div>
+              <!-- Drop zone or current video -->
+              <div id="overlayVideoWrap" style="position:relative;width:100%;max-width:280px;aspect-ratio:9/16;background:#000;border-radius:12px;overflow:hidden;border:1px solid var(--border);cursor:pointer;" onclick="document.getElementById('overlayVideoInput').click()">
+                <video id="overlayVideoEl" style="width:100%;height:100%;object-fit:cover;display:none" muted loop playsinline></video>
+                <div id="overlayVideoPicker" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--muted);">
+                  <div style="font-size:2rem">🎬</div>
+                  <div style="font-size:0.8rem">Click to upload video</div>
+                  <div style="font-size:0.7rem">MP4 or MOV, up to 500MB</div>
+                </div>
+                <!-- Overlay canvas layer (positioned divs) -->
+                <div id="overlayCanvas" style="position:absolute;inset:0;pointer-events:none;"></div>
+                <!-- Safe zone indicator -->
+                <div style="position:absolute;inset:10%;border:1px dashed rgba(255,255,255,.2);border-radius:4px;pointer-events:none;"></div>
+              </div>
+              <input type="file" id="overlayVideoInput" accept="video/*" style="display:none" onchange="overlayLoadVideo(this)">
+              <div id="overlayVideoName" style="font-size:0.72rem;color:var(--muted);margin-top:6px;"></div>
+            </div>
+
+            <!-- Right: overlay controls -->
+            <div>
+              <div style="font-size:0.7rem;color:var(--muted);margin-bottom:8px;">Overlays</div>
+
+              <!-- Text overlays list -->
+              <div id="overlayList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;"></div>
+
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+                <button class="post-now-btn" style="padding:7px 14px;font-size:0.8rem;" onclick="overlayAddText()">+ Text</button>
+                <label class="post-now-btn" style="padding:7px 14px;font-size:0.8rem;cursor:pointer;">
+                  + Logo
+                  <input type="file" id="overlayLogoInput" accept="image/*" style="display:none" onchange="overlayAddLogo(this)">
+                </label>
+              </div>
+
+              <!-- Render controls -->
+              <div style="border-top:1px solid var(--border);padding-top:14px;">
+                <button id="overlayRenderBtn" class="post-now-btn" style="width:100%;padding:11px;" onclick="overlayRender()" disabled>🎬 Render with Overlays</button>
+                <div id="overlayRenderStatus" style="font-size:0.78rem;margin-top:8px;min-height:16px;"></div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -1359,6 +1500,7 @@
     btns.forEach(b => { if (b.textContent.trim() === labels[name]) b.classList.add('active'); });
     if (name === 'content-studio' && !window._channelsLoaded) loadChannels();
     if (name === 'content-studio' && !window._arcadsLoaded) loadArcads();
+    if (name === 'content-studio' && !window._assetsLoaded) { window._assetsLoaded = true; loadBrandAssets(); }
     if (name === 'content-studio' && window._data?.brand) wizardInitBrandSummary();
     if (name === 'content-studio' && !window._storistaLoaded) initStorista(window._data?.brand);
     if (name === 'billing' && !window._billingLoaded) loadBilling();
@@ -1577,6 +1719,288 @@
       }
     } catch(e) { $st.style.color = 'var(--red)'; $st.textContent = 'Network error'; }
     setTimeout(() => { $st.textContent = ''; }, 4000);
+  }
+
+  // ─── Content Studio: Brand Assets + Create ────────────────────────────────
+  var _allAssets = [];
+  var _allProducts = [];
+  var _activeProductFilter = null;
+  var _selectedProductId = null;
+  var _selectedProductName = '';
+  var _overlayVideo = null;         // { url, file }
+  var _overlayItems = [];           // [{type, text, x, y, fontSize, color, bold, url, width}]
+
+  async function loadBrandAssets() {
+    const [assetsRes, productsRes] = await Promise.all([
+      fetch('/api/client/assets').then(r => r.json()).catch(() => ({ assets: [] })),
+      fetch('/api/client/products').then(r => r.json()).catch(() => ({ products: [] })),
+    ]);
+
+    _allAssets   = assetsRes.assets   || [];
+    _allProducts = productsRes.products || [];
+
+    // Build product filter tabs
+    const tabsEl = document.getElementById('assetProductTabs');
+    const selectEl = document.getElementById('assetProductSelect');
+    const productTabHtml = _allProducts.map(p => `<button class="asset-tab" onclick="filterAssets('${esc(p.id)}', this)">${esc(p.name)}</button>`).join('');
+    tabsEl.innerHTML = `<button class="asset-tab active" onclick="filterAssets(null, this)">All</button>${productTabHtml}`;
+    selectEl.innerHTML = `<option value="">No product (general)</option>` +
+      _allProducts.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
+
+    // Build product chips in Create section
+    const chipEl = document.getElementById('createProductGrid');
+    if (!_allProducts.length) {
+      chipEl.innerHTML = '<div class="empty" style="font-size:0.82rem;color:var(--muted);padding:12px 0;">No active TikTok Shop products found. Connect TikTok Shop first.</div>';
+    } else {
+      chipEl.innerHTML = _allProducts.map(p => {
+        const img = p.images?.[0] || '';
+        return `<div class="product-chip" id="pchip-${esc(p.id)}" onclick="selectCreateProduct('${esc(p.id)}','${esc(p.name.replace(/'/g,"\\\'"))}')">
+          ${img ? `<img src="${esc(img)}" alt="">` : ''}
+          <span>${esc(p.name)}</span>
+        </div>`;
+      }).join('');
+    }
+
+    renderAssetGrid(_allAssets);
+  }
+
+  function filterAssets(productId, btn) {
+    _activeProductFilter = productId;
+    document.querySelectorAll('.asset-tab').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    const filtered = productId ? _allAssets.filter(a => a.productId === productId) : _allAssets;
+    renderAssetGrid(filtered);
+  }
+
+  function renderAssetGrid(assets) {
+    const grid = document.getElementById('assetGrid');
+    // Always show product images from TikTok Shop (read-only)
+    const productImages = _allProducts.flatMap(p =>
+      (p.images || []).map(url => ({ _productImg: true, productId: p.id, productName: p.name, url }))
+    );
+    const filtered = _activeProductFilter
+      ? productImages.filter(i => i.productId === _activeProductFilter)
+      : productImages;
+
+    const allTiles = [
+      ...filtered.map(img => `
+        <div class="asset-tile" title="${esc(img.productName)}">
+          <img src="${esc(img.url)}" alt="" loading="lazy">
+          <div class="asset-badge">TikTok Shop</div>
+        </div>`),
+      ...assets.map(a => `
+        <div class="asset-tile" title="${esc(a.name)}">
+          ${a.type === 'video'
+            ? `<video src="${esc(a.url)}" preload="metadata"></video>`
+            : `<img src="${esc(a.url)}" alt="" loading="lazy">`}
+          <div class="asset-badge">${a.type === 'video' ? '▶' : '🖼'}</div>
+          <button class="asset-del" onclick="deleteAsset('${esc(a.id)}',event)">✕</button>
+        </div>`),
+    ];
+    grid.innerHTML = allTiles.length
+      ? allTiles.join('')
+      : '<div class="empty" style="grid-column:1/-1;padding:24px 0;text-align:center;font-size:0.82rem;color:var(--muted);">No assets yet. Upload images or videos below, or connect TikTok Shop to see product images.</div>';
+  }
+
+  async function uploadAsset(input) {
+    if (!input.files[0]) return;
+    const st = document.getElementById('assetUploadStatus');
+    st.style.color = 'var(--muted)'; st.textContent = 'Uploading…';
+    const fd = new FormData();
+    fd.append('asset', input.files[0]);
+    const productId = document.getElementById('assetProductSelect').value;
+    if (productId) fd.append('productId', productId);
+    try {
+      const r = await fetch('/api/client/assets/upload', { method: 'POST', body: fd });
+      const d = await r.json();
+      if (d.ok) {
+        _allAssets.push(d.asset);
+        renderAssetGrid(_activeProductFilter ? _allAssets.filter(a => a.productId === _activeProductFilter) : _allAssets);
+        st.style.color = 'var(--green)'; st.textContent = '✓ Uploaded';
+      } else { st.style.color = 'var(--red)'; st.textContent = d.error || 'Upload failed'; }
+    } catch(_) { st.style.color = 'var(--red)'; st.textContent = 'Network error'; }
+    input.value = '';
+    setTimeout(() => { st.textContent = ''; }, 3000);
+  }
+
+  async function deleteAsset(id, e) {
+    e.stopPropagation();
+    if (!confirm('Remove this asset?')) return;
+    await fetch(`/api/client/assets/${id}`, { method: 'DELETE' });
+    _allAssets = _allAssets.filter(a => a.id !== id);
+    renderAssetGrid(_activeProductFilter ? _allAssets.filter(a => a.productId === _activeProductFilter) : _allAssets);
+  }
+
+  function selectCreateProduct(id, name) {
+    _selectedProductId   = id;
+    _selectedProductName = name;
+    document.querySelectorAll('.product-chip').forEach(c => c.classList.remove('selected'));
+    const chip = document.getElementById('pchip-' + id);
+    if (chip) chip.classList.add('selected');
+    document.getElementById('createFormatRow').style.display = '';
+    document.getElementById('createTextOverlay').style.display = 'none';
+  }
+
+  function selectFormat(format, btn) {
+    document.querySelectorAll('.format-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('createTextOverlay').style.display = format === 'textOverlay' ? '' : 'none';
+  }
+
+  // ─── Text Overlay Editor ───────────────────────────────────────────────────
+  function overlayLoadVideo(input) {
+    if (!input.files[0]) return;
+    const file = input.files[0];
+    const url  = URL.createObjectURL(file);
+    _overlayVideo = { url, file, name: file.name };
+    document.getElementById('overlayVideoEl').src = url;
+    document.getElementById('overlayVideoEl').style.display = '';
+    document.getElementById('overlayVideoEl').play().catch(() => {});
+    document.getElementById('overlayVideoPicker').style.display = 'none';
+    document.getElementById('overlayVideoName').textContent = file.name;
+    document.getElementById('overlayRenderBtn').disabled = false;
+    renderOverlayList();
+  }
+
+  function overlayAddText() {
+    _overlayItems.push({ type: 'text', text: 'Your text here', x: 10, y: 50, fontSize: 48, color: '#ffffff', bold: true });
+    renderOverlayList();
+    updateOverlayCanvas();
+  }
+
+  function overlayAddLogo(input) {
+    if (!input.files[0]) return;
+    const url = URL.createObjectURL(input.files[0]);
+    _overlayItems.push({ type: 'logo', url, _file: input.files[0], x: 10, y: 10, width: 80 });
+    renderOverlayList();
+    updateOverlayCanvas();
+    input.value = '';
+  }
+
+  function overlayRemove(i) {
+    _overlayItems.splice(i, 1);
+    renderOverlayList();
+    updateOverlayCanvas();
+  }
+
+  function overlayUpdate(i, field, val) {
+    if (!_overlayItems[i]) return;
+    _overlayItems[i][field] = field === 'bold' ? val : (isNaN(Number(val)) ? val : (field === 'color' ? val : Number(val)));
+    if (field === 'color') _overlayItems[i].color = val;
+    updateOverlayCanvas();
+  }
+
+  function renderOverlayList() {
+    const el = document.getElementById('overlayList');
+    el.innerHTML = _overlayItems.map((item, i) => {
+      if (item.type === 'text') return `
+        <div class="overlay-item">
+          <div class="overlay-label">Text Overlay</div>
+          <div class="overlay-item-row">
+            <input class="overlay-input" type="text" value="${esc(item.text)}" placeholder="Text…" oninput="overlayUpdate(${i},'text',this.value)">
+            <button class="overlay-del" onclick="overlayRemove(${i})">✕</button>
+          </div>
+          <div class="overlay-item-row" style="margin-top:6px;">
+            <div><div class="overlay-label">X%</div><input class="overlay-input overlay-input-sm" type="number" value="${item.x}" min="0" max="100" oninput="overlayUpdate(${i},'x',this.value)"></div>
+            <div><div class="overlay-label">Y%</div><input class="overlay-input overlay-input-sm" type="number" value="${item.y}" min="0" max="100" oninput="overlayUpdate(${i},'y',this.value)"></div>
+            <div><div class="overlay-label">Size</div><input class="overlay-input overlay-input-sm" type="number" value="${item.fontSize}" min="12" max="120" oninput="overlayUpdate(${i},'fontSize',this.value)"></div>
+            <div><div class="overlay-label">Color</div><input type="color" value="${item.color || '#ffffff'}" style="width:36px;height:28px;border:none;cursor:pointer;background:none;" onchange="overlayUpdate(${i},'color',this.value)"></div>
+          </div>
+        </div>`;
+      else return `
+        <div class="overlay-item">
+          <div class="overlay-label">Logo</div>
+          <div class="overlay-item-row">
+            <img src="${item.url}" style="height:32px;border-radius:4px;object-fit:contain;background:rgba(255,255,255,0.1);padding:2px;">
+            <div><div class="overlay-label">X%</div><input class="overlay-input overlay-input-sm" type="number" value="${item.x}" min="0" max="100" oninput="overlayUpdate(${i},'x',this.value)"></div>
+            <div><div class="overlay-label">Y%</div><input class="overlay-input overlay-input-sm" type="number" value="${item.y}" min="0" max="100" oninput="overlayUpdate(${i},'y',this.value)"></div>
+            <div><div class="overlay-label">W%</div><input class="overlay-input overlay-input-sm" type="number" value="${item.width || 80}" min="10" max="100" oninput="overlayUpdate(${i},'width',this.value)"></div>
+            <button class="overlay-del" onclick="overlayRemove(${i})">✕</button>
+          </div>
+        </div>`;
+    }).join('');
+  }
+
+  function updateOverlayCanvas() {
+    const canvas = document.getElementById('overlayCanvas');
+    const wrap   = document.getElementById('overlayVideoWrap');
+    const W = wrap.offsetWidth, H = wrap.offsetHeight;
+    canvas.innerHTML = _overlayItems.map(item => {
+      if (item.type === 'text') {
+        const x = (item.x / 100) * W;
+        const y = (item.y / 100) * H;
+        const size = Math.round((item.fontSize / 100) * H * 0.2 + 10);
+        return `<div style="position:absolute;left:${x}px;top:${y}px;color:${item.color || '#fff'};font-size:${Math.min(item.fontSize/3, 28)}px;font-weight:${item.bold ? '700' : '400'};text-shadow:1px 1px 3px #000;pointer-events:none;white-space:nowrap;max-width:90%;">${esc(item.text)}</div>`;
+      } else {
+        const x = (item.x / 100) * W;
+        const y = (item.y / 100) * H;
+        const w = (item.width / 100) * W;
+        return `<img src="${item.url}" style="position:absolute;left:${x}px;top:${y}px;width:${w}px;pointer-events:none;">`;
+      }
+    }).join('');
+  }
+
+  async function overlayRender() {
+    if (!_overlayVideo) { alert('Upload a video first.'); return; }
+    const btn = document.getElementById('overlayRenderBtn');
+    const st  = document.getElementById('overlayRenderStatus');
+
+    // First upload the video to get a server URL
+    st.style.color = 'var(--muted)'; st.textContent = 'Uploading video…';
+    btn.disabled = true;
+
+    let videoServerUrl = null;
+    try {
+      const fd = new FormData();
+      fd.append('asset', _overlayVideo.file, _overlayVideo.name);
+      const r = await fetch('/api/client/assets/upload', { method: 'POST', body: fd });
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.error || 'Upload failed');
+      videoServerUrl = d.asset.url;
+    } catch(e) {
+      st.style.color = 'var(--red)'; st.textContent = 'Upload failed: ' + e.message;
+      btn.disabled = false; return;
+    }
+
+    // Upload any logo files
+    const logoMap = {};
+    for (const item of _overlayItems.filter(o => o.type === 'logo' && o._file)) {
+      st.textContent = 'Uploading logo…';
+      const fd = new FormData();
+      fd.append('asset', item._file, item._file.name);
+      const r = await fetch('/api/client/assets/upload', { method: 'POST', body: fd });
+      const d = await r.json();
+      if (d.ok) logoMap[item.url] = d.asset.url;
+    }
+
+    // Send render request
+    st.textContent = '⏳ Rendering… (this may take a minute)';
+    const overlaysForServer = _overlayItems.map(item => ({
+      ...item,
+      url: item.type === 'logo' ? (logoMap[item.url] || item.url) : undefined,
+    }));
+
+    try {
+      const r = await fetch('/api/client/overlay/render', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ videoUrl: videoServerUrl, overlays: overlaysForServer }),
+      });
+      const d = await r.json();
+      if (!d.ok) throw new Error(d.error);
+      st.style.color = 'var(--green)';
+      st.innerHTML = `✓ Done! <a href="${d.outputUrl}" download="${d.filename}" style="color:var(--teal);margin-left:6px;">⬇ Download</a> <button onclick="sendToPublishing('${d.outputUrl}','${d.filename}')" style="margin-left:8px;background:var(--teal);color:#000;border:none;border-radius:6px;padding:4px 10px;font-size:0.78rem;font-weight:700;cursor:pointer;">→ Send to Content Publishing</button>`;
+    } catch(e) {
+      st.style.color = 'var(--red)'; st.textContent = 'Render failed: ' + e.message;
+    }
+    btn.disabled = false;
+  }
+
+  function sendToPublishing(url, filename) {
+    // Switch to Content Publishing and pre-load this video into Storista queue
+    // For now just switch tab — Storista picker will be open
+    switchTab('content-studio');
+    alert('Video rendered! Scroll down to Content Publishing, then use "Add Videos" to upload your rendered file.');
   }
 
   // ─── Content Studio: Arcads ────────────────────────────────────────────────
