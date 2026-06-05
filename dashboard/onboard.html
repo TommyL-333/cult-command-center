@@ -197,6 +197,21 @@ textarea{resize:vertical;min-height:80px}
     </div>
     <div class="row full">
       <div class="field">
+        <label>Brand Logo <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">(optional)</span></label>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <label style="display:inline-flex;align-items:center;gap:8px;padding:10px 18px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;color:#e2e8f0;text-transform:none;letter-spacing:0">
+            <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M16.88 9.94l-6-6a1 1 0 00-1.41 0l-6 6A1 1 0 004.88 11.35l4.12-4.12V17a1 1 0 002 0V7.23l4.12 4.12a1 1 0 001.41-1.41z"/></svg>
+            Upload Logo
+            <input type="file" id="logoFile" accept="image/*" style="display:none" onchange="handleLogoUpload(this)">
+          </label>
+          <span id="logoFileName" style="font-size:11px;color:var(--muted)"></span>
+          <img id="logoThumb" src="" alt="" style="display:none;max-height:36px;max-width:100px;object-fit:contain;border-radius:5px;border:1px solid rgba(255,255,255,.1)">
+        </div>
+        <div id="logoUploadStatus" style="font-size:11px;margin-top:6px"></div>
+      </div>
+    </div>
+    <div class="row full">
+      <div class="field">
         <label>Brand Mission &amp; Story</label>
         <textarea id="brandMission" placeholder="Tell us about your brand — what problem you solve, who you serve, what makes you different…"></textarea>
       </div>
@@ -487,6 +502,29 @@ let currentStep = 1;
 const TOTAL_STEPS = 5;
 
 // ── Step navigation ──
+window._logoUrl = null;
+async function handleLogoUpload(input) {
+  if (!input.files[0]) return;
+  const st = document.getElementById('logoUploadStatus');
+  const nameEl = document.getElementById('logoFileName');
+  const thumb = document.getElementById('logoThumb');
+  st.style.color = 'var(--muted)'; st.textContent = 'Uploading…';
+  nameEl.textContent = input.files[0].name;
+  const fd = new FormData();
+  fd.append('logo', input.files[0]);
+  try {
+    const r = await fetch('/api/onboard/logo', { method: 'POST', body: fd });
+    const d = await r.json();
+    if (d.ok) {
+      window._logoUrl = d.logoUrl;
+      thumb.src = d.logoUrl;
+      thumb.style.display = 'inline-block';
+      st.style.color = '#00d27a'; st.textContent = '✓ Logo uploaded';
+    } else { st.style.color = '#ff3b30'; st.textContent = d.error || 'Upload failed'; }
+  } catch(_) { st.style.color = '#ff3b30'; st.textContent = 'Upload failed — you can add it later'; }
+  input.value = '';
+}
+
 function goNext(from) {
   if (!validateStep(from)) return;
   currentStep = from + 1;
@@ -747,6 +785,7 @@ async function submitForm() {
     usp1: v('usp1'), usp2: v('usp2'), usp3: v('usp3'),
     talkingPoints: v('talkingPoints'),
     tcCommission: v('tcCommission'), openCommission: v('openCommission'),
+    logoUrl: window._logoUrl || null,
     submittedAt: new Date().toISOString(),
   };
   const btn = document.getElementById('submitBtn');

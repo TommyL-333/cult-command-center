@@ -469,6 +469,29 @@ app.get('/onboard', (req, res) => {
   res.sendFile(path.join(__dirname, 'dashboard', 'onboard.html'));
 });
 
+// POST /api/onboard/logo — public upload during onboarding (no auth, registered before requireAuth)
+// Uses lazy multer so imageUpload const doesn't need to exist yet.
+app.post('/api/onboard/logo', (req, res, next) => {
+  const multer = require('multer');
+  const m = multer({
+    storage: multer.diskStorage({
+      destination: (_, __, cb) => cb(null, UPLOAD_DIR),
+      filename:    (_, file, cb) => {
+        const ext  = require('path').extname(file.originalname) || '.jpg';
+        const base = require('path').basename(file.originalname, ext).replace(/[^a-z0-9_-]/gi, '_').slice(0, 60);
+        cb(null, `${Date.now()}_${base}${ext}`);
+      },
+    }),
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: (_, file, cb) => cb(null, /image\//i.test(file.mimetype) || /\.(jpe?g|png|gif|webp|svg|avif)$/i.test(file.originalname)),
+  }).single('logo');
+  m(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message });
+    if (!req.file) return res.status(400).json({ error: 'No file received' });
+    res.json({ ok: true, logoUrl: `${UPLOAD_BASE_URL}/uploads/${req.file.filename}` });
+  });
+});
+
 // POST /api/onboard/submit — public, responds immediately then runs pipeline async
 app.post('/api/onboard/submit', express.json({ limit: '2mb' }), async (req, res) => {
   const { brandName, email } = req.body || {};
@@ -11172,6 +11195,7 @@ async function runOnboardingPipeline(formData) {
     brand.contactName = `${formData.firstName} ${formData.lastName}`;
     if (formData.email && !brand.loginEmail) brand.loginEmail = formData.email.toLowerCase().trim();
     brand.website     = formData.website;
+    if (formData.logoUrl) brand.logoUrl = formData.logoUrl;
     brand.creatorPage = {
       slug, tagName: `creator-interested-${slug}`, active: true,
       headline: `Partner with ${brandName}`,
