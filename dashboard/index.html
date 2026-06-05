@@ -1302,6 +1302,50 @@
         <textarea id="csCompetitorVideos" class="agent-input" rows="4" style="width:100%;font-size:12px;resize:vertical;" placeholder="https://www.tiktok.com/@creator/video/123&#10;https://www.tiktok.com/@creator/video/456"></textarea>
       </div>
 
+      <!-- Brand Logo -->
+      <div style="margin-bottom:18px;">
+        <div style="font-size:10px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Brand Logo <span style="font-weight:400;text-transform:none;">(shown on creator welcome page)</span></div>
+        <div id="csLogoPreview" style="display:none;margin-bottom:10px;">
+          <img id="csLogoImg" src="" alt="Brand logo" style="max-height:56px;max-width:160px;object-fit:contain;border-radius:6px;border:1px solid rgba(255,255,255,.1);padding:6px;background:rgba(255,255,255,.04);">
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <label class="btn" style="font-size:12px;cursor:pointer;padding:6px 14px;">
+            Upload Logo
+            <input type="file" accept="image/*" style="display:none;" onchange="csUploadLogo(this)">
+          </label>
+          <button id="csLogoRemoveBtn" class="btn" style="font-size:12px;display:none;background:rgba(255,60,60,.12);color:#ff6060;border:1px solid rgba(255,60,60,.25);" onclick="csRemoveLogo()">Remove</button>
+          <span id="csLogoStatus" style="font-size:11px;color:var(--muted);"></span>
+        </div>
+      </div>
+
+      <!-- Product Media -->
+      <div style="margin-bottom:18px;">
+        <div style="font-size:10px;font-weight:800;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;">Product Media <span style="font-weight:400;text-transform:none;">(images & videos for the brand — up to 20 files)</span></div>
+
+        <!-- Drop zone -->
+        <div id="csMediaDropZone" style="border:2px dashed rgba(255,255,255,.15);border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:border-color .2s;margin-bottom:12px;"
+          ondragover="event.preventDefault();this.style.borderColor='var(--teal)';"
+          ondragleave="this.style.borderColor='rgba(255,255,255,.15)';"
+          ondrop="csMediaDrop(event)"
+          onclick="document.getElementById('csMediaFileInput').click()">
+          <div style="font-size:13px;color:var(--muted);">Drag & drop files here, or click to browse</div>
+          <div style="font-size:11px;color:rgba(255,255,255,.25);margin-top:4px;">Images (JPG, PNG, GIF, WebP) and videos (MP4, MOV, WebM)</div>
+          <input type="file" id="csMediaFileInput" accept="image/*,video/*" multiple style="display:none;" onchange="csMediaUpload(this.files)">
+        </div>
+
+        <!-- Upload progress -->
+        <div id="csMediaProgress" style="display:none;margin-bottom:10px;">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:4px;" id="csMediaProgressText">Uploading…</div>
+          <div style="height:4px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden;">
+            <div id="csMediaProgressBar" style="height:100%;background:var(--teal);width:0%;transition:width .3s;border-radius:2px;"></div>
+          </div>
+        </div>
+
+        <!-- Media grid -->
+        <div id="csMediaGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:8px;"></div>
+        <div id="csMediaEmpty" style="font-size:12px;color:rgba(255,255,255,.25);display:none;">No product media uploaded yet.</div>
+      </div>
+
       <!-- Action buttons -->
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
         <button class="btn btn-teal" style="font-size:12px;" onclick="csSave()" id="csSaveBtn">💾 Save & Push to Page</button>
@@ -7188,6 +7232,15 @@ function csLoadClient() {
     pageLinkEl.style.display = 'none';
   }
   statusEl.textContent = hasPage ? `page: /creators/${cp.slug}` : 'no creator page yet';
+
+  // Logo
+  csLogoRender(client?.logoUrl || null);
+  document.getElementById('csLogoStatus').textContent = '';
+
+  // Product media — load from server
+  csMediaLoad();
+  document.getElementById('csMediaGrid').innerHTML = '';
+  document.getElementById('csMediaEmpty').style.display = 'none';
 }
 
 async function csSave() {
@@ -7257,6 +7310,167 @@ async function csActivateDm() {
     statusEl.textContent = `Error: ${x(e.message)}`;
     btn.disabled = false; btn.textContent = '▶ Activate DM Outreach';
   }
+}
+
+// ── Brand Logo ────────────────────────────────────────────────────────────────
+
+function csLogoRender(logoUrl) {
+  const preview = document.getElementById('csLogoPreview');
+  const img     = document.getElementById('csLogoImg');
+  const removeBtn = document.getElementById('csLogoRemoveBtn');
+  if (logoUrl) {
+    img.src = logoUrl;
+    preview.style.display = 'block';
+    removeBtn.style.display = '';
+  } else {
+    preview.style.display = 'none';
+    img.src = '';
+    removeBtn.style.display = 'none';
+  }
+}
+
+async function csUploadLogo(input) {
+  const brandId = _cs.current?.id;
+  if (!brandId || !input.files?.length) return;
+  const statusEl = document.getElementById('csLogoStatus');
+  statusEl.style.color = 'var(--muted)';
+  statusEl.textContent = 'Uploading…';
+  const fd = new FormData();
+  fd.append('logo', input.files[0]);
+  try {
+    const r = await fetch(`/api/brands/${brandId}/logo`, { method: 'POST', body: fd });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Upload failed');
+    // Update local cache
+    const ci = _cs.clients.findIndex(c => c.id === brandId);
+    if (ci !== -1) _cs.clients[ci].logoUrl = d.logoUrl;
+    if (_cs.current) _cs.current.logoUrl = d.logoUrl;
+    csLogoRender(d.logoUrl);
+    statusEl.style.color = 'var(--green)';
+    statusEl.textContent = '✓ Logo uploaded';
+  } catch(e) {
+    statusEl.style.color = 'var(--red)';
+    statusEl.textContent = `Error: ${x(e.message)}`;
+  }
+  input.value = '';
+}
+
+async function csRemoveLogo() {
+  const brandId = _cs.current?.id;
+  if (!brandId) return;
+  const statusEl = document.getElementById('csLogoStatus');
+  statusEl.style.color = 'var(--muted)';
+  statusEl.textContent = 'Removing…';
+  try {
+    const r = await fetch(`/api/brands/${brandId}/logo`, { method: 'DELETE' });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Remove failed');
+    const ci = _cs.clients.findIndex(c => c.id === brandId);
+    if (ci !== -1) delete _cs.clients[ci].logoUrl;
+    if (_cs.current) delete _cs.current.logoUrl;
+    csLogoRender(null);
+    statusEl.style.color = 'var(--muted)';
+    statusEl.textContent = 'Logo removed';
+  } catch(e) {
+    statusEl.style.color = 'var(--red)';
+    statusEl.textContent = `Error: ${x(e.message)}`;
+  }
+}
+
+// ── Product Media ─────────────────────────────────────────────────────────────
+
+function csMediaRenderGrid(mediaList) {
+  const grid  = document.getElementById('csMediaGrid');
+  const empty = document.getElementById('csMediaEmpty');
+  if (!mediaList || mediaList.length === 0) {
+    grid.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+  grid.innerHTML = mediaList.map(m => {
+    const thumb = m.type === 'video'
+      ? `<div style="width:100%;aspect-ratio:1;background:rgba(255,255,255,.05);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;">
+           <div style="font-size:22px;">🎬</div>
+           <div style="font-size:9px;color:rgba(255,255,255,.4);word-break:break-all;padding:0 4px;text-align:center;">${x(m.originalName || m.filename)}</div>
+         </div>`
+      : `<img src="${m.url}" alt="${x(m.originalName || m.filename)}" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:6px;display:block;" loading="lazy">`;
+    return `<div style="position:relative;border-radius:8px;overflow:hidden;border:1px solid rgba(255,255,255,.08);">
+      ${thumb}
+      <button onclick="csMediaDelete('${x(m.filename)}')" title="Remove" style="position:absolute;top:4px;right:4px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.7);border:none;color:#fff;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">&times;</button>
+    </div>`;
+  }).join('');
+}
+
+async function csMediaLoad() {
+  const brandId = _cs.current?.id;
+  if (!brandId) return;
+  try {
+    const r = await fetch(`/api/brands/${brandId}/product-media`);
+    const d = await r.json();
+    csMediaRenderGrid(d.media || []);
+  } catch(e) { console.error('csMediaLoad:', e); }
+}
+
+async function csMediaUpload(files) {
+  const brandId = _cs.current?.id;
+  if (!brandId || !files?.length) return;
+  const progressWrap = document.getElementById('csMediaProgress');
+  const progressBar  = document.getElementById('csMediaProgressBar');
+  const progressText = document.getElementById('csMediaProgressText');
+  progressWrap.style.display = 'block';
+  progressBar.style.width = '0%';
+  progressText.textContent = `Uploading ${files.length} file${files.length > 1 ? 's' : ''}…`;
+
+  const fd = new FormData();
+  for (const f of files) fd.append('media', f);
+
+  return new Promise(resolve => {
+    const xhr = new XMLHttpRequest();
+    xhr.upload.addEventListener('progress', e => {
+      if (e.lengthComputable) {
+        progressBar.style.width = Math.round(e.loaded / e.total * 100) + '%';
+      }
+    });
+    xhr.addEventListener('load', () => {
+      progressWrap.style.display = 'none';
+      progressBar.style.width = '0%';
+      try {
+        const d = JSON.parse(xhr.responseText);
+        if (xhr.status >= 200 && xhr.status < 300 && d.ok) {
+          csMediaLoad(); // refresh grid
+        } else {
+          alert('Upload failed: ' + (d.error || xhr.statusText));
+        }
+      } catch(_) { alert('Upload failed'); }
+      resolve();
+    });
+    xhr.addEventListener('error', () => {
+      progressWrap.style.display = 'none';
+      alert('Upload failed — network error');
+      resolve();
+    });
+    xhr.open('POST', `/api/brands/${brandId}/product-media`);
+    xhr.send(fd);
+  });
+}
+
+function csMediaDrop(event) {
+  event.preventDefault();
+  document.getElementById('csMediaDropZone').style.borderColor = 'rgba(255,255,255,.15)';
+  const files = event.dataTransfer?.files;
+  if (files?.length) csMediaUpload(files);
+}
+
+async function csMediaDelete(filename) {
+  const brandId = _cs.current?.id;
+  if (!brandId) return;
+  try {
+    const r = await fetch(`/api/brands/${brandId}/product-media/${encodeURIComponent(filename)}`, { method: 'DELETE' });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || 'Delete failed');
+    csMediaLoad();
+  } catch(e) { alert('Delete failed: ' + e.message); }
 }
 
 // ── Top Videos ────────────────────────────────────────────────────────────────
@@ -11121,6 +11335,12 @@ function cpRender() {
           <a href="${x(url||'')}" target="_blank" class="btn btn-ghost" style="flex:1;font-size:12px;padding:8px;text-align:center;text-decoration:none">↗ Preview</a>
         </div>
         <button onclick="cpOpenVideosModal('${x(p.id)}','${x(p.name)}')" class="btn btn-ghost" style="width:100%;font-size:12px;padding:8px">🎬 Competitor Videos</button>
+        ${cp.larkGroupUrl ? `
+        <div style="display:flex;align-items:center;gap:6px;margin-top:2px">
+          <div style="background:rgba(0,242,234,.08);border:1px solid rgba(0,242,234,.2);border-radius:6px;padding:6px 10px;font-size:11px;color:var(--teal);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:monospace">${x(cp.larkGroupUrl)}</div>
+          <button onclick="cpCopyUrl('${x(cp.larkGroupUrl)}',this)" class="btn btn-ghost" style="font-size:11px;padding:6px 10px;flex-shrink:0">Copy Lark Link</button>
+        </div>` : ''}
+        <button onclick="cpRecreateGroup('${x(p.id)}','${x(p.name)}',this)" class="btn btn-ghost" style="width:100%;font-size:12px;padding:8px">${cp.larkGroupUrl ? '↺ Recreate Lark Group' : '+ Create Lark Community Group'}</button>
       ` : `
         <div style="font-size:12px;color:var(--muted);line-height:1.5">Generate a public landing page where creators can express interest in partnering with this brand.</div>
         <button onclick="cpOpenSetup('${x(p.id)}','${x(p.name)}')" class="btn btn-teal" style="font-size:13px;font-weight:700;padding:10px">+ Generate Creator Page</button>
@@ -11244,6 +11464,52 @@ async function cpToggleActive(brandId, active) {
     await cpLoad();
   } catch(e) {
     alert('Error: ' + e.message);
+  }
+}
+
+async function cpRecreateGroup(brandId, brandName, btn) {
+  const orig = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Creating…';
+  try {
+    // Re-run setup (POST) to trigger fire-and-forget group creation, then poll for the link
+    const existing = CP.pages.find(p => p.id === brandId);
+    const cp = existing?.creatorPage || {};
+    const r = await fetch(`/api/creator-pages/${brandId}/setup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        slug:        cp.slug        || brandName.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''),
+        headline:    cp.headline    || `Partner with ${brandName}`,
+        subheadline: cp.subheadline || 'Join our TikTok Shop creator affiliate program',
+        pitch:       cp.pitch       || '',
+        accentColor: cp.accentColor || '#00f2ea',
+      }),
+    }).then(r => r.json());
+    if (!r.ok) throw new Error(r.error || 'Setup failed');
+    // Poll a few times for the Lark link (it's fire-and-forget on the server)
+    let tries = 0;
+    const poll = setInterval(async () => {
+      tries++;
+      await cpLoad();
+      const updated = CP.pages.find(p => p.id === brandId);
+      if (updated?.creatorPage?.larkGroupUrl || tries >= 6) {
+        clearInterval(poll);
+        btn.disabled = false;
+        btn.textContent = orig;
+        if (updated?.creatorPage?.larkGroupUrl) {
+          const notify = document.createElement('div');
+          notify.style.cssText = 'position:fixed;bottom:24px;right:24px;background:var(--teal);color:#000;padding:12px 20px;border-radius:10px;font-weight:700;font-size:13px;z-index:9999;cursor:pointer';
+          notify.textContent = '✓ Lark community group created!';
+          document.body.appendChild(notify);
+          setTimeout(() => notify.remove(), 5000);
+        }
+      }
+    }, 3000);
+  } catch(e) {
+    alert('Error: ' + e.message);
+    btn.disabled = false;
+    btn.textContent = orig;
   }
 }
 

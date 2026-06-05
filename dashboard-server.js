@@ -865,6 +865,8 @@ app.post('/api/creator-pages/submit', express.json(), async (req, res) => {
     if (contactId && cleanPhone) {
       const discordLink = process.env.DISCORD_INVITE_URL || 'https://discord.gg/a5WNMe8Xuu';
       const ghlH = { Authorization: `Bearer ${process.env.GHL_API_KEY}`, Version: '2021-07-28', 'Content-Type': 'application/json' };
+      const larkGroupUrl = brand.creatorPage?.larkGroupUrl || null;
+      const larkLine = larkGroupUrl ? `\n→ Lark community: ${larkGroupUrl}` : '';
       axios.post('https://services.leadconnectorhq.com/conversations/', {
         locationId: process.env.GHL_LOC_ID,
         contactId,
@@ -875,7 +877,7 @@ app.post('/api/creator-pages/submit', express.json(), async (req, res) => {
           type: 'SMS',
           conversationId,
           contactId,
-          message: `Welcome to the Cult Content creator community, ${firstName}! You're in 👁️‼️\n\nHere's everything you need:\n→ Discord: ${discordLink}\n→ Skool: https://www.skool.com/cult-content\n→ Brand opportunities: ${CREATOR_BASE_URL}/creators\n\nText this number anytime if you need us.`,
+          message: `Welcome to the Cult Content creator community, ${firstName}! You're in 👁️‼️\n\nHere's everything you need:\n→ Discord: ${discordLink}\n→ Skool: https://www.skool.com/cult-content\n→ Brand opportunities: ${CREATOR_BASE_URL}/creators${larkLine}\n\nText this number anytime if you need us.`,
         }, { headers: ghlH });
       })
       .catch(e => console.error('[creator-pages] SMS error:', e.response?.data || e.message));
@@ -10974,6 +10976,44 @@ async function createLarkResourceHub(formData) {
   }
 }
 
+// Create a public Lark group chat for a brand's creator community
+async function createLarkCreatorGroup(brandName) {
+  try {
+    const larkToken = await getLarkTenantToken();
+    if (!larkToken) { console.error('[lark] No Lark tenant token for createLarkCreatorGroup'); return null; }
+
+    // Step 1 — Create the group chat
+    const createRes = await axios.post(
+      'https://open.larksuite.com/open-apis/im/v1/chats',
+      {
+        name: `${brandName} — Creator Community`,
+        description: `TikTok Shop creator affiliate community for ${brandName}`,
+        chat_mode: 'group',
+        chat_type: 'public',
+      },
+      { headers: { Authorization: `Bearer ${larkToken}`, 'Content-Type': 'application/json' } }
+    );
+    console.log(`[lark] createLarkCreatorGroup create response: ${JSON.stringify(createRes.data)}`);
+    const chatId = createRes.data?.data?.chat_id;
+    if (!chatId) { console.error('[lark] createLarkCreatorGroup: no chat_id in response:', JSON.stringify(createRes.data)); return null; }
+
+    // Step 2 — Generate a permanent join link
+    const linkRes = await axios.post(
+      `https://open.larksuite.com/open-apis/im/v1/chats/${chatId}/link`,
+      { validity_period: 'permanently' },
+      { headers: { Authorization: `Bearer ${larkToken}`, 'Content-Type': 'application/json' } }
+    );
+    console.log(`[lark] createLarkCreatorGroup link response: ${JSON.stringify(linkRes.data)}`);
+    const shareLink = linkRes.data?.data?.share_link;
+    if (!shareLink) { console.error('[lark] createLarkCreatorGroup: no share_link in response:', JSON.stringify(linkRes.data)); return null; }
+
+    return { chatId, shareLink };
+  } catch(e) {
+    console.error(`[lark] createLarkCreatorGroup error: ${JSON.stringify(e.response?.data) || e.message}`);
+    return null;
+  }
+}
+
 // Send comprehensive Lark alert via Railway /command
 async function sendLarkOnboardingAlert(formData, shopifyData, aiContent, larkDoc, creatorPage) {
   try {
@@ -11788,6 +11828,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .card{width:100%;max-width:520px;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.08);border-radius:24px;padding:48px 40px;margin:0 auto}
 @media(max-width:560px){.card{padding:36px 24px}}
 .success-icon{font-size:52px;margin-bottom:22px}
+.brand-logo{max-height:64px;max-width:180px;object-fit:contain;margin-bottom:16px;border-radius:8px}
 h1{font-size:clamp(22px,4vw,30px);font-weight:900;letter-spacing:-.02em;margin-bottom:10px}
 .welcome-sub{font-size:14px;color:rgba(255,255,255,.42);line-height:1.7;margin-bottom:0;max-width:380px}
 .section-label{font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:${accent};margin-bottom:14px;text-align:left}
@@ -11800,6 +11841,9 @@ h1{font-size:clamp(22px,4vw,30px);font-weight:900;letter-spacing:-.02em;margin-b
 .discord-btn{display:flex;align-items:center;justify-content:center;gap:10px;background:#5865F2;color:#fff;text-decoration:none;border-radius:14px;padding:16px 24px;font-size:14px;font-weight:900;letter-spacing:.03em;margin-top:24px;transition:transform .15s,box-shadow .15s}
 .discord-btn:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(88,101,242,.35)}
 .discord-icon{width:20px;height:20px;fill:#fff;flex-shrink:0}
+.lark-btn{display:flex;align-items:center;justify-content:center;gap:10px;background:rgba(${ar},.12);border:1.5px solid rgba(${ar},.3);color:#fff;text-decoration:none;border-radius:14px;padding:16px 24px;font-size:14px;font-weight:900;letter-spacing:.03em;margin-top:12px;transition:transform .15s,box-shadow .15s,background .15s}
+.lark-btn:hover{background:rgba(${ar},.22);border-color:rgba(${ar},.55);transform:translateY(-1px);box-shadow:0 6px 24px rgba(${ar},.2)}
+.lark-icon{width:20px;height:20px;flex-shrink:0}
 .divider{border:none;border-top:1px solid rgba(255,255,255,.06);margin:28px 0}
 /* products */
 .section{padding:48px 20px}
@@ -11894,7 +11938,7 @@ footer a{color:${accent};text-decoration:none}
 <body>
 
 <div class="top">
-  <div class="success-icon">&#127881;</div>
+  ${brand.logoUrl ? `<img src="${brand.logoUrl}" alt="${name} logo" class="brand-logo">` : '<div class="success-icon">&#127881;</div>'}
   <h1>Welcome to the ${name} Creator Program</h1>
   <div class="welcome-sub">${cp.welcomeMessage || 'You\'re officially in. Sign up for the campaigns below and join the creator community.'}</div>
   ${cp.earnPotential ? `<div class="earn-pill">💰 Up to $${Number(cp.earnPotential).toLocaleString()} in bonuses${cp.tcCommission ? ` + ${cp.tcCommission}% commission` : ''}</div>` : ''}
@@ -11928,6 +11972,11 @@ footer a{color:${accent};text-decoration:none}
     <svg class="discord-icon" viewBox="0 0 127.14 96.36" xmlns="http://www.w3.org/2000/svg"><path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.37,72.37,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.79,32.65-1.71,56.6.54,80.21h0A105.73,105.73,0,0,0,32.71,96.36,77.7,77.7,0,0,0,39.6,85.25a68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1A105.25,105.25,0,0,0,126.6,80.22h0C129.24,52.84,122.09,29.11,107.7,8.07ZM42.45,65.69C36.18,65.69,31,60,31,53s5-12.74,11.43-12.74S54,46,53.89,53,48.84,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5-12.74,11.44-12.74S96.23,46,96.12,53,91.08,65.69,84.69,65.69Z"/></svg>
     Join the Discord
   </a>
+  ${cp.larkGroupUrl ? `
+  <a href="${cp.larkGroupUrl}" target="_blank" rel="noopener" class="lark-btn">
+    <svg class="lark-icon" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" fill="${accent}"><path d="M12 2C6.477 2 2 6.477 2 12s4.477 10 10 10 10-4.477 10-10S17.523 2 12 2zm4.5 14.5l-5-3V7h1.5v5.75l4.25 2.5-.75 1.25z"/></svg>
+    Join the ${name} Creator Community on Lark
+  </a>` : ''}
 </div>
 
 ${hooksHtml}
@@ -12156,6 +12205,23 @@ app.post('/api/creator-pages/:brandId/setup', requireAuth, (req, res) => {
   saveBrands(data);
   const publicUrl = `${CREATOR_BASE_URL}/creators/${slug}`;
   console.log(`[creator-pages] Setup page for ${brand.name}: ${publicUrl}`);
+
+  // Create Lark creator community group (fire-and-forget, don't block response)
+  const setupBrandId = req.params.brandId;
+  const setupBrandName = brand.name;
+  createLarkCreatorGroup(setupBrandName).then(group => {
+    if (group?.shareLink) {
+      const d = loadBrands();
+      const i = d.clients.findIndex(b => b.id === setupBrandId);
+      if (i !== -1) {
+        d.clients[i].creatorPage.larkGroupUrl = group.shareLink;
+        d.clients[i].creatorPage.larkChatId  = group.chatId;
+        saveBrands(d);
+        console.log(`[lark] Creator group created for ${setupBrandName}: ${group.shareLink}`);
+      }
+    }
+  }).catch(e => console.error('[lark] creator group error:', e.message));
+
   res.json({ ok: true, brand: data.clients[idx], publicUrl });
 });
 
@@ -12234,6 +12300,133 @@ app.put('/api/creator-pages/:brandId/competitor-videos', requireAuth, express.js
   if (!brands.clients[idx].creatorPage) brands.clients[idx].creatorPage = {};
   brands.clients[idx].creatorPage.competitorVideos = (req.body.videos || []).slice(0, 8);
   brands.clients[idx].creatorPage.updatedAt = new Date().toISOString();
+  saveBrands(brands);
+  res.json({ ok: true });
+});
+
+// ─── Brand Logo Upload ─────────────────────────────────────────────────────────
+
+// Multer instance for images (jpg/png/gif/webp/svg)
+const imageUpload = multer({
+  storage: multer.diskStorage({
+    destination: (_, __, cb) => cb(null, UPLOAD_DIR),
+    filename: (_, file, cb) => {
+      const ext  = path.extname(file.originalname) || '.jpg';
+      const base = path.basename(file.originalname, ext).replace(/[^a-z0-9_-]/gi, '_').slice(0, 60);
+      cb(null, `${Date.now()}_${base}${ext}`);
+    },
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+  fileFilter: (_, file, cb) => {
+    const ok = /image\//i.test(file.mimetype) || /\.(jpe?g|png|gif|webp|svg|avif)$/i.test(file.originalname);
+    cb(null, ok);
+  },
+});
+
+// Multer instance for product media (images + videos, up to 20 files)
+const mediaUpload = multer({
+  storage: multer.diskStorage({
+    destination: (_, __, cb) => cb(null, UPLOAD_DIR),
+    filename: (_, file, cb) => {
+      const ext  = path.extname(file.originalname) || '.jpg';
+      const base = path.basename(file.originalname, ext).replace(/[^a-z0-9_-]/gi, '_').slice(0, 60);
+      cb(null, `${Date.now()}_${base}${ext}`);
+    },
+  }),
+  limits: { fileSize: 500 * 1024 * 1024 },
+  fileFilter: (_, file, cb) => {
+    const ok = /image\//i.test(file.mimetype)
+            || /video\//i.test(file.mimetype)
+            || /\.(jpe?g|png|gif|webp|svg|avif|mp4|mov|avi|webm|mkv)$/i.test(file.originalname)
+            || file.mimetype === 'application/octet-stream';
+    cb(null, ok);
+  },
+});
+
+// POST /api/brands/:brandId/logo — upload or replace brand logo
+app.post('/api/brands/:brandId/logo', requireAuth, imageUpload.single('logo'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No image file received' });
+  const brands = loadBrands();
+  const idx = (brands.clients || []).findIndex(b => b.id === req.params.brandId);
+  if (idx === -1) return res.status(404).json({ error: 'Brand not found' });
+
+  // Delete old logo file if it exists
+  const oldLogoUrl = brands.clients[idx].logoUrl;
+  if (oldLogoUrl) {
+    const oldFilename = path.basename(oldLogoUrl.split('?')[0]);
+    const oldPath = path.join(UPLOAD_DIR, oldFilename);
+    if (oldPath.startsWith(UPLOAD_DIR)) fs.unlink(oldPath, () => {});
+  }
+
+  const logoUrl = `${PUBLIC_BASE_URL}/uploads/${req.file.filename}`;
+  brands.clients[idx].logoUrl = logoUrl;
+  saveBrands(brands);
+  res.json({ ok: true, logoUrl });
+});
+
+// DELETE /api/brands/:brandId/logo — remove brand logo
+app.delete('/api/brands/:brandId/logo', requireAuth, (req, res) => {
+  const brands = loadBrands();
+  const idx = (brands.clients || []).findIndex(b => b.id === req.params.brandId);
+  if (idx === -1) return res.status(404).json({ error: 'Brand not found' });
+
+  const logoUrl = brands.clients[idx].logoUrl;
+  if (logoUrl) {
+    const filename = path.basename(logoUrl.split('?')[0]);
+    const filePath = path.join(UPLOAD_DIR, filename);
+    if (filePath.startsWith(UPLOAD_DIR)) fs.unlink(filePath, () => {});
+  }
+  delete brands.clients[idx].logoUrl;
+  saveBrands(brands);
+  res.json({ ok: true });
+});
+
+// ─── Product Media Upload ───────────────────────────────────────────────────────
+
+// POST /api/brands/:brandId/product-media — upload up to 20 images/videos
+app.post('/api/brands/:brandId/product-media', requireAuth, mediaUpload.array('media', 20), (req, res) => {
+  if (!req.files || req.files.length === 0) return res.status(400).json({ error: 'No files received' });
+  const brands = loadBrands();
+  const idx = (brands.clients || []).findIndex(b => b.id === req.params.brandId);
+  if (idx === -1) return res.status(404).json({ error: 'Brand not found' });
+
+  if (!brands.clients[idx].productMedia) brands.clients[idx].productMedia = [];
+
+  const newFiles = req.files.map(f => {
+    const isVideo = /video\//i.test(f.mimetype) || /\.(mp4|mov|avi|webm|mkv)$/i.test(f.originalname);
+    return {
+      url: `${PUBLIC_BASE_URL}/uploads/${f.filename}`,
+      filename: f.filename,
+      originalName: f.originalname,
+      type: isVideo ? 'video' : 'image',
+      uploadedAt: new Date().toISOString(),
+    };
+  });
+
+  brands.clients[idx].productMedia.push(...newFiles);
+  saveBrands(brands);
+  res.json({ ok: true, media: newFiles });
+});
+
+// GET /api/brands/:brandId/product-media — list all product media
+app.get('/api/brands/:brandId/product-media', requireAuth, (req, res) => {
+  const brands = loadBrands();
+  const brand = (brands.clients || []).find(b => b.id === req.params.brandId);
+  if (!brand) return res.status(404).json({ error: 'Brand not found' });
+  res.json({ ok: true, media: brand.productMedia || [] });
+});
+
+// DELETE /api/brands/:brandId/product-media/:filename — remove one item
+app.delete('/api/brands/:brandId/product-media/:filename', requireAuth, (req, res) => {
+  const brands = loadBrands();
+  const idx = (brands.clients || []).findIndex(b => b.id === req.params.brandId);
+  if (idx === -1) return res.status(404).json({ error: 'Brand not found' });
+
+  const filename = req.params.filename;
+  const filePath = path.join(UPLOAD_DIR, filename);
+  if (filePath.startsWith(UPLOAD_DIR)) fs.unlink(filePath, () => {});
+
+  brands.clients[idx].productMedia = (brands.clients[idx].productMedia || []).filter(m => m.filename !== filename);
   saveBrands(brands);
   res.json({ ok: true });
 });
