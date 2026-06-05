@@ -3614,8 +3614,9 @@ app.get('/api/client/storista/queue', requireClientSession, (req, res) => {
 });
 
 // POST /api/client/storista/schedule — bulk-add jobs to the queue
-app.post('/api/client/storista/schedule', requireClientSession, (req, res) => {
-  const { items } = req.body;
+// Accepts optional bufferChannels: [{id, service}] to also schedule to Buffer.
+app.post('/api/client/storista/schedule', requireClientSession, async (req, res) => {
+  const { items, bufferChannels = [] } = req.body;
   if (!Array.isArray(items) || !items.length) return res.status(400).json({ error: 'items array required' });
 
   const brands = loadBrands();
@@ -3633,6 +3634,7 @@ app.post('/api/client/storista/schedule', requireClientSession, (req, res) => {
     productId:    item.productId || '',
     caption:      item.caption  || '',
     scheduledFor: item.scheduledFor,
+    uploadUrl:    item.uploadUrl || null,
     status:       'scheduled',
     createdAt:    new Date().toISOString(),
     publishedAt:  null,
@@ -3640,6 +3642,30 @@ app.post('/api/client/storista/schedule', requireClientSession, (req, res) => {
   }));
   brand.storistaQueue.push(...jobs);
   saveBrands(brands);
+
+  // Cross-post to Buffer if channels were selected
+  if (bufferChannels.length && process.env.BUFFER_ACCESS_TOKEN) {
+    const token = process.env.BUFFER_ACCESS_TOKEN;
+    const GQL_MUTATION = `mutation CreatePost($input: CreatePostInput!) { createPost(input: $input) { ... on PostActionSuccess { post { id dueAt } } ... on InvalidInputError { message } ... on UnexpectedError { message } } }`;
+    for (const job of jobs) {
+      for (const ch of bufferChannels) {
+        try {
+          const input = buildBufferInput(ch.id, ch.service, job.caption, job.uploadUrl, job.scheduledFor);
+          const { data: gql } = await axios.post(
+            'https://api.buffer.com/graphql',
+            { query: GQL_MUTATION, variables: { input } },
+            { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, timeout: 15_000 }
+          );
+          const result = gql.data?.createPost;
+          if (result?.message) console.error(`[buffer] "${job.filename}" → ${ch.id}: ${result.message}`);
+          else console.log(`[buffer] scheduled "${job.filename}" for channel ${ch.id}`);
+        } catch(e) {
+          console.error(`[buffer] failed "${job.filename}" → ${ch.id}:`, e.response?.data || e.message);
+        }
+      }
+    }
+  }
+
   res.json({ ok: true, jobs });
 });
 
@@ -4216,8 +4242,10 @@ app.post('/api/client/storista/upload', requireClientSession, clientUpload.singl
       console.warn('[storista] media verify FAILED (may still be processing):', verErr.response?.status, JSON.stringify(verErr.response?.data));
     }
 
-    if (tempFile) fs.unlinkSync(filePath);
-    res.json({ ok: true, media_id: media.id, filename });
+    // Keep the file in UPLOAD_DIR so Buffer can reference it for cross-posting.
+    // A periodic cleanup in the scheduler removes videos older than 7 days.
+    const uploadUrl = `${PUBLIC_BASE_URL}/uploads/${req.file.filename}`;
+    res.json({ ok: true, media_id: media.id, filename, uploadUrl });
   } catch (e) {
     if (tempFile && filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath);
     const errDetail = e.response?.data;

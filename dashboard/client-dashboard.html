@@ -665,53 +665,6 @@
       </div>
     </div>
 
-    <!-- Section A: Upload & Publish -->
-    <div class="cs-section">
-      <div class="cs-card">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap;">
-          <div class="cs-card-title" style="margin-bottom:0;">📤 Upload &amp; Publish</div>
-          <span id="bufferConnBadge" class="conn-badge" style="display:none"></span>
-        </div>
-        <div id="bufferConnNote" class="conn-badge-note" style="display:none"></div>
-
-        <!-- Drop zone -->
-        <div class="drop-zone" id="dropZone" onclick="document.getElementById('videoFileInput').click()" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
-          <div class="drop-zone-text">Drag &amp; drop a video here</div>
-          <div class="drop-zone-hint">or click to browse — MP4, MOV, AVI supported</div>
-          <button class="upload-file-btn" type="button">Choose File</button>
-        </div>
-        <input type="file" id="videoFileInput" accept="video/*" style="display:none" onchange="handleFileSelect(event)">
-
-        <!-- Upload result -->
-        <div id="uploadResult" style="display:none" class="upload-result">
-          <span class="upload-result-name" id="uploadedFilename"></span>
-        </div>
-        <div id="uploadProgress" style="display:none;font-size:0.8rem;color:var(--muted);margin-top:10px;">Uploading…</div>
-        <div id="transcribeProgress" style="display:none;font-size:0.8rem;color:var(--muted);margin-top:10px;">🎙 Transcribing audio…</div>
-        <div id="transcribeDone" style="display:none;font-size:0.8rem;color:var(--green);margin-top:10px;">✓ Caption ready — edit and post below</div>
-
-        <!-- Caption -->
-        <div id="captionSection" style="display:none;margin-top:16px;">
-          <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px;">Caption</div>
-          <textarea class="caption-area" id="captionArea" placeholder="Write your caption here…"></textarea>
-        </div>
-
-        <!-- Platform selector -->
-        <div style="margin-top:14px;">
-          <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:8px;">Post to channels</div>
-          <div id="channelList" class="channel-list"><span class="empty">Loading channels…</span></div>
-        </div>
-
-        <!-- Post actions -->
-        <div class="post-actions">
-          <button class="post-now-btn" onclick="postToChannels(false)">Post to Channels</button>
-          <input class="schedule-input" type="datetime-local" id="scheduleAt" title="Schedule for later">
-          <button class="post-now-btn" style="background:var(--card);border:1px solid var(--border);color:var(--text);" onclick="postToChannels(true)">Schedule</button>
-        </div>
-        <div id="postStatus" style="font-size:0.8rem;min-height:18px;margin-top:8px;"></div>
-      </div>
-    </div>
-
     <!-- Section B: AI Videos (Arcads) -->
     <div class="cs-section">
       <div class="cs-card">
@@ -854,11 +807,11 @@
       </div>
     </div>
 
-    <!-- Section C: Storista Batch Scheduler -->
+    <!-- Section C: Content Publishing -->
     <div class="cs-section">
       <div class="cs-card">
         <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
-          <div class="cs-card-title" style="margin-bottom:0;">🛍 TikTok Shop Publisher</div>
+          <div class="cs-card-title" style="margin-bottom:0;">📲 Content Publishing</div>
           <span id="storistaConnBadge" class="conn-badge disconnected">● Not connected</span>
         </div>
 
@@ -936,6 +889,14 @@
               </div>
             </div>
             <div id="storistaQueueList" style="display:flex;flex-direction:column;gap:8px;"></div>
+          </div>
+
+          <!-- Buffer cross-post selector -->
+          <div id="storistaBufferSection" style="display:none;margin-top:16px;background:rgba(0,0,0,0.15);border:1px solid var(--border);border-radius:10px;padding:14px 16px;">
+            <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:10px;">Also post to Buffer</div>
+            <div id="storistaBufferChannels" class="channel-list" style="max-height:160px;overflow-y:auto;">
+              <span class="empty" style="font-size:0.78rem;">Connect Buffer in Connections to enable cross-posting</span>
+            </div>
           </div>
 
           <!-- Submit -->
@@ -1549,6 +1510,21 @@
           <span class="channel-check">✓</span>
         </div>`).join('');
       window._channels = channels;
+
+      // Also populate Storista cross-post channel picker
+      const $stor = document.getElementById('storistaBufferChannels');
+      if ($stor) {
+        $stor.innerHTML = channels.map(ch => `
+          <div class="channel-item" id="sbch-${esc(ch.id)}" onclick="toggleStoristaBufferChannel('${esc(ch.id)}','${esc(ch.service||'')}')" data-service="${esc(ch.service||'')}">
+            ${ch.avatarUrl ? `<img src="${esc(ch.avatarUrl)}" alt="">` : '<div style="width:24px;height:24px;border-radius:50%;background:var(--border);flex-shrink:0"></div>'}
+            <div class="channel-item-info">
+              <div class="channel-name">${esc(ch.name)}</div>
+              <div class="channel-service">${esc(ch.service)}</div>
+            </div>
+            <span class="channel-check">✓</span>
+          </div>`).join('');
+        document.getElementById('storistaBufferSection').style.display = '';
+      }
     } catch(e) {
       document.getElementById('channelList').innerHTML = '<span class="empty">Failed to load channels.</span>';
       $badge.textContent = '⚠ Buffer not connected';
@@ -1564,6 +1540,15 @@
     if (!el) return;
     if (_selectedChannelIds.has(id)) { _selectedChannelIds.delete(id); el.classList.remove('selected'); }
     else { _selectedChannelIds.add(id); el.classList.add('selected'); }
+  }
+
+  // Buffer channels selected for Storista cross-posting
+  var _storistaBufferChannels = new Map(); // id → service
+  function toggleStoristaBufferChannel(id, service) {
+    const el = document.getElementById('sbch-' + id);
+    if (!el) return;
+    if (_storistaBufferChannels.has(id)) { _storistaBufferChannels.delete(id); el.classList.remove('selected'); }
+    else { _storistaBufferChannels.set(id, service); el.classList.add('selected'); }
   }
 
   async function postToChannels(schedule) {
@@ -2147,6 +2132,9 @@
     document.getElementById('storistaQueueWrap').style.display  = count ? '' : 'none';
     document.getElementById('storistaAutoPanel').style.display  = count ? '' : 'none';
     document.getElementById('storistaSubmitWrap').style.display = count ? '' : 'none';
+    // Show Buffer cross-post section only if Buffer channels are available and there are files queued
+    const bufferSec = document.getElementById('storistaBufferSection');
+    if (bufferSec && window._channels?.length) bufferSec.style.display = count ? '' : 'none';
 
     document.getElementById('storistaQueueList').innerHTML = _storistaFiles.map((item, i) => `
       <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;">
@@ -2245,6 +2233,7 @@
         completed.push({
           mediaId:      data.media_id,
           filename:     item.filename,
+          uploadUrl:    data.uploadUrl || null,
           account,
           productId,
           caption:      item.caption.trim(),
@@ -2262,10 +2251,12 @@
     status.style.color = 'var(--muted)';
     status.textContent = 'Saving schedule…';
     try {
+      const bufferChannels = Array.from(_storistaBufferChannels.entries())
+        .map(([id, service]) => ({ id, service }));
       const r    = await fetch('/api/client/storista/schedule', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ items: completed }),
+        body: JSON.stringify({ items: completed, bufferChannels }),
       });
       const data = await r.json();
       if (!r.ok || !data.ok) throw new Error(data.error || 'Schedule save failed');
