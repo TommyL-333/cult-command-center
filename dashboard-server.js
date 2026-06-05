@@ -3999,14 +3999,21 @@ app.get('/api/client/products', requireClientSession, async (req, res) => {
   const brand = brands.clients[bi];
   if (!brand.tiktokShopToken?.access_token) return res.json({ ok: true, products: [] });
   try {
-    // page_size goes as query param, not body, for product search
-    const r = await ttsBrandPost(brand, brands, bi, '/product/202309/products/search',
-      {}, { page_size: 20 });
-    const raw = r?.data?.products || [];
+    // Paginate through ALL products (page_size 50, up to 5 pages = 250 products)
+    let allRaw = [], pageToken = null;
+    for (let page = 0; page < 5; page++) {
+      const params = { page_size: 50 };
+      if (pageToken) params.page_token = pageToken;
+      const r = await ttsBrandPost(brand, brands, bi, '/product/202309/products/search', {}, params);
+      const batch = r?.data?.products || [];
+      allRaw.push(...batch);
+      pageToken = r?.data?.next_page_token;
+      if (!pageToken || batch.length === 0) break;
+    }
 
-    // Product search returns lightweight data (no images) — fetch details in parallel for first 15
+    // Fetch images for first 30 products in parallel (the rest show in dropdown without images)
     const detailResults = await Promise.allSettled(
-      raw.slice(0, 15).map(p =>
+      allRaw.slice(0, 30).map(p =>
         ttsBrandGet(brand, brands, bi, `/product/202309/products/${p.id}`)
       )
     );
@@ -4014,14 +4021,8 @@ app.get('/api/client/products', requireClientSession, async (req, res) => {
     detailResults.forEach((r2, i) => {
       if (r2.status === 'fulfilled') {
         const val = r2.value;
-        // val is the TikTok API envelope: { code, data, message }
-        if (val?.code === 0 && val?.data) {
-          detailMap[raw[i].id] = val.data;
-        } else if (val?.main_images) {
-          detailMap[raw[i].id] = val; // already unwrapped
-        }
-      } else if (i === 0) {
-        console.log('[products] detail[0] REJECTED:', r2.reason?.response?.data || r2.reason?.message);
+        if (val?.code === 0 && val?.data) detailMap[allRaw[i].id] = val.data;
+        else if (val?.main_images)        detailMap[allRaw[i].id] = val;
       }
     });
 
@@ -4033,7 +4034,7 @@ app.get('/api/client/products', requireClientSession, async (req, res) => {
         .filter(s => typeof s === 'string' && s.startsWith('http'));
     }
 
-    const products = raw.map(p => ({
+    const products = allRaw.map(p => ({
       id:     p.id,
       name:   p.title || p.name || 'Product',
       images: extractImages(p),
