@@ -3126,38 +3126,7 @@ app.patch('/api/client/settings', requireClientSession, express.json(), async (r
   }
 });
 
-// POST /api/client/logo — upload brand logo (client session auth)
-app.post('/api/client/logo', requireClientSession, imageUpload.single('logo'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'No image file received' });
-  const brands = loadBrands();
-  const idx = (brands.clients || []).findIndex(b => b.id === req.session.clientBrandId);
-  if (idx === -1) return res.status(404).json({ error: 'Brand not found' });
-  // Delete old logo if present
-  const old = brands.clients[idx].logoUrl;
-  if (old) {
-    const oldPath = path.join(UPLOAD_DIR, path.basename(old.split('?')[0]));
-    if (oldPath.startsWith(UPLOAD_DIR)) fs.unlink(oldPath, () => {});
-  }
-  const logoUrl = `${UPLOAD_BASE_URL}/uploads/${req.file.filename}`;
-  brands.clients[idx].logoUrl = logoUrl;
-  saveBrands(brands);
-  res.json({ ok: true, logoUrl });
-});
 
-// DELETE /api/client/logo — remove brand logo (client session auth)
-app.delete('/api/client/logo', requireClientSession, (req, res) => {
-  const brands = loadBrands();
-  const idx = (brands.clients || []).findIndex(b => b.id === req.session.clientBrandId);
-  if (idx === -1) return res.status(404).json({ error: 'Brand not found' });
-  const logoUrl = brands.clients[idx].logoUrl;
-  if (logoUrl) {
-    const filePath = path.join(UPLOAD_DIR, path.basename(logoUrl.split('?')[0]));
-    if (filePath.startsWith(UPLOAD_DIR)) fs.unlink(filePath, () => {});
-  }
-  delete brands.clients[idx].logoUrl;
-  saveBrands(brands);
-  res.json({ ok: true });
-});
 
 // POST /api/client/referrals — log a brand the client referred
 app.post('/api/client/referrals', requireClientSession, express.json(), (req, res) => {
@@ -12413,6 +12382,38 @@ app.delete('/api/brands/:brandId/logo', requireAuth, (req, res) => {
   if (logoUrl) {
     const filename = path.basename(logoUrl.split('?')[0]);
     const filePath = path.join(UPLOAD_DIR, filename);
+    if (filePath.startsWith(UPLOAD_DIR)) fs.unlink(filePath, () => {});
+  }
+  delete brands.clients[idx].logoUrl;
+  saveBrands(brands);
+  res.json({ ok: true });
+});
+
+// POST /api/client/logo — upload brand logo (client session auth, must be after imageUpload def)
+app.post('/api/client/logo', requireClientSession, imageUpload.single('logo'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No image file received' });
+  const brands = loadBrands();
+  const idx = (brands.clients || []).findIndex(b => b.id === req.session.clientBrandId);
+  if (idx === -1) return res.status(404).json({ error: 'Brand not found' });
+  const old = brands.clients[idx].logoUrl;
+  if (old) {
+    const oldPath = path.join(UPLOAD_DIR, path.basename(old.split('?')[0]));
+    if (oldPath.startsWith(UPLOAD_DIR)) fs.unlink(oldPath, () => {});
+  }
+  const logoUrl = `${UPLOAD_BASE_URL}/uploads/${req.file.filename}`;
+  brands.clients[idx].logoUrl = logoUrl;
+  saveBrands(brands);
+  res.json({ ok: true, logoUrl });
+});
+
+// DELETE /api/client/logo — remove brand logo (client session auth)
+app.delete('/api/client/logo', requireClientSession, (req, res) => {
+  const brands = loadBrands();
+  const idx = (brands.clients || []).findIndex(b => b.id === req.session.clientBrandId);
+  if (idx === -1) return res.status(404).json({ error: 'Brand not found' });
+  const logoUrl = brands.clients[idx].logoUrl;
+  if (logoUrl) {
+    const filePath = path.join(UPLOAD_DIR, path.basename(logoUrl.split('?')[0]));
     if (filePath.startsWith(UPLOAD_DIR)) fs.unlink(filePath, () => {});
   }
   delete brands.clients[idx].logoUrl;
