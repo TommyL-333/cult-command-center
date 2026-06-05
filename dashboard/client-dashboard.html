@@ -162,9 +162,8 @@
     .cs-card { background: var(--card); border: 1px solid var(--border); border-radius: 13px; padding: 24px; }
     .cs-card-title { font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 20px; }
 
-    /* Asset tiles */
-    .asset-tab { background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 20px; color: var(--muted); font-size: 0.75rem; font-weight: 600; padding: 5px 14px; cursor: pointer; transition: all 0.15s; }
-    .asset-tab.active { background: rgba(0,242,234,0.1); border-color: rgba(0,242,234,0.3); color: var(--teal); }
+    /* Asset search dropdown */
+    #assetProductDropdown div:hover { background: rgba(0,242,234,0.07); }
     .asset-tile { position: relative; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; aspect-ratio: 1; cursor: pointer; transition: border-color 0.15s; }
     .asset-tile:hover { border-color: rgba(0,242,234,0.3); }
     .asset-tile img, .asset-tile video { width: 100%; height: 100%; object-fit: cover; }
@@ -700,11 +699,28 @@
           <div class="cs-card-title" style="margin-bottom:0;">🗂 Brand Assets</div>
           <button class="refresh-btn" onclick="loadBrandAssets()">↻ Refresh</button>
         </div>
-        <p style="font-size:0.82rem;color:var(--muted);margin-bottom:20px;line-height:1.5">Product images pulled from TikTok Shop. Upload additional images or videos per product to use in content creation.</p>
+        <p style="font-size:0.82rem;color:var(--muted);margin-bottom:16px;line-height:1.5">Product images pulled from TikTok Shop. Upload additional images or videos per product to use in content creation.</p>
 
-        <!-- Product filter tabs -->
-        <div id="assetProductTabs" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;">
-          <button class="asset-tab active" onclick="filterAssets(null, this)">All</button>
+        <!-- Product filter dropdown with search -->
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
+          <div style="position:relative;flex:1;min-width:220px;max-width:420px;">
+            <input type="text" id="assetProductSearch" class="overlay-input"
+              placeholder="🔍  Search or filter by product…"
+              style="width:100%;padding:9px 12px;font-size:0.84rem;"
+              oninput="filterAssetsBySearch(this.value)"
+              onfocus="showProductDropdown()" onblur="setTimeout(hideProductDropdown,200)">
+            <div id="assetProductDropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--card);border:1px solid var(--border);border-radius:10px;z-index:50;max-height:260px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.4);">
+              <div id="assetProductDropdownList"></div>
+            </div>
+          </div>
+          <label class="post-now-btn" style="padding:9px 18px;cursor:pointer;font-size:0.82rem;white-space:nowrap;">
+            + Upload Asset
+            <input type="file" id="assetFileInput" accept="image/*,video/*" style="display:none" onchange="uploadAsset(this)">
+          </label>
+        </div>
+        <div id="assetActiveFilter" style="display:none;font-size:0.75rem;color:var(--teal);margin-bottom:10px;display:flex;align-items:center;gap:8px;">
+          <span id="assetFilterLabel"></span>
+          <button onclick="clearAssetFilter()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.8rem;">✕ Clear</button>
         </div>
 
         <!-- Asset grid -->
@@ -712,20 +728,11 @@
           <div class="empty" style="grid-column:1/-1;padding:24px 0;text-align:center;font-size:0.82rem;color:var(--muted);">Loading…</div>
         </div>
 
-        <!-- Upload to asset library -->
-        <div style="border-top:1px solid var(--border);padding-top:16px;margin-top:4px;">
-          <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:10px;">Upload Asset</div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-            <select id="assetProductSelect" class="schedule-input" style="flex:1;min-width:140px;padding:8px 10px;">
-              <option value="">No product (general)</option>
-            </select>
-            <label class="post-now-btn" style="padding:9px 18px;cursor:pointer;font-size:0.82rem;">
-              + Upload
-              <input type="file" id="assetFileInput" accept="image/*,video/*" style="display:none" onchange="uploadAsset(this)">
-            </label>
-          </div>
-          <div id="assetUploadStatus" style="font-size:0.78rem;margin-top:8px;min-height:16px;"></div>
-        </div>
+        <!-- Upload product tag (hidden, populated when filter active) -->
+        <select id="assetProductSelect" style="display:none">
+          <option value="">No product (general)</option>
+        </select>
+        <div id="assetUploadStatus" style="font-size:0.78rem;margin-top:4px;min-height:16px;"></div>
       </div>
     </div>
 
@@ -1739,13 +1746,11 @@
     _allAssets   = assetsRes.assets   || [];
     _allProducts = productsRes.products || [];
 
-    // Build product filter tabs
-    const tabsEl = document.getElementById('assetProductTabs');
+    // Build product dropdown list
     const selectEl = document.getElementById('assetProductSelect');
-    const productTabHtml = _allProducts.map(p => `<button class="asset-tab" onclick="filterAssets('${esc(p.id)}', this)">${esc(p.name)}</button>`).join('');
-    tabsEl.innerHTML = `<button class="asset-tab active" onclick="filterAssets(null, this)">All</button>${productTabHtml}`;
     selectEl.innerHTML = `<option value="">No product (general)</option>` +
       _allProducts.map(p => `<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');
+    renderProductDropdownList(_allProducts);
 
     // Build product chips in Create section
     const chipEl = document.getElementById('createProductGrid');
@@ -1764,12 +1769,53 @@
     renderAssetGrid(_allAssets);
   }
 
-  function filterAssets(productId, btn) {
+  function renderProductDropdownList(products) {
+    const list = document.getElementById('assetProductDropdownList');
+    if (!list) return;
+    list.innerHTML = `<div style="padding:8px 14px;font-size:0.8rem;color:var(--muted);cursor:pointer;border-bottom:1px solid var(--border);" onclick="selectAssetProduct(null,'All products')">All products</div>` +
+      products.map(p => `<div style="padding:8px 14px;font-size:0.82rem;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(255,255,255,0.04);" onclick="selectAssetProduct('${esc(p.id)}','${esc(p.name.replace(/'/g,"\\\'"))}')">
+        ${p.images?.[0] ? `<img src="${esc(p.images[0])}" style="width:28px;height:28px;object-fit:cover;border-radius:4px;flex-shrink:0">` : '<div style="width:28px;height:28px;background:var(--border);border-radius:4px;flex-shrink:0"></div>'}
+        <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(p.name)}</span>
+      </div>`).join('');
+  }
+
+  function showProductDropdown() {
+    document.getElementById('assetProductDropdown').style.display = 'block';
+  }
+  function hideProductDropdown() {
+    document.getElementById('assetProductDropdown').style.display = 'none';
+  }
+
+  function filterAssetsBySearch(q) {
+    const lower = q.toLowerCase();
+    const filtered = _allProducts.filter(p => p.name.toLowerCase().includes(lower));
+    renderProductDropdownList(filtered);
+    showProductDropdown();
+  }
+
+  function selectAssetProduct(productId, name) {
     _activeProductFilter = productId;
-    document.querySelectorAll('.asset-tab').forEach(b => b.classList.remove('active'));
-    if (btn) btn.classList.add('active');
+    document.getElementById('assetProductSearch').value = productId ? name : '';
+    document.getElementById('assetProductSelect').value = productId || '';
+    hideProductDropdown();
+    const filterBar = document.getElementById('assetActiveFilter');
+    const filterLabel = document.getElementById('assetFilterLabel');
+    if (productId) {
+      filterBar.style.display = 'flex';
+      filterLabel.textContent = '🔖 ' + name;
+    } else {
+      filterBar.style.display = 'none';
+    }
     const filtered = productId ? _allAssets.filter(a => a.productId === productId) : _allAssets;
     renderAssetGrid(filtered);
+  }
+
+  function clearAssetFilter() {
+    selectAssetProduct(null, '');
+  }
+
+  function filterAssets(productId, btn) {
+    selectAssetProduct(productId, btn?.textContent || '');
   }
 
   function renderAssetGrid(assets) {
