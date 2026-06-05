@@ -4001,10 +4001,15 @@ app.get('/api/client/products', requireClientSession, async (req, res) => {
     // page_size goes as query param, not body, for product search
     const r = await ttsBrandPost(brand, brands, bi, '/product/202309/products/search',
       {}, { page_size: 50 });
-    const products = (r?.data?.products || []).map(p => ({
+    // Log first product raw keys to find correct image field name
+    const raw = r?.data?.products || [];
+    if (raw.length) console.log('[products] first product keys:', Object.keys(raw[0]), '| sample:', JSON.stringify(raw[0]).slice(0, 500));
+    const products = raw.map(p => ({
       id:     p.id,
       name:   p.title || p.name || 'Product',
-      images: (p.main_images || p.images || []).slice(0, 4).map(img => img.url_list?.[0] || img.url || img),
+      // Try all known TikTok image field variants
+      images: (p.main_images || p.images || p.skus?.[0]?.sales_attributes?.[0]?.sku_img?.url_list || [])
+        .slice(0, 4).map(img => img?.url_list?.[0] || img?.thumb_url_list?.[0] || img?.url || img).filter(Boolean),
     }));
     res.json({ ok: true, products });
   } catch(e) {
