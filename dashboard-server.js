@@ -3991,6 +3991,20 @@ app.post('/api/client/storista/queue/:jobId/retry', requireClientSession, (req, 
 // ─── Brand Assets (Content Studio) ──────────────────────────────────────────
 
 // GET /api/client/products — TikTok Shop products for this brand (client session)
+// GET /api/client/products/raw-debug — return raw detail for one product (temp diagnostic)
+app.get('/api/client/products/raw-debug', requireClientSession, async (req, res) => {
+  const brands = loadBrands();
+  const bi = brands.clients.findIndex(b => b.id === req.session.clientBrandId);
+  if (bi === -1) return res.status(404).json({ error: 'Brand not found' });
+  const brand = brands.clients[bi];
+  if (!brand.tiktokShopToken?.access_token) return res.json({ error: 'No token' });
+  const list = await ttsBrandPost(brand, brands, bi, '/product/202309/products/search', {}, { page_size: 1 });
+  const firstId = list?.data?.products?.[0]?.id;
+  if (!firstId) return res.json({ error: 'No products', list });
+  const detail = await ttsBrandGet(brand, brands, bi, `/product/202309/products/${firstId}`);
+  res.json({ firstId, detail });
+});
+
 app.get('/api/client/products', requireClientSession, async (req, res) => {
   const brands = loadBrands();
   const bi = brands.clients.findIndex(b => b.id === req.session.clientBrandId);
