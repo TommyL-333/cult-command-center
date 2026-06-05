@@ -4012,11 +4012,16 @@ app.get('/api/client/products', requireClientSession, async (req, res) => {
     const detailMap = {};
     detailResults.forEach((r2, i) => {
       if (r2.status === 'fulfilled') {
-        const detail = r2.value?.data || r2.value;
-        if (i === 0) console.log('[products] main_images[0]:', JSON.stringify((detail?.main_images || [])[0]).slice(0, 300));
-        detailMap[raw[i].id] = detail;
+        const val = r2.value;
+        // val is the TikTok API envelope: { code, data, message }
+        if (i === 0) console.log('[products] detail[0] code:', val?.code, '| data keys:', Object.keys(val?.data || val || {}), '| main_images:', JSON.stringify((val?.data?.main_images || val?.main_images || [])[0] || 'none').slice(0, 200));
+        if (val?.code === 0 && val?.data) {
+          detailMap[raw[i].id] = val.data;
+        } else if (val?.main_images) {
+          detailMap[raw[i].id] = val; // already unwrapped
+        }
       } else if (i === 0) {
-        console.log('[products] detail[0] failed:', r2.reason?.response?.data || r2.reason?.message);
+        console.log('[products] detail[0] REJECTED:', r2.reason?.response?.data || r2.reason?.message);
       }
     });
 
