@@ -3999,8 +3999,8 @@ app.get('/api/client/products/raw-debug', requireClientSession, async (req, res)
   const brand = brands.clients[bi];
   if (!brand.tiktokShopToken?.access_token) return res.json({ error: 'No token' });
   const list = await ttsBrandPost(brand, brands, bi, '/product/202309/products/search', {}, { page_size: 1 });
-  const firstId = list?.data?.products?.[0]?.id;
-  if (!firstId) return res.json({ error: 'No products', list });
+  const firstId = list?.data?.products?.[0]?.id || list?.products?.[0]?.id;
+  if (!firstId) return res.json({ error: 'No products', listKeys: Object.keys(list||{}), listDataKeys: Object.keys(list?.data||{}), listSample: JSON.stringify(list).slice(0,400) });
   const detail = await ttsBrandGet(brand, brands, bi, `/product/202309/products/${firstId}`);
   res.json({ firstId, detail });
 });
