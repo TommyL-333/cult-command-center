@@ -11629,23 +11629,10 @@ function connectTikTok() {
     history.replaceState({}, '', window.location.pathname);
   }
 
-  // Join Now is disabled until TikTok connected
-  if (!oid) {
-    var btn = document.getElementById('cpBtn');
-    btn.disabled = true;
-    btn.style.opacity = '0.45';
-    btn.title = 'Connect your TikTok account first';
-  }
 })();
 
 document.getElementById('cpForm').addEventListener('submit', async function(e) {
   e.preventDefault();
-  if (!_ttOpenId) {
-    var err = document.getElementById('cpErr');
-    err.textContent = 'Please connect your TikTok account before joining.';
-    err.style.display = 'block';
-    return;
-  }
   var btn = document.getElementById('cpBtn');
   var err = document.getElementById('cpErr');
   btn.disabled = true; btn.textContent = 'Submitting...'; err.style.display = 'none';
