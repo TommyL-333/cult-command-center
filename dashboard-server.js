@@ -3998,8 +3998,9 @@ app.get('/api/client/products', requireClientSession, async (req, res) => {
   const brand = brands.clients[bi];
   if (!brand.tiktokShopToken?.access_token) return res.json({ ok: true, products: [] });
   try {
+    // page_size goes as query param, not body, for product search
     const r = await ttsBrandPost(brand, brands, bi, '/product/202309/products/search',
-      { page_size: 50 });
+      {}, { page_size: 50 });
     const products = (r?.data?.products || []).map(p => ({
       id:     p.id,
       name:   p.title || p.name || 'Product',
