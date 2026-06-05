@@ -229,6 +229,18 @@
     .sub-tab-pane.active { display:block; }
 
     /* ─── Tabs ───────────────────────────────────────────────── */
+    /* ── Toggle switch ── */
+    .cc-toggle-wrap{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:10px;margin-bottom:12px}
+    .cc-toggle-label{font-size:13px;font-weight:700;color:var(--fg)}
+    .cc-toggle-sub{font-size:11px;color:var(--muted);margin-top:2px}
+    .cc-toggle-note{font-size:10px;color:rgba(255,165,0,.65);margin-top:3px;font-style:italic}
+    .toggle-switch{position:relative;display:inline-block;width:42px;height:24px;flex-shrink:0}
+    .toggle-switch input{opacity:0;width:0;height:0}
+    .toggle-slider{position:absolute;cursor:pointer;inset:0;background:rgba(255,255,255,.12);border-radius:24px;transition:.25s}
+    .toggle-slider:before{content:'';position:absolute;width:18px;height:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.25s}
+    .toggle-switch input:checked+.toggle-slider{background:#c9a84c}
+    .toggle-switch input:checked+.toggle-slider:before{transform:translateX(18px)}
+
     .tab-btn {
       height: 100%; padding: 0 18px;
       background: none; border: none; border-bottom: 2px solid transparent;
@@ -11047,7 +11059,11 @@ function renderClientCard(c) {
     const places = inc.leaderboard.places || inc.leaderboard.prizes || [];
     if (places[0]) pills.push(`$${places[0]} leaderboard prize`);
   }
-  const pillsHtml = pills.map(p => `<span style="background:rgba(${ar},.1);color:${accent};border:1px solid rgba(${ar},.22);border-radius:100px;padding:2px 9px;font-size:10px;font-weight:700">${p}</span>`).join('');
+  if (c.innerCircle) pills.unshift('⭐ Inner Circle');
+  const pillsHtml = pills.map(p => p.startsWith('⭐')
+    ? `<span style="background:rgba(201,168,76,.15);color:#c9a84c;border:1px solid rgba(201,168,76,.35);border-radius:100px;padding:2px 9px;font-size:10px;font-weight:700">${p}</span>`
+    : `<span style="background:rgba(${ar},.1);color:${accent};border:1px solid rgba(${ar},.22);border-radius:100px;padding:2px 9px;font-size:10px;font-weight:700">${p}</span>`
+  ).join('');
 
   // Campaign link buttons
   const cam = c.campaigns || {};
@@ -11143,6 +11159,40 @@ function renderClientCard(c) {
           <input id="cc-camLb-${c.id}" class="agent-input" style="font-size:12px;width:100%" placeholder="https://..." value="${x(cam.leaderboardUrl||'')}">
         </div>
       </div>
+      <!-- Inner Circle toggle -->
+      <div class="cc-toggle-wrap">
+        <div>
+          <div class="cc-toggle-label">⭐ Inner Circle</div>
+          <div class="cc-toggle-sub">Dedicated creators · 15+ videos/mo · 50% commission · 25% on ads</div>
+          <div class="cc-toggle-note">Changes apply to the upcoming month</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="cc-innerCircle-${c.id}" ${c.innerCircle ? 'checked' : ''}>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <!-- Brand Logo (quick upload) -->
+      <div style="margin-bottom:14px">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:8px">Brand Logo <span style="font-weight:400;text-transform:none;opacity:.6">(shown on creator welcome page)</span></div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div id="cc-logo-preview-${c.id}" style="display:${c.logoUrl ? 'block' : 'none'}">
+            <img src="${c.logoUrl||''}" style="max-height:44px;max-width:120px;object-fit:contain;border-radius:6px;border:1px solid rgba(255,255,255,.1);padding:4px;background:rgba(255,255,255,.04)">
+          </div>
+          <label class="btn" style="font-size:12px;cursor:pointer;padding:6px 14px">
+            ${c.logoUrl ? '↺ Replace' : '+ Upload Logo'}
+            <input type="file" accept="image/*" style="display:none" onchange="ccUploadLogo('${c.id}',this)">
+          </label>
+          ${c.logoUrl ? `<button onclick="ccRemoveLogo('${c.id}',this)" class="btn" style="font-size:12px;background:rgba(255,60,60,.1);color:#ff6060;border:1px solid rgba(255,60,60,.2)">Remove</button>` : ''}
+          <span id="cc-logo-status-${c.id}" style="font-size:11px;color:var(--muted)"></span>
+        </div>
+      </div>
+
+      <!-- Product media link -->
+      <div style="margin-bottom:14px;font-size:11px;color:var(--muted)">
+        📁 Product media (images &amp; videos) → <a onclick="csJumpToClient('${c.id}')" style="color:var(--teal);cursor:pointer;text-decoration:underline">Manage in Client Setup ↓</a>
+      </div>
+
       ${!isLive && c.pendingId ? `
       <div style="margin-bottom:14px">
         <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:5px">Reacher Shop</div>
@@ -11195,8 +11245,29 @@ async function ccSave(id, btn) {
   const camCb = v('camCb');
   const camVb = v('camVb');
   const camLb = v('camLb');
+  const innerCircleEl = document.getElementById(`cc-innerCircle-${id}`);
+  const newInnerCircle = innerCircleEl ? innerCircleEl.checked : (c.innerCircle || false);
+  const innerCircleChanged = newInnerCircle !== (c.innerCircle || false);
 
   try {
+    // Save Inner Circle flag (always, for live brands)
+    if (c._type === 'live' && innerCircleChanged) {
+      await fetch(`/api/brands/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ innerCircle: newInnerCircle }),
+      });
+      // Next-month label
+      const nextMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 1)
+        .toLocaleString('en-US', { month: 'long', year: 'numeric' });
+      const state = newInnerCircle ? 'ACTIVATED ✅' : 'DEACTIVATED ❌';
+      await fetch('/api/command', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: `⭐ Inner Circle ${state}\n*Brand:* ${c.name || id}\n*Effective:* ${nextMonth}\n${newInnerCircle ? '• 15+ videos/mo\n• 50% commission\n• 25% on ads' : 'Inner Circle tier removed'}` }),
+      });
+    }
+
     if (c._type === 'live') {
       // Update creator page (incentives + commission)
       const cpRes = await fetch(`/api/creator-pages/${id}`, {
@@ -11232,6 +11303,7 @@ async function ccSave(id, btn) {
     c.tcCommission = tcComm;
     c.incentives = inc;
     c.campaigns = { cashbackUrl: camCb || null, quantityVideoUrl: camVb || null, leaderboardUrl: camLb || null };
+    c.innerCircle = newInnerCircle;
     _clientData[id] = c;
 
     status.style.color = 'var(--green)';
@@ -11247,6 +11319,54 @@ async function ccSave(id, btn) {
     status.textContent = e.message;
   }
   btn.disabled = false; btn.textContent = orig;
+}
+
+// ── Logo upload from the campaign controls card ──────────────────────────────
+async function ccUploadLogo(brandId, input) {
+  const statusEl = document.getElementById(`cc-logo-status-${brandId}`);
+  if (!input.files?.length) return;
+  statusEl.textContent = 'Uploading…';
+  const fd = new FormData();
+  fd.append('logo', input.files[0]);
+  try {
+    const r = await fetch(`/api/brands/${brandId}/logo`, { method: 'POST', body: fd }).then(r => r.json());
+    if (!r.ok) throw new Error(r.error || 'Upload failed');
+    const c = _clientData[brandId] || {};
+    c.logoUrl = r.logoUrl;
+    _clientData[brandId] = c;
+    statusEl.textContent = '✓ Logo saved';
+    // Update preview in card
+    const preview = document.getElementById(`cc-logo-preview-${brandId}`);
+    const img = preview?.querySelector('img');
+    if (img) { img.src = r.logoUrl; preview.style.display = 'block'; }
+    setTimeout(() => statusEl.textContent = '', 3000);
+  } catch(e) { statusEl.textContent = 'Error: ' + e.message; }
+}
+
+async function ccRemoveLogo(brandId, btn) {
+  const statusEl = document.getElementById(`cc-logo-status-${brandId}`);
+  btn.disabled = true;
+  try {
+    await fetch(`/api/brands/${brandId}/logo`, { method: 'DELETE' });
+    const c = _clientData[brandId] || {};
+    delete c.logoUrl;
+    _clientData[brandId] = c;
+    const preview = document.getElementById(`cc-logo-preview-${brandId}`);
+    if (preview) preview.style.display = 'none';
+    btn.style.display = 'none';
+    statusEl.textContent = '✓ Removed';
+    setTimeout(() => statusEl.textContent = '', 3000);
+  } catch(e) { statusEl.textContent = 'Error: ' + e.message; btn.disabled = false; }
+}
+
+// Jump to Affiliates > Client Setup and pre-select this brand
+function csJumpToClient(brandId) {
+  document.querySelector('[data-tab="affiliates"]')?.click();
+  setTimeout(() => {
+    const sel = document.getElementById('csClientSel');
+    if (sel) { sel.value = brandId; csLoadClient(); }
+    document.getElementById('csPanel')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 200);
 }
 
 async function ccApprove(pendingId, clientId, btn) {
