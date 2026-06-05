@@ -4028,7 +4028,6 @@ app.get('/api/client/products', requireClientSession, async (req, res) => {
       if (r2.status === 'fulfilled') {
         const val = r2.value;
         // val is the TikTok API envelope: { code, data, message }
-        if (i === 0) console.log('[products] detail[0] code:', val?.code, '| data keys:', Object.keys(val?.data || val || {}), '| main_images:', JSON.stringify((val?.data?.main_images || val?.main_images || [])[0] || 'none').slice(0, 200));
         if (val?.code === 0 && val?.data) {
           detailMap[raw[i].id] = val.data;
         } else if (val?.main_images) {
@@ -4043,7 +4042,7 @@ app.get('/api/client/products', requireClientSession, async (req, res) => {
       const detail = detailMap[p.id] || {};
       const src = detail.main_images || detail.images || p.main_images || p.images || [];
       return src.slice(0, 4)
-        .map(img => img?.url_list?.[0] || img?.thumb_url_list?.[0] || img?.url || img)
+        .map(img => img?.thumb_urls?.[0] || img?.urls?.[0] || img?.url_list?.[0] || img?.url || img)
         .filter(s => typeof s === 'string' && s.startsWith('http'));
     }
 
