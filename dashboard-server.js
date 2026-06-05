@@ -1009,20 +1009,27 @@ app.get(['/api/creator/connect/auth', '/api/creator-tiktok/auth'], (req, res) =>
 
 // GET /api/creator/connect/callback — clean alias (no "tiktok" in path for app review)
 // GET /api/creator-tiktok/callback — legacy path, kept for backwards compat
-// Exchanges TikTok auth code for access token, extracts open_id, postMessages back to popup opener
+// Exchanges TikTok auth code for access token, then redirects back to /creators/<slug>
+// with tt_handle + tt_oid query params so the page can show "Connected" without a popup.
 app.get(['/api/creator/connect/callback', '/api/creator-tiktok/callback'], async (req, res) => {
   const { code, state, error, error_description } = req.query;
-  const errPage = (msg) => `<!DOCTYPE html><html><head><title>TikTok Auth</title></head><body style="font-family:sans-serif;text-align:center;padding:60px;background:#12101a;color:#fff">
-    <p style="color:#ff5b5b">${msg}</p>
-    <script>window.opener&&window.opener.postMessage({tiktokError:${JSON.stringify(msg)}},'*');setTimeout(()=>window.close(),2000);</script>
-  </body></html>`;
 
-  if (error) return res.send(errPage(error_description || error));
-
+  // Error page — redirects back to creator page with error param if slug known
   const stateData = creatorTikTokStates.get(state);
-  if (!stateData) return res.send(errPage('Session expired — please try connecting again.'));
+  const slugFallback = stateData?.slug || '';
+
+  if (error) {
+    const msg = error_description || error;
+    if (slugFallback) return res.redirect(`${CREATOR_BASE_URL}/creators/${slugFallback}?tt_error=${encodeURIComponent(msg)}`);
+    return res.status(400).send(`<h2 style="color:#ff5b5b;font-family:sans-serif;text-align:center;padding:60px">TikTok auth error: ${msg}</h2>`);
+  }
+
+  if (!stateData) {
+    return res.status(400).send('<h2 style="color:#ff5b5b;font-family:sans-serif;text-align:center;padding:60px">Session expired — please go back and try connecting again.</h2>');
+  }
   creatorTikTokStates.delete(state);
 
+  const { slug } = stateData;
   const clientKey    = process.env.CREATOR_TIKTOK_CLIENT_KEY;
   const clientSecret = process.env.CREATOR_TIKTOK_CLIENT_SECRET;
   const redirectUri  = process.env.CREATOR_TIKTOK_REDIRECT_URI || `${CREATOR_BASE_URL}/api/creator/connect/callback`;
@@ -1037,7 +1044,7 @@ app.get(['/api/creator/connect/callback', '/api/creator-tiktok/callback'], async
 
     const openId = tok.open_id || '';
 
-    // Fetch the creator's TikTok handle from Display API
+    // Fetch TikTok handle from Display API
     let tiktokHandle = '';
     try {
       const { data: uInfo } = await axios.get('https://open.tiktokapis.com/v2/user/info/', {
@@ -1047,20 +1054,14 @@ app.get(['/api/creator/connect/callback', '/api/creator-tiktok/callback'], async
       tiktokHandle = uInfo?.data?.user?.username || uInfo?.data?.user?.display_name || '';
     } catch(_) {}
 
-    res.send(`<!DOCTYPE html><html><head><title>TikTok Connected</title></head><body style="font-family:sans-serif;text-align:center;padding:60px;background:#12101a;color:#fff">
-      <h2 style="color:#00f2ea">TikTok Connected!</h2>
-      ${tiktokHandle ? `<p>@${tiktokHandle}</p>` : ''}
-      <p style="color:#7a7268;font-size:13px">Closing window...</p>
-      <script>
-        if (window.opener) {
-          window.opener.postMessage({ tiktokOpenId: ${JSON.stringify(openId)}, tiktokHandle: ${JSON.stringify(tiktokHandle)} }, '*');
-          setTimeout(() => window.close(), 800);
-        }
-      </script>
-    </body></html>`);
+    // Redirect back to the creator page — JS on that page restores form from sessionStorage
+    // and shows the "Connected" badge using the query params.
+    const params = new URLSearchParams({ tt_oid: openId });
+    if (tiktokHandle) params.set('tt_handle', tiktokHandle);
+    return res.redirect(`${CREATOR_BASE_URL}/creators/${slug}?${params.toString()}`);
   } catch(e) {
-    console.error('[creator-tiktok/callback] error:', e.message);
-    res.send(errPage('Connection failed: ' + e.message));
+    console.error('[creator/connect/callback] error:', e.message);
+    return res.redirect(`${CREATOR_BASE_URL}/creators/${slug}?tt_error=${encodeURIComponent('Connection failed — please try again.')}`);
   }
 });
 
@@ -11523,33 +11524,88 @@ ${rewardLines.length ? `
 
 <script>
 var _ttOpenId = '';
-function connectTikTok() {
-  var popup = window.open('/api/creator-tiktok/auth?slug=${cp.slug}', 'tiktok-auth', 'width=520,height=680,scrollbars=yes');
-  if (!popup) { alert('Please allow popups for this site to connect TikTok.'); return; }
-  function onMsg(e) {
-    if (!e.data) return;
-    if (e.data.tiktokOpenId) {
-      _ttOpenId = e.data.tiktokOpenId;
-      document.getElementById('tiktokOpenIdField').value = _ttOpenId;
-      var badge = document.getElementById('ttConnectedBadge');
-      var btn   = document.getElementById('ttConnectBtn');
-      badge.style.display = 'flex';
-      btn.style.display = 'none';
-      if (e.data.tiktokHandle) {
-        document.getElementById('ttHandleDisplay').textContent = '@' + e.data.tiktokHandle + ' connected ✓';
-        var hField = document.querySelector('input[name="tiktokHandle"]');
-        if (hField && !hField.value) hField.value = '@' + e.data.tiktokHandle;
-      }
-      window.removeEventListener('message', onMsg);
-    } else if (e.data.tiktokError) {
-      console.warn('TikTok connect error:', e.data.tiktokError);
-      window.removeEventListener('message', onMsg);
-    }
-  }
-  window.addEventListener('message', onMsg);
+var FORM_KEY = 'creator_form_${cp.slug}';
+
+function saveForm() {
+  var data = {};
+  document.querySelectorAll('#cpForm input, #cpForm textarea, #cpForm select').forEach(function(el) {
+    if (el.name && el.type !== 'hidden') data[el.name] = el.value;
+  });
+  sessionStorage.setItem(FORM_KEY, JSON.stringify(data));
 }
+
+function restoreForm() {
+  try {
+    var saved = JSON.parse(sessionStorage.getItem(FORM_KEY) || '{}');
+    Object.keys(saved).forEach(function(k) {
+      var el = document.querySelector('#cpForm [name="' + k + '"]');
+      if (el && saved[k]) el.value = saved[k];
+    });
+  } catch(_) {}
+}
+
+function showConnected(openId, handle) {
+  _ttOpenId = openId;
+  document.getElementById('tiktokOpenIdField').value = openId;
+  document.getElementById('ttConnectedBadge').style.display = 'flex';
+  document.getElementById('ttConnectBtn').style.display = 'none';
+  if (handle) {
+    document.getElementById('ttHandleDisplay').textContent = '@' + handle + ' connected ✓';
+    var hField = document.querySelector('input[name="tiktokHandle"]');
+    if (hField && !hField.value) hField.value = '@' + handle;
+  }
+  // Enable the Join Now button now that TikTok is connected
+  var btn = document.getElementById('cpBtn');
+  btn.disabled = false;
+  btn.style.opacity = '1';
+}
+
+function connectTikTok() {
+  // Save form state so we can restore it after the redirect
+  saveForm();
+  // Full-page redirect to TikTok OAuth (works on mobile, no popup needed)
+  window.location.href = '/api/creator/connect/auth?slug=${cp.slug}';
+}
+
+// On page load: check for OAuth return params or error
+(function() {
+  var params = new URLSearchParams(window.location.search);
+  var oid    = params.get('tt_oid');
+  var handle = params.get('tt_handle');
+  var ttErr  = params.get('tt_error');
+
+  if (oid) {
+    // Restore form, then show connected state
+    restoreForm();
+    showConnected(oid, handle || '');
+    sessionStorage.removeItem(FORM_KEY);
+    // Clean URL so refreshing doesn't re-trigger
+    history.replaceState({}, '', window.location.pathname);
+  } else if (ttErr) {
+    var err = document.getElementById('cpErr');
+    err.textContent = 'TikTok connection failed: ' + ttErr + ' — please try again.';
+    err.style.display = 'block';
+    restoreForm();
+    history.replaceState({}, '', window.location.pathname);
+  }
+
+  // Join Now is disabled until TikTok connected
+  if (!oid) {
+    var btn = document.getElementById('cpBtn');
+    btn.disabled = true;
+    btn.style.opacity = '0.45';
+    btn.title = 'Connect your TikTok account first';
+  }
+})();
+
 document.getElementById('cpForm').addEventListener('submit', async function(e) {
   e.preventDefault();
+  if (!_ttOpenId) {
+    var err = document.getElementById('cpErr');
+    err.textContent = 'Please connect your TikTok account before joining.';
+    err.style.display = 'block';
+    return;
+  }
   var btn = document.getElementById('cpBtn');
   var err = document.getElementById('cpErr');
   btn.disabled = true; btn.textContent = 'Submitting...'; err.style.display = 'none';
