@@ -4000,16 +4000,35 @@ app.get('/api/client/products', requireClientSession, async (req, res) => {
   try {
     // page_size goes as query param, not body, for product search
     const r = await ttsBrandPost(brand, brands, bi, '/product/202309/products/search',
-      {}, { page_size: 50 });
-    // Log first product raw keys to find correct image field name
+      {}, { page_size: 20 });
     const raw = r?.data?.products || [];
-    if (raw.length) console.log('[products] first product keys:', Object.keys(raw[0]), '| sample:', JSON.stringify(raw[0]).slice(0, 500));
+
+    // Product search returns lightweight data (no images) — fetch details in parallel for first 15
+    const detailResults = await Promise.allSettled(
+      raw.slice(0, 15).map(p =>
+        ttsBrandGet(brand, brands, bi, `/product/202309/products/${p.id}`)
+      )
+    );
+    const detailMap = {};
+    detailResults.forEach((r2, i) => {
+      if (r2.status === 'fulfilled') {
+        const detail = r2.value?.data || r2.value;
+        detailMap[raw[i].id] = detail;
+      }
+    });
+
+    function extractImages(p) {
+      const detail = detailMap[p.id] || {};
+      const src = detail.main_images || detail.images || p.main_images || p.images || [];
+      return src.slice(0, 4)
+        .map(img => img?.url_list?.[0] || img?.thumb_url_list?.[0] || img?.url || img)
+        .filter(s => typeof s === 'string' && s.startsWith('http'));
+    }
+
     const products = raw.map(p => ({
       id:     p.id,
       name:   p.title || p.name || 'Product',
-      // Try all known TikTok image field variants
-      images: (p.main_images || p.images || p.skus?.[0]?.sales_attributes?.[0]?.sku_img?.url_list || [])
-        .slice(0, 4).map(img => img?.url_list?.[0] || img?.thumb_url_list?.[0] || img?.url || img).filter(Boolean),
+      images: extractImages(p),
     }));
     res.json({ ok: true, products });
   } catch(e) {
