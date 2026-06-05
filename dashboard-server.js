@@ -4013,7 +4013,7 @@ app.get('/api/client/products', requireClientSession, async (req, res) => {
     detailResults.forEach((r2, i) => {
       if (r2.status === 'fulfilled') {
         const detail = r2.value?.data || r2.value;
-        if (i === 0) console.log('[products] detail[0] keys:', Object.keys(detail || {}), '| sample:', JSON.stringify(detail).slice(0, 600));
+        if (i === 0) console.log('[products] main_images[0]:', JSON.stringify((detail?.main_images || [])[0]).slice(0, 300));
         detailMap[raw[i].id] = detail;
       } else if (i === 0) {
         console.log('[products] detail[0] failed:', r2.reason?.response?.data || r2.reason?.message);
