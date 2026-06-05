@@ -3056,6 +3056,8 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
         shopId: brand.shopId || null,
         sampleBudget: brand.sampleBudget || 0,
         compensation,
+        innerCircle: !!brand.innerCircle,
+        logoUrl: brand.logoUrl || null,
         referralCode: brand.referralCode,
         commissionRate: brand.commissionRate ?? 0.10,
         referralUrl,
@@ -3087,7 +3089,7 @@ app.patch('/api/client/settings', requireClientSession, express.json(), async (r
     const idx = (brands.clients || []).findIndex(b => b.id === req.session.clientBrandId);
     if (idx === -1) return res.status(404).json({ error: 'Brand not found' });
     const brand = brands.clients[idx];
-    const { sampleBudget, compensation, affiliatePageUrl } = req.body || {};
+    const { sampleBudget, compensation, affiliatePageUrl, innerCircle } = req.body || {};
     if (sampleBudget !== undefined) brand.sampleBudget = Number(sampleBudget) || 0;
     if (compensation && typeof compensation === 'object') {
       if (!brand.creatorPage) brand.creatorPage = {};
@@ -3099,6 +3101,22 @@ app.patch('/api/client/settings', requireClientSession, express.json(), async (r
     if (req.body.arcadsClientId)  { brand.arcadsClientId  = req.body.arcadsClientId; }
     if (req.body.arcadsApiKey)    { brand.arcadsApiKey     = req.body.arcadsApiKey;    brand.arcadsConnected = true; }
     if (req.body.storistaApiKey)  { brand.storistaApiKey  = req.body.storistaApiKey;  brand.storistaConnected = true; }
+
+    // Inner Circle toggle — send Lark alert when it changes
+    if (innerCircle !== undefined && !!innerCircle !== !!brand.innerCircle) {
+      const status  = innerCircle ? 'ENABLED ✅' : 'DISABLED ❌';
+      const emoji   = innerCircle ? '🌀' : '🔕';
+      const now     = new Date();
+      const nextMo  = new Date(now.getFullYear(), now.getMonth() + 1, 1)
+        .toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      axios.post(`${CFG.railwayUrl}/command`, {
+        text: `${emoji} *Inner Circle ${status}* for *${brand.name}*\nEffective: ${nextMo}\nInner Circle: dedicated creators posting 15+ videos/mo, 50% commission + 25% on ads.`,
+        context: 'Inner Circle Toggle',
+        source: 'Client Dashboard',
+      }, { timeout: 5000 }).catch(e => console.error('[inner-circle] lark error:', e.message));
+      brand.innerCircle = !!innerCircle;
+    }
+
     brands.clients[idx] = brand;
     saveBrands(brands);
     res.json({ ok: true });
@@ -3106,6 +3124,39 @@ app.patch('/api/client/settings', requireClientSession, express.json(), async (r
     sendClientBugReport({ brandId: req.session?.clientBrandId, route: 'PATCH /api/client/settings', error: e.message });
     res.status(500).json({ error: e.message });
   }
+});
+
+// POST /api/client/logo — upload brand logo (client session auth)
+app.post('/api/client/logo', requireClientSession, imageUpload.single('logo'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No image file received' });
+  const brands = loadBrands();
+  const idx = (brands.clients || []).findIndex(b => b.id === req.session.clientBrandId);
+  if (idx === -1) return res.status(404).json({ error: 'Brand not found' });
+  // Delete old logo if present
+  const old = brands.clients[idx].logoUrl;
+  if (old) {
+    const oldPath = path.join(UPLOAD_DIR, path.basename(old.split('?')[0]));
+    if (oldPath.startsWith(UPLOAD_DIR)) fs.unlink(oldPath, () => {});
+  }
+  const logoUrl = `${UPLOAD_BASE_URL}/uploads/${req.file.filename}`;
+  brands.clients[idx].logoUrl = logoUrl;
+  saveBrands(brands);
+  res.json({ ok: true, logoUrl });
+});
+
+// DELETE /api/client/logo — remove brand logo (client session auth)
+app.delete('/api/client/logo', requireClientSession, (req, res) => {
+  const brands = loadBrands();
+  const idx = (brands.clients || []).findIndex(b => b.id === req.session.clientBrandId);
+  if (idx === -1) return res.status(404).json({ error: 'Brand not found' });
+  const logoUrl = brands.clients[idx].logoUrl;
+  if (logoUrl) {
+    const filePath = path.join(UPLOAD_DIR, path.basename(logoUrl.split('?')[0]));
+    if (filePath.startsWith(UPLOAD_DIR)) fs.unlink(filePath, () => {});
+  }
+  delete brands.clients[idx].logoUrl;
+  saveBrands(brands);
+  res.json({ ok: true });
 });
 
 // POST /api/client/referrals — log a brand the client referred
@@ -11509,6 +11560,7 @@ footer a{color:${accent};text-decoration:none}
 <body>
 
 <div class="hero">
+  ${brand.logoUrl ? `<img src="${brand.logoUrl}" alt="${name}" style="max-height:60px;max-width:160px;object-fit:contain;margin-bottom:14px;border-radius:8px">` : ''}
   <div class="brand-badge"><span class="live-dot"></span>&nbsp;${name} Creator Program</div>
   <h1>${cp.headline || `Partner with ${name} on TikTok Shop`}</h1>
   <div class="hero-sub">Join our affiliate creator program and start earning. Sign up below to get access to all campaigns and your Discord role.</div>

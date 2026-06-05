@@ -563,8 +563,39 @@
         </div>
       </div>
 
+      <!-- Inner Circle -->
+      <div class="incentive-block" id="blockInnerCircle">
+        <div class="incentive-header">
+          <div>
+            <div class="incentive-name">🌀 Inner Circle</div>
+            <div class="incentive-desc">Matched with dedicated creators posting 15+ videos/mo — 50% commission + 25% on ads. Changes apply next month.</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="tInnerCircle">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
       <button class="save-btn" onclick="saveSettings()">Save Changes</button>
       <div class="save-status" id="saveStatus"></div>
+    </div>
+
+    <!-- Brand Logo -->
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--teal)"></span>Brand Logo</div>
+      <div id="logoPreviewWrap" style="display:none;margin-bottom:12px">
+        <img id="logoPreview" src="" alt="Brand logo" style="max-height:64px;max-width:180px;object-fit:contain;border-radius:8px;border:1px solid var(--border);padding:8px">
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <label class="save-btn" style="margin:0;padding:9px 18px;cursor:pointer;display:inline-block;width:auto;font-size:0.82rem">
+          Upload Logo
+          <input type="file" id="logoFileInput" accept="image/*" style="display:none" onchange="uploadLogo(this)">
+        </label>
+        <button id="logoRemoveBtn" onclick="removeLogo()" style="display:none;background:transparent;border:1px solid var(--border);color:var(--muted);font-size:0.78rem;padding:9px 14px;border-radius:7px;cursor:pointer">Remove</button>
+      </div>
+      <div class="save-status" id="logoStatus" style="margin-top:8px"></div>
+      <div style="font-size:0.72rem;color:var(--muted);margin-top:8px">Shown on your creator signup page. PNG or JPG, max 10 MB.</div>
     </div>
 
   </div>
@@ -1128,6 +1159,14 @@
     setIncentive('cashback',    c.cashback);
     setIncentive('leaderboard', c.leaderboard);
     setIncentive('volumeBonus', c.volumeBonus);
+    document.getElementById('tInnerCircle').checked = !!brand.innerCircle;
+
+    // Logo
+    if (brand.logoUrl) {
+      document.getElementById('logoPreview').src = brand.logoUrl;
+      document.getElementById('logoPreviewWrap').style.display = 'block';
+      document.getElementById('logoRemoveBtn').style.display = 'inline-block';
+    }
 
     // Affiliate page URL
     const affiliateUrl = brand.affiliatePageUrl || '';
@@ -1300,11 +1339,47 @@
         body: JSON.stringify({
           sampleBudget: Number(document.getElementById('sampleBudget').value) || 0,
           compensation: buildCompensation(),
+          innerCircle: document.getElementById('tInnerCircle').checked,
         }),
       });
       if (r.ok) { st.style.color = 'var(--green)'; st.textContent = '✓ Saved'; }
       else       { st.style.color = 'var(--red)';   st.textContent = 'Save failed'; }
     } catch (_) { st.style.color = 'var(--red)'; st.textContent = 'Network error'; }
+    setTimeout(() => { st.textContent = ''; }, 3000);
+  }
+
+  async function uploadLogo(input) {
+    if (!input.files[0]) return;
+    const st = document.getElementById('logoStatus');
+    st.style.color = 'var(--muted)'; st.textContent = 'Uploading…';
+    const fd = new FormData();
+    fd.append('logo', input.files[0]);
+    try {
+      const r = await fetch('/api/client/logo', { method: 'POST', body: fd });
+      const d = await r.json();
+      if (d.ok) {
+        document.getElementById('logoPreview').src = d.logoUrl;
+        document.getElementById('logoPreviewWrap').style.display = 'block';
+        document.getElementById('logoRemoveBtn').style.display = 'inline-block';
+        if (window._data?.brand) window._data.brand.logoUrl = d.logoUrl;
+        st.style.color = 'var(--green)'; st.textContent = '✓ Logo saved';
+      } else { st.style.color = 'var(--red)'; st.textContent = d.error || 'Upload failed'; }
+    } catch(_) { st.style.color = 'var(--red)'; st.textContent = 'Network error'; }
+    setTimeout(() => { st.textContent = ''; }, 3000);
+    input.value = '';
+  }
+
+  async function removeLogo() {
+    const st = document.getElementById('logoStatus');
+    st.style.color = 'var(--muted)'; st.textContent = 'Removing…';
+    try {
+      await fetch('/api/client/logo', { method: 'DELETE' });
+      document.getElementById('logoPreviewWrap').style.display = 'none';
+      document.getElementById('logoRemoveBtn').style.display = 'none';
+      document.getElementById('logoPreview').src = '';
+      if (window._data?.brand) window._data.brand.logoUrl = null;
+      st.style.color = 'var(--green)'; st.textContent = '✓ Removed';
+    } catch(_) { st.style.color = 'var(--red)'; st.textContent = 'Network error'; }
     setTimeout(() => { st.textContent = ''; }, 3000);
   }
 
