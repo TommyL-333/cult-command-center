@@ -798,7 +798,8 @@ async function submitForm() {
     });
     const d = await r.json();
     if (d.ok) {
-      window.location.href = 'https://portal.cultcontent.cc/client/login';
+      const email = encodeURIComponent(v('email') || '');
+      window.location.href = 'https://portal.cultcontent.cc/client/login?new=1&email=' + email;
     } else throw new Error(d.error || 'Submission failed');
   } catch(e) {
     errEl.textContent = 'Something went wrong — please try again or email hello@cultcontent.cc';

@@ -1911,7 +1911,7 @@ app.post('/client/set-password', clientLoginLimiter, express.json(), async (req,
     const idx = (brands.clients || []).findIndex(
       b => (b.loginEmail || b.email || '').toLowerCase() === normalised2
     );
-    if (idx === -1) return res.status(401).json({ error: 'No account found for that email.' });
+    if (idx === -1) return res.status(404).json({ error: 'Your account is being set up — usually takes under a minute. Please try again shortly.' });
     if (brands.clients[idx].passwordHash) return res.status(400).json({ error: 'Password already set. Use your existing password to log in.' });
     brands.clients[idx].passwordHash = await bcrypt.hash(password, 12);
     saveBrands(brands);

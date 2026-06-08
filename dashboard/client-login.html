@@ -127,29 +127,71 @@
 
     <!-- First-time password setup form (hidden by default) -->
     <form id="form-setup" autocomplete="on" style="display:none">
+      <label for="setup-email">Email</label>
+      <input type="email" id="setup-email" name="setup-email" placeholder="you@brand.com" autocomplete="email" required>
+
       <label for="new-password">Create a password</label>
       <input type="password" id="new-password" name="new-password" placeholder="At least 8 characters" autocomplete="new-password" required minlength="8">
 
       <label for="confirm-password">Confirm password</label>
       <input type="password" id="confirm-password" name="confirm-password" placeholder="••••••••" autocomplete="new-password" required minlength="8">
 
-      <button class="btn" type="submit" id="btn-setup">Create Password & Sign In</button>
+      <button class="btn" type="submit" id="btn-setup">Create Account & Sign In</button>
     </form>
 
     <hr class="divider">
-    <p class="footer">Need access? Contact your Cult Content account manager.</p>
+    <p class="footer" id="footer-signin">
+      New client?
+      <a href="#" id="show-setup-link" style="color:#00f2ea;text-decoration:none;font-weight:600;" onclick="showSetupForm(event)">Create your account →</a>
+    </p>
+    <p class="footer" id="footer-setup" style="display:none">
+      Already have an account?
+      <a href="#" style="color:#00f2ea;text-decoration:none;font-weight:600;" onclick="showLoginForm(event)">Sign in →</a>
+    </p>
   </div>
 
   <script>
-    let setupEmail = '';
+    // Check URL params — onboarding form passes ?new=1&email=... to pre-fill setup
+    (function() {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('new') === '1') {
+        const email = params.get('email') || '';
+        showSetupForm(null, email);
+      }
+    })();
+
+    function showSetupForm(e, prefillEmail) {
+      if (e) e.preventDefault();
+      document.getElementById('form-login').style.display = 'none';
+      document.getElementById('form-setup').style.display = 'block';
+      document.getElementById('footer-signin').style.display = 'none';
+      document.getElementById('footer-setup').style.display = 'block';
+      document.getElementById('title').textContent = 'Create your account';
+      document.getElementById('subtitle').textContent = 'Set a password to access your brand dashboard';
+      document.getElementById('err').style.display = 'none';
+      if (prefillEmail) document.getElementById('setup-email').value = prefillEmail;
+      document.getElementById(prefillEmail ? 'new-password' : 'setup-email').focus();
+      history.replaceState({}, '', window.location.pathname);
+    }
+
+    function showLoginForm(e) {
+      if (e) e.preventDefault();
+      document.getElementById('form-setup').style.display = 'none';
+      document.getElementById('form-login').style.display = 'block';
+      document.getElementById('footer-setup').style.display = 'none';
+      document.getElementById('footer-signin').style.display = 'block';
+      document.getElementById('title').textContent = 'Client Portal';
+      document.getElementById('subtitle').textContent = 'Sign in to view your brand dashboard';
+      document.getElementById('err').style.display = 'none';
+      document.getElementById('email').focus();
+    }
 
     document.getElementById('form-login').addEventListener('submit', async (e) => {
       e.preventDefault();
       const btn = document.getElementById('btn-login');
       const err = document.getElementById('err');
       err.style.display = 'none';
-      btn.textContent = 'Checking…';
-      btn.disabled = true;
+      btn.textContent = 'Checking…'; btn.disabled = true;
       try {
         const r = await fetch('/client/login', {
           method: 'POST',
@@ -163,12 +205,7 @@
         if (r.ok && data.ok) {
           window.location.href = '/client/dashboard';
         } else if (data.needsSetup) {
-          setupEmail = document.getElementById('email').value.trim();
-          document.getElementById('form-login').style.display = 'none';
-          document.getElementById('form-setup').style.display = 'block';
-          document.getElementById('title').textContent = 'Create your password';
-          document.getElementById('subtitle').textContent = 'Set a password to access your dashboard';
-          document.getElementById('new-password').focus();
+          showSetupForm(null, document.getElementById('email').value.trim());
         } else {
           err.textContent = data.error || 'Login failed — check your credentials and try again.';
           err.style.display = 'block';
@@ -177,8 +214,7 @@
         err.textContent = 'Network error — please try again.';
         err.style.display = 'block';
       }
-      btn.textContent = 'Sign In';
-      btn.disabled = false;
+      btn.textContent = 'Sign In'; btn.disabled = false;
     });
 
     document.getElementById('form-setup').addEventListener('submit', async (e) => {
@@ -186,25 +222,28 @@
       const btn = document.getElementById('btn-setup');
       const err = document.getElementById('err');
       err.style.display = 'none';
-      const pw  = document.getElementById('new-password').value;
-      const pw2 = document.getElementById('confirm-password').value;
-      if (pw !== pw2) {
-        err.textContent = 'Passwords don\'t match.';
-        err.style.display = 'block';
-        return;
-      }
-      btn.textContent = 'Setting up…';
-      btn.disabled = true;
+      const email = document.getElementById('setup-email').value.trim();
+      const pw    = document.getElementById('new-password').value;
+      const pw2   = document.getElementById('confirm-password').value;
+      if (!email) { err.textContent = 'Email is required.'; err.style.display = 'block'; return; }
+      if (pw !== pw2) { err.textContent = "Passwords don't match."; err.style.display = 'block'; return; }
+      btn.textContent = 'Creating account…'; btn.disabled = true;
       try {
         const r = await fetch('/client/set-password', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: setupEmail, password: pw }),
+          body: JSON.stringify({ email, password: pw }),
         });
         const data = await r.json();
         if (r.ok && data.ok) {
           window.location.href = '/client/dashboard';
+        } else if (data.error && data.error.includes('being set up')) {
+          // Onboarding pipeline still running — show friendly message
+          err.style.color = '#f59e0b';
+          err.textContent = '⏳ Your account is being set up — usually takes under a minute. Try again shortly.';
+          err.style.display = 'block';
         } else {
+          err.style.color = '';
           err.textContent = data.error || 'Something went wrong — please try again.';
           err.style.display = 'block';
         }
@@ -212,8 +251,7 @@
         err.textContent = 'Network error — please try again.';
         err.style.display = 'block';
       }
-      btn.textContent = 'Create Password & Sign In';
-      btn.disabled = false;
+      btn.textContent = 'Create Account & Sign In'; btn.disabled = false;
     });
   </script>
 </body>
