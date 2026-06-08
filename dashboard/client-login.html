@@ -238,21 +238,69 @@
         if (r.ok && data.ok) {
           window.location.href = '/client/dashboard';
         } else if (data.error && data.error.includes('being set up')) {
-          // Onboarding pipeline still running — show friendly message
-          err.style.color = '#f59e0b';
-          err.textContent = '⏳ Your account is being set up — usually takes under a minute. Try again shortly.';
-          err.style.display = 'block';
+          // Pipeline still running — auto-retry every 10s for up to 3 min
+          startSetupPolling(email, pw);
         } else {
           err.style.color = '';
           err.textContent = data.error || 'Something went wrong — please try again.';
           err.style.display = 'block';
+          btn.textContent = 'Create Account & Sign In'; btn.disabled = false;
         }
       } catch (_) {
         err.textContent = 'Network error — please try again.';
         err.style.display = 'block';
+        btn.textContent = 'Create Account & Sign In'; btn.disabled = false;
       }
-      btn.textContent = 'Create Account & Sign In'; btn.disabled = false;
     });
+    var _pollTimer = null;
+    function startSetupPolling(email, pw) {
+      const btn = document.getElementById('btn-setup');
+      const err = document.getElementById('err');
+      let attempts = 0;
+      const maxAttempts = 18; // 18 × 10s = 3 minutes
+
+      function updateMsg() {
+        const remaining = Math.round((maxAttempts - attempts) * 10);
+        err.style.color = '#f59e0b';
+        err.textContent = '⏳ Setting up your account… checking again in a moment (' + remaining + 's remaining)';
+        err.style.display = 'block';
+      }
+      updateMsg();
+
+      clearInterval(_pollTimer);
+      _pollTimer = setInterval(async function() {
+        attempts++;
+        if (attempts > maxAttempts) {
+          clearInterval(_pollTimer);
+          err.style.color = '';
+          err.textContent = 'Your account setup is taking longer than expected. Please refresh and try again, or contact your account manager.';
+          err.style.display = 'block';
+          btn.textContent = 'Create Account & Sign In'; btn.disabled = false;
+          return;
+        }
+        updateMsg();
+        try {
+          const r = await fetch('/client/set-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password: pw }),
+          });
+          const data = await r.json();
+          if (r.ok && data.ok) {
+            clearInterval(_pollTimer);
+            window.location.href = '/client/dashboard';
+          } else if (!data.error || !data.error.includes('being set up')) {
+            // Got a different error — stop polling and show it
+            clearInterval(_pollTimer);
+            err.style.color = '';
+            err.textContent = data.error || 'Something went wrong.';
+            err.style.display = 'block';
+            btn.textContent = 'Create Account & Sign In'; btn.disabled = false;
+          }
+          // Still "being set up" → keep polling
+        } catch (_) { /* network blip — keep polling */ }
+      }, 10000);
+    }
   </script>
 </body>
 </html>
