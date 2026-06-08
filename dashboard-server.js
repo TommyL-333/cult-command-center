@@ -488,7 +488,7 @@ app.post('/api/onboard/logo', (req, res, next) => {
   m(req, res, (err) => {
     if (err) return res.status(400).json({ error: err.message });
     if (!req.file) return res.status(400).json({ error: 'No file received' });
-    res.json({ ok: true, logoUrl: `${UPLOAD_BASE_URL}/uploads/${req.file.filename}` });
+    res.json({ ok: true, logoUrl: `${PUBLIC_BASE_URL}/uploads/${req.file.filename}` });
   });
 });
 
@@ -12693,7 +12693,7 @@ app.post('/api/client/logo', requireClientSession, imageUpload.single('logo'), (
     const oldPath = path.join(UPLOAD_DIR, path.basename(old.split('?')[0]));
     if (oldPath.startsWith(UPLOAD_DIR)) fs.unlink(oldPath, () => {});
   }
-  const logoUrl = `${UPLOAD_BASE_URL}/uploads/${req.file.filename}`;
+  const logoUrl = `${PUBLIC_BASE_URL}/uploads/${req.file.filename}`;
   brands.clients[idx].logoUrl = logoUrl;
   saveBrands(brands);
   res.json({ ok: true, logoUrl });
