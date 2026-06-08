@@ -2311,7 +2311,10 @@ async function fetchNetGmvForBrand(brand, brandsObj, brandIdx, opts = {}) {
 // ─── Client Billing ───────────────────────────────────────────────────────────
 // Helper: normalize billing fields from brands.json (handles both old+new field names)
 function clientBilling(b) {
-  const retainer  = b.retainer ?? b.contractValue ?? 0;
+  // Use prorated retainer for first invoice if set (cleared after first invoice is sent)
+  const retainer  = (!b.lastInvoicedAt && b.proratedFirstRetainer != null)
+    ? b.proratedFirstRetainer
+    : (b.retainer ?? b.contractValue ?? 0);
   const commRate  = b.commissionRate ?? ((b.gmvShare ?? 0) / 100);
   const gmv       = b.cachedNetGmv ?? 0;
   const revShare  = parseFloat((gmv * commRate).toFixed(2));
@@ -12951,6 +12954,7 @@ app.listen(CFG.port, () => {
       'approved science':     { shopId: 8913, contractValue: 1500, commissionRate: 0.1, tc: { commission: 20, heroProductId: '1731392689812508843' } },
       'lode wtr':             { contractValue: 1500, commissionRate: 0.1 },
       'the perfect haircare': { contractValue: 1500, commissionRate: 0.1 },
+      'yuglo':                { contractValue: 1500, commissionRate: 0.1, billingEmail: 'evaaadee1@gmail.com', proratedFirstRetainer: 1150 },
     };
     const bd = loadBrands(); let dirty = false;
     for (const client of (bd.clients || [])) {
@@ -12985,8 +12989,44 @@ app.listen(CFG.port, () => {
         }
       }
     }
+    // Backfill billingEmail + proratedFirstRetainer for Yuglo if it exists
+    for (const client of (bd.clients || [])) {
+      if ((client.name || '').toLowerCase().trim() !== 'yuglo') continue;
+      if (!client.billingEmail) { client.billingEmail = 'evaaadee1@gmail.com'; dirty = true; }
+      if (client.proratedFirstRetainer == null && !client.lastInvoicedAt) { client.proratedFirstRetainer = 1150; dirty = true; }
+    }
     if (dirty) saveBrands(bd);
   } catch(e) { console.error('[startup] brand defaults backfill error:', e.message); }
+
+  // Add Yuglo if not yet in brands.json
+  try {
+    const bd = loadBrands();
+    const exists = (bd.clients || []).some(b => (b.name || '').toLowerCase().trim() === 'yuglo');
+    if (!exists) {
+      bd.clients = bd.clients || [];
+      bd.clients.push({
+        id:                   'yuglo001',
+        createdAt:            '2026-06-08T00:00:00.000Z',
+        name:                 'Yuglo',
+        billingEmail:         'evaaadee1@gmail.com',
+        contractValue:        1500,
+        commissionRate:       0.10,
+        proratedFirstRetainer: 1150,
+        pipelineStage:        'Contract Signed',
+        startDate:            '2026-06-08',
+        contacts:             'Eva Dee (evaaadee1@gmail.com)',
+        industry:             'TBD — to be completed during onboarding',
+        products:             'TBD',
+        audience:             'TBD',
+        voice:                'TBD',
+        contentPillars:       'TBD',
+        tiktokHandle:         'TBD',
+        cta:                  'TBD',
+      });
+      saveBrands(bd);
+      console.log('[startup] Added Yuglo to brands.json');
+    }
+  } catch(e) { console.error('[startup] Yuglo setup error:', e.message); }
 
   // Trusted Rituals — full brand config + creator page setup (runs if brief not yet set)
   try {
