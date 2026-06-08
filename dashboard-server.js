@@ -3246,6 +3246,45 @@ app.post('/client/admin', express.json(), async (req, res) => {
       saveBrands(brands);
       return res.json({ ok: true, brand: brands.clients[idx] });
     }
+    // Merge stubId → keepId: copy TikTok token + key data from stub into keeper, delete stub
+    if (action === 'merge-and-delete') {
+      const { keepId, stubId } = payload;
+      if (!keepId || !stubId) return res.status(400).json({ error: 'keepId and stubId required' });
+      const keepIdx = brands.clients.findIndex(b => b.id === keepId);
+      const stubIdx = brands.clients.findIndex(b => b.id === stubId);
+      if (keepIdx === -1) return res.status(404).json({ error: 'keep brand not found' });
+      if (stubIdx === -1) return res.status(404).json({ error: 'stub brand not found' });
+      const stub = brands.clients[stubIdx];
+      const keep = brands.clients[keepIdx];
+      // Copy over fields that stub has but keeper doesn't (or that stub has fresher data for)
+      const copyFields = [
+        'tiktokShopToken', 'tiktokConnected', 'shopId',
+        'passwordHash', 'storistaApiKey', 'storistaConnected', 'storistaQueue',
+        'bufferToken', 'bufferConnected', 'arcadsClientId', 'arcadsApiKey', 'arcadsConnected',
+        'contentAssets', 'logoUrl', 'cachedNetGmv', 'cachedGmvAt', 'stripeCustomerId',
+        'lastInvoiceId', 'lastInvoiceUrl', 'lastInvoicedAt',
+      ];
+      for (const f of copyFields) {
+        if (stub[f] !== undefined && stub[f] !== null && stub[f] !== '') {
+          keep[f] = stub[f];
+        }
+      }
+      // Remove the stub
+      brands.clients.splice(stubIdx, 1);
+      saveBrands(brands);
+      return res.json({ ok: true, merged: keep.name, deleted: stub.name });
+    }
+    // Delete a brand by id
+    if (action === 'delete-brand') {
+      const { brandId } = payload;
+      if (!brandId) return res.status(400).json({ error: 'brandId required' });
+      const idx = brands.clients.findIndex(b => b.id === brandId);
+      if (idx === -1) return res.status(404).json({ error: 'brand not found' });
+      const name = brands.clients[idx].name;
+      brands.clients.splice(idx, 1);
+      saveBrands(brands);
+      return res.json({ ok: true, deleted: name });
+    }
     res.status(400).json({ error: `unknown action: ${action}` });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
