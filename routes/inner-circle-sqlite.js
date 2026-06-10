@@ -80,6 +80,15 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
         `SELECT * FROM inner_circle_calls
           WHERE scheduled_at > datetime('now') ORDER BY scheduled_at ASC LIMIT 1`
       ),
+      getAssignment: db.prepare(
+        `SELECT * FROM inner_circle_brand_assignments WHERE creator_id = ? AND shop_id = ?`
+      ),
+      insertAssignment: db.prepare(
+        `INSERT INTO inner_circle_brand_assignments (creator_id, shop_id, shop_name) VALUES (?, ?, ?)`
+      ),
+      reactivateAssignment: db.prepare(
+        `UPDATE inner_circle_brand_assignments SET active = 1, shop_name = ?, assigned_at = CURRENT_TIMESTAMP WHERE id = ?`
+      ),
     };
 
     // ── Idempotent TEST creator seed (E2E testing; TEST-prefixed per task
@@ -308,6 +317,106 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       return res.json({ brands, count: brands.length });
     } catch (e) {
       console.error('[inner-circle-sqlite] brands failed:', e.message);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  });
+
+  // ── POST /api/inner-circle/select-brand ─────────────────────────────────────
+  // Creator selects an Inner Circle brand. Persists the creator→brand link in
+  // inner_circle_brand_assignments (upsert: re-selecting reactivates), writes a
+  // durable jsonl log, then notifies the Lark alert channel (relay primary,
+  // direct Lark fallback — same proven pattern as the covenant route).
+  const IC_RELAY_URL = (process.env.RAILWAY_URL || 'https://cultcontent-server-production.up.railway.app') + '/command';
+
+  async function icGetLarkToken(axios) {
+    try {
+      const r = await axios.post(
+        'https://open.larksuite.com/open-apis/auth/v3/tenant_access_token/internal',
+        { app_id: process.env.LARK_APP_ID, app_secret: process.env.LARK_APP_SECRET },
+        { timeout: 8000 }
+      );
+      return (r.data && r.data.tenant_access_token) || null;
+    } catch (_) { return null; }
+  }
+
+  async function icNotifyAlertChannel(text) {
+    let axios;
+    try { axios = require('axios'); }
+    catch (e) { console.error('[inner-circle-sqlite] axios unavailable:', e.message); return { notified: false, via: null }; }
+
+    // 1) Relay → alert channel (primary, proven pattern)
+    try {
+      await axios.post(IC_RELAY_URL, {
+        text,
+        context: 'Inner Circle Brand Selection',
+        source: 'Inner Circle Portal',
+      }, { timeout: 8000 });
+      return { notified: true, via: 'relay' };
+    } catch (e) {
+      console.error('[inner-circle-sqlite] relay notify failed:', e.response?.data || e.message);
+    }
+
+    // 2) Direct Lark → alert channel chat_id (fallback)
+    try {
+      const chatId = process.env.LARK_ALERT_CHAT_ID;
+      const token = chatId ? await icGetLarkToken(axios) : null;
+      if (token && chatId) {
+        await axios.post(
+          'https://open.larksuite.com/open-apis/im/v1/messages?receive_id_type=chat_id',
+          { receive_id: chatId, msg_type: 'text', content: JSON.stringify({ text }) },
+          { headers: { Authorization: `Bearer ${token}` }, timeout: 8000 }
+        );
+        return { notified: true, via: 'lark-chat' };
+      }
+    } catch (e) {
+      console.error('[inner-circle-sqlite] direct chat notify failed:', e.response?.data || e.message);
+    }
+    return { notified: false, via: null };
+  }
+
+  app.post('/api/inner-circle/select-brand', requireSqliteSession, express.json(), async (req, res) => {
+    try {
+      const c = req.icCreator;
+      const { brandId, brandName } = req.body || {};
+      if (!brandId && !brandName) return res.status(400).json({ error: 'brandId required' });
+
+      // Validate against IC-enabled brands (brands.json is the source of truth).
+      const data = icLoadBrandsFile();
+      const enabled = ((data && data.clients) || []).filter((b) => b && b.innerCircle);
+      const brand = enabled.find((b) =>
+        (brandId != null && String(b.id) === String(brandId)) ||
+        (brandName && String(b.name || '').toLowerCase().trim() === String(brandName).toLowerCase().trim())
+      );
+      if (!brand) return res.status(404).json({ error: 'Brand not found or not Inner Circle enabled' });
+
+      // Upsert the creator→brand link.
+      let action;
+      const existing = stmts.getAssignment.get(c.id, brand.id);
+      if (existing) {
+        stmts.reactivateAssignment.run(brand.name, existing.id);
+        action = 'updated';
+      } else {
+        stmts.insertAssignment.run(c.id, brand.id, brand.name);
+        action = 'created';
+      }
+      const assignment = stmts.getAssignment.get(c.id, brand.id);
+
+      // Durable log first — notify failure must never lose the selection.
+      try {
+        fs.appendFileSync(path.join(IC_DATA_DIR, 'inner-circle-brand-selections.jsonl'), JSON.stringify({
+          at: new Date().toISOString(), creatorId: c.id, creatorName: c.creator_name,
+          tiktokHandle: c.creator_handle, brandId: brand.id, brandName: brand.name, action,
+        }) + '\n');
+      } catch (e) { console.error('[inner-circle-sqlite] selection log write failed:', e.message); }
+
+      const handle = String(c.creator_handle || '').replace(/^@/, '');
+      const text = `🤝 Inner Circle Brand Selection: ${c.creator_name}${handle ? ` (@${handle})` : ''} selected ${brand.name} — send target collab invite`;
+      const { notified, via } = await icNotifyAlertChannel(text);
+      console.log(`[inner-circle-sqlite] select-brand ${c.creator_name} → ${brand.name} (${action}, notified: ${notified}${via ? ' via ' + via : ''})`);
+
+      return res.json({ ok: true, action, assignment, notified });
+    } catch (e) {
+      console.error('[inner-circle-sqlite] select-brand failed:', e.message);
       return res.status(500).json({ error: 'Server error' });
     }
   });
