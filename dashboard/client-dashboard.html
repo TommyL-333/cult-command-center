@@ -1601,35 +1601,151 @@
     };
   }
 
-  function renderTasks(tasks) {
-    const $tf = document.getElementById('taskFeed');
-    if (!tasks?.length) {
-      $tf.innerHTML = '<span class="empty">No action items yet — check back after your next Cult Content meeting.</span>';
+  function renderTasks(brand) {
+    const tasks = brand.tasks || [];
+    const container = document.getElementById('tasksList');
+    
+    if (tasks.length === 0) {
+      container.innerHTML = '<div class="tasks-empty">No tasks yet — your account manager will add your onboarding checklist soon.</div>';
       return;
     }
-    $tf.innerHTML = tasks.map(t => {
-      const badgeCls = t.status === 'done' ? 'badge-done' : t.status === 'in-progress' ? 'badge-progress' : 'badge-pending';
-      const badgeTxt = t.status === 'in-progress' ? 'In Progress' : t.status === 'done' ? 'Done' : 'Pending';
-      const priCls   = t.priority === 'high' ? 'priority-high' : t.priority === 'low' ? 'priority-low' : 'priority-medium';
-      const meta = [
-        t.source   ? `<span class="task-source">${esc(t.source)}</span>` : '',
-        t.assignee ? `<span class="task-assignee">→ ${esc(t.assignee)}</span>` : '',
-        t.priority ? `<span class="${priCls}">${t.priority.toUpperCase()}</span>` : '',
-        t.updatedAt ? `<span class="task-source">${fmtAge(t.updatedAt)}</span>` : '',
-      ].filter(Boolean).join('<span style="color:var(--border);margin:0 4px">·</span>');
-      return `
-        <div class="task-item">
-          <div class="task-row">
-            <div class="task-body">
-              <div class="task-title">${esc(t.title)}</div>
-              ${meta ? `<div class="task-meta">${meta}</div>` : ''}
-            </div>
-            <span class="badge ${badgeCls}">${badgeTxt}</span>
+    
+    // Sort: In Progress → Open (by updatedAt desc, then createdAt desc) → Done
+    const inProgress = tasks.filter(t => t.status === 'in_progress').sort((a,b) => 
+      new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)
+    );
+    const open = tasks.filter(t => t.status === 'open').sort((a,b) => 
+      new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)
+    );
+    const done = tasks.filter(t => t.status === 'done').sort((a,b) => 
+      new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)
+    );
+    
+    let html = '';
+    
+    // Active tasks (in progress + open)
+    [...inProgress, ...open].forEach(task => {
+      html += renderTaskCard(task, false);
+    });
+    
+    // Done section (collapsed)
+    if (done.length > 0) {
+      html += `
+        <div class="tasks-done-section">
+          <div class="tasks-done-header" onclick="toggleDoneTasks()">
+            <span>✓ Completed (${done.length})</span>
+            <span class="tasks-done-toggle" id="doneToggle">▼</span>
           </div>
-        </div>`;
-    }).join('');
+          <div class="tasks-done-list" id="doneTasksList" style="display: none;">
+            ${done.map(t => renderTaskCard(t, true)).join('')}
+          </div>
+        </div>
+      `;
+    }
+    
+    container.innerHTML = html;
   }
-
+  
+  function renderTaskCard(task, isDone) {
+    const priorityDot = {
+      high: '<span class="priority-dot high" title="High priority">●</span>',
+      medium: '<span class="priority-dot medium" title="Medium priority">●</span>',
+      low: '<span class="priority-dot low" title="Low priority">●</span>'
+    }[task.priority || 'low'];
+    
+    const assignee = task.assignee || 'CC';
+    const initials = assignee.split(' ').map(n => n[0]).join('').toUpperCase().slice(0,2);
+    
+    const lastUpdated = task.updatedAt || task.createdAt;
+    const timeAgo = formatTimeAgo(new Date(lastUpdated));
+    
+    const statusBadge = task.status === 'in_progress' 
+      ? '<span class="task-status in-progress">In Progress</span>'
+      : task.status === 'done'
+      ? '<span class="task-status done">Done</span>'
+      : '';
+    
+    return `
+      <div class="task-card ${isDone ? 'done' : ''}">
+        <div class="task-header">
+          <div class="task-meta">
+            ${priorityDot}
+            <span class="task-assignee">${initials}</span>
+            <span class="task-updated">${timeAgo}</span>
+          </div>
+          ${statusBadge}
+        </div>
+        <div class="task-title">${task.title}</div>
+        ${task.description ? `<div class="task-desc">${task.description}</div>` : ''}
+        ${!isDone ? `
+          <button class="task-comment-btn" onclick="openTaskComment('${task.id}')">
+            💬 Ask a question
+          </button>
+          <div class="task-comment-form" id="commentForm${task.id}" style="display:none;">
+            <textarea id="commentText${task.id}" placeholder="Type your question or comment..." rows="3"></textarea>
+            <div class="task-comment-actions">
+              <button onclick="cancelTaskComment('${task.id}')">Cancel</button>
+              <button class="primary" onclick="submitTaskComment('${task.id}')">Send</button>
+            </div>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+  
+  function formatTimeAgo(date) {
+    const seconds = Math.floor((new Date() - date) / 1000);
+    if (seconds < 60) return 'just now';
+    if (seconds < 3600) return Math.floor(seconds / 60) + 'm ago';
+    if (seconds < 86400) return Math.floor(seconds / 3600) + 'h ago';
+    if (seconds < 604800) return Math.floor(seconds / 86400) + 'd ago';
+    return Math.floor(seconds / 604800) + 'w ago';
+  }
+  
+  function toggleDoneTasks() {
+    const list = document.getElementById('doneTasksList');
+    const toggle = document.getElementById('doneToggle');
+    if (list.style.display === 'none') {
+      list.style.display = 'block';
+      toggle.textContent = '▲';
+    } else {
+      list.style.display = 'none';
+      toggle.textContent = '▼';
+    }
+  }
+  
+  function openTaskComment(taskId) {
+    document.getElementById('commentForm' + taskId).style.display = 'block';
+    document.getElementById('commentText' + taskId).focus();
+  }
+  
+  function cancelTaskComment(taskId) {
+    document.getElementById('commentForm' + taskId).style.display = 'none';
+    document.getElementById('commentText' + taskId).value = '';
+  }
+  
+  async function submitTaskComment(taskId) {
+    const message = document.getElementById('commentText' + taskId).value.trim();
+    if (!message) return;
+    
+    try {
+      const resp = await fetch('/api/client/task-comment', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({taskId, message})
+      });
+      
+      if (resp.ok) {
+        alert('Question sent! Your account manager will respond shortly.');
+        cancelTaskComment(taskId);
+      } else {
+        alert('Failed to send comment. Please try again.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Failed to send comment. Please try again.');
+    }
+  }
   function copyRef() {
     const url = document.getElementById('refUrl').textContent;
     if (!url.startsWith('http')) return;
