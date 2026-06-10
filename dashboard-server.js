@@ -1150,6 +1150,12 @@ function formatDuration(seconds) {
   return pad(h) + ':' + pad(m) + ':' + pad(sec);
 }
 
+// SQLite-backed Inner Circle API (login + GET /api/inner-circle/dashboard).
+// Registered BEFORE the legacy Supabase handlers below — Express matches routes
+// in registration order, so these working handlers take precedence. Must stay
+// above app.use(requireAuth): creators have no Cloudflare Access session.
+require('./routes/inner-circle-sqlite')(app, { express });
+
 // ─── Inner Circle: creator session auth middleware ────────────────────────────
 // Verifies ic_session cookie (or Authorization: Bearer token) against the
 // creator_sessions table in Supabase. Sets req.user to the creator row.
