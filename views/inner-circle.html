@@ -525,7 +525,7 @@ header {
   </div>
 
   <script>
-    // Auth check
+    // Auth check — token is stored by the login page (/inner-circle)
     const authToken = localStorage.getItem('inner_circle_token');
     if (!authToken) {
       window.location.href = '/inner-circle/login';
@@ -534,74 +534,10 @@ header {
     // Creator session data (populated from /api/inner-circle/dashboard)
     let creatorData = null;
 
-    // Load creator data
-    async function loadDashboard() {
-      try {
-        const res = await fetch('/api/inner-circle/dashboard', {
-          headers: { 'Authorization': `Bearer ${authToken}` }
-        });
-        if (!res.ok) throw new Error('Unauthorized');
-        
-        const data = await res.json();
-        creatorData = data.creator;
-        
-        // Update UI
-        document.getElementById('creator-name').textContent = data.creator.name;
-        document.getElementById('first-name').textContent = data.creator.firstName;
-        document.getElementById('videos-count').textContent = data.stats.videosDelivered;
-        document.getElementById('commission-earned').textContent = `$${data.stats.commissionEarned.toLocaleString()}`;
-        document.getElementById('brands-active').textContent = data.brands.length;
-        
-        // Load brands
-        const brandsContainer = document.getElementById('brands-container');
-        brandsContainer.innerHTML = data.brands.map(brand => `
-          <div class="brand-card">
-            <div class="brand-header">
-              <div class="brand-logo">${brand.emoji || '🏷️'}</div>
-              <div class="brand-info">
-                <h3>${brand.name}</h3>
-                <p>${brand.category}</p>
-              </div>
-            </div>
-            <div class="brand-stats">
-              <div class="brand-stat-item">
-                <div class="brand-stat-value">${brand.videosDelivered}</div>
-                <div class="brand-stat-label">Videos</div>
-              </div>
-              <div class="brand-stat-item">
-                <div class="brand-stat-value">$${brand.earned}</div>
-                <div class="brand-stat-label">Earned</div>
-              </div>
-              <div class="brand-stat-item">
-                <div class="brand-stat-value">${15 - brand.videosDelivered}</div>
-                <div class="brand-stat-label">Remaining</div>
-              </div>
-            </div>
-            <button class="brand-action covenant-btn" data-brand="${brand.name}">Select This Brand</button>
-          </div>
-        `).join('');
+    const AUTH_HEADERS = { 'Authorization': `Bearer ${authToken}` };
 
-        // Wire covenant flow (brand selection = covenant)
-        brandsContainer.querySelectorAll('.covenant-btn').forEach(btn => {
-          btn.addEventListener('click', () => makeCovenant(btn, btn.dataset.brand));
-        });
-
-        // Load recordings
-        const recordingsContainer = document.getElementById('recordings-container');
-        recordingsContainer.innerHTML = data.recordings.map(rec => `
-          <div class="recording-item">
-            <div class="recording-info">
-              <h4>${rec.title}</h4>
-              <p>${rec.date} • ${rec.duration}</p>
-            </div>
-            <button class="play-btn" onclick="playRecording('${rec.url}')">▶ Watch</button>
-          </div>
-        `).join('');
-        
-      } catch (err) {
-        console.error('Dashboard load failed:', err);
-        logout();
-      }
+    function esc(s) {
+      return String(s == null ? '' : s).replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
     }
 
     function logout() {
@@ -609,44 +545,127 @@ header {
       window.location.href = '/inner-circle/login';
     }
 
-    // Brand selection = covenant. POSTs to backend, which notifies Hasan in Lark
-    // to manually send the target collab invite (MVP flow until TikTok Creator App approved).
-    async function makeCovenant(btn, brandName) {
-      if (!creatorData) { alert('Still loading your profile — try again in a second.'); return; }
-      btn.disabled = true;
-      btn.textContent = 'Making covenant…';
+    function renderBrandCard(brand, assigned) {
+      const videos = assigned ? (assigned.videosDelivered != null ? assigned.videosDelivered : assigned.videosForBrand || 0) : 0;
+      const earned = assigned ? (assigned.earned != null ? assigned.earned : assigned.earnedFromBrand || 0) : 0;
+      const action = assigned
+        ? `<div class="covenant-confirm">✓ Selected — Hasan will send your target collab invite</div>`
+        : `<button class="brand-action select-brand-btn" data-brand-id="${esc(brand.id)}" data-brand-name="${esc(brand.name)}">Select This Brand</button>`;
+      return `
+        <div class="brand-card">
+          <div class="brand-header">
+            <div class="brand-logo">${brand.logo ? `<img src="${esc(brand.logo)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">` : '🏷️'}</div>
+            <div class="brand-info">
+              <h3>${esc(brand.name)}</h3>
+              <p>${esc(brand.description || brand.category || '')}</p>
+            </div>
+          </div>
+          <div class="brand-stats">
+            <div class="brand-stat-item"><div class="brand-stat-value">${videos}</div><div class="brand-stat-label">Videos</div></div>
+            <div class="brand-stat-item"><div class="brand-stat-value">$${earned}</div><div class="brand-stat-label">Earned</div></div>
+            <div class="brand-stat-item"><div class="brand-stat-value">${Math.max(0, 15 - videos)}</div><div class="brand-stat-label">Remaining</div></div>
+          </div>
+          ${action}
+        </div>`;
+    }
+
+    async function loadDashboard() {
+      let data, availableBrands = [];
       try {
-        const res = await fetch('/api/inner-circle/covenant', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${authToken}`
-          },
-          body: JSON.stringify({
-            creatorName: creatorData.name,
-            brandName: brandName,
-            tiktokHandle: creatorData.tiktokHandle || creatorData.tiktok_handle || ''
-          })
-        });
-        if (!res.ok) throw new Error(`Covenant request failed (${res.status})`);
-        const confirm = document.createElement('div');
-        confirm.className = 'covenant-confirm';
-        confirm.textContent = '✓ Covenant made — Hasan will send your target collab invite';
-        btn.replaceWith(confirm);
+        const [dashRes, brandsRes] = await Promise.all([
+          fetch('/api/inner-circle/dashboard', { headers: AUTH_HEADERS }),
+          fetch('/api/inner-circle/brands', { headers: AUTH_HEADERS })
+        ]);
+        if (dashRes.status === 401) { logout(); return; }
+        if (!dashRes.ok) throw new Error(`Dashboard fetch failed (${dashRes.status})`);
+        data = await dashRes.json();
+        creatorData = data.creator;
+        if (brandsRes.ok) {
+          const b = await brandsRes.json();
+          availableBrands = b.brands || [];
+        }
       } catch (err) {
-        console.error('Covenant failed:', err);
-        btn.disabled = false;
-        btn.textContent = 'Select This Brand';
-        alert('Could not make covenant — please try again.');
+        console.error('Dashboard load failed:', err);
+        return; // network/server error — do NOT log the creator out
+      }
+
+      // Render — guarded so one bad field never blanks the page or loops logout
+      try {
+        const stats = data.stats || {};
+        const firstName = data.creator.firstName || String(data.creator.name || '').split(' ')[0] || 'Creator';
+        const nameEl = document.getElementById('creator-name');
+        if (nameEl) nameEl.textContent = data.creator.name || '';
+        document.getElementById('first-name').textContent = firstName;
+        document.getElementById('videos-count').textContent = stats.videosDelivered != null ? stats.videosDelivered : (stats.videosThisMonth || 0);
+        document.getElementById('commission-earned').textContent = `$${Number(stats.commissionEarned || 0).toLocaleString()}`;
+        if (stats.daysRemaining != null) document.getElementById('days-remaining').textContent = stats.daysRemaining;
+
+        const assigned = data.brands || [];
+        document.getElementById('brands-active').textContent = assigned.length;
+
+        // Brand selection: show every live Inner Circle brand; already-selected confirmed
+        const byKey = {};
+        assigned.forEach(a => { if (a.id != null) byKey[a.id] = a; if (a.name) byKey[a.name] = a; });
+        const cards = availableBrands.map(b => renderBrandCard(b, byKey[b.id] || byKey[b.name]));
+        assigned.forEach(a => {
+          if (!availableBrands.some(b => b.id === a.id || b.name === a.name)) {
+            cards.push(renderBrandCard({ id: a.id, name: a.name }, a));
+          }
+        });
+        const brandsContainer = document.getElementById('brands-container');
+        brandsContainer.innerHTML = cards.join('') || '<p style="color:#9ca3af">Inner Circle brands will appear here soon.</p>';
+        brandsContainer.querySelectorAll('.select-brand-btn').forEach(btn => {
+          btn.addEventListener('click', () => selectBrand(btn, btn.dataset.brandId, btn.dataset.brandName));
+        });
+
+        // Call recordings library
+        const recs = data.recordings || [];
+        const recordingsContainer = document.getElementById('recordings-container');
+        recordingsContainer.innerHTML = recs.length ? recs.map(rec => `
+          <div class="recording-item">
+            <div class="recording-info">
+              <h4>${esc(rec.title)}</h4>
+              <p>${esc(rec.date)}${rec.duration ? ` • ${esc(rec.duration)}` : ''}</p>
+            </div>
+            <button class="play-btn" data-url="${esc(rec.url)}">▶ Watch</button>
+          </div>
+        `).join('') : '<p style="color:#9ca3af">Recordings from the weekly group calls will appear here.</p>';
+        recordingsContainer.querySelectorAll('.play-btn').forEach(btn => {
+          btn.addEventListener('click', () => playRecording(btn.dataset.url));
+        });
+      } catch (err) {
+        console.error('Dashboard render failed:', err);
       }
     }
 
-    function viewCollabs(brandId) {
-      window.location.href = `/inner-circle/brands/${brandId}/collabs`;
+    // Brand selection (MVP covenant flow): persists the creator→brand link and
+    // notifies Hasan in Lark to manually send the target collab invite
+    // (until the TikTok Creator App is approved). NO video upload in MVP —
+    // videos sync automatically via TikTok.
+    async function selectBrand(btn, brandId, brandName) {
+      btn.disabled = true;
+      btn.textContent = 'Selecting…';
+      try {
+        const res = await fetch('/api/inner-circle/select-brand', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+          body: JSON.stringify({ brandId, brandName })
+        });
+        if (!res.ok) throw new Error(`Brand selection failed (${res.status})`);
+        const confirm = document.createElement('div');
+        confirm.className = 'covenant-confirm';
+        confirm.textContent = '✓ Brand selected — Hasan will send your target collab invite';
+        btn.replaceWith(confirm);
+      } catch (err) {
+        console.error('Brand selection failed:', err);
+        btn.disabled = false;
+        btn.textContent = 'Select This Brand';
+        alert('Could not select brand — please try again.');
+      }
     }
 
     function playRecording(url) {
-      window.open(url, '_blank');
+      if (url) window.open(url, '_blank');
     }
 
     // Load on page load
