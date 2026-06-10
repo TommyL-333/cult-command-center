@@ -430,6 +430,8 @@ app.post('/api/webhooks/ghl-to-instantly', async (req, res) => {
 
 // Public routes — registered BEFORE requireAuth so no login needed
 app.use('/uploads', express.static(UPLOAD_DIR));
+// Serve dashboard static assets (CSS/JS) before auth wall so portal.cultcontent.cc can load them
+app.use(express.static(path.join(__dirname, 'dashboard')));
 
 // Public proposals — shareable HTML files, no auth required
 const PROPOSALS_DIR = path.join(__dirname, 'proposals');
