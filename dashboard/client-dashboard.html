@@ -1601,6 +1601,31 @@
     };
   }
 
+  
+  function renderWeeklyGoals(brand) {
+    const goals = brand.weeklyGoals || [];
+    const container = document.getElementById('weeklyGoalsList');
+    
+    if (goals.length === 0) {
+      container.innerHTML = `
+        <div class="weekly-goals-empty">
+          📅<br><br>
+          Your account manager will post this week's goals after your Monday call.
+        </div>
+      `;
+      return;
+    }
+    
+    const html = goals.map(goal => `
+      <div class="weekly-goal-item">
+        <span class="weekly-goal-status ${goal.status}">${goal.status === 'done' ? '✓' : '○'}</span>
+        <span class="weekly-goal-text ${goal.status}">${goal.goal}</span>
+      </div>
+    `).join('');
+    
+    container.innerHTML = html;
+  }
+
   function renderTasks(brand) {
     const tasks = brand.tasks || [];
     const container = document.getElementById('tasksList');
