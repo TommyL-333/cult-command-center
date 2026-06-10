@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard · Inner Circle</title>
+  <style>
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&family=Lato:wght@400;700&display=swap');
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body { 
+  font-family: 'Lato', -apple-system, BlinkMacSystemFont, sans-serif;
+  background: #161823;
+  color: #ffffff;
+  line-height: 1.7;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  min-height: 100vh;
+}
+
+h1, h2, h3, h4, h5, h6 { 
+  font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 800; 
+  line-height: 1.2; 
+  letter-spacing: -0.02em;
+}
+
+.gradient-text {
+  background: linear-gradient(90deg, #00f2ea, #ff0050);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 900;
+}
+
+/* Header */
+header {
+  background: rgba(255,255,255,0.05);
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  backdrop-filter: blur(12px);
+  padding: 20px 32px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.logo {
+  font-size: 24px;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 900;
+  background: linear-gradient(90deg, #00f2ea, #ff0050);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.5px;
+}
+
+.user-info {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.creator-badge {
+  padding: 8px 16px;
+  background: rgba(0,242,234,0.1);
+  border: 1px solid rgba(0,242,234,0.3);
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #00f2ea;
+}
+
+.logout-btn {
+  padding: 10px 24px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  color: #fff;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s;
+}
+.logout-btn:hover {
+  background: rgba(255,0,80,0.2);
+  border-color: #ff0050;
+  transform: translateY(-2px);
+}
+
+/* Main Container */
+.container {
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 48px 32px;
+}
+
+/* Welcome Section */
+.welcome {
+  margin-bottom: 48px;
+  position: relative;
+  padding: 48px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 24px;
+  overflow: hidden;
+}
+.welcome::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 150%;
+  height: 200%;
+  background: radial-gradient(circle at 50% 0%, rgba(0,242,234,0.15), transparent 60%);
+  pointer-events: none;
+}
+.welcome > * { position: relative; z-index: 1; }
+
+.welcome h1 {
+  font-size: 3.5rem;
+  margin-bottom: 16px;
+}
+.welcome p {
+  font-size: 1.3rem;
+  color: #cbd5e0;
+  margin-bottom: 8px;
+}
+.next-call {
+  display: inline-block;
+  margin-top: 16px;
+  padding: 12px 24px;
+  background: linear-gradient(90deg, #00f2ea, #ff0050);
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 1rem;
+  color: #fff;
+  animation: glow-pulse 3s ease-in-out infinite;
+}
+@keyframes glow-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+/* Stats Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  margin-bottom: 48px;
+}
+
+.stat-card {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.1);
+  backdrop-filter: blur(12px);
+  border-radius: 20px;
+  padding: 32px;
+  text-align: center;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(0,242,234,0.08), rgba(255,0,80,0.08));
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.stat-card:hover {
+  background: rgba(255,255,255,0.14);
+  border-color: rgba(0,242,234,0.3);
+  transform: translateY(-4px);
+  box-shadow: 0 0 40px rgba(0,242,234,0.4), 0 0 80px rgba(255,0,80,0.2);
+}
+.stat-card:hover::before { opacity: 1; }
+.stat-card > * { position: relative; z-index: 1; }
+
+.stat-value {
+  font-size: 4rem;
+  font-weight: 900;
+  background: linear-gradient(90deg, #00f2ea, #ff0050);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 12px;
+  line-height: 1;
+}
+
+.stat-label {
+  font-size: 1rem;
+  color: #cbd5e0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 700;
+}
+
+/* Section Headers */
+.section {
+  margin-bottom: 48px;
+}
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+.section h2 {
+  font-size: 2.5rem;
+  color: #fff;
+}
+.section-action {
+  padding: 12px 28px;
+  background: linear-gradient(90deg, #00f2ea, #ff0050);
+  border: none;
+  border-radius: 12px;
+  color: #fff;
+  font-family: 'Montserrat', sans-serif;
+  font-weight: 800;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.section-action:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 0 40px rgba(0,242,234,0.4), 0 0 80px rgba(255,0,80,0.2);
+}
+
+/* Brand Cards */
+.brands-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+  gap: 24px;
+}
+
+.brand-card {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.1);
+  backdrop-filter: blur(12px);
+  border-radius: 20px;
+  padding: 32px;
+  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
+}
+.brand-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(0,242,234,0.08), rgba(255,0,80,0.08));
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+.brand-card:hover {
+  background: rgba(255,255,255,0.14);
+  border-color: rgba(0,242,234,0.3);
+  transform: translateY(-8px);
+  box-shadow: 0 0 40px rgba(0,242,234,0.4), 0 0 80px rgba(255,0,80,0.2);
+}
+.brand-card:hover::before { opacity: 1; }
+.brand-card > * { position: relative; z-index: 1; }
+
+.brand-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.brand-logo {
+  width: 64px;
+  height: 64px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+}
+.brand-info h3 {
+  font-size: 1.5rem;
+  color: #00f2ea;
+  margin-bottom: 4px;
+}
+.brand-info p {
+  color: #9ca3af;
+  font-size: 0.9rem;
+}
+
+.brand-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+  padding: 20px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 12px;
+}
+.brand-stat-item {
+  text-align: center;
+}
+.brand-stat-value {
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: #00f2ea;
+  margin-bottom: 4px;
+}
+.brand-stat-label {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.brand-action {
+  width: 100%;
+  padding: 14px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.brand-action:hover {
+  background: rgba(0,242,234,0.1);
+  border-color: #00f2ea;
+}
+.brand-action:disabled { opacity: 0.6; cursor: wait; }
+.covenant-confirm {
+  width: 100%;
+  padding: 14px;
+  background: rgba(0,242,234,0.08);
+  border: 1px solid rgba(0,242,234,0.4);
+  border-radius: 12px;
+  color: #00f2ea;
+  font-weight: 700;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+/* Video Sync Note */
+.sync-note {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(0,242,234,0.2);
+  border-radius: 20px;
+  padding: 32px;
+  text-align: center;
+}
+.sync-note h3 {
+  font-size: 1.4rem;
+  margin-bottom: 8px;
+  color: #00f2ea;
+}
+.sync-note p {
+  color: #9ca3af;
+  font-size: 1rem;
+}
+
+/* Call Recordings */
+.recordings-list {
+  display: grid;
+  gap: 16px;
+}
+.recording-item {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 16px;
+  padding: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.3s;
+}
+.recording-item:hover {
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(0,242,234,0.3);
+}
+.recording-info h4 {
+  font-size: 1.3rem;
+  margin-bottom: 8px;
+  color: #fff;
+}
+.recording-info p {
+  color: #9ca3af;
+  font-size: 0.95rem;
+}
+.play-btn {
+  padding: 12px 24px;
+  background: rgba(0,242,234,0.1);
+  border: 1px solid #00f2ea;
+  border-radius: 12px;
+  color: #00f2ea;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+.play-btn:hover {
+  background: #00f2ea;
+  color: #161823;
+  box-shadow: 0 0 20px rgba(0,242,234,0.5);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .container { padding: 32px 20px; }
+  .welcome { padding: 32px 24px; }
+  .welcome h1 { font-size: 2.5rem; }
+  .section h2 { font-size: 2rem; }
+  .stats-grid { grid-template-columns: 1fr; }
+  .brands-grid { grid-template-columns: 1fr; }
+  .brand-stats { grid-template-columns: 1fr; }
+  header { padding: 16px 20px; }
+  .section-header { flex-direction: column; gap: 16px; align-items: flex-start; }
+}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">INNER CIRCLE</div>
+    <div class="user-info">
+      <div class="creator-badge" id="creator-name">Loading...</div>
+      <button class="logout-btn" onclick="logout()">Logout</button>
+    </div>
+  </header>
+
+  <div class="container">
+    <!-- Welcome Section -->
+    <div class="welcome">
+      <h1>Welcome back, <span class="gradient-text" id="first-name">Creator</span></h1>
+      <p>You're in the top 1% of Cult Content creators</p>
+      <p style="color: #9ca3af; font-size: 1.1rem;">15 videos/month commitment • 50% target collab commission • 25% on ads</p>
+      <div class="next-call">📞 Next Group Call: Wednesday 3pm ET</div>
+    </div>
+
+    <!-- Stats Overview -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value" id="videos-count">0</div>
+        <div class="stat-label">Videos Delivered</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="commission-earned">$0</div>
+        <div class="stat-label">Commission Earned</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="days-remaining">50</div>
+        <div class="stat-label">Days in Cohort 1</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="brands-active">0</div>
+        <div class="stat-label">Active Brands</div>
+      </div>
+    </div>
+
+    <!-- Your Brands -->
+    <div class="section">
+      <div class="section-header">
+        <h2>Your Brands</h2>
+      </div>
+      <div class="brands-grid" id="brands-container">
+        <!-- Brands loaded dynamically -->
+        <div class="brand-card">
+          <div class="brand-header">
+            <div class="brand-logo">🏝️</div>
+            <div class="brand-info">
+              <h3>Sample Brand</h3>
+              <p>Beauty & Wellness</p>
+            </div>
+          </div>
+          <div class="brand-stats">
+            <div class="brand-stat-item">
+              <div class="brand-stat-value">3</div>
+              <div class="brand-stat-label">Videos</div>
+            </div>
+            <div class="brand-stat-item">
+              <div class="brand-stat-value">$247</div>
+              <div class="brand-stat-label">Earned</div>
+            </div>
+            <div class="brand-stat-item">
+              <div class="brand-stat-value">12</div>
+              <div class="brand-stat-label">Remaining</div>
+            </div>
+          </div>
+          <button class="brand-action">Select This Brand</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Video Sync -->
+    <div class="section">
+      <div class="section-header">
+        <h2>Your Content</h2>
+      </div>
+      <div class="sync-note">
+        <h3>📡 Automatic Video Tracking</h3>
+        <p>Videos sync automatically via TikTok once approved — no manual submission needed.</p>
+      </div>
+    </div>
+
+    <!-- Call Recordings Library -->
+    <div class="section">
+      <div class="section-header">
+        <h2>Call Recordings</h2>
+      </div>
+      <div class="recordings-list" id="recordings-container">
+        <!-- Recordings loaded dynamically -->
+        <div class="recording-item">
+          <div class="recording-info">
+            <h4>Week 1 Group Call - Kickoff</h4>
+            <p>June 8, 2026 • 59 minutes</p>
+          </div>
+          <button class="play-btn">▶ Watch</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Auth check
+    const authToken = localStorage.getItem('inner_circle_token');
+    if (!authToken) {
+      window.location.href = '/inner-circle/login';
+    }
+
+    // Creator session data (populated from /api/inner-circle/dashboard)
+    let creatorData = null;
+
+    // Load creator data
+    async function loadDashboard() {
+      try {
+        const res = await fetch('/api/inner-circle/dashboard', {
+          headers: { 'Authorization': `Bearer ${authToken}` }
+        });
+        if (!res.ok) throw new Error('Unauthorized');
+        
+        const data = await res.json();
+        creatorData = data.creator;
+        
+        // Update UI
+        document.getElementById('creator-name').textContent = data.creator.name;
+        document.getElementById('first-name').textContent = data.creator.firstName;
+        document.getElementById('videos-count').textContent = data.stats.videosDelivered;
+        document.getElementById('commission-earned').textContent = `$${data.stats.commissionEarned.toLocaleString()}`;
+        document.getElementById('brands-active').textContent = data.brands.length;
+        
+        // Load brands
+        const brandsContainer = document.getElementById('brands-container');
+        brandsContainer.innerHTML = data.brands.map(brand => `
+          <div class="brand-card">
+            <div class="brand-header">
+              <div class="brand-logo">${brand.emoji || '🏷️'}</div>
+              <div class="brand-info">
+                <h3>${brand.name}</h3>
+                <p>${brand.category}</p>
+              </div>
+            </div>
+            <div class="brand-stats">
+              <div class="brand-stat-item">
+                <div class="brand-stat-value">${brand.videosDelivered}</div>
+                <div class="brand-stat-label">Videos</div>
+              </div>
+              <div class="brand-stat-item">
+                <div class="brand-stat-value">$${brand.earned}</div>
+                <div class="brand-stat-label">Earned</div>
+              </div>
+              <div class="brand-stat-item">
+                <div class="brand-stat-value">${15 - brand.videosDelivered}</div>
+                <div class="brand-stat-label">Remaining</div>
+              </div>
+            </div>
+            <button class="brand-action covenant-btn" data-brand="${brand.name}">Select This Brand</button>
+          </div>
+        `).join('');
+
+        // Wire covenant flow (brand selection = covenant)
+        brandsContainer.querySelectorAll('.covenant-btn').forEach(btn => {
+          btn.addEventListener('click', () => makeCovenant(btn, btn.dataset.brand));
+        });
+
+        // Load recordings
+        const recordingsContainer = document.getElementById('recordings-container');
+        recordingsContainer.innerHTML = data.recordings.map(rec => `
+          <div class="recording-item">
+            <div class="recording-info">
+              <h4>${rec.title}</h4>
+              <p>${rec.date} • ${rec.duration}</p>
+            </div>
+            <button class="play-btn" onclick="playRecording('${rec.url}')">▶ Watch</button>
+          </div>
+        `).join('');
+        
+      } catch (err) {
+        console.error('Dashboard load failed:', err);
+        logout();
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem('inner_circle_token');
+      window.location.href = '/inner-circle/login';
+    }
+
+    // Brand selection = covenant. POSTs to backend, which notifies Hasan in Lark
+    // to manually send the target collab invite (MVP flow until TikTok Creator App approved).
+    async function makeCovenant(btn, brandName) {
+      if (!creatorData) { alert('Still loading your profile — try again in a second.'); return; }
+      btn.disabled = true;
+      btn.textContent = 'Making covenant…';
+      try {
+        const res = await fetch('/api/inner-circle/covenant', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${authToken}`
+          },
+          body: JSON.stringify({
+            creatorName: creatorData.name,
+            brandName: brandName,
+            tiktokHandle: creatorData.tiktokHandle || creatorData.tiktok_handle || ''
+          })
+        });
+        if (!res.ok) throw new Error(`Covenant request failed (${res.status})`);
+        const confirm = document.createElement('div');
+        confirm.className = 'covenant-confirm';
+        confirm.textContent = '✓ Covenant made — Hasan will send your target collab invite';
+        btn.replaceWith(confirm);
+      } catch (err) {
+        console.error('Covenant failed:', err);
+        btn.disabled = false;
+        btn.textContent = 'Select This Brand';
+        alert('Could not make covenant — please try again.');
+      }
+    }
+
+    function viewCollabs(brandId) {
+      window.location.href = `/inner-circle/brands/${brandId}/collabs`;
+    }
+
+    function playRecording(url) {
+      window.open(url, '_blank');
+    }
+
+    // Load on page load
+    loadDashboard();
+  </script>
+</body>
+</html>
