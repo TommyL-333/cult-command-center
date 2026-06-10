@@ -409,7 +409,69 @@
     .inv-status.void  { background: rgba(255,59,48,0.10);  color: var(--red); }
     .inv-view-btn { color: var(--teal); font-size: 0.79rem; text-decoration: none; font-weight: 600; }
     .inv-view-btn:hover { text-decoration: underline; }
-  </style>
+  
+  /* Tooltip System */
+  .tooltip-wrapper {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  
+  .tooltip-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: rgba(0, 242, 234, 0.1);
+    border: 1px solid rgba(0, 242, 234, 0.3);
+    color: #00f2ea;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: help;
+    position: relative;
+    transition: all 0.2s ease;
+  }
+  
+  .tooltip-icon:hover {
+    background: rgba(0, 242, 234, 0.2);
+    border-color: rgba(0, 242, 234, 0.5);
+    transform: scale(1.1);
+  }
+  
+  .tooltip-content {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 280px;
+    padding: 12px 14px;
+    background: rgba(22, 24, 35, 0.98);
+    border: 1px solid rgba(0, 242, 234, 0.3);
+    border-radius: 8px;
+    color: #e4e4e7;
+    font-size: 13px;
+    line-height: 1.5;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease;
+    z-index: 1000;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+  }
+  
+  .tooltip-icon:hover .tooltip-content {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  
+  .tooltip-content strong {
+    color: #00f2ea;
+    display: block;
+    margin-bottom: 6px;
+  }
+
+    </style>
 </head>
 <body>
 
@@ -538,7 +600,15 @@
       <div class="incentive-block" id="blockCashback">
         <div class="incentive-header">
           <div>
-            <div class="incentive-name">Cashback Offers</div>
+            <div class="incentive-name">
+              <span class="tooltip-wrapper">
+                Cashback Offers
+                <span class="tooltip-icon">
+                  ?
+                  <span class="tooltip-content">Set a GMV threshold (e.g. $500) and a cash bonus (e.g. $100). When a creator hits the target, they get paid. Great for launch momentum.</span>
+                </span>
+              </span>
+            </div>
             <div class="incentive-desc">Give creators a set bonus after they cross a GMV threshold</div>
           </div>
           <label class="switch">
@@ -556,7 +626,15 @@
       <div class="incentive-block" id="blockLeaderboard">
         <div class="incentive-header">
           <div>
-            <div class="incentive-name">Leaderboard Competition</div>
+            <div class="incentive-name">
+              <span class="tooltip-wrapper">
+                Leaderboard Competition
+                <span class="tooltip-icon">
+                  ?
+                  <span class="tooltip-content">Run a month-long contest where the top 3-5 creators by GMV win cash prizes. Creates urgency and competition in your creator community.</span>
+                </span>
+              </span>
+            </div>
             <div class="incentive-desc">Run monthly contests with cash prizes for top GMV creators — builds competitive energy</div>
           </div>
           <label class="switch">
@@ -576,7 +654,15 @@
       <div class="incentive-block" id="blockVolumeBonus">
         <div class="incentive-header">
           <div>
-            <div class="incentive-name">Volume Bonus</div>
+            <div class="incentive-name">
+              <span class="tooltip-wrapper">
+                Volume Bonus
+                <span class="tooltip-icon">
+                  ?
+                  <span class="tooltip-content">Pay creators for hitting video milestones (10, 20, or 30 posts). Drives consistent output and keeps creators engaged long-term.</span>
+                </span>
+              </span>
+            </div>
             <div class="incentive-desc">Pay creators a bonus when they hit 10, 20, or 30 videos — incentivizes high output</div>
           </div>
           <label class="switch">
@@ -594,7 +680,15 @@
       <div class="incentive-block" id="blockInnerCircle">
         <div class="incentive-header">
           <div>
-            <div class="incentive-name">🌀 Inner Circle</div>
+            <div class="incentive-name">
+              <span class="tooltip-wrapper">
+                🌀 Inner Circle
+                <span class="tooltip-icon">
+                  ?
+                  <span class="tooltip-content">Your premium tier. Creators commit to 15+ videos/month and get 50% commission + 25% on ads. High commitment, high reward. Changes apply to next billing cycle only.</span>
+                </span>
+              </span>
+            </div>
             <div class="incentive-desc">Premium program: 50% commissions + 25% on ads. Creators commit to 15+ videos/month. <strong style="color:#c9a84c;">⚠️ Changes apply to next month only and cannot be reversed mid-cycle.</strong></div>
           </div>
           <label class="switch">
