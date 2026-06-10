@@ -1350,6 +1350,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     const data = await res.json();
     
     if (res.ok) {
+      if (data.token) localStorage.setItem('inner_circle_token', data.token);
       status.className = 'status success';
       status.textContent = 'Login successful! Redirecting...';
       status.style.display = 'block';
