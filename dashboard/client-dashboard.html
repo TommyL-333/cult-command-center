@@ -1626,48 +1626,134 @@
     container.innerHTML = html;
   }
 
-  function renderTasks(brand) {
-    const tasks = brand.tasks || [];
-    const container = document.getElementById('tasksList');
-    
-    if (tasks.length === 0) {
-      container.innerHTML = '<div class="empty-state">No tasks yet. Your account manager will add program milestones here.</div>';
+  function renderTasks(tasks) {
+    const container = document.getElementById('taskList');
+    if (!tasks || tasks.length === 0) {
+      container.innerHTML = '<div class="empty-state">No tasks yet</div>';
       return;
     }
-    
+
     // Sort: In Progress → Open (by updatedAt desc, then createdAt desc) → Done
-    const inProgress = tasks.filter(t => t.status === 'in_progress').sort((a, b) => {
-      return (new Date(b.updatedAt || b.createdAt)) - (new Date(a.updatedAt || a.createdAt));
-    });
-    const open = tasks.filter(t => t.status === 'open').sort((a, b) => {
-      return (new Date(b.updatedAt || b.createdAt)) - (new Date(a.updatedAt || a.createdAt));
-    });
-    const done = tasks.filter(t => t.status === 'done').sort((a, b) => {
-      return (new Date(b.updatedAt || b.createdAt)) - (new Date(a.updatedAt || a.createdAt));
-    });
-    
-    const sortedTasks = [...inProgress, ...open];
-    
-    let html = sortedTasks.map(task => renderTaskCard(task)).join('');
-    
-    // Add collapsed "Done" section
-    if (done.length > 0) {
-      const doneHtml = done.map(task => renderTaskCard(task)).join('');
-      html += `
-        <div class="done-section">
-          <div class="done-header" onclick="toggleDoneSection()">
-            <span>✓ Completed (${done.length})</span>
-            <span class="done-toggle">▼</span>
+    const inProgress = tasks.filter(t => t.status === 'in_progress')
+      .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
+    const open = tasks.filter(t => t.status === 'open')
+      .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
+    const done = tasks.filter(t => t.status === 'done')
+      .sort((a, b) => new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt));
+
+    const priorityBadge = (priority) => {
+      const colors = { high: '#ff0050', medium: '#fbbf24', low: '#6b7280' };
+      const color = colors[priority] || colors.low;
+      return `<span class="priority-dot" style="background: ${color}"></span>`;
+    };
+
+    const timeAgo = (date) => {
+      if (!date) return '';
+      const seconds = Math.floor((new Date() - new Date(date)) / 1000);
+      if (seconds < 60) return 'just now';
+      if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+      if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+      return `${Math.floor(seconds / 86400)}d ago`;
+    };
+
+    const renderTask = (task) => {
+      const assigneeInitials = task.assignee ? task.assignee.split(' ').map(n => n[0]).join('').toUpperCase() : 'CC';
+      const lastUpdated = timeAgo(task.updatedAt || task.createdAt);
+      
+      return `
+        <div class="task-card" data-task-id="${task._id}">
+          <div class="task-header">
+            ${priorityBadge(task.priority)}
+            <span class="task-title">${task.title}</span>
+            <span class="task-assignee">${assigneeInitials}</span>
           </div>
+          <div class="task-meta">
+            <span class="task-updated">${lastUpdated}</span>
+          </div>
+          <button class="task-comment-btn" onclick="openTaskComment('${task._id}')">
+            💬 Ask a question
+          </button>
+          <div class="task-comment-input" id="comment-${task._id}" style="display: none;">
+            <textarea placeholder="Type your question..." rows="3"></textarea>
+            <button onclick="submitTaskComment('${task._id}')">Send</button>
+          </div>
+        </div>
+      `;
+    };
+
+    let html = '';
+    
+    if (inProgress.length > 0) {
+      html += '<div class="task-section"><h4>In Progress</h4>';
+      html += inProgress.map(renderTask).join('');
+      html += '</div>';
+    }
+    
+    if (open.length > 0) {
+      html += '<div class="task-section"><h4>Open</h4>';
+      html += open.map(renderTask).join('');
+      html += '</div>';
+    }
+    
+    if (done.length > 0) {
+      html += `
+        <div class="task-section done-section">
+          <h4 class="done-toggle" onclick="toggleDoneTasks()">
+            ✓ Completed (${done.length})
+            <span class="toggle-arrow">▼</span>
+          </h4>
           <div class="done-tasks" id="doneTasks" style="display: none;">
-            ${doneHtml}
+            ${done.map(renderTask).join('')}
           </div>
         </div>
       `;
     }
-    
+
     container.innerHTML = html;
   }
+
+  function toggleDoneTasks() {
+    const doneSection = document.getElementById('doneTasks');
+    const arrow = document.querySelector('.toggle-arrow');
+    if (doneSection.style.display === 'none') {
+      doneSection.style.display = 'block';
+      arrow.textContent = '▲';
+    } else {
+      doneSection.style.display = 'none';
+      arrow.textContent = '▼';
+    }
+  }
+
+  function openTaskComment(taskId) {
+    const input = document.getElementById('comment-' + taskId);
+    input.style.display = input.style.display === 'none' ? 'block' : 'none';
+  }
+
+  async function submitTaskComment(taskId) {
+    const input = document.querySelector(`#comment-${taskId} textarea`);
+    const message = input.value.trim();
+    if (!message) return;
+
+    try {
+      const res = await fetch('/api/client/task-comment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ taskId, message })
+      });
+
+      if (res.ok) {
+        input.value = '';
+        document.getElementById('comment-' + taskId).style.display = 'none';
+        alert('Question sent to your account manager');
+      } else {
+        alert('Failed to send question');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error sending question');
+    }
+  }
+
   
   function renderTaskCard(task) {
     const priorityDots = {
