@@ -92,7 +92,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     };
 
     // ── Idempotent TEST creator seed (E2E testing; TEST-prefixed per task
-    //    cleanup policy — flagged for Tommy, removable any time) ───────────────
+    //    cleanup policy — flagged for Tommy, removable any time) ────────────��──
     const existing = queries.getCreatorByHandle.get('@test_sisyphus_ic');
     if (!existing) {
       queries.insertCreator.run(
@@ -105,6 +105,29 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
         15
       );
       console.log('[inner-circle-sqlite] seeded TEST creator @test_sisyphus_ic');
+    }
+
+    // ── Second TEST creator + distinct TEST brand assignment — data-isolation
+    //    E2E (step 8). Assignment goes straight into inner_circle_brand_assignments;
+    //    'test-brand-b-e2e' is NOT in brands.json so real creators never see it.
+    //    TEST-prefixed per cleanup policy — removable any time. ────────────────
+    let creator2 = queries.getCreatorByHandle.get('@test_sisyphus_ic2');
+    if (!creator2) {
+      queries.insertCreator.run(
+        '@test_sisyphus_ic2',
+        'TEST Creator Sisyphus Two',
+        'test.sisyphus2@cultcontent.cc',
+        'tt_test_sisyphus_002',
+        '2026-06-10',
+        '2026-07-31',
+        15
+      );
+      creator2 = queries.getCreatorByHandle.get('@test_sisyphus_ic2');
+      console.log('[inner-circle-sqlite] seeded TEST creator @test_sisyphus_ic2');
+    }
+    if (creator2 && !stmts.getAssignment.get(creator2.id, 'test-brand-b-e2e')) {
+      stmts.insertAssignment.run(creator2.id, 'test-brand-b-e2e', 'TEST Brand B (E2E isolation)');
+      console.log('[inner-circle-sqlite] seeded TEST brand assignment for @test_sisyphus_ic2');
     }
 
     console.log('[inner-circle-sqlite] mounted — SQLite layer ready');
