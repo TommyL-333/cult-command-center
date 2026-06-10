@@ -80,6 +80,11 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
         `SELECT * FROM inner_circle_calls
           WHERE scheduled_at > datetime('now') ORDER BY scheduled_at ASC LIMIT 1`
       ),
+      recordingsList: db.prepare(
+        `SELECT id, title, scheduled_at, recording_url FROM inner_circle_calls
+          WHERE recording_url IS NOT NULL AND recording_url != ''
+          ORDER BY scheduled_at DESC LIMIT 50`
+      ),
       getAssignment: db.prepare(
         `SELECT * FROM inner_circle_brand_assignments WHERE creator_id = ? AND shop_id = ?`
       ),
@@ -226,6 +231,9 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
         name: b.shop_name,
         videosForBrand: b.videos_for_brand,
         earnedFromBrand: Math.round(b.gmv_for_brand * commissionRate * 100) / 100,
+        // Aliases matching the dashboard SPA (views/inner-circle.html)
+        videosDelivered: b.videos_for_brand,
+        earned: Math.round(b.gmv_for_brand * commissionRate * 100) / 100,
       }));
 
       let daysRemaining = null;
@@ -238,16 +246,32 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
         ? { date: call.scheduled_at, title: call.title, link: call.lark_meeting_url || null }
         : null;
 
+      // Call recordings library (the SPA renders data.recordings)
+      let recordings = [];
+      try {
+        recordings = stmts.recordingsList.all().map((r) => ({
+          id: r.id,
+          title: r.title,
+          date: r.scheduled_at ? String(r.scheduled_at).slice(0, 10) : '',
+          duration: '',
+          url: r.recording_url,
+        }));
+      } catch (e) {
+        console.error('[inner-circle-sqlite] recordings query failed:', e.message);
+      }
+
       return res.json({
         creator: {
           id: c.id,
           name: c.creator_name,
+          firstName: String(c.creator_name || '').split(' ')[0],
           tiktokHandle: c.creator_handle,
           email: c.email,
           cohort: { start: c.cohort_start, end: c.cohort_end },
         },
         stats: {
           videosThisMonth,
+          videosDelivered: videosThisMonth,
           videosGoal: c.videos_goal != null ? c.videos_goal : 15,
           commissionEarned,
           commissionRate,
@@ -257,6 +281,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
         },
         brands,
         nextCall,
+        recordings,
       });
     } catch (e) {
       console.error('[inner-circle-sqlite] dashboard failed:', e.message);
@@ -441,6 +466,25 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     } catch (e) {
       console.error('[inner-circle-sqlite] select-brand failed:', e.message);
       return res.status(500).json({ error: 'Server error' });
+    }
+  });
+
+  // ── GET /inner-circle/dashboard (PAGE) ──────────────────────────────────────
+  // Shadows the legacy supabase-checked page route in dashboard-server.js
+  // (~line 1434), which could never succeed: `supabase` is undefined there and
+  // req.cookies doesn't exist (no cookie-parser) — every creator got bounced
+  // back to the login page. Registration order makes this route win.
+  app.get('/inner-circle/dashboard', (req, res) => {
+    if (dbError) return res.redirect('/inner-circle');
+    const token = getSessionToken(req);
+    if (!token) return res.redirect('/inner-circle');
+    try {
+      const row = stmts.sessionByToken.get(token);
+      if (!row) return res.redirect('/inner-circle');
+      return res.sendFile(path.join(__dirname, '..', 'views', 'inner-circle.html'));
+    } catch (e) {
+      console.error('[inner-circle-sqlite] dashboard page session check failed:', e.message);
+      return res.redirect('/inner-circle');
     }
   });
 
