@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — Cult Content</title>
+  <link rel="stylesheet" href="client-dashboard.css">
+</head>
+<body>
+<!-- Admin impersonation banner -->
+<div id="adminBanner" style="display:none;border-bottom:1px solid #c9a84c;padding:10px 28px;align-items:center;justify-content:space-between;font-size:0.82rem;background:#2a1a00;">
+  <span style="color:#c9a84c;">&#9889; Admin View — viewing as <strong id="adminBrandName"></strong></span>
+  <button onclick="exitAdminView()" style="background:transparent;border:1px solid #c9a84c;color:#c9a84c;font-size:0.78rem;font-weight:700;padding:5px 14px;border-radius:7px;cursor:pointer;">&#8592; Back to Client List</button>
+</div>
+
+<header>
+  <img class="logo" src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png" alt="Cult Content">
+  <div class="header-right">
+    <span class="brand-badge" id="headerBrand">Loading…</span>
+    <button class="logout-btn" onclick="doLogout()">Sign Out</button>
+  </div>
+</header>
+
+<nav class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('overview')">Overview</button>
+  <button class="tab-btn" onclick="switchTab('content-studio')">Content Studio</button>
+  <button class="tab-btn" onclick="switchTab('billing')">Billing</button>
+</nav>
+
+<div id="tab-overview">
+<main>
+
+  <!-- TikTok connect banner (hidden when connected) -->
+  <div id="tiktokConnectBanner" style="display:flex;background:#1c1828;border:1px solid #2a2540;border-radius:14px;padding:20px 24px;margin-bottom:24px;align-items:center;justify-content:space-between;gap:16px;">
+    <div>
+      <div style="font-weight:700;color:#fff;margin-bottom:4px;">Connect TikTok Shop</div>
+      <div style="font-size:0.82rem;color:#64748b;">Link your seller account to pull live GMV, orders, and creator stats into this dashboard.</div>
+    </div>
+    <a href="/client/tiktok/auth" style="display:inline-block;background:#00f2ea;color:#12101a;font-weight:700;font-size:0.85rem;border-radius:8px;padding:10px 20px;text-decoration:none;white-space:nowrap;">Connect →</a>
+  </div>
+
+  <!-- TikTok reconnect banner (shown when connected but GMV is 0 / data missing) -->
+  <div id="tiktokReconnectBanner" style="display:none;background:rgba(201,168,76,0.08);border:1px solid rgba(201,168,76,0.25);border-radius:14px;padding:16px 20px;margin-bottom:24px;align-items:center;justify-content:space-between;gap:16px;">
+    <div>
+      <div style="font-weight:700;color:#c9a84c;margin-bottom:3px;">⚠️ TikTok Shop — Reconnection Needed</div>
+      <div style="font-size:0.81rem;color:#94a3b8;">Your connection expired. Reconnect to restore live GMV and stats.</div>
+    </div>
+    <a href="/client/tiktok/auth" style="display:inline-block;background:#c9a84c;color:#12101a;font-weight:700;font-size:0.84rem;border-radius:8px;padding:9px 18px;text-decoration:none;white-space:nowrap;">Reconnect →</a>
+  </div>
+
+  <!-- TikTok Stats -->
+  <div class="section-label mb-20">TikTok Shop · Last 30 Days</div>
+  <div class="stats-row mb-32">
+    <div class="stat-card"><div class="stat-label">GMV<span class="tooltip-icon">ⓘ<span class="tooltip-text">Total sales value across all TikTok Shop orders this period</span></span></div><div class="stat-value teal" id="sGmv">—</div><div class="stat-sub">Gross merchandise value</div></div>
+    <div class="stat-card"><div class="stat-label">Orders<span class="tooltip-icon">ⓘ<span class="tooltip-text">Number of completed purchases</span></span></div><div class="stat-value" id="sOrders">—</div><div class="stat-sub">Total orders placed</div></div>
+    <div class="stat-card"><div class="stat-label">Avg Order Value<span class="tooltip-icon">ⓘ<span class="tooltip-text">Average order value (GMV ÷ Orders)</span></span></div><div class="stat-value gold" id="sAov">—</div><div class="stat-sub">GMV ÷ orders</div></div>
+    <div class="stat-card"><div class="stat-label">
+        <span class="tooltip-wrapper">
+          Active Creators
+          <span class="tooltip-icon">
+            ?
+            <span class="tooltip-content">Creators who posted at least one video this month. More active creators = more reach and sales potential.</span>
+          </span>
+        </span>
+      </div><div class="stat-value" id="sCreators">—</div><div class="stat-sub">Posting for your brand</div></div>
+  </div>
+
+  <div class="two-col mb-32">
+    <div class="card"><div class="card-title"><span class="dot"></span>Top Creators</div><div id="topCreators"><span class="empty">Loading…</span></div></div>
+    <div class="card"><div class="card-title"><span class="dot" style="background:var(--gold)"></span>Top Videos</div><div id="topVideos"><span class="empty">Loading…</span></div></div>
+  </div>
+
+  <!-- Referral + Controls -->
+  <!-- Affiliate Collaboration Page card -->
+  <div class="affiliate-card">
+    <div class="affiliate-card-title"><span class="dot" style="background:var(--teal)"></span>Recruit Creators</div>
+    <p class="affiliate-card-sub">Share this link so TikTok creators can find your products and apply to collaborate.</p>
+    <div class="affiliate-url-row">
+      <div class="affiliate-url-box" id="affiliateUrlBox">—</div>
+      <button class="copy-btn" id="affiliateCopyBtn" onclick="copyAffiliateUrl()">Copy</button>
+      <a class="affiliate-open-btn disabled" id="affiliateOpenBtn" href="#" target="_blank" rel="noopener">Open →</a>
+    </div>
+    <button class="affiliate-edit-toggle" onclick="toggleAffiliateEdit()">Edit URL</button>
+    <div class="affiliate-edit-form" id="affiliateEditForm">
+      <input class="affiliate-edit-input" id="affiliateEditInput" type="url" placeholder="https://your-affiliate-page-url">
+      <button class="affiliate-edit-save" onclick="saveAffiliateUrl()">Save</button>
+    </div>
+  </div>
+
+  <div class="two-col mb-32">
+
+    <!-- Referral -->
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--gold)"></span>Referral Program</div>
+      <p style="font-size:0.8rem;color:var(--muted);margin-bottom:14px;line-height:1.6">
+        Know a brand that should be on TikTok Shop? Send them this link.
+        You earn <strong style="color:var(--gold)">10% recurring commission</strong> on their retainer for life.
+      </p>
+      <div class="ref-url" id="refUrl">Loading…</div>
+      <button class="copy-btn" id="copyBtn" onclick="copyRef()">Copy Link</button>
+
+      <div class="commission-row">
+        <span class="commission-label">Estimated commission earned</span>
+        <span class="commission-val" id="commVal">$0</span>
+      </div>
+
+      <!-- Referral contacts -->
+      <div id="refTableWrap" style="display:none;margin-top:18px;">
+        <div style="font-size:0.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:10px;">Referred Contacts</div>
+        <table class="ref-table">
+          <thead><tr><th>Name</th><th>Company</th><th>Email</th></tr></thead>
+          <tbody id="refTableBody"></tbody>
+        </table>
+      </div>
+
+      <button class="ref-add-toggle" id="addRefToggle" onclick="toggleAddRef()">+ Log a Referral</button>
+      <div class="ref-add-form" id="addRefForm">
+        <div class="ref-inputs">
+          <input class="ref-input" id="refName" placeholder="Contact name" type="text">
+          <input class="ref-input" id="refCompany" placeholder="Brand / company" type="text">
+          <input class="ref-input" id="refEmail" placeholder="Email address" type="email" style="grid-column:1/-1">
+        </div>
+        <button class="ref-submit" onclick="addReferral()">Save Referral</button>
+      </div>
+    </div>
+
+    <!-- Campaign Controls -->
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--gold)"></span>Campaign Controls</div>
+
+      <label class="field-label">Sample Budget</label>
+      <div class="budget-row">
+        <input class="num-input" type="number" id="sampleBudget" min="0" placeholder="0">
+        <span class="num-unit">units per product</span>
+      </div>
+
+      <label class="field-label" style="margin-bottom:12px;">Promotional Strategy</label>
+
+      <!-- Cashback -->
+      <div class="incentive-block" id="blockCashback">
+        <div class="incentive-header">
+          <div>
+            <div class="incentive-name">
+              <span class="tooltip-wrapper">
+                Cashback Offers
+                <span class="tooltip-icon">
+                  ?
+                  <span class="tooltip-content">Set a GMV threshold (e.g. $500) and a cash bonus (e.g. $100). When a creator hits the target, they get paid. Great for launch momentum.</span>
+                </span>
+              </span>
+            </div>
+            <div class="incentive-desc">Give creators a set bonus after they cross a GMV threshold</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="tCashback" onchange="toggleIncentive('cashback')">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="incentive-fields" id="fieldsCashback">
+          <div class="sub-field"><label>Bonus Amount ($)</label><input class="sub-input" type="number" id="cashbackAmount" min="0" placeholder="e.g. 50"></div>
+          <div class="sub-field"><label>GMV Target ($)</label><input class="sub-input" type="number" id="cashbackTarget" min="0" placeholder="e.g. 500"></div>
+        </div>
+      </div>
+
+      <!-- Leaderboard -->
+      <div class="incentive-block" id="blockLeaderboard">
+        <div class="incentive-header">
+          <div>
+            <div class="incentive-name">
+              <span class="tooltip-wrapper">
+                Leaderboard Competition
+                <span class="tooltip-icon">
+                  ?
+                  <span class="tooltip-content">Run a month-long contest where the top 3-5 creators by GMV win cash prizes. Creates urgency and competition in your creator community.</span>
+                </span>
+              </span>
+            </div>
+            <div class="incentive-desc">Run monthly contests with cash prizes for top GMV creators — builds competitive energy</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="tLeaderboard" onchange="toggleIncentive('leaderboard')">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="incentive-fields" id="fieldsLeaderboard">
+          <div class="sub-field"><label>1st Place ($)</label><input class="sub-input" type="number" id="lb1" min="0" placeholder="e.g. 200"></div>
+          <div class="sub-field"><label>2nd Place ($)</label><input class="sub-input" type="number" id="lb2" min="0" placeholder="e.g. 100"></div>
+          <div class="sub-field"><label>3rd Place ($)</label><input class="sub-input" type="number" id="lb3" min="0" placeholder="e.g. 50"></div>
+          <div class="sub-field"><label>Min GMV Threshold ($)</label><input class="sub-input" type="number" id="lbThreshold" min="0" placeholder="e.g. 1000"></div>
+        </div>
+      </div>
+
+      <!-- Volume Bonus -->
+      <div class="incentive-block" id="blockVolumeBonus">
+        <div class="incentive-header">
+          <div>
+            <div class="incentive-name">
+              <span class="tooltip-wrapper">
+                Volume Bonus
+                <span class="tooltip-icon">
+                  ?
+                  <span class="tooltip-content">Pay creators for hitting video milestones (10, 20, or 30 posts). Drives consistent output and keeps creators engaged long-term.</span>
+                </span>
+              </span>
+            </div>
+            <div class="incentive-desc">Pay creators a bonus when they hit 10, 20, or 30 videos — incentivizes high output</div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="tVolumeBonus" onchange="toggleIncentive('volumeBonus')">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="incentive-fields" id="fieldsVolumeBonus">
+          <div class="sub-field"><label>Videos Required</label><input class="sub-input" type="number" id="vbQuantity" min="1" placeholder="e.g. 5"></div>
+          <div class="sub-field"><label>Bonus Amount ($)</label><input class="sub-input" type="number" id="vbBonus" min="0" placeholder="e.g. 100"></div>
+        </div>
+      </div>
+
+      <!-- Inner Circle -->
+      <div class="incentive-block" id="blockInnerCircle">
+        <div class="incentive-header">
+          <div>
+            <div class="incentive-name">
+              <span class="tooltip-wrapper">
+                🌀 Inner Circle
+                <span class="tooltip-icon">
+                  ?
+                  <span class="tooltip-content">Your premium tier. Creators commit to 15+ videos/month and get 50% commission + 25% on ads. High commitment, high reward. Changes apply to next billing cycle only.</span>
+                </span>
+              </span>
+            </div>
+            <div class="incentive-desc">Premium program: 50% commissions + 25% on ads. Creators commit to 15+ videos/month. <strong style="color:#c9a84c;">⚠️ Changes apply to next month only and cannot be reversed mid-cycle.</strong></div>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="tInnerCircle">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <button class="save-btn" onclick="saveSettings()">Save Changes</button>
+      <div class="save-status" id="saveStatus"></div>
+    </div>
+
+    <!-- Brand Logo -->
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--teal)"></span>Brand Logo</div>
+      <div id="logoPreviewWrap" style="display:none;margin-bottom:12px">
+        <img id="logoPreview" src="" alt="Brand logo" style="max-height:64px;max-width:180px;object-fit:contain;border-radius:8px;border:1px solid var(--border);padding:8px">
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <label class="save-btn" style="margin:0;padding:9px 18px;cursor:pointer;display:inline-block;width:auto;font-size:0.82rem">
+          Upload Logo
+          <input type="file" id="logoFileInput" accept="image/*" style="display:none" onchange="uploadLogo(this)">
+        </label>
+        <button id="logoRemoveBtn" onclick="removeLogo()" style="display:none;background:transparent;border:1px solid var(--border);color:var(--muted);font-size:0.78rem;padding:9px 14px;border-radius:7px;cursor:pointer">Remove</button>
+      </div>
+      <div class="save-status" id="logoStatus" style="margin-top:8px"></div>
+      <div style="font-size:0.72rem;color:var(--muted);margin-top:8px">Shown on your creator signup page. PNG or JPG, max 10 MB.</div>
+    </div>
+
+  </div>
+
+  <!-- Task Feed -->
+  <div class="section-label mb-20">Program Progress</div>
+  <div class="card">
+    <div id="taskFeed"><span class="empty">Loading…</span></div>
+  </div>
+
+</main>
+</div><!-- end #tab-overview -->
+
+<div id="tab-content-studio" style="display:none">
+  <div style="max-width:1120px;margin:0 auto;padding:36px 24px 60px;">
+
+    <!-- Connections -->
+    <div class="cs-section">
+      <div class="cs-card">
+        <div class="cs-card-title">🔌 Connections</div>
+        <p style="font-size:0.82rem;color:var(--muted);margin-bottom:20px;line-height:1.6">Connect your tools to enable content production and publishing directly from this portal.</p>
+
+        <div class="conn-grid">
+          <!-- Buffer -->
+          <div class="conn-card" id="connBuffer">
+            <div class="conn-header">
+              <div class="conn-name">Buffer</div>
+              <span class="conn-badge" id="connBadgeBuffer">● Not connected</span>
+            </div>
+            <div class="conn-desc">Schedule and publish videos to TikTok, Instagram, YouTube and more.</div>
+            <div class="conn-fields" id="connFieldsBuffer">
+              <input class="conn-input" type="password" id="connInputBuffer" placeholder="Paste your Buffer access token">
+              <button class="conn-save-btn" onclick="saveConnection('buffer')">Save</button>
+            </div>
+            <div class="conn-status-msg" id="connMsgBuffer"></div>
+          </div>
+
+          <!-- Arcads -->
+          <div class="conn-card" id="connArcads">
+            <div class="conn-header">
+              <div class="conn-name">Arcads</div>
+              <span class="conn-badge" id="connBadgeArcads">● Not connected</span>
+            </div>
+            <div class="conn-desc">Generate AI actor videos for your TikTok ad campaigns.</div>
+            <div class="conn-fields" id="connFieldsArcads">
+              <input class="conn-input" type="text" id="connInputArcadsClientId" placeholder="Client ID">
+              <input class="conn-input" type="password" id="connInputArcadsApiKey" placeholder="API Key" style="margin-top:8px">
+              <button class="conn-save-btn" onclick="saveConnection('arcads')" style="margin-top:8px">Save</button>
+            </div>
+            <div class="conn-status-msg" id="connMsgArcads"></div>
+          </div>
+
+          <!-- Storista -->
+          <div class="conn-card" id="connStorista">
+            <div class="conn-header">
+              <div class="conn-name">Storista</div>
+              <span class="conn-badge" id="connBadgeStorista">● Not connected</span>
+            </div>
+            <div class="conn-desc">Post videos directly to TikTok Shop and tag your products for shoppable content.</div>
+            <div class="conn-fields" id="connFieldsStorista">
+              <input class="conn-input" type="password" id="connInputStorista" placeholder="Paste your Storista API key">
+              <button class="conn-save-btn" onclick="saveConnection('storista')">Save</button>
+            </div>
+            <div class="conn-status-msg" id="connMsgStorista"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section: Brand Assets -->
+    <div class="cs-section">
+      <div class="cs-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:10px;flex-wrap:wrap;">
+          <div class="cs-card-title" style="margin-bottom:0;">🗂 Brand Assets</div>
+          <button class="refresh-btn" onclick="loadBrandAssets()">↻ Refresh</button>
+        </div>
+        <p style="font-size:0.82rem;color:var(--muted);margin-bottom:16px;line-height:1.5">Product images pulled from TikTok Shop. Upload additional images or videos per product to use in content creation.</p>
+
+        <!-- Product filter dropdown with search -->
+        <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
+          <div style="position:relative;flex:1;min-width:220px;max-width:420px;">
+            <input type="text" id="assetProductSearch" class="overlay-input"
+              placeholder="🔍  Search or filter by product…"
+              style="width:100%;padding:9px 12px;font-size:0.84rem;"
+              oninput="filterAssetsBySearch(this.value)"
+              onfocus="showProductDropdown()" onblur="setTimeout(hideProductDropdown,200)">
+            <div id="assetProductDropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--card);border:1px solid var(--border);border-radius:10px;z-index:50;max-height:260px;overflow-y:auto;box-shadow:0 8px 24px rgba(0,0,0,0.4);">
+              <div id="assetProductDropdownList"></div>
+            </div>
+          </div>
+          <label class="post-now-btn" style="padding:9px 18px;cursor:pointer;font-size:0.82rem;white-space:nowrap;">
+            + Upload Asset
+            <input type="file" id="assetFileInput" accept="image/*,video/*" style="display:none" onchange="uploadAsset(this)">
+          </label>
+        </div>
+        <div id="assetActiveFilter" style="display:none;font-size:0.75rem;color:var(--teal);margin-bottom:10px;display:flex;align-items:center;gap:8px;">
+          <span id="assetFilterLabel"></span>
+          <button onclick="clearAssetFilter()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:0.8rem;">✕ Clear</button>
+        </div>
+
+        <!-- Asset grid -->
+        <div id="assetGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;margin-bottom:18px;">
+          <div class="empty" style="grid-column:1/-1;padding:24px 0;text-align:center;font-size:0.82rem;color:var(--muted);">Loading…</div>
+        </div>
+
+        <!-- Upload product tag (hidden, populated when filter active) -->
+        <select id="assetProductSelect" style="display:none">
+          <option value="">No product (general)</option>
+        </select>
+        <div id="assetUploadStatus" style="font-size:0.78rem;margin-top:4px;min-height:16px;"></div>
+      </div>
+    </div>
+
+    <!-- Section: Create -->
+    <div class="cs-section">
+      <div class="cs-card">
+        <div class="cs-card-title">✏️ Create</div>
+
+        <!-- Step 1: Product picker -->
+        <div style="margin-bottom:20px;">
+          <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:10px;">Step 1 — Select Product</div>
+          <div id="createProductGrid" style="display:flex;gap:10px;flex-wrap:wrap;">
+            <div class="empty" style="font-size:0.82rem;color:var(--muted);padding:12px 0;">Loading products…</div>
+          </div>
+        </div>
+
+        <!-- Step 2: Format picker (shown after product selected) -->
+        <div id="createFormatRow" style="display:none;margin-bottom:20px;border-top:1px solid var(--border);padding-top:18px;">
+          <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:10px;">Step 2 — Format</div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;">
+            <button class="format-btn active" id="fmtTextOverlay" onclick="selectFormat('textOverlay', this)">✏️ Text Overlay</button>
+            <button class="format-btn" id="fmtCarousel" onclick="selectFormat('carousel', this)" style="opacity:0.5;cursor:not-allowed" disabled title="Coming soon">🖼 Carousel</button>
+            <button class="format-btn" id="fmtTalkingHead" onclick="selectFormat('talkingHead', this)" style="opacity:0.5;cursor:not-allowed" disabled title="Coming soon">🎙 Talking Head</button>
+          </div>
+        </div>
+
+        <!-- Text Overlay editor (shown when format = textOverlay) -->
+        <div id="createTextOverlay" style="display:none;border-top:1px solid var(--border);padding-top:18px;">
+          <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:12px;">Step 3 — Text Overlay Editor</div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;" id="overlayEditorGrid">
+
+            <!-- Left: video preview -->
+            <div>
+              <div style="font-size:0.7rem;color:var(--muted);margin-bottom:8px;">Video</div>
+              <!-- Drop zone or current video -->
+              <div id="overlayVideoWrap" style="position:relative;width:100%;max-width:280px;aspect-ratio:9/16;background:#000;border-radius:12px;overflow:hidden;border:1px solid var(--border);cursor:pointer;" onclick="document.getElementById('overlayVideoInput').click()">
+                <video id="overlayVideoEl" style="width:100%;height:100%;object-fit:cover;display:none" muted loop playsinline></video>
+                <div id="overlayVideoPicker" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--muted);">
+                  <div style="font-size:2rem">🎬</div>
+                  <div style="font-size:0.8rem">Click to upload video</div>
+                  <div style="font-size:0.7rem">MP4 or MOV, up to 500MB</div>
+                </div>
+                <!-- Overlay canvas layer (positioned divs) -->
+                <div id="overlayCanvas" style="position:absolute;inset:0;pointer-events:none;"></div>
+                <!-- Safe zone indicator -->
+                <div style="position:absolute;inset:10%;border:1px dashed rgba(255,255,255,.2);border-radius:4px;pointer-events:none;"></div>
+              </div>
+              <input type="file" id="overlayVideoInput" accept="video/*" style="display:none" onchange="overlayLoadVideo(this)">
+              <div id="overlayVideoName" style="font-size:0.72rem;color:var(--muted);margin-top:6px;"></div>
+            </div>
+
+            <!-- Right: overlay controls -->
+            <div>
+              <div style="font-size:0.7rem;color:var(--muted);margin-bottom:8px;">Overlays</div>
+
+              <!-- Text overlays list -->
+              <div id="overlayList" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;"></div>
+
+              <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
+                <button class="post-now-btn" style="padding:7px 14px;font-size:0.8rem;" onclick="overlayAddText()">+ Text</button>
+                <label class="post-now-btn" style="padding:7px 14px;font-size:0.8rem;cursor:pointer;">
+                  + Logo
+                  <input type="file" id="overlayLogoInput" accept="image/*" style="display:none" onchange="overlayAddLogo(this)">
+                </label>
+              </div>
+
+              <!-- Render controls -->
+              <div style="border-top:1px solid var(--border);padding-top:14px;">
+                <button id="overlayRenderBtn" class="post-now-btn" style="width:100%;padding:11px;" onclick="overlayRender()" disabled>🎬 Render with Overlays</button>
+                <div id="overlayRenderStatus" style="font-size:0.78rem;margin-top:8px;min-height:16px;"></div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Section B: AI Videos (Arcads) -->
+    <div class="cs-section">
+      <div class="cs-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;gap:12px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <div class="cs-card-title" style="margin-bottom:0;">🎬 AI Video Generator</div>
+            <span id="arcadsConnBadge" class="conn-badge" style="display:none"></span>
+          </div>
+          <button class="refresh-btn" onclick="loadArcads()">↻ Refresh</button>
+        </div>
+        <div id="arcadsConnNote" class="conn-badge-note" style="display:none;margin-bottom:16px;"></div>
+
+        <div class="arcads-stats">
+          <div class="arcads-stat"><div class="arcads-stat-val" id="arcScripts">—</div><div class="arcads-stat-lbl">Scripts</div></div>
+          <div class="arcads-stat"><div class="arcads-stat-val" id="arcVideos">—</div><div class="arcads-stat-lbl">Total Videos</div></div>
+          <div class="arcads-stat"><div class="arcads-stat-val" id="arcPending">—</div><div class="arcads-stat-lbl">Generating</div></div>
+        </div>
+
+        <!-- 5-Step Wizard -->
+        <div id="aiWizard" style="margin-top:20px;">
+
+          <!-- Step bar -->
+          <div class="step-bar" id="wizardStepBar">
+            <div class="step active" id="wstep-1">
+              <div class="step-circle">1</div>
+              <div class="step-label">Analysis</div>
+            </div>
+            <div class="step-line" id="wline-1"></div>
+            <div class="step inactive" id="wstep-2">
+              <div class="step-circle">2</div>
+              <div class="step-label">Ideas</div>
+            </div>
+            <div class="step-line" id="wline-2"></div>
+            <div class="step inactive" id="wstep-3">
+              <div class="step-circle">3</div>
+              <div class="step-label">Scripting</div>
+            </div>
+            <div class="step-line" id="wline-3"></div>
+            <div class="step inactive" id="wstep-4">
+              <div class="step-circle">4</div>
+              <div class="step-label">Production</div>
+            </div>
+            <div class="step-line" id="wline-4"></div>
+            <div class="step inactive" id="wstep-5">
+              <div class="step-circle">5</div>
+              <div class="step-label">Scheduling</div>
+            </div>
+          </div>
+
+          <!-- Step 1: Analysis -->
+          <div class="wizard-panel active" id="wpanel-1">
+            <div class="wizard-brand-summary" id="wizardBrandSummary">
+              <span class="empty">Loading brand context…</span>
+            </div>
+            <div class="wizard-actions">
+              <button class="wizard-btn" onclick="wizardStep2()">Generate Ideas →</button>
+            </div>
+          </div>
+
+          <!-- Step 2: Ideas -->
+          <div class="wizard-panel" id="wpanel-2">
+            <div id="ideasLoading" class="wizard-loading" style="display:none;">
+              <span class="wizard-spinner"></span> Generating content ideas…
+            </div>
+            <div class="idea-grid" id="ideaGrid"></div>
+            <div class="wizard-actions">
+              <button class="wizard-btn-secondary" onclick="wizardGoTo(1)">← Back</button>
+            </div>
+          </div>
+
+          <!-- Step 3: Scripting -->
+          <div class="wizard-panel" id="wpanel-3">
+            <div class="selected-idea-box" id="selectedIdeaBox"></div>
+            <div id="scriptLoading" class="wizard-loading" style="display:none;">
+              <span class="wizard-spinner"></span> Writing your script…
+            </div>
+            <div id="scriptEditorWrap" style="display:none;">
+              <textarea class="script-textarea" id="wizardScriptTA" oninput="updateWordCount()"></textarea>
+              <div class="word-count" id="wordCount">0 words</div>
+            </div>
+            <div class="wizard-actions">
+              <button class="wizard-btn-secondary" onclick="wizardGoTo(2)">← Back</button>
+              <button class="wizard-btn" id="genScriptBtn" onclick="wizardGenerateScript()">Generate Script</button>
+              <button class="wizard-btn" id="toProductionBtn" onclick="wizardStep4()" style="display:none;">Next: Choose Actors →</button>
+            </div>
+          </div>
+
+          <!-- Step 4: Production -->
+          <div class="wizard-panel" id="wpanel-4">
+            <div class="production-cols">
+              <div>
+                <div class="col-label">Your Script</div>
+                <div class="production-script-box" id="prodScriptBox"></div>
+              </div>
+              <div>
+                <div class="col-label">Select Actors (2–6)</div>
+                <div id="actorGridLoading" class="wizard-loading" style="display:none;">
+                  <span class="wizard-spinner"></span> Loading actors…
+                </div>
+                <div class="actor-grid" id="actorGrid"></div>
+                <div style="font-size:0.72rem;color:var(--muted);margin-top:8px;" id="actorSelCount">0 selected</div>
+              </div>
+            </div>
+            <div class="wizard-actions">
+              <button class="wizard-btn-secondary" onclick="wizardGoTo(3)">← Back</button>
+              <button class="wizard-btn" onclick="wizardGenerateVideo()">Generate Video</button>
+            </div>
+            <div id="prodStatus" style="font-size:0.8rem;min-height:18px;margin-top:8px;"></div>
+          </div>
+
+          <!-- Step 5: Scheduling -->
+          <div class="wizard-panel" id="wpanel-5">
+            <div class="schedule-success">✓ Video queued! Check back in a few minutes while your AI video generates.</div>
+            <div style="margin-bottom:14px;">
+              <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:8px;">Post to channels when ready</div>
+              <div id="step5ChannelList" class="step5-channel-list"><span class="empty">Loading channels…</span></div>
+            </div>
+            <div style="margin-bottom:14px;">
+              <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:8px;">Schedule date &amp; time</div>
+              <input class="schedule-input" type="datetime-local" id="wizardScheduleAt">
+            </div>
+            <div class="wizard-actions">
+              <button class="wizard-btn" onclick="wizardSchedule()">Schedule Post</button>
+            </div>
+            <div id="scheduleConfirm" style="display:none;margin-top:14px;font-size:0.84rem;color:var(--green);">
+              ✓ Scheduled — your Cult Content team will post it when the video is ready.
+            </div>
+            <div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border);">
+              <button class="wizard-btn-secondary" onclick="wizardReset()">← Start New Video</button>
+            </div>
+          </div>
+
+        </div><!-- end #aiWizard -->
+
+        <!-- Video list -->
+        <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border);">
+          <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:12px;">Your Videos</div>
+          <div class="video-list" id="arcVideoList"><span class="empty">Loading…</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section C: Content Publishing -->
+    <div class="cs-section">
+      <div class="cs-card">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+          <div class="cs-card-title" style="margin-bottom:0;">📲 Content Publishing</div>
+          <span id="storistaConnBadge" class="conn-badge disconnected">● Not connected</span>
+        </div>
+
+        <!-- Not connected -->
+        <div id="storistaNotConn">
+          <p style="font-size:0.82rem;color:var(--muted);line-height:1.6;margin:0">
+            Connect Storista in the <strong>Connections</strong> panel above to schedule and publish TikTok Shop videos directly from here.
+          </p>
+        </div>
+
+        <!-- Connected -->
+        <div id="storistaConnUI" style="display:none">
+
+          <!-- Account + Product row -->
+          <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:18px;">
+            <div style="flex:1;min-width:180px;">
+              <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px;">TikTok Account</div>
+              <select id="storistaAccount" class="schedule-input" style="width:100%;padding:8px 10px;" onchange="onStoristaAccountChange()">
+                <option value="">Loading…</option>
+              </select>
+              <div id="storistaAccountStatus" style="font-size:0.72rem;color:var(--muted);margin-top:4px;"></div>
+            </div>
+            <div id="storistaProductWrap" style="flex:1;min-width:180px;">
+              <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px;">Tag Product <span style="font-weight:400;text-transform:none;">(optional)</span></div>
+              <select id="storistaProduct" class="schedule-input" style="width:100%;padding:8px 10px;">
+                <option value="">No product tag</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Drop zone -->
+          <div class="drop-zone" id="storistaDropZone"
+            onclick="document.getElementById('storistaFileInput').click()"
+            ondragover="storistaOnDragOver(event)"
+            ondragleave="storistaOnDragLeave(event)"
+            ondrop="storistaOnDrop(event)">
+            <div class="drop-zone-text">Drag &amp; drop videos here</div>
+            <div class="drop-zone-hint">or click to browse — select multiple files at once</div>
+            <button class="upload-file-btn" type="button">Add Videos</button>
+          </div>
+          <input type="file" id="storistaFileInput" accept="video/*" multiple style="display:none" onchange="storistaOnFilesAdded(event)">
+
+          <!-- Auto-schedule panel (shown when files are queued) -->
+          <div id="storistaAutoPanel" style="display:none;background:rgba(0,242,234,0.04);border:1px solid rgba(0,242,234,0.15);border-radius:10px;padding:14px 16px;margin-top:14px;">
+            <div style="font-size:0.8rem;font-weight:700;color:var(--teal);margin-bottom:10px;">⚡ Auto-Schedule</div>
+            <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+              <div>
+                <div style="font-size:0.7rem;color:var(--muted);margin-bottom:4px;">Date</div>
+                <input type="date" id="storistaAutoDate" class="schedule-input">
+              </div>
+              <div>
+                <div style="font-size:0.7rem;color:var(--muted);margin-bottom:4px;">Start</div>
+                <input type="time" id="storistaAutoStart" value="08:00" class="schedule-input">
+              </div>
+              <div>
+                <div style="font-size:0.7rem;color:var(--muted);margin-bottom:4px;">End</div>
+                <input type="time" id="storistaAutoEnd" value="22:00" class="schedule-input">
+              </div>
+              <button class="post-now-btn" style="padding:8px 16px;font-size:0.82rem;" onclick="applyStoristaAutoSchedule()">Spread Evenly</button>
+            </div>
+          </div>
+
+          <!-- Upload queue -->
+          <div id="storistaQueueWrap" style="display:none;margin-top:18px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+              <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);">
+                Videos to Post (<span id="storistaQueueCount">0</span>)
+              </div>
+              <div style="display:flex;gap:8px;align-items:center;">
+                <button id="storistaGenAllBtn" onclick="generateAllStoristaCaptions()"
+                  style="background:rgba(0,242,234,0.08);border:1px solid rgba(0,242,234,0.25);color:var(--teal);cursor:pointer;border-radius:6px;padding:5px 12px;font-size:0.78rem;font-weight:700;">
+                  ✨ Generate all captions
+                </button>
+                <button onclick="clearStoristaQueue()" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:0.78rem;padding:0;">✕ Clear all</button>
+              </div>
+            </div>
+            <div id="storistaQueueList" style="display:flex;flex-direction:column;gap:8px;"></div>
+          </div>
+
+          <!-- Buffer cross-post selector -->
+          <div id="storistaBufferSection" style="display:none;margin-top:16px;background:rgba(0,0,0,0.15);border:1px solid var(--border);border-radius:10px;padding:14px 16px;">
+            <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:10px;">Also post to Buffer</div>
+            <div id="storistaBufferChannels" class="channel-list" style="max-height:160px;overflow-y:auto;">
+              <span class="empty" style="font-size:0.78rem;">Connect Buffer in Connections to enable cross-posting</span>
+            </div>
+          </div>
+
+          <!-- Submit -->
+          <div id="storistaSubmitWrap" style="display:none;margin-top:18px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+            <button class="post-now-btn" id="storistaSubmitBtn" onclick="submitStoristaSchedule()">Upload &amp; Schedule All</button>
+            <div id="storistaSubmitStatus" style="font-size:0.82rem;color:var(--muted);"></div>
+          </div>
+
+          <!-- Server-side scheduled queue -->
+          <div style="margin-top:28px;padding-top:22px;border-top:1px solid var(--border);">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+              <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);">Scheduled Queue</div>
+              <button class="refresh-btn" onclick="loadStoristaServerQueue()">↻ Refresh</button>
+            </div>
+            <div id="storistaServerQueue"><span class="empty">Loading…</span></div>
+          </div>
+
+        </div><!-- /storistaConnUI -->
+      </div>
+    </div>
+
+  </div>
+</div><!-- end #tab-content-studio -->
+
+<!-- ───────────────────────── Billing tab ──────────────────────────────── -->
+<div id="tab-billing" style="display:none">
+<main>
+
+  <div class="billing-header">
+    <div>
+      <div class="billing-title">Billing &amp; Plan</div>
+      <div style="font-size:0.8rem;color:var(--muted);margin-top:3px;" id="billingPeriodSub">Loading…</div>
+    </div>
+    <div class="billing-cycle-chip" id="billingCycleChip">—</div>
+  </div>
+
+  <!-- KPI row -->
+  <div class="billing-summary-row">
+    <div class="billing-kpi">
+      <div class="billing-kpi-label">Monthly Retainer</div>
+      <div class="billing-kpi-val gold" id="bkpiRetainer">—</div>
+      <div class="billing-kpi-sub">Billed upfront each month</div>
+    </div>
+    <div class="billing-kpi">
+      <div class="billing-kpi-label">GMV This Month</div>
+      <div class="billing-kpi-val teal" id="bkpiGmv">—</div>
+      <div class="billing-kpi-sub" id="bkpiGmvSub">TikTok Shop net sales</div>
+    </div>
+    <div class="billing-kpi">
+      <div class="billing-kpi-label">Est. GMV Share</div>
+      <div class="billing-kpi-val" id="bkpiRevShare">—</div>
+      <div class="billing-kpi-sub" id="bkpiRevShareSub">Billed retroactively</div>
+    </div>
+  </div>
+
+  <!-- Payment method strip -->
+  <div class="pm-strip" id="pmStrip">
+    <div class="pm-left">
+      <div class="pm-icon" id="pmIcon">💳</div>
+      <div>
+        <div class="pm-label" id="pmLabel">Loading payment method…</div>
+        <div class="pm-sub" id="pmSub"></div>
+      </div>
+    </div>
+    <button class="pm-btn" id="pmBtn" onclick="openBillingPortal()">Manage Payment</button>
+  </div>
+
+  <!-- Plan tiers -->
+  <div class="tiers-section">
+    <div class="section-label mb-20">Choose Your Plan</div>
+    <div class="tiers-grid" id="tiersGrid">
+      <!-- rendered by JS -->
+    </div>
+    <div class="tier-change-bar" id="tierChangeBar">
+      <div class="tier-change-info" id="tierChangeInfo">Switch to <span id="tierChangeName"></span></div>
+      <div class="tier-change-btns">
+        <button class="tier-cancel-btn" onclick="cancelTierChange()">Cancel</button>
+        <button class="tier-confirm-btn" onclick="confirmTierChange()">Confirm Change</button>
+      </div>
+    </div>
+    <div id="tierChangeMsg" style="font-size:0.8rem;margin-top:12px;min-height:18px;"></div>
+  </div>
+
+  <!-- Invoice history -->
+  <div class="billing-history">
+    <div class="billing-history-header">
+      <div class="billing-history-title">Invoice History</div>
+    </div>
+    <div id="invTableWrap">
+      <table class="inv-table" id="invTable">
+        <thead>
+          <tr>
+            <th>Period</th>
+            <th>Date</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="invTbody">
+          <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px;">Loading…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+</div><!-- end #tab-billing -->  <script src="client-dashboard.js"></script>
+</body>
+</html>
