@@ -1,4 +1,41 @@
-<!DOCTYPE html>
+
+  function renderResources(brand) {
+    const resources = brand.resources || [];
+    const grid = document.getElementById('resourcesGrid');
+    
+    if (resources.length === 0) {
+      grid.innerHTML = `
+        <div class="resources-empty">
+          📋<br><br>
+          Your account manager will add resources here after your kickoff call.<br>
+          Brand briefs, creator guidelines, product pages, and more.
+        </div>
+      `;
+      return;
+    }
+    
+    const iconMap = {
+      doc: '📄',
+      link: '🔗',
+      video: '🎬',
+      image: '🖼️',
+      default: '📎'
+    };
+    
+    const html = resources.map(r => {
+      const icon = iconMap[r.type] || iconMap.default;
+      return `
+        <a href="${r.url}" target="_blank" class="resource-card">
+          <span class="resource-icon">${icon}</span>
+          <span class="resource-label">${r.label}</span>
+        </a>
+      `;
+    }).join('');
+    
+    grid.innerHTML = html;
+  }
+
+  <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
