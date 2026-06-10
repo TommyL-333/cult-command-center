@@ -82,7 +82,7 @@ app.use(session({
   },
 }));
 
-// ─── Security: Cloudflare Access authentication ───────────────────────────────
+// ─── Security: Cloudflare Access authentication ─────────────────────��─────────
 // Cloudflare Access injects CF-Access-Authenticated-User-Email on every request.
 // If CF_ACCESS_AUD is set, we enforce this header — unauthenticated requests get 401.
 const ALLOWED_DOMAINS = (process.env.ALLOWED_EMAIL_DOMAINS || 'cultcontent.cc')
@@ -1154,7 +1154,7 @@ function formatDuration(seconds) {
 // Registered BEFORE the legacy Supabase handlers below — Express matches routes
 // in registration order, so these working handlers take precedence. Must stay
 // above app.use(requireAuth): creators have no Cloudflare Access session.
-require('./routes/inner-circle-sqlite')(app, { express });
+const icSqlite = require('./routes/inner-circle-sqlite')(app, { express });
 
 // ─── Inner Circle: creator session auth middleware ────────────────────────────
 // Verifies ic_session cookie (or Authorization: Bearer token) against the
@@ -1626,7 +1626,7 @@ fetch('/api/inner-circle/recordings')
 
 // Covenant: creator commits to a brand → Lark alert to Hasan for manual TC invite.
 // Mounted here (before app.use(requireAuth)) because creators lack CF Access sessions.
-require('./routes/inner-circle-covenant')(app, { requireCreatorSession, axios, express, getLarkTenantToken });
+require('./routes/inner-circle-covenant')(app, { requireSession: (icSqlite && icSqlite.requireSqliteSession) || requireCreatorSession, requireCreatorSession, axios, express, getLarkTenantToken });
 
 // Client portal: Inner Circle toggle and view
 app.get('/clients/:clientSlug/inner-circle', requireAuth, async (req, res) => {
@@ -5311,7 +5311,7 @@ function reacherClient(shopId) {
   return axios.create({ baseURL: REACHER_BASE, timeout: 20000, headers });
 }
 
-// ─── Simple TTL cache ──────────────────────────────────────────────────────────
+// ─── Simple TTL cache ���─────────────────────────────────────────────────────────
 const cache = new Map();
 async function cached(key, ttlMs, fn) {
   const hit = cache.get(key);
@@ -5559,7 +5559,7 @@ app.get('/api/railway/health', async (req, res) => {
   }
 });
 
-// ─── Cache control ─────────────────────────────────────────────────────────────
+// ─── Cache control ────────────────────────────��────────────────────────────────
 app.post('/api/clear-cache', (req, res) => {
   cache.clear();
   res.json({ ok: true });
@@ -7617,7 +7617,7 @@ app.post('/api/shopops/reengage', async (req, res) => {
 });
 
 
-// ─── Paid Media Agent routes ─────────────────────────────────────────────────
+// ─── Paid Media Agent routes ──────────────────��──────────────────────────────
 // ─── Paid Media Agent — routes.js ────────────────────────────────────────────
 //
 // Paste these routes into dashboard-server.js (after the Arcads block works well
@@ -7695,7 +7695,7 @@ app.get('/api/paidmedia/tiktok/summary', async (req, res) => {
       });
       const rawCampaigns = campData.list || [];
 
-      // ── 2. Fetch integrated report (last 30 days) ───────────────────────────
+      // ── 2. Fetch integrated report (last 30 days) ─���─────────────────────────
       const today = new Date();
       const end   = today.toISOString().slice(0, 10);
       const start = new Date(today);
@@ -10098,7 +10098,7 @@ Be precise with numbers. If a field cannot be calculated from the data, use null
   }
 });
 
-// ═══════════════════════════════════════════════════════════════════════════════
+// ═══════════════════════════════════��═══════════════════════════════════════════
 // ─── TikTok Shop Partner API ───────────────────────────────────────────────────
 // Portal: https://partner.tiktokshop.com
 // Base:   https://open-api.tiktokglobalshop.com
@@ -10880,7 +10880,7 @@ app.get('/api/video/cross-platform-stats', async (req, res) => {
   }
 });
 
-// ─── Video — Generate caption ──────────────────────────────────────────────────
+// ─── Video — Generate caption ──────────���───────────────────────────────────────
 app.post('/api/video/generate-caption', async (req, res) => {
   const { transcript, platform = 'tiktok', tone = 'casual' } = req.body || {};
   if (!transcript) return res.status(400).json({ ok: false, error: 'transcript required' });
@@ -13234,7 +13234,7 @@ app.put('/api/creator-pages/:brandId/competitor-videos', requireAuth, express.js
   res.json({ ok: true });
 });
 
-// ─── Brand Logo Upload ─────────────────────────────────────────────────────────
+// ─── Brand Logo Upload ─────────────────────────��───────────────────────────────
 
 // Multer instance for images (jpg/png/gif/webp/svg)
 const imageUpload = multer({
@@ -13761,7 +13761,7 @@ app.listen(CFG.port, () => {
             },
             {
               name: 'Unboxing + Demo',
-              why:  'The visual of tearing open a honey stick and sipping it is this product\'s best asset — novel, satisfying, and immediately communicates the convenience advantage over messy tinctures',
+              why:  'The visual of tearing open a honey stick and sipping it is this product\'s best asset �� novel, satisfying, and immediately communicates the convenience advantage over messy tinctures',
               outline: [
                 'Show the box — 30 sticks, clean individual packaging',
                 'Tear one stick open on camera — contrast it with a dropper (no mess, no measuring)',
@@ -13946,7 +13946,7 @@ app.listen(CFG.port, () => {
               framework: 'PAS',
               title:     'The Parasite Cleanse Reveal',
               duration:  '~35 seconds',
-              script:    '[HOOK] If you have unexplained bloating, constant fatigue, brain fog, or weird skin stuff — I need you to hear this.\n\n[PROBLEM] Most people write these off as stress or diet. But one of the most overlooked root causes is parasites. Up to 1 in 3 people have them and genuinely don\'t know.\n\n[SOLUTION] I\'ve been using Approved Science Parastrin for 30 days. It\'s a science-backed parasite cleanse formula that\'s been on Amazon for over 10 years — thousands of real reviews. And it just launched on TikTok Shop with free samples.\n\n[CTA] Link in my bio before the free samples run out. Your gut health is worth the 30 seconds it takes to grab it.',
+              script:    '[HOOK] If you have unexplained bloating, constant fatigue, brain fog, or weird skin stuff — I need you to hear this.\n\n[PROBLEM] Most people write these off as stress or diet. But one of the most overlooked root causes is parasites. Up to 1 in 3 people have them and genuinely don\'t know.\n\n[SOLUTION] I\'ve been using Approved Science Parastrin for 30 days. It\'s a science-backed parasite cleanse formula that\'s been on Amazon for over 10 years �� thousands of real reviews. And it just launched on TikTok Shop with free samples.\n\n[CTA] Link in my bio before the free samples run out. Your gut health is worth the 30 seconds it takes to grab it.',
             },
             {
               framework: 'Trust Bridge',
