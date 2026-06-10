@@ -471,6 +471,98 @@
     margin-bottom: 6px;
   }
 
+    
+  /* Modal Polish */
+  .modal h3 {
+    font-size: 20px;
+    margin-bottom: 8px;
+    background: linear-gradient(135deg, #00f2ea 0%, #ff0050 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .modal-description {
+    color: rgba(228, 228, 231, 0.7);
+    font-size: 14px;
+    margin-bottom: 20px;
+    line-height: 1.5;
+  }
+  
+  .modal-section {
+    margin-bottom: 24px;
+  }
+  
+  .modal-section-title {
+    color: #00f2ea;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 12px;
+  }
+  
+  .modal input[type="number"],
+  .modal input[type="text"] {
+    width: 100%;
+    padding: 10px 12px;
+    background: rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    color: #e4e4e7;
+    font-size: 14px;
+    transition: all 0.2s ease;
+  }
+  
+  .modal input:focus {
+    outline: none;
+    border-color: rgba(0, 242, 234, 0.5);
+    background: rgba(0, 0, 0, 0.5);
+  }
+  
+  .modal input::placeholder {
+    color: rgba(228, 228, 231, 0.4);
+  }
+  
+  .modal-footer {
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+    margin-top: 24px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.05);
+  }
+  
+  .modal-btn {
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  
+  .modal-btn-cancel {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #e4e4e7;
+  }
+  
+  .modal-btn-cancel:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
+  
+  .modal-btn-save {
+    background: linear-gradient(135deg, #00f2ea 0%, #00c4d4 100%);
+    border: none;
+    color: #161823;
+  }
+  
+  .modal-btn-save:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 242, 234, 0.3);
+  }
+
     </style>
 </head>
 <body>
@@ -522,7 +614,15 @@
     <div class="stat-card"><div class="stat-label">GMV</div><div class="stat-value teal" id="sGmv">—</div><div class="stat-sub">Gross merchandise value</div></div>
     <div class="stat-card"><div class="stat-label">Orders</div><div class="stat-value" id="sOrders">—</div><div class="stat-sub">Total orders placed</div></div>
     <div class="stat-card"><div class="stat-label">Avg Order Value</div><div class="stat-value gold" id="sAov">—</div><div class="stat-sub">GMV ÷ orders</div></div>
-    <div class="stat-card"><div class="stat-label">Active Creators</div><div class="stat-value" id="sCreators">—</div><div class="stat-sub">Posting for your brand</div></div>
+    <div class="stat-card"><div class="stat-label">
+        <span class="tooltip-wrapper">
+          Active Creators
+          <span class="tooltip-icon">
+            ?
+            <span class="tooltip-content">Creators who posted at least one video this month. More active creators = more reach and sales potential.</span>
+          </span>
+        </span>
+      </div><div class="stat-value" id="sCreators">—</div><div class="stat-sub">Posting for your brand</div></div>
   </div>
 
   <div class="two-col mb-32">
