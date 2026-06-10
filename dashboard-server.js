@@ -1099,6 +1099,124 @@ app.get(['/api/creator/connect/callback', '/api/creator-tiktok/callback'], async
 // INNER CIRCLE PORTAL
 // ============================================================================
 
+// Inner Circle brand catalog — display metadata for the brand selection UI.
+// NOTE: brands.json remains the source of truth for which brands have Inner
+// Circle ENABLED (brand.innerCircle flag, toggled from the client portal).
+// This constant supplies id/logo/description for the selection cards and is
+// merged against brands.json by name at request time.
+// TODO(Tommy): confirm final brand list, logo file paths, and descriptions.
+const INNER_CIRCLE_BRANDS = [
+  {
+    id: 'trusted-rituals',
+    name: 'Trusted Rituals',
+    logo: '/logos/trusted-rituals.png',
+    description: 'Mullein honey sticks for respiratory health — 2,000mg per stick, Himalayan-sourced. Strong hooks around pollen season, quitting vaping, and daily wellness rituals.'
+  },
+  {
+    id: 'diamandia',
+    name: 'DIAMANDIA',
+    logo: '/logos/diamandia.png',
+    description: 'DIAMANDIA TikTok Shop brand — 25% target collab commission on the hero product.'
+  },
+  {
+    id: 'approved-science',
+    name: 'Approved Science',
+    logo: '/logos/approved-science.png',
+    description: 'Science-backed supplements (Marketily / Lenea). Evidence-led content angles.'
+  },
+  {
+    id: 'alpha-flow',
+    name: 'Alpha Flow',
+    logo: '/logos/alpha-flow.png',
+    description: 'Alpha Flow TikTok Shop brand.'
+  }
+  // TODO(Tommy): Eva's brand + any remaining clients — need official name, logo, description.
+];
+
+// Find catalog entry for a brands.json record (matched by normalized name)
+function innerCircleCatalogFor(brand) {
+  const n = String((brand && brand.name) || '').toLowerCase().trim();
+  return INNER_CIRCLE_BRANDS.find(b => b.name.toLowerCase() === n || b.id === n.replace(/\s+/g, '-')) || null;
+}
+
+
+// Format integer seconds as HH:MM:SS (e.g. 5025 -> "01:23:45"). Used by Inner Circle recordings API.
+function formatDuration(seconds) {
+  const s = Math.max(0, parseInt(seconds, 10) || 0);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  const pad = (n) => String(n).padStart(2, '0');
+  return pad(h) + ':' + pad(m) + ':' + pad(sec);
+}
+
+// ─── Inner Circle: creator session auth middleware ────────────────────────────
+// Verifies ic_session cookie (or Authorization: Bearer token) against the
+// creator_sessions table in Supabase. Sets req.user to the creator row.
+// Routes using this MUST be registered before app.use(requireAuth) because
+// creators do not have Cloudflare Access sessions.
+async function requireCreatorSession(req, res, next) {
+  const sessionToken = req.cookies?.ic_session || req.headers.authorization?.replace('Bearer ', '');
+  if (!sessionToken) return res.status(401).json({ error: 'Not authenticated' });
+  try {
+    const { data: session } = await supabase
+      .from('creator_sessions')
+      .select('*, creators(*)')
+      .eq('token', sessionToken)
+      .gt('expires_at', new Date().toISOString())
+      .single();
+    if (!session || !session.creators) return res.status(401).json({ error: 'Session expired' });
+    req.user = session.creators;
+    next();
+  } catch (e) {
+    console.error('[inner-circle] session check failed:', e.message);
+    return res.status(500).json({ error: 'Server error' });
+  }
+}
+
+// GET /api/inner-circle/recordings — call recordings library for the logged-in creator
+// Returns { recordings: [{ id, date, title, duration, url, attended }] } newest first.
+app.get('/api/inner-circle/recordings', requireCreatorSession, async (req, res) => {
+  try {
+    const { data: rows, error } = await supabase
+      .from('inner_circle_recordings')
+      .select('*')
+      .order('call_date', { ascending: false });
+    if (error) throw error;
+    const recordings = (rows || []).map((r) => {
+      const attendance = Array.isArray(r.attendance) ? r.attendance : [];
+      return {
+        id: r.id,
+        date: r.call_date,
+        title: r.title || `Growth Partners Call — ${r.call_date}`,
+        duration: r.duration_seconds != null ? formatDuration(r.duration_seconds) : null,
+        url: r.recording_url,
+        attended: attendance.some((id) => String(id) === String(req.user.id)),
+      };
+    });
+    // Fallback for empty table: seed with the Week 1 launch call so the
+    // recordings library is never blank at launch. Remove once real rows exist.
+    if (recordings.length === 0) {
+      return res.json({
+        recordings: [
+          {
+            id: 1,
+            date: '2026-06-08',
+            title: 'Week 1: Growth Partners Call',
+            duration: null,
+            url: 'https://www.larksuite.com/minutes/obus4pv6ixvw993ur65jab8g',
+            attended: false,
+          },
+        ],
+      });
+    }
+    res.json({ recordings });
+  } catch (e) {
+    console.error('[inner-circle] recordings fetch failed:', e.message);
+    res.status(500).json({ error: 'Failed to load recordings' });
+  }
+});
+
 // Creator login + Inner Circle signup page
 app.get('/inner-circle', (req, res) => {
   res.send(`<!DOCTYPE html>
@@ -1304,6 +1422,31 @@ app.post('/api/inner-circle/login', express.json(), async (req, res) => {
   }
 });
 
+// Inner Circle dashboard v2 (SPA) — serves views/inner-circle.html.
+// Session-checked here; page data is fetched client-side from /api/inner-circle/dashboard.
+// Registered BEFORE the legacy inline dashboard route below so it takes precedence.
+app.get('/inner-circle/dashboard', async (req, res, next) => {
+  const sessionToken = req.cookies?.ic_session || req.headers.authorization?.replace('Bearer ', '');
+  if (!sessionToken) return res.redirect('/inner-circle');
+  try {
+    const { data: session } = await supabase
+      .from('creator_sessions')
+      .select('*, creators(*)')
+      .eq('token', sessionToken)
+      .gt('expires_at', new Date().toISOString())
+      .single();
+    if (!session || !session.creators) return res.redirect('/inner-circle');
+    return res.sendFile(path.join(__dirname, 'views/inner-circle.html'));
+  } catch (e) {
+    console.error('[inner-circle] dashboard v2 session check failed:', e.message);
+    return res.redirect('/inner-circle');
+  }
+});
+
+// Alias: the SPA redirects unauthenticated users to /inner-circle/login —
+// send them to the existing creator login page at /inner-circle.
+app.get('/inner-circle/login', (req, res) => res.redirect('/inner-circle'));
+
 // Inner Circle dashboard
 app.get('/inner-circle/dashboard', async (req, res) => {
   // Get session from cookie or header
@@ -1474,6 +1617,10 @@ fetch('/api/inner-circle/recordings')
     res.redirect('/inner-circle');
   }
 });
+
+// Covenant: creator commits to a brand → Lark alert to Hasan for manual TC invite.
+// Mounted here (before app.use(requireAuth)) because creators lack CF Access sessions.
+require('./routes/inner-circle-covenant')(app, { requireCreatorSession, axios, express, getLarkTenantToken });
 
 // Client portal: Inner Circle toggle and view
 app.get('/clients/:clientSlug/inner-circle', requireAuth, async (req, res) => {
