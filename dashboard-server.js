@@ -1092,6 +1092,480 @@ app.get(['/api/creator/connect/callback', '/api/creator-tiktok/callback'], async
 
 // POST /api/proposals/publish — public so prospects can be linked directly
 // Registered BEFORE requireAuth so it doesn't need a CF Access session
+
+// ============================================================================
+// INNER CIRCLE PORTAL
+// ============================================================================
+
+// Creator login + Inner Circle signup page
+app.get('/inner-circle', (req, res) => {
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Inner Circle — Cult Content</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0a0f;color:#e2e8f0;min-height:100vh;display:flex;flex-direction:column}
+.hero{background:linear-gradient(135deg,#1a0033 0%,#0a0a0f 100%);padding:80px 24px;text-align:center;border-bottom:1px solid rgba(0,242,234,.1)}
+.hero h1{font-size:3rem;font-weight:900;background:linear-gradient(135deg,#00f2ea,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:16px}
+.hero p{font-size:1.2rem;color:#94a3b8;max-width:600px;margin:0 auto}
+.container{max-width:1200px;margin:0 auto;padding:60px 24px;flex:1}
+.section{margin-bottom:60px}
+.section h2{font-size:1.8rem;font-weight:800;margin-bottom:24px}
+.benefits{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;margin-bottom:40px}
+.benefit{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:24px}
+.benefit h3{font-size:1.1rem;color:#00f2ea;margin-bottom:8px}
+.benefit p{color:#94a3b8;font-size:.93rem;line-height:1.6}
+.login-box{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:40px;max-width:500px;margin:0 auto}
+.form-group{margin-bottom:20px}
+.form-group label{display:block;margin-bottom:8px;font-weight:600;font-size:.9rem}
+.form-group input{width:100%;padding:12px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#fff;font-size:.95rem}
+.form-group input:focus{outline:none;border-color:#00f2ea}
+.btn{width:100%;padding:14px;background:linear-gradient(135deg,#00f2ea,#a855f7);border:none;border-radius:8px;color:#fff;font-weight:700;font-size:1rem;cursor:pointer;transition:transform .2s}
+.btn:hover{transform:translateY(-1px)}
+.status{text-align:center;padding:12px;border-radius:8px;margin-top:16px;display:none}
+.status.error{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#fca5a5}
+.status.success{background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.3);color:#86efac}
+footer{padding:40px 24px;text-align:center;border-top:1px solid rgba(255,255,255,.07);color:#64748b;font-size:.85rem}
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <h1>Inner Circle</h1>
+  <p>Join Cult Content's elite creator program. Commit to excellence, earn premium commissions, and build your TikTok Shop career.</p>
+</div>
+
+<div class="container">
+  <div class="section">
+    <h2>What You Get</h2>
+    <div class="benefits">
+      <div class="benefit">
+        <h3>💰 Premium Commission</h3>
+        <p>50% on target collabs + 25% on ads. Highest rates in the industry for committed creators.</p>
+      </div>
+      <div class="benefit">
+        <h3>📞 Weekly Group Calls</h3>
+        <p>Direct coaching, feedback on your content, and weekly strategy sessions with Tommy and top creators.</p>
+      </div>
+      <div class="benefit">
+        <h3>🎯 Brand Partnerships</h3>
+        <p>Get matched to premium brands looking for dedicated creators. Build long-term relationships, not one-offs.</p>
+      </div>
+      <div class="benefit">
+        <h3>📊 Full Dashboard Access</h3>
+        <p>Track your video count, view call recordings, manage brand collabs, and monitor your progress.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <h2>The Commitment</h2>
+    <div class="benefits">
+      <div class="benefit">
+        <h3>15 Videos/Month Minimum</h3>
+        <p>Tracked and monitored. This is for creators who want to go full-time.</p>
+      </div>
+      <div class="benefit">
+        <h3>Weekly Call Attendance</h3>
+        <p>Required. Miss too many, and you're out. Community and coaching are core to this.</p>
+      </div>
+      <div class="benefit">
+        <h3>Brand Focus</h3>
+        <p>Commit to specific brands. Quality over quantity. Build real partnerships.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="login-box">
+      <h2 style="text-align:center;margin-bottom:24px">Creator Login</h2>
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" required placeholder="your@email.com">
+        </div>
+        <div class="form-group">
+          <label for="password">Password (TikTok username or phone last 4)</label>
+          <input type="password" id="password" name="password" required placeholder="Enter password">
+        </div>
+        <button type="submit" class="btn">Login to Dashboard</button>
+        <div id="status" class="status"></div>
+      </form>
+      <p style="text-align:center;margin-top:20px;font-size:.85rem;color:#64748b">
+        Don't have an account? <a href="mailto:tommy@cultcontent.cc" style="color:#00f2ea">Contact Tommy</a>
+      </p>
+    </div>
+  </div>
+</div>
+
+<footer>
+  © 2026 Cult Content. Building heaven on earth through commerce and community.
+</footer>
+
+<script>
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const status = document.getElementById('status');
+  const email = document.getElementById('email').value;
+  const password = document.getElementById('password').value;
+  
+  status.style.display = 'none';
+  
+  try {
+    const res = await fetch('/api/inner-circle/login', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({email, password})
+    });
+    
+    const data = await res.json();
+    
+    if (res.ok) {
+      status.className = 'status success';
+      status.textContent = 'Login successful! Redirecting...';
+      status.style.display = 'block';
+      setTimeout(() => window.location.href = '/inner-circle/dashboard', 1000);
+    } else {
+      status.className = 'status error';
+      status.textContent = data.error || 'Login failed';
+      status.style.display = 'block';
+    }
+  } catch (err) {
+    status.className = 'status error';
+    status.textContent = 'Network error. Please try again.';
+    status.style.display = 'block';
+  }
+});
+</script>
+</body>
+</html>`);
+});
+
+// Inner Circle login API
+app.post('/api/inner-circle/login', express.json(), async (req, res) => {
+  const {email, password} = req.body;
+  
+  if (!email || !password) {
+    return res.status(400).json({error: 'Email and password required'});
+  }
+  
+  try {
+    // Look up creator in Supabase
+    const {data: creator, error} = await supabase
+      .from('creators')
+      .select('*')
+      .eq('email', email.toLowerCase())
+      .single();
+    
+    if (error || !creator) {
+      return res.status(401).json({error: 'Invalid credentials'});
+    }
+    
+    // Verify password (TikTok username or phone last 4)
+    const validPassword = 
+      password === creator.tiktok_handle ||
+      password === (creator.phone || '').slice(-4);
+    
+    if (!validPassword) {
+      return res.status(401).json({error: 'Invalid credentials'});
+    }
+    
+    // Create session token
+    const sessionToken = require('crypto').randomBytes(32).toString('hex');
+    
+    // Store session
+    await supabase
+      .from('creator_sessions')
+      .insert({
+        creator_id: creator.id,
+        token: sessionToken,
+        expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() // 30 days
+      });
+    
+    res.json({
+      success: true,
+      token: sessionToken,
+      creator: {
+        id: creator.id,
+        name: creator.name,
+        email: creator.email,
+        tiktok_handle: creator.tiktok_handle
+      }
+    });
+    
+  } catch (error) {
+    console.error('Inner Circle login error:', error);
+    res.status(500).json({error: 'Server error'});
+  }
+});
+
+// Inner Circle dashboard
+app.get('/inner-circle/dashboard', async (req, res) => {
+  // Get session from cookie or header
+  const sessionToken = req.cookies?.ic_session || req.headers.authorization?.replace('Bearer ', '');
+  
+  if (!sessionToken) {
+    return res.redirect('/inner-circle');
+  }
+  
+  try {
+    // Verify session
+    const {data: session} = await supabase
+      .from('creator_sessions')
+      .select('*, creators(*)')
+      .eq('token', sessionToken)
+      .gt('expires_at', new Date().toISOString())
+      .single();
+    
+    if (!session) {
+      return res.redirect('/inner-circle');
+    }
+    
+    const creator = session.creators;
+    
+    // Get creator's Inner Circle enrollment
+    const {data: enrollment} = await supabase
+      .from('inner_circle_enrollments')
+      .select('*')
+      .eq('creator_id', creator.id)
+      .single();
+    
+    // Get creator's brand commitments
+    const {data: commitments} = await supabase
+      .from('inner_circle_brand_commitments')
+      .select('*, clients(*)')
+      .eq('creator_id', creator.id);
+    
+    // Get video count this month
+    const {data: videos} = await supabase
+      .from('creator_videos')
+      .select('id')
+      .eq('creator_id', creator.id)
+      .gte('created_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString());
+    
+    const videoCount = videos?.length || 0;
+    
+    res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Inner Circle Dashboard — ${creator.name}</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0a0f;color:#e2e8f0;min-height:100vh}
+.header{background:rgba(255,255,255,.02);border-bottom:1px solid rgba(255,255,255,.07);padding:20px 24px;display:flex;justify-content:space-between;align-items:center}
+.header h1{font-size:1.3rem;font-weight:800;background:linear-gradient(135deg,#00f2ea,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header .user{font-size:.9rem;color:#94a3b8}
+.container{max-width:1400px;margin:0 auto;padding:40px 24px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;margin-bottom:40px}
+.stat-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:24px}
+.stat-card .label{font-size:.85rem;color:#94a3b8;margin-bottom:8px}
+.stat-card .value{font-size:2.2rem;font-weight:900;color:#fff}
+.stat-card .progress{margin-top:12px;height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden}
+.stat-card .progress-bar{height:100%;background:linear-gradient(90deg,#00f2ea,#a855f7);transition:width .3s}
+.section{margin-bottom:40px}
+.section h2{font-size:1.5rem;font-weight:800;margin-bottom:20px}
+.brands{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
+.brand-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:20px;transition:border-color .2s}
+.brand-card:hover{border-color:rgba(0,242,234,.3)}
+.brand-card h3{font-size:1.1rem;color:#00f2ea;margin-bottom:8px}
+.brand-card p{font-size:.88rem;color:#94a3b8;margin-bottom:4px}
+.btn{padding:10px 20px;background:linear-gradient(135deg,#00f2ea,#a855f7);border:none;border-radius:8px;color:#fff;font-weight:600;font-size:.9rem;cursor:pointer;transition:transform .2s}
+.btn:hover{transform:translateY(-1px)}
+.btn-secondary{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1)}
+.empty{text-align:center;padding:60px 20px;color:#64748b}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Inner Circle</h1>
+  <div class="user">
+    ${creator.name} • <a href="/api/inner-circle/logout" style="color:#00f2ea;text-decoration:none">Logout</a>
+  </div>
+</div>
+
+<div class="container">
+  <div class="stats">
+    <div class="stat-card">
+      <div class="label">Videos This Month</div>
+      <div class="value">${videoCount}</div>
+      <div class="progress">
+        <div class="progress-bar" style="width:${Math.min((videoCount/15)*100, 100)}%"></div>
+      </div>
+      <div class="label" style="margin-top:8px">${videoCount}/15 goal</div>
+    </div>
+    
+    <div class="stat-card">
+      <div class="label">Brand Commitments</div>
+      <div class="value">${commitments?.length || 0}</div>
+    </div>
+    
+    <div class="stat-card">
+      <div class="label">Call Attendance</div>
+      <div class="value">${enrollment?.calls_attended || 0}</div>
+    </div>
+    
+    <div class="stat-card">
+      <div class="label">Commission Rate</div>
+      <div class="value">50%</div>
+      <div class="label" style="margin-top:8px">Target collabs</div>
+    </div>
+  </div>
+  
+  <div class="section">
+    <h2>Your Brands</h2>
+    ${commitments && commitments.length > 0 ? `
+      <div class="brands">
+        ${commitments.map(c => `
+          <div class="brand-card">
+            <h3>${c.clients.name}</h3>
+            <p>Videos posted: ${c.videos_posted || 0}</p>
+            <p>Status: ${c.status}</p>
+            <button class="btn" onclick="window.location.href='/creators/${c.clients.slug}'">View Brand Page</button>
+          </div>
+        `).join('')}
+      </div>
+    ` : `
+      <div class="empty">
+        <p>No brand commitments yet.</p>
+        <button class="btn" style="margin-top:16px" onclick="window.location.href='/inner-circle/brands'">Browse Brands</button>
+      </div>
+    `}
+  </div>
+  
+  <div class="section">
+    <h2>Recent Call Recordings</h2>
+    <div id="recordings"></div>
+  </div>
+</div>
+
+<script>
+// Load call recordings
+fetch('/api/inner-circle/recordings')
+  .then(r => r.json())
+  .then(data => {
+    const container = document.getElementById('recordings');
+    if (data.recordings && data.recordings.length > 0) {
+      container.innerHTML = data.recordings.map(r => \`
+        <div class="brand-card" style="margin-bottom:12px">
+          <h3>\${r.title}</h3>
+          <p>\${new Date(r.date).toLocaleDateString()}</p>
+          <button class="btn-secondary btn" onclick="window.open('\${r.url}', '_blank')">Watch Recording</button>
+        </div>
+      \`).join('');
+    } else {
+      container.innerHTML = '<div class="empty">No recordings yet.</div>';
+    }
+  });
+</script>
+
+</body>
+</html>`);
+    
+  } catch (error) {
+    console.error('Inner Circle dashboard error:', error);
+    res.redirect('/inner-circle');
+  }
+});
+
+// Client portal: Inner Circle toggle and view
+app.get('/clients/:clientSlug/inner-circle', requireAuth, async (req, res) => {
+  const client = await getClientBySlug(req.params.clientSlug);
+  if (!client) return res.status(404).send('Client not found');
+  
+  // Get Inner Circle creators committed to this brand
+  const {data: commitments} = await supabase
+    .from('inner_circle_brand_commitments')
+    .select('*, creators(*)')
+    .eq('client_id', client.id);
+  
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Inner Circle — ${client.name}</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0a0f;color:#e2e8f0;min-height:100vh;padding:40px 24px}
+.container{max-width:1200px;margin:0 auto}
+h1{font-size:2rem;font-weight:900;margin-bottom:24px}
+.toggle{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:24px;margin-bottom:40px}
+.toggle label{display:flex;align-items:center;gap:12px;cursor:pointer}
+.toggle input{width:48px;height:24px}
+.creators{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.creator-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:20px}
+.creator-card h3{color:#00f2ea;margin-bottom:8px}
+.creator-card p{font-size:.88rem;color:#94a3b8;margin-bottom:4px}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <h1>Inner Circle — ${client.name}</h1>
+  
+  <div class="toggle">
+    <label>
+      <input type="checkbox" id="innerCircleEnabled" ${client.inner_circle_enabled ? 'checked' : ''}>
+      <span>Enable Inner Circle for this brand</span>
+    </label>
+  </div>
+  
+  <h2 style="margin-bottom:20px">Committed Creators (${commitments?.length || 0})</h2>
+  
+  ${commitments && commitments.length > 0 ? `
+    <div class="creators">
+      ${commitments.map(c => `
+        <div class="creator-card">
+          <h3>${c.creators.name}</h3>
+          <p>@${c.creators.tiktok_handle}</p>
+          <p>Videos posted: ${c.videos_posted || 0}</p>
+          <p>Status: ${c.status}</p>
+        </div>
+      `).join('')}
+    </div>
+  ` : `
+    <p style="color:#64748b;text-align:center;padding:40px">No creators committed yet.</p>
+  `}
+</div>
+
+<script>
+document.getElementById('innerCircleEnabled').addEventListener('change', async (e) => {
+  const enabled = e.target.checked;
+  await fetch('/api/clients/${client.slug}/inner-circle/toggle', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({enabled})
+  });
+});
+</script>
+
+</body>
+</html>`);
+});
+
+// Toggle Inner Circle for client
+app.post('/api/clients/:clientSlug/inner-circle/toggle', requireAuth, express.json(), async (req, res) => {
+  const client = await getClientBySlug(req.params.clientSlug);
+  if (!client) return res.status(404).json({error: 'Client not found'});
+  
+  const {enabled} = req.body;
+  
+  await supabase
+    .from('clients')
+    .update({inner_circle_enabled: enabled})
+    .eq('id', client.id);
+  
+  res.json({success: true});
+});
+
+
+
 app.post('/api/proposals/publish-public', express.json({ limit: '5mb' }), (req, res) => {
   try {
     const { html } = req.body;
