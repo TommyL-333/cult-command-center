@@ -232,6 +232,86 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     }
   });
 
+  // ── GET /api/inner-circle/brands ────────────────────────────────────────────
+  // Lists brands with Inner Circle toggled ON. Source of truth: brands.json
+  // (brand.innerCircle flag, toggled from the client portal settings page).
+  // Display metadata (logo/description) merged from a catalog copy — keep in
+  // sync with INNER_CIRCLE_BRANDS in dashboard-server.js (~line 1108).
+  const fs = require('fs');
+  const path = require('path');
+  const IC_DATA_DIR = process.env.DATA_DIR || '/data';
+  const IC_BRANDS_FILE = path.join(IC_DATA_DIR, 'brands.json');
+
+  const IC_CATALOG = [
+    { id: 'trusted-rituals', name: 'Trusted Rituals', logo: '/logos/trusted-rituals.png',
+      description: 'Mullein honey sticks for respiratory health — 2,000mg per stick, Himalayan-sourced. Strong hooks around pollen season, quitting vaping, and daily wellness rituals.' },
+    { id: 'diamandia', name: 'DIAMANDIA', logo: '/logos/diamandia.png',
+      description: 'DIAMANDIA TikTok Shop brand — 25% target collab commission on the hero product.' },
+    { id: 'approved-science', name: 'Approved Science', logo: '/logos/approved-science.png',
+      description: 'Science-backed supplements (Marketily / Lenea). Evidence-led content angles.' },
+    { id: 'alpha-flow', name: 'Alpha Flow', logo: '/logos/alpha-flow.png',
+      description: 'Alpha Flow TikTok Shop brand.' },
+  ];
+
+  function icLoadBrandsFile() {
+    try { return JSON.parse(fs.readFileSync(IC_BRANDS_FILE, 'utf8')); }
+    catch (_) { return null; }
+  }
+
+  function icCatalogFor(name) {
+    const n = String(name || '').toLowerCase().trim();
+    return IC_CATALOG.find((b) => b.name.toLowerCase() === n || b.id === n.replace(/\s+/g, '-')) || null;
+  }
+
+  // Idempotent TEST seed: if brands.json is readable and NO client has Inner
+  // Circle enabled, append one clearly-TEST-prefixed enabled brand so the
+  // selection UI is never empty during E2E testing. Never modifies existing
+  // entries; removable any time (id: test-inner-circle-brand).
+  (function seedTestBrandIfNoneEnabled() {
+    try {
+      const data = icLoadBrandsFile();
+      if (!data || !Array.isArray(data.clients)) return;
+      const anyEnabled = data.clients.some((b) => b && b.innerCircle);
+      const hasTest = data.clients.some((b) => b && b.id === 'test-inner-circle-brand');
+      if (anyEnabled || hasTest) return;
+      data.clients.push({
+        id: 'test-inner-circle-brand',
+        name: 'TEST Inner Circle Brand',
+        innerCircle: true,
+        TEST: true,
+        seededBy: 'sisyphus-e2e',
+        seededAt: new Date().toISOString(),
+        description: 'TEST seed — safe to delete once a real brand toggles Inner Circle on.',
+      });
+      fs.writeFileSync(IC_BRANDS_FILE, JSON.stringify(data, null, 2));
+      console.log('[inner-circle-sqlite] seeded TEST Inner Circle brand (no IC-enabled brands found)');
+    } catch (e) {
+      console.error('[inner-circle-sqlite] TEST brand seed skipped:', e.message);
+    }
+  })();
+
+  app.get('/api/inner-circle/brands', requireSqliteSession, (req, res) => {
+    try {
+      const data = icLoadBrandsFile();
+      const enabled = ((data && data.clients) || []).filter((b) => b && b.innerCircle);
+      const brands = enabled.map((b) => {
+        const cat = icCatalogFor(b.name);
+        return {
+          id: b.id || (cat && cat.id) || String(b.name || '').toLowerCase().trim().replace(/\s+/g, '-'),
+          name: b.name,
+          logo: b.logoUrl || (cat && cat.logo) || null,
+          description: (cat && cat.description) || b.description || '',
+          commission: { targetCollab: 0.5, ads: 0.25 },
+          isTest: !!b.TEST,
+        };
+      });
+      return res.json({ brands, count: brands.length });
+    } catch (e) {
+      console.error('[inner-circle-sqlite] brands failed:', e.message);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  });
+
   // Expose the working session middleware so other routes can adopt it later.
   return { requireSqliteSession };
 };
