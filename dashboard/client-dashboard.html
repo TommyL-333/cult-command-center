@@ -1606,38 +1606,36 @@
     const container = document.getElementById('tasksList');
     
     if (tasks.length === 0) {
-      container.innerHTML = '<div class="tasks-empty">No tasks yet — your account manager will add your onboarding checklist soon.</div>';
+      container.innerHTML = '<div class="empty-state">No tasks yet. Your account manager will add program milestones here.</div>';
       return;
     }
     
     // Sort: In Progress → Open (by updatedAt desc, then createdAt desc) → Done
-    const inProgress = tasks.filter(t => t.status === 'in_progress').sort((a,b) => 
-      new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)
-    );
-    const open = tasks.filter(t => t.status === 'open').sort((a,b) => 
-      new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)
-    );
-    const done = tasks.filter(t => t.status === 'done').sort((a,b) => 
-      new Date(b.updatedAt || b.createdAt) - new Date(a.updatedAt || a.createdAt)
-    );
-    
-    let html = '';
-    
-    // Active tasks (in progress + open)
-    [...inProgress, ...open].forEach(task => {
-      html += renderTaskCard(task, false);
+    const inProgress = tasks.filter(t => t.status === 'in_progress').sort((a, b) => {
+      return (new Date(b.updatedAt || b.createdAt)) - (new Date(a.updatedAt || a.createdAt));
+    });
+    const open = tasks.filter(t => t.status === 'open').sort((a, b) => {
+      return (new Date(b.updatedAt || b.createdAt)) - (new Date(a.updatedAt || a.createdAt));
+    });
+    const done = tasks.filter(t => t.status === 'done').sort((a, b) => {
+      return (new Date(b.updatedAt || b.createdAt)) - (new Date(a.updatedAt || a.createdAt));
     });
     
-    // Done section (collapsed)
+    const sortedTasks = [...inProgress, ...open];
+    
+    let html = sortedTasks.map(task => renderTaskCard(task)).join('');
+    
+    // Add collapsed "Done" section
     if (done.length > 0) {
+      const doneHtml = done.map(task => renderTaskCard(task)).join('');
       html += `
-        <div class="tasks-done-section">
-          <div class="tasks-done-header" onclick="toggleDoneTasks()">
+        <div class="done-section">
+          <div class="done-header" onclick="toggleDoneSection()">
             <span>✓ Completed (${done.length})</span>
-            <span class="tasks-done-toggle" id="doneToggle">▼</span>
+            <span class="done-toggle">▼</span>
           </div>
-          <div class="tasks-done-list" id="doneTasksList" style="display: none;">
-            ${done.map(t => renderTaskCard(t, true)).join('')}
+          <div class="done-tasks" id="doneTasks" style="display: none;">
+            ${doneHtml}
           </div>
         </div>
       `;
@@ -1646,6 +1644,122 @@
     container.innerHTML = html;
   }
   
+  function renderTaskCard(task) {
+    const priorityDots = {
+      high: '<span class="priority-dot priority-high" title="High priority"></span>',
+      medium: '<span class="priority-dot priority-medium" title="Medium priority"></span>',
+      low: '<span class="priority-dot priority-low" title="Low priority"></span>'
+    };
+    
+    const priorityBadge = priorityDots[task.priority] || '';
+    const assigneeInitials = task.assignee ? task.assignee.split(' ').map(n => n[0]).join('').toUpperCase() : '';
+    const lastUpdated = task.updatedAt || task.createdAt;
+    const timeAgo = getRelativeTime(lastUpdated);
+    
+    const statusBadge = task.status === 'in_progress' ? '<span class="task-status-badge in-progress">In Progress</span>' :
+                        task.status === 'done' ? '<span class="task-status-badge done">Done</span>' : '';
+    
+    return `
+      <div class="task-card task-${task.status}">
+        <div class="task-header">
+          <div class="task-title-row">
+            ${priorityBadge}
+            <span class="task-title">${task.title}</span>
+            ${statusBadge}
+          </div>
+          <div class="task-meta">
+            ${assigneeInitials ? `<span class="assignee-badge">${assigneeInitials}</span>` : ''}
+            <span class="task-time">${timeAgo}</span>
+          </div>
+        </div>
+        <div class="task-description">${task.description || ''}</div>
+        <div class="task-actions">
+          <button class="task-comment-btn" onclick="openTaskComment('${task.id || task._id}')">💬 Ask a question</button>
+        </div>
+        <div id="comment-box-${task.id || task._id}" class="task-comment-box" style="display: none;">
+          <textarea id="comment-input-${task.id || task._id}" placeholder="Type your question or comment..."></textarea>
+          <div class="comment-box-actions">
+            <button onclick="sendTaskComment('${task.id || task._id}')">Send</button>
+            <button onclick="closeTaskComment('${task.id || task._id}')">Cancel</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  
+  function getRelativeTime(dateStr) {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    
+    if (diffMins < 1) return 'just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+  }
+  
+  function toggleDoneSection() {
+    const doneTasks = document.getElementById('doneTasks');
+    const toggle = document.querySelector('.done-toggle');
+    if (doneTasks.style.display === 'none') {
+      doneTasks.style.display = 'block';
+      toggle.textContent = '▲';
+    } else {
+      doneTasks.style.display = 'none';
+      toggle.textContent = '▼';
+    }
+  }
+  
+  function openTaskComment(taskId) {
+    document.getElementById('comment-box-' + taskId).style.display = 'block';
+  }
+  
+  function closeTaskComment(taskId) {
+    document.getElementById('comment-box-' + taskId).style.display = 'none';
+    document.getElementById('comment-input-' + taskId).value = '';
+  }
+  
+  async function sendTaskComment(taskId) {
+    const input = document.getElementById('comment-input-' + taskId);
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    try {
+      const res = await fetch('/api/client/task-comment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ taskId, message })
+      });
+      
+      if (res.ok) {
+        closeTaskComment(taskId);
+        showToast('Question sent to your account manager');
+      } else {
+        showToast('Failed to send comment', 'error');
+      }
+    } catch (err) {
+      console.error('Error sending task comment:', err);
+      showToast('Failed to send comment', 'error');
+    }
+  }
+  
+  function showToast(message, type = 'success') {
+    // Simple toast notification
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.classList.add('show'), 10);
+    setTimeout(() => {
+      toast.classList.remove('show');
+      setTimeout(() => toast.remove(), 300);
+    }, 3000);
+  }  
   function renderTaskCard(task, isDone) {
     const priorityDot = {
       high: '<span class="priority-dot high" title="High priority">●</span>',
