@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inner Circle — Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * { 
+      margin: 0; 
+      padding: 0; 
+      box-sizing: border-box; 
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #050508;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Dramatic Corinthian Pillars Background */
+    .pillars {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      opacity: 0.28;
+      z-index: 0;
+      pointer-events: none;
+      perspective: 1000px;
+    }
+
+    .pillar {
+      width: 200px;
+      height: 100%;
+      background: linear-gradient(180deg, 
+        rgba(255, 255, 255, 0.12) 0%, 
+        rgba(255, 255, 255, 0.07) 30%,
+        rgba(255, 255, 255, 0.05) 50%, 
+        rgba(255, 255, 255, 0.07) 70%,
+        rgba(255, 255, 255, 0.10) 100%);
+      border-radius: 8px;
+      box-shadow: 
+        inset 6px 0 24px rgba(255, 255, 255, 0.08),
+        inset -6px 0 24px rgba(0, 0, 0, 0.4),
+        0 0 100px rgba(0, 242, 234, 0.12),
+        0 0 140px rgba(255, 0, 80, 0.08);
+      position: relative;
+      transform: rotateY(-2deg);
+    }
+
+    /* Ornate Corinthian Capital (top) - elaborate acanthus leaf design */
+    .pillar::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 110%;
+      height: 160px;
+      background: 
+        radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, 0.25) 0%, transparent 50%),
+        radial-gradient(ellipse at 30% 50%, rgba(255, 255, 255, 0.15) 0%, transparent 40%),
+        radial-gradient(ellipse at 70% 50%, rgba(255, 255, 255, 0.15) 0%, transparent 40%),
+        linear-gradient(180deg, 
+          rgba(255, 255, 255, 0.35) 0%,
+          rgba(255, 255, 255, 0.25) 20%,
+          rgba(255, 255, 255, 0.18) 50%,
+          rgba(255, 255, 255, 0.10) 80%,
+          transparent 100%);
+      border-radius: 8px 8px 0 0;
+      box-shadow: 
+        inset 0 3px 12px rgba(255, 255, 255, 0.25),
+        inset 0 -2px 8px rgba(0, 0, 0, 0.3),
+        0 6px 24px rgba(0, 242, 234, 0.2);
+      border-top: 4px solid rgba(255, 255, 255, 0.18);
+      border-left: 2px solid rgba(255, 255, 255, 0.06);
+      border-right: 2px solid rgba(0, 0, 0, 0.25);
+    }
+
+    /* Elaborate Corinthian Base (bottom) */
+    .pillar::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 110%;
+      height: 140px;
+      background: 
+        radial-gradient(ellipse at 50% 70%, rgba(255, 255, 255, 0.2) 0%, transparent 50%),
+        linear-gradient(0deg, 
+          rgba(255, 255, 255, 0.28) 0%,
+          rgba(255, 255, 255, 0.18) 30%,
+          rgba(255, 255, 255, 0.10) 70%,
+          transparent 100%);
+      border-radius: 0 0 8px 8px;
+      box-shadow: 
+        inset 0 -3px 12px rgba(255, 255, 255, 0.18),
+        inset 0 2px 8px rgba(0, 0, 0, 0.4),
+        0 -6px 24px rgba(255, 0, 80, 0.15);
+      border-bottom: 4px solid rgba(255, 255, 255, 0.14);
+      border-left: 2px solid rgba(255, 255, 255, 0.06);
+      border-right: 2px solid rgba(0, 0, 0, 0.25);
+    }
+
+    /* Fluting effect (vertical grooves on shaft) */
+    .pillar-inner {
+      position: absolute;
+      top: 180px;
+      bottom: 160px;
+      left: 0;
+      right: 0;
+      background: 
+        repeating-linear-gradient(
+          90deg,
+          transparent 0px,
+          rgba(255, 255, 255, 0.10) 12px,
+          rgba(255, 255, 255, 0.06) 16px,
+          transparent 24px,
+          rgba(0, 0, 0, 0.18) 36px,
+          transparent 48px
+        );
+      box-shadow: 
+        inset 2px 0 8px rgba(255, 255, 255, 0.05),
+        inset -2px 0 8px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Ambient glow */
+    .glow {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(
+        ellipse at center,
+        rgba(0, 242, 234, 0.06) 0%,
+        rgba(255, 0, 80, 0.04) 30%,
+        transparent 70%
+      );
+      filter: blur(80px);
+      z-index: -1;
+    }
+
+    /* Container */
+    .container {
+      width: 100%;
+      max-width: 440px;
+      padding: 24px;
+      position: relative;
+      z-index: 10;
+    }
+
+    /* Glass Card */
+    .card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 24px;
+      padding: 48px 40px;
+      backdrop-filter: blur(30px);
+      box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.6),
+        0 0 80px rgba(0, 242, 234, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    /* Logo */
+    .logo {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .logo h1 {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 36px;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #00f2ea 0%, #ff0050 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+      text-shadow: 0 0 40px rgba(0, 242, 234, 0.3);
+    }
+
+    .logo p {
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 14px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    /* Form */
+    .form-group {
+      margin-bottom: 24px;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.7);
+      margin-bottom: 8px;
+      letter-spacing: 0.02em;
+    }
+
+    input[type="email"],
+    input[type="password"] {
+      width: 100%;
+      padding: 14px 18px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      color: #fff;
+      font-size: 15px;
+      font-family: inherit;
+      transition: all 0.3s ease;
+      outline: none;
+    }
+
+    input[type="email"]:focus,
+    input[type="password"]:focus {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(0, 242, 234, 0.5);
+      box-shadow: 0 0 0 3px rgba(0, 242, 234, 0.1);
+    }
+
+    input::placeholder {
+      color: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Button */
+    .btn {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, #00f2ea 0%, #ff0050 100%);
+      border: none;
+      border-radius: 12px;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      margin-top: 8px;
+      text-transform: uppercase;
+      box-shadow: 0 4px 20px rgba(0, 242, 234, 0.4);
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 28px rgba(0, 242, 234, 0.5);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    /* Footer Link */
+    .footer-link {
+      text-align: center;
+      margin-top: 24px;
+      font-size: 13px;
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    .footer-link a {
+      color: #00f2ea;
+      text-decoration: none;
+      font-weight: 600;
+      transition: color 0.2s ease;
+    }
+
+    .footer-link a:hover {
+      color: #ff0050;
+    }
+  
+    /* Login status messages (wiring contract) */
+    .status { text-align: center; padding: 12px; border-radius: 12px; margin-top: 16px; display: none; font-size: 14px; }
+    .status.error { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.3); color: #fca5a5; }
+    .status.success { background: rgba(34,197,94,.1); border: 1px solid rgba(34,197,94,.3); color: #86efac; }
+  </style>
+</head>
+<body>
+  <!-- Ambient Glow -->
+  <div class="glow"></div>
+
+  <!-- Ornate Corinthian Pillars Background -->
+  <div class="pillars">
+    <div class="pillar"><div class="pillar-inner"></div></div>
+    <div class="pillar"><div class="pillar-inner"></div></div>
+    <div class="pillar"><div class="pillar-inner"></div></div>
+    <div class="pillar"><div class="pillar-inner"></div></div>
+    <div class="pillar"><div class="pillar-inner"></div></div>
+  </div>
+
+  <div class="container">
+    <div class="card">
+      <div class="logo">
+        <h1>INNER CIRCLE</h1>
+        <p>Cult Content</p>
+      </div>
+
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" placeholder="you@example.com" required>
+        </div>
+
+        <div class="form-group">
+          <label for="password">Password <span style="font-weight:400;color:rgba(255,255,255,0.45)">(TikTok username or last 4 of phone)</span></label>
+          <input type="password" id="password" placeholder="••••••••" required>
+        </div>
+
+        <button type="submit" class="btn">Enter</button>
+        <div id="status" class="status"></div>
+      </form>
+
+      <div class="footer-link">
+        Don't have access? <a href="mailto:tommy@cultcontent.cc">Request invitation</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const status = document.getElementById('status');
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+
+      status.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/inner-circle/login', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({email, password})
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          if (data.token) localStorage.setItem('inner_circle_token', data.token);
+          status.className = 'status success';
+          status.textContent = 'Login successful! Redirecting...';
+          status.style.display = 'block';
+          setTimeout(() => window.location.href = '/inner-circle/dashboard', 1000);
+        } else {
+          status.className = 'status error';
+          status.textContent = data.error || 'Login failed';
+          status.style.display = 'block';
+        }
+      } catch (err) {
+        status.className = 'status error';
+        status.textContent = 'Network error. Please try again.';
+        status.style.display = 'block';
+      }
+    });
+  </script>
+</body>
+</html>
