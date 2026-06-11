@@ -13461,6 +13461,7 @@ app.listen(CFG.port, () => {
       'the perfect haircare': { contractValue: 1500, commissionRate: 0.1 },
       'yuglo':                { contractValue: 1500, commissionRate: 0.1, billingEmail: 'evaaadee1@gmail.com', proratedFirstRetainer: 1150 },
       'roots by ga':          { contractValue: 1500, commissionRate: 0.1, billingEmail: 'carla@rootsbyga.com', proratedFirstRetainer: 950 },
+      'd noor':               { contractValue: 1500, commissionRate: 0.1, billingEmail: 'afaneh0407@gmail.com', proratedFirstRetainer: 950 },
     };
     const bd = loadBrands(); let dirty = false;
     for (const client of (bd.clients || [])) {
@@ -13503,6 +13504,36 @@ app.listen(CFG.port, () => {
     }
     if (dirty) saveBrands(bd);
   } catch(e) { console.error('[startup] brand defaults backfill error:', e.message); }
+
+  // Add D Noor if not yet in brands.json
+  try {
+    const bd = loadBrands();
+    const exists = (bd.clients || []).some(b => (b.name || '').toLowerCase().trim() === 'd noor');
+    if (!exists) {
+      bd.clients = bd.clients || [];
+      bd.clients.push({
+        id:                    'dnoor001',
+        createdAt:             '2026-06-12T00:00:00.000Z',
+        name:                  'D Noor',
+        billingEmail:          'afaneh0407@gmail.com',
+        contractValue:         1500,
+        commissionRate:        0.10,
+        proratedFirstRetainer: 950,
+        pipelineStage:         'Contract Signed',
+        startDate:             '2026-06-12',
+        contacts:              'Sami Afaneh (afaneh0407@gmail.com)',
+        industry:              'Skincare',
+        products:              'TBD',
+        audience:              'TBD',
+        voice:                 'TBD',
+        contentPillars:        'TBD',
+        tiktokHandle:          'TBD',
+        cta:                   'TBD',
+      });
+      saveBrands(bd);
+      console.log('[startup] Added D Noor to brands.json');
+    }
+  } catch(e) { console.error('[startup] D Noor setup error:', e.message); }
 
   // Add Roots by GA if not yet in brands.json
   try {
