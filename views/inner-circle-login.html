@@ -22,7 +22,9 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      overflow: hidden;
+      overflow-x: hidden;
+      overflow-y: auto;
+      padding: 40px 16px;
       position: relative;
     }
 
@@ -378,7 +380,7 @@
           <div class="form-group">
             <label for="password">Password <span style="font-weight:400;color:rgba(255,255,255,0.45)">(TikTok username or last 4 of phone)</span></label>
             <input type="password" id="password" placeholder="••••••••" required>
-            <span class="hint">Password = your TikTok handle</span>
+            
           </div>
 
           <button type="submit" class="btn">Enter</button>
@@ -402,7 +404,11 @@
           <div class="form-group">
             <label for="signupHandle">TikTok Handle</label>
             <input type="text" id="signupHandle" placeholder="@yourhandle" required>
-            <span class="hint">This becomes your password</span>
+          </div>
+
+          <div class="form-group">
+            <label for="signupPassword">Password</label>
+            <input type="password" id="signupPassword" placeholder="At least 8 characters" minlength="8" required>
           </div>
 
           <div class="form-group">
@@ -482,7 +488,15 @@
       const name = document.getElementById('signupName').value.trim();
       const email = document.getElementById('signupEmail').value.trim();
       const tiktokHandle = document.getElementById('signupHandle').value.trim();
+      const password = document.getElementById('signupPassword').value;
       const phone = document.getElementById('signupPhone').value.trim();
+
+      if (password.length < 8) {
+        status.className = 'status error';
+        status.textContent = 'Password must be at least 8 characters';
+        status.style.display = 'block';
+        return;
+      }
 
       status.style.display = 'none';
 
@@ -490,7 +504,7 @@
         const res = await fetch('/api/inner-circle/signup', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({name, email, tiktokHandle, phone})
+          body: JSON.stringify({name, email, tiktokHandle, password, phone})
         });
 
         const data = await res.json();
@@ -503,7 +517,7 @@
           setTimeout(() => window.location.href = '/inner-circle/dashboard', 1000);
         } else if (res.status === 409) {
           status.className = 'status error';
-          status.textContent = data.error || 'An account with this email already exists — try logging in instead. Password = your TikTok handle.';
+          status.textContent = data.error || 'An account with this email already exists — try logging in instead.';
           status.style.display = 'block';
         } else {
           status.className = 'status error';
