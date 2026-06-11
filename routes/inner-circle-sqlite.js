@@ -455,8 +455,6 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       description: 'DIAMANDIA TikTok Shop brand — 25% target collab commission on the hero product.' },
     { id: 'approved-science', name: 'Approved Science', logo: '/logos/approved-science.png', website: 'https://www.approvedscience.com', brandColor: '#1188DD',
       description: 'Science-backed supplements (Marketily / Lenea). Evidence-led content angles.' },
-    { id: 'alpha-flow', name: 'Alpha Flow', logo: null, website: null, brandColor: '#A78BFA',
-      description: 'Alpha Flow TikTok Shop brand.' },
     { id: 'yuglo', name: 'Yuglo', logo: null, website: 'https://yugloskin.com', brandColor: null,
       description: 'Yuglo skincare — TikTok Shop brand.' },
     { id: 'roots-by-ga', name: 'Roots by GA', logo: null, website: 'https://www.rootsbyga.com', brandColor: null,
