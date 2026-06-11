@@ -384,6 +384,27 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     }
   });
 
+  // ── GET /api/inner-circle/recordings ────────────────────────────────────────
+  // Shadows the legacy supabase-backed handler in dashboard-server.js (~line 1185),
+  // which 500s in production (supabase client is undefined there). This module
+  // mounts earlier in registration order, so this SQLite handler wins.
+  app.get('/api/inner-circle/recordings', requireSqliteSession, (req, res) => {
+    try {
+      const recordings = stmts.recordingsList.all().map((r) => ({
+        id: r.id,
+        title: r.title,
+        date: r.scheduled_at ? String(r.scheduled_at).slice(0, 10) : '',
+        duration: '',
+        url: r.recording_url,
+        attended: null,
+      }));
+      return res.json({ recordings });
+    } catch (e) {
+      console.error('[inner-circle-sqlite] recordings failed:', e.message);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  });
+
   // ── GET /api/inner-circle/brands ────────────────────────────────────────────
   // Lists brands with Inner Circle toggled ON. Source of truth: brands.json
   // (brand.innerCircle flag, toggled from the client portal settings page).
