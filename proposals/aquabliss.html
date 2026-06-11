@@ -227,7 +227,7 @@ footer p{font-size:.69rem;color:var(--muted);}
           <li>Hair and skin wellness from water quality is exploding on TikTok — shower filter content (before/after hair texture, skin clarity, scalp health) regularly hits millions of views. Jolie cracked this playbook at $150+; Aquabliss wins on price, credibility, and 80,000 reviews. TikTok list price raised to protect Amazon parity while enabling aggressive promotionsd</li>
           <li>At $40 price point, every sale earns creators $6–$8 — enough to motivate real content without breaking unit economics</li>
           <li>Before-and-after health content drives outsized engagement — the product story tells itself on camera</li>
-          <li>TikTok Shop affiliate model: creators earn 20% per sale, you only pay on performance — zero upfront media buy</li>
+          <li>TikTok Shop affiliate model: creators earn 15% per sale, you only pay on performance — zero upfront media buy</li>
           <li>Amazon reviews provide the social proof TikTok buyers cross-reference before purchasing</li>
         </ul>
       </div>
@@ -255,7 +255,7 @@ footer p{font-size:.69rem;color:var(--muted);}
             <li><strong>AOV bundles:</strong> A 2-unit pack at ~$130 list roughly doubles net contribution per transaction — the single highest-leverage lever</li>
             <li><strong>Organic-first:</strong> Every sale driven by an organic affiliate post costs $0 in ad spend — ads should amplify proven content, not substitute for it</li>
             <li><strong>Promo discipline:</strong> Reserve flash sales for strategic windows (platform events, new creator waves) rather than running constant discounts</li>
-            <li><strong>Creator quality:</strong> One creator driving $10k/month at 20% commission generates more profit than 50 creators who post once and stop</li>
+            <li><strong>Creator quality:</strong> One creator driving $10k/month at 15% open commission generates more profit than 50 creators who post once and stop</li>
           </ul>
         </div>
         <div class="callout" id="margin-callout"></div>
@@ -308,7 +308,7 @@ footer p{font-size:.69rem;color:var(--muted);}
         <div class="dcard-icon">💰</div>
         <div class="dcard-title">Affiliate Incentive Program</div>
         <ul class="ditems">
-          <li>Commission structure setup and management (20% open, 25% target collab)</li>
+          <li>Commission structure setup and management (15% open, 25% target collab)</li>
           <li>$100 cash bonus at first $100 in sales — activates early momentum</li>
           <li>$100 content bonus at 10 videos posted — drives post volume</li>
           <li>Monthly leaderboard — $500 bonus for top affiliate</li>
@@ -408,7 +408,7 @@ footer p{font-size:.69rem;color:var(--muted);}
           <ul class="blist">
             <li>TikTok Shop account created, Shopify + Judge Me integration connected</li>
             <li>80,000+ reviews imported via Reviews.io — instant product credibility</li>
-            <li>Affiliate program live — 20% open commission, 25% target collab, target collab invites going out</li>
+            <li>Affiliate program live — 15% open commission, 25% target collab, target collab invites going out</li>
             <li>Join Brands + Sellico campaigns activated — early order volume, review velocity, and UGC incoming</li>
             <li>First 50–80 videos live by end of month — identify winning hooks</li>
           </ul>
@@ -557,7 +557,7 @@ const M = {
   cogs:           8,
   shipping:       7,
   tikTokPct:      0.06,
-  affCommPct:     0.20,
+  affCommPct:     0.15,
   adSpendPct:     0.06,
   monthlySamples: 200,
   affBonusMid:    4500,
@@ -610,7 +610,7 @@ const econRows = [
   {l:"COGS", v:-M.cogs, p:-(M.cogs/M.sellingPrice), c:"var(--red)"},
   {l:"Shipping", v:-M.shipping, p:-(M.shipping/M.sellingPrice), c:"var(--red)"},
   {l:"TikTok Platform Fee (6% of selling)", v:-M.tikTokFee, p:-M.tikTokPct, c:"var(--red)"},
-  {l:"Affiliate Commission (20% of selling)", v:-M.affComm, p:-M.affCommPct, c:"var(--red)"},
+  {l:"Affiliate Commission (15% of selling)", v:-M.affComm, p:-M.affCommPct, c:"var(--red)"},
   {l:"Gross Profit / Order", v:M.grossPerOrder, p:M.grossMarginPct, c:"var(--green)", bold:true, row:"result-row"},
   {h:"After Ad Spend"},
   {l:"Ad Spend (6% of GMV — GMV Max)", v:-(M.sellingPrice*M.adSpendPct), p:-M.adSpendPct, c:"var(--yellow)"},
