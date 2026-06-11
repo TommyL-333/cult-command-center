@@ -449,13 +449,13 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
   const IC_BRANDS_FILE = path.join(IC_DATA_DIR, 'brands.json');
 
   const IC_CATALOG = [
-    { id: 'trusted-rituals', name: 'Trusted Rituals', logo: '/logos/trusted-rituals.png',
+    { id: 'trusted-rituals', name: 'Trusted Rituals', logo: '/logos/trusted-rituals-white.svg', website: 'https://trustedrituals.com', brandColor: '#17A87B',
       description: 'Mullein honey sticks for respiratory health — 2,000mg per stick, Himalayan-sourced. Strong hooks around pollen season, quitting vaping, and daily wellness rituals.' },
-    { id: 'diamandia', name: 'DIAMANDIA', logo: '/logos/diamandia.png',
+    { id: 'diamandia', name: 'DIAMANDIA', logo: '/logos/diamandia-white.png', website: 'https://diamandia.com', brandColor: '#E5E4E2',
       description: 'DIAMANDIA TikTok Shop brand — 25% target collab commission on the hero product.' },
-    { id: 'approved-science', name: 'Approved Science', logo: '/logos/approved-science.png',
+    { id: 'approved-science', name: 'Approved Science', logo: '/logos/approved-science.png', website: 'https://www.approvedscience.com', brandColor: '#1188DD',
       description: 'Science-backed supplements (Marketily / Lenea). Evidence-led content angles.' },
-    { id: 'alpha-flow', name: 'Alpha Flow', logo: '/logos/alpha-flow.png',
+    { id: 'alpha-flow', name: 'Alpha Flow', logo: null, website: null, brandColor: '#A78BFA',
       description: 'Alpha Flow TikTok Shop brand.' },
   ];
 
@@ -507,6 +507,8 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
           name: b.name,
           logo: b.logoUrl || (cat && cat.logo) || null,
           description: (cat && cat.description) || b.description || '',
+          website: b.website || (cat && cat.website) || null,
+          brandColor: b.brandColor || (cat && cat.brandColor) || null,
           commission: { targetCollab: 0.5, ads: 0.25 },
           isTest: !!b.TEST,
         };
@@ -518,7 +520,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     }
   });
 
-  // ── POST /api/inner-circle/select-brand ─────────────────────────────────────
+  // ── POST /api/inner-circle/select-brand ────────────���────────────────────────
   // Creator selects an Inner Circle brand. Persists the creator→brand link in
   // inner_circle_brand_assignments (upsert: re-selecting reactivates), writes a
   // durable jsonl log, then notifies the Lark alert channel (relay primary,
