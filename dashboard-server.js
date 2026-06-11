@@ -10965,6 +10965,23 @@ app.get('/api/fireflies/meetings', async (req, res) => {
         summary:      m.summary ? { short_summary: m.summary } : {},
       });
     }
+    // Merge in Meeting Intel records (webhook-delivered) — guarantees picker shows
+    // meetings even when the Fireflies list API fails to index them
+    try {
+      const intel = loadMeetingIntel();
+      for (const m of (intel.meetings || [])) {
+        const ffId = m.meetingId;
+        if (!ffId || seen.has(ffId)) continue;
+        seen.add(ffId);
+        allMeetings.push({
+          id:           ffId,
+          title:        m.title || 'Untitled Meeting',
+          date:         typeof m.date === 'number' ? m.date : (m.date ? new Date(m.date).getTime() : 0),
+          participants: m.participants || [],
+          summary:      m.analysis?.meetingSummary ? { short_summary: m.analysis.meetingSummary } : {},
+        });
+      }
+    } catch (e) { console.error('[fireflies/meetings] intel merge:', e.message); }
     // Sort newest first
     allMeetings.sort((a, b) => (b.date || 0) - (a.date || 0));
     const meetings = allMeetings.map((t, i) => ({ ...t, _idx: i }));
