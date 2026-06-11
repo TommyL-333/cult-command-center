@@ -48,6 +48,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     // Phone column (not in the original schema) — idempotent migration for the
     // signup flow. SQLite throws if the column already exists; that's fine.
     try { db.exec(`ALTER TABLE inner_circle_creators ADD COLUMN phone TEXT`); } catch (_) { /* column exists */ }
+    try { db.exec(`ALTER TABLE inner_circle_creators ADD COLUMN password_hash TEXT`); } catch (_) { /* column exists */ }
 
     stmts = {
       creatorByEmail: db.prepare(
@@ -60,8 +61,11 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       ),
       insertCreatorFull: db.prepare(
         `INSERT INTO inner_circle_creators
-           (creator_handle, creator_name, email, phone, status, cohort_start, cohort_end, videos_goal, commission_rate, ads_commission_rate)
-         VALUES (?, ?, ?, ?, 'active', ?, ?, 15, 0.50, 0.25)`
+           (creator_handle, creator_name, email, phone, password_hash, status, cohort_start, cohort_end, videos_goal, commission_rate, ads_commission_rate)
+         VALUES (?, ?, ?, ?, ?, 'active', ?, ?, 15, 0.50, 0.25)`
+      ),
+      setPassword: db.prepare(
+        `UPDATE inner_circle_creators SET password_hash = ? WHERE id = ?`
       ),
       insertSession: db.prepare(
         `INSERT INTO inner_circle_sessions (token, creator_id, expires_at) VALUES (?, ?, ?)`
@@ -185,6 +189,21 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     return Math.ceil((to.getTime() - from.getTime()) / 86400000);
   }
 
+  // Password hashing — scrypt with per-user salt, stored as "salt:hexhash"
+  function hashPassword(password) {
+    const salt = crypto.randomBytes(16).toString('hex');
+    const hash = crypto.scryptSync(String(password), salt, 64).toString('hex');
+    return salt + ':' + hash;
+  }
+  function verifyPassword(password, stored) {
+    if (!stored || !stored.includes(':')) return false;
+    const [salt, hash] = stored.split(':');
+    try {
+      const candidate = crypto.scryptSync(String(password), salt, 64).toString('hex');
+      return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(candidate, 'hex'));
+    } catch (_) { return false; }
+  }
+
   // ── POST /api/inner-circle/login ────────────────────────────────────────────
   // Same contract as the legacy route: {email, password}, where password is the
   // creator's TikTok handle (with or without @) or last 4 digits of phone.
@@ -198,9 +217,19 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       if (!creator) return res.status(401).json({ error: 'Invalid credentials' });
 
       const pw = String(password).trim();
-      const handle = creator.creator_handle || '';
-      const handleNoAt = handle.replace(/^@/, '');
-      const valid = pw === handle || pw === handleNoAt || pw === '@' + handleNoAt;
+      let valid = false;
+      if (creator.password_hash) {
+        valid = verifyPassword(pw, creator.password_hash);
+      } else {
+        // Legacy fallback: accounts created before real passwords used the TikTok handle.
+        const handle = creator.creator_handle || '';
+        const handleNoAt = handle.replace(/^@/, '');
+        valid = pw === handle || pw === handleNoAt || pw === '@' + handleNoAt;
+        // Upgrade path: first successful legacy login sets their handle-password as a real hash
+        if (valid) {
+          try { stmts.setPassword.run(hashPassword(pw), creator.id); } catch (_) {}
+        }
+      }
       if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
 
       const token = crypto.randomBytes(32).toString('hex');
@@ -244,11 +273,15 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       const body = req.body || {};
       const name = String(body.name || '').trim();
       const email = String(body.email || '').trim().toLowerCase();
-      const rawHandle = String(body.tiktok_handle || '').trim();
+      const rawHandle = String(body.tiktok_handle || body.tiktokHandle || body.handle || '').trim();
+      const password = String(body.password || '').trim();
       const phone = body.phone != null && String(body.phone).trim() !== '' ? String(body.phone).trim() : null;
 
       if (!name || !email || !rawHandle) {
-        return res.status(400).json({ error: 'name, email and tiktok_handle are required' });
+        return res.status(400).json({ error: 'Name, email and TikTok handle are required' });
+      }
+      if (!password || password.length < 8) {
+        return res.status(400).json({ error: 'Password must be at least 8 characters' });
       }
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         return res.status(400).json({ error: 'Invalid email address' });
@@ -259,11 +292,11 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
 
       const existing = stmts.creatorByEmailAny.get(email);
       if (existing) {
-        return res.status(409).json({ error: 'Account exists — log in with your TikTok handle as password' });
+        return res.status(409).json({ error: 'An account with this email already exists — try logging in instead' });
       }
 
       const today = new Date().toISOString().slice(0, 10);
-      const info = stmts.insertCreatorFull.run(handle, name, email, phone, today, IC_COHORT_END);
+      const info = stmts.insertCreatorFull.run(handle, name, email, phone, hashPassword(password), today, IC_COHORT_END);
       const creatorId = Number(info.lastInsertRowid);
 
       const token = crypto.randomBytes(32).toString('hex');
