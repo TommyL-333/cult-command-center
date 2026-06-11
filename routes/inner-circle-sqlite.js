@@ -45,9 +45,23 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       CREATE INDEX IF NOT EXISTS idx_ic_sessions_creator ON inner_circle_sessions(creator_id);
     `);
 
+    // Phone column (not in the original schema) — idempotent migration for the
+    // signup flow. SQLite throws if the column already exists; that's fine.
+    try { db.exec(`ALTER TABLE inner_circle_creators ADD COLUMN phone TEXT`); } catch (_) { /* column exists */ }
+
     stmts = {
       creatorByEmail: db.prepare(
         `SELECT * FROM inner_circle_creators WHERE lower(email) = lower(?) AND status = 'active'`
+      ),
+      // Status-agnostic email lookup — duplicate check on signup must catch
+      // paused/removed accounts too, not just active ones.
+      creatorByEmailAny: db.prepare(
+        `SELECT * FROM inner_circle_creators WHERE lower(email) = lower(?)`
+      ),
+      insertCreatorFull: db.prepare(
+        `INSERT INTO inner_circle_creators
+           (creator_handle, creator_name, email, phone, status, cohort_start, cohort_end, videos_goal, commission_rate, ads_commission_rate)
+         VALUES (?, ?, ?, ?, 'active', ?, ?, 15, 0.50, 0.25)`
       ),
       insertSession: db.prepare(
         `INSERT INTO inner_circle_sessions (token, creator_id, expires_at) VALUES (?, ?, ?)`
@@ -212,6 +226,87 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       });
     } catch (e) {
       console.error('[inner-circle-sqlite] login failed:', e.message);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  });
+
+  // ── POST /api/inner-circle/signup ───────────────────────────────────────────
+  // Create Account flow. Body: {name, email, tiktok_handle, phone?}.
+  // Stores creator_handle WITH a leading '@' — same format as existing rows;
+  // login accepts the handle with or without '@' as the password either way.
+  // Cohort 1 runs through end of July (see Active Context).
+  const IC_COHORT_END = '2026-07-31';
+  const IC_SIGNUP_DM_OPEN_ID = 'ou_c8f157f2f18a8c4ffe6a20d3971348e1';
+
+  app.post('/api/inner-circle/signup', express.json(), (req, res) => {
+    if (dbError) return res.status(503).json({ error: 'Inner Circle data layer unavailable' });
+    try {
+      const body = req.body || {};
+      const name = String(body.name || '').trim();
+      const email = String(body.email || '').trim().toLowerCase();
+      const rawHandle = String(body.tiktok_handle || '').trim();
+      const phone = body.phone != null && String(body.phone).trim() !== '' ? String(body.phone).trim() : null;
+
+      if (!name || !email || !rawHandle) {
+        return res.status(400).json({ error: 'name, email and tiktok_handle are required' });
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return res.status(400).json({ error: 'Invalid email address' });
+      }
+      const handleNoAt = rawHandle.replace(/^@+/, '');
+      if (!handleNoAt) return res.status(400).json({ error: 'Invalid TikTok handle' });
+      const handle = '@' + handleNoAt;
+
+      const existing = stmts.creatorByEmailAny.get(email);
+      if (existing) {
+        return res.status(409).json({ error: 'Account exists — log in with your TikTok handle as password' });
+      }
+
+      const today = new Date().toISOString().slice(0, 10);
+      const info = stmts.insertCreatorFull.run(handle, name, email, phone, today, IC_COHORT_END);
+      const creatorId = Number(info.lastInsertRowid);
+
+      const token = crypto.randomBytes(32).toString('hex');
+      const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        .toISOString().replace('T', ' ').slice(0, 19); // SQLite datetime format
+      stmts.insertSession.run(token, creatorId, expiresAt);
+
+      res.cookie('ic_session', token, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'lax',
+        maxAge: 30 * 24 * 60 * 60 * 1000,
+      });
+
+      // Fire-and-forget Lark notifications — a Lark failure must never block signup.
+      try {
+        const text = `🆕 Inner Circle Signup: ${name} (@${handleNoAt}) — ${email}`;
+        icNotifyAlertChannel(text)
+          .catch((e) => console.error('[inner-circle-sqlite] signup alert notify failed:', e.message));
+        icNotifyDM(IC_SIGNUP_DM_OPEN_ID, text)
+          .catch((e) => console.error('[inner-circle-sqlite] signup DM notify failed:', e.message));
+      } catch (e) {
+        console.error('[inner-circle-sqlite] signup notify dispatch failed:', e.message);
+      }
+
+      console.log(`[inner-circle-sqlite] signup: ${name} (${handle}) <${email}> id=${creatorId}`);
+      return res.json({
+        success: true,
+        token,
+        creator: {
+          id: creatorId,
+          name,
+          email,
+          tiktok_handle: handle,
+          cohort_start: today,
+          cohort_end: IC_COHORT_END,
+          videos_goal: 15,
+          commission_rate: 0.5,
+          ads_commission_rate: 0.25,
+        },
+      });
+    } catch (e) {
+      console.error('[inner-circle-sqlite] signup failed:', e.message);
       return res.status(500).json({ error: 'Server error' });
     }
   });
@@ -420,6 +515,27 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       console.error('[inner-circle-sqlite] direct chat notify failed:', e.response?.data || e.message);
     }
     return { notified: false, via: null };
+  }
+
+  // Direct Lark DM to a user open_id (used by signup notify). Function
+  // declaration — hoisted, so routes registered earlier can call it.
+  async function icNotifyDM(openId, text) {
+    let axios;
+    try { axios = require('axios'); }
+    catch (e) { console.error('[inner-circle-sqlite] axios unavailable:', e.message); return { notified: false }; }
+    try {
+      const token = await icGetLarkToken(axios);
+      if (!token || !openId) return { notified: false };
+      await axios.post(
+        'https://open.larksuite.com/open-apis/im/v1/messages?receive_id_type=open_id',
+        { receive_id: openId, msg_type: 'text', content: JSON.stringify({ text }) },
+        { headers: { Authorization: `Bearer ${token}` }, timeout: 8000 }
+      );
+      return { notified: true };
+    } catch (e) {
+      console.error('[inner-circle-sqlite] DM notify failed:', e.response?.data || e.message);
+      return { notified: false };
+    }
   }
 
   app.post('/api/inner-circle/select-brand', requireSqliteSession, express.json(), async (req, res) => {
