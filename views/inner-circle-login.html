@@ -205,6 +205,40 @@
       text-transform: uppercase;
     }
 
+    /* Tab Toggle (Login / Create Account) */
+    .tab-toggle {
+      display: flex;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 4px;
+      margin-bottom: 28px;
+    }
+
+    .tab-toggle button {
+      flex: 1;
+      padding: 12px;
+      background: transparent;
+      border: none;
+      border-radius: 9px;
+      color: rgba(255, 255, 255, 0.5);
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .tab-toggle button.active {
+      background: linear-gradient(135deg, #00f2ea 0%, #ff0050 100%);
+      color: #fff;
+      box-shadow: 0 2px 12px rgba(0, 242, 234, 0.3);
+    }
+
+    .form-panel { display: none; }
+    .form-panel.active { display: block; }
+
     /* Form */
     .form-group {
       margin-bottom: 24px;
@@ -220,7 +254,9 @@
     }
 
     input[type="email"],
-    input[type="password"] {
+    input[type="password"],
+    input[type="text"],
+    input[type="tel"] {
       width: 100%;
       padding: 14px 18px;
       background: rgba(255, 255, 255, 0.05);
@@ -234,7 +270,9 @@
     }
 
     input[type="email"]:focus,
-    input[type="password"]:focus {
+    input[type="password"]:focus,
+    input[type="text"]:focus,
+    input[type="tel"]:focus {
       background: rgba(255, 255, 255, 0.08);
       border-color: rgba(0, 242, 234, 0.5);
       box-shadow: 0 0 0 3px rgba(0, 242, 234, 0.1);
@@ -242,6 +280,13 @@
 
     input::placeholder {
       color: rgba(255, 255, 255, 0.3);
+    }
+
+    .hint {
+      display: block;
+      margin-top: 6px;
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.45);
     }
 
     /* Button */
@@ -316,20 +361,59 @@
         <p>Cult Content</p>
       </div>
 
-      <form id="loginForm">
-        <div class="form-group">
-          <label for="email">Email</label>
-          <input type="email" id="email" placeholder="you@example.com" required>
-        </div>
+      <!-- Login / Create Account Tab Toggle -->
+      <div class="tab-toggle">
+        <button type="button" id="tabLogin" class="active">Login</button>
+        <button type="button" id="tabSignup">Create Account</button>
+      </div>
 
-        <div class="form-group">
-          <label for="password">Password <span style="font-weight:400;color:rgba(255,255,255,0.45)">(TikTok username or last 4 of phone)</span></label>
-          <input type="password" id="password" placeholder="••••••••" required>
-        </div>
+      <!-- Login Panel -->
+      <div id="loginPanel" class="form-panel active">
+        <form id="loginForm">
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" placeholder="you@example.com" required>
+          </div>
 
-        <button type="submit" class="btn">Enter</button>
-        <div id="status" class="status"></div>
-      </form>
+          <div class="form-group">
+            <label for="password">Password <span style="font-weight:400;color:rgba(255,255,255,0.45)">(TikTok username or last 4 of phone)</span></label>
+            <input type="password" id="password" placeholder="••••••••" required>
+            <span class="hint">Password = your TikTok handle</span>
+          </div>
+
+          <button type="submit" class="btn">Enter</button>
+          <div id="status" class="status"></div>
+        </form>
+      </div>
+
+      <!-- Create Account Panel -->
+      <div id="signupPanel" class="form-panel">
+        <form id="signupForm">
+          <div class="form-group">
+            <label for="signupName">Name</label>
+            <input type="text" id="signupName" placeholder="Your full name" required>
+          </div>
+
+          <div class="form-group">
+            <label for="signupEmail">Email</label>
+            <input type="email" id="signupEmail" placeholder="you@example.com" required>
+          </div>
+
+          <div class="form-group">
+            <label for="signupHandle">TikTok Handle</label>
+            <input type="text" id="signupHandle" placeholder="@yourhandle" required>
+            <span class="hint">This becomes your password</span>
+          </div>
+
+          <div class="form-group">
+            <label for="signupPhone">Phone <span style="font-weight:400;color:rgba(255,255,255,0.45)">(optional)</span></label>
+            <input type="tel" id="signupPhone" placeholder="+1 (555) 000-0000">
+          </div>
+
+          <button type="submit" class="btn">Create Account</button>
+          <div id="signupStatus" class="status"></div>
+        </form>
+      </div>
 
       <div class="footer-link">
         Don't have access? <a href="mailto:tommy@cultcontent.cc">Request invitation</a>
@@ -338,6 +422,24 @@
   </div>
 
   <script>
+    // Tab toggle
+    const tabLogin = document.getElementById('tabLogin');
+    const tabSignup = document.getElementById('tabSignup');
+    const loginPanel = document.getElementById('loginPanel');
+    const signupPanel = document.getElementById('signupPanel');
+
+    function showTab(tab) {
+      const isLogin = tab === 'login';
+      tabLogin.classList.toggle('active', isLogin);
+      tabSignup.classList.toggle('active', !isLogin);
+      loginPanel.classList.toggle('active', isLogin);
+      signupPanel.classList.toggle('active', !isLogin);
+    }
+
+    tabLogin.addEventListener('click', () => showTab('login'));
+    tabSignup.addEventListener('click', () => showTab('signup'));
+
+    // Login
     document.getElementById('loginForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const status = document.getElementById('status');
@@ -364,6 +466,48 @@
         } else {
           status.className = 'status error';
           status.textContent = data.error || 'Login failed';
+          status.style.display = 'block';
+        }
+      } catch (err) {
+        status.className = 'status error';
+        status.textContent = 'Network error. Please try again.';
+        status.style.display = 'block';
+      }
+    });
+
+    // Create Account
+    document.getElementById('signupForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const status = document.getElementById('signupStatus');
+      const name = document.getElementById('signupName').value.trim();
+      const email = document.getElementById('signupEmail').value.trim();
+      const tiktokHandle = document.getElementById('signupHandle').value.trim();
+      const phone = document.getElementById('signupPhone').value.trim();
+
+      status.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/inner-circle/signup', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({name, email, tiktokHandle, phone})
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          if (data.token) localStorage.setItem('inner_circle_token', data.token);
+          status.className = 'status success';
+          status.textContent = 'Account created! Redirecting...';
+          status.style.display = 'block';
+          setTimeout(() => window.location.href = '/inner-circle/dashboard', 1000);
+        } else if (res.status === 409) {
+          status.className = 'status error';
+          status.textContent = data.error || 'An account with this email already exists — try logging in instead. Password = your TikTok handle.';
+          status.style.display = 'block';
+        } else {
+          status.className = 'status error';
+          status.textContent = data.error || 'Signup failed. Please try again.';
           status.style.display = 'block';
         }
       } catch (err) {
