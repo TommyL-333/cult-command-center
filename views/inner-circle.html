@@ -534,6 +534,140 @@
     }
     .play-btn:hover { background: #00f2ea; color: #161823; box-shadow: 0 0 20px rgba(0,242,234,0.5); }
     .empty-note { color: #9ca3af; }
+
+    /* ── Brand selection cards: responsive grid, logos, brand colors, websites ── */
+    #brands-container {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 28px;
+    }
+    @media (min-width: 768px) {
+      #brands-container { grid-template-columns: repeat(2, 1fr); }
+    }
+    .brand-card {
+      --brand-color: #00f2ea;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-top: 3px solid var(--brand-color);
+      border-radius: 20px;
+      padding: 32px 28px;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: 0 0 44px -20px var(--brand-color), 0 12px 32px rgba(0, 0, 0, 0.35);
+      transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      opacity: 0;
+      animation: fadeInUp 0.8s ease-out forwards;
+    }
+    .brand-card:nth-child(odd) { animation-delay: 0.1s; }
+    .brand-card:nth-child(even) { animation-delay: 0.2s; }
+    .brand-card:hover {
+      transform: translateY(-6px);
+      border-color: var(--brand-color);
+      box-shadow: 0 0 60px -16px var(--brand-color), 0 20px 48px rgba(0, 0, 0, 0.5);
+    }
+    .brand-card.selected {
+      border: 2px solid var(--brand-color);
+      border-top-width: 3px;
+    }
+    .brand-card.selected::after {
+      content: '✓';
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      background: var(--brand-color);
+      color: #161823;
+      font-weight: 900;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 18px var(--brand-color);
+    }
+    .brand-logo-wrap {
+      height: 72px;
+      display: flex;
+      align-items: center;
+      margin-bottom: 18px;
+    }
+    .brand-logo {
+      max-height: 56px;
+      max-width: 75%;
+      object-fit: contain;
+      display: block;
+    }
+    .brand-logo-fallback {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--brand-color), rgba(255, 255, 255, 0.15));
+      color: #161823;
+      font-family: 'Montserrat', sans-serif;
+      font-weight: 900;
+      font-size: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 0 24px -6px var(--brand-color);
+    }
+    .brand-name {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+    .brand-desc {
+      color: rgba(255, 255, 255, 0.55);
+      font-size: 14px;
+      line-height: 1.6;
+      margin-bottom: 16px;
+    }
+    .brand-stats {
+      display: flex;
+      gap: 12px;
+      margin: auto 0 16px;
+      padding-top: 18px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    .brand-stat { flex: 1; text-align: center; }
+    .brand-stat-value {
+      display: block;
+      font-family: 'Montserrat', sans-serif;
+      font-size: 24px;
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--brand-color), #fff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      line-height: 1.2;
+    }
+    .brand-stat-label {
+      display: block;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: rgba(255, 255, 255, 0.4);
+      font-weight: 600;
+      margin-top: 4px;
+    }
+    .brand-website {
+      display: inline-block;
+      align-self: flex-start;
+      color: var(--brand-color);
+      font-size: 13px;
+      font-weight: 600;
+      text-decoration: none;
+      letter-spacing: 0.04em;
+      margin-bottom: 4px;
+      transition: opacity 0.2s;
+    }
+    .brand-website:hover { opacity: 0.75; text-decoration: underline; }
   </style>
 </head>
 <body>
@@ -629,25 +763,34 @@
       return String(name || '?').split(/\s+/).map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
     }
 
-    // v2 "brand chamber" rendering — same data contract as production renderBrandCard
+    // Brand selection cards — logo (initials fallback), brandColor accent, website link.
+    // Same data contract as before; select-brand-btn wiring + covenant-confirm markup unchanged.
     function renderBrandCard(brand, assigned) {
       const videos = assigned ? (assigned.videosDelivered != null ? assigned.videosDelivered : assigned.videosForBrand || 0) : 0;
       const earned = assigned ? (assigned.earned != null ? assigned.earned : assigned.earnedFromBrand || 0) : 0;
+      const remaining = Math.max(0, 15 - videos);
+      const color = brand.brandColor || '#00f2ea';
       const action = assigned
         ? `<div class="covenant-confirm">✓ Selected — Hasan will send your target collab invite</div>`
         : `<button class="brand-action select-brand-btn" data-brand-id="${esc(brand.id)}" data-brand-name="${esc(brand.name)}">Select This Brand</button>`;
-      const icon = brand.logo
-        ? `<img src="${esc(brand.logo)}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:inherit">`
-        : esc(brandInitials(brand.name));
+      const fallback = `<div class="brand-logo-fallback"${brand.logo ? ' style="display:none"' : ''}>${esc(brandInitials(brand.name))}</div>`;
+      const logo = brand.logo
+        ? `<img class="brand-logo" src="${esc(brand.logo)}" alt="${esc(brand.name)} logo" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">${fallback}`
+        : fallback;
+      const website = brand.website
+        ? `<a class="brand-website" href="${esc(brand.website)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Visit Website ↗</a>`
+        : '';
       return `
-        <div class="brand-chamber">
-          <div class="brand-header">
-            <div class="brand-icon">${icon}</div>
-            <div class="brand-info">
-              <h2>${esc(brand.name)}</h2>
-              <p>${videos} videos posted • ${earned} earned • ${Math.max(0, 15 - videos)} remaining${brand.description ? ' — ' + esc(brand.description) : ''}</p>
-            </div>
+        <div class="brand-card${assigned ? ' selected' : ''}" style="--brand-color: ${esc(color)}">
+          <div class="brand-logo-wrap">${logo}</div>
+          <h2 class="brand-name">${esc(brand.name)}</h2>
+          ${brand.description ? `<p class="brand-desc">${esc(brand.description)}</p>` : ''}
+          <div class="brand-stats">
+            <div class="brand-stat"><span class="brand-stat-value">${videos}</span><span class="brand-stat-label">Videos Posted</span></div>
+            <div class="brand-stat"><span class="brand-stat-value">${earned}</span><span class="brand-stat-label">Earned</span></div>
+            <div class="brand-stat"><span class="brand-stat-value">${remaining}</span><span class="brand-stat-label">Remaining</span></div>
           </div>
+          ${website}
           ${action}
         </div>`;
     }
@@ -737,6 +880,8 @@
         const confirm = document.createElement('div');
         confirm.className = 'covenant-confirm';
         confirm.textContent = '✓ Brand selected — Hasan will send your target collab invite';
+        const card = btn.closest('.brand-card');
+        if (card) card.classList.add('selected');
         btn.replaceWith(confirm);
       } catch (err) {
         console.error('Brand selection failed:', err);
