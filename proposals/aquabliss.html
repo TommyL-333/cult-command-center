@@ -340,17 +340,7 @@ footer p{font-size:.69rem;color:var(--muted);}
           <li>Scaling recommendations at each revenue milestone</li>
         </ul>
       </div>
-      <div class="dcard" style="border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.04);">
-        <div class="dcard-icon">⚡</div>
-        <div class="dcard-title" style="color:var(--yellow);">Add-On: Sellico Campaign — +$3,000</div>
-        <ul class="ditems">
-          <li>Sellico buy campaign to accelerate early order volume and review velocity</li>
-          <li>Complements Join Brands — broader buyer network, faster initial GMV signal</li>
-          <li>Content from Sellico buyers posted to brand page and amplified with GMV Max</li>
-          <li>Particularly valuable in Month 1 when organic affiliate volume is still ramping</li>
-          <li>One-time campaign cost, separate from monthly retainer</li>
-        </ul>
-      </div>
+
     </div>
   </div>
 
@@ -501,6 +491,13 @@ footer p{font-size:.69rem;color:var(--muted);}
               <span class="addon-price">+$2,000–$5,000/mo</span>
             </div>
             <div class="addon-desc">Lock in top-performing affiliate creators on monthly retainers. Best used once you have proven performers from the first 30–60 days. Retainer payments go directly to creators — we manage the relationships.</div>
+          </div>
+          <div class="addon-card" id="addon-sellico" onclick="toggleAddon('sellico')">
+            <div class="addon-card-head">
+              <span class="addon-name">Sellico Buy Campaign</span>
+              <span class="addon-price">+$3,000 <em style="font-size:.7em;font-weight:500;opacity:.7;">(one-time)</em></span>
+            </div>
+            <div class="addon-desc">Real buyer network places orders on TikTok Shop in Month 1 — accelerates order volume, review velocity, and GMV signal before organic affiliate volume ramps. Complements Join Brands. One-time fee, not recurring.</div>
           </div>
         </div>
         <div class="addon-total" id="addon-total" style="display:none;">
@@ -698,8 +695,9 @@ nc.className = "callout "+(m6.netProfit>=0?"green":"warn");
 nc.innerHTML = `<div class="ci">${m6.netProfit>=0?"✅":"📈"}</div><div class="cb">At Month 6 run rate (<strong>${fK(m6.gmv)} GMV</strong>, ${m6.creators.toLocaleString()} active creators), net P&L is <strong style="color:${m6.netProfit>=0?"var(--green)":"var(--yellow)"}">${m6.netProfit>=0?"+":""}${f$(m6.netProfit)}/mo</strong> on the $3,000 + 7% scenario.${beGMV?" Channel breaks even at approximately <strong>"+fK(beGMV)+"</strong> GMV per month.":""}</div>`;
 
 // ── Pricing Slider ────────────────────────────────────────────────────────────
-const addons = { ugc: false, ret: false };
-const addonRanges = { ugc: [1500, 3000], ret: [2000, 5000] };
+const addons = { ugc: false, ret: false, sellico: false };
+const addonRanges = { ugc: [1500, 3000], ret: [2000, 5000], sellico: [3000, 3000] };
+const addonOneTime = { sellico: true };
 
 function updateMix() {
   const t = parseInt(document.getElementById("mix-slider").value);
@@ -716,9 +714,11 @@ function updateMix() {
   let addonLow = 0, addonHigh = 0;
   if (addons.ugc) { addonLow += addonRanges.ugc[0]; addonHigh += addonRanges.ugc[1]; }
   if (addons.ret) { addonLow += addonRanges.ret[0]; addonHigh += addonRanges.ret[1]; }
+  const sellicoNote = addons.sellico ? ' + $3,000 Sellico (one-time)' : '';
   if (addonLow > 0) {
     document.getElementById("mix-total").textContent = "$" + Math.round(base+addonLow).toLocaleString() + " – $" + Math.round(base+addonHigh).toLocaleString() + "/mo";
     document.getElementById("addon-total").style.display = "flex";
+    const sellicoEl = document.getElementById("sellico-note"); if(sellicoEl) sellicoEl.textContent = sellicoNote;
     document.getElementById("addon-total-val").textContent = "$" + Math.round(base+addonLow).toLocaleString() + " – $" + Math.round(base+addonHigh).toLocaleString() + "/mo";
   } else {
     document.getElementById("mix-total").textContent = "$" + Math.round(base).toLocaleString() + "/mo";
