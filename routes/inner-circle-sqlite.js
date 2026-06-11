@@ -457,11 +457,21 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       description: 'Science-backed supplements (Marketily / Lenea). Evidence-led content angles.' },
     { id: 'alpha-flow', name: 'Alpha Flow', logo: null, website: null, brandColor: '#A78BFA',
       description: 'Alpha Flow TikTok Shop brand.' },
+    { id: 'yuglo', name: 'Yuglo', logo: null, website: 'https://yugloskin.com', brandColor: null,
+      description: 'Yuglo skincare — TikTok Shop brand.' },
+    { id: 'roots-by-ga', name: 'Roots by GA', logo: null, website: 'https://www.rootsbyga.com', brandColor: null,
+      description: 'Roots by GA — TikTok Shop brand (Carla Brenner).' },
   ];
 
   function icLoadBrandsFile() {
     try { return JSON.parse(fs.readFileSync(IC_BRANDS_FILE, 'utf8')); }
     catch (_) { return null; }
+  }
+
+  function icNormalizeWebsite(w) {
+    const s = String(w || '').trim();
+    if (!s) return null;
+    return /^https?:\/\//i.test(s) ? s : 'https://' + s;
   }
 
   function icCatalogFor(name) {
@@ -507,7 +517,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
           name: b.name,
           logo: b.logoUrl || (cat && cat.logo) || null,
           description: (cat && cat.description) || b.description || '',
-          website: b.website || (cat && cat.website) || null,
+          website: icNormalizeWebsite(b.website || (cat && cat.website)),
           brandColor: b.brandColor || (cat && cat.brandColor) || null,
           commission: { targetCollab: 0.5, ads: 0.25 },
           isTest: !!b.TEST,
