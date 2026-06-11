@@ -11078,6 +11078,7 @@ app.get('/api/pipeline/:segment', async (req, res) => {
 
   const PIPELINE_MAP = {
     'growth-partners': GP_PIPELINE_ID,
+    'signal-engine': 'Ngdx8GTMlQ1lxiBWTr7d', // Signal Engine pipeline (10 stages: New Lead → Won/Lost)
     // add more segments → pipeline IDs here as needed
   };
 
