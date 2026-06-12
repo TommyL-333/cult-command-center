@@ -455,10 +455,16 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       description: 'DIAMANDIA TikTok Shop brand — 25% target collab commission on the hero product.' },
     { id: 'approved-science', name: 'Approved Science', logo: '/logos/approved-science.png', website: 'https://www.approvedscience.com', brandColor: '#1188DD',
       description: 'Science-backed supplements (Marketily / Lenea). Evidence-led content angles.' },
-    { id: 'yuglo', name: 'Yuglo', logo: null, website: 'https://yugloskin.com', brandColor: null,
+    { id: 'yuglo', name: 'Yuglo', logo: null, website: 'https://yugloskin.com', brandColor: '#F39976', // sourced from yugloskin.com homepage accent palette (peach, ~8:1 contrast vs #161823); dominant #108474 excluded — shared review-widget green seen across client sites
       description: 'Yuglo skincare — TikTok Shop brand.' },
     { id: 'roots-by-ga', name: 'Roots by GA', logo: null, website: 'https://www.rootsbyga.com', brandColor: null,
       description: 'Roots by GA — TikTok Shop brand (Carla Brenner).' },
+    { id: 'lode-wtr', name: 'Lode WTR', logo: null, website: 'https://lodewtr.com', brandColor: '#CCFF00', // verified: dominant accent color on lodewtr.com (electric lime), ~14:1 contrast vs #161823
+      description: 'Lode WTR — scalp care that replaces traditional shampoo. "Your shampoo is the problem" positioning; strong hooks around scalp health, hair loss, and ingredient honesty.' },
+    { id: 'dissolvd', name: 'Dissolvd', logo: null, website: null, brandColor: '#A78BFA', // PLACEHOLDER — dissolvd.com is behind Cloudflare Access, no public site to source brand color (6.49:1 contrast vs #161823)
+      description: 'Dissolvd — TikTok Shop brand.' },
+    { id: 'the-perfect-haircare', name: 'The Perfect Haircare', logo: null, website: 'https://theperfecthaircare.com', brandColor: '#E35186', // verified: theme-color meta on theperfecthaircare.com, ~4.9:1 contrast vs #161823
+      description: 'The Perfect Haircare — TikTok Shop haircare brand.' },
   ];
 
   function icLoadBrandsFile() {
