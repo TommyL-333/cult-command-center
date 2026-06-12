@@ -5009,6 +5009,59 @@ Return ONLY the caption text with hashtags. No explanation, no quotes.`
   }
 });
 
+// POST /api/client/logo — upload brand logo (client session auth)
+// Registered BEFORE app.use(requireAuth): client-session users have no Cloudflare
+// Access header, so requireAuth 401d them before requireClientSession ever ran
+// (root cause of the broken onboarding logo button — Roots by Ga, June 12).
+// Lazy multer because imageUpload is defined later in this file.
+app.post('/api/client/logo', requireClientSession, (req, res, next) => {
+  const upload = require('multer')({
+    storage: require('multer').diskStorage({
+      destination: (_, __, cb) => cb(null, UPLOAD_DIR),
+      filename:    (_, file, cb) => {
+        const ext  = path.extname(file.originalname) || '';
+        const base = path.basename(file.originalname, ext).replace(/[^a-z0-9_-]/gi, '_').slice(0, 60);
+        cb(null, `${Date.now()}_${base}${ext}`);
+      },
+    }),
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: (_, file, cb) => {
+      const ok = /image\//.test(file.mimetype) || /\.(jpe?g|png|gif|webp|svg|avif)$/i.test(file.originalname);
+      cb(ok ? null : new Error('Only image files are allowed'), ok);
+    },
+  }).single('logo');
+  upload(req, res, (err) => err ? res.status(400).json({ error: err.message }) : next());
+}, (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No image file received' });
+  const brands = loadBrands();
+  const idx = (brands.clients || []).findIndex(b => b.id === req.session.clientBrandId);
+  if (idx === -1) return res.status(404).json({ error: 'Brand not found' });
+  const old = brands.clients[idx].logoUrl;
+  if (old) {
+    const oldPath = path.join(UPLOAD_DIR, path.basename(old.split('?')[0]));
+    if (oldPath.startsWith(UPLOAD_DIR)) fs.unlink(oldPath, () => {});
+  }
+  const logoUrl = `${PUBLIC_BASE_URL}/uploads/${req.file.filename}`;
+  brands.clients[idx].logoUrl = logoUrl;
+  saveBrands(brands);
+  res.json({ ok: true, logoUrl });
+});
+
+// DELETE /api/client/logo — remove brand logo (client session auth, pre-requireAuth)
+app.delete('/api/client/logo', requireClientSession, (req, res) => {
+  const brands = loadBrands();
+  const idx = (brands.clients || []).findIndex(b => b.id === req.session.clientBrandId);
+  if (idx === -1) return res.status(404).json({ error: 'Brand not found' });
+  const logoUrl = brands.clients[idx].logoUrl;
+  if (logoUrl) {
+    const filePath = path.join(UPLOAD_DIR, path.basename(logoUrl.split('?')[0]));
+    if (filePath.startsWith(UPLOAD_DIR)) fs.unlink(filePath, () => {});
+  }
+  delete brands.clients[idx].logoUrl;
+  saveBrands(brands);
+  res.json({ ok: true });
+});
+
 app.use(requireAuth); // all other routes require auth in production
 
 // POST /api/client/admin/set-password — CF Access protected; sets/resets a client's login password
@@ -13100,37 +13153,8 @@ app.delete('/api/brands/:brandId/logo', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
-// POST /api/client/logo — upload brand logo (client session auth, must be after imageUpload def)
-app.post('/api/client/logo', requireClientSession, imageUpload.single('logo'), (req, res) => {
-  if (!req.file) return res.status(400).json({ error: 'No image file received' });
-  const brands = loadBrands();
-  const idx = (brands.clients || []).findIndex(b => b.id === req.session.clientBrandId);
-  if (idx === -1) return res.status(404).json({ error: 'Brand not found' });
-  const old = brands.clients[idx].logoUrl;
-  if (old) {
-    const oldPath = path.join(UPLOAD_DIR, path.basename(old.split('?')[0]));
-    if (oldPath.startsWith(UPLOAD_DIR)) fs.unlink(oldPath, () => {});
-  }
-  const logoUrl = `${PUBLIC_BASE_URL}/uploads/${req.file.filename}`;
-  brands.clients[idx].logoUrl = logoUrl;
-  saveBrands(brands);
-  res.json({ ok: true, logoUrl });
-});
-
-// DELETE /api/client/logo — remove brand logo (client session auth)
-app.delete('/api/client/logo', requireClientSession, (req, res) => {
-  const brands = loadBrands();
-  const idx = (brands.clients || []).findIndex(b => b.id === req.session.clientBrandId);
-  if (idx === -1) return res.status(404).json({ error: 'Brand not found' });
-  const logoUrl = brands.clients[idx].logoUrl;
-  if (logoUrl) {
-    const filePath = path.join(UPLOAD_DIR, path.basename(logoUrl.split('?')[0]));
-    if (filePath.startsWith(UPLOAD_DIR)) fs.unlink(filePath, () => {});
-  }
-  delete brands.clients[idx].logoUrl;
-  saveBrands(brands);
-  res.json({ ok: true });
-});
+// NOTE: POST/DELETE /api/client/logo moved BEFORE app.use(requireAuth) — see ~L5010.
+// They were unreachable here: requireAuth (Cloudflare Access) 401d client sessions first.
 
 // ─── Product Media Upload ───────────────────────────────────────────────────────
 
