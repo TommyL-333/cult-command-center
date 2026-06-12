@@ -3571,6 +3571,7 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
         compensation,
         innerCircle: !!brand.innerCircle,
         logoUrl: brand.logoUrl || null,
+        brandColor: brand.brandColor || null,
         referralCode: brand.referralCode,
         commissionRate: brand.commissionRate ?? 0.10,
         referralUrl,
