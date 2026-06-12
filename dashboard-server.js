@@ -2242,7 +2242,7 @@ function loadTasks() {
 
 const clientLoginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: 50, // raised from 10 — auto-retry polling uses ~18 requests during onboarding
   message: { error: 'Too many login attempts — try again in 15 minutes.' },
 });
 
