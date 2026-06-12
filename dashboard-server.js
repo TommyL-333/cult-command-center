@@ -3602,7 +3602,12 @@ app.patch('/api/client/settings', requireClientSession, express.json(), async (r
     const idx = (brands.clients || []).findIndex(b => b.id === req.session.clientBrandId);
     if (idx === -1) return res.status(404).json({ error: 'Brand not found' });
     const brand = brands.clients[idx];
-    const { sampleBudget, compensation, affiliatePageUrl, innerCircle } = req.body || {};
+    const { sampleBudget, compensation, affiliatePageUrl, innerCircle, brandColor } = req.body || {};
+    // brandColor — validate BEFORE any mutation/persistence; reject invalid hex
+    if (brandColor !== undefined && (typeof brandColor !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(brandColor))) {
+      return res.status(400).json({ error: 'brandColor must be a hex color like #00f2ea' });
+    }
+    if (brandColor !== undefined) brand.brandColor = brandColor;
     if (sampleBudget !== undefined) brand.sampleBudget = Number(sampleBudget) || 0;
     if (compensation && typeof compensation === 'object') {
       if (!brand.creatorPage) brand.creatorPage = {};
@@ -3751,7 +3756,7 @@ app.post('/client/admin', express.json(), async (req, res) => {
         'tiktokShopToken', 'tiktokConnected', 'shopId',
         'passwordHash', 'storistaApiKey', 'storistaConnected', 'storistaQueue',
         'bufferToken', 'bufferConnected', 'arcadsClientId', 'arcadsApiKey', 'arcadsConnected',
-        'contentAssets', 'logoUrl', 'cachedNetGmv', 'cachedGmvAt', 'stripeCustomerId',
+        'contentAssets', 'logoUrl', 'brandColor', 'cachedNetGmv', 'cachedGmvAt', 'stripeCustomerId',
         'lastInvoiceId', 'lastInvoiceUrl', 'lastInvoicedAt',
       ];
       for (const f of copyFields) {
