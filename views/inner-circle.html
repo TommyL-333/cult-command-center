@@ -519,6 +519,27 @@
       text-align: center; font-size: 0.9rem; box-sizing: border-box;
     }
     .recordings-list { display: grid; gap: 16px; }
+    .handles-list { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+    .handle-row { display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; border-radius: 12px; background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.08); }
+    .handle-name { font-weight: 600; letter-spacing: 0.2px; }
+    .handle-badge { font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+      padding: 3px 9px; border-radius: 999px; margin-left: 10px;
+      background: linear-gradient(90deg, #00f2ea, #ff0050); color: #0b0c14; font-weight: 700; }
+    .handle-remove { background: none; border: none; color: rgba(255,255,255,0.45);
+      cursor: pointer; font-size: 18px; line-height: 1; padding: 4px 8px; border-radius: 8px; transition: all .15s; }
+    .handle-remove:hover { color: #ff0050; background: rgba(255,0,80,0.1); }
+    .handle-add { display: flex; gap: 10px; margin-top: 14px; }
+    .handle-add input { flex: 1; padding: 12px 14px; border-radius: 12px;
+      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12);
+      color: #fff; font-family: 'Inter', sans-serif; font-size: 14px; }
+    .handle-add input:focus { outline: none; border-color: #00f2ea; }
+    .handle-add button { padding: 12px 18px; border-radius: 12px; border: none; cursor: pointer;
+      font-weight: 700; color: #0b0c14; background: linear-gradient(90deg, #00f2ea, #ff0050); transition: opacity .15s; }
+    .handle-add button:hover { opacity: 0.9; }
+    .handle-add button:disabled { opacity: 0.5; cursor: default; }
+    .handle-error { color: #ff5a7a; font-size: 13px; margin-top: 8px; min-height: 16px; }
     .recording-item {
       background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1);
       border-radius: 16px; padding: 24px;
@@ -725,6 +746,25 @@
       <p class="empty-note">Loading your brands…</p>
     </div>
 
+    <!-- Linked TikTok Handles -->
+    <div class="brand-chamber" style="animation-delay:0.35s">
+      <div class="brand-header">
+        <div class="brand-icon">🎭</div>
+        <div class="brand-info">
+          <h2>Your TikTok Handles</h2>
+          <p>Link every account you post from so all your videos count</p>
+        </div>
+      </div>
+      <div class="handles-list" id="handles-list">
+        <p class="empty-note">Loading your handles…</p>
+      </div>
+      <div class="handle-add">
+        <input id="handle-input" type="text" placeholder="@yourhandle" autocomplete="off" />
+        <button id="handle-add-btn" onclick="addHandle()">+ Add</button>
+      </div>
+      <div class="handle-error" id="handle-error"></div>
+    </div>
+
     <!-- Call Recordings Library -->
     <div class="brand-chamber" style="animation-delay:0.4s">
       <div class="brand-header">
@@ -859,6 +899,9 @@
         recordingsContainer.querySelectorAll('.play-btn').forEach(btn => {
           btn.addEventListener('click', () => playRecording(btn.dataset.url));
         });
+
+        // Linked TikTok handles
+        renderHandles(data.handles || []);
       } catch (err) {
         console.error('Dashboard render failed:', err);
       }
@@ -893,6 +936,60 @@
 
     function playRecording(url) {
       if (url) window.open(url, '_blank');
+    }
+
+    function renderHandles(handles) {
+      const el = document.getElementById('handles-list');
+      if (!el) return;
+      if (!handles.length) {
+        el.innerHTML = '<p class="empty-note">No handles linked yet.</p>';
+        return;
+      }
+      el.innerHTML = handles.map(h => {
+        const badge = h.primary ? '<span class="handle-badge">Primary</span>' : '';
+        const remove = h.primary ? '' : '<button class="handle-remove" title="Unlink" onclick="removeHandle(' + h.id + ')">\u00d7</button>';
+        return '<div class="handle-row"><span><span class="handle-name">' + esc(h.handle) + '</span>' + badge + '</span>' + remove + '</div>';
+      }).join('');
+    }
+
+    async function addHandle() {
+      const input = document.getElementById('handle-input');
+      const btn = document.getElementById('handle-add-btn');
+      const errEl = document.getElementById('handle-error');
+      errEl.textContent = '';
+      const handle = (input.value || '').trim();
+      if (!handle) { errEl.textContent = 'Enter a TikTok handle.'; return; }
+      btn.disabled = true; btn.textContent = 'Adding\u2026';
+      try {
+        const res = await fetch('/api/inner-circle/handles', {
+          method: 'POST',
+          headers: { ...AUTH_HEADERS, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ handle })
+        });
+        const out = await res.json();
+        if (!res.ok) { errEl.textContent = out.error || 'Could not add handle.'; return; }
+        input.value = '';
+        renderHandles(out.handles || []);
+      } catch (e) {
+        errEl.textContent = 'Network error \u2014 please try again.';
+      } finally {
+        btn.disabled = false; btn.textContent = '+ Add';
+      }
+    }
+
+    async function removeHandle(id) {
+      const errEl = document.getElementById('handle-error');
+      errEl.textContent = '';
+      try {
+        const res = await fetch('/api/inner-circle/handles/' + id, {
+          method: 'DELETE', headers: AUTH_HEADERS
+        });
+        const out = await res.json();
+        if (!res.ok) { errEl.textContent = out.error || 'Could not remove handle.'; return; }
+        renderHandles(out.handles || []);
+      } catch (e) {
+        errEl.textContent = 'Network error \u2014 please try again.';
+      }
     }
 
     loadDashboard();
