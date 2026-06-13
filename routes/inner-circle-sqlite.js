@@ -62,7 +62,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       insertCreatorFull: db.prepare(
         `INSERT INTO inner_circle_creators
            (creator_handle, creator_name, email, phone, password_hash, status, cohort_start, cohort_end, videos_goal, commission_rate, ads_commission_rate)
-         VALUES (?, ?, ?, ?, ?, 'active', ?, ?, 15, 0.50, 0.25)`
+         VALUES (?, ?, ?, ?, ?, 'active', ?, ?, 20, 0.50, 0.25)`
       ),
       setPassword: db.prepare(
         `UPDATE inner_circle_creators SET password_hash = ? WHERE id = ?`
@@ -125,7 +125,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
         'tt_test_sisyphus_001',
         '2026-06-10',
         '2026-07-31',
-        15
+        20
       );
       console.log('[inner-circle-sqlite] seeded TEST creator @test_sisyphus_ic');
     }
@@ -143,7 +143,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
         'tt_test_sisyphus_002',
         '2026-06-10',
         '2026-07-31',
-        15
+        20
       );
       creator2 = queries.getCreatorByHandle.get('@test_sisyphus_ic2');
       console.log('[inner-circle-sqlite] seeded TEST creator @test_sisyphus_ic2');
@@ -333,7 +333,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
           tiktok_handle: handle,
           cohort_start: today,
           cohort_end: IC_COHORT_END,
-          videos_goal: 15,
+          videos_goal: 20,
           commission_rate: 0.5,
           ads_commission_rate: 0.25,
         },
@@ -400,7 +400,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
         stats: {
           videosThisMonth,
           videosDelivered: videosThisMonth,
-          videosGoal: c.videos_goal != null ? c.videos_goal : 15,
+          videosGoal: c.videos_goal != null ? c.videos_goal : 20,
           commissionEarned,
           commissionRate,
           adsCommissionRate: c.ads_commission_rate != null ? c.ads_commission_rate : 0.25,
