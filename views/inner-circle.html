@@ -768,7 +768,7 @@
     function renderBrandCard(brand, assigned) {
       const videos = assigned ? (assigned.videosDelivered != null ? assigned.videosDelivered : assigned.videosForBrand || 0) : 0;
       const earned = assigned ? (assigned.earned != null ? assigned.earned : assigned.earnedFromBrand || 0) : 0;
-      const remaining = Math.max(0, 15 - videos);
+      const remaining = Math.max(0, 20 - videos);
       const color = brand.brandColor || '#00f2ea';
       const action = assigned
         ? `<div class="covenant-confirm">✓ Selected — Hasan will send your target collab invite</div>`
