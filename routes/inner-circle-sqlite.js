@@ -779,7 +779,8 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     if (dbError) return res.status(503).json({ error: 'IC database unavailable' });
     const want = process.env.IC_ADMIN_KEY;
     const got = req.query.key || req.get('x-ic-admin-key');
-    if (!want || got !== want) return res.status(401).json({ error: 'Unauthorized' });
+    const sessionAdmin = !!(req.session && req.session.isPortalAdmin);
+    if (!sessionAdmin && (!want || got !== want)) return res.status(401).json({ error: 'Unauthorized' });
     try {
       const creators = icCreatorRoster(null);
       const summary = {
@@ -850,9 +851,9 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
   app.get('/inner-circle/admin', (req, res) => {
     const want = process.env.IC_ADMIN_KEY;
     const got = req.query.key;
-    if (!want || got !== want) {
-      res.set('Content-Type', 'text/html');
-      return res.status(401).send('<!DOCTYPE html><html><body style="background:#161823;color:#fff;font-family:system-ui;text-align:center;padding:80px"><h2>Unauthorized</h2><p style="color:#888">Append ?key=YOUR_IC_ADMIN_KEY to the URL.</p></body></html>');
+    const sessionAdmin = !!(req.session && req.session.isPortalAdmin);
+    if (!sessionAdmin && (!want || got !== want)) {
+      return res.redirect('/portal-admin');
     }
     res.set('Content-Type', 'text/html');
     var html = [
@@ -882,7 +883,8 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
 '<div class="stats" id="stats"></div><div id="table"></div>',
 '<script>',
 'var KEY=new URLSearchParams(location.search).get("key");',
-'fetch("/api/inner-circle/admin/creators?key="+encodeURIComponent(KEY)).then(function(r){return r.json();}).then(function(d){',
+'var U="/api/inner-circle/admin/creators"+(KEY?("?key="+encodeURIComponent(KEY)):"");',
+'fetch(U).then(function(r){return r.json();}).then(function(d){',
 '  if(!d.ok){document.getElementById("table").innerHTML="<div class=\\"empty\\">"+(d.error||"Error")+"</div>";return;}',
 '  var s=d.summary;',
 '  document.getElementById("stats").innerHTML=stat(s.totalCreators,"Creators")+stat(s.totalVideos,"Videos Posted")+stat("$"+s.totalGmv.toLocaleString(),"Total GMV");',
