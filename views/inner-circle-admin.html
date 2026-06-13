@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Inner Circle — Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800;900&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#161823; --bg2:#11131d; --card:rgba(255,255,255,0.05); --cardline:rgba(255,255,255,0.08);
+    --cyan:#00f2ea; --red:#ff0050; --txt:#e8e8ee; --mut:#8a8d9f; --good:#46d39a; --warn:#ffb454; --bad:#ff5b6e;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:radial-gradient(1200px 600px at 80% -10%,rgba(0,242,234,0.06),transparent),
+               radial-gradient(1000px 500px at 0% 110%,rgba(255,0,80,0.06),transparent),
+               var(--bg);
+    color:var(--txt);font-family:Lato,system-ui,-apple-system,sans-serif;
+    padding:40px 32px 80px;min-height:100vh;
+  }
+  .wrap{max-width:1240px;margin:0 auto}
+  header{margin-bottom:36px}
+  h1{
+    font-family:Montserrat,sans-serif;font-weight:900;font-size:32px;letter-spacing:-0.02em;
+    background:linear-gradient(90deg,var(--cyan),var(--red));-webkit-background-clip:text;
+    background-clip:text;-webkit-text-fill-color:transparent;
+  }
+  .sub{color:var(--mut);font-size:14px;margin-top:6px}
+  .section-h{font-family:Montserrat,sans-serif;font-weight:700;font-size:15px;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--mut);margin:40px 0 16px}
+
+  /* STAT RING */
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px}
+  .stat{
+    background:var(--card);border:1px solid var(--cardline);border-radius:18px;padding:22px 24px;
+    backdrop-filter:blur(12px);position:relative;overflow:hidden;transition:.3s ease;
+  }
+  .stat::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;
+    background:linear-gradient(90deg,var(--cyan),var(--red));opacity:.85}
+  .stat:hover{transform:translateY(-3px);box-shadow:0 0 40px rgba(0,242,234,0.18);border-color:rgba(0,242,234,0.25)}
+  .stat .v{font-family:Montserrat,sans-serif;font-weight:800;font-size:30px;line-height:1}
+  .stat .l{color:var(--mut);font-size:11px;text-transform:uppercase;letter-spacing:.07em;margin-top:10px}
+
+  /* BRAND CARDS */
+  .brands{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+  .brand{
+    background:var(--card);border:1px solid var(--cardline);border-radius:18px;padding:20px;
+    backdrop-filter:blur(12px);transition:.3s ease;cursor:default;
+  }
+  .brand:hover{transform:translateY(-3px);box-shadow:0 0 36px rgba(0,242,234,0.15);border-color:rgba(0,242,234,0.22)}
+  .brand-top{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+  .brand-logo{width:44px;height:44px;border-radius:11px;object-fit:contain;background:rgba(255,255,255,0.06);
+    display:flex;align-items:center;justify-content:center;font-family:Montserrat,sans-serif;font-weight:800;
+    font-size:16px;flex-shrink:0}
+  .brand-name{font-family:Montserrat,sans-serif;font-weight:700;font-size:16px}
+  .brand-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;margin-bottom:14px}
+  .bm .bm-v{font-family:Montserrat,sans-serif;font-weight:700;font-size:18px}
+  .bm .bm-l{color:var(--mut);font-size:10px;text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+  .gmv{color:var(--good)}
+
+  /* PROGRESS BAR */
+  .bar{height:7px;background:rgba(255,255,255,0.08);border-radius:5px;overflow:hidden;width:100%}
+  .bar>span{display:block;height:100%;border-radius:5px;transition:width .4s ease}
+  .ff-label{display:flex;justify-content:space-between;font-size:11px;color:var(--mut);margin-bottom:4px}
+
+  /* TABLE */
+  .tablewrap{background:var(--card);border:1px solid var(--cardline);border-radius:18px;overflow:hidden;backdrop-filter:blur(12px)}
+  table{width:100%;border-collapse:collapse}
+  th,td{text-align:left;padding:14px 18px;font-size:14px;border-bottom:1px solid var(--cardline);vertical-align:top}
+  th{color:var(--mut);text-transform:uppercase;font-size:10px;letter-spacing:.07em;font-weight:700;background:rgba(255,255,255,0.02)}
+  tr:last-child td{border-bottom:none}
+  tbody tr:hover td{background:rgba(255,255,255,0.025)}
+  .cname{font-family:Montserrat,sans-serif;font-weight:700;font-size:14px}
+  .chandle{color:var(--mut);font-size:12px}
+  .cemail{color:var(--mut);font-size:12px}
+  .ffcell{display:flex;flex-direction:column;gap:10px;min-width:200px}
+  .ffrow{}
+  .ffbrand{font-size:11px;color:var(--txt);margin-bottom:3px;font-weight:700}
+  .badge{display:inline-block;background:rgba(0,242,234,0.12);color:var(--cyan);
+    border:1px solid rgba(0,242,234,0.3);padding:2px 9px;border-radius:20px;font-size:11px;margin:0 4px 4px 0}
+  .none{color:var(--mut);font-size:12px}
+
+  .empty,.loading{text-align:center;color:var(--mut);padding:60px 20px;font-size:15px}
+  .spin{width:26px;height:26px;border:3px solid rgba(255,255,255,0.1);border-top-color:var(--cyan);
+    border-radius:50%;animation:s 0.8s linear infinite;margin:0 auto 14px}
+  @keyframes s{to{transform:rotate(360deg)}}
+
+  @media(max-width:880px){
+    .stats{grid-template-columns:repeat(2,1fr)}
+    body{padding:28px 16px 60px}
+    th:nth-child(2),td:nth-child(2){display:none}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Inner Circle — Admin</h1>
+    <div class="sub">Live roster, brand participation &amp; video fulfillment · read-only</div>
+  </header>
+
+  <div id="stats" class="stats"></div>
+
+  <div id="brandsH" class="section-h" style="display:none">Participating Brands</div>
+  <div id="brands" class="brands"></div>
+
+  <div id="tableH" class="section-h" style="display:none">Creator Fulfillment Matrix</div>
+  <div id="content" class="tablewrap">
+    <div class="loading"><div class="spin"></div>Loading roster…</div>
+  </div>
+</div>
+
+<script>
+(function(){
+  var KEY = new URLSearchParams(location.search).get('key');
+  var U = '/api/inner-circle/admin/creators' + (KEY ? ('?key=' + encodeURIComponent(KEY)) : '');
+
+  function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+  function money(n){return '$' + (Math.round((n||0)*100)/100).toLocaleString();}
+  function fmt(d){if(!d)return '-';try{return new Date(String(d).replace(' ','T')+'Z').toLocaleDateString();}catch(e){return d;}}
+  function pctColor(p){ if(p>=80)return 'linear-gradient(90deg,#2bd6a6,#46d39a)';
+    if(p>=40)return 'linear-gradient(90deg,#00f2ea,#2bd6a6)';
+    if(p>=15)return 'linear-gradient(90deg,#ffb454,#ff7a59)';
+    return 'linear-gradient(90deg,#ff5b6e,#ff0050)'; }
+  function bar(p){p=Math.max(0,Math.min(100,p||0));
+    return '<div class="bar"><span style="width:'+p+'%;background:'+pctColor(p)+'"></span></div>';}
+  function initials(name){return String(name||'?').replace(/[^a-zA-Z0-9 ]/g,'').split(/\s+/).filter(Boolean).slice(0,2).map(function(w){return w[0].toUpperCase();}).join('')||'?';}
+
+  function stat(v,l){return '<div class="stat"><div class="v">'+v+'</div><div class="l">'+l+'</div></div>';}
+
+  function renderBrandCard(b){
+    var goalSum = b.goalSum || (b.creatorCount*20) || 0;
+    var pct = goalSum ? Math.round((b.videos/goalSum)*100) : 0;
+    var logo = b.logoUrl
+      ? '<img class="brand-logo" src="'+esc(b.logoUrl)+'" alt="" onerror="this.outerHTML=&quot;<div class=\\&quot;brand-logo\\&quot; style=\\&quot;color:'+(b.brandColor||'#00f2ea')+'\\&quot;>'+initials(b.name)+'</div>&quot;">'
+      : '<div class="brand-logo" style="color:'+(b.brandColor||'#00f2ea')+'">'+initials(b.name)+'</div>';
+    return '<div class="brand">'
+      + '<div class="brand-top">'+logo+'<div class="brand-name">'+esc(b.name)+'</div></div>'
+      + '<div class="brand-grid">'
+      +   '<div class="bm"><div class="bm-v">'+(b.creatorCount||0)+'</div><div class="bm-l">Creators</div></div>'
+      +   '<div class="bm"><div class="bm-v">'+(b.videos||0)+'</div><div class="bm-l">Videos</div></div>'
+      +   '<div class="bm"><div class="bm-v gmv">'+money(b.gmv)+'</div><div class="bm-l">GMV</div></div>'
+      +   '<div class="bm"><div class="bm-v">'+pct+'%</div><div class="bm-l">Fulfilled</div></div>'
+      + '</div>'
+      + '<div class="ff-label"><span>Fulfillment</span><span>'+(b.videos||0)+' / '+goalSum+'</span></div>'
+      + bar(pct)
+      + '</div>';
+  }
+
+  function renderCreatorRow(c){
+    var brandsArr = c.brands || [];
+    var ff;
+    if(!brandsArr.length){
+      ff = '<span class="none">— not assigned —</span>';
+    } else {
+      ff = '<div class="ffcell">' + brandsArr.map(function(b){
+        var goal = b.videosGoal || 20;
+        var p = b.progressPct != null ? b.progressPct : (goal? Math.round((b.videos/goal)*100):0);
+        return '<div class="ffrow"><div class="ffbrand">'+esc(b.name)+'</div>'
+          + '<div class="ff-label"><span>'+(b.videos||0)+' / '+goal+'</span><span>'+p+'%</span></div>'
+          + bar(p) + '</div>';
+      }).join('') + '</div>';
+    }
+    var nameBlock = '<div class="cname">'+esc(c.name||c.handle)+'</div>'
+      + '<div class="chandle">@'+esc(String(c.handle||'').replace(/^@/,''))+'</div>';
+    return '<tr>'
+      + '<td>'+nameBlock+'</td>'
+      + '<td class="cemail">'+esc(c.email||'-')+'</td>'
+      + '<td>'+ff+'</td>'
+      + '<td class="gmv" style="font-weight:700">'+money(c.gmv)+'</td>'
+      + '<td class="cemail">'+fmt(c.joined)+'</td>'
+      + '</tr>';
+  }
+
+  fetch(U).then(function(r){return r.json();}).then(function(d){
+    if(!d || !d.ok){
+      document.getElementById('content').innerHTML = '<div class="empty">'+esc((d&&d.error)||'Failed to load')+'</div>';
+      return;
+    }
+    var s = d.summary || {};
+    document.getElementById('stats').innerHTML =
+        stat(s.totalCreators||0,'Inner Circle Members')
+      + stat(s.totalVideos||0,'Total Posts')
+      + stat(s.totalBrands||((d.brands||[]).length),'Participating Brands')
+      + stat(money(s.totalGmv),'Total GMV');
+
+    var brands = d.brands || [];
+    if(brands.length){
+      document.getElementById('brandsH').style.display='block';
+      document.getElementById('brands').innerHTML = brands.map(renderBrandCard).join('');
+    }
+
+    var creators = d.creators || [];
+    document.getElementById('tableH').style.display='block';
+    if(!creators.length){
+      document.getElementById('content').innerHTML = '<div class="empty">No creators yet. The roster is empty.</div>';
+      return;
+    }
+    document.getElementById('content').innerHTML =
+      '<table><thead><tr>'
+      + '<th>Creator</th><th>Email</th><th>Video Fulfillment by Brand</th><th>GMV</th><th>Joined</th>'
+      + '</tr></thead><tbody>'
+      + creators.map(renderCreatorRow).join('')
+      + '</tbody></table>';
+  }).catch(function(e){
+    document.getElementById('content').innerHTML = '<div class="empty">Error loading roster: '+esc(e.message)+'</div>';
+  });
+})();
+</script>
+</body>
+</html>
