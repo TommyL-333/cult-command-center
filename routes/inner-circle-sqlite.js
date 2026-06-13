@@ -855,101 +855,55 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       return res.status(401).send('<!DOCTYPE html><html><body style="background:#161823;color:#fff;font-family:system-ui;text-align:center;padding:80px"><h2>Unauthorized</h2><p style="color:#888">Append ?key=YOUR_IC_ADMIN_KEY to the URL.</p></body></html>');
     }
     res.set('Content-Type', 'text/html');
-    res.send(`<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Inner Circle — Admin</title>
-<style>
-  :root{--bg:#161823;--card:#1e2030;--line:#2a2d3f;--cyan:#00f2ea;--red:#ff0050;--txt:#e8e8ee;--mut:#8a8d9f}
-  *{box-sizing:border-box;margin:0}body{background:var(--bg);color:var(--txt);font-family:'Lato',system-ui,sans-serif;padding:32px}
-  h1{font-family:'Montserrat',sans-serif;font-size:26px;margin-bottom:4px;background:linear-gradient(90deg,var(--cyan),var(--red));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-  .sub{color:var(--mut);margin-bottom:24px;font-size:14px}
-  .stats{display:flex;gap:16px;margin-bottom:24px;flex-wrap:wrap}
-  .stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 24px;min-width:150px}
-  .stat .v{font-size:28px;font-weight:700;font-family:'Montserrat',sans-serif}
-  .stat .l{color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.08em;margin-top:4px}
-  table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}
-  th,td{text-align:left;padding:12px 16px;font-size:14px;border-bottom:1px solid var(--line)}
-  th{color:var(--mut);text-transform:uppercase;font-size:11px;letter-spacing:.06em}
-  tr:last-child td{border-bottom:none}
-  tr:hover td{background:rgba(255,255,255,.02)}
-  .bar{height:6px;background:#2a2d3f;border-radius:4px;overflow:hidden;width:120px;margin-top:4px}
-  .bar>span{display:block;height:100%;background:linear-gradient(90deg,var(--cyan),var(--red))}
-  .badge{display:inline-block;background:rgba(0,242,234,.12);color:var(--cyan);border:1px solid rgba(0,242,234,.3);padding:2px 8px;border-radius:20px;font-size:11px;margin:2px 4px 2px 0}
-  .empty{color:var(--mut);padding:40px;text-align:center}
-  .gmv{color:#46d39a;font-weight:600}
-</style></head><body>
-  <h1>Inner Circle — Admin</h1>
-  <div class="sub">All creators across every brand · read-only</div>
-  <div class="stats" id="stats"></div>
-  <div id="table"></div>
-<script>
-  const KEY = new URLSearchParams(location.search).get('key');
-  fetch('/api/inner-circle/admin/creators?key='+encodeURIComponent(KEY))
-    .then(r=>r.json()).then(d=>{
-      if(!d.ok){document.getElementById('table').innerHTML='<div class="empty">'+(d.error||'Error')+'</div>';return;}
-      const s=d.summary;
-      document.getElementById('stats').innerHTML=
-        stat(s.totalCreators,'Creators')+stat(s.totalVideos,'Videos Posted')+stat('
-  // Shadows the legacy supabase-checked page route in dashboard-server.js
-  // (~line 1434), which could never succeed: `supabase` is undefined there and
-  // req.cookies doesn't exist (no cookie-parser) — every creator got bounced
-  // back to the login page. Registration order makes this route win.
-  app.get('/inner-circle/dashboard', (req, res) => {
-    if (dbError) return res.redirect('/inner-circle');
-    const token = getSessionToken(req);
-    if (!token) return res.redirect('/inner-circle');
-    try {
-      const row = stmts.sessionByToken.get(token);
-      if (!row) return res.redirect('/inner-circle');
-      return res.sendFile(path.join(__dirname, '..', 'views', 'inner-circle.html'));
-    } catch (e) {
-      console.error('[inner-circle-sqlite] dashboard page session check failed:', e.message);
-      return res.redirect('/inner-circle');
-    }
-  });
-
-  // Expose the working session middleware so other routes can adopt it later.
-  return { requireSqliteSession };
-};
-+s.totalGmv.toLocaleString(),'Total GMV');
-      if(!d.creators.length){document.getElementById('table').innerHTML='<div class="empty">No creators yet.</div>';return;}
-      const rows=d.creators.map(c=>{
-        const brands=c.brands.length?c.brands.map(b=>'<span class="badge">'+esc(b.name)+'</span>').join(''):'<span style="color:#8a8d9f">— none —</span>';
-        return '<tr><td><b>'+esc(c.name||c.handle)+'</b><br><span style="color:#8a8d9f">@'+esc(c.handle.replace(/^@/,''))+'</span></td>'+
-          '<td style="color:#8a8d9f">'+esc(c.email||'—')+'</td>'+
-          '<td>'+brands+'</td>'+
-          '<td>'+c.videos+' / '+c.videosGoal+'<div class="bar"><span style="width:'+c.progressPct+'%"></span></div></td>'+
-          '<td class="gmv">
-  // Shadows the legacy supabase-checked page route in dashboard-server.js
-  // (~line 1434), which could never succeed: `supabase` is undefined there and
-  // req.cookies doesn't exist (no cookie-parser) — every creator got bounced
-  // back to the login page. Registration order makes this route win.
-  app.get('/inner-circle/dashboard', (req, res) => {
-    if (dbError) return res.redirect('/inner-circle');
-    const token = getSessionToken(req);
-    if (!token) return res.redirect('/inner-circle');
-    try {
-      const row = stmts.sessionByToken.get(token);
-      if (!row) return res.redirect('/inner-circle');
-      return res.sendFile(path.join(__dirname, '..', 'views', 'inner-circle.html'));
-    } catch (e) {
-      console.error('[inner-circle-sqlite] dashboard page session check failed:', e.message);
-      return res.redirect('/inner-circle');
-    }
-  });
-
-  // Expose the working session middleware so other routes can adopt it later.
-  return { requireSqliteSession };
-};
-+c.gmv.toLocaleString()+'</td>'+
-          '<td style="color:#8a8d9f">'+fmt(c.joined)+'</td></tr>';
-      }).join('');
-      document.getElementById('table').innerHTML='<table><thead><tr><th>Creator</th><th>Email</th><th>Brand(s)</th><th>Videos</th><th>GMV</th><th>Joined</th></tr></thead><tbody>'+rows+'</tbody></table>';
-    }).catch(e=>{document.getElementById('table').innerHTML='<div class="empty">Failed to load.</div>';});
-  function stat(v,l){return '<div class="stat"><div class="v">'+v+'</div><div class="l">'+l+'</div></div>';}
-  function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
-  function fmt(d){if(!d)return '—';try{return new Date(d.replace(' ','T')+'Z').toLocaleDateString();}catch(_){return d;}}
-</script></body></html>`);
+    var html = [
+'<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">',
+'<meta name="viewport" content="width=device-width,initial-scale=1">',
+'<title>Inner Circle - Admin</title>',
+'<style>',
+':root{--bg:#161823;--card:#1e2030;--line:#2a2d3f;--cyan:#00f2ea;--red:#ff0050;--txt:#e8e8ee;--mut:#8a8d9f}',
+'*{box-sizing:border-box;margin:0}body{background:var(--bg);color:var(--txt);font-family:Lato,system-ui,sans-serif;padding:32px}',
+'h1{font-family:Montserrat,sans-serif;font-size:26px;margin-bottom:4px;background:linear-gradient(90deg,var(--cyan),var(--red));-webkit-background-clip:text;-webkit-text-fill-color:transparent}',
+'.sub{color:var(--mut);margin-bottom:24px;font-size:14px}',
+'.stats{display:flex;gap:16px;margin-bottom:24px;flex-wrap:wrap}',
+'.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px 24px;min-width:150px}',
+'.stat .v{font-size:28px;font-weight:700;font-family:Montserrat,sans-serif}',
+'.stat .l{color:var(--mut);font-size:12px;text-transform:uppercase;letter-spacing:.08em;margin-top:4px}',
+'table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden}',
+'th,td{text-align:left;padding:12px 16px;font-size:14px;border-bottom:1px solid var(--line)}',
+'th{color:var(--mut);text-transform:uppercase;font-size:11px;letter-spacing:.06em}',
+'tr:last-child td{border-bottom:none}tr:hover td{background:rgba(255,255,255,.02)}',
+'.bar{height:6px;background:#2a2d3f;border-radius:4px;overflow:hidden;width:120px;margin-top:4px}',
+'.bar>span{display:block;height:100%;background:linear-gradient(90deg,var(--cyan),var(--red))}',
+'.badge{display:inline-block;background:rgba(0,242,234,.12);color:var(--cyan);border:1px solid rgba(0,242,234,.3);padding:2px 8px;border-radius:20px;font-size:11px;margin:2px 4px 2px 0}',
+'.empty{color:var(--mut);padding:40px;text-align:center}.gmv{color:#46d39a;font-weight:600}',
+'</style></head><body>',
+'<h1>Inner Circle - Admin</h1>',
+'<div class="sub">All creators across every brand - read-only</div>',
+'<div class="stats" id="stats"></div><div id="table"></div>',
+'<script>',
+'var KEY=new URLSearchParams(location.search).get("key");',
+'fetch("/api/inner-circle/admin/creators?key="+encodeURIComponent(KEY)).then(function(r){return r.json();}).then(function(d){',
+'  if(!d.ok){document.getElementById("table").innerHTML="<div class=\\"empty\\">"+(d.error||"Error")+"</div>";return;}',
+'  var s=d.summary;',
+'  document.getElementById("stats").innerHTML=stat(s.totalCreators,"Creators")+stat(s.totalVideos,"Videos Posted")+stat("$"+s.totalGmv.toLocaleString(),"Total GMV");',
+'  if(!d.creators.length){document.getElementById("table").innerHTML="<div class=\\"empty\\">No creators yet.</div>";return;}',
+'  var rows=d.creators.map(function(c){',
+'    var brands=c.brands.length?c.brands.map(function(b){return "<span class=\\"badge\\">"+esc(b.name)+"</span>";}).join(""):"<span style=\\"color:#8a8d9f\\">- none -</span>";',
+'    return "<tr><td><b>"+esc(c.name||c.handle)+"</b><br><span style=\\"color:#8a8d9f\\">@"+esc(c.handle.replace(/^@/,""))+"</span></td>"+',
+'      "<td style=\\"color:#8a8d9f\\">"+esc(c.email||"-")+"</td>"+',
+'      "<td>"+brands+"</td>"+',
+'      "<td>"+c.videos+" / "+c.videosGoal+"<div class=\\"bar\\"><span style=\\"width:"+c.progressPct+"%\\"></span></div></td>"+',
+'      "<td class=\\"gmv\\">$"+c.gmv.toLocaleString()+"</td>"+',
+'      "<td style=\\"color:#8a8d9f\\">"+fmt(c.joined)+"</td></tr>";',
+'  }).join("");',
+'  document.getElementById("table").innerHTML="<table><thead><tr><th>Creator</th><th>Email</th><th>Brand(s)</th><th>Videos</th><th>GMV</th><th>Joined</th></tr></thead><tbody>"+rows+"</tbody></table>";',
+'}).catch(function(e){document.getElementById("table").innerHTML="<div class=\\"empty\\">Failed to load.</div>";});',
+'function stat(v,l){return "<div class=\\"stat\\"><div class=\\"v\\">"+v+"</div><div class=\\"l\\">"+l+"</div></div>";}',
+'function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(m){return({"&":"&amp;","<":"&lt;",">":"&gt;",String.fromCharCode(34):"&quot;"})[m];});}',
+'function fmt(d){if(!d)return "-";try{return new Date(d.replace(" ","T")+"Z").toLocaleDateString();}catch(e){return d;}}',
+'</scr'+'ipt></body></html>'
+    ].join('');
+    res.send(html);
   });
 
   // ── GET /inner-circle/dashboard (PAGE) ──────────────────────────────────────
