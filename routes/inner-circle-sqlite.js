@@ -465,6 +465,8 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       description: 'Dissolvd — TikTok Shop brand.' },
     { id: 'the-perfect-haircare', name: 'The Perfect Haircare', logo: null, website: 'https://theperfecthaircare.com', brandColor: '#E35186', // verified: theme-color meta on theperfecthaircare.com, ~4.9:1 contrast vs #161823
       description: 'The Perfect Haircare — TikTok Shop haircare brand.' },
+    { id: 'b-noor', name: 'B NOOR', logo: null, website: 'https://bnoor.com', brandColor: '#C9A24B', // placeholder gold accent (~6.8:1 contrast vs #161823); update when client uploads logo/color
+      description: 'B NOOR — TikTok Shop brand.' },
   ];
 
   function icLoadBrandsFile() {
@@ -532,6 +534,53 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       console.error('[inner-circle-sqlite] brands failed:', e.message);
       return res.status(500).json({ error: 'Server error' });
     }
+  });
+
+  // ── Admin: read + toggle Inner Circle brand enablement ──────────────────────
+  // Env-key protected (IC_ADMIN_KEY). Lets ops flip brand.innerCircle in
+  // brands.json in bulk without each client logging into their portal.
+  //   GET  /api/inner-circle/admin/brands           ?key=...    -> all brands w/ innerCircle state
+  //   POST /api/inner-circle/admin/toggle-brand      {key, brand, enabled}  brand = id or name
+  function icCheckAdminKey(req) {
+    const want = process.env.IC_ADMIN_KEY;
+    if (!want) return false;
+    const got = req.query.key || (req.body && req.body.key) || req.get('x-ic-admin-key');
+    return typeof got === 'string' && got === want;
+  }
+
+  app.get('/api/inner-circle/admin/brands', (req, res) => {
+    if (!icCheckAdminKey(req)) return res.status(401).json({ error: 'Unauthorized' });
+    const data = icLoadBrandsFile();
+    if (!data || !Array.isArray(data.clients)) return res.status(500).json({ error: 'brands.json unreadable' });
+    const brands = data.clients.map((b) => ({
+      id: b.id || null,
+      name: b.name || null,
+      innerCircle: !!b.innerCircle,
+      hasCatalog: !!icCatalogFor(b.name),
+      isTest: !!b.TEST,
+    }));
+    return res.json({ brands, enabledCount: brands.filter((b) => b.innerCircle).length });
+  });
+
+  app.post('/api/inner-circle/admin/toggle-brand', express.json(), (req, res) => {
+    if (!icCheckAdminKey(req)) return res.status(401).json({ error: 'Unauthorized' });
+    const { brand, enabled } = req.body || {};
+    if (!brand) return res.status(400).json({ error: 'brand (id or name) required' });
+    const want = enabled === undefined ? true : !!enabled;
+    const data = icLoadBrandsFile();
+    if (!data || !Array.isArray(data.clients)) return res.status(500).json({ error: 'brands.json unreadable' });
+    const key = String(brand).toLowerCase().trim();
+    const slug = key.replace(/\s+/g, '-');
+    const rec = data.clients.find((b) => b && ((b.id && String(b.id).toLowerCase() === key) || (b.id && String(b.id).toLowerCase() === slug) || (b.name && String(b.name).toLowerCase() === key)));
+    if (!rec) return res.status(404).json({ error: 'brand not found in brands.json', brand });
+    const before = !!rec.innerCircle;
+    rec.innerCircle = want;
+    try { fs.writeFileSync(IC_BRANDS_FILE, JSON.stringify(data, null, 2)); }
+    catch (e) { return res.status(500).json({ error: 'write failed: ' + e.message }); }
+    if (before !== want) {
+      icNotifyAlertChannel(`${want ? '🌀' : '🔕'} Inner Circle ${want ? 'ENABLED ✅' : 'DISABLED ❌'} for *${rec.name}* (admin toggle)`).catch(() => {});
+    }
+    return res.json({ ok: true, brand: rec.name, id: rec.id || null, innerCircle: want, changed: before !== want });
   });
 
   // ── POST /api/inner-circle/select-brand ────────────���────────────────────────
