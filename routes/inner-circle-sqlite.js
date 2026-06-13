@@ -45,6 +45,19 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       CREATE INDEX IF NOT EXISTS idx_ic_sessions_creator ON inner_circle_sessions(creator_id);
     `);
 
+    // Additional TikTok handles — one creator can link multiple handles.
+    // The PRIMARY handle stays on inner_circle_creators.creator_handle.
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS inner_circle_handles (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        creator_id INTEGER NOT NULL REFERENCES inner_circle_creators(id),
+        handle TEXT NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(handle)
+      );
+      CREATE INDEX IF NOT EXISTS idx_ic_handles_creator ON inner_circle_handles(creator_id);
+    `);
+
     // Phone column (not in the original schema) — idempotent migration for the
     // signup flow. SQLite throws if the column already exists; that's fine.
     try { db.exec(`ALTER TABLE inner_circle_creators ADD COLUMN phone TEXT`); } catch (_) { /* column exists */ }
@@ -58,6 +71,21 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       // paused/removed accounts too, not just active ones.
       creatorByEmailAny: db.prepare(
         `SELECT * FROM inner_circle_creators WHERE lower(email) = lower(?)`
+      ),
+      // Additional-handle statements (multi-handle support)
+      handlesForCreator: db.prepare(
+        `SELECT id, handle, created_at FROM inner_circle_handles WHERE creator_id = ? ORDER BY id`
+      ),
+      handleOwnerAny: db.prepare(
+        `SELECT id FROM inner_circle_creators WHERE lower(creator_handle) = lower(?)
+         UNION
+         SELECT creator_id AS id FROM inner_circle_handles WHERE lower(handle) = lower(?)`
+      ),
+      insertHandle: db.prepare(
+        `INSERT INTO inner_circle_handles (creator_id, handle) VALUES (?, ?)`
+      ),
+      deleteHandle: db.prepare(
+        `DELETE FROM inner_circle_handles WHERE id = ? AND creator_id = ?`
       ),
       insertCreatorFull: db.prepare(
         `INSERT INTO inner_circle_creators
@@ -344,6 +372,77 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     }
   });
 
+  // ── Additional TikTok handles ─────────────────────────
+  // Creators may link more than one TikTok handle. Primary lives on the
+  // creators row; extras live in inner_circle_handles. Never delete primary.
+  function icNormalizeHandle(raw) {
+    const noAt = String(raw || '').trim().replace(/^@+/, '');
+    return noAt ? '@' + noAt : '';
+  }
+
+  function icHandlesList(c) {
+    let extras = [];
+    try {
+      extras = stmts.handlesForCreator.all(c.id).map((h) => ({
+        id: h.id, handle: h.handle, primary: false,
+      }));
+    } catch (e) {
+      console.error('[inner-circle-sqlite] handles query failed:', e.message);
+    }
+    return [
+      { id: null, handle: c.creator_handle, primary: true },
+      ...extras,
+    ];
+  }
+
+  app.get('/api/inner-circle/handles', requireSqliteSession, (req, res) => {
+    try {
+      return res.json({ handles: icHandlesList(req.icCreator) });
+    } catch (e) {
+      console.error('[inner-circle-sqlite] GET handles failed:', e.message);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  });
+
+  app.post('/api/inner-circle/handles', express.json(), requireSqliteSession, (req, res) => {
+    try {
+      const c = req.icCreator;
+      const handle = icNormalizeHandle((req.body || {}).handle);
+      if (!handle || handle === '@') {
+        return res.status(400).json({ error: 'A TikTok handle is required' });
+      }
+      if (String(c.creator_handle || '').toLowerCase() === handle.toLowerCase()) {
+        return res.status(409).json({ error: 'That is already your primary handle' });
+      }
+      const owner = stmts.handleOwnerAny.get(handle, handle);
+      if (owner) {
+        return res.status(409).json({ error: 'That TikTok handle is already linked to an account' });
+      }
+      stmts.insertHandle.run(c.id, handle);
+      return res.json({ ok: true, handles: icHandlesList(c) });
+    } catch (e) {
+      if (String(e.message || '').includes('UNIQUE')) {
+        return res.status(409).json({ error: 'That TikTok handle is already linked to an account' });
+      }
+      console.error('[inner-circle-sqlite] POST handles failed:', e.message);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  });
+
+  app.delete('/api/inner-circle/handles/:id', requireSqliteSession, (req, res) => {
+    try {
+      const c = req.icCreator;
+      const id = parseInt(req.params.id, 10);
+      if (!Number.isFinite(id)) return res.status(400).json({ error: 'Invalid handle id' });
+      const info = stmts.deleteHandle.run(id, c.id);
+      if (!info.changes) return res.status(404).json({ error: 'Handle not found' });
+      return res.json({ ok: true, handles: icHandlesList(c) });
+    } catch (e) {
+      console.error('[inner-circle-sqlite] DELETE handle failed:', e.message);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  });
+
   // ── GET /api/inner-circle/dashboard ─────────────────────────────────────────
   app.get('/api/inner-circle/dashboard', requireSqliteSession, (req, res) => {
     try {
@@ -410,6 +509,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
         brands,
         nextCall,
         recordings,
+        handles: icHandlesList(c),
       });
     } catch (e) {
       console.error('[inner-circle-sqlite] dashboard failed:', e.message);
