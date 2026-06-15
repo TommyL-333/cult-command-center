@@ -1155,6 +1155,49 @@
 </main>
 </div><!-- end #tab-billing -->
 
+<!-- ───────────────────────── Inner Circle tab ──────────────────────────── -->
+<div id="tab-inner-circle" style="display:none">
+<main>
+
+  <div class="billing-header">
+    <div>
+      <div class="billing-title">🌀 Inner Circle</div>
+      <div style="font-size:0.8rem;color:var(--muted);margin-top:3px;" id="icBrandSub">Dedicated creators posting 20+ videos/month for <span id="icBrandName">your brand</span>.</div>
+    </div>
+  </div>
+
+  <!-- Summary stat cards -->
+  <div class="stats-row mb-32">
+    <div class="stat-card"><div class="stat-label">Creators</div><div class="stat-value teal" id="icStatCreators">—</div><div class="stat-sub">In your Inner Circle cohort</div></div>
+    <div class="stat-card"><div class="stat-label">Total Videos</div><div class="stat-value" id="icStatVideos">—</div><div class="stat-sub">Posted this cohort</div></div>
+    <div class="stat-card"><div class="stat-label">Total GMV</div><div class="stat-value gold" id="icStatGmv">—</div><div class="stat-sub">Driven by Inner Circle creators</div></div>
+  </div>
+
+  <!-- Status note -->
+  <div class="section-label mb-20">Cohort Creators</div>
+  <div id="icNote" style="font-size:0.82rem;color:var(--muted);margin-bottom:16px;line-height:1.6"></div>
+
+  <!-- Creators table -->
+  <div class="billing-history">
+    <table class="inv-table" id="icCreatorsTable">
+      <thead>
+        <tr>
+          <th>Creator</th>
+          <th>Name</th>
+          <th>Videos (X/20)</th>
+          <th>GMV</th>
+          <th>Joined</th>
+        </tr>
+      </thead>
+      <tbody id="icCreatorsBody">
+        <tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px;">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</main>
+</div><!-- end #tab-inner-circle -->
+
 <script>
   function fmt$(n) {
     if (n == null || n === '') return '—';
