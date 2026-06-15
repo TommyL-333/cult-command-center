@@ -218,6 +218,16 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
            available              = excluded.available,
            updated_at             = CURRENT_TIMESTAMP`
       ),
+      // Marketplace: IC creators who have a rates row AND are available.
+      marketplaceCreators: db.prepare(
+        `SELECT c.id AS creator_id, c.creator_name, c.creator_handle,
+                r.per_video_cents, r.retainer_monthly_cents, r.package_label,
+                r.package_videos, r.package_price_cents, r.available
+           FROM creator_rates r
+           JOIN inner_circle_creators c ON c.id = r.creator_id
+          WHERE r.available = 1 AND c.status != 'removed'
+          ORDER BY c.creator_name COLLATE NOCASE ASC`
+      ),
     };
 
     // ── Idempotent TEST creator seed (E2E testing; TEST-prefixed per task
@@ -1403,6 +1413,39 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     } catch (e) {
       console.error('[inner-circle-sqlite] dashboard page session check failed:', e.message);
       return res.redirect('/inner-circle');
+    }
+  });
+
+  // ── GET /api/inner-circle/marketplace ───────────────────────────────────────
+  // Brand-side creator marketplace for the logged-in CLIENT (express-session,
+  // set by the client portal login → req.session.clientBrandId — same auth gate
+  // the /api/inner-circle/client/* routes use). Returns every IC creator who has
+  // published a rates row AND is currently available. 401 if no client session.
+  app.get('/api/inner-circle/marketplace', (req, res) => {
+    if (dbError) return res.status(503).json({ error: 'IC database unavailable' });
+    const clientBrandId = req.session && req.session.clientBrandId;
+    if (!clientBrandId) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const rows = stmts.marketplaceCreators.all();
+      const creators = rows.map((row) => ({
+        creatorId: row.creator_id,
+        name: row.creator_name || null,
+        tiktokHandle: row.creator_handle,
+        rates: {
+          perVideo: row.per_video_cents,
+          retainerMonthly: row.retainer_monthly_cents,
+          package: {
+            label: (row.package_label && row.package_label.length) ? row.package_label : null,
+            videos: row.package_videos,
+            priceCents: row.package_price_cents,
+          },
+        },
+        available: row.available !== 0,
+      }));
+      return res.json({ ok: true, count: creators.length, creators });
+    } catch (e) {
+      console.error('[inner-circle-sqlite] marketplace failed:', e.message);
+      return res.status(500).json({ error: 'Server error' });
     }
   });
 
