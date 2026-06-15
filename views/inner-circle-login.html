@@ -385,7 +385,26 @@
 
           <button type="submit" class="btn">Enter</button>
           <div id="status" class="status"></div>
+          <div class="forgot-row" style="text-align:center;margin-top:18px;font-size:13px;">
+            <a href="#forgot" id="forgotLink" style="color:rgba(255,255,255,0.5);text-decoration:none;font-weight:500;transition:color 0.2s ease;">Forgot password?</a>
+          </div>
         </form>
+
+        <!-- Forgot Password Panel (inline) -->
+        <div id="forgotPanel" class="form-panel" style="margin-top:8px;">
+          <form id="forgotForm">
+            <div class="form-group">
+              <label for="forgotEmail">Email</label>
+              <input type="email" id="forgotEmail" placeholder="you@example.com" required>
+              <span class="hint">Enter the email tied to your Inner Circle account and we'll send a reset link.</span>
+            </div>
+            <button type="submit" class="btn">Send reset link</button>
+            <div id="forgotStatus" class="status"></div>
+            <div class="footer-link" style="margin-top:18px;">
+              <a href="#" id="backToLogin">&larr; Back to login</a>
+            </div>
+          </form>
+        </div>
       </div>
 
       <!-- Create Account Panel -->
@@ -530,6 +549,51 @@
         status.style.display = 'block';
       }
     });
+
+    // Forgot password flow
+    const forgotLink = document.getElementById('forgotLink');
+    const forgotPanel = document.getElementById('forgotPanel');
+    const backToLogin = document.getElementById('backToLogin');
+
+    function showForgot(show) {
+      loginPanel.classList.toggle('active', !show);
+      forgotPanel.classList.toggle('active', show);
+    }
+
+    if (forgotLink) {
+      forgotLink.addEventListener('click', (e) => { e.preventDefault(); showForgot(true); });
+    }
+    if (backToLogin) {
+      backToLogin.addEventListener('click', (e) => { e.preventDefault(); showForgot(false); });
+    }
+    // If page loaded with #forgot in the URL, open the panel directly.
+    if (window.location.hash === '#forgot') { showForgot(true); }
+
+    const forgotForm = document.getElementById('forgotForm');
+    if (forgotForm) {
+      forgotForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const status = document.getElementById('forgotStatus');
+        const email = document.getElementById('forgotEmail').value.trim();
+        const btn = forgotForm.querySelector('button[type="submit"]');
+        status.style.display = 'none';
+        if (btn) { btn.disabled = true; btn.textContent = 'Sending...'; }
+        try {
+          await fetch('/api/inner-circle/forgot-password', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ email })
+          });
+        } catch (err) {
+          // Swallow errors — never reveal whether the account exists.
+        }
+        // Always show the same neutral confirmation regardless of outcome.
+        status.className = 'status success';
+        status.textContent = 'If an account exists for that email, a reset link is on its way.';
+        status.style.display = 'block';
+        if (btn) { btn.disabled = false; btn.textContent = 'Send reset link'; }
+      });
+    }
   </script>
 </body>
 </html>
