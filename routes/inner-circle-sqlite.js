@@ -1367,6 +1367,35 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     return { shopId: sid, creators, summary };
   }
 
+  // ── GET /api/inner-circle/admin/funnel?shopId=…&key=… ───────────────────────
+  // HTTP wrapper over getIcFunnel(shopId). Returns per-creator funnel state for
+  // ONE shop so the admin page can loop every IC-enabled brand and aggregate a
+  // cross-brand signup-state table (signed_up | tc_accepted | sample_requested).
+  // Env-key protected (IC_ADMIN_KEY) OR a portal-admin session.
+  app.get('/api/inner-circle/admin/funnel', async (req, res) => {
+    const want = process.env.IC_ADMIN_KEY;
+    const got = req.query.key || req.get('x-ic-admin-key');
+    const sessionAdmin = !!(req.session && req.session.isPortalAdmin);
+    if (!sessionAdmin && (!want || got !== want)) return res.status(401).json({ error: 'Unauthorized' });
+    const shopId = req.query.shopId || req.query.shop_id;
+    if (shopId == null || String(shopId).trim() === '') {
+      return res.status(400).json({ error: 'shopId required' });
+    }
+    try {
+      const out = await getIcFunnel(String(shopId).trim());
+      if (out && out.error) {
+        // getIcFunnel returns a soft error (DB down / bad shopId) — pass through
+        // as 200 with the error field so the aggregator can keep going for the
+        // other brands rather than aborting the whole page.
+        return res.json({ ok: false, shopId: String(shopId), error: out.error, creators: out.creators || [], summary: out.summary || {} });
+      }
+      return res.json({ ok: true, ...out });
+    } catch (e) {
+      console.error('[inner-circle-sqlite] admin/funnel failed:', e.message);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  });
+
   // Expose the working session middleware so other routes can adopt it later.
   return { requireSqliteSession, getIcFunnel };
 };
