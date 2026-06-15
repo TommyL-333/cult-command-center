@@ -70,6 +70,51 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_videos_creator ON inner_circle_videos(creator_id);
   CREATE INDEX IF NOT EXISTS idx_videos_shop ON inner_circle_videos(shop_id);
   CREATE INDEX IF NOT EXISTS idx_assignments_creator ON inner_circle_brand_assignments(creator_id);
+
+  -- ── Creator retainer marketplace ──────────────────────────────────────────
+  CREATE TABLE IF NOT EXISTS creator_rates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    creator_id INTEGER REFERENCES inner_circle_creators(id),
+    per_video_cents INTEGER,
+    retainer_monthly_cents INTEGER,
+    package_label TEXT,
+    package_videos INTEGER,
+    package_price_cents INTEGER,
+    available INTEGER DEFAULT 1,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE(creator_id)
+  );
+
+  CREATE TABLE IF NOT EXISTS retainer_offers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    brand_id INTEGER,
+    brand_name TEXT,
+    creator_id INTEGER REFERENCES inner_circle_creators(id),
+    offer_type TEXT,
+    amount_cents INTEGER,
+    videos INTEGER,
+    terms TEXT,
+    status TEXT DEFAULT 'pending',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    responded_at DATETIME
+  );
+
+  CREATE TABLE IF NOT EXISTS retainer_agreements (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    offer_id INTEGER REFERENCES retainer_offers(id),
+    brand_id INTEGER,
+    creator_id INTEGER REFERENCES inner_circle_creators(id),
+    amount_cents INTEGER,
+    videos_committed INTEGER,
+    videos_delivered INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'active',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    completed_at DATETIME
+  );
+
+  CREATE INDEX IF NOT EXISTS idx_retainer_offers_creator ON retainer_offers(creator_id);
+  CREATE INDEX IF NOT EXISTS idx_retainer_offers_brand ON retainer_offers(brand_id);
+  CREATE INDEX IF NOT EXISTS idx_retainer_agreements_creator ON retainer_agreements(creator_id);
 `);
 
 // ── Query helpers ─────────────────────────────────────────────────────────────
