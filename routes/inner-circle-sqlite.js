@@ -877,6 +877,134 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     return res.json({ ok: true, brand: rec.name, id: rec.id || null, innerCircle: want, changed: before !== want });
   });
 
+  // ── POST /api/inner-circle/admin/dedup-email ────────────────────────────────
+  // Env-key protected (IC_ADMIN_KEY) OR portal-admin session. Runs the same
+  // email de-dup logic as migrations/ic-dedup-email.js, but IN-PROCESS against
+  // the live /data/inner_circle.db handle so ops can execute it over HTTPS
+  // without shelling into the Railway container.
+  //   POST /api/inner-circle/admin/dedup-email   {key, dryRun:true|false}
+  //   header alt: x-ic-admin-key. Default dryRun=true (must pass dryRun:false to apply).
+  // Returns { dryRun, groups, merged, deleted, keptIds, plan }.
+  function icDedupColumnExists(table, col) {
+    try { return db.prepare('PRAGMA table_info(' + table + ')').all().some((c) => c.name === col); }
+    catch (e) { return false; }
+  }
+  function icDedupTableExists(name) {
+    try { return !!db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = ?").get(name); }
+    catch (e) { return false; }
+  }
+  function icDedupIsEmpty(v) {
+    return v === null || v === undefined || (typeof v === 'string' && v.trim() === '');
+  }
+  function icRunDedupEmail(dryRun) {
+    const MERGE_FIELDS = ['password_hash', 'phone', 'tiktok_user_id', 'creator_name', 'cohort_start', 'cohort_end'];
+    const CHILD_TABLES = ['inner_circle_videos', 'inner_circle_brand_assignments'];
+    if (!icDedupTableExists('inner_circle_creators')) {
+      return { error: 'inner_circle_creators table missing', dryRun, groups: 0, merged: 0, deleted: 0, keptIds: [], plan: [] };
+    }
+    const mergeFields = MERGE_FIELDS.filter((f) => icDedupColumnExists('inner_circle_creators', f));
+    const childTables = CHILD_TABLES.filter((t) => icDedupTableExists(t) && icDedupColumnExists(t, 'creator_id'));
+
+    const dupGroups = db.prepare(
+      "SELECT lower(trim(email)) AS norm_email, COUNT(*) AS cnt FROM inner_circle_creators " +
+      "WHERE email IS NOT NULL AND trim(email) <> '' GROUP BY lower(trim(email)) HAVING COUNT(*) > 1 ORDER BY norm_email"
+    ).all();
+    const getGroupRows = db.prepare("SELECT * FROM inner_circle_creators WHERE lower(trim(email)) = ? ORDER BY id ASC");
+
+    const plan = [];
+    const keptIds = [];
+    let mergedCount = 0;
+    let deletedCount = 0;
+
+    for (const g of dupGroups) {
+      const rows = getGroupRows.all(g.norm_email);
+      if (rows.length < 2) continue;
+      const keeper = rows[0];
+      const dups = rows.slice(1);
+      keptIds.push(keeper.id);
+
+      const fieldUpdates = {};
+      for (const f of mergeFields) {
+        if (!icDedupIsEmpty(keeper[f])) continue;
+        for (const d of dups) { if (!icDedupIsEmpty(d[f])) { fieldUpdates[f] = d[f]; break; } }
+      }
+      if (icDedupColumnExists('inner_circle_creators', 'status')) {
+        if (keeper.status !== 'active' && dups.some((d) => d.status === 'active')) fieldUpdates.status = 'active';
+      }
+      const childMoves = {};
+      for (const t of childTables) {
+        const dupIds = dups.map((d) => d.id);
+        const placeholders = dupIds.map(() => '?').join(',');
+        childMoves[t] = db.prepare('SELECT COUNT(*) AS c FROM ' + t + ' WHERE creator_id IN (' + placeholders + ')').get(...dupIds).c;
+      }
+      plan.push({
+        email: g.norm_email,
+        keeperId: keeper.id,
+        keeperHandle: keeper.creator_handle,
+        dupIds: dups.map((d) => d.id),
+        dupHandles: dups.map((d) => d.creator_handle),
+        fieldUpdates,
+        childMoves,
+      });
+      mergedCount += dups.length;
+      deletedCount += dups.length;
+    }
+
+    if (dryRun) {
+      return { dryRun: true, groups: plan.length, merged: mergedCount, deleted: deletedCount, keptIds, plan };
+    }
+
+    const applied = { merged: 0, deleted: 0, keptIds: [] };
+    const runAll = db.transaction(() => {
+      for (const p of plan) {
+        const cols = Object.keys(p.fieldUpdates);
+        if (cols.length) {
+          const setSql = cols.map((c) => c + ' = ?').join(', ');
+          const vals = cols.map((c) => p.fieldUpdates[c]);
+          db.prepare('UPDATE inner_circle_creators SET ' + setSql + ' WHERE id = ?').run(...vals, p.keeperId);
+        }
+        if (icDedupColumnExists('inner_circle_creators', 'updated_at')) {
+          db.prepare('UPDATE inner_circle_creators SET updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(p.keeperId);
+        }
+        for (const t of childTables) {
+          for (const dupId of p.dupIds) {
+            db.prepare('UPDATE ' + t + ' SET creator_id = ? WHERE creator_id = ?').run(p.keeperId, dupId);
+          }
+        }
+        for (const dupId of p.dupIds) {
+          db.prepare('DELETE FROM inner_circle_creators WHERE id = ?').run(dupId);
+          applied.deleted += 1;
+          applied.merged += 1;
+        }
+        applied.keptIds.push(p.keeperId);
+      }
+    });
+    runAll();
+    return { dryRun: false, groups: plan.length, merged: applied.merged, deleted: applied.deleted, keptIds: applied.keptIds, plan };
+  }
+
+  app.post('/api/inner-circle/admin/dedup-email', express.json(), (req, res) => {
+    const sessionAdmin = !!(req.session && req.session.isPortalAdmin);
+    if (!sessionAdmin && !icCheckAdminKey(req)) return res.status(401).json({ error: 'Unauthorized' });
+    if (dbError) return res.status(503).json({ error: 'Inner Circle data layer unavailable' });
+    const dryRun = !(req.body && req.body.dryRun === false);
+    try {
+      const report = icRunDedupEmail(dryRun);
+      if (!dryRun && !report.error) {
+        const remaining = db.prepare(
+          "SELECT COUNT(*) AS c FROM (SELECT lower(trim(email)) e, COUNT(*) c FROM inner_circle_creators " +
+          "WHERE email IS NOT NULL AND trim(email) <> '' GROUP BY e HAVING c > 1)"
+        ).get().c;
+        report.remainingDupGroups = remaining;
+        icNotifyAlertChannel('🧹 Inner Circle email de-dup applied — ' + report.deleted + ' dup row(s) merged across ' + report.groups + ' group(s). Remaining dup groups: ' + remaining).catch(() => {});
+      }
+      return res.json(report);
+    } catch (e) {
+      console.error('[inner-circle-sqlite] dedup-email failed:', e.message);
+      return res.status(500).json({ error: e.message });
+    }
+  });
+
   // ── POST /api/inner-circle/select-brand ────────────���────────────────────────
   // Creator selects an Inner Circle brand. Persists the creator→brand link in
   // inner_circle_brand_assignments (upsert: re-selecting reactivates), writes a
