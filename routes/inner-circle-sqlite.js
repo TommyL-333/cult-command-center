@@ -107,6 +107,25 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       );
     `);
 
+    // ── Retainer offers (brand → creator) ────────────────────────────────────
+    // One row per offer. amount_cents stored as integer cents. Idempotent create.
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS retainer_offers (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        brand_id TEXT NOT NULL,
+        brand_name TEXT,
+        creator_id INTEGER NOT NULL REFERENCES inner_circle_creators(id),
+        offer_type TEXT NOT NULL,
+        amount_cents INTEGER NOT NULL,
+        videos INTEGER,
+        terms TEXT,
+        status TEXT NOT NULL DEFAULT 'pending',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_retainer_offers_brand ON retainer_offers(brand_id);
+      CREATE INDEX IF NOT EXISTS idx_retainer_offers_creator ON retainer_offers(creator_id);
+    `);
+
     stmts = {
       creatorByEmail: db.prepare(
         `SELECT * FROM inner_circle_creators WHERE lower(email) = lower(?) AND status = 'active'`
@@ -227,6 +246,25 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
            JOIN inner_circle_creators c ON c.id = r.creator_id
           WHERE r.available = 1 AND c.status != 'removed'
           ORDER BY c.creator_name COLLATE NOCASE ASC`
+      ),
+      // ── Retainer offers ──────────────────────────────────────────────────────
+      creatorByIdBasic: db.prepare(
+        `SELECT id, creator_name, creator_handle FROM inner_circle_creators WHERE id = ?`
+      ),
+      insertOffer: db.prepare(
+        `INSERT INTO retainer_offers
+           (brand_id, brand_name, creator_id, offer_type, amount_cents, videos, terms, status)
+         VALUES (@brand_id, @brand_name, @creator_id, @offer_type, @amount_cents, @videos, @terms, 'pending')`
+      ),
+      getOfferById: db.prepare(
+        `SELECT * FROM retainer_offers WHERE id = ?`
+      ),
+      offersForBrand: db.prepare(
+        `SELECT o.*, c.creator_name, c.creator_handle
+           FROM retainer_offers o
+           JOIN inner_circle_creators c ON c.id = o.creator_id
+          WHERE o.brand_id = ?
+          ORDER BY o.created_at DESC`
       ),
     };
 
@@ -1445,6 +1483,152 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       return res.json({ ok: true, count: creators.length, creators });
     } catch (e) {
       console.error('[inner-circle-sqlite] marketplace failed:', e.message);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  });
+
+  // ── POST /api/inner-circle/offers ────────────────────────────────────────────
+  // Brand (logged-in CLIENT via express-session → req.session.clientBrandId)
+  // makes a retainer/per-video/package/custom offer to an IC creator. Durable
+  // jsonl log is written BEFORE the Lark notify so a notify failure can never
+  // lose the offer. Lark notify failure never fails the request.
+  const IC_VALID_OFFER_TYPES = ['per_video', 'retainer', 'package', 'custom'];
+  app.post('/api/inner-circle/offers', express.json(), async (req, res) => {
+    if (dbError) return res.status(503).json({ error: 'IC database unavailable' });
+    const clientBrandId = req.session && req.session.clientBrandId;
+    if (!clientBrandId) return res.status(401).json({ error: 'Not authenticated' });
+
+    const { creatorId, offerType, amountCents, videos, terms } = req.body || {};
+
+    // Validate offer type
+    if (!offerType || !IC_VALID_OFFER_TYPES.includes(String(offerType))) {
+      return res.status(400).json({ error: 'Invalid offerType', valid: IC_VALID_OFFER_TYPES });
+    }
+    // Validate amount (integer cents, >= 0)
+    const amt = Number(amountCents);
+    if (!Number.isFinite(amt) || !Number.isInteger(amt) || amt < 0) {
+      return res.status(400).json({ error: 'amountCents must be a non-negative integer (cents)' });
+    }
+    // Validate creatorId
+    const cid = Number(creatorId);
+    if (!Number.isInteger(cid) || cid <= 0) {
+      return res.status(400).json({ error: 'creatorId required' });
+    }
+    // Optional videos must be a non-negative integer if provided
+    let vids = null;
+    if (videos !== undefined && videos !== null && videos !== '') {
+      vids = Number(videos);
+      if (!Number.isInteger(vids) || vids < 0) {
+        return res.status(400).json({ error: 'videos must be a non-negative integer' });
+      }
+    }
+
+    try {
+      // Resolve brand from session (brands.json is source of truth).
+      const data = icLoadBrandsFile();
+      const brand = ((data && data.clients) || []).find((b) => b && b.id === clientBrandId);
+      if (!brand) return res.status(404).json({ error: 'Brand not found for session' });
+
+      // Verify creator exists.
+      const creator = stmts.creatorByIdBasic.get(cid);
+      if (!creator) return res.status(404).json({ error: 'Creator not found' });
+
+      // Insert offer (status='pending').
+      const info = stmts.insertOffer.run({
+        brand_id: String(brand.id),
+        brand_name: brand.name || null,
+        creator_id: cid,
+        offer_type: String(offerType),
+        amount_cents: amt,
+        videos: vids,
+        terms: (terms != null && String(terms).length) ? String(terms) : null,
+      });
+      const offer = stmts.getOfferById.get(info.lastInsertRowid);
+
+      // Durable log FIRST — notify failure must never lose the offer.
+      try {
+        fs.appendFileSync(path.join(IC_DATA_DIR, 'ic-retainer-offers.jsonl'), JSON.stringify({
+          at: new Date().toISOString(),
+          offerId: offer.id,
+          brandId: brand.id,
+          brandName: brand.name || null,
+          creatorId: cid,
+          creatorName: creator.creator_name || null,
+          tiktokHandle: creator.creator_handle || null,
+          offerType: String(offerType),
+          amountCents: amt,
+          videos: vids,
+          terms: offer.terms,
+          status: 'pending',
+        }) + '\n');
+      } catch (e) {
+        console.error('[inner-circle-sqlite] offer log write failed:', e.message);
+      }
+
+      // Lark notify (relay primary, direct LARK_ALERT_CHAT_ID fallback).
+      const handle = String(creator.creator_handle || '').replace(/^@/, '');
+      const dollars = (amt / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const termsText = offer.terms || `${offerType}${vids != null ? ' / ' + vids + ' videos' : ''}`;
+      const text = `💼 Retainer Offer: ${brand.name || brand.id} offered @${handle} ${dollars} for ${termsText}`;
+      let notified = false, via = null;
+      try {
+        const r = await icNotifyAlertChannel(text);
+        notified = !!(r && r.notified);
+        via = r && r.via;
+      } catch (e) {
+        console.error('[inner-circle-sqlite] offer notify threw:', e.message);
+      }
+      console.log(`[inner-circle-sqlite] offer #${offer.id} ${brand.name} → @${handle} ${dollars} (notified: ${notified}${via ? ' via ' + via : ''})`);
+
+      return res.json({
+        ok: true,
+        offer: {
+          id: offer.id,
+          brandId: offer.brand_id,
+          brandName: offer.brand_name,
+          creatorId: offer.creator_id,
+          creatorName: creator.creator_name || null,
+          tiktokHandle: creator.creator_handle || null,
+          offerType: offer.offer_type,
+          amountCents: offer.amount_cents,
+          videos: offer.videos,
+          terms: offer.terms,
+          status: offer.status,
+          createdAt: offer.created_at,
+        },
+        notified,
+      });
+    } catch (e) {
+      console.error('[inner-circle-sqlite] create offer failed:', e.message);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  });
+
+  // ── GET /api/inner-circle/offers ─────────────────────────────────────────────
+  // Lists every offer this brand (client session) has sent. 401 if no session.
+  app.get('/api/inner-circle/offers', (req, res) => {
+    if (dbError) return res.status(503).json({ error: 'IC database unavailable' });
+    const clientBrandId = req.session && req.session.clientBrandId;
+    if (!clientBrandId) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const rows = stmts.offersForBrand.all(String(clientBrandId));
+      const offers = rows.map((o) => ({
+        id: o.id,
+        brandId: o.brand_id,
+        brandName: o.brand_name,
+        creatorId: o.creator_id,
+        creatorName: o.creator_name || null,
+        tiktokHandle: o.creator_handle || null,
+        offerType: o.offer_type,
+        amountCents: o.amount_cents,
+        videos: o.videos,
+        terms: o.terms,
+        status: o.status,
+        createdAt: o.created_at,
+      }));
+      return res.json({ ok: true, count: offers.length, offers });
+    } catch (e) {
+      console.error('[inner-circle-sqlite] list offers failed:', e.message);
       return res.status(500).json({ error: 'Server error' });
     }
   });
