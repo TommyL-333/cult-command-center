@@ -1166,6 +1166,39 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     }
   });
 
+  // ── DELETE /api/inner-circle/admin/creators/:id?key=… ───────────────────────
+  // Key-protected hard delete of a single creator + their child rows
+  // (videos, extra handles, brand assignments). Used for test-row cleanup and
+  // removing accidental dupes. Env-key protected (IC_ADMIN_KEY) or portal admin
+  // session — same gate as the roster endpoint above. Runs in a transaction.
+  app.delete('/api/inner-circle/admin/creators/:id', (req, res) => {
+    if (dbError) return res.status(503).json({ error: 'IC database unavailable' });
+    const want = process.env.IC_ADMIN_KEY;
+    const got = req.query.key || req.get('x-ic-admin-key');
+    const sessionAdmin = !!(req.session && req.session.isPortalAdmin);
+    if (!sessionAdmin && (!want || got !== want)) return res.status(401).json({ error: 'Unauthorized' });
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(400).json({ error: 'Invalid creator id' });
+    try {
+      const row = db.prepare('SELECT id, creator_name, email FROM inner_circle_creators WHERE id = ?').get(id);
+      if (!row) return res.status(404).json({ error: 'Creator not found' });
+      const tx = db.transaction((cid) => {
+        let videos = 0, handles = 0, assignments = 0;
+        try { videos = db.prepare('DELETE FROM inner_circle_videos WHERE creator_id = ?').run(cid).changes; } catch (_) {}
+        try { handles = db.prepare('DELETE FROM inner_circle_handles WHERE creator_id = ?').run(cid).changes; } catch (_) {}
+        try { assignments = db.prepare('DELETE FROM inner_circle_brand_assignments WHERE creator_id = ?').run(cid).changes; } catch (_) {}
+        const creator = db.prepare('DELETE FROM inner_circle_creators WHERE id = ?').run(cid).changes;
+        return { videos, handles, assignments, creator };
+      });
+      const deleted = tx(id);
+      console.log(`[inner-circle-sqlite] admin delete creator id=${id} <${row.email}> ->`, JSON.stringify(deleted));
+      return res.json({ ok: true, deletedId: id, email: row.email, name: row.creator_name, deleted });
+    } catch (e) {
+      console.error('[inner-circle-sqlite] admin delete creator failed:', e.message);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  });
+
   // ── GET /api/inner-circle/client/creators ───────────────────────────────────
   // Brand-scoped roster for the logged-in CLIENT (express-session, set by the
   // client portal login → req.session.clientBrandId). Returns only the IC
