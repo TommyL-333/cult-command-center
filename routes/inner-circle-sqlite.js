@@ -562,6 +562,26 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
         },
       });
     } catch (e) {
+      // Race condition: two concurrent signups with the same email can both
+      // pass the app-level creatorByEmailAny check above and race to INSERT.
+      // The DB-level partial UNIQUE index (ux_ic_creators_email) is the
+      // backstop — the loser of the race throws SQLITE_CONSTRAINT_UNIQUE.
+      // Surface that as the SAME friendly 409 the app-level check returns,
+      // not a generic 500. Match the email index by code + message so a
+      // handle/other UNIQUE collision isn't mislabeled as an email dup.
+      const msg = String(e && e.message || '');
+      const isUnique = (e && e.code === 'SQLITE_CONSTRAINT_UNIQUE') || msg.includes('UNIQUE');
+      const isEmailUnique = isUnique && (
+        msg.includes('ux_ic_creators_email') ||
+        /inner_circle_creators\.email/i.test(msg) ||
+        // Generic UNIQUE on the creators table with no other unique column in
+        // the INSERT — treat as the email collision (the only enforced unique).
+        (!/handle/i.test(msg))
+      );
+      if (isEmailUnique) {
+        console.warn('[inner-circle-sqlite] signup: duplicate-email UNIQUE race caught, returning 409:', msg);
+        return res.status(409).json({ error: 'An account with this email already exists — try logging in or resetting your password' });
+      }
       console.error('[inner-circle-sqlite] signup failed:', e.message);
       return res.status(500).json({ error: 'Server error' });
     }
