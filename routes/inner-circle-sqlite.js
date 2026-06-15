@@ -270,20 +270,25 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       if (!creator) return res.status(401).json({ error: 'Invalid credentials' });
 
       const pw = String(password).trim();
-      let valid = false;
-      if (creator.password_hash) {
-        valid = verifyPassword(pw, creator.password_hash);
-      } else {
-        // Legacy fallback: accounts created before real passwords used the TikTok handle.
-        const handle = creator.creator_handle || '';
-        const handleNoAt = handle.replace(/^@/, '');
-        valid = pw === handle || pw === handleNoAt || pw === '@' + handleNoAt;
-        // Upgrade path: first successful legacy login sets their handle-password as a real hash
-        if (valid) {
-          try { stmts.setPassword.run(hashPassword(pw), creator.id); } catch (_) {}
-        }
-      }
+      // Backward-compatible auth: a reset-set password (stored hash) is accepted,
+      // AND the legacy handle / phone-last-4 fallbacks remain valid so existing
+      // creators are never locked out. Any one match logs the creator in.
+      const handle = creator.creator_handle || '';
+      const handleNoAt = handle.replace(/^@/, '');
+      const phoneLast4 = String(creator.phone || '').replace(/\D/g, '').slice(-4);
+
+      const hashMatch = !!(creator.password_hash && verifyPassword(pw, creator.password_hash));
+      const handleMatch = pw === handle || pw === handleNoAt || pw === '@' + handleNoAt;
+      const phoneMatch = phoneLast4.length === 4 && pw === phoneLast4;
+
+      const valid = hashMatch || handleMatch || phoneMatch;
       if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
+
+      // Upgrade path: if a creator without a stored hash logs in via their legacy
+      // handle, persist it as a real hash so future logins use the hashed path.
+      if (!creator.password_hash && handleMatch) {
+        try { stmts.setPassword.run(hashPassword(pw), creator.id); } catch (_) {}
+      }
 
       const token = crypto.randomBytes(32).toString('hex');
       const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
