@@ -1,1 +1,341 @@
-<?doctype html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inner Circle — Reset Password</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #050508;
+      color: #fff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow-x: hidden;
+      overflow-y: auto;
+      padding: 40px 16px;
+      position: relative;
+    }
+
+    /* Dramatic Corinthian Pillars Background */
+    .pillars {
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      display: flex;
+      justify-content: space-around;
+      align-items: center;
+      opacity: 0.28;
+      z-index: 0;
+      pointer-events: none;
+      perspective: 1000px;
+    }
+    .pillar {
+      width: 200px;
+      height: 100%;
+      background: linear-gradient(180deg,
+        rgba(255, 255, 255, 0.12) 0%,
+        rgba(255, 255, 255, 0.07) 30%,
+        rgba(255, 255, 255, 0.05) 50%,
+        rgba(255, 255, 255, 0.07) 70%,
+        rgba(255, 255, 255, 0.10) 100%);
+      border-radius: 8px;
+      box-shadow:
+        inset 6px 0 24px rgba(255, 255, 255, 0.08),
+        inset -6px 0 24px rgba(0, 0, 0, 0.4),
+        0 0 100px rgba(0, 242, 234, 0.12),
+        0 0 140px rgba(255, 0, 80, 0.08);
+      position: relative;
+      transform: rotateY(-2deg);
+    }
+    .pillar::before {
+      content: '';
+      position: absolute; top: 0; left: 50%;
+      transform: translateX(-50%);
+      width: 110%; height: 160px;
+      background:
+        radial-gradient(ellipse at 50% 30%, rgba(255, 255, 255, 0.25) 0%, transparent 50%),
+        linear-gradient(180deg,
+          rgba(255, 255, 255, 0.35) 0%,
+          rgba(255, 255, 255, 0.18) 50%,
+          transparent 100%);
+      border-radius: 8px 8px 0 0;
+      box-shadow: inset 0 3px 12px rgba(255, 255, 255, 0.25), 0 6px 24px rgba(0, 242, 234, 0.2);
+      border-top: 4px solid rgba(255, 255, 255, 0.18);
+    }
+    .pillar::after {
+      content: '';
+      position: absolute; bottom: 0; left: 50%;
+      transform: translateX(-50%);
+      width: 110%; height: 140px;
+      background:
+        radial-gradient(ellipse at 50% 70%, rgba(255, 255, 255, 0.2) 0%, transparent 50%),
+        linear-gradient(0deg,
+          rgba(255, 255, 255, 0.28) 0%,
+          rgba(255, 255, 255, 0.10) 70%,
+          transparent 100%);
+      border-radius: 0 0 8px 8px;
+      box-shadow: inset 0 -3px 12px rgba(255, 255, 255, 0.18), 0 -6px 24px rgba(255, 0, 80, 0.15);
+      border-bottom: 4px solid rgba(255, 255, 255, 0.14);
+    }
+    .glow {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 200%; height: 200%;
+      background: radial-gradient(ellipse at center,
+        rgba(0, 242, 234, 0.06) 0%,
+        rgba(255, 0, 80, 0.04) 30%,
+        transparent 70%);
+      filter: blur(80px);
+      z-index: -1;
+    }
+
+    .container { width: 100%; max-width: 440px; padding: 24px; position: relative; z-index: 10; }
+
+    .card {
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 24px;
+      padding: 48px 40px;
+      backdrop-filter: blur(30px);
+      box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.6),
+        0 0 80px rgba(0, 242, 234, 0.1),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    }
+
+    .logo { text-align: center; margin-bottom: 32px; }
+    .logo h1 {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 32px;
+      font-weight: 900;
+      letter-spacing: -0.02em;
+      background: linear-gradient(135deg, #00f2ea 0%, #ff0050 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 8px;
+      text-shadow: 0 0 40px rgba(0, 242, 234, 0.3);
+    }
+    .logo p {
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 13px;
+      font-weight: 500;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .form-group { margin-bottom: 22px; }
+    label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: rgba(255, 255, 255, 0.7);
+      margin-bottom: 8px;
+      letter-spacing: 0.02em;
+    }
+    input[type="password"] {
+      width: 100%;
+      padding: 14px 18px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      color: #fff;
+      font-size: 15px;
+      font-family: inherit;
+      transition: all 0.3s ease;
+      outline: none;
+    }
+    input[type="password"]:focus {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(0, 242, 234, 0.5);
+      box-shadow: 0 0 0 3px rgba(0, 242, 234, 0.1);
+    }
+    input::placeholder { color: rgba(255, 255, 255, 0.3); }
+    .hint { display: block; margin-top: 6px; font-size: 12px; color: rgba(255, 255, 255, 0.45); }
+
+    .btn {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, #00f2ea 0%, #ff0050 100%);
+      border: none;
+      border-radius: 12px;
+      color: #fff;
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 20px rgba(0, 242, 234, 0.25);
+      margin-top: 4px;
+    }
+    .btn:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 28px rgba(0, 242, 234, 0.4); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .msg {
+      margin-top: 20px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 500;
+      text-align: center;
+      display: none;
+      line-height: 1.5;
+    }
+    .msg.show { display: block; }
+    .msg.error {
+      background: rgba(255, 0, 80, 0.1);
+      border: 1px solid rgba(255, 0, 80, 0.3);
+      color: #ff6b94;
+    }
+    .msg.success {
+      background: rgba(0, 242, 234, 0.08);
+      border: 1px solid rgba(0, 242, 234, 0.3);
+      color: #5ff5ee;
+    }
+
+    .back-link {
+      display: block;
+      text-align: center;
+      margin-top: 24px;
+      color: rgba(255, 255, 255, 0.5);
+      font-size: 14px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+    .back-link:hover { color: #00f2ea; }
+
+    .login-cta {
+      display: inline-block;
+      margin-top: 16px;
+      padding: 12px 28px;
+      background: linear-gradient(135deg, #00f2ea 0%, #ff0050 100%);
+      border-radius: 12px;
+      color: #fff;
+      font-weight: 700;
+      font-size: 14px;
+      text-decoration: none;
+      box-shadow: 0 4px 20px rgba(0, 242, 234, 0.25);
+      transition: all 0.3s ease;
+    }
+    .login-cta:hover { transform: translateY(-2px); box-shadow: 0 6px 28px rgba(0, 242, 234, 0.4); }
+  </style>
+</head>
+<body>
+  <div class="pillars">
+    <div class="pillar"><div class="pillar-inner"></div></div>
+    <div class="pillar"><div class="pillar-inner"></div></div>
+    <div class="pillar"><div class="pillar-inner"></div></div>
+  </div>
+  <div class="glow"></div>
+
+  <div class="container">
+    <div class="card">
+      <div class="logo">
+        <h1>Inner Circle</h1>
+        <p>Reset Password</p>
+      </div>
+
+      <form id="resetForm" autocomplete="off">
+        <div class="form-group">
+          <label for="password">New Password</label>
+          <input type="password" id="password" name="password" placeholder="••••••••" autocomplete="new-password" required>
+          <span class="hint">At least 8 characters.</span>
+        </div>
+        <div class="form-group">
+          <label for="confirm">Confirm Password</label>
+          <input type="password" id="confirm" name="confirm" placeholder="••••••••" autocomplete="new-password" required>
+        </div>
+        <button type="submit" class="btn" id="submitBtn">Update Password</button>
+      </form>
+
+      <div class="msg" id="msg"></div>
+
+      <a href="/inner-circle" class="back-link" id="backLink">← Back to login</a>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var params = new URLSearchParams(window.location.search);
+      var token = params.get('token');
+
+      var form = document.getElementById('resetForm');
+      var pwInput = document.getElementById('password');
+      var confirmInput = document.getElementById('confirm');
+      var submitBtn = document.getElementById('submitBtn');
+      var msg = document.getElementById('msg');
+      var backLink = document.getElementById('backLink');
+
+      function showMsg(text, type) {
+        msg.textContent = text;
+        msg.className = 'msg show ' + type;
+      }
+      function showSuccessWithLogin(text) {
+        msg.innerHTML = text + '<br><a href="/inner-circle" class="login-cta">Go to login</a>';
+        msg.className = 'msg show success';
+      }
+
+      if (!token) {
+        form.style.display = 'none';
+        showMsg('This reset link is missing or invalid. Please request a new one from the login page.', 'error');
+        return;
+      }
+
+      form.addEventListener('submit', function (e) {
+        e.preventDefault();
+        msg.className = 'msg';
+
+        var pw = pwInput.value;
+        var confirm = confirmInput.value;
+
+        if (pw.length < 8) {
+          showMsg('Password must be at least 8 characters.', 'error');
+          return;
+        }
+        if (pw !== confirm) {
+          showMsg('Passwords do not match.', 'error');
+          return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Updating…';
+
+        fetch('/api/inner-circle/reset-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: token, password: pw })
+        })
+          .then(function (res) {
+            return res.json().then(function (data) { return { ok: res.ok, data: data }; });
+          })
+          .then(function (r) {
+            if (r.ok && r.data && r.data.success !== false) {
+              form.style.display = 'none';
+              backLink.style.display = 'none';
+              showSuccessWithLogin('Password updated — you can now log in.');
+            } else {
+              var serverMsg = (r.data && (r.data.error || r.data.message)) || 'Could not reset your password. The link may have expired — request a new one.';
+              showMsg(serverMsg, 'error');
+              submitBtn.disabled = false;
+              submitBtn.textContent = 'Update Password';
+            }
+          })
+          .catch(function () {
+            showMsg('Network error. Please try again.', 'error');
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Update Password';
+          });
+      });
+    })();
+  </script>
+</body>
+</html>
