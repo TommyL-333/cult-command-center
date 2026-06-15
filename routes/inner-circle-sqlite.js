@@ -312,6 +312,120 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     }
   });
 
+  // ── Password reset: GHL email helper ────────────────────────────────────────
+  // Sends a reset link to a creator via GHL (find contact → upsert conversation →
+  // send Email message). Mirrors the confirmed pattern used in dashboard-server.js.
+  // Returns { ok, reason? } and NEVER throws — callers wrap in try/catch anyway.
+  const IC_PORTAL_BASE = process.env.IC_BASE_URL || 'https://portal.cultcontent.cc';
+
+  async function icSendResetEmail(creator, resetUrl) {
+    let axios;
+    try { axios = require('axios'); }
+    catch (e) { console.error('[inner-circle-sqlite] axios unavailable:', e.message); return { ok: false, reason: 'no-axios' }; }
+
+    const apiKey = process.env.GHL_API_KEY;
+    const locationId = process.env.GHL_LOC_ID;
+    if (!apiKey || !locationId) {
+      console.error('[inner-circle-sqlite] reset email: GHL_API_KEY / GHL_LOC_ID not configured');
+      return { ok: false, reason: 'ghl-not-configured' };
+    }
+    const headers = { Authorization: `Bearer ${apiKey}`, Version: '2021-07-28', 'Content-Type': 'application/json' };
+    const email = String(creator.email || '').trim();
+    if (!email) return { ok: false, reason: 'no-email' };
+
+    // 1) Find the GHL contact by email
+    let contactId = null;
+    try {
+      const sr = await axios.get('https://services.leadconnectorhq.com/contacts/', {
+        headers, params: { locationId, query: email, limit: 1 }, timeout: 10000,
+      });
+      const found = (sr.data && sr.data.contacts) ? sr.data.contacts[0] : null;
+      if (found && (found.email || '').toLowerCase() === email.toLowerCase()) contactId = found.id;
+      else if (found) contactId = found.id; // best-effort: query returned the contact
+    } catch (e) {
+      console.error('[inner-circle-sqlite] reset email: contact lookup failed:', e.response && e.response.data ? JSON.stringify(e.response.data) : e.message);
+    }
+    if (!contactId) return { ok: false, reason: 'contact-not-found' };
+
+    // 2) Create / get a conversation for this contact
+    let conversationId = null;
+    try {
+      const cr = await axios.post('https://services.leadconnectorhq.com/conversations/', {
+        locationId, contactId,
+      }, { headers, timeout: 10000 });
+      conversationId = cr.data && (cr.data.conversationId || cr.data.id);
+    } catch (ce) {
+      // GHL returns non-2xx when the conversation already exists but still gives the ID
+      conversationId = ce.response && ce.response.data && ce.response.data.conversationId;
+      if (!conversationId) {
+        console.error('[inner-circle-sqlite] reset email: conversation create failed:', ce.response && ce.response.data ? JSON.stringify(ce.response.data) : ce.message);
+        return { ok: false, reason: 'conversation-failed' };
+      }
+    }
+
+    // 3) Send the Email message containing the reset link (valid 1 hour)
+    const firstName = (creator.creator_name || '').trim().split(/\s+/)[0] || 'there';
+    const subject = 'Reset your Inner Circle password';
+    const html = [
+      `<p>Hi ${firstName},</p>`,
+      `<p>We received a request to reset your Cult Content Inner Circle password.</p>`,
+      `<p><a href="${resetUrl}" style="display:inline-block;padding:12px 20px;background:#00f2ea;color:#161823;border-radius:8px;text-decoration:none;font-weight:600;">Reset my password</a></p>`,
+      `<p>Or paste this link into your browser:<br><a href="${resetUrl}">${resetUrl}</a></p>`,
+      `<p>This link is valid for <strong>1 hour</strong>. If you didn't request this, you can safely ignore this email.</p>`,
+      `<p>— Cult Content</p>`,
+    ].join('\n');
+    const text = `Hi ${firstName},\n\nReset your Inner Circle password using this link (valid 1 hour):\n${resetUrl}\n\nIf you didn't request this, ignore this email.\n\n— Cult Content`;
+
+    try {
+      await axios.post('https://services.leadconnectorhq.com/conversations/messages', {
+        type: 'Email',
+        contactId,
+        conversationId,
+        subject,
+        html,
+        message: text,
+        emailFrom: process.env.GHL_EMAIL_FROM || undefined,
+      }, { headers, timeout: 10000 });
+      return { ok: true, contactId, conversationId };
+    } catch (me) {
+      console.error('[inner-circle-sqlite] reset email: send failed:', me.response && me.response.data ? JSON.stringify(me.response.data) : me.message);
+      return { ok: false, reason: 'send-failed' };
+    }
+  }
+
+  // ── POST /api/inner-circle/forgot-password ──────────────────────────────────
+  // Body: {email}. ALWAYS returns {ok:true} (no account enumeration). If a matching
+  // active creator exists, mint a single-use 1-hour token, store it, and email a
+  // reset link via GHL. GHL send is wrapped in try/catch — failures are logged,
+  // never surfaced to the caller.
+  app.post('/api/inner-circle/forgot-password', express.json(), async (req, res) => {
+    if (dbError) return res.status(503).json({ error: 'Inner Circle data layer unavailable' });
+    const email = String((req.body && req.body.email) || '').trim();
+    // Always respond ok:true regardless of outcome — prevents account enumeration.
+    if (!email) return res.json({ ok: true });
+
+    try {
+      const creator = stmts.creatorByEmail.get(email);
+      if (creator) {
+        const token = crypto.randomBytes(32).toString('hex');
+        const expiresAt = new Date(Date.now() + 60 * 60 * 1000)
+          .toISOString().replace('T', ' ').slice(0, 19); // SQLite datetime, +1h
+        stmts.insertReset.run(token, creator.id, expiresAt);
+        const resetUrl = `${IC_PORTAL_BASE}/inner-circle/reset?token=${token}`;
+        try {
+          const r = await icSendResetEmail(creator, resetUrl);
+          if (!r.ok) console.error('[inner-circle-sqlite] forgot-password: email not sent:', r.reason);
+        } catch (e) {
+          console.error('[inner-circle-sqlite] forgot-password: email send threw:', e.message);
+        }
+      }
+    } catch (e) {
+      // Log but never leak — caller always gets ok:true.
+      console.error('[inner-circle-sqlite] forgot-password failed:', e.message);
+    }
+    return res.json({ ok: true });
+  });
+
   // ── POST /api/inner-circle/signup ───────────────────────────────────────────
   // Create Account flow. Body: {name, email, tiktok_handle, phone?}.
   // Stores creator_handle WITH a leading '@' — same format as existing rows;
