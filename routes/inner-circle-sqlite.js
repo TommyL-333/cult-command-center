@@ -129,6 +129,11 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     // responded_at — when the creator accepted/declined. Idempotent migration.
     try { db.exec(`ALTER TABLE retainer_offers ADD COLUMN responded_at DATETIME`); } catch (_) { /* column exists */ }
 
+    // videos_delivered — brand-reported delivery progress against the
+    // agreement's videos_committed. Idempotent migration. No payment data here;
+    // money movement is escalated to a human, never executed by the API.
+    try { db.exec(`ALTER TABLE retainer_agreements ADD COLUMN videos_delivered INTEGER NOT NULL DEFAULT 0`); } catch (_) { /* column exists */ }
+
     // ── Retainer agreements (created on offer accept) ────────────────────────
     // One row per accepted offer. Mirrors the offer's economics at accept time.
     db.exec(`
@@ -307,6 +312,40 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       ),
       getAgreementByOfferId: db.prepare(
         `SELECT * FROM retainer_agreements WHERE offer_id = ?`
+      ),
+      getAgreementById: db.prepare(
+        `SELECT * FROM retainer_agreements WHERE id = ?`
+      ),
+      // Creator-side agreements: every agreement where this creator is the
+      // counterparty. Joins the offer for brand_name + offer_type context.
+      agreementsForCreator: db.prepare(
+        `SELECT a.*, o.brand_name AS o_brand_name, o.offer_type AS o_offer_type
+           FROM retainer_agreements a
+           JOIN retainer_offers o ON o.id = a.offer_id
+          WHERE a.creator_id = ?
+          ORDER BY (a.status = 'active') DESC, a.created_at DESC`
+      ),
+      // Brand-side agreements: every agreement for this brand. Joins creator
+      // for the counterparty name/handle.
+      agreementsForBrand: db.prepare(
+        `SELECT a.*, c.creator_name, c.creator_handle, o.offer_type AS o_offer_type
+           FROM retainer_agreements a
+           JOIN inner_circle_creators c ON c.id = a.creator_id
+           JOIN retainer_offers o ON o.id = a.offer_id
+          WHERE a.brand_id = ?
+          ORDER BY (a.status = 'active') DESC, a.created_at DESC`
+      ),
+      // Set delivered to an absolute value + recompute status. Guarded by
+      // brand_id so a brand can only progress its OWN agreements (IDOR-safe).
+      // status auto-flips to 'completed' when delivered >= committed (and
+      // committed is known/>0); otherwise stays 'active'.
+      setAgreementDelivered: db.prepare(
+        `UPDATE retainer_agreements
+            SET videos_delivered = @videos_delivered,
+                status = CASE
+                  WHEN @videos_delivered >= videos_committed AND videos_committed IS NOT NULL AND videos_committed > 0
+                    THEN 'completed' ELSE 'active' END
+          WHERE id = @id AND brand_id = @brand_id`
       ),
     };
 
@@ -1813,6 +1852,110 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       });
     } catch (e) {
       console.error('[inner-circle-sqlite] respond offer failed:', e.message);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  });
+
+  // ── GET /api/inner-circle/my-agreements ──────────────────────────────────────
+  // Creator-side: active + completed retainer agreements where the logged-in
+  // creator is the counterparty. IDOR-safe: creator_id comes from the session
+  // (req.icCreator.id), never params. Read-only; no payment data is exposed.
+  app.get('/api/inner-circle/my-agreements', requireSqliteSession, (req, res) => {
+    try {
+      const c = req.icCreator;
+      const rows = stmts.agreementsForCreator.all(c.id);
+      const agreements = rows.map((a) => ({
+        id: a.id,
+        counterpartyName: a.o_brand_name || a.brand_id,
+        amount: a.amount_cents,
+        videosCommitted: a.videos_committed,
+        videosDelivered: a.videos_delivered || 0,
+        status: a.status,
+      }));
+      const active = agreements.filter((a) => a.status === 'active').length;
+      return res.json({ ok: true, count: agreements.length, active, agreements });
+    } catch (e) {
+      console.error('[inner-circle-sqlite] my-agreements failed:', e.message);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  });
+
+  // ── GET /api/inner-circle/agreements ─────────────────────────────────────────
+  // Brand-side (client session → req.session.clientBrandId): every retainer
+  // agreement for this brand. 401 if no client session. Read-only.
+  app.get('/api/inner-circle/agreements', (req, res) => {
+    if (dbError) return res.status(503).json({ error: 'IC database unavailable' });
+    const clientBrandId = req.session && req.session.clientBrandId;
+    if (!clientBrandId) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const rows = stmts.agreementsForBrand.all(String(clientBrandId));
+      const agreements = rows.map((a) => ({
+        id: a.id,
+        counterpartyName: a.creator_name || a.creator_handle || ('creator#' + a.creator_id),
+        amount: a.amount_cents,
+        videosCommitted: a.videos_committed,
+        videosDelivered: a.videos_delivered || 0,
+        status: a.status,
+      }));
+      const active = agreements.filter((a) => a.status === 'active').length;
+      return res.json({ ok: true, count: agreements.length, active, agreements });
+    } catch (e) {
+      console.error('[inner-circle-sqlite] agreements failed:', e.message);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  });
+
+  // ── POST /api/inner-circle/agreements/:id/progress ───────────────────────────
+  // Brand owner reports delivery progress. Body: {videosDelivered} — absolute
+  // count (not an increment) of videos delivered so far. Guarded to the brand
+  // that owns the agreement (client session → req.session.clientBrandId); later
+  // admin may also be allowed. status auto-flips to 'completed' when delivered
+  // >= committed. NO PAYMENT MOVEMENT — money is always escalated to a human.
+  // 401 no session / 403 not your agreement / 404 unknown id.
+  app.post('/api/inner-circle/agreements/:id/progress', express.json(), (req, res) => {
+    if (dbError) return res.status(503).json({ error: 'IC database unavailable' });
+    const clientBrandId = req.session && req.session.clientBrandId;
+    if (!clientBrandId) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const agreementId = parseInt(req.params.id, 10);
+      if (!Number.isFinite(agreementId)) return res.status(400).json({ error: 'Invalid agreement id' });
+
+      const delivered = Number(req.body && req.body.videosDelivered);
+      if (!Number.isInteger(delivered) || delivered < 0) {
+        return res.status(400).json({ error: 'videosDelivered must be a non-negative integer' });
+      }
+
+      const agreement = stmts.getAgreementById.get(agreementId);
+      if (!agreement) return res.status(404).json({ error: 'Agreement not found' });
+      // Ownership guard: the agreement must belong to THIS brand. 403 — exists
+      // but not yours.
+      if (String(agreement.brand_id) !== String(clientBrandId)) {
+        return res.status(403).json({ error: 'This agreement does not belong to you' });
+      }
+
+      const info = stmts.setAgreementDelivered.run({
+        id: agreementId,
+        brand_id: String(clientBrandId),
+        videos_delivered: delivered,
+      });
+      if (!info.changes) return res.status(404).json({ error: 'Agreement not found' });
+
+      const updated = stmts.getAgreementById.get(agreementId);
+      console.log('[inner-circle-sqlite] agreement #' + agreementId + ' progress ' + (updated.videos_delivered || 0) + '/' + updated.videos_committed + ' (' + updated.status + ')');
+
+      return res.json({
+        ok: true,
+        agreement: {
+          id: updated.id,
+          counterpartyName: null,
+          amount: updated.amount_cents,
+          videosCommitted: updated.videos_committed,
+          videosDelivered: updated.videos_delivered || 0,
+          status: updated.status,
+        },
+      });
+    } catch (e) {
+      console.error('[inner-circle-sqlite] agreement progress failed:', e.message);
       return res.status(500).json({ error: 'Server error' });
     }
   });
