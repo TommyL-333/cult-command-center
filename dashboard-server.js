@@ -1156,6 +1156,12 @@ function formatDuration(seconds) {
 // above app.use(requireAuth): creators have no Cloudflare Access session.
 const icSqlite = require('./routes/inner-circle-sqlite')(app, { express });
 
+// Content Studio: ensure schema exists (content_credits, content_references,
+// content_generations, client_integrations). Idempotent CREATE TABLE IF NOT EXISTS;
+// runs the migration against /data/inner_circle.db on boot. Must be before app.listen().
+try { require('./db/content-studio'); console.log('[content-studio] schema ensured'); }
+catch (e) { console.error('[content-studio] schema init failed:', e.message); }
+
 // ─── GET /api/inner-circle/admin/funnel?shopId=NNN ───────────────────────────
 // Admin-only Inner Circle funnel: shows each IC signup's state for one shop —
 // signed_up vs tc_accepted vs sample_requested — by joining IC signups to live
