@@ -1657,6 +1657,7 @@
     if (name === 'content-studio' && window._data?.brand) wizardInitBrandSummary();
     if (name === 'content-studio' && !window._storistaLoaded) initStorista(window._data?.brand);
     if (name === 'billing' && !window._billingLoaded) loadBilling();
+    if (name === 'inner-circle' && !_icLoaded) loadInnerCircle();
   }
 
   // ─── Affiliate URL ──────────────────────────────────────────────────────────
