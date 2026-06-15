@@ -92,6 +92,21 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       CREATE INDEX IF NOT EXISTS idx_ic_resets_creator ON inner_circle_resets(creator_id);
     `);
 
+    // Creator self-set rates for the retainer marketplace. One row per creator.
+    // All monetary values stored as integer cents. Idempotent create.
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS creator_rates (
+        creator_id INTEGER PRIMARY KEY REFERENCES inner_circle_creators(id),
+        per_video_cents INTEGER,
+        retainer_monthly_cents INTEGER,
+        package_label TEXT,
+        package_videos INTEGER,
+        package_price_cents INTEGER,
+        available INTEGER DEFAULT 1,
+        updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
     stmts = {
       creatorByEmail: db.prepare(
         `SELECT * FROM inner_circle_creators WHERE lower(email) = lower(?) AND status = 'active'`
@@ -181,6 +196,27 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       ),
       reactivateAssignment: db.prepare(
         `UPDATE inner_circle_brand_assignments SET active = 1, shop_name = ?, assigned_at = CURRENT_TIMESTAMP WHERE id = ?`
+      ),
+      // ── Creator retainer-marketplace rates ──────────────────────────────────
+      getRates: db.prepare(
+        `SELECT creator_id, per_video_cents, retainer_monthly_cents, package_label,
+                package_videos, package_price_cents, available, updated_at
+           FROM creator_rates WHERE creator_id = ?`
+      ),
+      upsertRates: db.prepare(
+        `INSERT INTO creator_rates
+           (creator_id, per_video_cents, retainer_monthly_cents, package_label,
+            package_videos, package_price_cents, available, updated_at)
+         VALUES (@creator_id, @per_video_cents, @retainer_monthly_cents, @package_label,
+                 @package_videos, @package_price_cents, @available, CURRENT_TIMESTAMP)
+         ON CONFLICT(creator_id) DO UPDATE SET
+           per_video_cents        = excluded.per_video_cents,
+           retainer_monthly_cents = excluded.retainer_monthly_cents,
+           package_label          = excluded.package_label,
+           package_videos         = excluded.package_videos,
+           package_price_cents    = excluded.package_price_cents,
+           available              = excluded.available,
+           updated_at             = CURRENT_TIMESTAMP`
       ),
     };
 
@@ -329,7 +365,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     }
   });
 
-  // ── Password reset: GHL email helper ────────────────────────────────────────
+  // ── Password reset: GHL email helper ──────────────────────────────────────��─
   // Sends a reset link to a creator via GHL (find contact → upsert conversation →
   // send Email message). Mirrors the confirmed pattern used in dashboard-server.js.
   // Returns { ok, reason? } and NEVER throws — callers wrap in try/catch anyway.
@@ -654,6 +690,95 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       return res.json({ ok: true, handles: icHandlesList(c) });
     } catch (e) {
       console.error('[inner-circle-sqlite] DELETE handle failed:', e.message);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  });
+
+  // ── Creator retainer-marketplace rates ──────────────────────────────────────
+  // Helper: coerce to a non-negative integer or null. Returns {ok, val}.
+  function intOrNull(v) {
+    if (v === null || v === undefined || v === '') return { ok: true, val: null };
+    const n = Number(v);
+    if (!Number.isInteger(n) || n < 0) return { ok: false, val: null };
+    return { ok: true, val: n };
+  }
+
+  const RATE_FIELDS = {
+    perVideoCents: 'per_video_cents',
+    retainerMonthlyCents: 'retainer_monthly_cents',
+    packageVideos: 'package_videos',
+    packagePriceCents: 'package_price_cents',
+  };
+
+  function ratesPayload(row) {
+    // em-dash / null defaults when no row exists yet.
+    if (!row) {
+      return {
+        perVideoCents: null,
+        retainerMonthlyCents: null,
+        packageLabel: '—',
+        packageVideos: null,
+        packagePriceCents: null,
+        available: true,
+        updatedAt: null,
+      };
+    }
+    return {
+      perVideoCents: row.per_video_cents,
+      retainerMonthlyCents: row.retainer_monthly_cents,
+      packageLabel: (row.package_label && row.package_label.length) ? row.package_label : '—',
+      packageVideos: row.package_videos,
+      packagePriceCents: row.package_price_cents,
+      available: row.available !== 0,
+      updatedAt: row.updated_at || null,
+    };
+  }
+
+  app.get('/api/inner-circle/my-rates', requireSqliteSession, (req, res) => {
+    try {
+      const row = stmts.getRates.get(req.icCreator.id);
+      return res.json({ rates: ratesPayload(row) });
+    } catch (e) {
+      console.error('[inner-circle-sqlite] GET my-rates failed:', e.message);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  });
+
+  app.post('/api/inner-circle/my-rates', express.json(), requireSqliteSession, (req, res) => {
+    try {
+      const c = req.icCreator;
+      const b = req.body || {};
+
+      // Validate each integer-cents/count field: non-negative integer or null.
+      const params = { creator_id: c.id };
+      for (const [key, col] of Object.entries(RATE_FIELDS)) {
+        const r = intOrNull(b[key]);
+        if (!r.ok) {
+          return res.status(400).json({ error: key + ' must be a non-negative integer or empty' });
+        }
+        params[col] = r.val;
+      }
+
+      // Package label: optional string, strip junk, cap length at 80.
+      let label = b.packageLabel;
+      if (label === null || label === undefined) {
+        label = null;
+      } else {
+        label = String(label).replace(/[\x00-\x1f\x7f]/g, '').trim().slice(0, 80);
+        if (label === '' || label === '—') label = null;
+      }
+      params.package_label = label;
+
+      // available: boolean-ish -> 0/1. Default available (1) when omitted.
+      let avail = b.available;
+      if (avail === undefined || avail === null) avail = true;
+      params.available = (avail === true || avail === 1 || avail === 'true' || avail === '1') ? 1 : 0;
+
+      stmts.upsertRates.run(params);
+      const row = stmts.getRates.get(c.id);
+      return res.json({ ok: true, rates: ratesPayload(row) });
+    } catch (e) {
+      console.error('[inner-circle-sqlite] POST my-rates failed:', e.message);
       return res.status(500).json({ error: 'Server error' });
     }
   });
