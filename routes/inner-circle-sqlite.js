@@ -126,6 +126,27 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       CREATE INDEX IF NOT EXISTS idx_retainer_offers_creator ON retainer_offers(creator_id);
     `);
 
+    // responded_at — when the creator accepted/declined. Idempotent migration.
+    try { db.exec(`ALTER TABLE retainer_offers ADD COLUMN responded_at DATETIME`); } catch (_) { /* column exists */ }
+
+    // ── Retainer agreements (created on offer accept) ────────────────────────
+    // One row per accepted offer. Mirrors the offer's economics at accept time.
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS retainer_agreements (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        offer_id INTEGER NOT NULL REFERENCES retainer_offers(id),
+        brand_id TEXT NOT NULL,
+        creator_id INTEGER NOT NULL REFERENCES inner_circle_creators(id),
+        amount_cents INTEGER NOT NULL,
+        videos_committed INTEGER,
+        status TEXT NOT NULL DEFAULT 'active',
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE UNIQUE INDEX IF NOT EXISTS ux_retainer_agreements_offer ON retainer_agreements(offer_id);
+      CREATE INDEX IF NOT EXISTS idx_retainer_agreements_brand ON retainer_agreements(brand_id);
+      CREATE INDEX IF NOT EXISTS idx_retainer_agreements_creator ON retainer_agreements(creator_id);
+    `);
+
     stmts = {
       creatorByEmail: db.prepare(
         `SELECT * FROM inner_circle_creators WHERE lower(email) = lower(?) AND status = 'active'`
@@ -265,6 +286,27 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
            JOIN inner_circle_creators c ON c.id = o.creator_id
           WHERE o.brand_id = ?
           ORDER BY o.created_at DESC`
+      ),
+      // Creator-side: every offer made TO this creator (pending + historical).
+      offersForCreator: db.prepare(
+        `SELECT * FROM retainer_offers
+          WHERE creator_id = ?
+          ORDER BY (status = 'pending') DESC, created_at DESC`
+      ),
+      // Accept/decline an offer — sets status + responded_at. responded_at NULL
+      // guard keeps this idempotent (only a still-unanswered offer transitions).
+      respondToOffer: db.prepare(
+        `UPDATE retainer_offers
+            SET status = @status, responded_at = CURRENT_TIMESTAMP
+          WHERE id = @id AND creator_id = @creator_id AND status = 'pending'`
+      ),
+      insertAgreement: db.prepare(
+        `INSERT INTO retainer_agreements
+           (offer_id, brand_id, creator_id, amount_cents, videos_committed, status)
+         VALUES (@offer_id, @brand_id, @creator_id, @amount_cents, @videos_committed, 'active')`
+      ),
+      getAgreementByOfferId: db.prepare(
+        `SELECT * FROM retainer_agreements WHERE offer_id = ?`
       ),
     };
 
@@ -948,7 +990,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     { id: 'roots-by-ga', name: 'Roots by GA', logo: null, website: 'https://www.rootsbyga.com', brandColor: null,
       description: 'Roots by GA — TikTok Shop brand (Carla Brenner).' },
     { id: 'lode-wtr', name: 'Lode WTR', logo: null, website: 'https://lodewtr.com', brandColor: '#CCFF00', // verified: dominant accent color on lodewtr.com (electric lime), ~14:1 contrast vs #161823
-      description: 'Lode WTR — scalp care that replaces traditional shampoo. "Your shampoo is the problem" positioning; strong hooks around scalp health, hair loss, and ingredient honesty.' },
+      description: 'Lode WTR ��� scalp care that replaces traditional shampoo. "Your shampoo is the problem" positioning; strong hooks around scalp health, hair loss, and ingredient honesty.' },
     { id: 'dissolvd', name: 'Dissolvd', logo: null, website: null, brandColor: '#A78BFA', // PLACEHOLDER — dissolvd.com is behind Cloudflare Access, no public site to source brand color (6.49:1 contrast vs #161823)
       description: 'Dissolvd — TikTok Shop brand.' },
     { id: 'the-perfect-haircare', name: 'The Perfect Haircare', logo: null, website: 'https://theperfecthaircare.com', brandColor: '#E35186', // verified: theme-color meta on theperfecthaircare.com, ~4.9:1 contrast vs #161823
@@ -1487,7 +1529,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     }
   });
 
-  // ── POST /api/inner-circle/offers ────────────────────────────────────────────
+  // ── POST /api/inner-circle/offers ─────────────────��──────────────────────────
   // Brand (logged-in CLIENT via express-session → req.session.clientBrandId)
   // makes a retainer/per-video/package/custom offer to an IC creator. Durable
   // jsonl log is written BEFORE the Lark notify so a notify failure can never
@@ -1629,6 +1671,148 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       return res.json({ ok: true, count: offers.length, offers });
     } catch (e) {
       console.error('[inner-circle-sqlite] list offers failed:', e.message);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  });
+
+  // ── GET /api/inner-circle/my-offers ──────────────────────────────────────────
+  // Creator-side: pending + historical offers made TO the logged-in creator.
+  // IDOR-safe: creator_id comes from the session (req.icCreator.id), never params.
+  app.get('/api/inner-circle/my-offers', requireSqliteSession, (req, res) => {
+    try {
+      const c = req.icCreator;
+      const rows = stmts.offersForCreator.all(c.id);
+      const offers = rows.map((o) => ({
+        id: o.id,
+        brandId: o.brand_id,
+        brandName: o.brand_name,
+        offerType: o.offer_type,
+        amountCents: o.amount_cents,
+        videos: o.videos,
+        terms: o.terms,
+        status: o.status,
+        createdAt: o.created_at,
+        respondedAt: o.responded_at || null,
+      }));
+      const pending = offers.filter((o) => o.status === 'pending').length;
+      return res.json({ ok: true, count: offers.length, pending, offers });
+    } catch (e) {
+      console.error('[inner-circle-sqlite] my-offers failed:', e.message);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  });
+
+  // ── POST /api/inner-circle/offers/:id/respond ─────────────────────────────────
+  // Creator accepts or declines an offer. Body: {action: 'accept'|'decline'}.
+  // IDOR-safe: ownership enforced by creator_id from the session. The offer must
+  // belong to this creator (404 otherwise) and still be pending (409 otherwise).
+  // On accept, a retainer_agreements row is inserted (status='active'). Both
+  // sides are notified via the Lark alert channel. Notify failure never fails
+  // the response — the status change is already committed.
+  app.post('/api/inner-circle/offers/:id/respond', requireSqliteSession, express.json(), async (req, res) => {
+    try {
+      const c = req.icCreator;
+      const offerId = parseInt(req.params.id, 10);
+      if (!Number.isFinite(offerId)) return res.status(400).json({ error: 'Invalid offer id' });
+
+      const action = String((req.body && req.body.action) || '').trim().toLowerCase();
+      if (action !== 'accept' && action !== 'decline') {
+        return res.status(400).json({ error: "action must be 'accept' or 'decline'" });
+      }
+
+      const offer = stmts.getOfferById.get(offerId);
+      if (!offer) return res.status(404).json({ error: 'Offer not found' });
+      // IDOR guard: the offer must belong to THIS creator. 403 — exists but not yours.
+      if (Number(offer.creator_id) !== Number(c.id)) {
+        return res.status(403).json({ error: 'This offer does not belong to you' });
+      }
+      if (offer.status !== 'pending') {
+        return res.status(409).json({ error: 'Offer is no longer pending', status: offer.status });
+      }
+
+      const newStatus = action === 'accept' ? 'accepted' : 'declined';
+
+      // Transactional: flip the offer status, and on accept insert the agreement.
+      const apply = db.transaction(() => {
+        const info = stmts.respondToOffer.run({ id: offerId, creator_id: c.id, status: newStatus });
+        if (!info.changes) {
+          // Lost a race — someone already responded. Signal 409 to the caller.
+          const e = new Error('NOT_PENDING');
+          e.code = 'NOT_PENDING';
+          throw e;
+        }
+        let agreement = null;
+        if (action === 'accept') {
+          stmts.insertAgreement.run({
+            offer_id: offerId,
+            brand_id: String(offer.brand_id),
+            creator_id: c.id,
+            amount_cents: offer.amount_cents,
+            videos_committed: offer.videos,
+          });
+          agreement = stmts.getAgreementByOfferId.get(offerId);
+        }
+        return agreement;
+      });
+
+      let agreement = null;
+      try {
+        agreement = apply();
+      } catch (e) {
+        if (e && e.code === 'NOT_PENDING') {
+          const fresh = stmts.getOfferById.get(offerId);
+          return res.status(409).json({ error: 'Offer is no longer pending', status: fresh ? fresh.status : null });
+        }
+        throw e;
+      }
+
+      const updated = stmts.getOfferById.get(offerId);
+
+      // Lark notify (relay primary, direct LARK_ALERT_CHAT_ID fallback). Both sides.
+      const handle = String(c.creator_handle || '').replace(/^@/, '');
+      const brandName = offer.brand_name || offer.brand_id;
+      const dollars = (offer.amount_cents / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const text = `${action === 'accept' ? '✅' : '❌'} Offer ${newStatus}: @${handle} ${action}ed ${brandName} ${dollars}`;
+      let notified = false, via = null;
+      try {
+        const r = await icNotifyAlertChannel(text);
+        notified = !!(r && r.notified);
+        via = r && r.via;
+      } catch (e) {
+        console.error('[inner-circle-sqlite] respond notify threw:', e.message);
+      }
+      console.log(`[inner-circle-sqlite] offer #${offerId} ${newStatus} by @${handle} (notified: ${notified}${via ? ' via ' + via : ''})`);
+
+      return res.json({
+        ok: true,
+        action: newStatus,
+        offer: {
+          id: updated.id,
+          brandId: updated.brand_id,
+          brandName: updated.brand_name,
+          creatorId: updated.creator_id,
+          offerType: updated.offer_type,
+          amountCents: updated.amount_cents,
+          videos: updated.videos,
+          terms: updated.terms,
+          status: updated.status,
+          createdAt: updated.created_at,
+          respondedAt: updated.responded_at || null,
+        },
+        agreement: agreement ? {
+          id: agreement.id,
+          offerId: agreement.offer_id,
+          brandId: agreement.brand_id,
+          creatorId: agreement.creator_id,
+          amountCents: agreement.amount_cents,
+          videosCommitted: agreement.videos_committed,
+          status: agreement.status,
+          createdAt: agreement.created_at,
+        } : null,
+        notified,
+      });
+    } catch (e) {
+      console.error('[inner-circle-sqlite] respond offer failed:', e.message);
       return res.status(500).json({ error: 'Server error' });
     }
   });
