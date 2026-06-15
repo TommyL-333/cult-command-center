@@ -3533,6 +3533,42 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
   }
 });
 
+// GET /api/inner-circle/funnel — brand-scoped Inner Circle funnel for the
+// logged-in client. Resolves the brand's OWN shopId from the session
+// (req.session.clientBrandId → brand.shopId); the shopId is NEVER taken from
+// the request, so a brand can only ever see its own IC signups and cannot
+// pass an arbitrary shopId to view another brand's data. Mirrors the admin
+// funnel (/api/inner-circle/admin/funnel) response/error handling.
+app.get('/api/inner-circle/funnel', requireClientSession, async (req, res) => {
+  try {
+    const brands = loadBrands();
+    const brand = (brands.clients || []).find(b => b.id === req.session.clientBrandId);
+    if (!brand) { req.session.destroy(); return res.status(404).json({ error: 'Brand not found' }); }
+
+    const shopId = brand.shopId;
+    if (!shopId) {
+      // Brand has no connected shop yet — return an empty, well-formed funnel
+      // rather than an error so the portal UI can render an empty state.
+      return res.json({ shopId: null, creators: [], summary: { signed_up: 0, tc_accepted: 0, sample_requested: 0, total: 0 } });
+    }
+
+    if (!icSqlite || typeof icSqlite.getIcFunnel !== 'function') {
+      return res.status(503).json({ error: 'IC funnel layer unavailable' });
+    }
+
+    const out = await icSqlite.getIcFunnel(shopId);
+    if (out && out.error && (!out.creators || !out.creators.length)) {
+      // Hard data-layer failure (e.g. DB unavailable) → 503; partial Reacher
+      // outages still return 200 with summary.reacherError set.
+      return res.status(503).json(out);
+    }
+    return res.json(out);
+  } catch (e) {
+    console.error('[inner-circle/funnel] failed:', e.message);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
 // PATCH /api/client/settings — update sample budget + full compensation config
 app.patch('/api/client/settings', requireClientSession, express.json(), async (req, res) => {
   try {
