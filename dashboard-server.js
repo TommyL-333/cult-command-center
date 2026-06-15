@@ -1156,6 +1156,36 @@ function formatDuration(seconds) {
 // above app.use(requireAuth): creators have no Cloudflare Access session.
 const icSqlite = require('./routes/inner-circle-sqlite')(app, { express });
 
+// ─── GET /api/inner-circle/admin/funnel?shopId=NNN ───────────────────────────
+// Admin-only Inner Circle funnel: shows each IC signup's state for one shop —
+// signed_up vs tc_accepted vs sample_requested — by joining IC signups to live
+// Reacher status. Token-gated with ADMIN_BATCH_SECRET (x-admin-secret header),
+// the same pattern as the other /api/admin/* routes. Registered HERE, before
+// app.use(requireAuth), so it does not require a Cloudflare Access session
+// (server-to-server / curl callers pass the shared secret instead).
+app.get('/api/inner-circle/admin/funnel', async (req, res) => {
+  const secret = process.env.ADMIN_BATCH_SECRET || 'cult-batch-2026';
+  const got = req.headers['x-admin-secret'] || req.query.secret;
+  if (got !== secret) return res.status(401).json({ error: 'Unauthorized' });
+  const shopId = req.query.shopId || req.query.shop_id;
+  if (!shopId) return res.status(400).json({ error: 'shopId required' });
+  if (!icSqlite || typeof icSqlite.getIcFunnel !== 'function') {
+    return res.status(503).json({ error: 'IC funnel layer unavailable' });
+  }
+  try {
+    const out = await icSqlite.getIcFunnel(shopId);
+    if (out && out.error && (!out.creators || !out.creators.length)) {
+      // Hard data-layer failure (e.g. DB unavailable) → 503; partial Reacher
+      // outages still return 200 with summary.reacherError set.
+      return res.status(503).json(out);
+    }
+    return res.json(out);
+  } catch (e) {
+    console.error('[inner-circle/admin/funnel] failed:', e.message);
+    return res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── Inner Circle: creator session auth middleware ────────────────────────────
 // Verifies ic_session cookie (or Authorization: Bearer token) against the
 // creator_sessions table in Supabase. Sets req.user to the creator row.
