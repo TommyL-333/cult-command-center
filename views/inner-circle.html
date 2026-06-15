@@ -689,6 +689,72 @@
       transition: opacity 0.2s;
     }
     .brand-website:hover { opacity: 0.75; text-decoration: underline; }
+
+    /* ── IC_RATES_CSS_START: Your Rates card ── */
+    .rates-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .rates-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+    @media (max-width: 640px) { .rates-grid, .rates-grid-3 { grid-template-columns: 1fr; } }
+    .rate-field { display: flex; flex-direction: column; gap: 6px; }
+    .rate-field label {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
+      color: rgba(255,255,255,0.45); font-weight: 600;
+    }
+    .rate-input-wrap { position: relative; display: flex; align-items: center; }
+    .rate-prefix {
+      position: absolute; left: 14px; color: rgba(0,242,234,0.7);
+      font-weight: 700; font-size: 14px; pointer-events: none;
+    }
+    .rate-input-wrap input { padding-left: 28px !important; }
+    .rate-field input {
+      width: 100%; padding: 12px 14px; border-radius: 12px;
+      background: #161823; border: 1px solid rgba(255,255,255,0.12);
+      color: #fff; font-family: 'Inter', sans-serif; font-size: 14px;
+      transition: border-color 0.2s;
+    }
+    .rate-field input::placeholder { color: rgba(255,255,255,0.3); }
+    .rate-field input:focus { outline: none; border-color: #00f2ea; }
+    .rates-package {
+      margin-top: 20px; padding-top: 18px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    .rates-package-title {
+      font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 15px;
+      margin-bottom: 14px; letter-spacing: -0.01em;
+    }
+    .rates-package-hint { color: rgba(255,255,255,0.4); font-weight: 600; font-size: 12px; }
+    .rates-toggle {
+      display: flex; align-items: center; gap: 12px; margin-top: 22px; cursor: pointer; user-select: none;
+    }
+    .rates-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+    .rates-toggle-track {
+      position: relative; width: 48px; height: 26px; border-radius: 999px;
+      background: rgba(255,255,255,0.12); transition: background 0.25s; flex-shrink: 0;
+    }
+    .rates-toggle-thumb {
+      position: absolute; top: 3px; left: 3px; width: 20px; height: 20px;
+      border-radius: 50%; background: #fff; transition: transform 0.25s;
+    }
+    .rates-toggle input:checked + .rates-toggle-track {
+      background: linear-gradient(90deg, #00f2ea, #ff0050);
+    }
+    .rates-toggle input:checked + .rates-toggle-track .rates-toggle-thumb { transform: translateX(22px); }
+    .rates-toggle-label { font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.85); }
+    .rates-footer {
+      display: flex; align-items: center; justify-content: space-between; gap: 16px;
+      margin-top: 24px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    .rates-status { color: rgba(255,255,255,0.5); font-size: 13px; min-height: 16px; }
+    .rates-status.ok { color: #00f2ea; }
+    .rates-status.err { color: #ff5a7a; }
+    .rates-save-btn {
+      padding: 12px 26px; border-radius: 12px; border: none; cursor: pointer;
+      font-weight: 700; font-family: 'Inter', sans-serif; font-size: 14px; color: #0b0c14;
+      background: linear-gradient(90deg, #00f2ea, #ff0050); transition: opacity 0.15s, box-shadow 0.2s;
+    }
+    .rates-save-btn:hover { opacity: 0.92; box-shadow: 0 0 22px rgba(0,242,234,0.4); }
+    .rates-save-btn:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
+    /* ── IC_RATES_CSS_END ── */
+
   </style>
 </head>
 <body>
@@ -764,6 +830,55 @@
       </div>
       <div class="handle-error" id="handle-error"></div>
     </div>
+
+
+    <!-- IC_RATES_CARD_START: Your Rates (retainer marketplace) -->
+    <div class="brand-chamber" id="rates-chamber" style="animation-delay:0.38s">
+      <div class="brand-header">
+        <div class="brand-icon">💵</div>
+        <div class="brand-info">
+          <h2>Your Rates</h2>
+          <p>Set what you charge so brands can send you paid offers</p>
+        </div>
+      </div>
+      <div class="rates-grid">
+        <div class="rate-field">
+          <label for="rate-per-video">Per-video price (USD)</label>
+          <div class="rate-input-wrap"><span class="rate-prefix">$</span><input id="rate-per-video" type="number" min="0" step="1" placeholder="—" autocomplete="off" /></div>
+        </div>
+        <div class="rate-field">
+          <label for="rate-retainer">Monthly retainer (USD)</label>
+          <div class="rate-input-wrap"><span class="rate-prefix">$</span><input id="rate-retainer" type="number" min="0" step="1" placeholder="—" autocomplete="off" /></div>
+        </div>
+      </div>
+      <div class="rates-package">
+        <div class="rates-package-title">Package <span class="rates-package-hint">(optional)</span></div>
+        <div class="rates-grid rates-grid-3">
+          <div class="rate-field">
+            <label for="rate-pkg-label">Label</label>
+            <input id="rate-pkg-label" type="text" maxlength="80" placeholder="e.g. Starter Bundle" autocomplete="off" />
+          </div>
+          <div class="rate-field">
+            <label for="rate-pkg-videos">Videos</label>
+            <input id="rate-pkg-videos" type="number" min="0" step="1" placeholder="—" autocomplete="off" />
+          </div>
+          <div class="rate-field">
+            <label for="rate-pkg-price">Price (USD)</label>
+            <div class="rate-input-wrap"><span class="rate-prefix">$</span><input id="rate-pkg-price" type="number" min="0" step="1" placeholder="—" autocomplete="off" /></div>
+          </div>
+        </div>
+      </div>
+      <label class="rates-toggle">
+        <input id="rate-available" type="checkbox" />
+        <span class="rates-toggle-track"><span class="rates-toggle-thumb"></span></span>
+        <span class="rates-toggle-label">Available for paid offers</span>
+      </label>
+      <div class="rates-footer">
+        <span class="rates-status" id="rates-status">—</span>
+        <button class="rates-save-btn" id="rates-save-btn" onclick="saveRates()">Save Rates</button>
+      </div>
+    </div>
+    <!-- IC_RATES_CARD_END -->
 
     <!-- Call Recordings Library -->
     <div class="brand-chamber" style="animation-delay:0.4s">
@@ -993,6 +1108,94 @@
     }
 
     loadDashboard();
+
+    // ── IC_RATES_JS_START: retainer-marketplace rates ──
+    // Cents <-> dollars helpers. Inputs are whole-dollar USD; API stores integer cents.
+    function centsToDollars(c) {
+      if (c === null || c === undefined || c === '') return '';
+      const n = Number(c);
+      if (!Number.isFinite(n)) return '';
+      return String(Math.round(n) / 100);
+    }
+    function dollarsToCents(v) {
+      if (v === null || v === undefined || String(v).trim() === '') return null;
+      const n = Number(v);
+      if (!Number.isFinite(n) || n < 0) return null;
+      return Math.round(n * 100);
+    }
+    function setRatesStatus(msg, kind) {
+      const el = document.getElementById('rates-status');
+      if (!el) return;
+      el.textContent = msg || '—';
+      el.className = 'rates-status' + (kind ? ' ' + kind : '');
+    }
+    function populateRates(r) {
+      r = r || {};
+      // Never fabricate: only show a value when the API actually returned one.
+      document.getElementById('rate-per-video').value = centsToDollars(r.perVideoCents);
+      document.getElementById('rate-retainer').value  = centsToDollars(r.retainerMonthlyCents);
+      const lbl = (r.packageLabel && r.packageLabel !== '—') ? r.packageLabel : '';
+      document.getElementById('rate-pkg-label').value  = lbl;
+      document.getElementById('rate-pkg-videos').value = (r.packageVideos === null || r.packageVideos === undefined) ? '' : String(r.packageVideos);
+      document.getElementById('rate-pkg-price').value  = centsToDollars(r.packagePriceCents);
+      document.getElementById('rate-available').checked = (r.available !== false);
+      if (r.updatedAt) {
+        setRatesStatus('Last saved ' + String(r.updatedAt).replace('T', ' ').slice(0, 16), null);
+      } else {
+        setRatesStatus('Not set yet', null);
+      }
+    }
+    async function loadRates() {
+      try {
+        const res = await fetch('/api/inner-circle/my-rates', { headers: AUTH_HEADERS });
+        if (res.status === 401) { logout(); return; }
+        if (!res.ok) throw new Error('rates fetch failed (' + res.status + ')');
+        const data = await res.json();
+        populateRates(data.rates);
+      } catch (err) {
+        console.error('Rates load failed:', err);
+        setRatesStatus('Could not load rates', 'err');
+      }
+    }
+    async function saveRates() {
+      const btn = document.getElementById('rates-save-btn');
+      setRatesStatus('Saving…', null);
+      btn.disabled = true;
+      const lblRaw = (document.getElementById('rate-pkg-label').value || '').trim();
+      const payload = {
+        perVideoCents:        dollarsToCents(document.getElementById('rate-per-video').value),
+        retainerMonthlyCents: dollarsToCents(document.getElementById('rate-retainer').value),
+        packageVideos:        (function () {
+          const v = (document.getElementById('rate-pkg-videos').value || '').trim();
+          if (v === '') return null;
+          const n = Number(v);
+          return (Number.isInteger(n) && n >= 0) ? n : null;
+        })(),
+        packagePriceCents:    dollarsToCents(document.getElementById('rate-pkg-price').value),
+        packageLabel:         lblRaw === '' ? null : lblRaw,
+        available:            document.getElementById('rate-available').checked
+      };
+      try {
+        const res = await fetch('/api/inner-circle/my-rates', {
+          method: 'POST',
+          headers: { ...AUTH_HEADERS, 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.status === 401) { logout(); return; }
+        const out = await res.json().catch(() => ({}));
+        if (!res.ok) { setRatesStatus(out.error || 'Could not save rates', 'err'); return; }
+        populateRates(out.rates);
+        setRatesStatus('Saved ✓', 'ok');
+      } catch (err) {
+        console.error('Rates save failed:', err);
+        setRatesStatus('Network error — please try again', 'err');
+      } finally {
+        btn.disabled = false;
+      }
+    }
+    loadRates();
+    // ── IC_RATES_JS_END ──
+
   </script>
 </body>
 </html>
