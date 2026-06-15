@@ -13388,6 +13388,121 @@ app.post('/api/ai/generate-image', async (req, res) => {
   } catch(e) { console.error('[migrate] creator pages:', e.message); }
 })();
 
+// ─── Brand Call Schedules (Inner Circle weekly calls) ────────────
+// Admin-only CRUD for per-brand weekly creator call schedules. Drives automated
+// SMS reminders + recording association. Backed by the inner_circle.db SQLite
+// volume (shared handle from ./db/inner-circle). Registered BEFORE app.listen().
+const { db: icDb } = require('./db/inner-circle');
+
+// Allowed day values (lowercase). NULL = TBD is permitted.
+const VALID_DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+
+// GET /api/inner-circle/brand-schedules — all rows (admin only)
+app.get('/api/inner-circle/brand-schedules', requirePortalAdmin, (req, res) => {
+  try {
+    const rows = icDb.prepare(
+      `SELECT id, shop_id, brand_id, brand_name, call_day, call_time, timezone,
+              duration_minutes, meeting_url, active, created_at, updated_at
+       FROM brand_call_schedules
+       ORDER BY active DESC, brand_name ASC`
+    ).all();
+    res.json({ schedules: rows });
+  } catch (e) {
+    console.error('[brand-schedules] list failed:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// PUT /api/inner-circle/brand-schedules/:id — update mutable fields (admin only)
+app.put('/api/inner-circle/brand-schedules/:id', requirePortalAdmin, express.json(), (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid id' });
+
+    const existing = icDb.prepare(`SELECT * FROM brand_call_schedules WHERE id = ?`).get(id);
+    if (!existing) return res.status(404).json({ error: 'Schedule not found' });
+
+    const b = req.body || {};
+
+    // Validate call_day (allow null/empty to clear)
+    let call_day = existing.call_day;
+    if ('call_day' in b) {
+      if (b.call_day === null || b.call_day === '') {
+        call_day = null;
+      } else if (typeof b.call_day === 'string' && VALID_DAYS.includes(b.call_day.toLowerCase())) {
+        call_day = b.call_day.toLowerCase();
+      } else {
+        return res.status(400).json({ error: `call_day must be one of ${VALID_DAYS.join(', ')} or null` });
+      }
+    }
+
+    // Validate call_time HH:MM 24h (allow null/empty to clear)
+    let call_time = existing.call_time;
+    if ('call_time' in b) {
+      if (b.call_time === null || b.call_time === '') {
+        call_time = null;
+      } else if (typeof b.call_time === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(b.call_time)) {
+        call_time = b.call_time;
+      } else {
+        return res.status(400).json({ error: 'call_time must be HH:MM (24h) or null' });
+      }
+    }
+
+    // timezone (non-empty string)
+    let timezone = existing.timezone;
+    if ('timezone' in b) {
+      if (typeof b.timezone === 'string' && b.timezone.trim()) {
+        timezone = b.timezone.trim();
+      } else {
+        return res.status(400).json({ error: 'timezone must be a non-empty string' });
+      }
+    }
+
+    // duration_minutes (positive integer)
+    let duration_minutes = existing.duration_minutes;
+    if ('duration_minutes' in b) {
+      const d = parseInt(b.duration_minutes, 10);
+      if (Number.isInteger(d) && d > 0 && d <= 600) {
+        duration_minutes = d;
+      } else {
+        return res.status(400).json({ error: 'duration_minutes must be a positive integer (<=600)' });
+      }
+    }
+
+    // meeting_url (allow null/empty to clear)
+    let meeting_url = existing.meeting_url;
+    if ('meeting_url' in b) {
+      meeting_url = (b.meeting_url === null || b.meeting_url === '') ? null : String(b.meeting_url).trim();
+    }
+
+    // active (coerce truthy/0/1/string → 1/0)
+    let active = existing.active;
+    if ('active' in b) {
+      if (b.active === true || b.active === 1 || b.active === '1' || b.active === 'true') active = 1;
+      else if (b.active === false || b.active === 0 || b.active === '0' || b.active === 'false') active = 0;
+      else return res.status(400).json({ error: 'active must be boolean (0/1)' });
+    }
+
+    icDb.prepare(
+      `UPDATE brand_call_schedules
+         SET call_day = ?, call_time = ?, timezone = ?, duration_minutes = ?,
+             meeting_url = ?, active = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE id = ?`
+    ).run(call_day, call_time, timezone, duration_minutes, meeting_url, active, id);
+
+    const updated = icDb.prepare(
+      `SELECT id, shop_id, brand_id, brand_name, call_day, call_time, timezone,
+              duration_minutes, meeting_url, active, created_at, updated_at
+       FROM brand_call_schedules WHERE id = ?`
+    ).get(id);
+
+    res.json({ ok: true, schedule: updated });
+  } catch (e) {
+    console.error('[brand-schedules] update failed:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.listen(CFG.port, () => {
   console.log(`\n⚡ Cult Content Command Center`);
   console.log(`   http://localhost:${CFG.port}\n`);
