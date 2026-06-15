@@ -91,6 +91,17 @@
     body{padding:28px 16px 60px}
     th:nth-child(2),td:nth-child(2){display:none}
   }
+  .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;letter-spacing:.02em;white-space:nowrap}
+  .pill.signed{background:rgba(255,180,84,.16);color:#ffb454;border:1px solid rgba(255,180,84,.35)}
+  .pill.tc{background:rgba(43,214,166,.16);color:#2bd6a6;border:1px solid rgba(43,214,166,.35)}
+  .pill.sample{background:rgba(0,242,234,.16);color:#00f2ea;border:1px solid rgba(0,242,234,.35)}
+  .chase-yes{color:#ff5b6e;font-weight:800}
+  .chase-no{color:#5a6072}
+  .match-yes{color:#2bd6a6;font-weight:700}
+  .match-no{color:#ff5b6e;font-weight:700}
+  .fnote{margin:6px 2px 14px;font-size:12.5px;color:#9aa0ad;line-height:1.5}
+  .fnote .warn{color:#ffb454}
+  .fnote .ok{color:#2bd6a6}
 </style>
 </head>
 <body>
@@ -109,6 +120,11 @@
   <div id="content" class="tablewrap">
     <div class="loading"><div class="spin"></div>Loading roster…</div>
   </div>
+
+  <div id="funnelH" class="section-h" style="display:none">Signup Funnel · across all Inner Circle brands</div>
+  <div id="funnelStats" class="stats" style="display:none"></div>
+  <div id="funnelNote" class="fnote" style="display:none"></div>
+  <div id="funnel" class="tablewrap"></div>
 </div>
 
 <script>
@@ -204,9 +220,142 @@
       + '</tr></thead><tbody>'
       + creators.map(renderCreatorRow).join('')
       + '</tbody></table>';
+
+    // ── Signup Funnel: loop every IC brand, call /admin/funnel per shopId ──
+    loadFunnel(brands);
   }).catch(function(e){
     document.getElementById('content').innerHTML = '<div class="empty">Error loading roster: '+esc(e.message)+'</div>';
   });
+
+  function stateLabel(s){
+    if(s==='tc_accepted') return '<span class="pill tc">TC accepted</span>';
+    if(s==='sample_requested') return '<span class="pill sample">Sample requested</span>';
+    return '<span class="pill signed">Signed up</span>';
+  }
+
+  function funnelUrl(shopId){
+    return '/api/inner-circle/admin/funnel?shopId=' + encodeURIComponent(shopId)
+      + (KEY ? ('&key=' + encodeURIComponent(KEY)) : '');
+  }
+
+  function loadFunnel(brands){
+    var list = (brands || []).filter(function(b){ return b && b.shopId != null; });
+    var fH = document.getElementById('funnelH');
+    var fEl = document.getElementById('funnel');
+    if(!list.length){
+      fH.style.display='block';
+      fEl.innerHTML = '<div class="empty">No Inner Circle brands with assignments yet.</div>';
+      return;
+    }
+    fH.style.display='block';
+    fEl.innerHTML = '<div class="loading"><div class="spin"></div>Loading signup funnel…</div>';
+
+    // Fetch per-brand funnel in parallel; never let one failure kill the table.
+    Promise.all(list.map(function(b){
+      return fetch(funnelUrl(b.shopId))
+        .then(function(r){ return r.json(); })
+        .then(function(d){ return { brand: b, data: d }; })
+        .catch(function(e){ return { brand: b, data: { error: e.message } }; });
+    })).then(function(results){
+      var rows = [];
+      var agg = { total:0, signed_up:0, tc_accepted:0, sample_requested:0, matched:0, needs_chase:0 };
+      var brandsWithError = [];
+      var brandSummaries = [];
+
+      results.forEach(function(res){
+        var b = res.brand, d = res.data || {};
+        var creators = d.creators || [];
+        var sErr = (d.summary && d.summary.reacherError) || d.error || null;
+        if(d.error || sErr) brandsWithError.push(esc(b.name) + (sErr ? (' (' + esc(String(sErr)) + ')') : ''));
+        // per-brand summary for reconciliation
+        var bs = { name: b.name, total: creators.length,
+          signed_up: (d.summary && d.summary.signed_up) || 0,
+          tc_accepted: (d.summary && d.summary.tc_accepted) || 0,
+          sample_requested: (d.summary && d.summary.sample_requested) || 0,
+          matched: (d.summary && d.summary.matched) || 0 };
+        brandSummaries.push(bs);
+
+        creators.forEach(function(c){
+          var state = c.state || 'signed_up';
+          var matched = !!c.matched;
+          var needsChase = (state === 'signed_up'); // signed up but no TC accepted yet
+          agg.total++;
+          if(state==='signed_up') agg.signed_up++;
+          else if(state==='tc_accepted') agg.tc_accepted++;
+          else if(state==='sample_requested') agg.sample_requested++;
+          if(matched) agg.matched++;
+          if(needsChase) agg.needs_chase++;
+          rows.push({
+            handle: c.handle, brand: b.name, joined: c.joined,
+            state: state, needsChase: needsChase, matched: matched,
+            reacherStatus: c.reacherStatus || null
+          });
+        });
+      });
+
+      // Sort: needs-chase first, then by brand, then handle.
+      rows.sort(function(a,b){
+        if(a.needsChase !== b.needsChase) return a.needsChase ? -1 : 1;
+        if(a.brand !== b.brand) return String(a.brand).localeCompare(String(b.brand));
+        return String(a.handle).localeCompare(String(b.handle));
+      });
+
+      // Funnel stat cards
+      document.getElementById('funnelStats').style.display='flex';
+      document.getElementById('funnelStats').innerHTML =
+          stat(agg.total,'IC Signups')
+        + stat(agg.signed_up,'Signed Up Only')
+        + stat(agg.tc_accepted,'TC Accepted')
+        + stat(agg.sample_requested,'Sample Requested')
+        + stat(agg.needs_chase,'Need TC Chase');
+
+      // Reconciliation note: aggregate vs sum of per-brand summaries
+      var sumCheck = brandSummaries.reduce(function(s,b){
+        s.total+=b.total; s.signed_up+=b.signed_up; s.tc_accepted+=b.tc_accepted;
+        s.sample_requested+=b.sample_requested; s.matched+=b.matched; return s;
+      }, {total:0,signed_up:0,tc_accepted:0,sample_requested:0,matched:0});
+      var reconcileOK = (sumCheck.total===agg.total && sumCheck.signed_up===agg.signed_up
+        && sumCheck.tc_accepted===agg.tc_accepted && sumCheck.sample_requested===agg.sample_requested);
+      var noteEl = document.getElementById('funnelNote');
+      noteEl.style.display='block';
+      var parts = [];
+      parts.push('Aggregated <b>'+agg.total+'</b> signups across <b>'+list.length+'</b> brand'+(list.length===1?'':'s')+'. '
+        + '<span class="'+(reconcileOK?'ok':'warn')+'">Reconciliation: '
+        + (reconcileOK ? '✓ row totals match per-brand summaries'
+            : '⚠ mismatch (rows '+agg.total+' vs summaries '+sumCheck.total+')')
+        + '</span>');
+      if(brandsWithError.length){
+        parts.push('<span class="warn">⚠ Reacher status unavailable for: '+brandsWithError.join(', ')
+          + ' — those creators shown as "Signed up" until Reacher responds.</span>');
+      }
+      noteEl.innerHTML = parts.join('<br>');
+
+      if(!rows.length){
+        document.getElementById('funnel').innerHTML = '<div class="empty">No signups across Inner Circle brands yet.</div>';
+        return;
+      }
+
+      document.getElementById('funnel').innerHTML =
+        '<table><thead><tr>'
+        + '<th>Creator</th><th>Brand</th><th>Signed Up</th><th>Funnel State</th><th>Needs TC Chase</th><th>Reacher Matched</th>'
+        + '</tr></thead><tbody>'
+        + rows.map(function(r){
+            var rs = r.reacherStatus ? '<div class="chandle">'+esc(r.reacherStatus)+'</div>' : '';
+            return '<tr>'
+              + '<td><div class="cname">@'+esc(String(r.handle||'').replace(/^@/,''))+'</div>'+rs+'</td>'
+              + '<td>'+esc(r.brand)+'</td>'
+              + '<td class="cemail">'+fmt(r.joined)+'</td>'
+              + '<td>'+stateLabel(r.state)+'</td>'
+              + '<td class="'+(r.needsChase?'chase-yes':'chase-no')+'">'+(r.needsChase?'⚠ Yes':'—')+'</td>'
+              + '<td class="'+(r.matched?'match-yes':'match-no')+'">'+(r.matched?'✓ Yes':'✗ No')+'</td>'
+              + '</tr>';
+          }).join('')
+        + '</tbody></table>';
+    }).catch(function(e){
+      document.getElementById('funnel').innerHTML = '<div class="empty">Error loading funnel: '+esc(e.message)+'</div>';
+    });
+  }
+
 })();
 </script>
 </body>
