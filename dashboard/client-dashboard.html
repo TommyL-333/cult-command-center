@@ -410,6 +410,43 @@
     .inv-view-btn { color: var(--teal); font-size: 0.79rem; text-decoration: none; font-weight: 600; }
     .inv-view-btn:hover { text-decoration: underline; }
 
+    /* Creator Marketplace */
+    .mkt-grid { display:grid; grid-template-columns:1fr; gap:18px; }
+    @media (min-width:760px){ .mkt-grid { grid-template-columns:repeat(2,1fr); } }
+    @media (min-width:1100px){ .mkt-grid { grid-template-columns:repeat(3,1fr); } }
+    .mkt-card { background:var(--card); border:1px solid var(--border); border-radius:13px; padding:20px; display:flex; flex-direction:column; gap:12px; }
+    .mkt-card-head { display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .mkt-handle { font-size:0.98rem; font-weight:700; color:var(--text); }
+    .mkt-badge { font-size:0.66rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; padding:3px 9px; border-radius:20px; white-space:nowrap; }
+    .mkt-badge.available { background:rgba(0,210,122,0.12); color:var(--green); }
+    .mkt-badge.busy { background:rgba(255,255,255,0.05); color:var(--muted); }
+    .mkt-rates { display:flex; flex-direction:column; gap:6px; font-size:0.82rem; color:var(--text); }
+    .mkt-rate-row { display:flex; justify-content:space-between; gap:8px; }
+    .mkt-rate-row .lbl { color:var(--muted); font-size:0.76rem; text-transform:uppercase; letter-spacing:0.05em; }
+    .mkt-rate-row .val { font-weight:700; color:var(--teal); }
+    .mkt-offer-btn { margin-top:auto; background:var(--teal); color:var(--bg); border:none; border-radius:8px; padding:10px 16px; font-size:0.84rem; font-weight:700; cursor:pointer; }
+    .mkt-offer-btn:disabled { opacity:0.5; cursor:not-allowed; }
+    .mkt-offer-btn:hover:not(:disabled) { filter:brightness(1.08); }
+    /* Offer modal */
+    .mkt-modal-bg { position:fixed; inset:0; background:rgba(0,0,0,0.6); display:none; align-items:center; justify-content:center; z-index:1000; padding:20px; }
+    .mkt-modal-bg.open { display:flex; }
+    .mkt-modal { background:var(--card); border:1px solid var(--border); border-radius:14px; padding:26px; width:100%; max-width:420px; }
+    .mkt-modal h3 { margin:0 0 4px; font-size:1.05rem; color:var(--text); }
+    .mkt-modal .sub { font-size:0.8rem; color:var(--muted); margin-bottom:18px; }
+    .mkt-modal label { display:block; font-size:0.7rem; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.07em; margin:14px 0 6px; }
+    .mkt-modal select, .mkt-modal input, .mkt-modal textarea { width:100%; box-sizing:border-box; background:var(--bg); border:1px solid var(--border); border-radius:8px; color:var(--text); font-size:0.86rem; padding:9px 11px; font-family:inherit; }
+    .mkt-modal textarea { min-height:70px; resize:vertical; }
+    .mkt-modal-actions { display:flex; gap:10px; margin-top:22px; }
+    .mkt-modal-actions button { flex:1; border-radius:8px; padding:10px; font-size:0.84rem; font-weight:700; cursor:pointer; border:none; }
+    .mkt-cancel { background:transparent; border:1px solid var(--border) !important; color:var(--muted); }
+    .mkt-submit { background:var(--teal); color:var(--bg); }
+    .mkt-msg { font-size:0.8rem; margin-top:12px; min-height:18px; }
+    .offer-status { display:inline-flex; align-items:center; gap:5px; font-size:0.7rem; font-weight:700; padding:3px 9px; border-radius:20px; text-transform:capitalize; }
+    .offer-status.pending { background:rgba(255,204,0,0.10); color:var(--yellow); }
+    .offer-status.accepted { background:rgba(0,210,122,0.12); color:var(--green); }
+    .offer-status.declined { background:rgba(255,80,80,0.10); color:#ff6b6b; }
+    .offer-status.withdrawn { background:rgba(255,255,255,0.05); color:var(--muted); }
+
     /* Inner Circle funnel badge */
     .funnel { display:flex; align-items:center; gap:0; flex-wrap:wrap; }
     .funnel-step { position:relative; font-size:0.64rem; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; padding:4px 9px; white-space:nowrap; border:1px solid var(--border); border-right:none; color:var(--muted); background:rgba(255,255,255,0.02); }
@@ -444,6 +481,7 @@
   <button class="tab-btn" onclick="switchTab('content-studio')">Content Studio</button>
   <button class="tab-btn" onclick="switchTab('billing')">Billing</button>
   <button class="tab-btn" onclick="switchTab('inner-circle')">Inner Circle</button>
+  <button class="tab-btn" onclick="switchTab('marketplace')">Creator Marketplace</button>
 </nav>
 
 <div id="tab-overview">
@@ -1210,6 +1248,72 @@
 </main>
 </div><!-- end #tab-inner-circle -->
 
+<!-- ───────────────────────── Creator Marketplace tab ────────────────────── -->
+<div id="tab-marketplace" style="display:none">
+<main>
+
+  <div class="billing-header">
+    <div>
+      <div class="billing-title">🛒 Creator Marketplace</div>
+      <div style="font-size:0.8rem;color:var(--muted);margin-top:3px;">Browse retainer-ready creators and send a direct offer. Your offers and their status appear below.</div>
+    </div>
+  </div>
+
+  <!-- Available creators -->
+  <div class="section-label mb-20">Available Creators</div>
+  <div id="mktNote" style="font-size:0.82rem;color:var(--muted);margin-bottom:16px;line-height:1.6"></div>
+  <div class="mkt-grid" id="mktGrid">
+    <div style="color:var(--muted);font-size:0.83rem;padding:8px 0;">Loading creators…</div>
+  </div>
+
+  <!-- Sent offers -->
+  <div class="section-label mb-20" style="margin-top:40px;">Your Offers</div>
+  <div class="billing-history">
+    <table class="inv-table" id="mktOffersTable">
+      <thead>
+        <tr>
+          <th>Creator</th>
+          <th>Type</th>
+          <th>Amount</th>
+          <th>Videos</th>
+          <th>Status</th>
+          <th>Sent</th>
+        </tr>
+      </thead>
+      <tbody id="mktOffersBody">
+        <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px;">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</main>
+</div><!-- end #tab-marketplace -->
+
+<!-- Offer modal -->
+<div class="mkt-modal-bg" id="mktModalBg">
+  <div class="mkt-modal">
+    <h3>Make an Offer</h3>
+    <div class="sub" id="mktModalSub">Send a retainer offer to <span id="mktModalHandle">creator</span>.</div>
+    <label for="mktOfferType">Offer Type</label>
+    <select id="mktOfferType">
+      <option value="per_video">Per Video</option>
+      <option value="retainer">Monthly Retainer</option>
+      <option value="package">Package Deal</option>
+    </select>
+    <label for="mktOfferAmount">Amount (USD)</label>
+    <input type="number" id="mktOfferAmount" min="0" step="1" placeholder="e.g. 500" />
+    <label for="mktOfferVideos">Videos</label>
+    <input type="number" id="mktOfferVideos" min="0" step="1" placeholder="e.g. 4" />
+    <label for="mktOfferTerms">Terms / Notes</label>
+    <textarea id="mktOfferTerms" placeholder="Deliverables, timeline, usage rights…"></textarea>
+    <div class="mkt-msg" id="mktModalMsg"></div>
+    <div class="mkt-modal-actions">
+      <button class="mkt-cancel" type="button" onclick="closeOfferForm()">Cancel</button>
+      <button class="mkt-submit" type="button" id="mktSubmitBtn" onclick="submitOffer()">Send Offer</button>
+    </div>
+  </div>
+</div>
+
 <script>
   function fmt$(n) {
     if (n == null || n === '') return '—';
@@ -1673,13 +1777,195 @@
     window.location.href = '/client';
   }
 
+  // ─── Creator Marketplace ────────────────────────────────────────────────────
+  var _mktLoaded = false;
+  var _mktCurrentCreator = null;
+  function mktRate(v) { if (v == null || v === '') return '—'; var n = Number(v); if (isNaN(n)) return '—'; return '$' + n.toLocaleString(); }
+
+  async function loadMarketplace() {
+    _mktLoaded = true;
+    await Promise.all([loadMktCreators(), loadMktOffers()]);
+  }
+
+  async function loadMktCreators() {
+    var grid = document.getElementById('mktGrid');
+    var note = document.getElementById('mktNote');
+    try {
+      var r = await fetch('/api/inner-circle/marketplace', { credentials: 'include' });
+      if (r.status === 401) {
+        if (grid) grid.innerHTML = '<div style="color:var(--muted);font-size:0.83rem;">Your session has expired. Please sign in again.</div>';
+        return;
+      }
+      if (r.status === 503) {
+        if (grid) grid.innerHTML = '<div style="color:var(--muted);font-size:0.83rem;">Marketplace is temporarily unavailable. Please try again shortly.</div>';
+        return;
+      }
+      if (!r.ok) {
+        if (grid) grid.innerHTML = '<div style="color:var(--muted);font-size:0.83rem;">Could not load creators (error ' + r.status + ').</div>';
+        return;
+      }
+      var data = await r.json();
+      var creators = Array.isArray(data.creators) ? data.creators : (Array.isArray(data) ? data : []);
+      if (!creators.length) {
+        if (note) note.textContent = '';
+        if (grid) grid.innerHTML = '<div style="color:var(--muted);font-size:0.83rem;">No creators are listed in the marketplace yet. Check back soon.</div>';
+        return;
+      }
+      if (note) note.textContent = creators.length + ' creator' + (creators.length === 1 ? '' : 's') + ' available to hire.';
+      if (grid) grid.innerHTML = creators.map(renderMktCard).join('');
+    } catch (e) {
+      if (grid) grid.innerHTML = '<div style="color:var(--muted);font-size:0.83rem;">Could not load creators. Please try again.</div>';
+    }
+  }
+
+  function renderMktCard(c) {
+    c = c || {};
+    var id = esc(c.id != null ? String(c.id) : (c.creatorId != null ? String(c.creatorId) : ''));
+    var handle = esc(c.handle || c.creator_handle || c.tiktokHandle || '—');
+    var name = c.name || c.creator_name || '';
+    var perVideo = (c.ratePerVideo != null ? c.ratePerVideo : (c.rates && c.rates.perVideo));
+    var retainer = (c.rateRetainer != null ? c.rateRetainer : (c.rates && c.rates.retainer));
+    var pkg = (c.ratePackage != null ? c.ratePackage : (c.rates && c.rates.package));
+    var available = (c.available !== false && c.available !== 0 && c.status !== 'busy' && c.status !== 'unavailable');
+    var badge = available
+      ? '<span class="mkt-badge available">Available</span>'
+      : '<span class="mkt-badge busy">Unavailable</span>';
+    var nameLine = name ? '<div style="font-size:0.74rem;color:var(--muted);margin-top:2px;">' + esc(name) + '</div>' : '';
+    // Use data-* attributes + delegation to avoid quote-escaping issues with names/handles
+    var btn = '<button class="mkt-offer-btn" type="button" data-mkt-id="' + id + '" data-mkt-handle="' + handle + '"'
+      + (available ? '' : ' disabled') + ' onclick="openOfferFromBtn(this)">'
+      + (available ? 'Make Offer' : 'Unavailable') + '</button>';
+    return '<div class="mkt-card">'
+      + '<div class="mkt-card-head"><div><div class="mkt-handle">' + handle + '</div>' + nameLine + '</div>' + badge + '</div>'
+      + '<div class="mkt-rates">'
+      +   '<div class="mkt-rate-row"><span class="lbl">Per Video</span><span class="val">' + mktRate(perVideo) + '</span></div>'
+      +   '<div class="mkt-rate-row"><span class="lbl">Retainer</span><span class="val">' + mktRate(retainer) + '</span></div>'
+      +   '<div class="mkt-rate-row"><span class="lbl">Package</span><span class="val">' + mktRate(pkg) + '</span></div>'
+      + '</div>' + btn + '</div>';
+  }
+
+  function openOfferFromBtn(btn) {
+    if (!btn) return;
+    openOfferForm(btn.getAttribute('data-mkt-id'), btn.getAttribute('data-mkt-handle'));
+  }
+  function openOfferForm(creatorId, handle) {
+    _mktCurrentCreator = creatorId;
+    var hEl = document.getElementById('mktModalHandle');
+    if (hEl) hEl.textContent = handle || 'this creator';
+    document.getElementById('mktOfferType').value = 'per_video';
+    document.getElementById('mktOfferAmount').value = '';
+    document.getElementById('mktOfferVideos').value = '';
+    document.getElementById('mktOfferTerms').value = '';
+    var msg = document.getElementById('mktModalMsg'); if (msg) { msg.textContent = ''; msg.style.color = ''; }
+    var btn = document.getElementById('mktSubmitBtn'); if (btn) { btn.disabled = false; btn.textContent = 'Send Offer'; }
+    document.getElementById('mktModalBg').classList.add('open');
+  }
+  function closeOfferForm() {
+    document.getElementById('mktModalBg').classList.remove('open');
+    _mktCurrentCreator = null;
+  }
+
+  async function submitOffer() {
+    var msg = document.getElementById('mktModalMsg');
+    var btn = document.getElementById('mktSubmitBtn');
+    var offerType = document.getElementById('mktOfferType').value;
+    var amount = document.getElementById('mktOfferAmount').value.trim();
+    var videos = document.getElementById('mktOfferVideos').value.trim();
+    var terms = document.getElementById('mktOfferTerms').value.trim();
+    if (!_mktCurrentCreator) { if (msg) { msg.style.color = '#ff6b6b'; msg.textContent = 'No creator selected.'; } return; }
+    if (!amount || Number(amount) <= 0) { if (msg) { msg.style.color = '#ff6b6b'; msg.textContent = 'Enter a valid amount.'; } return; }
+    if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+    if (msg) { msg.style.color = 'var(--muted)'; msg.textContent = 'Sending offer…'; }
+    try {
+      var r = await fetch('/api/inner-circle/offers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          creatorId: _mktCurrentCreator,
+          offerType: offerType,
+          amount: Number(amount),
+          videos: videos ? Number(videos) : null,
+          terms: terms || null
+        })
+      });
+      if (r.status === 401) { if (msg) { msg.style.color = '#ff6b6b'; msg.textContent = 'Session expired. Please sign in again.'; } if (btn) { btn.disabled = false; btn.textContent = 'Send Offer'; } return; }
+      var d = {};
+      try { d = await r.json(); } catch (e) {}
+      if (!r.ok || d.ok === false) {
+        if (msg) { msg.style.color = '#ff6b6b'; msg.textContent = (d && d.error) ? d.error : ('Could not send offer (error ' + r.status + ').'); }
+        if (btn) { btn.disabled = false; btn.textContent = 'Send Offer'; }
+        return;
+      }
+      if (msg) { msg.style.color = 'var(--green)'; msg.textContent = 'Offer sent ✓'; }
+      await loadMktOffers();
+      setTimeout(closeOfferForm, 900);
+    } catch (e) {
+      if (msg) { msg.style.color = '#ff6b6b'; msg.textContent = 'Could not send offer. Please try again.'; }
+      if (btn) { btn.disabled = false; btn.textContent = 'Send Offer'; }
+    }
+  }
+
+  function mktOfferTypeLabel(t) {
+    var m = { per_video: 'Per Video', retainer: 'Retainer', package: 'Package' };
+    return m[t] || (t ? esc(t) : '—');
+  }
+  function mktOfferStatusBadge(st) {
+    var s = String(st || 'pending').toLowerCase();
+    var known = { pending: 1, accepted: 1, declined: 1, withdrawn: 1 };
+    var cls = known[s] ? s : 'pending';
+    return '<span class="offer-status ' + cls + '">' + esc(s) + '</span>';
+  }
+
+  async function loadMktOffers() {
+    var body = document.getElementById('mktOffersBody');
+    try {
+      var r = await fetch('/api/inner-circle/offers', { credentials: 'include' });
+      if (r.status === 401) {
+        if (body) body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px;">Not signed in.</td></tr>';
+        return;
+      }
+      if (!r.ok) {
+        if (body) body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px;">Could not load offers (error ' + r.status + ').</td></tr>';
+        return;
+      }
+      var data = await r.json();
+      var offers = Array.isArray(data.offers) ? data.offers : (Array.isArray(data) ? data : []);
+      if (!offers.length) {
+        if (body) body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px;">You have not sent any offers yet.</td></tr>';
+        return;
+      }
+      if (body) body.innerHTML = offers.map(renderOfferRow).join('');
+    } catch (e) {
+      if (body) body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px;">Error loading offers.</td></tr>';
+    }
+  }
+
+  function renderOfferRow(o) {
+    o = o || {};
+    var handle = esc(o.creatorHandle || o.handle || o.creator_handle || '—');
+    var type = mktOfferTypeLabel(o.offerType || o.offer_type);
+    var amount = (o.amount != null) ? mktRate(o.amount) : '—';
+    var videos = (o.videos != null && o.videos !== '') ? esc(String(o.videos)) : '—';
+    var status = mktOfferStatusBadge(o.status);
+    var sent = fmtDate(o.createdAt || o.created_at || o.sentAt);
+    return '<tr>'
+      + '<td>' + handle + '</td>'
+      + '<td>' + type + '</td>'
+      + '<td>' + amount + '</td>'
+      + '<td>' + videos + '</td>'
+      + '<td>' + status + '</td>'
+      + '<td style="color:var(--muted);">' + sent + '</td>'
+      + '</tr>';
+  }
+
   // ─── Tab navigation ────────────────────────────────────────────────────────
   function switchTab(name) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('[id^="tab-"]').forEach(el => el.style.display = 'none');
     document.getElementById('tab-' + name).style.display = 'block';
     const btns = document.querySelectorAll('.tab-btn');
-    const labels = { 'overview': 'Overview', 'content-studio': 'Content Studio', 'billing': 'Billing' };
+    const labels = { 'overview': 'Overview', 'content-studio': 'Content Studio', 'billing': 'Billing', 'inner-circle': 'Inner Circle', 'marketplace': 'Creator Marketplace' };
     btns.forEach(b => { if (b.textContent.trim() === labels[name]) b.classList.add('active'); });
     if (name === 'content-studio' && !window._channelsLoaded) loadChannels();
     if (name === 'content-studio' && !window._arcadsLoaded) loadArcads();
@@ -1688,6 +1974,7 @@
     if (name === 'content-studio' && !window._storistaLoaded) initStorista(window._data?.brand);
     if (name === 'billing' && !window._billingLoaded) loadBilling();
     if (name === 'inner-circle' && !_icLoaded) loadInnerCircle();
+    if (name === 'marketplace' && !_mktLoaded) loadMarketplace();
   }
 
   // ─── Affiliate URL ──────────────────────────────────────────────────────────
