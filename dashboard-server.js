@@ -2393,6 +2393,7 @@ app.get('/portal-admin/clients', requirePortalAdmin, async (req, res) => {
   if (req.headers.accept?.includes('text/html')) {
     return res.sendFile(path.join(__dirname, 'dashboard', 'portal-admin.html'));
   }
+  try {
   const brands = loadBrands();
   const CANCELLED_STATUSES = new Set([140, 121, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND']);
 
@@ -2422,6 +2423,32 @@ app.get('/portal-admin/clients', requirePortalAdmin, async (req, res) => {
     };
   });
   res.json({ ok: true, clients });
+  } catch (err) {
+    console.error('[portal-admin/clients] failed:', err && err.message);
+    try {
+      const brands = loadBrands();
+      const clients = (brands.clients || []).map((b) => {
+        const gmv = b.cachedNetGmv ?? 0;
+        const commRate = b.commissionRate ?? 0.10;
+        return {
+          id: b.id, name: b.name, email: b.loginEmail || '',
+          hasPassword: !!b.passwordHash,
+          tiktokConnected: !!(b.tiktokShopToken?.access_token),
+          hasShopCipher: !!(b.tiktokShopToken?.shop_cipher),
+          bufferConnected: !!b.bufferConnected,
+          arcadsConnected: !!b.arcadsConnected,
+          storistaConnected: !!b.storistaConnected,
+          onboardedAt: b.onboardedAt || null,
+          gmv, commissionRate: commRate,
+          revShare: parseFloat((gmv * commRate).toFixed(2)),
+          cachedGmvAt: b.cachedGmvAt || null,
+        };
+      });
+      return res.json({ ok: true, clients, degraded: true });
+    } catch (err2) {
+      return res.status(500).json({ ok: false, error: 'Failed to load clients: ' + (err2 && err2.message) });
+    }
+  }
 });
 
 // POST /portal-admin/impersonate — sets session as a client brand
