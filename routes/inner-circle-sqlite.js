@@ -431,6 +431,35 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     return res.json({ ok: true });
   });
 
+  // ── POST /api/inner-circle/reset-password ───────────────────────────────────
+  // Body: {token, password}. Completes the forgot-password flow. Validates the
+  // single-use token (resetByToken already filters used=0 AND not expired), sets
+  // a new scrypt password hash (same format login's verifyPassword expects — NOT
+  // bcrypt, or login would break), and marks the token used. Generic error on a
+  // bad/expired/used token; no account enumeration.
+  app.post('/api/inner-circle/reset-password', express.json(), (req, res) => {
+    if (dbError) return res.status(503).json({ error: 'Inner Circle data layer unavailable' });
+    const token = String((req.body && req.body.token) || '').trim();
+    const password = String((req.body && req.body.password) || '');
+
+    if (!token) return res.status(400).json({ error: 'Reset link is invalid or expired' });
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+
+    try {
+      const row = stmts.resetByToken.get(token);
+      if (!row) return res.status(400).json({ error: 'Reset link is invalid or expired' });
+
+      stmts.setPassword.run(hashPassword(password), row.creator_id);
+      stmts.markResetUsed.run(token);
+      return res.json({ ok: true });
+    } catch (e) {
+      console.error('[inner-circle-sqlite] reset-password failed:', e.message);
+      return res.status(400).json({ error: 'Reset link is invalid or expired' });
+    }
+  });
+
   // ── POST /api/inner-circle/signup ───────────────────────────────────────────
   // Create Account flow. Body: {name, email, tiktok_handle, phone?}.
   // Stores creator_handle WITH a leading '@' — same format as existing rows;
