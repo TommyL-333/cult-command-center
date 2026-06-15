@@ -63,6 +63,18 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     try { db.exec(`ALTER TABLE inner_circle_creators ADD COLUMN phone TEXT`); } catch (_) { /* column exists */ }
     try { db.exec(`ALTER TABLE inner_circle_creators ADD COLUMN password_hash TEXT`); } catch (_) { /* column exists */ }
 
+    // Password reset tokens — single-use, time-limited. Idempotent create.
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS inner_circle_resets (
+        token TEXT PRIMARY KEY,
+        creator_id INTEGER NOT NULL REFERENCES inner_circle_creators(id),
+        expires_at DATETIME NOT NULL,
+        used INTEGER DEFAULT 0,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_ic_resets_creator ON inner_circle_resets(creator_id);
+    `);
+
     stmts = {
       creatorByEmail: db.prepare(
         `SELECT * FROM inner_circle_creators WHERE lower(email) = lower(?) AND status = 'active'`
@@ -94,6 +106,19 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       ),
       setPassword: db.prepare(
         `UPDATE inner_circle_creators SET password_hash = ? WHERE id = ?`
+      ),
+      // Password-reset token statements (single-use, time-limited).
+      insertReset: db.prepare(
+        `INSERT INTO inner_circle_resets (token, creator_id, expires_at) VALUES (?, ?, ?)`
+      ),
+      resetByToken: db.prepare(
+        `SELECT r.token, r.creator_id, r.expires_at, c.*
+           FROM inner_circle_resets r
+           JOIN inner_circle_creators c ON c.id = r.creator_id
+          WHERE r.token = ? AND r.used = 0 AND r.expires_at > datetime('now')`
+      ),
+      markResetUsed: db.prepare(
+        `UPDATE inner_circle_resets SET used = 1 WHERE token = ?`
       ),
       insertSession: db.prepare(
         `INSERT INTO inner_circle_sessions (token, creator_id, expires_at) VALUES (?, ?, ?)`
