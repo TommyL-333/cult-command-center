@@ -23,27 +23,6 @@
 
 const crypto = require('crypto');
 
-// ── normalizeHandle ─────────────────────────────────────────────────────────
-// Canonicalize a TikTok handle for JOINING Inner Circle signups to Reacher
-// creators. Reacher returns creator_handle values like 'xtina.cherie' and even
-// malformed ones like 'alexidatoribio842gmail.c'; IC signups store handles WITH
-// a leading '@' and arbitrary user-entered casing/whitespace. To match the two
-// reliably we reduce both sides to a single canonical form:
-//   - lowercase
-//   - strip ALL leading '@'
-//   - remove every whitespace character (leading, trailing, AND embedded —
-//     pasted handles sometimes contain stray spaces)
-// Returns '' for null/undefined/empty input. This is the MATCH key only; the
-// stored display handle (icNormalizeHandle, which keeps the '@') is unchanged.
-//   normalizeHandle('@Xtina.Cherie ') === 'xtina.cherie'
-//   normalizeHandle('  Foo ')         === 'foo'
-function normalizeHandle(h) {
-  return String(h == null ? '' : h)
-    .replace(/\s+/g, '')      // remove all whitespace first (leading/trailing/embedded)
-    .replace(/^@+/, '')        // then strip leading @ (now contiguous, e.g. ' @foo' → '@foo' → 'foo')
-    .toLowerCase();
-}
-
 module.exports = function mountInnerCircleSqlite(app, deps = {}) {
   const express = deps.express || require('express');
 
@@ -83,6 +62,23 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     // signup flow. SQLite throws if the column already exists; that's fine.
     try { db.exec(`ALTER TABLE inner_circle_creators ADD COLUMN phone TEXT`); } catch (_) { /* column exists */ }
     try { db.exec(`ALTER TABLE inner_circle_creators ADD COLUMN password_hash TEXT`); } catch (_) { /* column exists */ }
+
+    // DB-level backstop against duplicate Inner Circle accounts by email.
+    // Partial UNIQUE index on the normalized email (lower+trim) so that
+    // legacy rows with NULL/empty email (password=handle) are exempt, while
+    // any two real emails that normalize equal are rejected with
+    // SQLITE_CONSTRAINT. Wrapped in its own try/catch so that (a) it is
+    // idempotent on every deploy and (b) if pre-dedup duplicates still exist
+    // the failure to create the index does NOT abort the rest of schema
+    // migration — the de-dup endpoint clears collisions, then this succeeds
+    // on the next deploy.
+    try {
+      db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS ux_ic_creators_email
+        ON inner_circle_creators(lower(trim(email)))
+        WHERE email IS NOT NULL AND email != ''`);
+    } catch (e) {
+      console.error('[inner-circle-sqlite] ux_ic_creators_email not created (likely residual duplicate emails — run dedup endpoint):', e.message);
+    }
 
     // Password reset tokens — single-use, time-limited. Idempotent create.
     db.exec(`
@@ -233,7 +229,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     console.error('[inner-circle-sqlite] DB layer failed to load — routes will 503:', e.message);
   }
 
-  // ── Helpers ───────────────────���─────────────────────────────────────────────
+  // ── Helpers ─────────────────────────────────────────────────────────────────
   function getSessionToken(req) {
     // Manual cookie parse — this server has no cookie-parser middleware.
     const cookieHeader = req.headers.cookie || '';
@@ -291,25 +287,20 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       if (!creator) return res.status(401).json({ error: 'Invalid credentials' });
 
       const pw = String(password).trim();
-      // Backward-compatible auth: a reset-set password (stored hash) is accepted,
-      // AND the legacy handle / phone-last-4 fallbacks remain valid so existing
-      // creators are never locked out. Any one match logs the creator in.
-      const handle = creator.creator_handle || '';
-      const handleNoAt = handle.replace(/^@/, '');
-      const phoneLast4 = String(creator.phone || '').replace(/\D/g, '').slice(-4);
-
-      const hashMatch = !!(creator.password_hash && verifyPassword(pw, creator.password_hash));
-      const handleMatch = pw === handle || pw === handleNoAt || pw === '@' + handleNoAt;
-      const phoneMatch = phoneLast4.length === 4 && pw === phoneLast4;
-
-      const valid = hashMatch || handleMatch || phoneMatch;
-      if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
-
-      // Upgrade path: if a creator without a stored hash logs in via their legacy
-      // handle, persist it as a real hash so future logins use the hashed path.
-      if (!creator.password_hash && handleMatch) {
-        try { stmts.setPassword.run(hashPassword(pw), creator.id); } catch (_) {}
+      let valid = false;
+      if (creator.password_hash) {
+        valid = verifyPassword(pw, creator.password_hash);
+      } else {
+        // Legacy fallback: accounts created before real passwords used the TikTok handle.
+        const handle = creator.creator_handle || '';
+        const handleNoAt = handle.replace(/^@/, '');
+        valid = pw === handle || pw === handleNoAt || pw === '@' + handleNoAt;
+        // Upgrade path: first successful legacy login sets their handle-password as a real hash
+        if (valid) {
+          try { stmts.setPassword.run(hashPassword(pw), creator.id); } catch (_) {}
+        }
       }
+      if (!valid) return res.status(401).json({ error: 'Invalid credentials' });
 
       const token = crypto.randomBytes(32).toString('hex');
       const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
@@ -479,6 +470,16 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       console.error('[inner-circle-sqlite] reset-password failed:', e.message);
       return res.status(400).json({ error: 'Reset link is invalid or expired' });
     }
+  });
+
+  // ── GET /inner-circle/reset?token=… (PAGE) ──────────────────────────
+  // Self-contained password-reset page. Always returns 200 (even for an invalid
+  // or missing token) so the emailed link never 404s. Token validity is enforced
+  // server-side by POST /api/inner-circle/reset-password. The page reads the
+  // token from the URL client-side, so no templating is needed here.
+  app.get('/inner-circle/reset', (req, res) => {
+    const _path = require('path');
+    return res.sendFile(_path.join(__dirname, '..', 'views', 'inner-circle-reset.html'));
   });
 
   // ── POST /api/inner-circle/signup ───────────────────────────────────────────
@@ -877,134 +878,6 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     return res.json({ ok: true, brand: rec.name, id: rec.id || null, innerCircle: want, changed: before !== want });
   });
 
-  // ── POST /api/inner-circle/admin/dedup-email ────────────────────────────────
-  // Env-key protected (IC_ADMIN_KEY) OR portal-admin session. Runs the same
-  // email de-dup logic as migrations/ic-dedup-email.js, but IN-PROCESS against
-  // the live /data/inner_circle.db handle so ops can execute it over HTTPS
-  // without shelling into the Railway container.
-  //   POST /api/inner-circle/admin/dedup-email   {key, dryRun:true|false}
-  //   header alt: x-ic-admin-key. Default dryRun=true (must pass dryRun:false to apply).
-  // Returns { dryRun, groups, merged, deleted, keptIds, plan }.
-  function icDedupColumnExists(table, col) {
-    try { return db.prepare('PRAGMA table_info(' + table + ')').all().some((c) => c.name === col); }
-    catch (e) { return false; }
-  }
-  function icDedupTableExists(name) {
-    try { return !!db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name = ?").get(name); }
-    catch (e) { return false; }
-  }
-  function icDedupIsEmpty(v) {
-    return v === null || v === undefined || (typeof v === 'string' && v.trim() === '');
-  }
-  function icRunDedupEmail(dryRun) {
-    const MERGE_FIELDS = ['password_hash', 'phone', 'tiktok_user_id', 'creator_name', 'cohort_start', 'cohort_end'];
-    const CHILD_TABLES = ['inner_circle_videos', 'inner_circle_brand_assignments'];
-    if (!icDedupTableExists('inner_circle_creators')) {
-      return { error: 'inner_circle_creators table missing', dryRun, groups: 0, merged: 0, deleted: 0, keptIds: [], plan: [] };
-    }
-    const mergeFields = MERGE_FIELDS.filter((f) => icDedupColumnExists('inner_circle_creators', f));
-    const childTables = CHILD_TABLES.filter((t) => icDedupTableExists(t) && icDedupColumnExists(t, 'creator_id'));
-
-    const dupGroups = db.prepare(
-      "SELECT lower(trim(email)) AS norm_email, COUNT(*) AS cnt FROM inner_circle_creators " +
-      "WHERE email IS NOT NULL AND trim(email) <> '' GROUP BY lower(trim(email)) HAVING COUNT(*) > 1 ORDER BY norm_email"
-    ).all();
-    const getGroupRows = db.prepare("SELECT * FROM inner_circle_creators WHERE lower(trim(email)) = ? ORDER BY id ASC");
-
-    const plan = [];
-    const keptIds = [];
-    let mergedCount = 0;
-    let deletedCount = 0;
-
-    for (const g of dupGroups) {
-      const rows = getGroupRows.all(g.norm_email);
-      if (rows.length < 2) continue;
-      const keeper = rows[0];
-      const dups = rows.slice(1);
-      keptIds.push(keeper.id);
-
-      const fieldUpdates = {};
-      for (const f of mergeFields) {
-        if (!icDedupIsEmpty(keeper[f])) continue;
-        for (const d of dups) { if (!icDedupIsEmpty(d[f])) { fieldUpdates[f] = d[f]; break; } }
-      }
-      if (icDedupColumnExists('inner_circle_creators', 'status')) {
-        if (keeper.status !== 'active' && dups.some((d) => d.status === 'active')) fieldUpdates.status = 'active';
-      }
-      const childMoves = {};
-      for (const t of childTables) {
-        const dupIds = dups.map((d) => d.id);
-        const placeholders = dupIds.map(() => '?').join(',');
-        childMoves[t] = db.prepare('SELECT COUNT(*) AS c FROM ' + t + ' WHERE creator_id IN (' + placeholders + ')').get(...dupIds).c;
-      }
-      plan.push({
-        email: g.norm_email,
-        keeperId: keeper.id,
-        keeperHandle: keeper.creator_handle,
-        dupIds: dups.map((d) => d.id),
-        dupHandles: dups.map((d) => d.creator_handle),
-        fieldUpdates,
-        childMoves,
-      });
-      mergedCount += dups.length;
-      deletedCount += dups.length;
-    }
-
-    if (dryRun) {
-      return { dryRun: true, groups: plan.length, merged: mergedCount, deleted: deletedCount, keptIds, plan };
-    }
-
-    const applied = { merged: 0, deleted: 0, keptIds: [] };
-    const runAll = db.transaction(() => {
-      for (const p of plan) {
-        const cols = Object.keys(p.fieldUpdates);
-        if (cols.length) {
-          const setSql = cols.map((c) => c + ' = ?').join(', ');
-          const vals = cols.map((c) => p.fieldUpdates[c]);
-          db.prepare('UPDATE inner_circle_creators SET ' + setSql + ' WHERE id = ?').run(...vals, p.keeperId);
-        }
-        if (icDedupColumnExists('inner_circle_creators', 'updated_at')) {
-          db.prepare('UPDATE inner_circle_creators SET updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(p.keeperId);
-        }
-        for (const t of childTables) {
-          for (const dupId of p.dupIds) {
-            db.prepare('UPDATE ' + t + ' SET creator_id = ? WHERE creator_id = ?').run(p.keeperId, dupId);
-          }
-        }
-        for (const dupId of p.dupIds) {
-          db.prepare('DELETE FROM inner_circle_creators WHERE id = ?').run(dupId);
-          applied.deleted += 1;
-          applied.merged += 1;
-        }
-        applied.keptIds.push(p.keeperId);
-      }
-    });
-    runAll();
-    return { dryRun: false, groups: plan.length, merged: applied.merged, deleted: applied.deleted, keptIds: applied.keptIds, plan };
-  }
-
-  app.post('/api/inner-circle/admin/dedup-email', express.json(), (req, res) => {
-    const sessionAdmin = !!(req.session && req.session.isPortalAdmin);
-    if (!sessionAdmin && !icCheckAdminKey(req)) return res.status(401).json({ error: 'Unauthorized' });
-    if (dbError) return res.status(503).json({ error: 'Inner Circle data layer unavailable' });
-    const dryRun = !(req.body && req.body.dryRun === false);
-    try {
-      const report = icRunDedupEmail(dryRun);
-      if (!dryRun && !report.error) {
-        const remaining = db.prepare(
-          "SELECT COUNT(*) AS c FROM (SELECT lower(trim(email)) e, COUNT(*) c FROM inner_circle_creators " +
-          "WHERE email IS NOT NULL AND trim(email) <> '' GROUP BY e HAVING c > 1)"
-        ).get().c;
-        report.remainingDupGroups = remaining;
-        icNotifyAlertChannel('🧹 Inner Circle email de-dup applied — ' + report.deleted + ' dup row(s) merged across ' + report.groups + ' group(s). Remaining dup groups: ' + remaining).catch(() => {});
-      }
-      return res.json(report);
-    } catch (e) {
-      console.error('[inner-circle-sqlite] dedup-email failed:', e.message);
-      return res.status(500).json({ error: e.message });
-    }
-  });
-
   // ── POST /api/inner-circle/select-brand ────────────���────────────────────────
   // Creator selects an Inner Circle brand. Persists the creator→brand link in
   // inner_circle_brand_assignments (upsert: re-selecting reactivates), writes a
@@ -1355,175 +1228,6 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     }
   });
 
-  // ── GET /inner-circle/reset?token=… (PAGE) ────────────────────────
-  // Public password-reset page. Reads ?token= client-side and POSTs to
-  // /api/inner-circle/reset-password. Must stay above requireAuth (creators
-  // arriving from an email link have no Cloudflare Access session).
-  app.get('/inner-circle/reset', (req, res) => {
-    return res.sendFile(path.join(__dirname, '..', 'views', 'inner-circle-reset.html'));
-  });
-
-  // ════════════════════════════════════════════════════════════════════════════
-  // getIcFunnel(shopId) — Inner Circle signup-state clarity (added June 2026)
-  // ────────────────────────────────────────────────────────────────────────────
-  // Joins Inner Circle SIGNUPS (this SQLite layer) to their live Reacher
-  // affiliate STATUS for one TikTok shop, so the admin can see exactly where each
-  // creator is in the funnel:
-  //   signed_up        → IC signup exists, no Reacher collab activity yet
-  //   tc_accepted      → matched in Reacher, showing/active on the collab
-  //   sample_requested → a sample has been requested/shipped (or received)
-  //
-  // Match key: normalizeHandle() (lowercase, strip @, strip whitespace) — same
-  // canonical form used everywhere else to join IC handles to Reacher handles.
-  //
-  // Reacher status semantics (observed for shop 10021):
-  //   "Showcasing Product" / "Completed" / "Idle"  → on the collab (tc_accepted)
-  //   "Sample Shipped" / "Sample Request Expired"  → sample stage (sample_requested)
-  //   sample_received === 1                         → sample stage (sample_requested)
-  //
-  // HONEST: if Reacher is unreachable or returns no rows we still return every IC
-  // signup as state "signed_up" and set reacherError so callers can surface it —
-  // never fabricates a TC/sample status.
-  async function getIcFunnel(shopId) {
-    if (dbError) return { error: 'IC database unavailable', creators: [], summary: {} };
-    const sid = shopId != null ? String(shopId) : null;
-    if (!sid) return { error: 'shopId required', creators: [], summary: {} };
-
-    const axios = deps.axios || require('axios');
-    const RELAY = (deps.railwayUrl)
-      || process.env.RAILWAY_URL
-      || 'https://cultcontent-server-production.up.railway.app';
-
-    // ── 1) IC signups assigned to this shop ──────────────────────────────────
-    // Assignment membership is keyed by inner_circle_brand_assignments.shop_id,
-    // which in this schema holds the brand membership id (string). We accept a
-    // match on either that or the numeric TikTok shopId so admins can pass either.
-    let icCreators = [];
-    try {
-      icCreators = db.prepare(
-        `SELECT DISTINCT c.id, c.creator_handle, c.creator_name, c.email,
-                c.status, c.created_at
-           FROM inner_circle_creators c
-           JOIN inner_circle_brand_assignments a ON a.creator_id = c.id
-          WHERE a.active = 1 AND a.shop_id = ? AND c.status != 'removed'
-          ORDER BY c.created_at ASC`
-      ).all(sid);
-    } catch (e) {
-      console.error('[getIcFunnel] signup query failed:', e.message);
-      return { error: 'signup query failed: ' + e.message, creators: [], summary: {} };
-    }
-
-    // Collect every handle this creator owns (primary + linked) for matching.
-    function handlesFor(creatorId, primary) {
-      const set = new Set();
-      if (primary) set.add(normalizeHandle(primary));
-      try {
-        const rows = stmts.handlesForCreator.all(creatorId);
-        for (const r of rows) { const n = normalizeHandle(r.handle); if (n) set.add(n); }
-      } catch (_) { /* multi-handle table optional */ }
-      set.delete('');
-      return set;
-    }
-
-    // ── 2) Reacher per-creator status for this shop (best-effort) ─────────────
-    const reacherByHandle = new Map();
-    let reacherError = null;
-    try {
-      let page = 1;
-      for (let guard = 0; guard < 10; guard++) {
-        const { data } = await axios.post(
-          `${RELAY}/affiliate/shops/${sid}/creators`,
-          { page, page_size: 100 },
-          { timeout: 20000 }
-        );
-        const rows = (data && (data.data || data.creators)) || [];
-        for (const r of rows) {
-          const key = normalizeHandle(r.creator_handle || r.username || r.handle);
-          if (key) reacherByHandle.set(key, r);
-        }
-        if (rows.length < 100) break;
-        page++;
-      }
-    } catch (e) {
-      reacherError = e.response?.data?.error || e.message;
-      console.error('[getIcFunnel] Reacher fetch failed:', reacherError);
-    }
-
-    // ── 3) Classify each IC signup ───────────────────────────────────────────
-    function classify(rRow) {
-      if (!rRow) return { state: 'signed_up', reacherStatus: null };
-      const status = String(rRow.status || '').toLowerCase();
-      const sampleReceived = Number(rRow.sample_received) === 1;
-      const isSample = sampleReceived
-        || status.includes('sample');           // "Sample Shipped", "Sample Request Expired"
-      if (isSample) return { state: 'sample_requested', reacherStatus: rRow.status || null };
-      // Matched in Reacher with any collab status → TC accepted / on the collab.
-      return { state: 'tc_accepted', reacherStatus: rRow.status || null };
-    }
-
-    const creators = icCreators.map((c) => {
-      const handles = handlesFor(c.id, c.creator_handle);
-      let rRow = null;
-      for (const h of handles) { if (reacherByHandle.has(h)) { rRow = reacherByHandle.get(h); break; } }
-      const { state, reacherStatus } = classify(rRow);
-      return {
-        id: c.id,
-        name: c.creator_name || null,
-        handle: c.creator_handle,
-        email: c.email || null,
-        memberStatus: c.status,
-        joined: c.created_at,
-        state,                                   // signed_up | tc_accepted | sample_requested
-        reacherStatus,                           // raw Reacher status string (or null)
-        matched: !!rRow,                         // did we find them in Reacher for this shop
-        sampleReceived: rRow ? Number(rRow.sample_received) === 1 : false,
-        videos: rRow ? Number(rRow.shop_video_count || 0) : 0,
-        shopGmv: rRow ? Number(rRow.shop_gmv || 0) : 0,
-      };
-    });
-
-    const summary = {
-      shopId: sid,
-      total: creators.length,
-      signed_up: creators.filter((c) => c.state === 'signed_up').length,
-      tc_accepted: creators.filter((c) => c.state === 'tc_accepted').length,
-      sample_requested: creators.filter((c) => c.state === 'sample_requested').length,
-      matched: creators.filter((c) => c.matched).length,
-      reacherError,                              // null when Reacher responded OK
-    };
-
-    return { shopId: sid, creators, summary };
-  }
-
-  // ── GET /api/inner-circle/admin/funnel?shopId=…&key=… ───────────────────────
-  // HTTP wrapper over getIcFunnel(shopId). Returns per-creator funnel state for
-  // ONE shop so the admin page can loop every IC-enabled brand and aggregate a
-  // cross-brand signup-state table (signed_up | tc_accepted | sample_requested).
-  // Env-key protected (IC_ADMIN_KEY) OR a portal-admin session.
-  app.get('/api/inner-circle/admin/funnel', async (req, res) => {
-    const want = process.env.IC_ADMIN_KEY;
-    const got = req.query.key || req.get('x-ic-admin-key');
-    const sessionAdmin = !!(req.session && req.session.isPortalAdmin);
-    if (!sessionAdmin && (!want || got !== want)) return res.status(401).json({ error: 'Unauthorized' });
-    const shopId = req.query.shopId || req.query.shop_id;
-    if (shopId == null || String(shopId).trim() === '') {
-      return res.status(400).json({ error: 'shopId required' });
-    }
-    try {
-      const out = await getIcFunnel(String(shopId).trim());
-      if (out && out.error) {
-        // getIcFunnel returns a soft error (DB down / bad shopId) — pass through
-        // as 200 with the error field so the aggregator can keep going for the
-        // other brands rather than aborting the whole page.
-        return res.json({ ok: false, shopId: String(shopId), error: out.error, creators: out.creators || [], summary: out.summary || {} });
-      }
-      return res.json({ ok: true, ...out });
-    } catch (e) {
-      console.error('[inner-circle-sqlite] admin/funnel failed:', e.message);
-      return res.status(500).json({ error: 'Server error' });
-    }
-  });
-
   // Expose the working session middleware so other routes can adopt it later.
-  return { requireSqliteSession, getIcFunnel };
+  return { requireSqliteSession };
 };
