@@ -23,6 +23,27 @@
 
 const crypto = require('crypto');
 
+// ── normalizeHandle ─────────────────────────────────────────────────────────
+// Canonicalize a TikTok handle for JOINING Inner Circle signups to Reacher
+// creators. Reacher returns creator_handle values like 'xtina.cherie' and even
+// malformed ones like 'alexidatoribio842gmail.c'; IC signups store handles WITH
+// a leading '@' and arbitrary user-entered casing/whitespace. To match the two
+// reliably we reduce both sides to a single canonical form:
+//   - lowercase
+//   - strip ALL leading '@'
+//   - remove every whitespace character (leading, trailing, AND embedded —
+//     pasted handles sometimes contain stray spaces)
+// Returns '' for null/undefined/empty input. This is the MATCH key only; the
+// stored display handle (icNormalizeHandle, which keeps the '@') is unchanged.
+//   normalizeHandle('@Xtina.Cherie ') === 'xtina.cherie'
+//   normalizeHandle('  Foo ')         === 'foo'
+function normalizeHandle(h) {
+  return String(h == null ? '' : h)
+    .replace(/\s+/g, '')      // remove all whitespace first (leading/trailing/embedded)
+    .replace(/^@+/, '')        // then strip leading @ (now contiguous, e.g. ' @foo' → '@foo' → 'foo')
+    .toLowerCase();
+}
+
 module.exports = function mountInnerCircleSqlite(app, deps = {}) {
   const express = deps.express || require('express');
 
@@ -212,7 +233,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     console.error('[inner-circle-sqlite] DB layer failed to load — routes will 503:', e.message);
   }
 
-  // ── Helpers ─────────────────────────────────────────────────────────────────
+  // ── Helpers ───────────────────���─────────────────────────────────────────────
   function getSessionToken(req) {
     // Manual cookie parse — this server has no cookie-parser middleware.
     const cookieHeader = req.headers.cookie || '';
