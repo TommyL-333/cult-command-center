@@ -102,6 +102,17 @@
   .fnote{margin:6px 2px 14px;font-size:12.5px;color:#9aa0ad;line-height:1.5}
   .fnote .warn{color:#ffb454}
   .fnote .ok{color:#2bd6a6}
+  .fnote .diag{display:block;margin-top:10px;padding:10px 12px;border-radius:10px;
+    background:rgba(255,180,84,.07);border:1px solid rgba(255,180,84,.22);color:#c9ccd6;font-size:12px;line-height:1.55}
+  .fnote .diag b{color:#ffb454;font-weight:700}
+  .fnote .diag ul{margin:6px 0 0;padding-left:18px}
+  .fnote .diag li{margin:2px 0}
+  /* Unmatched signups: visually distinct, honest (no fabricated funnel progress) */
+  tr.row-unmatched td{background:rgba(255,91,110,0.045)}
+  tr.row-unmatched:hover td{background:rgba(255,91,110,0.075)}
+  tr.row-unmatched td:first-child{box-shadow:inset 3px 0 0 rgba(255,91,110,0.55)}
+  .pill.unverified{background:rgba(138,141,159,.14);color:#9aa0ad;border:1px dashed rgba(138,141,159,.5)}
+  .match-no .mn-why{display:block;font-weight:400;font-size:11px;color:#8a8d9f;margin-top:2px}
 </style>
 </head>
 <body>
@@ -328,6 +339,18 @@
         parts.push('<span class="warn">⚠ Reacher status unavailable for: '+brandsWithError.join(', ')
           + ' — those creators shown as "Signed up" until Reacher responds.</span>');
       }
+      // Honest diagnostics for unmatched signups: explain likely causes, never imply inactivity.
+      var unmatchedCount = agg.total - agg.matched;
+      if(unmatchedCount > 0){
+        parts.push('<span class="diag"><b>' + unmatchedCount + ' signup' + (unmatchedCount===1?'':'s') + ' not matched in Reacher.</b> '
+          + 'Unmatched means we could not join the Inner Circle signup to a Reacher creator record — it does <b>not</b> mean the creator is inactive. Their TC / sample / posting status is <b>unknown</b>, not zero. Likely causes:'
+          + '<ul>'
+          + '<li>Handle typo in the Inner Circle signup (e.g. extra space, wrong @).</li>'
+          + '<li>Creator used a different TikTok handle for the brand collab than the one they entered at IC signup.</li>'
+          + '<li>Creator not yet imported into Reacher for this brand (sync pending).</li>'
+          + '</ul>'
+          + 'Fix by reconciling the handle, then refresh.</span>');
+      }
       noteEl.innerHTML = parts.join('<br>');
 
       if(!rows.length){
@@ -341,13 +364,23 @@
         + '</tr></thead><tbody>'
         + rows.map(function(r){
             var rs = r.reacherStatus ? '<div class="chandle">'+esc(r.reacherStatus)+'</div>' : '';
-            return '<tr>'
+            // Unmatched signups: distinct row + honest wording. We only truthfully know they signed up;
+            // TC/sample progress is unknown (not zero), so show 'Signed up — unverified', never implying inactivity.
+            var stateCell = r.matched ? stateLabel(r.state)
+              : '<span class="pill unverified">Signed up — unverified</span>';
+            var chaseCell = r.matched
+              ? '<td class="'+(r.needsChase?'chase-yes':'chase-no')+'">'+(r.needsChase?'⚠ Yes':'—')+'</td>'
+              : '<td class="chase-no">Unknown</td>';
+            var matchCell = r.matched
+              ? '<td class="match-yes">✓ Yes</td>'
+              : '<td class="match-no">✗ Unmatched<span class="mn-why">verify handle</span></td>';
+            return '<tr'+(r.matched?'':' class="row-unmatched"')+'>'
               + '<td><div class="cname">@'+esc(String(r.handle||'').replace(/^@/,''))+'</div>'+rs+'</td>'
               + '<td>'+esc(r.brand)+'</td>'
               + '<td class="cemail">'+fmt(r.joined)+'</td>'
-              + '<td>'+stateLabel(r.state)+'</td>'
-              + '<td class="'+(r.needsChase?'chase-yes':'chase-no')+'">'+(r.needsChase?'⚠ Yes':'—')+'</td>'
-              + '<td class="'+(r.matched?'match-yes':'match-no')+'">'+(r.matched?'✓ Yes':'✗ No')+'</td>'
+              + '<td>'+stateCell+'</td>'
+              + chaseCell
+              + matchCell
               + '</tr>';
           }).join('')
         + '</tbody></table>';
