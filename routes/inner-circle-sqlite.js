@@ -242,6 +242,12 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       reactivateAssignment: db.prepare(
         `UPDATE inner_circle_brand_assignments SET active = 1, shop_name = ?, assigned_at = CURRENT_TIMESTAMP WHERE id = ?`
       ),
+      activeAssignmentCount: db.prepare(
+        `SELECT COUNT(*) AS n FROM inner_circle_brand_assignments WHERE creator_id = ? AND active = 1`
+      ),
+      activeAssignmentsList: db.prepare(
+        `SELECT id, shop_id, shop_name, assigned_at FROM inner_circle_brand_assignments WHERE creator_id = ? AND active = 1 ORDER BY assigned_at ASC`
+      ),
       // ── Creator retainer-marketplace rates ──────────────────────────────────
       getRates: db.prepare(
         `SELECT creator_id, per_video_cents, retainer_monthly_cents, package_label,
@@ -1244,6 +1250,26 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       // Upsert the creator→brand link.
       let action;
       const existing = stmts.getAssignment.get(c.id, brand.id);
+
+      // Enforce max 3 active brands per creator. Re-selecting an already-active
+      // brand is always allowed (idempotent); only NEW selections beyond the cap
+      // are rejected. (existing && existing.active) means it's already counted.
+      const MAX_IC_BRANDS = 3;
+      const alreadyActive = !!(existing && existing.active);
+      if (!alreadyActive) {
+        const activeCount = stmts.activeAssignmentCount.get(c.id).n;
+        if (activeCount >= MAX_IC_BRANDS) {
+          const current = stmts.activeAssignmentsList.all(c.id).map((a) => ({
+            id: a.shop_id, name: a.shop_name, assignedAt: a.assigned_at,
+          }));
+          return res.status(400).json({
+            success: false,
+            error: `You can select at most ${MAX_IC_BRANDS} brands. Remove one before adding another.`,
+            brands: current,
+          });
+        }
+      }
+
       if (existing) {
         stmts.reactivateAssignment.run(brand.name, existing.id);
         action = 'updated';
@@ -1266,7 +1292,10 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       const { notified, via } = await icNotifyAlertChannel(text);
       console.log(`[inner-circle-sqlite] select-brand ${c.creator_name} → ${brand.name} (${action}, notified: ${notified}${via ? ' via ' + via : ''})`);
 
-      return res.json({ ok: true, action, assignment, notified });
+      const brands = stmts.activeAssignmentsList.all(c.id).map((a) => ({
+        id: a.shop_id, name: a.shop_name, assignedAt: a.assigned_at,
+      }));
+      return res.json({ success: true, ok: true, action, assignment, brands, notified });
     } catch (e) {
       console.error('[inner-circle-sqlite] select-brand failed:', e.message);
       return res.status(500).json({ error: 'Server error' });
