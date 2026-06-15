@@ -4715,7 +4715,9 @@ app.post('/api/creator-onboard', express.json(), async (req, res) => {
   res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.set('Access-Control-Allow-Headers', 'Content-Type');
 
-  const { name = '', tiktokHandle = '', email = '', phone = '', discordUsername = '' } = req.body || {};
+  const { name = '', tiktokHandle = '', email: rawEmail = '', phone = '', discordUsername = '' } = req.body || {};
+  // Normalize email so dup-check + INSERT are case/whitespace-insensitive (matches IC login lookup which lowercases)
+  const email = String(rawEmail || '').trim().toLowerCase();
   if (!name.trim() || !email.trim() || !phone.trim()) {
     return res.status(400).json({ ok: false, error: 'Name, email and phone are required.' });
   }
