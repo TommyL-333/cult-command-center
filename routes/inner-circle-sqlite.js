@@ -1177,6 +1177,14 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     }
   });
 
+  // ── GET /inner-circle/reset?token=… (PAGE) ────────────────────────
+  // Public password-reset page. Reads ?token= client-side and POSTs to
+  // /api/inner-circle/reset-password. Must stay above requireAuth (creators
+  // arriving from an email link have no Cloudflare Access session).
+  app.get('/inner-circle/reset', (req, res) => {
+    return res.sendFile(path.join(__dirname, '..', 'views', 'inner-circle-reset.html'));
+  });
+
   // Expose the working session middleware so other routes can adopt it later.
   return { requireSqliteSession };
 };
