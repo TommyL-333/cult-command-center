@@ -1235,6 +1235,138 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     return res.sendFile(path.join(__dirname, '..', 'views', 'inner-circle-reset.html'));
   });
 
+  // ════════════════════════════════════════════════════════════════════════════
+  // getIcFunnel(shopId) — Inner Circle signup-state clarity (added June 2026)
+  // ────────────────────────────────────────────────────────────────────────────
+  // Joins Inner Circle SIGNUPS (this SQLite layer) to their live Reacher
+  // affiliate STATUS for one TikTok shop, so the admin can see exactly where each
+  // creator is in the funnel:
+  //   signed_up        → IC signup exists, no Reacher collab activity yet
+  //   tc_accepted      → matched in Reacher, showing/active on the collab
+  //   sample_requested → a sample has been requested/shipped (or received)
+  //
+  // Match key: normalizeHandle() (lowercase, strip @, strip whitespace) — same
+  // canonical form used everywhere else to join IC handles to Reacher handles.
+  //
+  // Reacher status semantics (observed for shop 10021):
+  //   "Showcasing Product" / "Completed" / "Idle"  → on the collab (tc_accepted)
+  //   "Sample Shipped" / "Sample Request Expired"  → sample stage (sample_requested)
+  //   sample_received === 1                         → sample stage (sample_requested)
+  //
+  // HONEST: if Reacher is unreachable or returns no rows we still return every IC
+  // signup as state "signed_up" and set reacherError so callers can surface it —
+  // never fabricates a TC/sample status.
+  async function getIcFunnel(shopId) {
+    if (dbError) return { error: 'IC database unavailable', creators: [], summary: {} };
+    const sid = shopId != null ? String(shopId) : null;
+    if (!sid) return { error: 'shopId required', creators: [], summary: {} };
+
+    const axios = deps.axios || require('axios');
+    const RELAY = (deps.railwayUrl)
+      || process.env.RAILWAY_URL
+      || 'https://cultcontent-server-production.up.railway.app';
+
+    // ── 1) IC signups assigned to this shop ──────────────────────────────────
+    // Assignment membership is keyed by inner_circle_brand_assignments.shop_id,
+    // which in this schema holds the brand membership id (string). We accept a
+    // match on either that or the numeric TikTok shopId so admins can pass either.
+    let icCreators = [];
+    try {
+      icCreators = db.prepare(
+        `SELECT DISTINCT c.id, c.creator_handle, c.creator_name, c.email,
+                c.status, c.created_at
+           FROM inner_circle_creators c
+           JOIN inner_circle_brand_assignments a ON a.creator_id = c.id
+          WHERE a.active = 1 AND a.shop_id = ? AND c.status != 'removed'
+          ORDER BY c.created_at ASC`
+      ).all(sid);
+    } catch (e) {
+      console.error('[getIcFunnel] signup query failed:', e.message);
+      return { error: 'signup query failed: ' + e.message, creators: [], summary: {} };
+    }
+
+    // Collect every handle this creator owns (primary + linked) for matching.
+    function handlesFor(creatorId, primary) {
+      const set = new Set();
+      if (primary) set.add(normalizeHandle(primary));
+      try {
+        const rows = stmts.handlesForCreator.all(creatorId);
+        for (const r of rows) { const n = normalizeHandle(r.handle); if (n) set.add(n); }
+      } catch (_) { /* multi-handle table optional */ }
+      set.delete('');
+      return set;
+    }
+
+    // ── 2) Reacher per-creator status for this shop (best-effort) ─────────────
+    const reacherByHandle = new Map();
+    let reacherError = null;
+    try {
+      let page = 1;
+      for (let guard = 0; guard < 10; guard++) {
+        const { data } = await axios.post(
+          `${RELAY}/affiliate/shops/${sid}/creators`,
+          { page, page_size: 100 },
+          { timeout: 20000 }
+        );
+        const rows = (data && (data.data || data.creators)) || [];
+        for (const r of rows) {
+          const key = normalizeHandle(r.creator_handle || r.username || r.handle);
+          if (key) reacherByHandle.set(key, r);
+        }
+        if (rows.length < 100) break;
+        page++;
+      }
+    } catch (e) {
+      reacherError = e.response?.data?.error || e.message;
+      console.error('[getIcFunnel] Reacher fetch failed:', reacherError);
+    }
+
+    // ── 3) Classify each IC signup ───────────────────────────────────────────
+    function classify(rRow) {
+      if (!rRow) return { state: 'signed_up', reacherStatus: null };
+      const status = String(rRow.status || '').toLowerCase();
+      const sampleReceived = Number(rRow.sample_received) === 1;
+      const isSample = sampleReceived
+        || status.includes('sample');           // "Sample Shipped", "Sample Request Expired"
+      if (isSample) return { state: 'sample_requested', reacherStatus: rRow.status || null };
+      // Matched in Reacher with any collab status → TC accepted / on the collab.
+      return { state: 'tc_accepted', reacherStatus: rRow.status || null };
+    }
+
+    const creators = icCreators.map((c) => {
+      const handles = handlesFor(c.id, c.creator_handle);
+      let rRow = null;
+      for (const h of handles) { if (reacherByHandle.has(h)) { rRow = reacherByHandle.get(h); break; } }
+      const { state, reacherStatus } = classify(rRow);
+      return {
+        id: c.id,
+        name: c.creator_name || null,
+        handle: c.creator_handle,
+        email: c.email || null,
+        memberStatus: c.status,
+        joined: c.created_at,
+        state,                                   // signed_up | tc_accepted | sample_requested
+        reacherStatus,                           // raw Reacher status string (or null)
+        matched: !!rRow,                         // did we find them in Reacher for this shop
+        sampleReceived: rRow ? Number(rRow.sample_received) === 1 : false,
+        videos: rRow ? Number(rRow.shop_video_count || 0) : 0,
+        shopGmv: rRow ? Number(rRow.shop_gmv || 0) : 0,
+      };
+    });
+
+    const summary = {
+      shopId: sid,
+      total: creators.length,
+      signed_up: creators.filter((c) => c.state === 'signed_up').length,
+      tc_accepted: creators.filter((c) => c.state === 'tc_accepted').length,
+      sample_requested: creators.filter((c) => c.state === 'sample_requested').length,
+      matched: creators.filter((c) => c.matched).length,
+      reacherError,                              // null when Reacher responded OK
+    };
+
+    return { shopId: sid, creators, summary };
+  }
+
   // Expose the working session middleware so other routes can adopt it later.
-  return { requireSqliteSession };
+  return { requireSqliteSession, getIcFunnel };
 };
