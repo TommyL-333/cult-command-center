@@ -1220,6 +1220,108 @@
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
 
+  // ── Inner Circle: brand-scoped creator roster ──────────────────────────
+  function fmtDate(ts) {
+    if (!ts) return '—';
+    var d = new Date(ts);
+    if (isNaN(d)) return '—';
+    return d.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+  var _icLoaded = false;
+  async function loadInnerCircle() {
+    var note = document.getElementById('icNote');
+    var body = document.getElementById('icCreatorsBody');
+    try {
+      var r = await fetch('/api/inner-circle/client/creators', { credentials: 'include' });
+      if (r.status === 401) {
+        if (note) note.textContent = 'Your session has expired. Please sign in again.';
+        if (body) body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px;">Not signed in.</td></tr>';
+        return;
+      }
+      if (r.status === 503) {
+        if (note) note.textContent = 'Inner Circle data is temporarily unavailable. Please try again shortly.';
+        if (body) body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px;">Service unavailable.</td></tr>';
+        return;
+      }
+      if (r.status === 404) {
+        if (note) note.textContent = 'No brand is linked to your account yet. Contact your Cult Content rep to connect your TikTok Shop.';
+        if (body) body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px;">Brand not found.</td></tr>';
+        return;
+      }
+      if (!r.ok) {
+        if (note) note.textContent = 'Could not load Inner Circle creators (error ' + r.status + ').';
+        if (body) body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px;">Error loading data.</td></tr>';
+        return;
+      }
+      var data = await r.json();
+      var brand = data.brand || {};
+      var summary = data.summary || {};
+      var creators = Array.isArray(data.creators) ? data.creators : [];
+
+      // Brand name in subtitle
+      var bn = document.getElementById('icBrandName');
+      if (bn) bn.textContent = brand.name || 'your brand';
+
+      // Summary stat cards
+      var sc = document.getElementById('icStatCreators');
+      var sv = document.getElementById('icStatVideos');
+      var sg = document.getElementById('icStatGmv');
+      if (sc) sc.textContent = fmtN(summary.totalCreators || 0);
+      if (sv) sv.textContent = fmtN(summary.totalVideos || 0);
+      if (sg) sg.textContent = fmt$(summary.totalGmv || 0);
+
+      // Status note
+      if (note) {
+        if (data.note) {
+          note.textContent = data.note;
+        } else if (brand.innerCircle === false) {
+          note.textContent = 'Inner Circle is currently OFF for your brand. Enable it in Settings to start matching dedicated creators.';
+        } else if (!creators.length) {
+          note.textContent = 'No Inner Circle creators have joined your cohort yet. New creators appear here as they are matched to your brand.';
+        } else {
+          note.textContent = '';
+        }
+      }
+
+      // Render rows
+      if (body) {
+        if (!creators.length) {
+          body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px;">No creators yet.</td></tr>';
+        } else {
+          var rows = [];
+          for (var i = 0; i < creators.length; i++) {
+            var c = creators[i] || {};
+            var goal = Number(c.videosGoal) || 20;
+            var vids = Number(c.videos) || 0;
+            var pct = (c.progressPct != null) ? Number(c.progressPct) : Math.min(100, Math.round((vids / goal) * 100));
+            if (isNaN(pct) || pct < 0) pct = 0; if (pct > 100) pct = 100;
+            var handle = esc(c.handle || '');
+            var name = esc(c.name || '—');
+            var bar = '<div style="display:flex;align-items:center;gap:8px;">'
+              + '<div style="flex:1;height:8px;background:rgba(255,255,255,0.08);border-radius:4px;overflow:hidden;min-width:80px;">'
+              + '<div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,#00f2ea,#ff0050);"></div>'
+              + '</div>'
+              + '<span style="font-size:0.78rem;color:var(--muted);white-space:nowrap;">' + vids + '/' + goal + '</span>'
+              + '</div>';
+            rows.push(
+              '<tr>'
+              + '<td style="font-weight:600;">' + handle + '</td>'
+              + '<td>' + name + '</td>'
+              + '<td>' + bar + '</td>'
+              + '<td>' + fmt$(c.gmv || 0) + '</td>'
+              + '<td>' + fmtDate(c.joined) + '</td>'
+              + '</tr>'
+            );
+          }
+          body.innerHTML = rows.join('');
+        }
+      }
+      _icLoaded = true;
+    } catch (e) {
+      if (note) note.textContent = 'Could not load Inner Circle creators. Please try again.';
+      if (body) body.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:24px;">Error loading data.</td></tr>';
+    }
+  }
   function reportError(message, source, lineno, colno, error) {
     try {
       fetch('/api/client/error', {
