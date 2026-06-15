@@ -26,7 +26,7 @@ const crypto = require('crypto');
 module.exports = function mountInnerCircleSqlite(app, deps = {}) {
   const express = deps.express || require('express');
 
-  // ── Load DB layer defensively ───────────────────────────────────────────────
+  // ── Load DB layer defensively ─────────────────────────────────��─────────────
   let db = null;
   let queries = null;
   let stmts = null;
@@ -372,7 +372,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     }
   });
 
-  // ── Additional TikTok handles ─────────────────────────
+  // ─�� Additional TikTok handles ─────────────────────────
   // Creators may link more than one TikTok handle. Primary lives on the
   // creators row; extras live in inner_circle_handles. Never delete primary.
   function icNormalizeHandle(raw) {
@@ -810,7 +810,20 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
 
   // Build a normalized roster row for a creator, optionally scoped to one shop_id.
   // When scopeShopId is provided, videos/gmv reflect ONLY that brand.
-  function icCreatorRoster(scopeShopId) {
+  function icCreatorRoster(scope) {
+    // scope can be: null (all creators, total videos),
+    //   a string/number (legacy: same id used for membership + videos), or
+    //   { membershipId, shopId } where membershipId matches
+    //   inner_circle_brand_assignments.shop_id (actually the brand.id) and
+    //   shopId matches inner_circle_videos.shop_id (the TikTok shopId).
+    let membershipId = null, videoShopId = null;
+    if (scope != null && typeof scope === 'object') {
+      membershipId = scope.membershipId != null ? String(scope.membershipId) : null;
+      videoShopId = scope.shopId != null ? String(scope.shopId) : null;
+    } else if (scope != null) {
+      membershipId = String(scope);
+      videoShopId = String(scope);
+    }
     const creators = db.prepare(
       `SELECT id, creator_handle, creator_name, email, status, videos_goal,
               commission_rate, cohort_start, cohort_end, created_at
@@ -823,11 +836,11 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     for (const c of creators) {
       // Brand assignments (active)
       let assignments;
-      if (scopeShopId != null) {
+      if (membershipId != null) {
         assignments = db.prepare(
           `SELECT shop_id, shop_name FROM inner_circle_brand_assignments
             WHERE creator_id = ? AND active = 1 AND shop_id = ?`
-        ).all(c.id, String(scopeShopId));
+        ).all(c.id, membershipId);
         // If scoping and this creator isn't assigned to the brand, skip them.
         if (!assignments.length) continue;
       } else {
@@ -839,13 +852,13 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
 
       // Video count + GMV (scoped or total)
       let videoRow, gmvRow;
-      if (scopeShopId != null) {
+      if (videoShopId != null) {
         videoRow = db.prepare(
           `SELECT COUNT(*) n FROM inner_circle_videos WHERE creator_id = ? AND shop_id = ?`
-        ).get(c.id, String(scopeShopId));
+        ).get(c.id, videoShopId);
         gmvRow = db.prepare(
           `SELECT COALESCE(SUM(gmv),0) g FROM inner_circle_videos WHERE creator_id = ? AND shop_id = ?`
-        ).get(c.id, String(scopeShopId));
+        ).get(c.id, videoShopId);
       } else {
         videoRow = db.prepare(`SELECT COUNT(*) n FROM inner_circle_videos WHERE creator_id = ?`).get(c.id);
         gmvRow = db.prepare(`SELECT COALESCE(SUM(gmv),0) g FROM inner_circle_videos WHERE creator_id = ?`).get(c.id);
@@ -971,7 +984,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
         });
       }
 
-      const creators = icCreatorRoster(shopId);
+      const creators = icCreatorRoster({ membershipId: brand.id, shopId });
       const summary = {
         totalCreators: creators.length,
         totalVideos: creators.reduce((s, c) => s + c.videos, 0),
