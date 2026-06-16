@@ -2114,14 +2114,32 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       }
 
       // Validation passed — brand is one of the creator's active selections.
-      // TODO(next steps): multer single('video') file handling, store to
-      // UPLOAD_DIR, then INSERT into inner_circle_videos
-      // (creator_id, shop_id=brandId, shop_name=assignment.shop_name, posted_at, ...).
+      // Insert the video row. SQLite (better-sqlite3) — use the prebuilt
+      // stmts.insertVideo prepared statement, which matches the schema:
+      //   (creator_id, shop_id, tiktok_video_id, tiktok_url, views, gmv, posted_at)
+      // NOTE: there is NO 'status' or 'uploaded_at' column on inner_circle_videos.
+      // posted_at drives the per-month video count (strftime('%Y-%m', posted_at)),
+      // so we set it to now on upload. shop_id comes from the validated assignment
+      // (never trust a body-supplied shop_id). views/gmv default to 0 until the
+      // TikTok relay backfills real numbers for this tiktok_url.
+      const tiktokUrl = (req.body && (req.body.tiktokUrl || req.body.tiktok_url)) || null;
+      const insertResult = stmts.insertVideo.run(
+        c.id,                    // creator_id (from session — IDOR-safe)
+        assignment.shop_id,      // shop_id (validated, not body-supplied)
+        null,                    // tiktok_video_id (unknown at upload; backfilled later)
+        tiktokUrl,               // tiktok_url (optional)
+        0,                       // views
+        0,                       // gmv
+        new Date().toISOString() // posted_at
+      );
+      const videoId = insertResult.lastInsertRowid;
+
       return res.json({
         ok: true,
         validated: true,
+        videoId,
         brand: { id: assignment.shop_id, name: assignment.shop_name },
-        note: 'brandId validated against active assignment; file handling pending',
+        tiktokUrl,
       });
     } catch (e) {
       console.error('[inner-circle-sqlite] upload-video failed:', e.message);
