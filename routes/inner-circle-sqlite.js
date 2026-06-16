@@ -2084,6 +2084,51 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     }
   });
 
+  // ── POST /api/inner-circle/upload-video ─────────────────────────────────────
+  // Creator uploads a video deliverable for ONE of their selected Inner Circle
+  // brands. brandId MUST correspond to an ACTIVE row in
+  // inner_circle_brand_assignments for the logged-in creator — there is no
+  // selected_brands JSON column on inner_circle_creators; brand membership lives
+  // entirely in the assignments table (see /select-brand). This handler is the
+  // validation gate; multer file handling + the inner_circle_videos insert are
+  // layered on in subsequent steps. requireSqliteSession sets req.icCreator, so
+  // the creator id is taken from the session (IDOR-safe), never from the body.
+  app.post('/api/inner-circle/upload-video', requireSqliteSession, express.json(), (req, res) => {
+    try {
+      const c = req.icCreator;
+      if (!c || !c.id) return res.status(401).json({ error: 'Not authenticated' });
+
+      // Parse brandId from the request body. Accept string or number; the
+      // assignments table stores shop_id as the brand.id from brands.json.
+      const rawBrandId = (req.body && (req.body.brandId !== undefined ? req.body.brandId : req.body.brand_id));
+      if (rawBrandId === undefined || rawBrandId === null || String(rawBrandId).trim() === '') {
+        return res.status(400).json({ error: 'Brand not selected' });
+      }
+      const brandId = String(rawBrandId).trim();
+
+      // Validate: the creator must have an ACTIVE assignment to this brand.
+      // getAssignment matches inner_circle_brand_assignments(creator_id, shop_id).
+      const assignment = stmts.getAssignment.get(c.id, brandId);
+      if (!assignment || !assignment.active) {
+        return res.status(400).json({ error: 'Brand not selected' });
+      }
+
+      // Validation passed — brand is one of the creator's active selections.
+      // TODO(next steps): multer single('video') file handling, store to
+      // UPLOAD_DIR, then INSERT into inner_circle_videos
+      // (creator_id, shop_id=brandId, shop_name=assignment.shop_name, posted_at, ...).
+      return res.json({
+        ok: true,
+        validated: true,
+        brand: { id: assignment.shop_id, name: assignment.shop_name },
+        note: 'brandId validated against active assignment; file handling pending',
+      });
+    } catch (e) {
+      console.error('[inner-circle-sqlite] upload-video failed:', e.message);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  });
+
   // Expose the working session middleware so other routes can adopt it later.
   return { requireSqliteSession };
 };
