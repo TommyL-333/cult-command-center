@@ -745,19 +745,27 @@
             <div id="csRefStatus" style="font-size:0.72rem;color:var(--muted);margin-top:5px;min-height:14px;">Upload reference images to guide the look &amp; feel.</div>
             <div id="csReferenceList" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;"></div>
           </div>
-          <!-- Buffer scheduling: /api/client/content/buffer/schedule does NOT exist yet -> disabled, coming soon (NO endpoint call) -->
+          <!-- Buffer scheduling: LIVE -> POST /api/client/content/buffer/schedule (wired by Sisyphus) -->
           <div>
-            <label style="font-size:0.78rem;color:var(--muted);display:block;margin-bottom:6px;">Buffer access token (optional)</label>
-            <input id="csBufferToken" class="conn-input" type="password" disabled
-                   title="Coming soon — Buffer scheduling isn't available yet"
-                   placeholder="Buffer token (scheduling coming soon)"
-                   style="width:100%;opacity:0.5;cursor:not-allowed;" />
-            <button id="csScheduleBtn" class="refresh-btn" disabled
-                    title="Coming soon — Buffer scheduling isn't available yet"
-                    style="margin-top:8px;opacity:0.5;cursor:not-allowed;">📅 Schedule via Buffer (coming soon)</button>
-            <div style="font-size:0.72rem;color:var(--muted);margin-top:5px;">🔒 Coming soon — Buffer scheduling isn't live yet.</div>
+            <label style="font-size:0.78rem;color:var(--muted);display:block;margin-bottom:6px;">Buffer access token</label>
+            <input id="csBufferToken" class="conn-input" type="password"
+                   placeholder="Paste your Buffer access token"
+                   style="width:100%;" />
+            <label style="font-size:0.78rem;color:var(--muted);display:block;margin:10px 0 6px;">Channel IDs (comma-separated)</label>
+            <input id="csBufferChannels" class="conn-input" type="text"
+                   placeholder="e.g. 5f1a..., 6b2c..."
+                   style="width:100%;" />
+            <label style="font-size:0.78rem;color:var(--muted);display:block;margin:10px 0 6px;">Schedule at (optional)</label>
+            <input id="csBufferScheduledAt" class="conn-input" type="datetime-local"
+                   style="width:100%;" />
+            <label style="font-size:0.78rem;color:var(--muted);display:block;margin:10px 0 6px;">Caption / text</label>
+            <textarea id="csBufferText" class="conn-input" rows="2"
+                      placeholder="Post caption…"
+                      style="width:100%;resize:vertical;"></textarea>
+            <button id="csScheduleBtn" class="refresh-btn" onclick="csScheduleBuffer()"
+                    style="margin-top:10px;">📅 Schedule via Buffer</button>
+            <div id="csBufferStatus" style="font-size:0.72rem;color:var(--muted);margin-top:6px;min-height:14px;">Generate a preview first, then schedule it to your Buffer channels.</div>
           </div>
-        </div>
         <!-- ===== end reference/buffer (disabled) ===== -->
 
         <div style="margin-top:26px;">
@@ -3724,6 +3732,7 @@
       var data = await r.json();
       genId = data && (data.id != null ? data.id : (data.generation_id != null ? data.generation_id : data.generationId));
       if (genId == null) { return csGenFail('Server did not return a generation id.'); }
+      window._csCurrentGenId = genId;
     } catch (e) {
       return csGenFail('Network error submitting generation.');
     }
@@ -3792,6 +3801,9 @@
   }
 
   function csRenderPreview(data, url) {
+    if (data && (data.id != null || data.generation_id != null || data.generationId != null)) {
+      window._csCurrentGenId = (data.id != null ? data.id : (data.generation_id != null ? data.generation_id : data.generationId));
+    }
     var statusEl = document.getElementById('csGenStatus');
     var resultEl = document.getElementById('csResult');
     var btn = document.getElementById('csGenerateBtn');
@@ -3815,11 +3827,61 @@
     loadCsGenerations();
     loadCsCredits();
   }
-  /* HONEST STATE — these backend endpoints do NOT exist yet, so NOTHING below is wired:
-     - POST /api/client/content/references      (reference image upload)  -> LIVE, wired (uploadCsReference/loadCsReferences)
-     - POST /api/client/content/buffer/schedule (Buffer scheduling)       -> field+button disabled, "coming soon"
-     - TikTok Shop direct publish               (BLOCKED, pending app approval) -> UI shows "Generate + preview now · Publish queued (pending app approval)", NO publish call exists.
-     If/when a backend lands, wire it here. Until then we never call a dead endpoint. */
+  /* WIRED STATE — Content Studio frontend ↔ live backend endpoints:
+     - POST /api/client/content/references      (reference image upload)  -> LIVE (uploadCsReference/loadCsReferences)
+     - POST /api/client/content/buffer/schedule (Buffer scheduling)       -> LIVE (csScheduleBuffer, below)
+     - TikTok Shop direct publish               (BLOCKED, pending app approval) -> UI shows "Publish queued (pending app approval)", NO publish call exists. */
+
+  /* ---- Buffer scheduling (LIVE) — POST /api/client/content/buffer/schedule ---- */
+  async function csScheduleBuffer() {
+    var btn = document.getElementById('csScheduleBtn');
+    var statusEl = document.getElementById('csBufferStatus');
+    var token = (document.getElementById('csBufferToken') || {}).value || '';
+    var channelsRaw = (document.getElementById('csBufferChannels') || {}).value || '';
+    var scheduledAt = (document.getElementById('csBufferScheduledAt') || {}).value || '';
+    var text = (document.getElementById('csBufferText') || {}).value || '';
+    var generationId = window._csCurrentGenId != null ? window._csCurrentGenId : null;
+
+    function setStatus(color, msg) { if (statusEl) { statusEl.style.color = color; statusEl.textContent = msg; } }
+
+    if (generationId == null) { return setStatus('#ff6b6b', 'Generate a preview first — no generation to schedule.'); }
+    token = token.trim();
+    if (!token) { return setStatus('#ff6b6b', 'Paste your Buffer access token.'); }
+    var channelIds = channelsRaw.split(',').map(function (c) { return c.trim(); }).filter(Boolean);
+    if (!channelIds.length) { return setStatus('#ff6b6b', 'Enter at least one Buffer channel ID.'); }
+
+    var payload = { generationId: generationId, bufferToken: token, channelIds: channelIds, text: text.trim() };
+    if (scheduledAt) { payload.scheduledAt = new Date(scheduledAt).toISOString(); }
+
+    if (btn) { btn.disabled = true; btn.dataset.label = btn.textContent; btn.textContent = '⏳ Scheduling…'; }
+    setStatus('var(--muted)', 'Sending to Buffer…');
+
+    try {
+      var r = await fetch('/api/client/content/buffer/schedule', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+      });
+      if (r.status === 401) { setStatus('#ff6b6b', 'Session expired — please sign in again.'); return resetBtn(); }
+      var data = {};
+      try { data = await r.json(); } catch (e) {}
+      if (!r.ok || (data && data.ok === false)) {
+        var em = (data && (data.error || data.message)) ? (data.error || data.message) : ('error ' + r.status);
+        setStatus('#ff6b6b', 'Buffer scheduling failed: ' + em);
+        return resetBtn();
+      }
+      var n = (data && Array.isArray(data.updates)) ? data.updates.length : channelIds.length;
+      var when = payload.scheduledAt ? ('scheduled for ' + new Date(payload.scheduledAt).toLocaleString()) : 'added to your Buffer queue';
+      setStatus('#22c55e', '✓ Posted to ' + n + ' channel' + (n === 1 ? '' : 's') + ' — ' + when + '.');
+      resetBtn();
+    } catch (e) {
+      setStatus('#ff6b6b', 'Network error contacting Buffer.');
+      resetBtn();
+    }
+
+    function resetBtn() { if (btn) { btn.disabled = false; if (btn.dataset.label) btn.textContent = btn.dataset.label; } }
+  }
   /* ---- Reference image upload (LIVE) — POST /api/client/content/references ---- */
   function csCurrentProductId() {
     var sel = document.getElementById('csProduct');
