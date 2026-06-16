@@ -430,6 +430,15 @@ app.post('/api/webhooks/ghl-to-instantly', async (req, res) => {
 
 // Public routes — registered BEFORE requireAuth so no login needed
 app.use('/uploads', express.static(UPLOAD_DIR));
+
+// Redirect portal.cultcontent.cc root to client login — prevents the command center index.html
+// from being served publicly (express.static would serve it as the default document)
+app.get('/', (req, res, next) => {
+  const host = req.hostname || '';
+  if (host.includes('portal.cultcontent.cc')) return res.redirect('/client/login');
+  next();
+});
+
 // Serve dashboard static assets (CSS/JS) before auth wall so portal.cultcontent.cc can load them
 app.use(express.static(path.join(__dirname, 'dashboard')));
 
