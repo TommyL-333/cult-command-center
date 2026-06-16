@@ -655,6 +655,21 @@
         </div>
       </div>
 
+      <!-- Brand Color -->
+      <div class="incentive-block" id="blockBrandColor">
+        <div class="incentive-header">
+          <div>
+            <div class="incentive-name">🎨 Brand Color</div>
+            <div class="incentive-desc">Used on your Inner Circle brand card in the creator portal.</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:12px">
+            <input type="color" id="brandColorInput" value="#00f2ea" oninput="onBrandColorInput(this.value)" style="width:44px;height:34px;padding:0;border:1px solid var(--border);border-radius:8px;background:#161823;cursor:pointer">
+            <span id="brandColorHex" style="font-family:monospace;font-size:0.82rem;color:var(--muted);min-width:72px">#00F2EA</span>
+            <span id="brandColorSwatch" style="display:inline-block;width:24px;height:24px;border-radius:6px;border:1px solid var(--border);background:#00f2ea"></span>
+          </div>
+        </div>
+      </div>
+
       <button class="save-btn" onclick="saveSettings()">Save Changes</button>
       <div class="save-status" id="saveStatus"></div>
     </div>
@@ -1550,6 +1565,13 @@
     setIncentive('volumeBonus', c.volumeBonus);
     document.getElementById('tInnerCircle').checked = !!brand.innerCircle;
 
+    // Brand color
+    (function(){
+      var bc = (brand.brandColor && /^#[0-9a-fA-F]{6}$/.test(brand.brandColor)) ? brand.brandColor : '#00f2ea';
+      var inp = document.getElementById('brandColorInput');
+      if (inp) { inp.value = bc; onBrandColorInput(bc); }
+    })();
+
     // Logo
     if (brand.logoUrl) {
       document.getElementById('logoPreview').src = brand.logoUrl;
@@ -1718,6 +1740,14 @@
     }
   }
 
+  function onBrandColorInput(val) {
+    var hex = (val || '#00f2ea').toUpperCase();
+    var hexEl = document.getElementById('brandColorHex');
+    var sw = document.getElementById('brandColorSwatch');
+    if (hexEl) hexEl.textContent = hex;
+    if (sw) sw.style.background = val || '#00f2ea';
+  }
+
   async function saveSettings() {
     const st = document.getElementById('saveStatus');
     st.style.color = 'var(--muted)'; st.textContent = 'Saving…';
@@ -1729,6 +1759,7 @@
           sampleBudget: Number(document.getElementById('sampleBudget').value) || 0,
           compensation: buildCompensation(),
           innerCircle: document.getElementById('tInnerCircle').checked,
+          brandColor: document.getElementById('brandColorInput').value,
         }),
       });
       if (r.ok) { st.style.color = 'var(--green)'; st.textContent = '✓ Saved'; }
