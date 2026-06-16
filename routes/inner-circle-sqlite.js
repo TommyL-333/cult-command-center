@@ -1186,7 +1186,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
           logo: b.logoUrl || (cat && cat.logo) || null,
           description: (cat && cat.description) || b.description || '',
           website: icNormalizeWebsite(b.website || (cat && cat.website)),
-          brandColor: b.brandColor || (cat && cat.brandColor) || null,
+          brandColor: b.brandColor || (cat && cat.brandColor) || '#00f2ea',
           commission: { targetCollab: 0.5, ads: 0.25 },
           isTest: !!b.TEST,
         };
