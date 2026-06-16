@@ -1162,6 +1162,13 @@ const icSqlite = require('./routes/inner-circle-sqlite')(app, { express });
 try { require('./db/content-studio'); console.log('[content-studio] schema ensured'); }
 catch (e) { console.error('[content-studio] schema init failed:', e.message); }
 
+// Content Studio: generation + credits endpoints (reuses db/content-studio.js).
+// Registered here (before app.listen) per command-center route-ordering rule.
+try {
+  require('./routes/content-studio-gen')(app, { requireClientSession, loadBrands });
+} catch (e) { console.error('[content-studio-gen] registration failed:', e.message); }
+
+
 // ─── GET /api/inner-circle/admin/funnel?shopId=NNN ───────────────────────────
 // Admin-only Inner Circle funnel: shows each IC signup's state for one shop —
 // signed_up vs tc_accepted vs sample_requested — by joining IC signups to live
