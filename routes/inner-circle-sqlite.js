@@ -511,6 +511,84 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
   // Returns { ok, reason? } and NEVER throws — callers wrap in try/catch anyway.
   const IC_PORTAL_BASE = process.env.IC_BASE_URL || 'https://portal.cultcontent.cc';
 
+  // ── GHL tagging helper ──────────────────────────────────────────────────────
+  // Find-or-create a GHL contact by email, then apply tags. Fire-and-forget:
+  // NEVER throws, NEVER blocks signup / brand selection. Returns { ok, reason? }.
+  // Mirrors the confirmed GHL v2 auth pattern used by icSendResetEmail above.
+  async function icApplyGhlTags(email, name, tags) {
+    try {
+      const list = Array.isArray(tags) ? tags.filter(Boolean) : [tags].filter(Boolean);
+      if (!list.length) return { ok: false, reason: 'no-tags' };
+      let axios;
+      try { axios = require('axios'); }
+      catch (e) { console.error('[inner-circle-sqlite] icApplyGhlTags: axios unavailable:', e.message); return { ok: false, reason: 'no-axios' }; }
+
+      const apiKey = process.env.GHL_API_KEY;
+      const locationId = process.env.GHL_LOC_ID;
+      if (!apiKey || !locationId) {
+        console.error('[inner-circle-sqlite] icApplyGhlTags: GHL_API_KEY / GHL_LOC_ID not configured');
+        return { ok: false, reason: 'ghl-not-configured' };
+      }
+      const cleanEmail = String(email || '').trim().toLowerCase();
+      if (!cleanEmail) return { ok: false, reason: 'no-email' };
+      const headers = { Authorization: `Bearer ${apiKey}`, Version: '2021-07-28', 'Content-Type': 'application/json' };
+
+      // 1) Find existing contact by email
+      let contactId = null;
+      try {
+        const sr = await axios.get('https://services.leadconnectorhq.com/contacts/', {
+          headers, params: { locationId, query: cleanEmail, limit: 1 }, timeout: 10000,
+        });
+        const found = (sr.data && sr.data.contacts) ? sr.data.contacts[0] : null;
+        if (found && found.id) contactId = found.id;
+      } catch (e) {
+        console.error('[inner-circle-sqlite] icApplyGhlTags: lookup failed:', e.response && e.response.data ? JSON.stringify(e.response.data) : e.message);
+      }
+
+      // 2) Create the contact if it does not exist (upsert is the safe path)
+      if (!contactId) {
+        try {
+          const parts = String(name || '').trim().split(/\s+/);
+          const firstName = parts.shift() || '';
+          const lastName = parts.join(' ');
+          const cr = await axios.post('https://services.leadconnectorhq.com/contacts/upsert', {
+            locationId, email: cleanEmail, firstName, lastName, tags: list,
+            source: 'Inner Circle Portal',
+          }, { headers, timeout: 10000 });
+          contactId = cr.data && (cr.data.contact && cr.data.contact.id || cr.data.id);
+          // upsert already applied tags — done.
+          if (contactId) return { ok: true, contactId, created: true, tags: list };
+        } catch (ce) {
+          console.error('[inner-circle-sqlite] icApplyGhlTags: upsert failed:', ce.response && ce.response.data ? JSON.stringify(ce.response.data) : ce.message);
+          return { ok: false, reason: 'upsert-failed' };
+        }
+      }
+      if (!contactId) return { ok: false, reason: 'no-contact' };
+
+      // 3) Apply tags to the existing contact (additive; GHL merges tags)
+      try {
+        await axios.post(`https://services.leadconnectorhq.com/contacts/${contactId}/tags`, {
+          tags: list,
+        }, { headers, timeout: 10000 });
+        return { ok: true, contactId, tags: list };
+      } catch (te) {
+        console.error('[inner-circle-sqlite] icApplyGhlTags: add-tags failed:', te.response && te.response.data ? JSON.stringify(te.response.data) : te.message);
+        return { ok: false, reason: 'tag-failed' };
+      }
+    } catch (e) {
+      console.error('[inner-circle-sqlite] icApplyGhlTags: unexpected error:', e.message);
+      return { ok: false, reason: 'error' };
+    }
+  }
+
+  // Brand name -> slug, matching the IC catalog slug convention (lowercase, spaces->dashes).
+  function icBrandSlug(name) {
+    return String(name || '').toLowerCase().trim()
+      .replace(/&/g, 'and')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+
   async function icSendResetEmail(creator, resetUrl) {
     let axios;
     try { axios = require('axios'); }
@@ -717,6 +795,10 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
           .catch((e) => console.error('[inner-circle-sqlite] signup alert notify failed:', e.message));
         icNotifyDM(IC_SIGNUP_DM_OPEN_ID, text)
           .catch((e) => console.error('[inner-circle-sqlite] signup DM notify failed:', e.message));
+        // GHL: tag the new creator as an Inner Circle member (fire-and-forget).
+        icApplyGhlTags(email, name, ['inner-circle-member'])
+          .then((r) => { if (!r.ok) console.error('[inner-circle-sqlite] signup GHL tag not applied:', r.reason); })
+          .catch((e) => console.error('[inner-circle-sqlite] signup GHL tag failed:', e.message));
       } catch (e) {
         console.error('[inner-circle-sqlite] signup notify dispatch failed:', e.message);
       }
@@ -1291,6 +1373,14 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
           tiktokHandle: c.creator_handle, brandId: brand.id, brandName: brand.name, action,
         }) + '\n');
       } catch (e) { console.error('[inner-circle-sqlite] selection log write failed:', e.message); }
+
+      // GHL: tag the creator with the brand they joined (fire-and-forget).
+      try {
+        const brandTag = icBrandSlug(brand.name) + '-inner-circle';
+        icApplyGhlTags(c.creator_email || c.email, c.creator_name, [brandTag, 'inner-circle-member'])
+          .then((r) => { if (!r.ok) console.error('[inner-circle-sqlite] select-brand GHL tag not applied:', r.reason); })
+          .catch((e) => console.error('[inner-circle-sqlite] select-brand GHL tag failed:', e.message));
+      } catch (e) { console.error('[inner-circle-sqlite] select-brand GHL tag build failed:', e.message); }
 
       const handle = String(c.creator_handle || '').replace(/^@/, '');
       const text = `🤝 Inner Circle Brand Selection: ${c.creator_name}${handle ? ` (@${handle})` : ''} selected ${brand.name} — send target collab invite`;
