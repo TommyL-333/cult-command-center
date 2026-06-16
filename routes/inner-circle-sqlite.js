@@ -355,43 +355,48 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       ),
     };
 
-    // ── Idempotent TEST creator seed (E2E testing; TEST-prefixed per task
-    //    cleanup policy — flagged for Tommy, removable any time) ────────────��──
-    const existing = queries.getCreatorByHandle.get('@test_sisyphus_ic');
-    if (!existing) {
-      queries.insertCreator.run(
-        '@test_sisyphus_ic',
-        'TEST Creator Sisyphus',
-        'test.sisyphus@cultcontent.cc',
-        'tt_test_sisyphus_001',
-        '2026-06-10',
-        '2026-07-31',
-        20
-      );
-      console.log('[inner-circle-sqlite] seeded TEST creator @test_sisyphus_ic');
-    }
+    // ── ONE-TIME full Inner Circle wipe (guarded by sentinel) ─────────────────
+    //    The two hardcoded TEST creator seed inserts were removed so restarts no
+    //    longer re-seed phantom creators. To clear pre-existing seeded/test data
+    //    exactly once, run a guarded full wipe: if the sentinel file does not
+    //    exist (or IC_WIPE_ONCE=1 forces it) DELETE all Inner Circle rows inside a
+    //    single transaction, then write the sentinel so it never repeats.
+    try {
+      const _fs = require('fs');
+      const _path = require('path');
+      const _icDataDir = process.env.DATA_DIR || '/data';
+      const _sentinelPath = _path.join(_icDataDir, '.ic-wiped');
+      const _forceWipe = process.env.IC_WIPE_ONCE === '1';
+      const _alreadyWiped = _fs.existsSync(_sentinelPath);
 
-    // ── Second TEST creator + distinct TEST brand assignment — data-isolation
-    //    E2E (step 8). Assignment goes straight into inner_circle_brand_assignments;
-    //    'test-brand-b-e2e' is NOT in brands.json so real creators never see it.
-    //    TEST-prefixed per cleanup policy — removable any time. ────────────────
-    let creator2 = queries.getCreatorByHandle.get('@test_sisyphus_ic2');
-    if (!creator2) {
-      queries.insertCreator.run(
-        '@test_sisyphus_ic2',
-        'TEST Creator Sisyphus Two',
-        'test.sisyphus2@cultcontent.cc',
-        'tt_test_sisyphus_002',
-        '2026-06-10',
-        '2026-07-31',
-        20
-      );
-      creator2 = queries.getCreatorByHandle.get('@test_sisyphus_ic2');
-      console.log('[inner-circle-sqlite] seeded TEST creator @test_sisyphus_ic2');
-    }
-    if (creator2 && !stmts.getAssignment.get(creator2.id, 'test-brand-b-e2e')) {
-      stmts.insertAssignment.run(creator2.id, 'test-brand-b-e2e', 'TEST Brand B (E2E isolation)');
-      console.log('[inner-circle-sqlite] seeded TEST brand assignment for @test_sisyphus_ic2');
+      if (_forceWipe || !_alreadyWiped) {
+        // FK-safe order: children referencing inner_circle_creators(id) first,
+        // then the creators table itself. inner_circle_sessions, *_handles and
+        // *_resets all reference creator_id; brand_assignments references creators.
+        const _wipe = db.transaction(() => {
+          const _counts = {};
+          _counts.videos = db.prepare('DELETE FROM inner_circle_videos').run().changes;
+          _counts.assignments = db.prepare('DELETE FROM inner_circle_brand_assignments').run().changes;
+          _counts.sessions = db.prepare('DELETE FROM inner_circle_sessions').run().changes;
+          // Child tables that reference creators — clear before deleting creators
+          // so no orphan rows / FK violations remain. Guarded individually in case
+          // a table is absent on an older schema.
+          try { _counts.handles = db.prepare('DELETE FROM inner_circle_handles').run().changes; } catch (_) { _counts.handles = 0; }
+          try { _counts.resets = db.prepare('DELETE FROM inner_circle_resets').run().changes; } catch (_) { _counts.resets = 0; }
+          _counts.creators = db.prepare('DELETE FROM inner_circle_creators').run().changes;
+          return _counts;
+        });
+        const _deleted = _wipe();
+        _fs.writeFileSync(_sentinelPath, new Date().toISOString() + '\n');
+        console.log('[inner-circle-sqlite] ONE-TIME wipe complete' +
+          (_forceWipe ? ' (IC_WIPE_ONCE=1 forced)' : '') +
+          ' — deleted ' + JSON.stringify(_deleted) +
+          '; sentinel written: ' + _sentinelPath);
+      } else {
+        console.log('[inner-circle-sqlite] wipe skipped — sentinel present: ' + _sentinelPath);
+      }
+    } catch (_wipeErr) {
+      console.error('[inner-circle-sqlite] ONE-TIME wipe FAILED (continuing):', _wipeErr.message);
     }
 
     console.log('[inner-circle-sqlite] mounted — SQLite layer ready');
