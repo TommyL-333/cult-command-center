@@ -229,6 +229,24 @@ module.exports = function registerContentStudioGen(app, deps = {}) {
   });
 
 
+  // ── GET /api/client/content/references ──────────────────────────────────────
+  // List reference images for the authenticated client, optionally scoped to one
+  // product via ?productId= (alias ?product_id=). Newest-first. Honest behaviour:
+  //   401 — no client session (enforced by requireClientSession)
+  //   200 — { ok:true, references:[ { id, client_id, product_id, file_url, created_at }, ... ] }
+  //          references is filtered to req.session.clientBrandId; if productId is
+  //          omitted, ALL references for the client are returned.
+  app.get('/api/client/content/references', requireClientSession, (req, res) => {
+    try {
+      const clientId  = req.session.clientBrandId;
+      const productId = (req.query && (req.query.productId || req.query.product_id)) || null;
+      const references = listReferences(productId, clientId);
+      res.json({ ok: true, references });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   // ── POST /api/client/content/references ─────────────────────────────────────
   // Upload a single reference image (field 'reference') and tag it to a product.
   // Lazy multer (memory-light disk storage into UPLOAD_DIR), 10MB cap, images only.
@@ -280,6 +298,108 @@ module.exports = function registerContentStudioGen(app, deps = {}) {
       const reference = saveReference({ clientId, productId, fileUrl });
       const references = listReferences(productId, clientId);
       res.json({ ok: true, reference, references });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+
+  // ── POST /api/client/content/buffer/schedule ────────────────────────────────
+  // Schedule a *generated* video to one or more Buffer channels.
+  // body: { generationId, bufferToken?, channelIds:[...], text?, scheduledAt? (ISO) }
+  //   - generationId must belong to the calling client and have a finished video_url.
+  //   - bufferToken: optional; falls back to the brand's stored token, then env.
+  //   - scheduledAt present => customScheduled (dueAt); absent => shareNow.
+  // Returns { ok, updates:[ { channelId, ok, postId?, error? } ] }.
+  // HONEST: we only call Buffer if a token is resolvable and the generation has a
+  // real video_url. We never fabricate a Buffer post id.
+  app.post('/api/client/content/buffer/schedule', requireClientSession, require('express').json(), async (req, res) => {
+    try {
+      const clientId = req.session.clientBrandId;
+      const { generationId, channelIds = [], text = '', scheduledAt = null } = req.body || {};
+      let bufferToken = (req.body && req.body.bufferToken) || null;
+
+      if (generationId == null) {
+        return res.status(400).json({ error: 'generationId is required.' });
+      }
+      if (!Array.isArray(channelIds) || channelIds.length === 0) {
+        return res.status(400).json({ error: 'At least one Buffer channelId is required.' });
+      }
+
+      // The generation must exist, belong to this client, and have a finished video.
+      const gen = queries.getGeneration.get(generationId);
+      if (!gen) return res.status(404).json({ error: 'Generation not found.' });
+      if (gen.client_id !== clientId) {
+        return res.status(403).json({ error: 'Not your generation.' });
+      }
+      if (!gen.video_url) {
+        return res.status(409).json({
+          error: 'That generation has no finished video yet — nothing to schedule.',
+          status: gen.status,
+        });
+      }
+
+      // Resolve a Buffer token: explicit body token > brand token > env.
+      if (!bufferToken && typeof loadBrands === 'function') {
+        try {
+          const brand = brandFor(req);
+          bufferToken = brand && (brand.bufferToken || brand.buffer_token) || null;
+        } catch (_) { /* ignore */ }
+      }
+      bufferToken = bufferToken || process.env.BUFFER_ACCESS_TOKEN || null;
+      if (!bufferToken) {
+        return res.status(400).json({
+          error: 'No Buffer access token available. Paste a token or connect Buffer in Connections.',
+        });
+      }
+
+      const mode = scheduledAt ? 'customScheduled' : 'shareNow';
+      const mutation = `mutation CreatePost($input: CreatePostInput!) {
+        createPost(input: $input) {
+          ... on PostActionSuccess { post { id } }
+          ... on MutationError { message extensions { code } }
+        }
+      }`;
+
+      const updates = [];
+      for (const channelId of channelIds) {
+        try {
+          const variables = {
+            input: {
+              channelId,
+              text: String(text || '').trim(),
+              schedulingType: 'automatic',
+              mode,
+              ...(scheduledAt ? { dueAt: scheduledAt } : {}),
+              assets: { videos: [{ url: gen.video_url }] },
+            },
+          };
+          const { data } = await axios.post(
+            'https://api.buffer.com/graphql',
+            { query: mutation, variables },
+            { headers: { Authorization: `Bearer ${bufferToken}`, 'Content-Type': 'application/json' }, timeout: 30000 }
+          );
+          const cp = data && data.data && data.data.createPost;
+          const postId = cp && cp.post && cp.post.id;
+          if (postId) {
+            updates.push({ channelId, ok: true, postId });
+          } else {
+            const errMsg = (cp && cp.message)
+              || (data && data.errors && data.errors[0] && data.errors[0].message)
+              || 'Buffer did not return a post id.';
+            updates.push({ channelId, ok: false, error: errMsg });
+          }
+        } catch (e) {
+          updates.push({
+            channelId,
+            ok: false,
+            error: (e.response && e.response.data && e.response.data.message) || e.message,
+          });
+        }
+      }
+
+      const anyOk = updates.some(u => u.ok);
+      res.status(anyOk ? 200 : 502).json({ ok: anyOk, updates });
     } catch (e) {
       res.status(500).json({ error: e.message });
     }
