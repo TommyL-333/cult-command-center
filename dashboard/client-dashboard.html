@@ -705,6 +705,69 @@
 <div id="tab-content-studio" style="display:none">
   <div style="max-width:1120px;margin:0 auto;padding:36px 24px 60px;">
 
+    <!-- ===== Cult AI Generator (live /api/client/content/*) — wired by Sisyphus ===== -->
+    <div class="cs-section" id="csCoreSection">
+      <div class="cs-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px;">
+          <div class="cs-card-title" style="margin-bottom:0;">✨ Cult AI Generator</div>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:0.78rem;color:var(--muted);">Credits</span>
+            <span id="csCreditBalance" style="font-weight:700;font-size:0.95rem;">—</span>
+            <button class="refresh-btn" onclick="loadContentStudioCore()">↻ Refresh</button>
+          </div>
+        </div>
+        <p style="font-size:0.82rem;color:var(--muted);margin:0 0 16px;line-height:1.6">Generate a short-form video concept + preview from one of your products. <strong>Generate + preview now · Publish queued (pending app approval).</strong></p>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+          <div>
+            <label style="font-size:0.78rem;color:var(--muted);display:block;margin-bottom:6px;">Product</label>
+            <select id="csProduct" class="conn-input" style="width:100%;"><option value="">Loading products…</option></select>
+          </div>
+          <div>
+            <label style="font-size:0.78rem;color:var(--muted);display:block;margin-bottom:6px;">Reference / brief (optional)</label>
+            <input id="csReference" class="conn-input" type="text" placeholder="e.g. punchy hook, show texture, UGC tone" style="width:100%;">
+          </div>
+        </div>
+
+        <button id="csGenerateBtn" class="post-now-btn" style="width:100%;padding:12px;" onclick="csGenerate()">✨ Generate Preview</button>
+        <div id="csGenStatus" style="font-size:0.82rem;color:var(--muted);margin-top:10px;min-height:18px;"></div>
+
+        <div id="csResult" style="margin-top:16px;"></div>
+
+        <!-- ===== Reference upload + Buffer scheduling — backend endpoints MISSING, disabled honestly (no dead-endpoint calls) ===== -->
+        <div style="margin-top:22px;display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+          <!-- Reference image upload: /api/client/content/references does NOT exist yet -> disabled, coming soon -->
+          <div>
+            <label style="font-size:0.78rem;color:var(--muted);display:block;margin-bottom:6px;">Reference image (optional)</label>
+            <input id="csReferenceUpload" class="conn-input" type="file" accept="image/*" disabled
+                   title="Coming soon — reference image upload isn't available yet"
+                   style="width:100%;opacity:0.5;cursor:not-allowed;" />
+            <div style="font-size:0.72rem;color:var(--muted);margin-top:5px;">🔒 Coming soon — image reference upload isn't live yet. Use the text brief above for now.</div>
+          </div>
+          <!-- Buffer scheduling: /api/client/content/buffer/schedule does NOT exist yet -> disabled, coming soon (NO endpoint call) -->
+          <div>
+            <label style="font-size:0.78rem;color:var(--muted);display:block;margin-bottom:6px;">Buffer access token (optional)</label>
+            <input id="csBufferToken" class="conn-input" type="password" disabled
+                   title="Coming soon — Buffer scheduling isn't available yet"
+                   placeholder="Buffer token (scheduling coming soon)"
+                   style="width:100%;opacity:0.5;cursor:not-allowed;" />
+            <button id="csScheduleBtn" class="refresh-btn" disabled
+                    title="Coming soon — Buffer scheduling isn't available yet"
+                    style="margin-top:8px;opacity:0.5;cursor:not-allowed;">📅 Schedule via Buffer (coming soon)</button>
+            <div style="font-size:0.72rem;color:var(--muted);margin-top:5px;">🔒 Coming soon — Buffer scheduling isn't live yet.</div>
+          </div>
+        </div>
+        <!-- ===== end reference/buffer (disabled) ===== -->
+
+        <div style="margin-top:26px;">
+          <div class="cs-card-title" style="font-size:0.95rem;margin-bottom:10px;">Recent generations</div>
+          <div id="csHistory" class="video-list"><span class="empty">Loading…</span></div>
+        </div>
+      </div>
+    </div>
+    <!-- ===== end Cult AI Generator ===== -->
+
+
     <!-- Connections -->
     <div class="cs-section">
       <div class="cs-card">
@@ -2003,6 +2066,7 @@
     if (name === 'content-studio' && !window._assetsLoaded) { window._assetsLoaded = true; loadBrandAssets(); }
     if (name === 'content-studio' && window._data?.brand) wizardInitBrandSummary();
     if (name === 'content-studio' && !window._storistaLoaded) initStorista(window._data?.brand);
+    if (name === 'content-studio' && !window._csLoaded) loadContentStudioCore();
     if (name === 'billing' && !window._billingLoaded) loadBilling();
     if (name === 'inner-circle' && !_icLoaded) loadInnerCircle();
     if (name === 'marketplace' && !_mktLoaded) loadMarketplace();
@@ -2223,7 +2287,7 @@
     setTimeout(() => { $st.textContent = ''; }, 4000);
   }
 
-  // ─── Content Studio: Brand Assets + Create ────────────────────────────────
+  // ─── Content Studio: Brand Assets + Create ──────────────────────��─────────
   var _allAssets = [];
   var _allProducts = [];
   var _activeProductFilter = null;
@@ -3359,7 +3423,7 @@
               }</div>
             </div>
             <div style="display:flex;gap:6px;flex-shrink:0;">
-              ${job.status === 'failed' ? `<button onclick="retryStoristaJob('${job.id}')" style="background:none;border:1px solid var(--muted);border-radius:4px;color:var(--muted);cursor:pointer;font-size:0.7rem;padding:2px 7px;" title="Retry">↺ retry</button>` : ''}
+              ${job.status === 'failed' ? `<button onclick="retryStoristaJob('${job.id}')" style="background:none;border:1px solid var(--muted);border-radius:4px;color:var(--muted);cursor:pointer;font-size:0.7rem;padding:2px 7px;" title="Retry">��� retry</button>` : ''}
               ${job.status !== 'published' ? `<button onclick="deleteStoristaJob('${job.id}')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:1rem;" title="Remove">✕</button>` : ''}
             </div>
             ${job.error ? `<div style="font-size:0.68rem;color:var(--red);width:100%;margin-top:4px;word-break:break-all;">${esc(job.error)}</div>` : ''}
@@ -3545,6 +3609,219 @@
       btn.disabled = false;
     }
   }
+
+  /* ===== Cult AI Generator — live /api/client/content/* (wired by Sisyphus) =====
+     Endpoints verified EXISTS (proper JSON 401 behind auth):
+       GET  /api/client/content/credits
+       GET  /api/client/content/generations
+       POST /api/client/content/generate
+       GET  /api/client/content/generate/:id   (poll single generation)
+     references/products/buffer/schedule endpoints are MISSING — not wired here.
+     Direct publish is intentionally NOT called (queued pending creator-app approval). */
+
+  window._csCorePoll = null;
+
+  async function loadContentStudioCore() {
+    window._csLoaded = true;
+    await Promise.all([loadCsCredits(), loadCsGenerations(), populateCsProducts()]);
+  }
+
+  async function loadCsCredits() {
+    var el = document.getElementById('csCreditBalance');
+    if (!el) return;
+    try {
+      var r = await fetch('/api/client/content/credits', { credentials: 'include' });
+      if (r.status === 401) { el.textContent = '—'; return; }
+      if (!r.ok) { el.textContent = '(err ' + r.status + ')'; return; }
+      var data = await r.json();
+      var bal = (data && (data.credits != null ? data.credits : (data.balance != null ? data.balance : data.remaining)));
+      el.textContent = (bal != null) ? fmtN(bal) : '—';
+    } catch (e) { el.textContent = '—'; }
+  }
+
+  function populateCsProducts() {
+    var sel = document.getElementById('csProduct');
+    if (!sel) return;
+    var products = Array.isArray(window._allProducts) ? window._allProducts
+                 : (window._data && Array.isArray(window._data.products) ? window._data.products : []);
+    if (!products.length) {
+      sel.innerHTML = '<option value="">No products found — open Brand Assets to load</option>';
+      return;
+    }
+    sel.innerHTML = products.map(function (p) {
+      return '<option value="' + esc(String(p.id)) + '">' + esc(p.name || ('Product ' + p.id)) + '</option>';
+    }).join('');
+  }
+
+  async function loadCsGenerations() {
+    var box = document.getElementById('csHistory');
+    if (!box) return;
+    try {
+      var r = await fetch('/api/client/content/generations', { credentials: 'include' });
+      if (r.status === 401) { box.innerHTML = '<span class="empty">Not signed in.</span>'; return; }
+      if (!r.ok) { box.innerHTML = '<span class="empty">Could not load history (error ' + r.status + ').</span>'; return; }
+      var data = await r.json();
+      var gens = Array.isArray(data) ? data : (Array.isArray(data.generations) ? data.generations : []);
+      if (!gens.length) { box.innerHTML = '<span class="empty">No generations yet.</span>'; return; }
+      box.innerHTML = gens.map(renderCsGenRow).join('');
+    } catch (e) {
+      box.innerHTML = '<span class="empty">Could not load history.</span>';
+    }
+  }
+
+  function renderCsGenRow(g) {
+    var status = esc(g.status || 'unknown');
+    var title = esc(g.product_name || g.title || ('Generation ' + (g.id != null ? g.id : '')));
+    var url = g.preview_url || g.video_url || g.url || '';
+    var thumb = url
+      ? '<a href="' + esc(url) + '" target="_blank" rel="noopener" style="color:var(--accent,#00f2ea);">Preview ↗</a>'
+      : '<span style="color:var(--muted);">' + status + '</span>';
+    return '<div class="video-item" style="display:flex;justify-content:space-between;gap:10px;align-items:center;">'
+      + '<span>' + title + '</span>' + thumb + '</div>';
+  }
+
+  /* ---- Generate + poll flow (this step's deliverable) ---- */
+  async function csGenerate() {
+    var btn = document.getElementById('csGenerateBtn');
+    var statusEl = document.getElementById('csGenStatus');
+    var resultEl = document.getElementById('csResult');
+    var sel = document.getElementById('csProduct');
+    var refEl = document.getElementById('csReference');
+
+    var productId = sel ? sel.value : '';
+    if (!productId) {
+      if (statusEl) { statusEl.style.color = '#ff6b6b'; statusEl.textContent = 'Pick a product first.'; }
+      return;
+    }
+
+    // reset UI -> loading
+    if (window._csCorePoll) { clearTimeout(window._csCorePoll); window._csCorePoll = null; }
+    if (btn) { btn.disabled = true; btn.dataset.label = btn.textContent; btn.textContent = '⏳ Generating…'; }
+    if (resultEl) resultEl.innerHTML = '';
+    if (statusEl) { statusEl.style.color = 'var(--muted)'; statusEl.textContent = 'Submitting…'; }
+
+    var payload = {
+      product_id: productId,
+      reference: (refEl && refEl.value) ? refEl.value.trim() : ''
+    };
+
+    var genId = null;
+    try {
+      var r = await fetch('/api/client/content/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+      });
+      if (r.status === 401) { return csGenFail('Session expired — please sign in again.'); }
+      if (r.status === 402) { return csGenFail('Out of credits. Contact your Cult Content rep to top up.'); }
+      if (!r.ok) {
+        var et = '';
+        try { var ej = await r.json(); et = ej && (ej.error || ej.message) ? (': ' + (ej.error || ej.message)) : ''; } catch (e) {}
+        return csGenFail('Generation failed (error ' + r.status + ')' + et);
+      }
+      var data = await r.json();
+      genId = data && (data.id != null ? data.id : (data.generation_id != null ? data.generation_id : data.generationId));
+      if (genId == null) { return csGenFail('Server did not return a generation id.'); }
+    } catch (e) {
+      return csGenFail('Network error submitting generation.');
+    }
+
+    if (statusEl) statusEl.textContent = 'Rendering… (this can take a moment)';
+    csPollGeneration(genId, 0);
+  }
+
+  function csGenFail(msg) {
+    var btn = document.getElementById('csGenerateBtn');
+    var statusEl = document.getElementById('csGenStatus');
+    if (statusEl) { statusEl.style.color = '#ff6b6b'; statusEl.textContent = msg; }
+    if (btn) { btn.disabled = false; if (btn.dataset.label) btn.textContent = btn.dataset.label; }
+  }
+
+  async function csPollGeneration(genId, tries) {
+    var MAX_TRIES = 20;
+    var INTERVAL = 3000;
+    var statusEl = document.getElementById('csGenStatus');
+
+    if (tries >= MAX_TRIES) {
+      if (statusEl) { statusEl.style.color = '#ffb020'; statusEl.textContent = 'Still rendering — check Recent generations shortly.'; }
+      var b0 = document.getElementById('csGenerateBtn');
+      if (b0) { b0.disabled = false; if (b0.dataset.label) b0.textContent = b0.dataset.label; }
+      loadCsGenerations();
+      return;
+    }
+
+    try {
+      var r = await fetch('/api/client/content/generate/' + encodeURIComponent(genId), { credentials: 'include' });
+      if (r.status === 401) { return csGenFail('Session expired — please sign in again.'); }
+      if (!r.ok) {
+        // transient non-200 -> keep polling, surface count
+        if (statusEl) statusEl.textContent = 'Rendering… (retry ' + (tries + 1) + ')';
+        window._csCorePoll = setTimeout(function () { csPollGeneration(genId, tries + 1); }, INTERVAL);
+        return;
+      }
+      var data = await r.json();
+      var status = String(data.status || '').toLowerCase();
+      var url = data.preview_url || data.video_url || data.url || '';
+
+      if (status === 'failed' || status === 'error') {
+        return csGenFail('Generation failed' + (data.error ? (': ' + esc(data.error)) : '.'));
+      }
+
+      var done = (status === 'ready' || status === 'completed' || status === 'complete' || status === 'done' || status === 'succeeded' || !!url);
+      if (done && url) {
+        csRenderPreview(data, url);
+        return;
+      }
+      if (done && !url) {
+        // marked done but no asset URL — treat honestly as queued
+        if (statusEl) { statusEl.style.color = '#ffb020'; statusEl.textContent = 'Generation complete — preview asset not available yet.'; }
+        var b1 = document.getElementById('csGenerateBtn');
+        if (b1) { b1.disabled = false; if (b1.dataset.label) b1.textContent = b1.dataset.label; }
+        loadCsGenerations();
+        return;
+      }
+
+      if (statusEl) statusEl.textContent = 'Rendering… (' + (tries + 1) + '/' + MAX_TRIES + ')';
+      window._csCorePoll = setTimeout(function () { csPollGeneration(genId, tries + 1); }, INTERVAL);
+    } catch (e) {
+      // network blip -> keep polling
+      window._csCorePoll = setTimeout(function () { csPollGeneration(genId, tries + 1); }, INTERVAL);
+    }
+  }
+
+  function csRenderPreview(data, url) {
+    var statusEl = document.getElementById('csGenStatus');
+    var resultEl = document.getElementById('csResult');
+    var btn = document.getElementById('csGenerateBtn');
+
+    if (statusEl) { statusEl.style.color = '#22c55e'; statusEl.textContent = '✓ Preview ready.'; }
+    if (resultEl) {
+      var isVideo = /\.(mp4|webm|mov)(\?|$)/i.test(url);
+      var media = isVideo
+        ? '<video src="' + esc(url) + '" controls playsinline style="width:100%;max-height:480px;border-radius:12px;background:#000;"></video>'
+        : '<img src="' + esc(url) + '" alt="preview" style="width:100%;border-radius:12px;">';
+      resultEl.innerHTML =
+        '<div class="cs-card" style="background:rgba(255,255,255,0.03);">'
+        + media
+        + '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:12px;flex-wrap:wrap;">'
+        +   '<a href="' + esc(url) + '" target="_blank" rel="noopener" class="refresh-btn">Open / Download ↗</a>'
+        +   '<span style="font-size:0.78rem;color:var(--muted);">Generate + preview now · Publish <strong>queued (pending app approval)</strong></span>'
+        + '</div>'
+        + '</div>';
+    }
+    if (btn) { btn.disabled = false; if (btn.dataset.label) btn.textContent = btn.dataset.label; }
+    loadCsGenerations();
+    loadCsCredits();
+  }
+  /* HONEST STATE — these backend endpoints do NOT exist yet, so NOTHING below is wired:
+     - POST /api/client/content/references      (reference image upload)  -> input disabled, "coming soon"
+     - POST /api/client/content/buffer/schedule (Buffer scheduling)       -> field+button disabled, "coming soon"
+     - TikTok Shop direct publish               (BLOCKED, pending app approval) -> UI shows "Generate + preview now · Publish queued (pending app approval)", NO publish call exists.
+     If/when a backend lands, wire it here. Until then we never call a dead endpoint. */
+  function csScheduleViaBuffer() { /* intentionally not wired — Buffer scheduling backend not built. */ }
+  /* ===== end Cult AI Generator ===== */
+
 </script>
 </body>
 </html>
