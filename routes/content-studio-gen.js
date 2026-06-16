@@ -228,5 +228,62 @@ module.exports = function registerContentStudioGen(app, deps = {}) {
     }
   });
 
+
+  // ── POST /api/client/content/references ─────────────────────────────────────
+  // Upload a single reference image (field 'reference') and tag it to a product.
+  // Lazy multer (memory-light disk storage into UPLOAD_DIR), 10MB cap, images only.
+  // Returns { ok, reference, references } — references = newest-first list for the
+  // product. Honest errors: 401 (no client session, via requireClientSession),
+  // 400 (non-image / missing productId / no file).
+  app.post('/api/client/content/references', requireClientSession, (req, res, next) => {
+    const multer = require('multer');
+    const m = multer({
+      storage: multer.diskStorage({
+        destination: (_, __, cb) => cb(null, UPLOAD_DIR),
+        filename:    (_, file, cb) => {
+          const ext  = path.extname(file.originalname) || '.jpg';
+          const base = path.basename(file.originalname, ext).replace(/[^a-z0-9_-]/gi, '').slice(0, 40) || 'ref';
+          cb(null, `ref_${Date.now()}_${base}${ext}`);
+        },
+      }),
+      limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+      fileFilter: (_, file, cb) => {
+        if (/^image\//.test(file.mimetype)) return cb(null, true);
+        // Reject non-images; signal via flag so the handler returns a clean 400.
+        req._refUploadRejected = 'Only image files are allowed for references.';
+        cb(null, false);
+      },
+    }).single('reference');
+    m(req, res, (err) => {
+      if (err) {
+        const msg = err.code === 'LIMIT_FILE_SIZE'
+          ? 'Reference image exceeds the 10MB limit.'
+          : (err.message || 'Upload failed');
+        return res.status(400).json({ error: msg });
+      }
+      next();
+    });
+  }, (req, res) => {
+    try {
+      if (req._refUploadRejected) {
+        return res.status(400).json({ error: req._refUploadRejected });
+      }
+      const productId = (req.body && (req.body.productId || req.body.product_id)) || null;
+      if (!productId) {
+        return res.status(400).json({ error: 'productId is required.' });
+      }
+      if (!req.file) {
+        return res.status(400).json({ error: 'No reference image received (field "reference").' });
+      }
+      const clientId = req.session.clientBrandId;
+      const fileUrl  = `${PUBLIC_BASE_URL}/uploads/${req.file.filename}`;
+      const reference = saveReference({ clientId, productId, fileUrl });
+      const references = listReferences(productId, clientId);
+      res.json({ ok: true, reference, references });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   console.log('[content-studio-gen] routes registered (/api/client/content/*)');
 };
