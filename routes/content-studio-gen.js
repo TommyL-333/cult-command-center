@@ -20,10 +20,20 @@
  */
 
 const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
 
 // Default price (cents) charged to a client per generation. Overridable via env.
 const CHARGE_CENTS = parseInt(process.env.CONTENT_GEN_CHARGE_CENTS || '500', 10); // $5.00
 const SEEDANCE_BASE = process.env.SEEDANCE_BASE || 'https://api.wavespeed.ai';
+
+// Reference uploads live on the same Railway volume + /uploads static mount that
+// dashboard-server.js already exposes (UPLOAD_DIR = DATA_DIR/uploads, served at /uploads).
+const DATA_DIR = process.env.DATA_DIR || '/data';
+const UPLOAD_DIR = path.join(DATA_DIR, 'uploads');
+const PUBLIC_BASE_URL = (process.env.PUBLIC_BASE_URL || process.env.DASHBOARD_URL || 'https://cult-command-center-production.up.railway.app').replace(/\/$/, '');
+// Make sure the destination dir exists (recursive = safe if it already does).
+try { fs.mkdirSync(UPLOAD_DIR, { recursive: true }); } catch (e) { console.error('[content-studio-gen] could not ensure UPLOAD_DIR:', e.message); }
 
 module.exports = function registerContentStudioGen(app, deps = {}) {
   const { requireClientSession, loadBrands } = deps;
@@ -44,6 +54,34 @@ module.exports = function registerContentStudioGen(app, deps = {}) {
     const brands = loadBrands();
     return (brands.clients || []).find(b => b.id === req.session.clientBrandId) || null;
   }
+
+  // ── Reference store helpers ─────────────────────────────────────────────────
+  // Per-product reference images/videos a client can attach to guide generation.
+  // Backed by the existing content_references table (db/content-studio.js):
+  //   columns: id, client_id, product_id, file_url, created_at
+  //
+  // saveReference({ clientId, productId, fileUrl }) -> { id, client_id, product_id, file_url, created_at }
+  //   Persists a reference row. fileUrl should be a /uploads-relative or absolute URL.
+  // listReferences(productId, clientId) -> rows[]  (newest first)
+  //   If productId is falsy, returns ALL references for the client.
+  function saveReference({ clientId, productId = null, fileUrl }) {
+    if (!clientId) throw new Error('saveReference: clientId is required');
+    if (!fileUrl)  throw new Error('saveReference: fileUrl is required');
+    const info = queries.insertReference.run(clientId, productId, fileUrl);
+    return queries.getReferencesForClient.all(clientId).find(r => r.id === info.lastInsertRowid)
+        || { id: info.lastInsertRowid, client_id: clientId, product_id: productId, file_url: fileUrl };
+  }
+
+  function listReferences(productId, clientId) {
+    if (!clientId) throw new Error('listReferences: clientId is required');
+    return productId
+      ? queries.getReferencesForProduct.all(clientId, productId)
+      : queries.getReferencesForClient.all(clientId);
+  }
+
+  // Expose for sibling route modules / tests that receive the same app+deps.
+  app.locals = app.locals || {};
+  app.locals.contentStudioRefs = { saveReference, listReferences, UPLOAD_DIR, PUBLIC_BASE_URL };
 
   // ── GET /api/client/content/credits ────────────────────────────────────────
   app.get('/api/client/content/credits', requireClientSession, (req, res) => {
