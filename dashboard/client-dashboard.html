@@ -736,13 +736,14 @@
 
         <!-- ===== Reference upload + Buffer scheduling — backend endpoints MISSING, disabled honestly (no dead-endpoint calls) ===== -->
         <div style="margin-top:22px;display:grid;grid-template-columns:1fr 1fr;gap:14px;">
-          <!-- Reference image upload: /api/client/content/references does NOT exist yet -> disabled, coming soon -->
+          <!-- Reference image upload: LIVE -> POST /api/client/content/references (wired by Sisyphus) -->
           <div>
             <label style="font-size:0.78rem;color:var(--muted);display:block;margin-bottom:6px;">Reference image (optional)</label>
-            <input id="csReferenceUpload" class="conn-input" type="file" accept="image/*" disabled
-                   title="Coming soon — reference image upload isn't available yet"
-                   style="width:100%;opacity:0.5;cursor:not-allowed;" />
-            <div style="font-size:0.72rem;color:var(--muted);margin-top:5px;">🔒 Coming soon — image reference upload isn't live yet. Use the text brief above for now.</div>
+            <input id="csReferenceUpload" class="conn-input" type="file" accept="image/*"
+                   onchange="uploadCsReference(this)"
+                   style="width:100%;" />
+            <div id="csRefStatus" style="font-size:0.72rem;color:var(--muted);margin-top:5px;min-height:14px;">Upload reference images to guide the look &amp; feel.</div>
+            <div id="csReferenceList" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;"></div>
           </div>
           <!-- Buffer scheduling: /api/client/content/buffer/schedule does NOT exist yet -> disabled, coming soon (NO endpoint call) -->
           <div>
@@ -3623,7 +3624,7 @@
 
   async function loadContentStudioCore() {
     window._csLoaded = true;
-    await Promise.all([loadCsCredits(), loadCsGenerations(), populateCsProducts()]);
+    await Promise.all([loadCsCredits(), loadCsGenerations(), populateCsProducts(), loadCsReferences()]);
   }
 
   async function loadCsCredits() {
@@ -3815,10 +3816,84 @@
     loadCsCredits();
   }
   /* HONEST STATE — these backend endpoints do NOT exist yet, so NOTHING below is wired:
-     - POST /api/client/content/references      (reference image upload)  -> input disabled, "coming soon"
+     - POST /api/client/content/references      (reference image upload)  -> LIVE, wired (uploadCsReference/loadCsReferences)
      - POST /api/client/content/buffer/schedule (Buffer scheduling)       -> field+button disabled, "coming soon"
      - TikTok Shop direct publish               (BLOCKED, pending app approval) -> UI shows "Generate + preview now · Publish queued (pending app approval)", NO publish call exists.
      If/when a backend lands, wire it here. Until then we never call a dead endpoint. */
+  /* ---- Reference image upload (LIVE) — POST /api/client/content/references ---- */
+  function csCurrentProductId() {
+    var sel = document.getElementById('csProduct');
+    return sel ? sel.value : '';
+  }
+
+  async function loadCsReferences() {
+    var box = document.getElementById('csReferenceList');
+    if (!box) return;
+    try {
+      var r = await fetch('/api/client/content/references', { credentials: 'include' });
+      if (r.status === 401) { box.innerHTML = ''; return; }
+      if (!r.ok) { box.innerHTML = ''; return; }
+      var data = await r.json();
+      var refs = Array.isArray(data) ? data : (Array.isArray(data.references) ? data.references : []);
+      renderCsReferences(refs);
+    } catch (e) { /* silent — non-critical */ }
+  }
+
+  function renderCsReferences(refs) {
+    var box = document.getElementById('csReferenceList');
+    if (!box) return;
+    if (!refs || !refs.length) { box.innerHTML = ''; return; }
+    box.innerHTML = refs.map(function (ref) {
+      var url = ref.url || ref.path || ref.location || '';
+      if (url && url.charAt(0) !== '/' && !/^https?:/i.test(url)) url = '/uploads/' + url;
+      var name = esc(ref.name || ref.filename || 'reference');
+      return url
+        ? '<a href="' + esc(url) + '" target="_blank" rel="noopener" title="' + name + '">'
+          + '<img src="' + esc(url) + '" alt="' + name + '" style="width:54px;height:54px;object-fit:cover;border-radius:8px;border:1px solid var(--border);" />'
+          + '</a>'
+        : '';
+    }).join('');
+  }
+
+  async function uploadCsReference(inputEl) {
+    var statusEl = document.getElementById('csRefStatus');
+    var file = inputEl && inputEl.files && inputEl.files[0];
+    if (!file) return;
+    var productId = csCurrentProductId();
+    if (!productId) {
+      if (statusEl) { statusEl.style.color = '#ff6b6b'; statusEl.textContent = 'Pick a product first, then upload a reference.'; }
+      inputEl.value = '';
+      return;
+    }
+    var fd = new FormData();
+    fd.append('reference', file);
+    fd.append('productId', productId);
+    if (statusEl) { statusEl.style.color = 'var(--muted)'; statusEl.textContent = 'Uploading…'; }
+    try {
+      var r = await fetch('/api/client/content/references', {
+        method: 'POST',
+        credentials: 'include',
+        body: fd
+      });
+      if (r.status === 401) { if (statusEl) { statusEl.style.color = '#ff6b6b'; statusEl.textContent = 'Session expired — please sign in again.'; } return; }
+      if (!r.ok) {
+        var et = '';
+        try { var ej = await r.json(); et = ej && (ej.error || ej.message) ? (': ' + (ej.error || ej.message)) : ''; } catch (e) {}
+        if (statusEl) { statusEl.style.color = '#ff6b6b'; statusEl.textContent = 'Upload failed (error ' + r.status + ')' + et; }
+        return;
+      }
+      var data = await r.json();
+      var refs = Array.isArray(data) ? data : (Array.isArray(data.references) ? data.references : null);
+      if (refs) { renderCsReferences(refs); }
+      else { loadCsReferences(); }
+      if (statusEl) { statusEl.style.color = '#22c55e'; statusEl.textContent = '✓ Reference uploaded.'; }
+    } catch (e) {
+      if (statusEl) { statusEl.style.color = '#ff6b6b'; statusEl.textContent = 'Network error uploading reference.'; }
+    } finally {
+      inputEl.value = '';
+    }
+  }
+
   function csScheduleViaBuffer() { /* intentionally not wired — Buffer scheduling backend not built. */ }
   /* ===== end Cult AI Generator ===== */
 
