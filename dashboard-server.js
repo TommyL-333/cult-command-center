@@ -4268,6 +4268,19 @@ app.get('/api/admin/brands-list', (req, res) => {
   })});
 });
 
+// GET /api/admin/brand-products/:id — fetch TikTok Shop products for a brand (admin only, one-shot debug)
+app.get('/api/admin/brand-products/:id', async (req, res) => {
+  const secret = process.env.ADMIN_BATCH_SECRET || 'cult-batch-2026';
+  if (req.headers['x-admin-secret'] !== secret) return res.status(401).json({ error: 'Unauthorized' });
+  const brands = loadBrands();
+  const bi = (brands.clients || []).findIndex(b => b.id === req.params.id);
+  if (bi === -1) return res.status(404).json({ error: 'Brand not found' });
+  try {
+    const data = await ttsBrandPost(brands.clients[bi], brands, bi, '/product/202309/products/search', {}, { page_size: 20 });
+    res.json({ products: (data?.data?.products || []).map(p => ({ id: p.id, title: p.title, status: p.status })) });
+  } catch(e) { res.status(500).json({ error: e.response?.data || e.message }); }
+});
+
 // GET /api/admin/brand-debug/:id — show brand storista key prefix for debugging
 app.get('/api/admin/brand-debug/:id', (req, res) => {
   const secret = process.env.ADMIN_BATCH_SECRET || 'cult-batch-2026';
