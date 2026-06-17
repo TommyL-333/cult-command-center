@@ -2441,6 +2441,8 @@ app.get('/portal-admin/clients', requirePortalAdmin, async (req, res) => {
       commissionRate:   commRate,
       revShare:         parseFloat((gmv * commRate).toFixed(2)),
       cachedGmvAt:      b.cachedGmvAt || null,
+      creatorPageSlug:  b.creatorPage?.slug || null,
+      campaigns:        b.creatorPage?.campaigns || null,
     };
   });
   res.json({ ok: true, clients });

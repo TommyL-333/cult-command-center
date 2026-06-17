@@ -259,6 +259,17 @@
     }
     .view-btn:hover { opacity: 0.88; }
     .view-btn:disabled { opacity: 0.5; cursor: default; }
+    .camp-links-section { border-top: 1px solid var(--border); margin-top: 14px; padding-top: 14px; }
+    .camp-links-label { font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 10px; }
+    .camp-links-row { margin-bottom: 7px; }
+    .camp-link-lbl { display: block; font-size: 0.7rem; color: var(--muted); margin-bottom: 3px; }
+    .camp-link-input { width: 100%; background: transparent; border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 0.75rem; padding: 5px 9px; font-family: inherit; outline: none; transition: border-color .15s; }
+    .camp-link-input:focus { border-color: var(--teal); }
+    .camp-save-btn { background: var(--teal); color: #000; border: none; border-radius: 7px; font-size: 0.75rem; font-weight: 700; padding: 6px 14px; cursor: pointer; transition: opacity .15s; }
+    .camp-save-btn:hover { opacity: .85; }
+    .camp-save-btn:disabled { opacity: .5; cursor: default; }
+    .camp-page-link { font-size: 0.72rem; color: var(--teal); text-decoration: none; }
+    .camp-page-link:hover { text-decoration: underline; }
 
     /* View toggle */
     .view-toggle {
@@ -649,6 +660,26 @@
             <div class="metric-label">Conv. Rate</div>
             <div class="metric-val empty" id="m-conv-${esc(c.id)}">—</div>
             <div class="metric-trend flat" id="m-conv-trend-${esc(c.id)}"></div>
+          </div>
+        </div>` : ''}
+        ${c.creatorPageSlug ? `
+        <div class="camp-links-section">
+          <div class="camp-links-label">Campaign Links</div>
+          <div class="camp-links-row">
+            <label class="camp-link-lbl">💵 Cashback</label>
+            <input class="camp-link-input" id="cl-cashback-${esc(c.id)}" type="url" placeholder="Paste cashback campaign URL" value="${esc(c.campaigns?.cashbackUrl || '')}">
+          </div>
+          <div class="camp-links-row">
+            <label class="camp-link-lbl">🎬 Video Bonus</label>
+            <input class="camp-link-input" id="cl-video-${esc(c.id)}" type="url" placeholder="Paste video bonus campaign URL" value="${esc(c.campaigns?.quantityVideoUrl || '')}">
+          </div>
+          <div class="camp-links-row">
+            <label class="camp-link-lbl">🏆 Leaderboard</label>
+            <input class="camp-link-input" id="cl-leader-${esc(c.id)}" type="url" placeholder="Paste leaderboard campaign URL" value="${esc(c.campaigns?.leaderboardUrl || '')}">
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+            <button class="camp-save-btn" onclick="saveCampaignLinks('${esc(c.id)}', this)">Save Links</button>
+            <a class="camp-page-link" href="/creators/${esc(c.creatorPageSlug)}/welcome" target="_blank">Preview welcome page ↗</a>
           </div>
         </div>` : ''}
         <button class="view-btn" onclick="impersonate('${esc(c.id)}', this)">
@@ -1115,6 +1146,27 @@
       errEl.style.display = 'block';
       btn.disabled = false;
       btn.textContent = 'Save';
+    }
+  }
+
+  async function saveCampaignLinks(brandId, btn) {
+    const cashbackUrl    = document.getElementById(`cl-cashback-${brandId}`)?.value.trim() || null;
+    const quantityVideoUrl = document.getElementById(`cl-video-${brandId}`)?.value.trim() || null;
+    const leaderboardUrl = document.getElementById(`cl-leader-${brandId}`)?.value.trim() || null;
+    btn.disabled = true; btn.textContent = 'Saving…';
+    try {
+      const res = await fetch(`/portal-admin/campaign-links/${brandId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cashbackUrl, quantityVideoUrl, leaderboardUrl }),
+      });
+      const d = await res.json();
+      if (!d.ok) throw new Error(d.error || 'Failed');
+      btn.textContent = 'Saved ✓';
+      setTimeout(() => { btn.disabled = false; btn.textContent = 'Save Links'; }, 2000);
+    } catch (e) {
+      btn.textContent = 'Error — retry';
+      btn.disabled = false;
     }
   }
 
