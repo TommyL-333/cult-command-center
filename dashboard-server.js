@@ -12603,6 +12603,31 @@ function renderWelcomePage(brand, cp, creatorHandle = '') {
       <div class="camp-btn-arrow">&#8594;</div>
     </a>`).join('');
 
+  // Inline incentive cards — shown when incentives are configured (with or without external URLs)
+  const inc = cp.incentives || {};
+  const incentiveCards = [];
+  if (inc.cashback?.enabled && inc.cashback.amount) {
+    const url = campaigns.cashbackUrl || null;
+    const target = inc.cashback.target ? `Hit $${Number(inc.cashback.target).toLocaleString()} GMV and earn it back as cash` : 'Earn cashback on every sale you drive';
+    incentiveCards.push({ emoji: '💵', label: `$${Number(inc.cashback.amount).toLocaleString()} Cashback`, sub: target, url });
+  }
+  if (inc.volumeBonus?.enabled && inc.volumeBonus.bonus) {
+    const url = campaigns.quantityVideoUrl || null;
+    incentiveCards.push({ emoji: '🎬', label: `$${Number(inc.volumeBonus.bonus).toLocaleString()} Video Bonus`, sub: `Post ${inc.volumeBonus.quantity || 10} videos and earn a one-time cash bonus`, url });
+  }
+  if (inc.leaderboard?.enabled && (inc.leaderboard.places || []).length) {
+    const url = campaigns.leaderboardUrl || null;
+    const top = inc.leaderboard.places[0];
+    const threshold = inc.leaderboard.threshold;
+    const placesStr = (inc.leaderboard.places || []).map((p, i) => `${['1st','2nd','3rd'][i]||`${i+1}th`}: $${Number(p).toLocaleString()}`).join(' · ');
+    incentiveCards.push({ emoji: '🏆', label: `$${Number(top).toLocaleString()} Top Prize`, sub: `Monthly leaderboard${threshold ? ` — $${Number(threshold).toLocaleString()} min GMV` : ''} — ${placesStr}`, url });
+  }
+
+  const incentiveCardsHtml = incentiveCards.length ? incentiveCards.map(c => c.url
+    ? `<a href="${c.url}" target="_blank" rel="noopener" class="inc-card inc-card-link"><span class="inc-emoji">${c.emoji}</span><div class="inc-text"><div class="inc-label">${c.label}</div><div class="inc-sub">${c.sub}</div></div><div class="camp-btn-arrow">&#8594;</div></a>`
+    : `<div class="inc-card"><span class="inc-emoji">${c.emoji}</span><div class="inc-text"><div class="inc-label">${c.label}</div><div class="inc-sub">${c.sub}</div></div></div>`
+  ).join('') : '';
+
   // ── Brief sections ──────────────────────────────────────────────────────────
   const typeLabel = { curiosity:'Curiosity', 'pain-point':'Pain Point', transformation:'Transformation', 'social-proof':'Social Proof', controversy:'Controversy', 'myth-bust':'Myth Bust' };
 
@@ -12745,6 +12770,13 @@ h1{font-size:clamp(22px,4vw,30px);font-weight:900;letter-spacing:-.02em;margin-b
 .camp-btn-label{font-size:14px;font-weight:900;margin-bottom:3px}
 .camp-btn-sub{font-size:12px;color:rgba(255,255,255,.42);line-height:1.4}
 .camp-btn-arrow{font-size:18px;color:${accent};opacity:.7;flex-shrink:0}
+.inc-card{display:flex;align-items:center;gap:14px;background:rgba(${ar},.06);border:1.5px solid rgba(${ar},.18);border-radius:14px;padding:16px 20px;margin-bottom:10px;color:#fff}
+.inc-card-link{text-decoration:none;transition:background .18s,transform .1s,border-color .18s;cursor:pointer}
+.inc-card-link:hover{background:rgba(${ar},.14);border-color:rgba(${ar},.45);transform:translateY(-1px)}
+.inc-emoji{font-size:26px;flex-shrink:0;width:36px;text-align:center}
+.inc-text{flex:1}
+.inc-label{font-size:15px;font-weight:900;color:${accent};margin-bottom:3px}
+.inc-sub{font-size:12px;color:rgba(255,255,255,.45);line-height:1.45}
 .discord-btn{display:flex;align-items:center;justify-content:center;gap:10px;background:#5865F2;color:#fff;text-decoration:none;border-radius:14px;padding:16px 24px;font-size:14px;font-weight:900;letter-spacing:.03em;margin-top:24px;transition:transform .15s,box-shadow .15s}
 .discord-btn:hover{transform:translateY(-1px);box-shadow:0 6px 24px rgba(88,101,242,.35)}
 .discord-icon{width:20px;height:20px;fill:#fff;flex-shrink:0}
@@ -12859,6 +12891,10 @@ footer a{color:${accent};text-decoration:none}
 </div>
 
 <div class="card">
+  ${incentiveCardsHtml ? `
+  <div class="section-label">Your Earning Opportunities</div>
+  ${incentiveCardsHtml}
+  <div class="divider"></div>` : ''}
   ${btnsHtml ? `
   <div class="section-label">Sign Up for Campaigns</div>
   ${btnsHtml}
