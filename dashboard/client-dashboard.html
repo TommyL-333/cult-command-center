@@ -2327,7 +2327,7 @@
     } else {
       chipEl.innerHTML = _allProducts.map(p => {
         const img = p.images?.[0] || '';
-        return `<div class="product-chip" id="pchip-${esc(p.id)}" onclick="selectCreateProduct('${esc(p.id)}','${esc(p.name.replace(/'/g,"\\\'"))}')">
+        return `<div class="product-chip" id="pchip-${esc(p.id)}" data-prod-id="${esc(p.id)}" data-prod-name="${esc(p.name)}" onclick="selectCreateProductFromEl(this)">
           ${img ? `<img src="${esc(img)}" alt="">` : ''}
           <span>${esc(p.name)}</span>
         </div>`;
@@ -2341,7 +2341,7 @@
     const list = document.getElementById('assetProductDropdownList');
     if (!list) return;
     list.innerHTML = `<div style="padding:8px 14px;font-size:0.8rem;color:var(--muted);cursor:pointer;border-bottom:1px solid var(--border);" onclick="selectAssetProduct(null,'All products')">All products</div>` +
-      products.map(p => `<div style="padding:8px 14px;font-size:0.82rem;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(255,255,255,0.04);" onclick="selectAssetProduct('${esc(p.id)}','${esc(p.name.replace(/'/g,"\\\'"))}')">
+      products.map(p => `<div style="padding:8px 14px;font-size:0.82rem;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:8px;border-bottom:1px solid rgba(255,255,255,0.04);" data-prod-id="${esc(p.id)}" data-prod-name="${esc(p.name)}" onclick="selectAssetProductFromEl(this)">
         ${p.images?.[0] ? `<img src="${esc(p.images[0])}" style="width:28px;height:28px;object-fit:cover;border-radius:4px;flex-shrink:0">` : '<div style="width:28px;height:28px;background:var(--border);border-radius:4px;flex-shrink:0"></div>'}
         <span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${esc(p.name)}</span>
       </div>`).join('');
@@ -2453,6 +2453,16 @@
     if (chip) chip.classList.add('selected');
     document.getElementById('createFormatRow').style.display = '';
     document.getElementById('createTextOverlay').style.display = 'none';
+  }
+
+  // Safe wrappers: read product id/name from element dataset (avoids inline-onclick string-escaping crashes)
+  function selectCreateProductFromEl(el) {
+    if (!el) return;
+    selectCreateProduct(el.getAttribute('data-prod-id'), el.getAttribute('data-prod-name') || '');
+  }
+  function selectAssetProductFromEl(el) {
+    if (!el) return;
+    selectAssetProduct(el.getAttribute('data-prod-id') || null, el.getAttribute('data-prod-name') || '');
   }
 
   function selectFormat(format, btn) {
