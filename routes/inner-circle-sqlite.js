@@ -2156,7 +2156,9 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     try {
       const sid = String(shopId);
       let brandsData;
-      try { brandsData = JSON.parse(fs.readFileSync(path.join(DATA_DIR, "brands.json"), "utf8")); }
+      // Use the canonical module-level IC_BRANDS_FILE (/data/brands.json) the rest
+      // of this module reads — NOT a repo-relative path — so shopId links resolve.
+      try { brandsData = JSON.parse(fs.readFileSync(IC_BRANDS_FILE, "utf8")); }
       catch (_) { brandsData = { clients: [] }; }
       const brand = (brandsData.clients || []).find(
         (b) => String(b.shopId || b.shop_id || "") === sid
