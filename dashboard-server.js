@@ -879,8 +879,13 @@ app.post('/api/creator-pages/submit', express.json(), async (req, res) => {
       await ghl.put(`/contacts/${contactId}`, payload).catch(() => {});
       await ghl.post(`/contacts/${contactId}/tags`, { tags: [tagName, 'creator-interest-form', 'affiliate', `${brandSlug}-affiliate`] }).catch(() => {});
     } else {
-      const cr = await ghl.post('/contacts/', payload);
-      contactId = cr.data?.contact?.id;
+      try {
+        const cr = await ghl.post('/contacts/', payload);
+        contactId = cr.data?.contact?.id;
+      } catch(ghlErr) {
+        console.error('[creator-pages] GHL contact create error:', ghlErr.response?.data || ghlErr.message);
+        // Don't throw — continue without a contactId (submission still succeeds)
+      }
     }
     if (contactId) {
       const noteLines = [
