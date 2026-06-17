@@ -2147,6 +2147,40 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     }
   });
 
+  // getIcFunnel(shopId): resolve the brand for a TikTok shopId from brands.json,
+  // then return the same {ok, brand, summary, creators} shape the client funnel
+  // route builds, by reusing icCreatorRoster({membershipId, shopId}). Used by the
+  // admin funnel endpoint in dashboard-server.js. Returns {error,...} on data-layer
+  // failure (never throws) so callers can map hard failures to 503.
+  function getIcFunnel(shopId) {
+    try {
+      const sid = String(shopId);
+      let brandsData;
+      try { brandsData = JSON.parse(fs.readFileSync(path.join(DATA_DIR, "brands.json"), "utf8")); }
+      catch (_) { brandsData = { clients: [] }; }
+      const brand = (brandsData.clients || []).find(
+        (b) => String(b.shopId || b.shop_id || "") === sid
+      );
+      if (!brand) {
+        return { error: "Brand not found for shopId", shopId: sid, summary: { totalCreators: 0, totalVideos: 0, totalGmv: 0 }, creators: [] };
+      }
+      const creators = icCreatorRoster({ membershipId: brand.id, shopId: sid });
+      const summary = {
+        totalCreators: creators.length,
+        totalVideos: creators.reduce((s, c) => s + (c.videos || 0), 0),
+        totalGmv: Math.round(creators.reduce((s, c) => s + (c.gmv || 0), 0) * 100) / 100,
+      };
+      return {
+        ok: true,
+        brand: { id: brand.id, name: brand.name, shopId: sid, innerCircle: brand.innerCircle === true },
+        summary,
+        creators,
+      };
+    } catch (e) {
+      return { error: e.message, summary: { totalCreators: 0, totalVideos: 0, totalGmv: 0 }, creators: [] };
+    }
+  }
+
   // Expose the working session middleware so other routes can adopt it later.
-  return { requireSqliteSession };
+  return { requireSqliteSession, getIcFunnel };
 };
