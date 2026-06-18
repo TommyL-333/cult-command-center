@@ -82,7 +82,7 @@ app.use(session({
   },
 }));
 
-// ─── Security: Cloudflare Access authentication ─────────────────────�����─────────
+// ─── Security: Cloudflare Access authentication ─────────────────────�������─────────
 // Cloudflare Access injects CF-Access-Authenticated-User-Email on every request.
 // If CF_ACCESS_AUD is set, we enforce this header — unauthenticated requests get 401.
 const ALLOWED_DOMAINS = (process.env.ALLOWED_EMAIL_DOMAINS || 'cultcontent.cc')
@@ -2315,7 +2315,7 @@ app.post('/api/upload/chunk', (req, res) => {
   req.on('error', e => res.status(500).json({ error: e.message }));
 });
 
-// ─── Client Portal ────────────────────────────────────────────────────────────
+// ─── Client Portal ──���─────────────────────────────────────────────────────────
 // ��─ Client portal bug reporter ────────────────────────────────────────────────
 async function sendClientBugReport({ brandName, brandId, route, error, type = 'server', extra = '' }) {
   try {
@@ -2734,7 +2734,38 @@ app.get('/portal-admin/shop-metrics/:brandId', requirePortalAdmin, async (req, r
 // opts.startTs / opts.endTs allow custom date ranges (default: rolling 30 days).
 // Always persists result to brands.json so billing preview can read it.
 async function fetchNetGmvForBrand(brand, brandsObj, brandIdx, opts = {}) {
-  if (!brand.tiktokShopToken?.access_token) return brand.cachedNetGmv ?? null;
+  // GMV source priority: (1) direct TikTok app via the client's own token,
+  // (2) Sisyphus/Reacher affiliate relay (keyed by shopId), (3) last-known cache.
+  if (!brand.tiktokShopToken?.access_token) {
+    // No direct TikTok token for this client — fall back to the affiliate relay summary.
+    if (brand.shopId) {
+      try {
+        const relayResp = await axios.get(
+          `${CFG.railwayUrl}/affiliate/shops/${brand.shopId}/summary`,
+          { timeout: 8000 }
+        );
+        const g = parseFloat(relayResp?.data?.total_gmv);
+        if (!isNaN(g) && g >= 0) {
+          // Persist to brands.json cache so the value stays warm even if the relay is slow next time.
+          try {
+            const snap = loadBrands();
+            if (snap.clients[brandIdx]) {
+              snap.clients[brandIdx].cachedNetGmv = g;
+              snap.clients[brandIdx].cachedGmvAt  = Date.now();
+              snap.clients[brandIdx].cachedGmvSrc = 'relay';
+              saveBrands(snap);
+            }
+          } catch (persistErr) {
+            console.error(`[gmv] relay cache persist failed for ${brand.name}:`, persistErr.message);
+          }
+          return g;
+        }
+      } catch (relayErr) {
+        console.error(`[gmv] relay summary failed for ${brand.name} (shop ${brand.shopId}):`, relayErr.message);
+      }
+    }
+    return brand.cachedNetGmv ?? null;
+  }
   const now   = opts.endTs   ?? Math.floor(Date.now() / 1000);
   const start = opts.startTs ?? (now - 30 * 24 * 60 * 60);
   let netGmv  = null;
@@ -5713,7 +5744,7 @@ app.get('/api/railway/health', async (req, res) => {
   }
 });
 
-// ─── Cache control ────────────────────────────��────────────────────────────────
+// ─── Cache control ─────────────────────────���──��────────────────────────────────
 app.post('/api/clear-cache', (req, res) => {
   cache.clear();
   res.json({ ok: true });
@@ -6522,7 +6553,7 @@ app.get('/api/buffer/channels', async (req, res) => {
   } catch (e) { res.json({ channels: [], error: e.message }); }
 });
 
-// ─── Reacher / TikTok Affiliate Manager ───────────────────────────────────────
+// ─── Reacher / TikTok Affiliate Manager ───────────────────────��───────────────
 // All Reacher calls proxy through Railway (which holds REACHER_API_KEY).
 
 // GET /api/reacher/stats?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD
@@ -6633,7 +6664,7 @@ app.post('/api/reacher/shops/:shopId/samples', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
-// ─── Creator Database endpoints ───────────────────────────────────────────────
+// ─── Creator Database endpoints ─────────────��─────────────────────────────────
 
 // ─── TikTok Shop API — Creator database (replaces Reacher) ───────────────────
 // POST /api/creators/tts-all — aggregate affiliated creators across all connected brands
@@ -7531,7 +7562,7 @@ setInterval(async () => {
 }, 60_000);
 
 // ─── Affiliate Agent routes ──────────────────────────────────────────────────
-// ────────────────────────────────────��────────────────────────────────────────
+// ─────────��──────────────────────────��────────────────────────────────────────
 // Affiliate Agent — routes.js
 // New Express routes to append to dashboard-server.js.
 //
@@ -8006,7 +8037,7 @@ app.get('/api/paidmedia/tiktok/report', async (req, res) => {
   }
 });
 
-// ─────────────────────────────────────────────────��───────────────────────────
+// ─────────────────────────────────────────────────��──────────────────────���────
 // POST /api/paidmedia/tiktok/campaign/:id/status
 //
 // Body: { status: 'ENABLE' | 'DISABLE' }
@@ -10348,7 +10379,7 @@ async function refreshShopToken() {
   return false;
 }
 
-// ── ttsGet / ttsPost helpers that auto-refresh expired tokens ─────────────────
+// ── ttsGet / ttsPost helpers that auto-refresh expired tokens ───���─────────────
 async function ttsGet(apiPath, params = {}, opts = {}) {
   const tokens = loadTikTokTokens();
   const t = tokens.shop || {};
