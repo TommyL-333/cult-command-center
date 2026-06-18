@@ -3313,6 +3313,68 @@ app.get('/portal-admin/debug-brands', requirePortalAdmin, (req, res) => {
   })));
 });
 
+// POST /portal-admin/backfill-shopify — scrape + persist shopifyData for all real brands; generate missing briefs
+// Body: { onlyBrand?: slug, force?: bool (regenerate existing briefs too) }
+app.post('/portal-admin/backfill-shopify', requirePortalAdmin, express.json(), async (req, res) => {
+  const SKIP = new Set(['Organic Social Marketing', 'D Noor', 'DIAMANDIA', 'Diamandia']);
+  const only  = (req.body && req.body.onlyBrand) || null;
+  const force = !!(req.body && req.body.force);
+  const brands = loadBrands();
+  const out = [];
+  for (let i = 0; i < (brands.clients || []).length; i++) {
+    const b = brands.clients[i];
+    const cp = b.creatorPage || {};
+    const slug = cp.slug || null;
+    if (only && slug !== only && b.name !== only) continue;
+    if (!only && SKIP.has(b.name)) { out.push({ name: b.name, action: 'skipped (protected)' }); continue; }
+    const url = b.website || cp.website || b.shopifyUrl || null;
+    let rec = { name: b.name, slug, website: url, scraped: 0, briefAction: 'none' };
+    // 1) scrape + persist shopifyData
+    if (url) {
+      try {
+        const fresh = await scrapeShopify(url);
+        if (fresh && Array.isArray(fresh.products) && fresh.products.length) {
+          b.shopifyData = fresh;
+          rec.scraped = fresh.products.length;
+          rec.domain = fresh.domain;
+        } else {
+          rec.scrapeNote = 'no products returned';
+        }
+      } catch (e) { rec.scrapeNote = 'scrape error: ' + e.message; }
+    } else {
+      rec.scrapeNote = 'no website on record';
+    }
+    // 2) generate brief if missing (or force)
+    const hasBrief = !!cp.brief;
+    if (!hasBrief || force) {
+      try {
+        const formData = {
+          brandName:       b.name,
+          brandMission:    b.brandMission || cp.pitch || cp.brandMission || '',
+          targetAudience:  cp.targetAudience  || b.targetAudience  || '',
+          mainProblem:     cp.mainProblem     || b.mainProblem     || '',
+          buyerObjections: cp.buyerObjections || b.buyerObjections || '',
+          customerResults: cp.customerResults || b.customerResults || '',
+        };
+        const brief = await generateCreatorBrief(formData, b.shopifyData || null, null);
+        if (brief) {
+          b.creatorPage = b.creatorPage || {};
+          b.creatorPage.brief = brief;
+          rec.briefAction = hasBrief ? 'regenerated' : 'generated';
+          rec.briefLen = JSON.stringify(brief).length;
+        } else {
+          rec.briefAction = 'generator returned null';
+        }
+      } catch (e) { rec.briefAction = 'brief error: ' + e.message; }
+    } else {
+      rec.briefAction = 'kept existing';
+    }
+    out.push(rec);
+  }
+  saveBrands(brands);
+  res.json({ ok: true, results: out });
+});
+
 // GET /portal-admin/brief-inspect — read-only: stored brief + form mission/story fields per brand
 app.get('/portal-admin/brief-inspect', requirePortalAdmin, (req, res) => {
   const brands = loadBrands();
