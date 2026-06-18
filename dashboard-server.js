@@ -82,7 +82,7 @@ app.use(session({
   },
 }));
 
-// ─── Security: Cloudflare Access authentication ─────────────────────���������─────────
+// ─── Security: Cloudflare Access authentication ─────────────────────�������─────────
 // Cloudflare Access injects CF-Access-Authenticated-User-Email on every request.
 // If CF_ACCESS_AUD is set, we enforce this header — unauthenticated requests get 401.
 const ALLOWED_DOMAINS = (process.env.ALLOWED_EMAIL_DOMAINS || 'cultcontent.cc')
@@ -902,15 +902,9 @@ app.post('/api/creator-pages/submit', express.json(), async (req, res) => {
     const cleanPhone = digits.length === 10 ? `+1${digits}` : digits ? `+${digits}` : '';
 
     let contactId = null;
-    let wasAlreadyAffiliate = false;
     try {
       const sr = await ghl.get('/contacts/', { params: { locationId: CFG.locationId, query: email, limit: 1 } });
-      const existingContact = sr.data?.contacts?.[0] || null;
-      contactId = existingContact?.id || null;
-      // Capture whether they were ALREADY an affiliate BEFORE we add the 'affiliate' tag below.
-      // Used to gate the generic "welcome to the cult" community SMS (brand SMS still sends to everyone).
-      const existingTags = (existingContact?.tags || []).map(t => String(t).toLowerCase());
-      wasAlreadyAffiliate = existingTags.includes('affiliate');
+      contactId = sr.data?.contacts?.[0]?.id || null;
     } catch(_) {}
     const payload = { locationId: CFG.locationId, firstName, lastName, email, phone: cleanPhone, tags: [tagName, 'creator-interest-form', 'affiliate', `${brandSlug}-affiliate`], source: `Creator Interest Page — ${brand.name}` };
     if (contactId) {
@@ -949,28 +943,18 @@ app.post('/api/creator-pages/submit', express.json(), async (req, res) => {
       const commPct = cpForSms.tcCommission || (brand.commissionRate ? Math.round(brand.commissionRate * 100) : null);
       const commLine = commPct ? `\n→ You'll earn ${commPct}% commission on every ${brand.name} sale you drive` : '';
       const brandPageUrl = cpForSms.slug ? `${CREATOR_BASE_URL}/creators/${cpForSms.slug}` : `${CREATOR_BASE_URL}/creators`;
-      // Brand welcome SMS goes to EVERYONE who signs up for the brand.
-      const brandSmsBody = `You're in for ${brand.name} 👁️‼️ Welcome, ${firstName}!\n\nHere's how to start earning with ${brand.name}:\n→ Your ${brand.name} page (product + content brief): ${brandPageUrl}${commLine}\n\nText this number anytime if you need us.`;
-      // Generic "welcome to the cult" community SMS ONLY goes to creators who were NOT already affiliates.
-      const communitySmsBody = `Welcome to the Cult Content creator community, ${firstName}! 👁️\n\nJoin your fellow creators:\n→ Discord: ${discordLink}\n→ Skool: https://www.skool.com/cult-content${larkLine}`;
       axios.post('https://services.leadconnectorhq.com/conversations/', {
         locationId: process.env.GHL_LOCATION_ID || process.env.GHL_LOC_ID,
         contactId,
       }, { headers: ghlH })
-      .then(async r => {
+      .then(r => {
         const conversationId = r.data?.conversationId || r.data?.id;
-        // 1) Brand SMS — always
-        await axios.post('https://services.leadconnectorhq.com/conversations/messages', {
-          type: 'SMS', conversationId, contactId, message: brandSmsBody,
+        return axios.post('https://services.leadconnectorhq.com/conversations/messages', {
+          type: 'SMS',
+          conversationId,
+          contactId,
+          message: `You're in for ${brand.name} 👁️‼️ Welcome, ${firstName}!\n\nHere's how to start earning with ${brand.name}:\n→ Your ${brand.name} page (product + content brief): ${brandPageUrl}${commLine}\n\nAnd your community:\n→ Discord: ${discordLink}\n→ Skool: https://www.skool.com/cult-content${larkLine}\n\nText this number anytime if you need us.`,
         }, { headers: ghlH });
-        // 2) Community SMS — only if they were NOT already an affiliate at signup time
-        if (!wasAlreadyAffiliate) {
-          await axios.post('https://services.leadconnectorhq.com/conversations/messages', {
-            type: 'SMS', conversationId, contactId, message: communitySmsBody,
-          }, { headers: ghlH });
-        } else {
-          console.log(`[creator-pages] Skipped community SMS for ${email} — already an affiliate.`);
-        }
       })
       .catch(e => console.error('[creator-pages] SMS error:', e.response?.data || e.message));
     }
@@ -2222,7 +2206,7 @@ app.delete('/api/admin/uploads-purge', express.json(), (req, res) => {
 //
 // Flow:
 //   POST /api/upload/chunk  { uploadId, chunkIndex, totalChunks, filename }  + binary body
-//   �� when all chunks received, assembles into UPLOAD_DIR and returns { ok, url }
+//   → when all chunks received, assembles into UPLOAD_DIR and returns { ok, url }
 
 const CHUNKS_DIR = path.join(DATA_DIR, 'chunks');
 if (!fs.existsSync(CHUNKS_DIR)) fs.mkdirSync(CHUNKS_DIR, { recursive: true });
@@ -2331,7 +2315,7 @@ app.post('/api/upload/chunk', (req, res) => {
   req.on('error', e => res.status(500).json({ error: e.message }));
 });
 
-// ─── Client Portal ���─���─────────────────────────────────────────────────────────
+// ─── Client Portal ──���─────────────────────────────────────────────────────────
 // ��─ Client portal bug reporter ────────────────────────────────────────────────
 async function sendClientBugReport({ brandName, brandId, route, error, type = 'server', extra = '' }) {
   try {
@@ -2752,9 +2736,10 @@ app.get('/portal-admin/shop-metrics/:brandId', requirePortalAdmin, async (req, r
 async function fetchNetGmvForBrand(brand, brandsObj, brandIdx, opts = {}) {
   // GMV source priority: (1) direct TikTok app via the client's own token,
   // (2) Sisyphus/Reacher affiliate relay (keyed by shopId), (3) last-known cache.
-  if (!brand.tiktokShopToken?.access_token) {
-    // No direct TikTok token for this client — fall back to the affiliate relay summary.
-    if (brand.shopId) {
+  // RELAY-FIRST: affiliate relay is the source of truth for creator-attributed GMV.
+  // (Direct TikTok order-search only sees the brand's OWN shop orders, which are ~0 for affiliate-driven brands.)
+  if (brand.shopId && !opts.skipRelay) {
+    {
       try {
         const relayResp = await axios.get(
           `${CFG.railwayUrl}/affiliate/shops/${brand.shopId}/summary`,
@@ -2780,7 +2765,7 @@ async function fetchNetGmvForBrand(brand, brandsObj, brandIdx, opts = {}) {
         console.error(`[gmv] relay summary failed for ${brand.name} (shop ${brand.shopId}):`, relayErr.message);
       }
     }
-    return brand.cachedNetGmv ?? null;
+    // Relay returned no usable GMV — fall through to the signed direct TikTok order-search below.
   }
   const now   = opts.endTs   ?? Math.floor(Date.now() / 1000);
   const start = opts.startTs ?? (now - 30 * 24 * 60 * 60);
@@ -5504,7 +5489,7 @@ const ghl = axios.create({
   },
 });
 
-// ─── Reacher API client ────────────────────────��──────────────────────────────
+// ─── Reacher API client ───────────────────────────────────────────────────────
 const REACHER_BASE = 'https://api.reacherapp.com/public/v1';
 function reacherClient(shopId) {
   const headers = { 'x-api-key': process.env.REACHER_API_KEY || '', 'Content-Type': 'application/json' };
@@ -7590,7 +7575,7 @@ setInterval(async () => {
 //   axios   — axios instance (or use the ghl axios instance for GHL calls)
 //   CFG     — { railwayUrl }
 //   cached  — cached(key, ttlMs, fn) helper
-// ─────────────────���───────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 
 // POST /api/reacher/automations/create — create a new automation in Reacher
 app.post('/api/reacher/automations/create', requireAuth, async (req, res) => {
@@ -7741,7 +7726,7 @@ app.get('/api/affiliate/promotions/:shopId', async (req, res) => {
 
 
 // ─── Shop Ops Agent routes ───────────────────────────────────────────────────
-// ─── Shop Ops Agent — Express routes ────────────────────────────────���────────
+// ─── Shop Ops Agent — Express routes ─────────────────────────────────────────
 // Paste these app.get / app.post blocks into dashboard-server.js
 // alongside the existing Reacher routes (after line ~910).
 
@@ -7833,7 +7818,7 @@ app.post('/api/shopops/reengage', async (req, res) => {
 //   Auth     : header "Access-Token: <token>" (no Bearer prefix)
 //   All GETs return { code, message, data: { list, page_info } }
 //
-// ───────────────────────��─────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
 
 const TIKTOK_BASE = 'https://business-api.tiktok.com/open_api/v1.3';
 
@@ -7885,7 +7870,7 @@ app.get('/api/paidmedia/tiktok/summary', async (req, res) => {
 
     const data = await cached('tiktok_summary', 300_000, async () => {
 
-      // ── 1. Fetch campaign list ───────────────────���──────────────────────────
+      // ── 1. Fetch campaign list ──────────────────────────────────────────────
       const campData = await ttGet('/campaign/get/', {
         page:      1,
         page_size: 100,
@@ -10031,7 +10016,7 @@ app.post('/api/reports/send', async (req, res) => {
   }
 });
 
-// ─── Storista — TikTok Shop Video Publishing ────────────────────────��─────────
+// ─── Storista — TikTok Shop Video Publishing ──────────────────────────────────
 const STORISTA_BASE = 'https://api-v2.storista.io';
 
 function storistaClient() {
@@ -12142,7 +12127,7 @@ async function createLarkCreatorGroup(brandName) {
     const larkToken = await getLarkTenantToken();
     if (!larkToken) { console.error('[lark] No Lark tenant token for createLarkCreatorGroup'); return null; }
 
-    // Step 1 ��� Create the group chat
+    // Step 1 — Create the group chat
     const createRes = await axios.post(
       'https://open.larksuite.com/open-apis/im/v1/chats',
       {
@@ -12335,18 +12320,6 @@ async function runOnboardingPipeline(formData) {
       brief: creatorBrief || null,
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
     };
-    // Keep top-level brand.brandColor (client portal / IC catalog) in sync with the
-    // resolved creator-page accent from day one. Honor an explicit formData.brandColor
-    // override if it is a valid hex; otherwise inherit the resolved accent. Never throws.
-    {
-      const _resolvedAccent = brand.creatorPage.accentColor;
-      if (formData.brandColor && /^#[0-9a-fA-F]{6}$/.test(formData.brandColor)) {
-        brand.brandColor = formData.brandColor;
-        brand.creatorPage.accentColor = formData.brandColor;
-      } else if (!brand.brandColor && /^#[0-9a-fA-F]{6}$/.test(_resolvedAccent || '')) {
-        brand.brandColor = _resolvedAccent;
-      }
-    }
     saveBrands(brandsData);
     creatorPage = { slug, publicUrl: `${CREATOR_BASE_URL}/creators/${slug}`, active: true };
     console.log(`[onboard] Creator page live: ${creatorPage.publicUrl}`);
@@ -13101,7 +13074,7 @@ h1{font-size:clamp(22px,4vw,30px);font-weight:900;letter-spacing:-.02em;margin-b
 .fw-steps{list-style:none;display:flex;flex-direction:column;gap:6px}
 .fw-step{display:flex;gap:10px;font-size:13px;color:rgba(255,255,255,.75);line-height:1.4}
 .fw-num{flex-shrink:0;width:20px;height:20px;border-radius:50%;background:rgba(${ar},.15);color:${accent};font-size:11px;font-weight:900;display:flex;align-items:center;justify-content:center;margin-top:1px}
-/* brief ��� scripts */
+/* brief — scripts */
 .scripts-list{display:flex;flex-direction:column;gap:16px}
 .script-card{background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.07);border-radius:14px;overflow:hidden}
 .script-header{display:flex;align-items:center;gap:12px;padding:16px 20px;cursor:pointer;user-select:none;background:rgba(255,255,255,.02)}
