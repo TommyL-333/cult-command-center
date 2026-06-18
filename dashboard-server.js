@@ -3313,6 +3313,35 @@ app.get('/portal-admin/debug-brands', requirePortalAdmin, (req, res) => {
   })));
 });
 
+// GET /portal-admin/brief-inspect — read-only: stored brief + form mission/story fields per brand
+app.get('/portal-admin/brief-inspect', requirePortalAdmin, (req, res) => {
+  const brands = loadBrands();
+  const GENERIC = [/everyday consumer/i, /improves daily life/i, /general consumer/i, /lifestyle/i, /not provided/i];
+  res.json((brands.clients || []).map(b => {
+    const cp = b.creatorPage || {};
+    const brief = cp.brief || null;
+    const briefStr = brief ? JSON.stringify(brief) : '';
+    const genericHits = GENERIC.filter(re => re.test(briefStr)).map(re => re.source);
+    return {
+      name: b.name,
+      slug: cp.slug || null,
+      active: cp.active !== false,
+      hasBrief: !!brief,
+      briefLen: briefStr.length,
+      genericFlags: genericHits,
+      mission: b.brandMission || cp.pitch || cp.brandMission || null,
+      targetAudience: cp.targetAudience || b.targetAudience || null,
+      mainProblem: cp.mainProblem || b.mainProblem || null,
+      customerResults: cp.customerResults || b.customerResults || null,
+      buyerObjections: cp.buyerObjections || b.buyerObjections || null,
+      hasShopifyData: !!(b.shopifyData && Array.isArray(b.shopifyData.products) && b.shopifyData.products.length),
+      shopifyProductCount: (b.shopifyData && Array.isArray(b.shopifyData.products)) ? b.shopifyData.products.length : 0,
+      website: b.website || null,
+      briefPreview: brief ? (typeof brief === 'string' ? brief.slice(0,400) : JSON.stringify(brief).slice(0,400)) : null,
+    };
+  }));
+});
+
 // GET /portal-admin/debug-gmv/:brandId — raw TikTok order API response for a brand
 app.get('/portal-admin/debug-gmv/:brandId', requirePortalAdmin, async (req, res) => {
   const brands   = loadBrands();
