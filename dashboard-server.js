@@ -12529,17 +12529,6 @@ ${videoEmbedHtml}
           <div class="f-hint">Needed to unlock your Verified Creator role.</div>
         </div>
         <input type="hidden" name="tiktokOpenId" id="tiktokOpenIdField">
-        <div class="f-row" style="margin-top:4px">
-          <label>TikTok Account <span style="font-size:10px;color:rgba(255,255,255,.4);font-weight:400">(connect to get your TC invite instantly)</span></label>
-          <button type="button" id="ttConnectBtn" onclick="connectTikTok()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:10px;padding:13px 18px;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.12);border-radius:10px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;transition:border-color .2s">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.28 6.28 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.82a8.18 8.18 0 004.78 1.52V6.89a4.85 4.85 0 01-1.01-.2z"/></svg>
-            Connect TikTok
-          </button>
-          <div id="ttConnectedBadge" style="display:none;align-items:center;gap:8px;padding:10px 14px;background:rgba(0,242,234,.08);border:1px solid rgba(0,242,234,.25);border-radius:10px;color:#00f2ea;font-size:13px;font-weight:600;margin-top:6px">
-            <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
-            <span id="ttHandleDisplay">TikTok Connected</span>
-          </div>
-        </div>
         <div class="f-err" id="cpErr"></div>
         <button type="submit" class="btn-submit" id="cpBtn">Join Now</button>
       </form>
@@ -12958,12 +12947,9 @@ footer a{color:${accent};text-decoration:none}
 </div>
 
 <div class="card">
-  ${incentiveCardsHtml ? `
-  <div class="section-label">Your Earning Opportunities</div>
-  ${incentiveCardsHtml}
-  <div class="divider"></div>` : ''}
   ${btnsHtml ? `
   <div class="section-label">Sign Up for Campaigns</div>
+  <div style="font-size:13px;color:rgba(255,255,255,.55);margin:-4px 0 14px">Click the buttons below to join.</div>
   ${btnsHtml}
   ${(cp.blitzTiers || []).length ? `
   <div style="margin-top:4px;margin-bottom:16px">
