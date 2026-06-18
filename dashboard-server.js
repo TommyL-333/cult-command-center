@@ -3277,6 +3277,7 @@ app.post('/portal-admin/regenerate-brief/:slug', requirePortalAdmin, express.jso
         if (fresh && fresh.products && fresh.products.length) {
           shopifyData = fresh;
           brands.clients[idx].shopifyData = fresh; // persist so future regens have data
+          if (!brand.website && (ov.website || ov.shopifyUrl)) brands.clients[idx].website = ov.website || ov.shopifyUrl; // remember the working URL
           console.log(`[regenerate-brief] scraped ${fresh.products.length} products from ${fresh.domain || scrapeUrl}`);
         } else {
           console.log(`[regenerate-brief] live scrape returned no products for ${scrapeUrl}; using stored shopifyData`);
