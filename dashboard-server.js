@@ -3241,6 +3241,23 @@ app.patch('/portal-admin/creator-video/:brandId', requirePortalAdmin, express.js
   res.json({ ok: true, videoUrl: cp.videoUrl, videoTitle: cp.videoTitle, videoSub: cp.videoSub });
 });
 
+// PATCH /portal-admin/creator-accent/:brandId — set the creator-page accent color (accepts brandId or slug)
+app.patch('/portal-admin/creator-accent/:brandId', requirePortalAdmin, express.json(), (req, res) => {
+  const brands = loadBrands();
+  const idx = (brands.clients || []).findIndex(b => b.id === req.params.brandId || b.creatorPage?.slug === req.params.brandId);
+  if (idx === -1) return res.status(404).json({ error: 'Brand not found' });
+  const { accentColor } = req.body || {};
+  if (typeof accentColor !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(accentColor)) {
+    return res.status(400).json({ error: 'accentColor must be a hex color like #00f2ea' });
+  }
+  if (!brands.clients[idx].creatorPage) brands.clients[idx].creatorPage = {};
+  const cp = brands.clients[idx].creatorPage;
+  cp.accentColor = accentColor;
+  cp.updatedAt = new Date().toISOString();
+  saveBrands(brands);
+  res.json({ ok: true, slug: cp.slug || null, accentColor: cp.accentColor });
+});
+
 // POST /portal-admin/regenerate-brief/:slug — regenerate creator brief for a brand
 // Body can include override fields: targetAudience, mainProblem, buyerObjections, customerResults, products, brandMission
 app.post('/portal-admin/regenerate-brief/:slug', requirePortalAdmin, express.json(), async (req, res) => {
