@@ -127,8 +127,23 @@ function fill(tpl, ctx) {
     .replace(/\{kickoffDate\}/g, ctx.kickoffDate || 'TBD');
 }
 
+// Flatten the real pending-onboard shape: timing/brand fields live under formData.
+// Falls back to top-level so the helpers stay unit-testable with flat objects.
+function normalizeOnboard(ob) {
+  const f = (ob && ob.formData) || {};
+  return {
+    brandName:         ob.brandName        || f.brandName        || ob.brand || ob.name,
+    weeklyCallDay:     ob.weeklyCallDay     || f.weeklyCallDay,
+    weeklyCallTime:    ob.weeklyCallTime    || f.weeklyCallTime,
+    creatorKickoffDate:ob.creatorKickoffDate|| f.creatorKickoffDate,
+    creatorPageUrl:    ob.creatorPageUrl    || (ob.creatorPage && ob.creatorPage.url) || f.creatorPageUrl,
+    creatorSignupUrl:  ob.creatorSignupUrl  || f.creatorSignupUrl,
+  };
+}
+
 // Build the 6 launch drafts for one onboarded brand
-function buildLaunchBlasts(onboard) {
+function buildLaunchBlasts(onboardRaw) {
+  const onboard = normalizeOnboard(onboardRaw);
   const brand = onboard.brandName || onboard.brand || onboard.name || 'New Brand';
   const slug = brandSlug(brand);
   const signupLink = onboard.creatorPageUrl || onboard.creatorSignupUrl ||
@@ -157,7 +172,8 @@ function buildLaunchBlasts(onboard) {
 }
 
 // Build a weekly reminder draft for a brand (Cadence B)
-function buildWeeklyBlast(onboard) {
+function buildWeeklyBlast(onboardRaw) {
+  const onboard = normalizeOnboard(onboardRaw);
   const brand = onboard.brandName || onboard.brand || onboard.name || 'New Brand';
   const slug = brandSlug(brand);
   const ctx = { brand, callDay: onboard.weeklyCallDay, callTime: fmtTime(onboard.weeklyCallTime) };
