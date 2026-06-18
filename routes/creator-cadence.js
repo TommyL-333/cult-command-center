@@ -254,6 +254,7 @@ const EVENT_TRIGGERS = [
     source: 'dashboard-server.js ~/api/creators/onboard',
     editable: false,
     note: 'Sent once, immediately on signup. Copy is hardcoded in the onboard handler — edit there to change.',
+    copy: "Welcome to the Cult Content creator community, {firstName}! You're in 👁️‼️\\n\\nHere's everything you need:\\n→ Discord: {discordLink}\\n→ Skool: https://www.skool.com/cult-content\\n→ Brand opportunities: {baseUrl}/creators\\n\\nText this number anytime if you need us.",
   },
   {
     key: 'full_onboard_welcome',
@@ -263,6 +264,7 @@ const EVENT_TRIGGERS = [
     source: 'dashboard-server.js ~/api/creators/full-onboard',
     editable: false,
     note: 'Sent once on full onboard completion. Hardcoded copy.',
+    copy: "Welcome to the Cult Content creator community, {firstName}! You're in 👁️‼️\\n\\nHere's everything you need:\\n→ Discord: {discordLink}\\n→ Skool: https://www.skool.com/cult-content\\n→ Brand opportunities: {baseUrl}/creators\\n\\nText this number anytime if you need us.",
   },
 ];
 
@@ -308,13 +310,13 @@ function pageHtml() {
 '</div>',
 '<div id="list"></div>',
 '<script>',
-'var DATA=[],EVENTS=[],CUR="all",BRAND="";',
+'var DATA=[],EVENTS=[],BRANDS=[],CUR="all",BRAND="";',
 'function sw(el){document.querySelectorAll(".tab").forEach(t=>t.classList.remove("on"));el.classList.add("on");CUR=el.dataset.c;render();}',
 'function esc(s){return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;");}',
-'function brandsList(){var set={};DATA.forEach(b=>{if(b.brand)set[b.brandSlug||b.brand]=b.brand;});return Object.keys(set).map(k=>({slug:k,name:set[k]}));}',
+'function brandsList(){var set={};BRANDS.forEach(b=>{if(b&&b.slug)set[b.slug]=b.name;});DATA.forEach(b=>{if(b.brand)set[b.brandSlug||b.brand]=b.brand;});return Object.keys(set).map(k=>({slug:k,name:set[k]})).sort((a,b)=>(a.name||"").localeCompare(b.name||""));}',
 'function fillBrands(){var sel=document.getElementById("brandSel");var bs=brandsList();var opts=["<option value=\\"\\">All brands</option>"].concat(bs.map(b=>"<option value=\\""+esc(b.slug)+"\\">"+esc(b.name)+"</option>"));sel.innerHTML=opts.join("");sel.value=BRAND;}',
 'function blastCard(b){return "<div class=\\"card\\"><div class=\\"row\\"><span class=\\"lbl\\">"+esc(b.brand)+" — "+esc(b.label)+"</span>"+"<span class=\\"badge "+b.status+"\\">"+b.status.toUpperCase()+"</span></div>"+"<div class=\\"meta\\">Audience: <b>"+esc(b.audienceTag)+"</b>"+(b.sentAt?(" · sent "+new Date(b.sentAt).toLocaleString()+" to "+b.sentCount):"")+"</div>"+"<textarea id=\\"t_"+b.id+"\\">"+esc(b.body)+"</textarea>"+"<div class=\\"btns\\"><button class=\\"save\\" onclick=\\"save(\'"+b.id+"\')\\">Save Edit</button>"+"<button class=\\"send\\" "+(b.status==="sent"?"disabled":"")+" onclick=\\"send(\'"+b.id+"\')\\">"+(b.status==="sent"?"Sent ✓":"Send Now")+"</button></div></div>";}',
-'function eventCard(e){return "<div class=\\"card event\\"><div class=\\"row\\"><span class=\\"lbl\\">"+esc(e.label)+"</span><span class=\\"badge auto\\">AUTO</span></div>"+"<div class=\\"meta\\">Trigger: <b>"+esc(e.trigger)+"</b></div>"+"<div class=\\"meta\\">Audience: "+esc(e.audience)+"</div>"+"<div class=\\"meta\\">"+esc(e.note)+"</div>"+"<div class=\\"meta\\" style=\\"opacity:.6\\">Source: "+esc(e.source)+"</div></div>";}',
+'function eventCard(e){return "<div class=\\"card event\\"><div class=\\"row\\"><span class=\\"lbl\\">"+esc(e.label)+"</span><span class=\\"badge auto\\">AUTO</span></div>"+"<div class=\\"meta\\">Trigger: <b>"+esc(e.trigger)+"</b></div>"+"<div class=\\"meta\\">Audience: "+esc(e.audience)+"</div>"+"<div class=\\"meta\\">"+esc(e.note)+"</div>"+(e.copy?("<textarea readonly style=\\"opacity:.85\\">"+esc(e.copy)+"</textarea>"):"")+"<div class=\\"meta\\" style=\\"opacity:.6\\">Source: "+esc(e.source)+"</div></div>";}',
 'function render(){fillBrands();BRAND=document.getElementById("brandSel").value;var l=document.getElementById("list");var html="";',
 'var blasts=DATA.filter(b=>!BRAND||(b.brandSlug||b.brand)===BRAND);',
 'if(CUR==="event"){if(!EVENTS.length){l.innerHTML="<div class=\\"empty\\">No auto triggers defined.</div>";return;}l.innerHTML="<div class=\\"section-h\\">Automatic event-triggered SMS (read-only)</div>"+EVENTS.map(eventCard).join("");return;}',
@@ -323,7 +325,7 @@ function pageHtml() {
 'if(CUR==="all"){var ln=blasts.filter(b=>b.cadence==="launch"),wk=blasts.filter(b=>b.cadence==="weekly");if(ln.length)html+="<div class=\\"section-h\\">Launch Blasts</div>"+ln.map(blastCard).join("");if(wk.length)html+="<div class=\\"section-h\\">Weekly Call Reminders</div>"+wk.map(blastCard).join("");html+="<div class=\\"section-h\\">Automatic Triggers</div>"+EVENTS.map(eventCard).join("");l.innerHTML=html||"<div class=\\"empty\\">No SMS for this brand yet. Use + New Cadence.</div>";return;}',
 'if(!blasts.length){l.innerHTML="<div class=\\"empty\\">No "+CUR+" blasts"+(BRAND?" for this brand":"")+". They appear when a brand is onboarded, or use + New Cadence.</div>";return;}',
 'l.innerHTML=blasts.map(blastCard).join("");}',
-'function load(){fetch("/api/creator-cadence/blasts",{credentials:"include"}).then(r=>r.json()).then(d=>{DATA=d.blasts||[];EVENTS=d.events||[];render();});}',
+'function load(){fetch("/api/creator-cadence/blasts",{credentials:"include"}).then(r=>r.json()).then(d=>{DATA=d.blasts||[];EVENTS=d.events||[];BRANDS=d.brands||[];render();});}',
 'function save(id){var body=document.getElementById("t_"+id).value;fetch("/api/creator-cadence/blasts/"+id,{method:"PATCH",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({body:body})}).then(()=>load());}',
 'function send(id){var body=document.getElementById("t_"+id).value;if(!confirm("Send this text to everyone in the audience now?"))return;fetch("/api/creator-cadence/blasts/"+id+"/send",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({body:body})}).then(r=>r.json()).then(function(res){if(res.error){alert("Error: "+res.error);}else{alert("Sent to "+res.sent+" of "+res.audience+" creators.");}load();});}',
 'function newCadence(){var brand=prompt("Brand name for this cadence?");if(!brand)return;var cadence=prompt("Type: launch or weekly","launch");if(cadence!=="launch"&&cadence!=="weekly")return alert("Type must be launch or weekly");var label=prompt("Label for this text (e.g. \'Custom announcement\')","Custom SMS");var body=prompt("Message body? Use {firstName} for personalization.","");if(body===null)return;fetch("/api/creator-cadence/manual",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({brand:brand,cadence:cadence,label:label,body:body})}).then(r=>r.json()).then(function(res){if(res.error)alert("Error: "+res.error);load();});}',
@@ -408,8 +410,22 @@ function mount(app, opts = {}) {
   });
 
   // List blasts (sync first so new brands show up)
+  // Build the full brand list for the dropdown: client brands from brands.json
+  // (clients[].name) MERGED with any brands that already have blasts. This makes
+  // every onboarded client selectable even before a launch blast is generated.
+  function loadBrandList() {
+    const set = {};
+    try {
+      const bj = JSON.parse(fs.readFileSync(path.join(DATA_DIR, 'brands.json'), 'utf8'));
+      const clients = Array.isArray(bj) ? bj : (bj.clients || []);
+      clients.forEach(b => { const n = b && (b.name || b.brandName); if (n) set[brandSlug(n)] = n; });
+    } catch (_) {}
+    try { loadBlasts(DATA_DIR).forEach(b => { if (b.brand) set[b.brandSlug || brandSlug(b.brand)] = b.brand; }); } catch (_) {}
+    return Object.keys(set).map(k => ({ slug: k, name: set[k] })).sort((a,b)=>a.name.localeCompare(b.name));
+  }
+
   app.get('/api/creator-cadence/blasts', requireAdmin, (req, res) => {
-    try { res.json({ blasts: syncBlasts(), events: EVENT_TRIGGERS }); }
+    try { res.json({ blasts: syncBlasts(), events: EVENT_TRIGGERS, brands: loadBrandList() }); }
     catch (e) { res.status(500).json({ error: e.message }); }
   });
 
