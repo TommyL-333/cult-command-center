@@ -331,6 +331,22 @@ textarea{resize:vertical;min-height:80px}
       <input type="date" id="creatorKickoffDate">
       <div class="hint">The cult rallies your creators around this moment — leave blank if not set yet.</div>
     </div>
+    <div class="row">
+      <div class="field">
+        <label>Weekly Creator Call — Day</label>
+        <select id="weeklyCallDay">
+          <option value="">— select —</option>
+          <option>Monday</option><option>Tuesday</option><option>Wednesday</option>
+          <option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option>
+        </select>
+        <div class="hint">Recurring call day for signed-up creators of this brand.</div>
+      </div>
+      <div class="field">
+        <label>Weekly Creator Call — Time (ET)</label>
+        <input type="time" id="weeklyCallTime">
+        <div class="hint">Eastern time — we send a reminder text the day of each call.</div>
+      </div>
+    </div>
   </div>
 
   <!-- Affiliate budgets -->
@@ -798,6 +814,8 @@ async function submitForm() {
     tcCommission: v('tcCommission'), openCommission: v('openCommission'),
     logoUrl: window._logoUrl || null,
     creatorKickoffDate: v('creatorKickoffDate'),
+    weeklyCallDay: v('weeklyCallDay'),
+    weeklyCallTime: v('weeklyCallTime'),
     submittedAt: new Date().toISOString(),
   };
   const btn = document.getElementById('submitBtn');
