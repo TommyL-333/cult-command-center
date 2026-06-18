@@ -322,6 +322,17 @@ textarea{resize:vertical;min-height:80px}
 <!-- ── STEP 4: Creator Compensation Program ── -->
 <div class="step-pane" id="step-4">
 
+  <!-- Creator Kickoff Call -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">Creator Kickoff Call</div>
+    <div class="card-sub">When is your first creator kickoff call? We schedule all creator outreach &amp; reminder texts around this date.</div>
+    <div class="field">
+      <label>Kickoff Call Date</label>
+      <input type="date" id="creatorKickoffDate">
+      <div class="hint">The cult rallies your creators around this moment — leave blank if not set yet.</div>
+    </div>
+  </div>
+
   <!-- Affiliate budgets -->
   <div class="card" style="margin-bottom:16px">
     <div class="card-title">Affiliate Budgets</div>
@@ -786,6 +797,7 @@ async function submitForm() {
     talkingPoints: v('talkingPoints'),
     tcCommission: v('tcCommission'), openCommission: v('openCommission'),
     logoUrl: window._logoUrl || null,
+    creatorKickoffDate: v('creatorKickoffDate'),
     submittedAt: new Date().toISOString(),
   };
   const btn = document.getElementById('submitBtn');
