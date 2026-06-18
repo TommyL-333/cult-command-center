@@ -3307,6 +3307,9 @@ app.get('/portal-admin/debug-brands', requirePortalAdmin, (req, res) => {
     tokenExpires: b.tiktokShopToken?.expires_at ? new Date(b.tiktokShopToken.expires_at).toISOString() : null,
     cachedNetGmv: b.cachedNetGmv ?? null,
     shopId:       b.shopId || null,
+    website:      b.website || null,
+    hasShopifyData: !!(b.shopifyData && Array.isArray(b.shopifyData.products) && b.shopifyData.products.length),
+    shopifyProductCount: (b.shopifyData && Array.isArray(b.shopifyData.products)) ? b.shopifyData.products.length : 0,
   })));
 });
 
