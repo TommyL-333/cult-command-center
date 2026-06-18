@@ -907,7 +907,7 @@ app.post('/api/creator-pages/submit', express.json(), async (req, res) => {
       const larkGroupUrl = brand.creatorPage?.larkGroupUrl || null;
       const larkLine = larkGroupUrl ? `\n→ Lark community: ${larkGroupUrl}` : '';
       axios.post('https://services.leadconnectorhq.com/conversations/', {
-        locationId: process.env.GHL_LOC_ID,
+        locationId: process.env.GHL_LOCATION_ID || process.env.GHL_LOC_ID,
         contactId,
       }, { headers: ghlH })
       .then(r => {
@@ -4818,7 +4818,7 @@ app.post('/api/creator-onboard', express.json(), async (req, res) => {
       firstName, lastName, email,
       phone: cleanPhone,
       tags: ['affiliate', 'creator-community-form'],
-      locationId: process.env.GHL_LOC_ID,
+      locationId: process.env.GHL_LOCATION_ID || process.env.GHL_LOC_ID,
     };
     if (handle) payload.customFields = [{ key: 'tiktok_handle', field_value: `@${handle}` }];
 
@@ -4853,7 +4853,7 @@ app.post('/api/creator-onboard', express.json(), async (req, res) => {
       let conversationId;
       try {
         const convoRes = await axios.post('https://services.leadconnectorhq.com/conversations/', {
-          locationId: process.env.GHL_LOC_ID,
+          locationId: process.env.GHL_LOCATION_ID || process.env.GHL_LOC_ID,
           contactId,
         }, { headers: ghlHeaders });
         conversationId = convoRes.data?.conversationId || convoRes.data?.id;
@@ -5199,6 +5199,11 @@ app.delete('/api/client/logo', requireClientSession, (req, res) => {
   res.json({ ok: true });
 });
 
+// Creator Cadence engine — portal-admin gated approval page for launch texts + weekly-call reminders.
+// Must be before requireAuth so portal.cultcontent.cc (no CF Access) can reach it.
+const creatorCadence = require('./routes/creator-cadence');
+creatorCadence.mount(app, { DATA_DIR });
+
 app.use(requireAuth); // all other routes require auth in production
 
 // POST /api/client/admin/set-password — CF Access protected; sets/resets a client's login password
@@ -5250,7 +5255,7 @@ app.use('/tools', express.static(path.join(__dirname)));
 
 const CFG = {
   ghlApiKey:  process.env.GHL_API_KEY,
-  locationId: process.env.GHL_LOC_ID,
+  locationId: process.env.GHL_LOCATION_ID || process.env.GHL_LOC_ID,
   railwayUrl: process.env.RAILWAY_URL  || 'https://cultcontent-server-production.up.railway.app',
   port:       process.env.PORT || process.env.DASHBOARD_PORT || 3457,
 };
