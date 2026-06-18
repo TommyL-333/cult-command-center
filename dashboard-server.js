@@ -3188,6 +3188,22 @@ app.patch('/portal-admin/campaign-links/:brandId', requirePortalAdmin, express.j
   res.json({ ok: true, campaigns: cp.campaigns });
 });
 
+// PATCH /portal-admin/creator-video/:brandId — set the embedded brand video on the creator page
+app.patch('/portal-admin/creator-video/:brandId', requirePortalAdmin, express.json(), (req, res) => {
+  const brands = loadBrands();
+  const idx = (brands.clients || []).findIndex(b => b.id === req.params.brandId || b.creatorPage?.slug === req.params.brandId);
+  if (idx === -1) return res.status(404).json({ error: 'Brand not found' });
+  if (!brands.clients[idx].creatorPage) brands.clients[idx].creatorPage = {};
+  const cp = brands.clients[idx].creatorPage;
+  const { videoUrl, videoTitle, videoSub } = req.body || {};
+  if (videoUrl   !== undefined) cp.videoUrl   = videoUrl   ? String(videoUrl).trim()   : null;
+  if (videoTitle !== undefined) cp.videoTitle = videoTitle ? String(videoTitle).trim() : null;
+  if (videoSub   !== undefined) cp.videoSub   = videoSub   ? String(videoSub).trim()   : null;
+  cp.updatedAt = new Date().toISOString();
+  saveBrands(brands);
+  res.json({ ok: true, videoUrl: cp.videoUrl, videoTitle: cp.videoTitle, videoSub: cp.videoSub });
+});
+
 // POST /portal-admin/regenerate-brief/:slug — regenerate creator brief for a brand
 // Body can include override fields: targetAudience, mainProblem, buyerObjections, customerResults, products, brandMission
 app.post('/portal-admin/regenerate-brief/:slug', requirePortalAdmin, express.json(), async (req, res) => {
