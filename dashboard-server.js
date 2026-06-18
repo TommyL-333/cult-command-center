@@ -12364,6 +12364,36 @@ function renderCreatorPage(brand, cp) {
   const name     = brand.name || 'Brand';
   const inc      = cp.incentives || {};
 
+  // Brand video embed (data-driven). Supports YouTube, Vimeo, or direct video file.
+  let videoEmbedHtml = '';
+  if (cp.videoUrl) {
+    const vurl = String(cp.videoUrl).trim();
+    const yt = vurl.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{11})/);
+    const vimeo = vurl.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+    let inner = '';
+    if (yt) {
+      inner = `<iframe src="https://www.youtube.com/embed/${yt[1]}" title="${name} creator video" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+    } else if (vimeo) {
+      inner = `<iframe src="https://player.vimeo.com/video/${vimeo[1]}" title="${name} creator video" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
+    } else if (/\.(mp4|webm|mov)(\?.*)?$/i.test(vurl)) {
+      inner = `<video src="${vurl}" controls playsinline preload="metadata"></video>`;
+    }
+    if (inner) {
+      const vTitle = cp.videoTitle || 'Watch this first';
+      const vSub   = cp.videoSub   || `See how creators are winning with ${name}.`;
+      videoEmbedHtml = `
+<hr class="divider">
+<div class="section">
+  <div class="section-inner">
+    <div class="section-label">Watch</div>
+    <div class="section-title">${vTitle}</div>
+    <div class="section-sub">${vSub}</div>
+    <div class="video-embed">${inner}</div>
+  </div>
+</div>`;
+    }
+  }
+
   // Auto-generate reward copy lines
   const rewardLines = [];
   if (cp.tcCommission) rewardLines.push({ val: `${cp.tcCommission}%`, desc: 'commission on every sale you drive' });
@@ -12418,6 +12448,8 @@ h1{font-size:clamp(26px,5vw,50px);font-weight:900;line-height:1.06;letter-spacin
 .reward-card{background:rgba(${ar},.08);border:1.5px solid rgba(${ar},.22);border-radius:14px;padding:20px 18px;display:flex;flex-direction:column;gap:6px}
 .reward-val{font-size:22px;font-weight:900;color:${accent};line-height:1.1}
 .reward-desc{font-size:13px;color:rgba(255,255,255,.5);line-height:1.45}
+.video-embed{position:relative;width:100%;max-width:860px;margin:0 auto;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,.08);background:#000;aspect-ratio:16/9}
+.video-embed iframe,.video-embed video{position:absolute;inset:0;width:100%;height:100%;border:0;display:block}
 /* form */
 .form-card{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.08);border-radius:20px;padding:40px;max-width:560px;margin:0 auto}
 .form-head{font-size:22px;font-weight:900;margin-bottom:6px}
@@ -12456,6 +12488,7 @@ ${rewardLines.length ? `
     <div class="rewards-grid">${rewardLines.map(r => `<div class="reward-card"><div class="reward-val">${r.val}</div><div class="reward-desc">${r.desc}</div></div>`).join('')}</div>
   </div>
 </div>` : ''}
+${videoEmbedHtml}
 
 <hr class="divider">
 <div class="section" id="signup">
