@@ -73,7 +73,7 @@ Come say hi even if you're late — we'll catch you up.`,
   T6: {
     label: 'T6 · Sign-up link push (after call)',
     body:
-`Missed the {brand} call? No stress 👁️
+`Missed the {brand} call? No stress ���️
 
 Here's your link to sign up as a {brand} creator and start earning:
 {signupLink}
@@ -242,48 +242,91 @@ async function executeBlast(blast) {
   return { audience: contacts.length, sent: ok, failed: fail };
 }
 
-// ─── HTML approval page ──────────────────────────────────────────────────────
+// ─── EVENT-TRIGGER REFERENCE (read-only — hardcoded SMS that fire automatically) ──
+// These document the SMS touchpoints wired elsewhere in dashboard-server.js so the
+// console shows EVERY text a creator receives per brand, not just the editable blasts.
+const EVENT_TRIGGERS = [
+  {
+    key: 'signup_welcome',
+    label: 'Signup Welcome SMS',
+    trigger: 'Creator submits a brand interest / signup form',
+    audience: 'The individual creator who just signed up',
+    source: 'dashboard-server.js ~/api/creators/onboard',
+    editable: false,
+    note: 'Sent once, immediately on signup. Copy is hardcoded in the onboard handler — edit there to change.',
+  },
+  {
+    key: 'full_onboard_welcome',
+    label: 'Full Onboard Welcome SMS',
+    trigger: 'Creator completes full onboarding',
+    audience: 'The individual creator who just onboarded',
+    source: 'dashboard-server.js ~/api/creators/full-onboard',
+    editable: false,
+    note: 'Sent once on full onboard completion. Hardcoded copy.',
+  },
+];
+
+// ─── HTML console page ───────────────────────────────────────────────────────
 function pageHtml() {
   return [
 '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">',
-'<title>Creator Cadence — Cult Content</title>',
+'<title>SMS Communication — Cult Content</title>',
 '<style>',
 'body{margin:0;background:#161823;color:#e8e8ef;font-family:-apple-system,Segoe UI,Roboto,sans-serif;padding:24px}',
 'h1{font-size:22px;margin:0 0 4px}.sub{color:#8b8b9a;font-size:13px;margin-bottom:20px}',
+'.topbar{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:18px}',
+'select,input{background:#13141c;color:#e8e8ef;border:1px solid #2a2c3a;border-radius:8px;padding:9px 12px;font-size:13px;font-family:inherit}',
 '.tabs{display:flex;gap:8px;margin-bottom:18px}.tab{padding:8px 16px;border-radius:8px;background:#20222e;cursor:pointer;font-size:13px}',
 '.tab.on{background:linear-gradient(90deg,#00f2ea,#ff0050);color:#000;font-weight:600}',
 '.card{background:#1c1e2a;border:1px solid #2a2c3a;border-radius:12px;padding:16px;margin-bottom:14px}',
-'.row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}',
+'.card.event{border-style:dashed;opacity:.92}',
+'.row{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px}',
 '.lbl{font-weight:600;font-size:14px}.badge{font-size:11px;padding:3px 8px;border-radius:6px;background:#2a2c3a;color:#8b8b9a}',
-'.badge.draft{color:#ffd166}.badge.sent{color:#06d6a0}',
+'.badge.draft{color:#ffd166}.badge.sent{color:#06d6a0}.badge.auto{color:#00f2ea}',
 'textarea{width:100%;box-sizing:border-box;background:#13141c;color:#e8e8ef;border:1px solid #2a2c3a;border-radius:8px;padding:10px;font-size:13px;min-height:90px;font-family:inherit}',
 '.meta{font-size:12px;color:#8b8b9a;margin:6px 0}',
 '.btns{display:flex;gap:8px;margin-top:8px}',
 'button{border:none;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer;font-weight:600}',
 '.save{background:#2a2c3a;color:#e8e8ef}.send{background:linear-gradient(90deg,#00f2ea,#ff0050);color:#000}',
-'.send:disabled{opacity:.4;cursor:not-allowed}',
+'button:disabled{opacity:.4;cursor:default}',
+'.section-h{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:#8b8b9a;margin:24px 0 10px}',
 '.empty{color:#8b8b9a;padding:30px;text-align:center}',
+'.newbtn{background:#20222e;color:#00f2ea;border:1px solid #2a2c3a}',
 '</style></head><body>',
-'<h1>Creator Cadence 👁️</h1>',
-'<div class="sub">Launch blasts + weekly call reminders. Nothing sends until you click <b>Send Now</b>.</div>',
-'<div class="tabs"><div class="tab on" data-c="launch" onclick="sw(this)">Launch Blasts</div>',
-'<div class="tab" data-c="weekly" onclick="sw(this)">Weekly Calls</div></div>',
+'<h1>SMS Communication 👁️</h1>',
+'<div class="sub">Every SMS touchpoint per brand — signup triggers, launch blasts, weekly call reminders. Editable blasts never send until you click <b>Send Now</b>.</div>',
+'<div class="topbar">',
+'<label style="font-size:13px;color:#8b8b9a">Brand</label>',
+'<select id="brandSel" onchange="render()"></select>',
+'<button class="newbtn" onclick="newCadence()">+ New Cadence</button>',
+'</div>',
+'<div class="tabs">',
+'<div class="tab on" data-c="all" onclick="sw(this)">All</div>',
+'<div class="tab" data-c="launch" onclick="sw(this)">Launch Blasts</div>',
+'<div class="tab" data-c="weekly" onclick="sw(this)">Weekly Calls</div>',
+'<div class="tab" data-c="event" onclick="sw(this)">Auto Triggers</div>',
+'</div>',
 '<div id="list"></div>',
 '<script>',
-'var DATA=[],CUR="launch";',
+'var DATA=[],EVENTS=[],CUR="all",BRAND="";',
 'function sw(el){document.querySelectorAll(".tab").forEach(t=>t.classList.remove("on"));el.classList.add("on");CUR=el.dataset.c;render();}',
 'function esc(s){return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;");}',
-'function render(){var l=document.getElementById("list");var rows=DATA.filter(b=>b.cadence===CUR);',
-'if(!rows.length){l.innerHTML="<div class=\\"empty\\">No "+CUR+" blasts yet. They appear automatically when a brand is onboarded.</div>";return;}',
-'l.innerHTML=rows.map(function(b){return "<div class=\\"card\\"><div class=\\"row\\"><span class=\\"lbl\\">"+esc(b.brand)+" — "+esc(b.label)+"</span>"+',
-'"<span class=\\"badge "+b.status+"\\">"+b.status.toUpperCase()+"</span></div>"+',
-'"<div class=\\"meta\\">Audience: <b>"+esc(b.audienceTag)+"</b>"+(b.sentAt?(" · sent "+new Date(b.sentAt).toLocaleString()+" to "+b.sentCount):"")+"</div>"+',
-'"<textarea id=\\"t_"+b.id+"\\">"+esc(b.body)+"</textarea>"+',
-'"<div class=\\"btns\\"><button class=\\"save\\" onclick=\\"save(\'"+b.id+"\')\\">Save Edit</button>"+',
-'"<button class=\\"send\\" "+(b.status==="sent"?"disabled":"")+" onclick=\\"send(\'"+b.id+"\')\\">"+(b.status==="sent"?"Sent ✓":"Send Now")+"</button></div></div>";}).join("");}',
-'function load(){fetch("/api/creator-cadence/blasts",{credentials:"include"}).then(r=>r.json()).then(d=>{DATA=d.blasts||[];render();});}',
+'function brandsList(){var set={};DATA.forEach(b=>{if(b.brand)set[b.brandSlug||b.brand]=b.brand;});return Object.keys(set).map(k=>({slug:k,name:set[k]}));}',
+'function fillBrands(){var sel=document.getElementById("brandSel");var bs=brandsList();var opts=["<option value=\\"\\">All brands</option>"].concat(bs.map(b=>"<option value=\\""+esc(b.slug)+"\\">"+esc(b.name)+"</option>"));sel.innerHTML=opts.join("");sel.value=BRAND;}',
+'function blastCard(b){return "<div class=\\"card\\"><div class=\\"row\\"><span class=\\"lbl\\">"+esc(b.brand)+" — "+esc(b.label)+"</span>"+"<span class=\\"badge "+b.status+"\\">"+b.status.toUpperCase()+"</span></div>"+"<div class=\\"meta\\">Audience: <b>"+esc(b.audienceTag)+"</b>"+(b.sentAt?(" · sent "+new Date(b.sentAt).toLocaleString()+" to "+b.sentCount):"")+"</div>"+"<textarea id=\\"t_"+b.id+"\\">"+esc(b.body)+"</textarea>"+"<div class=\\"btns\\"><button class=\\"save\\" onclick=\\"save(\'"+b.id+"\')\\">Save Edit</button>"+"<button class=\\"send\\" "+(b.status==="sent"?"disabled":"")+" onclick=\\"send(\'"+b.id+"\')\\">"+(b.status==="sent"?"Sent ✓":"Send Now")+"</button></div></div>";}',
+'function eventCard(e){return "<div class=\\"card event\\"><div class=\\"row\\"><span class=\\"lbl\\">"+esc(e.label)+"</span><span class=\\"badge auto\\">AUTO</span></div>"+"<div class=\\"meta\\">Trigger: <b>"+esc(e.trigger)+"</b></div>"+"<div class=\\"meta\\">Audience: "+esc(e.audience)+"</div>"+"<div class=\\"meta\\">"+esc(e.note)+"</div>"+"<div class=\\"meta\\" style=\\"opacity:.6\\">Source: "+esc(e.source)+"</div></div>";}',
+'function render(){fillBrands();BRAND=document.getElementById("brandSel").value;var l=document.getElementById("list");var html="";',
+'var blasts=DATA.filter(b=>!BRAND||(b.brandSlug||b.brand)===BRAND);',
+'if(CUR==="event"){if(!EVENTS.length){l.innerHTML="<div class=\\"empty\\">No auto triggers defined.</div>";return;}l.innerHTML="<div class=\\"section-h\\">Automatic event-triggered SMS (read-only)</div>"+EVENTS.map(eventCard).join("");return;}',
+'if(CUR==="launch")blasts=blasts.filter(b=>b.cadence==="launch");',
+'else if(CUR==="weekly")blasts=blasts.filter(b=>b.cadence==="weekly");',
+'if(CUR==="all"){var ln=blasts.filter(b=>b.cadence==="launch"),wk=blasts.filter(b=>b.cadence==="weekly");if(ln.length)html+="<div class=\\"section-h\\">Launch Blasts</div>"+ln.map(blastCard).join("");if(wk.length)html+="<div class=\\"section-h\\">Weekly Call Reminders</div>"+wk.map(blastCard).join("");html+="<div class=\\"section-h\\">Automatic Triggers</div>"+EVENTS.map(eventCard).join("");l.innerHTML=html||"<div class=\\"empty\\">No SMS for this brand yet. Use + New Cadence.</div>";return;}',
+'if(!blasts.length){l.innerHTML="<div class=\\"empty\\">No "+CUR+" blasts"+(BRAND?" for this brand":"")+". They appear when a brand is onboarded, or use + New Cadence.</div>";return;}',
+'l.innerHTML=blasts.map(blastCard).join("");}',
+'function load(){fetch("/api/creator-cadence/blasts",{credentials:"include"}).then(r=>r.json()).then(d=>{DATA=d.blasts||[];EVENTS=d.events||[];render();});}',
 'function save(id){var body=document.getElementById("t_"+id).value;fetch("/api/creator-cadence/blasts/"+id,{method:"PATCH",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({body:body})}).then(()=>load());}',
 'function send(id){var body=document.getElementById("t_"+id).value;if(!confirm("Send this text to everyone in the audience now?"))return;fetch("/api/creator-cadence/blasts/"+id+"/send",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({body:body})}).then(r=>r.json()).then(function(res){if(res.error){alert("Error: "+res.error);}else{alert("Sent to "+res.sent+" of "+res.audience+" creators.");}load();});}',
+'function newCadence(){var brand=prompt("Brand name for this cadence?");if(!brand)return;var cadence=prompt("Type: launch or weekly","launch");if(cadence!=="launch"&&cadence!=="weekly")return alert("Type must be launch or weekly");var label=prompt("Label for this text (e.g. \'Custom announcement\')","Custom SMS");var body=prompt("Message body? Use {firstName} for personalization.","");if(body===null)return;fetch("/api/creator-cadence/manual",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({brand:brand,cadence:cadence,label:label,body:body})}).then(r=>r.json()).then(function(res){if(res.error)alert("Error: "+res.error);load();});}',
 'load();',
 '</script></body></html>',
   ].join('\n');
@@ -330,13 +373,43 @@ function mount(app, opts = {}) {
   }
 
   // Approval page
+  app.get('/sms-communication', requireAdmin, (req, res) => {
+    res.set('Content-Type', 'text/html').send(pageHtml());
+  });
+
+  // Manual cadence creation — spin up an SMS for a brand with no onboard record.
+  app.post('/api/creator-cadence/manual', requireAdmin, require('express').json({ limit: '256kb' }), (req, res) => {
+    const { brand, cadence, label, body } = req.body || {};
+    if (!brand || !body) return res.status(400).json({ error: 'brand and body required' });
+    const type = cadence === 'weekly' ? 'weekly' : 'launch';
+    const slug = brandSlug(brand);
+    // Audience: weekly -> {brand}-affiliate ; launch -> affiliate (whole community)
+    const audienceTag = type === 'weekly' ? slug + '-affiliate' : 'affiliate';
+    const blasts = loadBlasts(DATA_DIR);
+    const blast = {
+      id: 'manual_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      cadence: type,
+      brand,
+      brandSlug: slug,
+      label: label || 'Custom SMS',
+      body,
+      audienceTag,
+      status: 'draft',
+      manual: true,
+      createdAt: new Date().toISOString(),
+    };
+    blasts.push(blast);
+    saveBlasts(DATA_DIR, blasts);
+    res.json({ ok: true, blast });
+  });
+
   app.get('/creator-cadence', requireAdmin, (req, res) => {
     res.set('Content-Type', 'text/html').send(pageHtml());
   });
 
   // List blasts (sync first so new brands show up)
   app.get('/api/creator-cadence/blasts', requireAdmin, (req, res) => {
-    try { res.json({ blasts: syncBlasts() }); }
+    try { res.json({ blasts: syncBlasts(), events: EVENT_TRIGGERS }); }
     catch (e) { res.status(500).json({ error: e.message }); }
   });
 
