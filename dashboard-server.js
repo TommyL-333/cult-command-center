@@ -12384,7 +12384,9 @@ function renderCreatorPage(brand, cp) {
   let videoEmbedHtml = '';
   if (cp.videoUrl) {
     const vurl = String(cp.videoUrl).trim();
-    const yt = vurl.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]{11})/);
+    const yt = vurl.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/|live\/))([\w-]{11})/);
+    const gdrive = vurl.match(/drive\.google\.com\/file\/d\/([\w-]+)/);
+    const tiktok = vurl.match(/tiktok\.com\/.*\/video\/(\d+)/) || vurl.match(/tiktok\.com\/(?:v|t)\/(\w+)/);
     const vimeo = vurl.match(/vimeo\.com\/(?:video\/)?(\d+)/);
     let inner = '';
     if (yt) {
@@ -12393,6 +12395,10 @@ function renderCreatorPage(brand, cp) {
       inner = `<iframe src="https://player.vimeo.com/video/${vimeo[1]}" title="${name} creator video" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
     } else if (/\.(mp4|webm|mov)(\?.*)?$/i.test(vurl)) {
       inner = `<video src="${vurl}" controls playsinline preload="metadata"></video>`;
+    } else if (gdrive) {
+      inner = `<iframe src="https://drive.google.com/file/d/${gdrive[1]}/preview" title="${name} creator video" frameborder="0" allow="autoplay" allowfullscreen></iframe>`;
+    } else if (tiktok) {
+      inner = `<iframe src="https://www.tiktok.com/embed/v2/${tiktok[1]}" title="${name} creator video" frameborder="0" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>`;
     }
     if (inner) {
       const vTitle = cp.videoTitle || 'Watch this first';
