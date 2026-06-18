@@ -82,7 +82,7 @@ app.use(session({
   },
 }));
 
-// ─── Security: Cloudflare Access authentication ─────────────────────��─────────
+// ─── Security: Cloudflare Access authentication ─────────────────────���─────────
 // Cloudflare Access injects CF-Access-Authenticated-User-Email on every request.
 // If CF_ACCESS_AUD is set, we enforce this header — unauthenticated requests get 401.
 const ALLOWED_DOMAINS = (process.env.ALLOWED_EMAIL_DOMAINS || 'cultcontent.cc')
@@ -906,6 +906,11 @@ app.post('/api/creator-pages/submit', express.json(), async (req, res) => {
       const ghlH = { Authorization: `Bearer ${process.env.GHL_API_KEY}`, Version: '2021-07-28', 'Content-Type': 'application/json' };
       const larkGroupUrl = brand.creatorPage?.larkGroupUrl || null;
       const larkLine = larkGroupUrl ? `\n→ Lark community: ${larkGroupUrl}` : '';
+      // Brand-aware signup details
+      const cpForSms = brand.creatorPage || {};
+      const commPct = cpForSms.tcCommission || (brand.commissionRate ? Math.round(brand.commissionRate * 100) : null);
+      const commLine = commPct ? `\n→ You'll earn ${commPct}% commission on every ${brand.name} sale you drive` : '';
+      const brandPageUrl = cpForSms.slug ? `${CREATOR_BASE_URL}/creators/${cpForSms.slug}` : `${CREATOR_BASE_URL}/creators`;
       axios.post('https://services.leadconnectorhq.com/conversations/', {
         locationId: process.env.GHL_LOCATION_ID || process.env.GHL_LOC_ID,
         contactId,
@@ -916,7 +921,7 @@ app.post('/api/creator-pages/submit', express.json(), async (req, res) => {
           type: 'SMS',
           conversationId,
           contactId,
-          message: `Welcome to the Cult Content creator community, ${firstName}! You're in 👁️‼️\n\nHere's everything you need:\n→ Discord: ${discordLink}\n→ Skool: https://www.skool.com/cult-content\n→ Brand opportunities: ${CREATOR_BASE_URL}/creators${larkLine}\n\nText this number anytime if you need us.`,
+          message: `You're in for ${brand.name} 👁️‼️ Welcome, ${firstName}!\n\nHere's how to start earning with ${brand.name}:\n→ Your ${brand.name} page (product + content brief): ${brandPageUrl}${commLine}\n\nAnd your community:\n→ Discord: ${discordLink}\n→ Skool: https://www.skool.com/cult-content${larkLine}\n\nText this number anytime if you need us.`,
         }, { headers: ghlH });
       })
       .catch(e => console.error('[creator-pages] SMS error:', e.response?.data || e.message));
@@ -5311,7 +5316,7 @@ function recordSnap(platform, handle, metrics) {
   saveSnaps(snaps);
 }
 
-// ─── TikTok token helpers ──────────────────────────────────────────────────────
+// ─── TikTok token helpers ───────────────────────────���──────────────────────────
 const TIKTOK_API_BASE = 'https://open.tiktokapis.com/v2';
 const tiktokAuthState     = new Map(); // PKCE state store (short-lived, in-memory)
 const creatorTikTokStates = new Map(); // State store for creator page TikTok Display API OAuth
@@ -5531,7 +5536,7 @@ app.post('/api/clear-cache', (req, res) => {
   res.json({ ok: true });
 });
 
-// ─── Buffer content pipeline ───────────────────────────────────────────────────
+// ─── Buffer content pipeline ────────────────���──────────────────────────────────
 app.get('/api/buffer/stats', async (req, res) => {
   const token = process.env.BUFFER_ACCESS_TOKEN;
   if (!token) return res.json({ connected: false });
@@ -5740,7 +5745,7 @@ app.get('/api/social/stats', async (req, res) => {
   }
 });
 
-// ─── Twitter / X stats (via Apify pratikdani~twitter-profile-scraper) ──────────
+// ─── Twitter / X stats (via Apify pratikdani~twitter-profile-scraper) ─��────────
 app.get('/api/twitter/stats', async (req, res) => {
   try {
     const data = await cached('twitter', 1_800_000, async () => {
@@ -7343,7 +7348,7 @@ setInterval(async () => {
 }, 60_000);
 
 // ─── Affiliate Agent routes ──────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────��────────────────────────────────────────
 // Affiliate Agent — routes.js
 // New Express routes to append to dashboard-server.js.
 //
@@ -7818,7 +7823,7 @@ app.get('/api/paidmedia/tiktok/report', async (req, res) => {
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────��───────────────────────────
 // POST /api/paidmedia/tiktok/campaign/:id/status
 //
 // Body: { status: 'ENABLE' | 'DISABLE' }
@@ -12635,7 +12640,7 @@ function renderWelcomePage(brand, cp, creatorHandle = '') {
     : `<div class="inc-card"><span class="inc-emoji">${c.emoji}</span><div class="inc-text"><div class="inc-label">${c.label}</div><div class="inc-sub">${c.sub}</div></div></div>`
   ).join('') : '';
 
-  // ── Brief sections ──────────────────────────────────────────────────────────
+  // ── Brief sections ────────────────────────────────────────��─────────────────
   const typeLabel = { curiosity:'Curiosity', 'pain-point':'Pain Point', transformation:'Transformation', 'social-proof':'Social Proof', controversy:'Controversy', 'myth-bust':'Myth Bust' };
 
   const hooksHtml = brief?.hooks?.length ? `
