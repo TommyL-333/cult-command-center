@@ -12335,6 +12335,18 @@ async function runOnboardingPipeline(formData) {
       brief: creatorBrief || null,
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
     };
+    // Keep top-level brand.brandColor (client portal / IC catalog) in sync with the
+    // resolved creator-page accent from day one. Honor an explicit formData.brandColor
+    // override if it is a valid hex; otherwise inherit the resolved accent. Never throws.
+    {
+      const _resolvedAccent = brand.creatorPage.accentColor;
+      if (formData.brandColor && /^#[0-9a-fA-F]{6}$/.test(formData.brandColor)) {
+        brand.brandColor = formData.brandColor;
+        brand.creatorPage.accentColor = formData.brandColor;
+      } else if (!brand.brandColor && /^#[0-9a-fA-F]{6}$/.test(_resolvedAccent || '')) {
+        brand.brandColor = _resolvedAccent;
+      }
+    }
     saveBrands(brandsData);
     creatorPage = { slug, publicUrl: `${CREATOR_BASE_URL}/creators/${slug}`, active: true };
     console.log(`[onboard] Creator page live: ${creatorPage.publicUrl}`);
