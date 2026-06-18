@@ -82,7 +82,7 @@ app.use(session({
   },
 }));
 
-// ─── Security: Cloudflare Access authentication ─────────────────────���─────────
+// ─── Security: Cloudflare Access authentication ─────────────────────�����─────────
 // Cloudflare Access injects CF-Access-Authenticated-User-Email on every request.
 // If CF_ACCESS_AUD is set, we enforce this header — unauthenticated requests get 401.
 const ALLOWED_DOMAINS = (process.env.ALLOWED_EMAIL_DOMAINS || 'cultcontent.cc')
@@ -130,6 +130,38 @@ async function getLarkTenantToken() {
   _larkTenantToken = r.data.tenant_access_token;
   _larkTokenExpiry = Date.now() + (r.data.expire * 1000);
   return _larkTenantToken;
+}
+
+// Append a creator signup row to the master Lark Bitable (non-blocking, env-gated).
+async function writeCreatorSignupToBitable(row) {
+  try {
+    const APP_TOKEN = process.env.CREATOR_SIGNUP_BITABLE_APP_TOKEN;
+    const TABLE_ID  = process.env.CREATOR_SIGNUP_BITABLE_TABLE_ID;
+    if (!APP_TOKEN || !TABLE_ID) return;
+    const ltoken = await getLarkTenantToken();
+    if (!ltoken) return;
+    const fields = {
+      'Brand':          row.brand || '',
+      'Creator Name':   row.creatorName || '',
+      'TikTok Handle':  row.handle || '',
+      'Email':          row.email || '',
+      'Phone':          row.phone || '',
+      'Discord':        row.discord || '',
+      'Follower Range': row.followerRange || '',
+      'GMV':            row.gmv || '',
+      'Niche':          row.niche || '',
+      'Message':        row.message || '',
+      'Source Form':    row.source || '',
+      'Submitted':      Date.now()
+    };
+    await axios.post(
+      `https://open.larksuite.com/open-apis/bitable/v1/apps/${APP_TOKEN}/tables/${TABLE_ID}/records`,
+      { fields },
+      { headers: { Authorization: `Bearer ${ltoken}`, 'Content-Type': 'application/json' } }
+    );
+  } catch (e) {
+    console.error('[signup-bitable] write error:', e.response?.data || e.message);
+  }
 }
 
 // Get stored user access token, refreshing if needed
@@ -480,7 +512,7 @@ app.get('/onboard', (req, res) => {
   res.sendFile(path.join(__dirname, 'dashboard', 'onboard.html'));
 });
 
-// POST /api/onboard/logo — public upload during onboarding (no auth, registered before requireAuth)
+// POST /api/onboard/logo ��� public upload during onboarding (no auth, registered before requireAuth)
 // Uses lazy multer so imageUpload const doesn't need to exist yet.
 app.post('/api/onboard/logo', (req, res, next) => {
   const multer = require('multer');
@@ -987,6 +1019,11 @@ app.post('/api/creator-pages/submit', express.json(), async (req, res) => {
 
     console.log(`[creator-pages] Submission for ${brand.name}: ${email} (${handle ? '@'+handle : 'no handle'})`);
     const handleParam = handle ? `?handle=${encodeURIComponent('@' + handle.replace(/^@/, ''))}` : '';
+    writeCreatorSignupToBitable({
+      brand: brand.name, creatorName: `${firstName} ${lastName}`.trim(), handle, email,
+      phone: cleanPhone, discord: discordUsername, followerRange, gmv, niche, message,
+      source: 'Brand Signup'
+    }).catch(()=>{});
     res.json({ ok: true, contactId, welcomeUrl: `/creators/${brandSlug}/welcome${handleParam}` });
   } catch(e) {
     console.error('[creator-pages/submit]', e.response?.data || e.message);
@@ -2000,7 +2037,7 @@ ${transcript.slice(0, 8000)}`
 // Auth is a bearer token (WEBHOOK_SECRET) that the dashboard fetches from /api/upload-config
 // after the normal CF-Access session is already established.
 
-// ── HEVC → H.264 auto-conversion ─────────────────────────────────────────────
+// ── HEVC → H.264 auto-conversion ────────────���────────────────────────────────
 // iPhones record in HEVC (H.265) by default. Instagram and TikTok reject it via
 // Buffer. On upload we detect HEVC and silently re-encode to H.264/AAC MP4 so
 // every downstream platform gets a compatible file without manual intervention.
@@ -2279,7 +2316,7 @@ app.post('/api/upload/chunk', (req, res) => {
 });
 
 // ─── Client Portal ────────────────────────────────────────────────────────────
-// ── Client portal bug reporter ────────────────────────────────────────────────
+// ��─ Client portal bug reporter ────────────────────────────────────────────────
 async function sendClientBugReport({ brandName, brandId, route, error, type = 'server', extra = '' }) {
   try {
     const emoji = type === 'client' ? '🖥️' : '🔴';
@@ -4962,6 +4999,10 @@ app.post('/api/creator-onboard', express.json(), async (req, res) => {
   }
 
   const discordInvite = process.env.DISCORD_INVITE_URL || 'https://discord.gg/cultcontent';
+  writeCreatorSignupToBitable({
+    brand: '', creatorName: `${firstName} ${lastName}`.trim(), handle, email,
+    phone: cleanPhone, discord: discordUsername, source: 'Full Onboard'
+  }).catch(()=>{});
   res.json({ ok: true, discordInvite, results });
 });
 
@@ -5298,7 +5339,7 @@ function reacherClient(shopId) {
   return axios.create({ baseURL: REACHER_BASE, timeout: 20000, headers });
 }
 
-// ─── Simple TTL cache ���─────────────────────────────────────────────────────────
+// ─── Simple TTL cache ���───────────────────────��─────────────────────────────────
 const cache = new Map();
 async function cached(key, ttlMs, fn) {
   const hit = cache.get(key);
@@ -6972,7 +7013,7 @@ app.post('/api/command', async (req, res) => {
   } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
-// ─── Skool community stats (scrape public about page) ─────────────────────────
+// ─���─ Skool community stats (scrape public about page) ─────────────────────────
 app.get('/api/skool/stats', async (req, res) => {
   try {
     const data = await cached('skool_stats', 10 * 60_000, async () => {
@@ -7419,7 +7460,7 @@ app.delete('/api/reacher/automations/:automationId', requireAuth, async (req, re
   } catch(e) { res.status(500).json({ ok: false, error: e.response?.data || e.message }); }
 });
 
-// ── POST /api/affiliate/blast ─────────────────────────────────────────────────
+// ── POST /api/affiliate/blast ──────────────────────��──────────────────────────
 // Body: { message: string, audience: string, channel: string, shopId?: string }
 // Fires a creator blast message via the chosen channel.
 //
@@ -7637,7 +7678,7 @@ async function ttGet(path, params = {}) {
   return body.data;
 }
 
-// ── Shared TikTok POST helper ─────────────────────────────────────────────────
+// ── Shared TikTok POST helper ────────────────────────��────────────────────────
 async function ttPost(path, payload = {}) {
   const token = process.env.TIKTOK_ADS_ACCESS_TOKEN;
   const { data: body } = await axios.post(`${TIKTOK_BASE}${path}`, payload, {
@@ -7787,7 +7828,7 @@ app.get('/api/paidmedia/tiktok/summary', async (req, res) => {
   }
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────��────────────────────────────────────────────
 // GET /api/paidmedia/tiktok/report?start_date=YYYY-MM-DD&end_date=YYYY-MM-DD
 //
 // Time-series report — account-level daily metrics for charting.
@@ -7933,7 +7974,7 @@ app.get('/api/paidmedia/meta/summary', async (req, res) => {
 });
 
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ───────────��─────────────────────────────────────────────────────────────────
 // POST /api/shortvideo/loop/run
 // Autonomous weekly content loop: analyze → ideate → script → schedule
 // ─────────────────────────────────────────────────────────────────────────────
@@ -11285,7 +11326,7 @@ async function scrapeShopifyProducts(context) {
 }
 
 // ─── AI Proposal generator ────────────────────────────────────────────────────
-// ── Step 1: Extract metrics from transcript + Shopify ─────────────────────────
+// ── Step 1: Extract metrics from transcript + Shopify ───────���─────────────────
 app.post('/api/ai/extract-metrics', async (req, res) => {
   try {
     const { context } = req.body;
@@ -13457,7 +13498,7 @@ app.delete('/api/brands/:brandId/product-media/:filename', requireAuth, (req, re
 // ─── Health ────────────────────────────────────────────────────────────────────
 app.get('/health', (_, res) => res.json({ status: 'ok', service: 'dashboard' }));
 
-// ── Startup: ensure known contact names are set on manually-added brands ───────
+// ── Startup: ensure known contact names are set on manually-added brands ──────���
 (function migrateContactNames() {
   try {
     const data = loadBrands();
