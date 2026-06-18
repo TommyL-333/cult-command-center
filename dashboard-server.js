@@ -12388,7 +12388,7 @@ function renderCreatorPage(brand, cp) {
     const vimeo = vurl.match(/vimeo\.com\/(?:video\/)?(\d+)/);
     let inner = '';
     if (yt) {
-      inner = `<iframe src="https://www.youtube-nocookie.com/embed/${yt[1]}?rel=0&modestbranding=1" title="${name} creator video" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>`;
+      inner = `<iframe src="https://www.youtube.com/embed/${yt[1]}?rel=0&modestbranding=1&playsinline=1" title="${name} creator video" frameborder="0" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>`;
     } else if (vimeo) {
       inner = `<iframe src="https://player.vimeo.com/video/${vimeo[1]}" title="${name} creator video" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe>`;
     } else if (/\.(mp4|webm|mov)(\?.*)?$/i.test(vurl)) {
