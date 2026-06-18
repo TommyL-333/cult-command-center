@@ -3268,7 +3268,21 @@ app.post('/portal-admin/regenerate-brief/:slug', requirePortalAdmin, express.jso
     if (ov.products)        brands.clients[idx].creatorPage.products        = ov.products;
 
     const aiContent   = brand.aiContent   || null;
-    const shopifyData = brand.shopifyData || null;
+    // Re-scrape Shopify live so the brief reflects the real store. Fall back to any stored data.
+    let shopifyData = brand.shopifyData || null;
+    const scrapeUrl = ov.shopifyUrl || ov.website || brand.shopifyUrl || brand.website || cp.website;
+    if (scrapeUrl) {
+      try {
+        const fresh = await scrapeShopify(scrapeUrl);
+        if (fresh && fresh.products && fresh.products.length) {
+          shopifyData = fresh;
+          brands.clients[idx].shopifyData = fresh; // persist so future regens have data
+          console.log(`[regenerate-brief] scraped ${fresh.products.length} products from ${fresh.domain || scrapeUrl}`);
+        } else {
+          console.log(`[regenerate-brief] live scrape returned no products for ${scrapeUrl}; using stored shopifyData`);
+        }
+      } catch (e) { console.error("[regenerate-brief] scrape error:", e.message); }
+    }
     const brief = await generateCreatorBrief(formData, shopifyData, aiContent);
     if (!brief) return res.status(500).json({ ok: false, error: 'Brief generation returned null — check ANTHROPIC_API_KEY' });
     brands.clients[idx].creatorPage.brief = brief;
