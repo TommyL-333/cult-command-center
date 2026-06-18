@@ -73,7 +73,7 @@ Come say hi even if you're late — we'll catch you up.`,
   T6: {
     label: 'T6 · Sign-up link push (after call)',
     body:
-`Missed the {brand} call? No stress ���️
+`Missed the {brand} call? No stress �����️
 
 Here's your link to sign up as a {brand} creator and start earning:
 {signupLink}
@@ -248,13 +248,14 @@ async function executeBlast(blast) {
 const EVENT_TRIGGERS = [
   {
     key: 'signup_welcome',
-    label: 'Signup Welcome SMS',
+    label: 'Brand Signup Welcome SMS',
     trigger: 'Creator submits a brand interest / signup form',
-    audience: 'The individual creator who just signed up',
-    source: 'dashboard-server.js ~/api/creators/onboard',
+    audience: 'The individual creator who just signed up — brand-specific',
+    source: 'dashboard-server.js /api/creator-pages/submit',
     editable: false,
-    note: 'Sent once, immediately on signup. Copy is hardcoded in the onboard handler — edit there to change.',
-    copy: "Welcome to the Cult Content creator community, {firstName}! You're in 👁️‼️\\n\\nHere's everything you need:\\n→ Discord: {discordLink}\\n→ Skool: https://www.skool.com/cult-content\\n→ Brand opportunities: {baseUrl}/creators\\n\\nText this number anytime if you need us.",
+    brandScoped: true,
+    note: 'Sent once, immediately on signup. Brand-aware: names the brand, states commission %, links to that brand page. Copy is hardcoded in the submit handler — edit there to change.',
+    copy: "You're in for {brandName} 👁️‼️ Welcome, {firstName}!\\n\\nHere's how to start earning with {brandName}:\\n→ Your {brandName} page (product + content brief): {baseUrl}/creators/{brandSlug}\\n→ You'll earn {commission}% commission on every {brandName} sale you drive\\n\\nAnd your community:\\n→ Discord: {discordLink}\\n→ Skool: https://www.skool.com/cult-content\\n\\nText this number anytime if you need us.",
   },
   {
     key: 'full_onboard_welcome',
