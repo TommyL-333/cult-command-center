@@ -13148,6 +13148,30 @@ app.post('/api/creator-pages/:slug/product-request', async (req, res) => {
       source:  'Creator Welcome Page',
     }, { timeout: 10000 });
     console.log(`[product-request] ${brand.name} — @${cleanHandle}: ${[...products, otherProducts].filter(Boolean).join(', ')}`);
+    // Also persist to a Lark Bitable sheet (non-blocking, env-gated)
+    try {
+      const APP_TOKEN = process.env.CREATOR_REQUEST_BITABLE_APP_TOKEN;
+      const TABLE_ID  = process.env.CREATOR_REQUEST_BITABLE_TABLE_ID;
+      const L_ID = process.env.LARK_APP_ID, L_SECRET = process.env.LARK_APP_SECRET;
+      if (APP_TOKEN && TABLE_ID && L_ID && L_SECRET) {
+        const { data: authData } = await axios.post('https://open.larksuite.com/open-apis/auth/v3/tenant_access_token/internal', { app_id: L_ID, app_secret: L_SECRET });
+        const ltoken = authData.tenant_access_token;
+        if (ltoken) {
+          await axios.post(
+            `https://open.larksuite.com/open-apis/bitable/v1/apps/${APP_TOKEN}/tables/${TABLE_ID}/records`,
+            { fields: {
+                'Brand':    brand.name,
+                'Creator':  `@${cleanHandle}`,
+                'Products': [...products, otherProducts].filter(Boolean).join(', '),
+                'Note':     note || '',
+                'Submitted': Date.now(),
+            } },
+            { headers: { Authorization: `Bearer ${ltoken}`, 'Content-Type': 'application/json' }, timeout: 10000 }
+          );
+          console.log(`[product-request] saved to Bitable for ${brand.name}`);
+        }
+      }
+    } catch (be) { console.error('[product-request] Bitable save failed (non-fatal):', be.response?.data?.msg || be.message); }
     res.json({ ok: true });
   } catch(e) {
     console.error('[product-request] Lark error:', e.message);
