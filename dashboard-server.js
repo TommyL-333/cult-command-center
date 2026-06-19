@@ -3273,6 +3273,32 @@ app.patch('/portal-admin/creator-video/:brandId', requirePortalAdmin, express.js
   res.json({ ok: true, videoUrl: cp.videoUrl, videoTitle: cp.videoTitle, videoSub: cp.videoSub });
 });
 
+// PATCH /portal-admin/creator-images/:brandId — set the "Use These Pictures" reference images on the creator page
+// Body: { images: [{url, caption}] } OR { urls: ["..."] }; empty/[] clears the section so it disappears. Supports gifs.
+app.patch('/portal-admin/creator-images/:brandId', requirePortalAdmin, express.json(), (req, res) => {
+  const brands = loadBrands();
+  const idx = (brands.clients || []).findIndex(b => b.id === req.params.brandId || b.creatorPage?.slug === req.params.brandId);
+  if (idx === -1) return res.status(404).json({ error: 'Brand not found' });
+  if (!brands.clients[idx].creatorPage) brands.clients[idx].creatorPage = {};
+  const cp = brands.clients[idx].creatorPage;
+  let images = [];
+  if (Array.isArray(req.body?.images)) {
+    images = req.body.images;
+  } else if (Array.isArray(req.body?.urls)) {
+    images = req.body.urls.map(u => ({ url: u }));
+  }
+  cp.referenceImages = images
+    .map(i => (typeof i === 'string' ? { url: i } : i))
+    .filter(i => i && i.url && String(i.url).trim())
+    .map(i => ({ url: String(i.url).trim(), caption: i.caption ? String(i.caption).trim() : '' }))
+    .slice(0, 24);
+  if (req.body?.imagesTitle !== undefined) cp.imagesTitle = req.body.imagesTitle ? String(req.body.imagesTitle).trim() : null;
+  if (req.body?.imagesSub   !== undefined) cp.imagesSub   = req.body.imagesSub   ? String(req.body.imagesSub).trim()   : null;
+  cp.updatedAt = new Date().toISOString();
+  saveBrands(brands);
+  res.json({ ok: true, count: cp.referenceImages.length, referenceImages: cp.referenceImages });
+});
+
 // PATCH /portal-admin/creator-accent/:brandId — set the creator-page accent color (accepts brandId or slug)
 app.patch('/portal-admin/creator-accent/:brandId', requirePortalAdmin, express.json(), (req, res) => {
   const brands = loadBrands();
@@ -12615,6 +12641,31 @@ function renderCreatorPage(brand, cp) {
     }
   }
 
+  // Reference images — "Use These Pictures" (data-driven). Supports static images + gifs.
+  let imagesEmbedHtml = '';
+  {
+    const imgs = Array.isArray(cp.referenceImages) ? cp.referenceImages.filter(i => i && i.url) : [];
+    if (imgs.length) {
+      const cards = imgs.map(i => {
+        const u = String(i.url).trim().replace(/"/g, '&quot;');
+        const cap = i.caption ? '<div class="refimg-cap">' + String(i.caption).replace(/</g, '&lt;') + '</div>' : '';
+        return '<div class="refimg-item"><img src="' + u + '" alt="' + name + ' reference" loading="lazy">' + cap + '</div>';
+      }).join('');
+      const iTitle = cp.imagesTitle || 'Use these pictures';
+      const iSub   = cp.imagesSub   || ('The exact visuals winning creators are using for ' + name + ' — drop them straight into your videos.');
+      imagesEmbedHtml = `
+<hr class="divider">
+<div class="section">
+  <div class="section-inner">
+    <div class="section-label">Assets</div>
+    <div class="section-title">${iTitle}</div>
+    <div class="section-sub">${iSub}</div>
+    <div class="refimg-grid">${cards}</div>
+  </div>
+</div>`;
+    }
+  }
+
   // Auto-generate reward copy lines
   const rewardLines = [];
   if (cp.tcCommission) rewardLines.push({ val: `${cp.tcCommission}%`, desc: 'commission on every sale you drive' });
@@ -12664,6 +12715,10 @@ h1{font-size:clamp(26px,5vw,50px);font-weight:900;line-height:1.06;letter-spacin
 .section-title{font-size:clamp(18px,3vw,28px);font-weight:900;margin-bottom:8px;letter-spacing:-.01em}
 .section-sub{font-size:13px;color:rgba(255,255,255,.4);line-height:1.6;margin-bottom:32px}
 .divider{border:none;border-top:1px solid rgba(255,255,255,.06);margin:0}
+.refimg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:14px}
+.refimg-item{position:relative;border-radius:12px;overflow:hidden;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07)}
+.refimg-item img{display:block;width:100%;height:auto;object-fit:cover}
+.refimg-cap{font-size:12px;color:rgba(255,255,255,.55);padding:8px 10px;line-height:1.4}
 /* rewards */
 .rewards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px}
 .reward-card{background:rgba(${ar},.08);border:1.5px solid rgba(${ar},.22);border-radius:14px;padding:20px 18px;display:flex;flex-direction:column;gap:6px}
@@ -12710,6 +12765,7 @@ ${rewardLines.length ? `
   </div>
 </div>` : ''}
 ${videoEmbedHtml}
+${imagesEmbedHtml}
 
 <hr class="divider">
 <div class="section" id="signup">
