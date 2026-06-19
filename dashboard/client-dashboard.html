@@ -1554,7 +1554,7 @@
     } catch (_) {}
   }
   window.onerror = (msg, src, line, col, err) => { reportError(msg, src, line, col, err); return false; };
-  window.addEventListener('unhandledrejection', e => reportError(e.reason?.message || String(e.reason), 'unhandledrejection'));
+  window.addEventListener('unhandledrejection', e => reportError(e.reason?.message || String(e.reason), 'unhandledrejection', (e.reason && e.reason.lineNumber) || 0, 0, e.reason));
 
   async function load() {
     const r = await fetch('/api/client/me');
