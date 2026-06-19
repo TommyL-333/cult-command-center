@@ -229,6 +229,7 @@ async function sendSms(contact, message) {
     type: 'SMS', conversationId, contactId,
     message: message.replace(/\{firstName\}/g, firstName),
   }, { headers: ghlHeaders() });
+  logSentSms({ trigger: contact.__smsTrigger || 'blast', brand: contact.__smsBrand || null, name: contact.contactName || firstName, contactId, body: message.replace(/\{firstName\}/g, firstName) });
 }
 
 // Execute a blast: send SMS to every contact carrying its audienceTag
@@ -255,6 +256,33 @@ const COMMUNITY_WELCOME_BODY =
   "Reply here anytime — we're real people.";
 
 function schedFileFor(dir) { return path.join(dir, 'scheduled-sms.json'); }
+
+// ─── Sent-SMS audit log (every outbound text, regardless of source) ──────────
+function sentFileFor(dir) { return path.join(dir, 'sms-sent.json'); }
+function loadSentLog(dir) {
+  try { return JSON.parse(fs.readFileSync(sentFileFor(dir), 'utf8')); } catch (_) { return []; }
+}
+// Public: append one sent record. Fire-and-forget, never throws.
+// rec = { trigger, brand, name, email, phone, contactId, body }
+function logSentSms(rec = {}) {
+  try {
+    const dir = rec.dir || process.env.DATA_DIR || '/data';
+    const log = loadSentLog(dir);
+    log.unshift({
+      id: 'snt_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7),
+      ts: new Date().toISOString(),
+      trigger: rec.trigger || 'unknown',
+      brand: rec.brand || null,
+      name: rec.name || null,
+      email: rec.email || null,
+      phone: rec.phone || null,
+      contactId: rec.contactId || null,
+      body: (rec.body || '').slice(0, 1200),
+    });
+    // keep most recent 500
+    fs.writeFileSync(sentFileFor(dir), JSON.stringify(log.slice(0, 500), null, 2));
+  } catch (_) {}
+}
 function loadScheduled(dir) {
   try { return JSON.parse(fs.readFileSync(schedFileFor(dir), 'utf8')); } catch (_) { return []; }
 }
@@ -274,6 +302,7 @@ function enqueueScheduledSms(opts = {}) {
     firstName: opts.firstName || 'there',
     body: opts.body,
     kind: opts.kind || 'scheduled',
+    brand: opts.brand || null,
     dueAt: Date.now() + (opts.delayMs || 0),
     status: 'pending',
     createdAt: new Date().toISOString(),
@@ -289,7 +318,7 @@ async function drainScheduled(dir) {
   for (const item of q) {
     if (item.status !== 'pending' || item.dueAt > now) continue;
     try {
-      await sendSms({ id: item.contactId, firstName: item.firstName }, item.body);
+      await sendSms({ id: item.contactId, firstName: item.firstName, __smsTrigger: item.kind || 'scheduled', __smsBrand: item.brand || null, contactName: item.firstName }, item.body);
       item.status = 'sent'; item.sentAt = new Date().toISOString();
     } catch (e) {
       item.attempts = (item.attempts || 0) + 1;
@@ -315,7 +344,7 @@ const EVENT_TRIGGERS = [
     audience: 'The individual creator who just signed up — community-wide intro',
     source: 'routes/creator-cadence.js scheduled queue (enqueueScheduledSms)',
     editable: false,
-    note: 'Second touch after the brand welcome. Links to Discord, Skool, the Friday 3pm ET community call, and the brands portal. Hardcoded as COMMUNITY_WELCOME_BODY.',
+    note: 'Second touch. Enqueued via enqueueScheduledSms() from both signup paths and sent ~90 min later by the drain loop. Copy = COMMUNITY_WELCOME_BODY.',
     copy: COMMUNITY_WELCOME_BODY,
   },
   {
@@ -370,10 +399,10 @@ function pageHtml() {
 '<h1>SMS Communication</h1>',
 '<div class="sub">Read-only review &amp; approval. Every text below is shown exactly as it will send. Scheduled and weekly messages, plus automatic triggers, all surface here. Nothing goes out until you press <b>Approve &amp; Send</b>. Automatic triggers are reference-only.</div>',
 '<div class="topbar"><label style="font-size:13px;color:#8b8b9a">Brand</label><select id="brand" onchange="setBrand(this.value)"><option value="">All brands</option></select></div>',
-'<div class="tabs"><div class="tab on" data-c="all" onclick="setTab(this)">All</div><div class="tab" data-c="scheduled" onclick="setTab(this)">Scheduled</div><div class="tab" data-c="weekly" onclick="setTab(this)">Weekly</div><div class="tab" data-c="triggered" onclick="setTab(this)">Triggered</div></div>',
+'<div class="tabs"><div class="tab on" data-c="all" onclick="setTab(this)">All</div><div class="tab" data-c="scheduled" onclick="setTab(this)">Scheduled</div><div class="tab" data-c="weekly" onclick="setTab(this)">Weekly</div><div class="tab" data-c="triggered" onclick="setTab(this)">Triggered</div><div class="tab" data-c="sent" onclick="setTab(this)">Sent</div></div>',
 '<div id="list"></div>',
 '<script>',
-'var DATA=[],EVENTS=[],BRANDS=[],CUR="all",BRAND="";',
+'var DATA=[],EVENTS=[],BRANDS=[],SENT=[],SENT_LOADED=false,CUR="all",BRAND="";',
 'function esc(s){return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}',
 'function badge(b){if(b.status==="sent")return "<span class=\\"badge sent\\">Sent</span>";if(b.cadence==="weekly")return "<span class=\\"badge scheduled\\">Weekly</span>";if(b.cadence==="launch")return "<span class=\\"badge scheduled\\">Scheduled</span>";return "<span class=\\"badge draft\\">Draft</span>";}',
 'function blastCard(b){',
@@ -392,6 +421,15 @@ function pageHtml() {
 '  if(e.note){h+="<div class=\\"ro-note\\">"+esc(e.note)+"</div>";}',
 '  h+="</div>";return h;',
 '}',
+'function esc(t){return String(t||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}',
+'function sentCard(r){',
+'  var when=new Date(r.ts).toLocaleString();',
+'  var who=esc(r.name||r.email||r.contactId||"creator");',
+'  var brand=r.brand?(" \u00b7 "+esc(r.brand)):"";',
+'  return "<div class=\u0027card\u0027><div class=\u0027row\u0027><span class=\u0027lbl\u0027>"+esc(r.trigger)+"</span><span class=\u0027badge sent\u0027>sent</span></div>"+',
+'    "<div class=\u0027meta\u0027>"+who+brand+" \u00b7 "+when+"</div>"+',
+'    "<div style=\u0027white-space:pre-wrap;font-size:13px;color:#c8c8d4;line-height:1.5\u0027>"+esc(r.body)+"</div></div>";',
+'}',
 'function render(){',
 '  var l=document.getElementById("list");',
 '  var blasts=DATA.filter(function(b){return !BRAND||b.brandSlug===BRAND;});',
@@ -408,12 +446,18 @@ function pageHtml() {
 '  if(CUR==="scheduled"){l.innerHTML=sched.length?sched.map(blastCard).join(""):"<div class=\\"empty\\">No scheduled messages"+(BRAND?" for this brand":"")+".</div>";return;}',
 '  if(CUR==="weekly"){l.innerHTML=wk.length?wk.map(blastCard).join(""):"<div class=\\"empty\\">No weekly messages"+(BRAND?" for this brand":"")+".</div>";return;}',
 '  if(CUR==="triggered"){l.innerHTML=trig.length?trig.map(eventCard).join(""):"<div class=\\"empty\\">No automatic triggers.</div>";return;}',
+'  if(CUR==="sent"){',
+'    if(!SENT_LOADED){l.innerHTML="<div class=\u0027empty\u0027>Loading\u2026</div>";loadSent();return;}',
+'    var rows=BRAND?SENT.filter(function(r){return (r.brand||"").toLowerCase().indexOf(BRAND.toLowerCase())>=0;}):SENT;',
+'    l.innerHTML=rows.length?rows.map(sentCard).join(""):"<div class=\u0027empty\u0027>No texts sent yet"+(BRAND?" for this brand":"")+".</div>";return;',
+'  }',
 '}',
 'function setTab(el){CUR=el.getAttribute("data-c");var ts=document.querySelectorAll(".tab");for(var i=0;i<ts.length;i++)ts[i].classList.remove("on");el.classList.add("on");render();}',
 'function setBrand(v){BRAND=v;render();}',
 'function fillBrands(){var sel=document.getElementById("brand");BRANDS.forEach(function(b){var o=document.createElement("option");o.value=b.slug;o.textContent=b.name;sel.appendChild(o);});}',
 'function approve(id){var body=document.getElementById("t_"+id).value;if(!confirm("Approve and send this text to everyone in the audience now?"))return;fetch("/api/sms-communication/blasts/"+id+"/send",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({body:body})}).then(function(r){return r.json();}).then(function(res){if(res.error){alert("Error: "+res.error);}else{alert("Sent to "+res.sent+" of "+res.audience+" creators.");}load();});}',
 'function load(){fetch("/api/sms-communication/blasts",{credentials:"include"}).then(function(r){return r.json();}).then(function(d){DATA=d.blasts||[];EVENTS=d.events||[];BRANDS=d.brands||[];fillBrands();render();});}',
+'function loadSent(){fetch("/api/sms-communication/sent?limit=200",{credentials:"include"}).then(function(r){return r.json();}).then(function(d){SENT=d.sent||[];SENT_LOADED=true;render();}).catch(function(){SENT_LOADED=true;render();});}',
 'load();',
 '</script></body></html>',
   ].join('\n');
@@ -486,6 +530,14 @@ function mount(app, opts = {}) {
     catch (e) { res.status(500).json({ error: e.message }); }
   });
 
+  // Recently-sent audit feed (every outbound SMS, all sources). Read-only.
+  app.get('/api/sms-communication/sent', requireAdmin, (req, res) => {
+    try {
+      const limit = Math.min(parseInt(req.query.limit, 10) || 100, 500);
+      res.json({ sent: loadSentLog(DATA_DIR).slice(0, limit) });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
   // Approve & send a blast. Body may carry edited copy.
   app.use('/api/sms-communication', require('express').json({ limit: '256kb' }));
   app.post('/api/sms-communication/blasts/:id/send', requireAdmin, async (req, res) => {
@@ -516,4 +568,4 @@ function mount(app, opts = {}) {
   console.log('[sms-communication] mounted at /sms-communication');
 }
 
-module.exports = { mount, buildLaunchBlasts, buildWeeklyBlast, brandSlug, enqueueScheduledSms, COMMUNITY_WELCOME_BODY };
+module.exports = { mount, buildLaunchBlasts, buildWeeklyBlast, brandSlug, enqueueScheduledSms, logSentSms, loadSentLog, COMMUNITY_WELCOME_BODY };
