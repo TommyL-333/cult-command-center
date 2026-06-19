@@ -2197,28 +2197,23 @@
     window._channelsLoaded = true;
     const $badge = document.getElementById('bufferConnBadge');
     const $note  = document.getElementById('bufferConnNote');
+    const $list = document.getElementById('channelList');
     try {
       const r = await fetch('/api/client/buffer/channels');
       const data = await r.json();
       const channels = data.channels || [];
-      const $list = document.getElementById('channelList');
 
       if (!channels.length) {
-        $list.innerHTML = '<span class="empty">No channels connected.</span>';
-        $badge.textContent = '⚠ Buffer not connected';
-        $badge.className = 'conn-badge disconnected';
-        $badge.style.display = 'inline-flex';
-        $note.textContent = 'Contact your account manager to connect your social channels.';
-        $note.style.display = 'block';
+        if ($list) $list.innerHTML = '<span class="empty">No channels connected.</span>';
+        if ($badge) { $badge.textContent = '⚠ Buffer not connected'; $badge.className = 'conn-badge disconnected'; $badge.style.display = 'inline-flex'; }
+        if ($note) { $note.textContent = 'Contact your account manager to connect your social channels.'; $note.style.display = 'block'; }
         return;
       }
 
-      $badge.textContent = '● Buffer Connected — ' + channels.length + ' channel' + (channels.length !== 1 ? 's' : '');
-      $badge.className = 'conn-badge connected';
-      $badge.style.display = 'inline-flex';
-      $note.style.display = 'none';
+      if ($badge) { $badge.textContent = '● Buffer Connected — ' + channels.length + ' channel' + (channels.length !== 1 ? 's' : ''); $badge.className = 'conn-badge connected'; $badge.style.display = 'inline-flex'; }
+      if ($note) $note.style.display = 'none';
 
-      $list.innerHTML = channels.map(ch => `
+      if ($list) $list.innerHTML = channels.map(ch => `
         <div class="channel-item" id="ch-${esc(ch.id)}" onclick="toggleChannel('${esc(ch.id)}')">
           ${ch.avatarUrl ? `<img src="${esc(ch.avatarUrl)}" alt="">` : '<div style="width:28px;height:28px;border-radius:50%;background:var(--border);flex-shrink:0"></div>'}
           <div class="channel-item-info">
@@ -2244,12 +2239,9 @@
         document.getElementById('storistaBufferSection').style.display = '';
       }
     } catch(e) {
-      document.getElementById('channelList').innerHTML = '<span class="empty">Failed to load channels.</span>';
-      $badge.textContent = '⚠ Buffer not connected';
-      $badge.className = 'conn-badge disconnected';
-      $badge.style.display = 'inline-flex';
-      $note.textContent = 'Contact your account manager to connect your social channels.';
-      $note.style.display = 'block';
+      if ($list) $list.innerHTML = '<span class="empty">Failed to load channels.</span>';
+      if ($badge) { $badge.textContent = '⚠ Buffer not connected'; $badge.className = 'conn-badge disconnected'; $badge.style.display = 'inline-flex'; }
+      if ($note) { $note.textContent = 'Contact your account manager to connect your social channels.'; $note.style.display = 'block'; }
     }
   }
 
