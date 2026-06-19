@@ -5450,6 +5450,9 @@ app.delete('/api/client/logo', requireClientSession, (req, res) => {
 const creatorCadence = require('./routes/creator-cadence');
 creatorCadence.mount(app, { DATA_DIR });
 
+const tiktokApiMap = require('./routes/tiktok-api-map');
+tiktokApiMap.mount(app, { requirePortalAdmin });
+
 app.use(requireAuth); // all other routes require auth in production
 
 // POST /api/client/admin/set-password — CF Access protected; sets/resets a client's login password
