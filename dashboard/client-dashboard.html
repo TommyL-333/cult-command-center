@@ -2314,6 +2314,7 @@
 
     _allAssets   = assetsRes.assets   || [];
     _allProducts = productsRes.products || [];
+    window._allProducts = _allProducts; // keep global in sync for Content Studio dropdown
 
     // Build product dropdown list
     const selectEl = document.getElementById('assetProductSelect');
@@ -2336,6 +2337,7 @@
     }
 
     renderAssetGrid(_allAssets);
+    try { if (typeof populateCsProducts === 'function') populateCsProducts(); } catch (e) {}
   }
 
   function renderProductDropdownList(products) {
