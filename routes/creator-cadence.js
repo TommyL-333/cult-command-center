@@ -456,6 +456,7 @@ function pageHtml() {
 'function setBrand(v){BRAND=v;render();}',
 'function fillBrands(){var sel=document.getElementById("brand");BRANDS.forEach(function(b){var o=document.createElement("option");o.value=b.slug;o.textContent=b.name;sel.appendChild(o);});}',
 'function approve(id){var body=document.getElementById("t_"+id).value;if(!confirm("Approve and send this text to everyone in the audience now?"))return;fetch("/api/sms-communication/blasts/"+id+"/send",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({body:body})}).then(function(r){return r.json();}).then(function(res){if(res.error){alert("Error: "+res.error);}else{alert("Sent to "+res.sent+" of "+res.audience+" creators.");}load();});}',
+'function del(id){if(!confirm(\"Delete this draft? This cannot be undone.\"))return;fetch(\"/api/sms-communication/blasts/\"+id,{method:\"DELETE\",credentials:\"include\"}).then(function(r){return r.json();}).then(function(res){if(res.error){alert(\"Error: \"+res.error);}else{load();}});}',
 'function load(){fetch("/api/sms-communication/blasts",{credentials:"include"}).then(function(r){return r.json();}).then(function(d){DATA=d.blasts||[];EVENTS=d.events||[];BRANDS=d.brands||[];fillBrands();render();});}',
 'function loadSent(){fetch("/api/sms-communication/sent?limit=200",{credentials:"include"}).then(function(r){return r.json();}).then(function(d){SENT=d.sent||[];SENT_LOADED=true;render();}).catch(function(){SENT_LOADED=true;render();});}',
 'load();',
