@@ -88,7 +88,7 @@ const MODULES = [
     summary: 'Settlements, statements, payouts. Scope-gated (seller.finance.info).',
     endpoints: [
       { path: 'GET /finance/202309/statements', name: 'Get Statements', access: 'none', verified: false,
-        usage: 'NOT YET. Needs seller.finance.info scope. Roadmap: true net-revenue + rev-share automation.' },
+        usage: 'ROADMAP [SCOPE seller.finance.info]: true net-revenue + automated rev-share calc per brand. Biggest Financial Nymph unlock — replaces estimated net with TikTok-settled figures.' },
       { path: 'GET /finance/202309/order/statement_transactions', name: 'Get Statement Transactions', access: 'none', verified: false,
         usage: 'NOT YET. Per-order settlement for exact commission accounting.' },
     ]},
@@ -146,11 +146,11 @@ const MODULES = [
     summary: 'Post video/photo to a creator account. THE blocker for Content Studio auto-publish.',
     endpoints: [
       { path: 'POST /v2/post/publish/video/init/', name: 'Direct Post Video', access: 'none', verified: false,
-        usage: 'ROADMAP/BLOCKER: publish generated Content Studio videos to TikTok. Needs creator app published + scope approval.' },
+        usage: 'ROADMAP/BLOCKER: publish generated Content Studio videos to TikTok. SCOPE: video.publish + video.upload. Requires creator app audited/published. UNLOCKS: Content Studio one-click auto-post.' },
       { path: 'POST /v2/post/publish/content/init/', name: 'Post Photo/Carousel', access: 'none', verified: false,
-        usage: 'ROADMAP: publish carousel content.' },
+        usage: 'ROADMAP: publish carousel/photo content. SCOPE: video.publish. UNLOCKS: Content Studio carousel auto-post.' },
       { path: 'POST /v2/post/publish/status/fetch/', name: 'Get Post Status', access: 'none', verified: false,
-        usage: 'ROADMAP: poll publish status after auto-post.' },
+        usage: 'ROADMAP: poll publish_id status (PROCESSING/PUBLISH_COMPLETE/FAILED) after auto-post. SCOPE: video.publish.' },
     ]},
 
   // ── DISPLAY API ────────────────────────────────────────────────
@@ -158,9 +158,9 @@ const MODULES = [
     summary: 'Read a creator\'s profile + video list. Useful for verifying handles / video counts.',
     endpoints: [
       { path: 'GET /v2/user/info/', name: 'Get User Info', access: 'none', verified: false,
-        usage: 'ROADMAP: verify creator handle + follower count at signup (replaces manual entry).' },
+        usage: 'ROADMAP: verify creator handle + follower/likes count at signup. SCOPE: user.info.basic (+ user.info.stats for counts). UNLOCKS: kill manual handle entry on IC/creator signup.' },
       { path: 'GET /v2/video/list/', name: 'List Videos', access: 'none', verified: false,
-        usage: 'ROADMAP: auto-count Inner Circle videos (the 20/mo commitment) instead of handle-matching.' },
+        usage: 'ROADMAP [SCOPE video.list]: auto-count Inner Circle videos (the 20/mo commitment) instead of handle-matching.' },
     ]},
 
   // ── AFFILIATE (Creator-side, Open Platform) ────────────────────
