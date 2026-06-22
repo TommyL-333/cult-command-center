@@ -411,7 +411,7 @@ function pageHtml() {
 '  var h="<div class=\\"card\\"><div class=\\"row\\"><span class=\\"lbl\\">"+esc(b.label||"SMS")+"</span>"+badge(b)+"</div>";',
 '  h+="<div class=\\"meta\\">"+(b.brand?esc(b.brand)+" \\u00b7 ":"")+esc(aud)+"</div>";',
 '  h+="<textarea class=\\"body\\" id=\\"t_"+b.id+"\\""+(sent?" readonly":"")+">"+esc(b.body)+"</textarea>";',
-'  if(!sent){h+="<div class=\\"btns\\"><button class=\\"btn btn-approve\\" onclick=\\"approve(\\u0027"+b.id+"\\u0027)\\">Approve &amp; Send</button></div>";h+="<div class=\\"ro-note\\">Edit the copy above if needed, then approve. This sends to everyone in the audience.</div>";}',
+'  if(!sent){h+="<div class=\\"btns\\"><button class=\\"btn btn-approve\\" onclick=\\"approve(\\u0027"+b.id+"\\u0027)\\">Approve &amp; Send</button><button class=\\\\"btn btn-delete\\\\" onclick=\\\\"del(\\u0027"+b.id+"\\u0027)\\\\">Delete</button></div>";h+="<div class=\\"ro-note\\">Edit the copy above if needed, then approve. This sends to everyone in the audience.</div>";}',
 '  h+="</div>";return h;',
 '}',
 'function eventCard(e){',
