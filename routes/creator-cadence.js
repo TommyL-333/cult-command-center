@@ -587,6 +587,21 @@ function mount(app, opts = {}) {
     }
   });
 
+  // Delete a draft blast (manual or otherwise). Sent blasts are protected.
+  app.delete('/api/sms-communication/blasts/:id', requireAdmin, (req, res) => {
+    try {
+      const blasts = loadBlasts(DATA_DIR);
+      const b = blasts.find(x => x.id === req.params.id);
+      if (!b) return res.status(404).json({ error: 'not found' });
+      if (b.status === 'sent') return res.status(400).json({ error: 'cannot delete a sent blast' });
+      const next = blasts.filter(x => x.id !== req.params.id);
+      saveBlasts(DATA_DIR, next);
+      res.json({ ok: true, deleted: req.params.id });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   // Start the scheduled-SMS drain loop (every 60s). Guard against double-start.
   if (!global.__ccCadenceDrain) {
     global.__ccCadenceDrain = setInterval(() => {
