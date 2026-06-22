@@ -557,6 +557,36 @@ function mount(app, opts = {}) {
     }
   });
 
+  // Create an ad-hoc manual draft blast. Appears in the console as a draft;
+  // send stays gated behind the existing /blasts/:id/send approval button.
+  app.post('/api/sms-communication/blasts/manual', requireAdmin, (req, res) => {
+    try {
+      const body = String(req.body.body || '').trim();
+      const audienceTag = String(req.body.audienceTag || '').trim();
+      const brand = String(req.body.brand || '').trim();
+      const label = String(req.body.label || '').trim() || (brand ? brand + ' · manual reminder' : 'Manual reminder');
+      if (!body) return res.status(400).json({ error: 'body required' });
+      if (!audienceTag) return res.status(400).json({ error: 'audienceTag required' });
+      const blasts = loadBlasts(DATA_DIR);
+      const blast = {
+        id: 'manual-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7),
+        cadence: 'manual',
+        brand: brand || null,
+        brandSlug: brand ? brandSlug(brand) : null,
+        label,
+        audienceTag,
+        body,
+        status: 'draft',
+        createdAt: new Date().toISOString(),
+      };
+      blasts.push(blast);
+      saveBlasts(DATA_DIR, blasts);
+      res.json({ ok: true, blast });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   // Start the scheduled-SMS drain loop (every 60s). Guard against double-start.
   if (!global.__ccCadenceDrain) {
     global.__ccCadenceDrain = setInterval(() => {
