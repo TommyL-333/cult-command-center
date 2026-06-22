@@ -433,7 +433,7 @@ function pageHtml() {
 'function render(){',
 '  var l=document.getElementById("list");',
 '  var blasts=DATA.filter(function(b){return !BRAND||b.brandSlug===BRAND;});',
-'  var sched=blasts.filter(function(b){return b.cadence==="launch";});',
+'  var sched=blasts.filter(function(b){return b.cadence===\"launch\"||b.cadence===\"manual\";});',
 '  var wk=blasts.filter(function(b){return b.cadence==="weekly";});',
 '  var trig=EVENTS;',
 '  var html="";',
