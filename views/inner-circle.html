@@ -1335,10 +1335,13 @@
 
     // ── IC Content Engine wizard: searchable product dropdown ──
     // State for the currently-open wizard.
-    let cwState = { brandId: null, brandSlug: null, products: [], filtered: [], selectedId: null };
+    let cwState = { brandId: null, brandSlug: null, products: [], filtered: [], selectedId: null,
+      audience: { creatorAgeGroup: '', creatorDetails: '', targetGender: '', targetAgeRange: '', targetInterests: '', painPoints: '' } };
 
     function openContentWizard(brandId, brandSlug) {
-      cwState = { brandId: brandId, brandSlug: brandSlug, products: [], filtered: [], selectedId: null };
+      cwState = { brandId: brandId, brandSlug: brandSlug, products: [], filtered: [], selectedId: null,
+        audience: { creatorAgeGroup: '', creatorDetails: '', targetGender: '', targetAgeRange: '', targetInterests: '', painPoints: '' } };
+      resetAudienceFields();
       const modal = document.getElementById('content-wizard');
       modal.classList.add('open');
       document.body.style.overflow = 'hidden';
@@ -1429,6 +1432,36 @@
       cwState.selectedId = productId;
       renderWizardProducts();
     }
+    // Clear all audience/target fields to match the reset cwState.audience. esc() is applied when
+    // assigning any pre-filled value so stored values can never break out into markup.
+    function resetAudienceFields() {
+      const a = cwState.audience;
+      const setVal = function (id, v) { const el = document.getElementById(id); if (el) el.value = esc(v == null ? '' : v); };
+      setVal('cw-creator-age', a.creatorAgeGroup);
+      setVal('cw-creator-details', a.creatorDetails);
+      setVal('cw-target-age', a.targetAgeRange);
+      setVal('cw-target-interests', a.targetInterests);
+      setVal('cw-pain-points', a.painPoints);
+      // Radios: tick the one matching stored gender, clear the rest.
+      const radios = document.querySelectorAll('input[name="cw-target-gender"]');
+      radios.forEach(function (r) { r.checked = (r.value === a.targetGender); });
+    }
+
+    // Read every audience/target input into cwState.audience. Called on every input/change so the
+    // wizard state object always mirrors the form. Trims free text; gender comes from the checked radio.
+    function captureAudienceState() {
+      const val = function (id) { const el = document.getElementById(id); return el ? String(el.value || '').trim() : ''; };
+      const checkedGender = document.querySelector('input[name="cw-target-gender"]:checked');
+      cwState.audience = {
+        creatorAgeGroup: val('cw-creator-age'),
+        creatorDetails: val('cw-creator-details'),
+        targetGender: checkedGender ? checkedGender.value : '',
+        targetAgeRange: val('cw-target-age'),
+        targetInterests: val('cw-target-interests'),
+        painPoints: val('cw-pain-points')
+      };
+    }
+
     // ── end IC Content Engine wizard ──
 
   </script>
