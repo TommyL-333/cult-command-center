@@ -1177,6 +1177,515 @@
           <div id="ub-reply-status" style="font-size:11px;color:var(--muted);margin-top:6px;min-height:16px"></div>
         </div>
 
+<!-- ────────────────────────────────────────────────────────────────────────
+     SMS Follow-up · Flagged Creators (ready-to-message list)
+     Task a0590b7d0572 · Step 6 of 10
+
+     SELF-CONTAINED snippet to drop into the Affiliates → Unibox panel
+     (dashboard/index.html). It is namespaced under #sfu- / sfu*() so it
+     cannot collide with the existing ub*() Unibox code.
+
+     DATA SOURCE  : GET  /api/sms-followup/lists
+                    → { ready:{creators:[...]}, needsEnrichment:{creators:[...]}, counts }
+     SEND HANDLER : POST /api/creators/sms   (existing GHL bulk-SMS route,
+                    dashboard-server.js L7166-7188)
+                    body → { contacts:[{ id, name, phone }], message }
+                    resp → { ok, results:[{ id, name, ok, error? }] }
+
+     NO AUTO-SEND. A message is only POSTed when the operator clicks
+     "Approve & Send" / "Send edited" on a card. "Edit" just unlocks the
+     textarea; nothing is sent until an explicit send click.
+──────────────────────────────────────────────────────────────────────── -->
+<section id="sfu-panel" class="sfu-panel">
+  <div class="sfu-head">
+    <h3 class="sfu-title">⚑ Flagged creators — SMS follow-up</h3>
+    <span id="sfu-count" class="sfu-pill" title="ready / needs enrichment">…</span>
+    <button id="sfu-refresh" class="sfu-btn sfu-btn-ghost" onclick="sfuLoad()">↻ Refresh</button>
+  </div>
+
+  <div id="sfu-status" class="sfu-status" role="status" aria-live="polite"></div>
+
+  <!-- READY list -->
+  <div id="sfu-ready-list" class="sfu-list"></div>
+
+  <!-- NEEDS-ENRICHMENT (read-only, no send) -->
+  <details id="sfu-enrich-wrap" class="sfu-enrich" hidden>
+    <summary>Needs enrichment (<span id="sfu-enrich-count">0</span>) — missing phone / no GHL match</summary>
+    <div id="sfu-enrich-list" class="sfu-enrich-list"></div>
+  </details>
+</section>
+
+<style>
+  .sfu-panel{color:#e7e9ee;font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  .sfu-head{display:flex;align-items:center;gap:10px;margin:4px 0 12px}
+  .sfu-title{margin:0;font-size:15px;font-weight:600}
+  .sfu-pill{background:#1f2430;border:1px solid #2b3242;border-radius:999px;padding:2px 10px;font-size:12px;color:#9aa3b2}
+  .sfu-btn{cursor:pointer;border-radius:8px;border:1px solid #2b3242;background:#1a1f29;color:#e7e9ee;padding:6px 12px;font-size:13px;transition:.15s}
+  .sfu-btn:hover{border-color:#3a4256;background:#202635}
+  .sfu-btn:disabled{opacity:.5;cursor:not-allowed}
+  .sfu-btn-ghost{background:transparent}
+  .sfu-btn-primary{background:linear-gradient(90deg,#00f2ea,#0094ff);border:none;color:#06121a;font-weight:600}
+  .sfu-btn-primary:hover{filter:brightness(1.08)}
+  .sfu-btn-edit{background:#23202e;border-color:#3a3050;color:#cdb4ff}
+  .sfu-status{min-height:0;margin:0 0 10px;font-size:13px;color:#9aa3b2}
+  .sfu-status.err{color:#ff6b81}
+  .sfu-status.ok{color:#43e6b0}
+  .sfu-list{display:flex;flex-direction:column;gap:12px}
+  .sfu-card{border:1px solid #262c3a;background:#12151d;border-radius:12px;padding:14px}
+  .sfu-card[data-sent="1"]{opacity:.6}
+  .sfu-card-top{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+  .sfu-name{font-weight:600}
+  .sfu-handle{color:#7e8aa0;font-size:13px}
+  .sfu-vids{margin-left:auto;font-size:12px;color:#9aa3b2;background:#171b25;border:1px solid #262c3a;border-radius:6px;padding:2px 8px}
+  .sfu-evid{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 10px}
+  .sfu-badge{font-size:11px;border-radius:6px;padding:2px 8px;border:1px solid #2b3242;background:#171b25;color:#aeb7c7}
+  .sfu-badge[data-src="reacher_sample"]{border-color:#1f5f4a;color:#43e6b0}
+  .sfu-badge[data-src="reacher_collab"]{border-color:#1f4a5f;color:#4fc3ff}
+  .sfu-badge[data-src="tiktok_video"]{border-color:#5f1f4a;color:#ff6bd0}
+  .sfu-badge[data-src="ghl_note"]{border-color:#5f4a1f;color:#e6c043}
+  .sfu-evid-detail{font-size:12px;color:#8b94a6;margin:0 0 10px}
+  .sfu-ta{width:100%;box-sizing:border-box;min-height:84px;resize:vertical;background:#0d1016;border:1px solid #262c3a;border-radius:8px;color:#e7e9ee;padding:10px;font:13px/1.45 inherit}
+  .sfu-ta[readonly]{opacity:.85;background:#0b0e13}
+  .sfu-ta:focus{outline:none;border-color:#0094ff}
+  .sfu-actions{display:flex;gap:8px;margin-top:10px}
+  .sfu-card-msg{margin-top:8px;font-size:12px}
+  .sfu-card-msg.ok{color:#43e6b0}
+  .sfu-card-msg.err{color:#ff6b81}
+  .sfu-empty{padding:18px;text-align:center;color:#7e8aa0;border:1px dashed #2b3242;border-radius:10px}
+  .sfu-enrich{margin-top:16px;border-top:1px solid #1f2430;padding-top:12px}
+  .sfu-enrich summary{cursor:pointer;color:#9aa3b2;font-size:13px}
+  .sfu-enrich-list{margin-top:8px;display:flex;flex-direction:column;gap:6px}
+  .sfu-enrich-row{font-size:12px;color:#8b94a6;display:flex;gap:8px;align-items:center}
+  .sfu-enrich-row .sfu-handle{color:#9aa3b2}
+  .sfu-enrich-reason{background:#171b25;border:1px solid #5f3a1f;color:#e6a043;border-radius:6px;padding:1px 7px;font-size:11px}
+</style>
+
+<script>
+/* ── SMS Follow-up panel (namespaced sfu*) ──────────────────────────────── */
+(function () {
+  'use strict';
+
+  const LIST_URL = '/api/sms-followup/lists';
+  const SEND_URL = '/api/creators/sms'; // existing GHL bulk-SMS handler
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) {
+    return String(s == null ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+  }
+  function setStatus(msg, kind) {
+    const el = $('sfu-status'); if (!el) return;
+    el.textContent = msg || '';
+    el.className = 'sfu-status' + (kind ? ' ' + kind : '');
+  }
+
+  const SRC_LABEL = {
+    reacher_sample: 'Sample', reacher_collab: 'Collab',
+    tiktok_video: 'Video', ghl_note: 'Note', manual: 'Manual'
+  };
+
+  /* Build one ready-creator card. The draftMessage is the ONLY thing that
+     gets sent; nothing is auto-fired. */
+  function cardHTML(c, i) {
+    const handle = c.handle || '';
+    const name = c.name || handle || 'Unknown';
+    const phone = c.phone || '';
+    const contactId = c.contactId || c.creatorId || '';
+    const draft = c.draftMessage || '';
+    const vids = (typeof c.videoCount === 'number') ? c.videoCount : null;
+    const evidence = Array.isArray(c.sampleEvidence) ? c.sampleEvidence : [];
+
+    const badges = evidence.map(function (e) {
+      const src = (e && e.source) || 'manual';
+      return '<span class="sfu-badge" data-src="' + esc(src) + '" title="' +
+        esc(e && e.detail || '') + '">' + esc(SRC_LABEL[src] || src) + '</span>';
+    }).join('');
+
+    const detailLines = evidence
+      .filter(function (e) { return e && e.detail; })
+      .map(function (e) { return esc(e.detail); })
+      .join(' · ');
+
+    return '' +
+      '<div class="sfu-card" data-i="' + i + '" data-contact="' + esc(contactId) +
+        '" data-phone="' + esc(phone) + '" data-name="' + esc(name) + '" data-sent="0">' +
+        '<div class="sfu-card-top">' +
+          '<span class="sfu-name">' + esc(name) + '</span>' +
+          '<span class="sfu-handle">@' + esc(handle) + '</span>' +
+          (vids != null ? '<span class="sfu-vids">' + vids + ' video' + (vids === 1 ? '' : 's') + '</span>' : '') +
+        '</div>' +
+        (badges ? '<div class="sfu-evid">' + badges + '</div>' : '') +
+        (detailLines ? '<div class="sfu-evid-detail">' + detailLines + '</div>' : '') +
+        '<textarea class="sfu-ta" readonly>' + esc(draft) + '</textarea>' +
+        '<div class="sfu-actions">' +
+          '<button class="sfu-btn sfu-btn-primary" data-act="approve">Approve &amp; Send</button>' +
+          '<button class="sfu-btn sfu-btn-edit" data-act="edit">Edit</button>' +
+        '</div>' +
+        '<div class="sfu-card-msg" hidden></div>' +
+      '</div>';
+  }
+
+  function enrichRowHTML(c) {
+    const reasons = Array.isArray(c.reasons) ? c.reasons
+      : (Array.isArray(c.missing) ? c.missing : []);
+    const tags = reasons.map(function (r) {
+      return '<span class="sfu-enrich-reason">' + esc(r) + '</span>';
+    }).join(' ');
+    return '<div class="sfu-enrich-row"><span class="sfu-handle">@' +
+      esc(c.handle || '') + '</span>' + tags + '</div>';
+  }
+
+  /* Toggle a card's textarea between read-only (approve as-is) and editable. */
+  function onEdit(card) {
+    const ta = card.querySelector('.sfu-ta');
+    const btnPrimary = card.querySelector('[data-act="approve"]');
+    const btnEdit = card.querySelector('[data-act="edit"]');
+    if (ta.hasAttribute('readonly')) {
+      ta.removeAttribute('readonly');
+      ta.focus();
+      btnEdit.textContent = 'Lock';
+      btnPrimary.textContent = 'Send edited';
+    } else {
+      ta.setAttribute('readonly', '');
+      btnEdit.textContent = 'Edit';
+      btnPrimary.textContent = 'Approve & Send';
+    }
+  }
+
+  /* MANUAL send only — invoked from the Approve/Send button click handler. */
+  async function onSend(card) {
+    if (card.getAttribute('data-sent') === '1') return;
+    const ta = card.querySelector('.sfu-ta');
+    const msgEl = card.querySelector('.sfu-card-msg');
+    const buttons = card.querySelectorAll('.sfu-actions button');
+    const message = (ta.value || '').trim();
+    const contactId = card.getAttribute('data-contact');
+    const phone = card.getAttribute('data-phone');
+    const name = card.getAttribute('data-name');
+
+    msgEl.hidden = true; msgEl.className = 'sfu-card-msg';
+
+    if (!message) { msgEl.hidden = false; msgEl.className = 'sfu-card-msg err'; msgEl.textContent = 'Message is empty.'; return; }
+    if (!contactId && !phone) { msgEl.hidden = false; msgEl.className = 'sfu-card-msg err'; msgEl.textContent = 'No GHL contact / phone — cannot send.'; return; }
+
+    buttons.forEach(function (b) { b.disabled = true; });
+    msgEl.hidden = false; msgEl.textContent = 'Sending…';
+
+    try {
+      const resp = await fetch(SEND_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          // /api/creators/sms expects contacts:[{id,name,phone}] + message
+          contacts: [{ id: contactId, name: name, phone: phone }],
+          message: message
+        })
+      });
+      const data = await resp.json().catch(function () { return {}; });
+      const r0 = data && Array.isArray(data.results) ? data.results[0] : null;
+      const ok = resp.ok && (data.ok === true || (r0 && r0.ok === true));
+      if (!ok) {
+        const err = (r0 && r0.error) || data.error || ('HTTP ' + resp.status);
+        throw new Error(err);
+      }
+      card.setAttribute('data-sent', '1');
+      msgEl.className = 'sfu-card-msg ok';
+      msgEl.textContent = '✓ Sent';
+      ta.setAttribute('readonly', '');
+      // keep buttons disabled after a successful send
+    } catch (e) {
+      msgEl.className = 'sfu-card-msg err';
+      msgEl.textContent = '✗ ' + (e && e.message ? e.message : 'Send failed');
+      buttons.forEach(function (b) { b.disabled = false; });
+    }
+  }
+
+  /* Single delegated click handler for the whole ready list. */
+  function onListClick(ev) {
+    const btn = ev.target.closest('button[data-act]');
+    if (!btn) return;
+    const card = btn.closest('.sfu-card');
+    if (!card) return;
+    if (btn.dataset.act === 'edit') onEdit(card);
+    else if (btn.dataset.act === 'approve') onSend(card);
+  }
+
+  async function sfuLoad() {
+    setStatus('Loading flagged creators…');
+    const readyEl = $('sfu-ready-list');
+    const enrichWrap = $('sfu-enrich-wrap');
+    const enrichEl = $('sfu-enrich-list');
+    if (readyEl) readyEl.innerHTML = '';
+    try {
+      const resp = await fetch(LIST_URL, { headers: { 'Accept': 'application/json' } });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const data = await resp.json();
+
+      const ready = (data && data.ready && Array.isArray(data.ready.creators)) ? data.ready.creators : [];
+      const enrich = (data && data.needsEnrichment && Array.isArray(data.needsEnrichment.creators)) ? data.needsEnrichment.creators : [];
+
+      const pill = $('sfu-count');
+      if (pill) pill.textContent = ready.length + ' ready · ' + enrich.length + ' need enrichment';
+
+      if (!ready.length) {
+        readyEl.innerHTML = '<div class="sfu-empty">No flagged creators ready to message right now.</div>';
+      } else {
+        readyEl.innerHTML = ready.map(cardHTML).join('');
+      }
+
+      if (enrich.length && enrichWrap) {
+        enrichWrap.hidden = false;
+        $('sfu-enrich-count').textContent = enrich.length;
+        enrichEl.innerHTML = enrich.map(enrichRowHTML).join('');
+      } else if (enrichWrap) {
+        enrichWrap.hidden = true;
+      }
+
+      setStatus(data.generatedAt ? ('Updated ' + new Date(data.generatedAt).toLocaleString()) : '', 'ok');
+    } catch (e) {
+      setStatus('Failed to load: ' + (e && e.message ? e.message : e), 'err');
+      if (readyEl) readyEl.innerHTML = '<div class="sfu-empty">Could not load the follow-up list.</div>';
+    }
+  }
+
+  // Wire delegated click handler once.
+  const readyList = $('sfu-ready-list');
+  if (readyList) readyList.addEventListener('click', onListClick);
+
+  // Expose for the Refresh button + external triggers (e.g. tab switch).
+  window.sfuLoad = sfuLoad;
+
+  // Auto-load when the snippet is parsed (idempotent).
+  sfuLoad();
+})();
+</script>
+
+<!-- ────────────────────────────────────────────────────────────────────────
+     SMS Follow-up · Needs-Enrichment WORKLIST  (read-only, no send controls)
+     Task a0590b7d0572 · Step 7 of 10
+──────────────────────────────────────────────────────────────────────── -->
+<section id="sfe-panel" class="sfe-panel">
+
+  <!-- ── Tab toggle: Ready ⇆ Needs enrichment ─────────────────────────── -->
+  <div class="sfe-tabs" id="sfe-tabs" role="tablist" aria-label="SMS follow-up views">
+    <button class="sfe-tab is-active" id="sfe-tab-ready" role="tab"
+            aria-selected="true"  aria-controls="sfe-view-ready"
+            onclick="sfeShow('ready')">
+      Ready to message <span class="sfe-tabcount" id="sfe-tabcount-ready">0</span>
+    </button>
+    <button class="sfe-tab" id="sfe-tab-enrich" role="tab"
+            aria-selected="false" aria-controls="sfe-view-enrich"
+            onclick="sfeShow('enrich')">
+      Needs enrichment <span class="sfe-tabcount warn" id="sfe-tabcount-enrich">0</span>
+    </button>
+  </div>
+
+  <!-- ── VIEW 1: ready list host (the ready snippet renders into here) ─── -->
+  <div id="sfe-view-ready" class="sfe-view" role="tabpanel" aria-labelledby="sfe-tab-ready">
+    <!-- Mount the existing #sfu-* ready list / status / cards inside this div. -->
+    <div id="sfe-ready-slot"></div>
+  </div>
+
+  <!-- ── VIEW 2: needs-enrichment WORKLIST (read-only) ────────────────── -->
+  <div id="sfe-view-enrich" class="sfe-view" role="tabpanel" aria-labelledby="sfe-tab-enrich" hidden>
+    <p class="sfe-blurb">
+      These creators were flagged but <strong>can't be messaged yet</strong> —
+      they're missing a phone number or a matching GHL contact. Enrich them in
+      GHL, then refresh to move them into the "Ready to message" list. No
+      messages are sent from this view.
+    </p>
+    <div id="sfe-enrich-status" class="sfe-status" role="status" aria-live="polite"></div>
+    <div id="sfe-enrich-list" class="sfe-enrich-list"></div>
+  </div>
+
+</section>
+
+<style>
+  .sfe-panel{color:#e7e9ee;font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+
+  /* Tabs */
+  .sfe-tabs{display:flex;gap:6px;border-bottom:1px solid #1f2430;margin:4px 0 14px}
+  .sfe-tab{cursor:pointer;background:transparent;border:none;border-bottom:2px solid transparent;
+    color:#8b94a6;padding:8px 12px;font:600 13px/1 inherit;display:flex;align-items:center;gap:7px;
+    transition:.15s;margin-bottom:-1px}
+  .sfe-tab:hover{color:#cdd3df}
+  .sfe-tab.is-active{color:#e7e9ee;border-bottom-color:#00f2ea}
+  .sfe-tabcount{min-width:18px;height:18px;padding:0 6px;border-radius:999px;background:#1f2430;
+    border:1px solid #2b3242;color:#9aa3b2;font-size:11px;display:inline-flex;align-items:center;justify-content:center}
+  .sfe-tabcount.warn{border-color:#5f3a1f;color:#e6a043;background:#1c160d}
+  .sfe-tab.is-active .sfe-tabcount{background:#11343a;border-color:#0c5a5a;color:#43e6e6}
+  .sfe-tab.is-active .sfe-tabcount.warn{background:#241a0c;border-color:#7a4d1f;color:#ffbe5e}
+
+  /* Views */
+  .sfe-view[hidden]{display:none}
+  .sfe-blurb{font-size:13px;color:#9aa3b2;margin:0 0 12px;max-width:62ch}
+  .sfe-status{min-height:0;margin:0 0 10px;font-size:13px;color:#9aa3b2}
+  .sfe-status.err{color:#ff6b81}
+
+  /* Worklist rows */
+  .sfe-enrich-list{display:flex;flex-direction:column;gap:8px}
+  .sfe-row{display:grid;grid-template-columns:minmax(0,1.2fr) auto minmax(0,1.6fr);gap:12px;align-items:center;
+    border:1px solid #262c3a;background:#12151d;border-radius:10px;padding:10px 14px}
+  .sfe-id{min-width:0}
+  .sfe-name{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sfe-handle{color:#7e8aa0;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sfe-missing{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-start}
+  .sfe-chip{font-size:11px;border-radius:6px;padding:2px 8px;border:1px solid #5f3a1f;background:#1c160d;color:#e6a043;white-space:nowrap}
+  .sfe-chip[data-k="ghlContact"]{border-color:#5f1f2a;background:#1c0d10;color:#ff8095}
+  .sfe-reason{font-size:12px;color:#8b94a6;min-width:0}
+  .sfe-empty{padding:18px;text-align:center;color:#43e6b0;border:1px dashed #1f5f4a;border-radius:10px;background:#0d1612}
+  @media (max-width:640px){
+    .sfe-row{grid-template-columns:1fr;gap:6px;align-items:start}
+    .sfe-missing{justify-content:flex-start}
+  }
+</style>
+
+<script>
+/* ── SMS Follow-up · Needs-enrichment worklist (namespaced sfe*) ─────────── */
+(function () {
+  'use strict';
+
+  const LIST_URL = '/api/sms-followup/lists';
+
+  function $(id){ return document.getElementById(id); }
+  function esc(s){
+    return String(s == null ? '' : s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+  function setStatus(msg, kind){
+    const el = $('sfe-enrich-status'); if(!el) return;
+    el.textContent = msg || '';
+    el.className = 'sfe-status' + (kind ? ' ' + kind : '');
+  }
+
+  /* Tab toggle — flips [hidden] on the two views, independent of any list
+     state. Exposed globally for the inline onclick handlers. */
+  function sfeShow(which){
+    const isReady = which === 'ready';
+    const vR = $('sfe-view-ready'), vE = $('sfe-view-enrich');
+    const tR = $('sfe-tab-ready'),  tE = $('sfe-tab-enrich');
+    if (vR) vR.hidden = !isReady;
+    if (vE) vE.hidden =  isReady;
+    if (tR){ tR.classList.toggle('is-active', isReady);  tR.setAttribute('aria-selected', String(isReady)); }
+    if (tE){ tE.classList.toggle('is-active', !isReady); tE.setAttribute('aria-selected', String(!isReady)); }
+  }
+  window.sfeShow = sfeShow;
+
+  /* Map a coded reason → { missing-keys[], human reason }.
+     Handles the LIVE partitioner codes (no_handle_match, no_phone, …) and
+     passes through any contract-style strings unchanged. */
+  const REASON_META = {
+    no_handle_match: { keys:['ghlContact'], text:'No matching GHL contact found for this TikTok handle' },
+    no_ghl_contact:  { keys:['ghlContact'], text:'No GHL contact linked to this creator' },
+    no_contact:      { keys:['ghlContact'], text:'No GHL contact linked to this creator' },
+    no_phone:        { keys:['phone'],      text:'GHL contact found but has no phone number on file' },
+    missing_phone:   { keys:['phone'],      text:'GHL contact found but has no phone number on file' },
+    phone:           { keys:['phone'],      text:'Missing phone number' },
+    ghlContact:      { keys:['ghlContact'], text:'Missing GHL contact' }
+  };
+  const KEY_LABEL = { phone:'Needs phone', ghlContact:'Needs GHL contact' };
+
+  /* Normalize one needsEnrichment entry across both contract + live shapes. */
+  function normalize(c){
+    const handle = c.handle || '';
+    const name   = c.name || handle || 'Unknown';
+
+    // reasons[] (live) OR missing[] (contract) — coalesce to a code list.
+    const codes = Array.isArray(c.reasons) ? c.reasons
+                : Array.isArray(c.missing) ? c.missing
+                : [];
+
+    // Derive the set of missing-data keys (phone / ghlContact).
+    const keySet = new Set();
+    codes.forEach(function(code){
+      const m = REASON_META[code];
+      if (m) m.keys.forEach(function(k){ keySet.add(k); });
+    });
+    if (Array.isArray(c.missing)) c.missing.forEach(function(k){
+      if (k === 'phone' || k === 'ghlContact') keySet.add(k);
+    });
+    if (keySet.size === 0) keySet.add('ghlContact'); // safe default: needs a contact
+
+    // Human reason: prefer explicit contract `reason`, else map first code.
+    let reason = (typeof c.reason === 'string' && c.reason) ? c.reason : '';
+    if (!reason && codes.length){
+      reason = codes.map(function(code){
+        return (REASON_META[code] && REASON_META[code].text) || code;
+      }).join('; ');
+    }
+    if (!reason) reason = 'Missing contact data';
+
+    return { handle, name, keys: Array.from(keySet), reason };
+  }
+
+  function rowHTML(c){
+    const n = normalize(c);
+    const chips = n.keys.map(function(k){
+      return '<span class="sfe-chip" data-k="' + esc(k) + '">' +
+        esc(KEY_LABEL[k] || k) + '</span>';
+    }).join('');
+    return '' +
+      '<div class="sfe-row">' +
+        '<div class="sfe-id">' +
+          '<div class="sfe-name">' + esc(n.name) + '</div>' +
+          '<div class="sfe-handle">@' + esc(n.handle) + '</div>' +
+        '</div>' +
+        '<div class="sfe-missing">' + (chips || '<span class="sfe-chip">Needs data</span>') + '</div>' +
+        '<div class="sfe-reason">' + esc(n.reason) + '</div>' +
+      '</div>';
+  }
+
+  function renderEnrich(list){
+    const host = $('sfe-enrich-list'); if(!host) return;
+    if (!Array.isArray(list) || list.length === 0){
+      host.innerHTML = '<div class="sfe-empty">Nothing to enrich — every flagged creator has a phone &amp; GHL contact. 🎉</div>';
+    } else {
+      host.innerHTML = list.map(rowHTML).join('');
+    }
+    const enrichCount = Array.isArray(list) ? list.length : 0;
+    const tcE = $('sfe-tabcount-enrich'); if (tcE) tcE.textContent = enrichCount;
+  }
+
+  function setReadyCount(n){
+    const tc = $('sfe-tabcount-ready'); if (tc) tc.textContent = (n|0);
+  }
+
+  /* Public loader — fetch lists and paint the enrichment tab. The ready
+     snippet owns the ready list; we only read its count here for the tab. */
+  function sfeLoadEnrichment(){
+    setStatus('Loading…');
+    fetch(LIST_URL, { credentials:'same-origin', headers:{ Accept:'application/json' } })
+      .then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function(data){
+        const ne = (data && data.needsEnrichment) || {};
+        const creators = Array.isArray(ne.creators) ? ne.creators
+                        : Array.isArray(ne) ? ne : [];
+        const readyCount = (data && data.counts && typeof data.counts.ready === 'number')
+          ? data.counts.ready
+          : ((data && data.ready && Array.isArray(data.ready.creators)) ? data.ready.creators.length : 0);
+        setReadyCount(readyCount);
+        renderEnrich(creators);
+        setStatus('');
+      })
+      .catch(function(err){
+        setStatus('Could not load enrichment list: ' + (err && err.message || err), 'err');
+        renderEnrich([]); // shows empty/clean state rather than stale data
+      });
+  }
+  window.sfeLoadEnrichment = sfeLoadEnrichment;
+
+  /* Auto-load once on insert so the tab badge + worklist are populated even
+     before the operator clicks into the enrichment tab. */
+  if (document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', sfeLoadEnrichment);
+  } else {
+    sfeLoadEnrichment();
+  }
+})();
+</script>
+
       </div>
     </div>
 
@@ -5112,7 +5621,7 @@ function afSubTab(tab) {
     document.getElementById(`af-pane-${t}`).style.display = t===tab ? '' : 'none';
   });
   if (tab === 'clients' && !AF.shops.length) afLoadClients();
-  if (tab === 'unibox') ubLoadConversations();
+  if (tab === 'unibox') { ubLoadConversations(); if (window.sfuLoad) sfuLoad(); }
 }
 
 // Normalize shop objects — Reacher returns {shop_id, shop_name}, map to consistent shape
