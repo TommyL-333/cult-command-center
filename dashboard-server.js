@@ -2425,7 +2425,7 @@ app.post('/client/logout', (req, res) => {
 
 function requirePortalAdmin(req, res, next) {
   if (!req.session?.isPortalAdmin) {
-    if (req.path.startsWith('/api/') || req.path.startsWith('/portal-admin/clients') || req.path.startsWith('/portal-admin/impersonate')) {
+    if (req.path.startsWith('/api/') || req.path.startsWith('/portal-admin/clients') || req.path.startsWith('/portal-admin/impersonate') || req.path.startsWith('/portal-admin/open-collab')) {
       return res.status(401).json({ error: 'Not authenticated' });
     }
     return res.redirect('/portal-admin');
