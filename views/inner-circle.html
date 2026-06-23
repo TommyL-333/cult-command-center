@@ -921,6 +921,14 @@
     .cw-state.error { color: #ff6b81; }
     .cw-spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.2); border-top-color: #00f2ea; border-radius: 50%; animation: cwspin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
     @keyframes cwspin { to { transform: rotate(360deg); } }
+    /* ── Generate button / wizard footer (IC Content Engine) ── */
+    .cw-footer { margin-top: 26px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,0.08); }
+    .cw-generate { width: 100%; box-sizing: border-box; padding: 14px 18px; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; color: #0a0b12; cursor: pointer; background: linear-gradient(90deg, #00f2ea, #ff0050); transition: opacity 0.15s, filter 0.15s; }
+    .cw-generate:hover:not(:disabled) { filter: brightness(1.08); }
+    .cw-generate:disabled { opacity: 0.55; cursor: not-allowed; }
+    .cw-generate .cw-spinner { border-top-color: #0a0b12; border-color: rgba(10,11,18,0.3); border-top-color: #0a0b12; margin-right: 8px; }
+    .cw-gen-error { margin-top: 12px; padding: 12px 14px; border-radius: 10px; background: rgba(255,107,129,0.12); border: 1px solid rgba(255,107,129,0.3); color: #ff6b81; font-size: 13px; line-height: 1.4; display: none; }
+    .cw-gen-error.show { display: block; }
     .cw-retry { margin-top: 12px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14); color: #fff; padding: 8px 16px; border-radius: 8px; font-size: 13px; cursor: pointer; }
     .cw-retry:hover { background: rgba(255,255,255,0.14); }
     /* ── audience profile + target audience fields ── */
@@ -1066,6 +1074,12 @@
               <label class="cw-radio"><input type="radio" name="cw-format" value="product-demo" onchange="captureFunnelState()"><span>Product demo</span></label>
             </div>
           </div>
+        </div>
+
+        <!-- (9) Generate -->
+        <div class="cw-footer">
+          <button id="cw-generate-btn" class="cw-generate" type="button" onclick="generateScripts()">Generate scripts</button>
+          <div id="cw-gen-error" class="cw-gen-error" role="alert"></div>
         </div>
       </div>
     </div>
@@ -1526,6 +1540,95 @@
         scriptLength: checkedRadio('cw-script-length'),
         format: checkedRadio('cw-format')
       };
+    }
+
+    // ── Generate: collect wizard state, validate, POST to Task 2 contract ──
+    // Payload matches /api/inner-circle/generate-scripts (resolveProductContext expects
+    // brandSlug + productId + productName; audience + brief carry the rest of the brief).
+    function setGenError(msg) {
+      const el = document.getElementById('cw-gen-error');
+      if (!el) return;
+      if (msg) { el.textContent = msg; el.classList.add('show'); }
+      else { el.textContent = ''; el.classList.remove('show'); }
+    }
+
+    function setGenLoading(loading) {
+      const btn = document.getElementById('cw-generate-btn');
+      if (!btn) return;
+      btn.disabled = !!loading;
+      btn.innerHTML = loading
+        ? '<span class="cw-spinner"></span>Generating…'
+        : 'Generate scripts';
+    }
+
+    async function generateScripts() {
+      // Make sure the latest form values are captured before validating.
+      captureAudienceState();
+      captureFunnelState();
+      setGenError('');
+
+      // ── Required-field validation ──
+      if (cwState.selectedId == null || String(cwState.selectedId) === '') {
+        setGenError('Please pick a product to feature first.');
+        return;
+      }
+      const a = cwState.audience || {};
+      const b = cwState.brief || {};
+      if (!a.targetGender) { setGenError('Please choose who this video is for (target gender).'); return; }
+      if (!a.painPoints) { setGenError('Tell us the pain points this product solves for the audience.'); return; }
+      if (!Array.isArray(b.funnelStage) || b.funnelStage.length === 0) { setGenError('Pick at least one funnel stage.'); return; }
+      if (!b.scriptLength) { setGenError('Choose a script length.'); return; }
+      if (!b.format) { setGenError('Choose a video format.'); return; }
+
+      // Resolve the selected product object so we can pass its name (Task 2 contract).
+      const selected = (cwState.products || []).find(function (p) {
+        return p && String(p.id) === String(cwState.selectedId);
+      }) || null;
+
+      const payload = {
+        brandId: cwState.brandId,
+        brandSlug: cwState.brandSlug,
+        productId: cwState.selectedId,
+        productName: selected ? selected.name : null,
+        audience: {
+          creatorAgeGroup: a.creatorAgeGroup || '',
+          creatorDetails: a.creatorDetails || '',
+          targetGender: a.targetGender || '',
+          targetAgeRange: a.targetAgeRange || '',
+          targetInterests: a.targetInterests || '',
+          painPoints: a.painPoints || ''
+        },
+        brief: {
+          funnelStage: Array.isArray(b.funnelStage) ? b.funnelStage : [],
+          scriptLength: b.scriptLength || '',
+          format: b.format || ''
+        }
+      };
+
+      setGenLoading(true);
+      try {
+        const res = await fetch('/api/inner-circle/generate-scripts', {
+          method: 'POST',
+          headers: { ...AUTH_HEADERS, 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (res.status === 401) { logout(); return; }
+        let data = null;
+        try { data = await res.json(); } catch (_) { data = null; }
+        if (!res.ok) {
+          const msg = (data && (data.error || data.message)) || ('Generation failed (' + res.status + '). Please try again.');
+          throw new Error(msg);
+        }
+        // Hand off to the results renderer (next wizard step). renderScripts is defined
+        // by the results step; guard so a missing renderer never throws here.
+        if (typeof renderScripts === 'function') { renderScripts(data); }
+        else { console.log('[IC wizard] scripts generated:', data); }
+      } catch (err) {
+        console.error('Script generation failed:', err);
+        setGenError(err && err.message ? err.message : 'Something went wrong generating your scripts. Please try again.');
+      } finally {
+        setGenLoading(false);
+      }
     }
 
     // ── end IC Content Engine wizard ──
