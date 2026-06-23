@@ -895,6 +895,54 @@
     </div>
   </div>
 
+  <!-- ── IC Content Engine: "Create your next videos" wizard ── -->
+  <style>
+    #content-wizard { position: fixed; inset: 0; z-index: 1000; display: none; align-items: flex-start; justify-content: center; background: rgba(8,9,18,0.78); backdrop-filter: blur(6px); overflow-y: auto; padding: 48px 16px; }
+    #content-wizard.open { display: flex; }
+    .cw-modal { width: 100%; max-width: 640px; background: #161823; border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; box-shadow: 0 24px 80px rgba(0,0,0,0.55); overflow: hidden; }
+    .cw-header { display: flex; align-items: center; justify-content: space-between; padding: 22px 24px; background: linear-gradient(135deg, rgba(0,242,234,0.10), rgba(255,0,80,0.10)); border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .cw-header h2 { margin: 0; font-size: 19px; color: #fff; }
+    .cw-header p { margin: 4px 0 0; font-size: 13px; color: rgba(255,255,255,0.55); }
+    .cw-close { background: none; border: none; color: rgba(255,255,255,0.6); font-size: 26px; line-height: 1; cursor: pointer; padding: 0 4px; }
+    .cw-close:hover { color: #fff; }
+    .cw-body { padding: 24px; }
+    .cw-field-label { display: block; font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.85); margin-bottom: 8px; }
+    .cw-search { width: 100%; box-sizing: border-box; padding: 12px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: #10121c; color: #fff; font-size: 14px; margin-bottom: 10px; }
+    .cw-search:focus { outline: none; border-color: #00f2ea; }
+    .cw-search:disabled { opacity: 0.5; cursor: not-allowed; }
+    .cw-product-list { max-height: 280px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; background: #10121c; }
+    .cw-product-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.12s; }
+    .cw-product-item:last-child { border-bottom: none; }
+    .cw-product-item:hover { background: rgba(0,242,234,0.06); }
+    .cw-product-item.selected { background: rgba(0,242,234,0.12); }
+    .cw-product-thumb { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; background: rgba(255,255,255,0.06); flex-shrink: 0; }
+    .cw-product-name { font-size: 14px; color: #fff; line-height: 1.3; }
+    .cw-state { padding: 28px 14px; text-align: center; color: rgba(255,255,255,0.55); font-size: 14px; }
+    .cw-state.error { color: #ff6b81; }
+    .cw-spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.2); border-top-color: #00f2ea; border-radius: 50%; animation: cwspin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
+    @keyframes cwspin { to { transform: rotate(360deg); } }
+    .cw-retry { margin-top: 12px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14); color: #fff; padding: 8px 16px; border-radius: 8px; font-size: 13px; cursor: pointer; }
+    .cw-retry:hover { background: rgba(255,255,255,0.14); }
+  </style>
+  <div id="content-wizard" role="dialog" aria-modal="true" aria-labelledby="cw-title">
+    <div class="cw-modal">
+      <div class="cw-header">
+        <div>
+          <h2 id="cw-title">Create your next videos</h2>
+          <p id="cw-subtitle">Pick the product you want to feature</p>
+        </div>
+        <button class="cw-close" type="button" onclick="closeContentWizard()" aria-label="Close">&times;</button>
+      </div>
+      <div class="cw-body">
+        <label class="cw-field-label" for="cw-search">Product</label>
+        <input id="cw-search" class="cw-search" type="text" placeholder="Search products…" autocomplete="off" oninput="filterWizardProducts(this.value)" disabled>
+        <div class="cw-product-list" id="cw-product-list">
+          <div class="cw-state"><span class="cw-spinner"></span>Loading products…</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     // Auth check — token is stored by the login page (/inner-circle)
     const authToken = localStorage.getItem('inner_circle_token');
@@ -1202,6 +1250,104 @@
     }
     loadRates();
     // ── IC_RATES_JS_END ──
+
+    // ── IC Content Engine wizard: searchable product dropdown ──
+    // State for the currently-open wizard.
+    let cwState = { brandId: null, brandSlug: null, products: [], filtered: [], selectedId: null };
+
+    function openContentWizard(brandId, brandSlug) {
+      cwState = { brandId: brandId, brandSlug: brandSlug, products: [], filtered: [], selectedId: null };
+      const modal = document.getElementById('content-wizard');
+      modal.classList.add('open');
+      document.body.style.overflow = 'hidden';
+      const search = document.getElementById('cw-search');
+      search.value = '';
+      search.disabled = true;
+      loadWizardProducts(brandId);
+    }
+
+    function closeContentWizard() {
+      const modal = document.getElementById('content-wizard');
+      modal.classList.remove('open');
+      document.body.style.overflow = '';
+    }
+
+    // Close on backdrop click / Escape.
+    document.getElementById('content-wizard').addEventListener('click', function (e) {
+      if (e.target === this) closeContentWizard();
+    });
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && document.getElementById('content-wizard').classList.contains('open')) closeContentWizard();
+    });
+
+    function setWizardState(html) {
+      document.getElementById('cw-product-list').innerHTML = html;
+    }
+
+    async function loadWizardProducts(brandId) {
+      setWizardState('<div class="cw-state"><span class="cw-spinner"></span>Loading products…</div>');
+      try {
+        const res = await fetch('/api/inner-circle/brands/' + encodeURIComponent(brandId) + '/products', { headers: AUTH_HEADERS });
+        if (res.status === 401) { logout(); return; }
+        if (!res.ok) throw new Error('products fetch failed (' + res.status + ')');
+        const data = await res.json();
+        // Accept a few shapes: {products:[...]}, [...], or {data:{products:[...]}}
+        const list = Array.isArray(data) ? data
+          : Array.isArray(data.products) ? data.products
+          : (data.data && Array.isArray(data.data.products)) ? data.data.products
+          : [];
+        // Only show this brand's products; guard against null entries.
+        cwState.products = list.filter(Boolean).map(function (p) {
+          return {
+            id: (p.productId != null ? p.productId : (p.id != null ? p.id : (p.product_id != null ? p.product_id : ''))),
+            name: (p.name != null ? p.name : (p.title != null ? p.title : '')),
+            image: (p.image || p.imageUrl || p.thumbnail || '')
+          };
+        });
+        cwState.filtered = cwState.products.slice();
+        const search = document.getElementById('cw-search');
+        search.disabled = false;
+        renderWizardProducts();
+      } catch (err) {
+        console.error('Wizard products load failed:', err);
+        setWizardState(
+          '<div class="cw-state error">Could not load products. Please try again.' +
+          '<br><button class="cw-retry" type="button" onclick="loadWizardProducts(' + "'" + jsStr(brandId) + "'" + ')">Retry</button></div>'
+        );
+      }
+    }
+
+    function filterWizardProducts(q) {
+      const needle = String(q || '').toLowerCase().trim();
+      cwState.filtered = !needle
+        ? cwState.products.slice()
+        : cwState.products.filter(function (p) { return String(p.name).toLowerCase().includes(needle); });
+      renderWizardProducts();
+    }
+
+    function renderWizardProducts() {
+      if (!cwState.filtered.length) {
+        setWizardState('<div class="cw-state">' + (cwState.products.length ? 'No products match your search.' : 'No products available for this brand yet.') + '</div>');
+        return;
+      }
+      const html = cwState.filtered.map(function (p) {
+        const sel = (cwState.selectedId != null && String(cwState.selectedId) === String(p.id)) ? ' selected' : '';
+        const thumb = p.image
+          ? '<img class="cw-product-thumb" src="' + esc(p.image) + '" alt="" onerror="this.style.visibility=' + "'hidden'" + '">'
+          : '<div class="cw-product-thumb"></div>';
+        return '<div class="cw-product-item' + sel + '" data-product-id="' + esc(String(p.id)) + '" onclick="selectWizardProduct(' + "'" + jsStr(String(p.id)) + "'" + ')">' +
+          thumb +
+          '<div class="cw-product-name">' + esc(p.name) + '</div>' +
+          '</div>';
+      }).join('');
+      setWizardState(html);
+    }
+
+    function selectWizardProduct(productId) {
+      cwState.selectedId = productId;
+      renderWizardProducts();
+    }
+    // ── end IC Content Engine wizard ──
 
   </script>
 </body>
