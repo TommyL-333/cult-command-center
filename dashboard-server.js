@@ -5480,6 +5480,9 @@ creatorCadence.mount(app, { DATA_DIR });
 const tiktokApiMap = require('./routes/tiktok-api-map');
 tiktokApiMap.mount(app, { requirePortalAdmin });
 
+const financialDashboard = require('./routes/financial-dashboard');
+financialDashboard.mount(app, { requirePortalAdmin });
+
 app.use(requireAuth); // all other routes require auth in production
 
 // POST /api/client/admin/set-password — CF Access protected; sets/resets a client's login password
