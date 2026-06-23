@@ -404,8 +404,19 @@ function pageHtml() {
 '<script>',
 'var DATA=[],EVENTS=[],BRANDS=[],SENT=[],SENT_LOADED=false,CUR="all",BRAND="";',
 'function esc(s){return (s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}',
-'function badge(b){if(b.status==="sent")return "<span class=\\"badge sent\\">Sent</span>";if(b.cadence==="weekly")return "<span class=\\"badge scheduled\\">Weekly</span>";if(b.cadence==="launch")return "<span class=\\"badge scheduled\\">Scheduled</span>";return "<span class=\\"badge draft\\">Draft</span>";}',
+'function badge(b){if(b.status==="sent")return "<span class=\\"badge sent\\">Sent</span>";if(b.cadence==="followup")return "<span class=\\"badge scheduled\\">Follow-up</span>";if(b.cadence==="weekly")return "<span class=\\"badge scheduled\\">Weekly</span>";if(b.cadence==="launch")return "<span class=\\"badge scheduled\\">Scheduled</span>";return "<span class=\\"badge draft\\">Draft</span>";}',
 'function blastCard(b){',
+'  if(b.cadence==="followup"){',
+'    var sent=b.status==="sent";',
+'    var recs=b.recipients||[];var skipped=b.skipped||[];',
+'    var h="<div class=\\"card\\"><div class=\\"row\\"><span class=\\"lbl\\">"+esc(b.label||"Non-poster follow-up")+"</span>"+badge(b)+"</div>";',
+'    h+="<div class=\\"meta\\">"+(b.brand?esc(b.brand)+" \\u00b7 ":"")+recs.length+" creator"+(recs.length===1?"":"s")+" to text"+(skipped.length?" \\u00b7 "+skipped.length+" skipped (no phone)":"")+"</div>";',
+'    if(recs.length){h+="<details style=\\"margin:6px 0 10px\\"><summary style=\\"cursor:pointer;font-size:12px;color:#8b8b9a\\">Recipients ("+recs.length+")</summary><div style=\\"font-size:12px;color:#aaa;margin-top:4px\\">"+(recs.map(function(r){return "@"+esc(r.handle||r.name||"");}).join(", "))+"</div></details>";}',
+'    if(skipped.length){h+="<details style=\\"margin:0 0 10px\\"><summary style=\\"cursor:pointer;font-size:12px;color:#8b8b9a\\">Skipped — no phone ("+skipped.length+")</summary><div style=\\"font-size:12px;color:#aaa;margin-top:4px\\">"+(skipped.map(function(r){return "@"+esc(r.handle||r.name||"");}).join(", "))+"</div></details>";}',
+'    h+="<textarea class=\\"body\\" id=\\"t_"+b.id+"\\""+(sent?" readonly":"")+">"+esc(b.body)+"</textarea>";',
+'    if(!sent){h+="<div class=\\"btns\\"><button class=\\"btn btn-approve\\" onclick=\\"approveFollowup(\\u0027"+b.id+"\\u0027)\\">Approve &amp; Send</button><button class=\\"btn btn-delete\\" onclick=\\"del(\\u0027"+b.id+"\\u0027)\\">Delete</button></div>";h+="<div class=\\"ro-note\\">Each creator gets their own message with {firstName} substituted. Only recipients with phone numbers will be texted.</div>";}',
+'    h+="</div>";return h;',
+'  }',
 '  var sent=b.status==="sent";',
 '  var aud=b.audienceTag==="affiliate"?"Entire creator community":(b.brand?b.brand+" affiliates":"Brand affiliates");',
 '  var h="<div class=\\"card\\"><div class=\\"row\\"><span class=\\"lbl\\">"+esc(b.label||"SMS")+"</span>"+badge(b)+"</div>";',
@@ -435,9 +446,11 @@ function pageHtml() {
 '  var blasts=DATA.filter(function(b){return !BRAND||b.brandSlug===BRAND;});',
 '  var sched=blasts.filter(function(b){return b.cadence===\"launch\"||b.cadence===\"manual\";});',
 '  var wk=blasts.filter(function(b){return b.cadence==="weekly";});',
+'  var fu=blasts.filter(function(b){return b.cadence==="followup";});',
 '  var trig=EVENTS;',
 '  var html="";',
 '  if(CUR==="all"){',
+'    if(fu.length)html+="<div class=\\"section-h\\">Non-poster follow-ups</div>"+fu.map(blastCard).join("");',
 '    if(sched.length)html+="<div class=\\"section-h\\">Scheduled messages</div>"+sched.map(blastCard).join("");',
 '    if(wk.length)html+="<div class=\\"section-h\\">Weekly messages</div>"+wk.map(blastCard).join("");',
 '    html+="<div class=\\"section-h\\">Automatic triggers</div>"+trig.map(eventCard).join("");',
@@ -456,6 +469,7 @@ function pageHtml() {
 'function setBrand(v){BRAND=v;render();}',
 'function fillBrands(){var sel=document.getElementById("brand");BRANDS.forEach(function(b){var o=document.createElement("option");o.value=b.slug;o.textContent=b.name;sel.appendChild(o);});}',
 'function approve(id){var body=document.getElementById("t_"+id).value;if(!confirm("Approve and send this text to everyone in the audience now?"))return;fetch("/api/sms-communication/blasts/"+id+"/send",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({body:body})}).then(function(r){return r.json();}).then(function(res){if(res.error){alert("Error: "+res.error);}else{alert("Sent to "+res.sent+" of "+res.audience+" creators.");}load();});}',
+'function approveFollowup(id){var body=document.getElementById("t_"+id).value;var b=DATA.find(function(x){return x.id===id;});var n=b&&b.recipients?b.recipients.length:0;if(!confirm("Send this personalized text to "+n+" "+(b?b.brand:"")+" creators who have not posted? Each gets their own {firstName}."))return;fetch("/api/sms-communication/followup/"+id+"/send",{method:"POST",credentials:"include",headers:{"Content-Type":"application/json"},body:JSON.stringify({body:body})}).then(function(r){return r.json();}).then(function(res){if(res.error){alert("Error: "+res.error);}else{alert("Sent to "+res.sent+" of "+res.total+" creators."+(res.firstError?" First error: "+res.firstError:""));}load();});}',
 'function del(id){if(!confirm(\"Delete this draft? This cannot be undone.\"))return;fetch(\"/api/sms-communication/blasts/\"+id,{method:\"DELETE\",credentials:\"include\"}).then(function(r){return r.json();}).then(function(res){if(res.error){alert(\"Error: \"+res.error);}else{load();}});}',
 'function load(){fetch("/api/sms-communication/blasts",{credentials:"include"}).then(function(r){return r.json();}).then(function(d){DATA=d.blasts||[];EVENTS=d.events||[];BRANDS=d.brands||[];fillBrands();render();});}',
 'function loadSent(){fetch("/api/sms-communication/sent?limit=200",{credentials:"include"}).then(function(r){return r.json();}).then(function(d){SENT=d.sent||[];SENT_LOADED=true;render();}).catch(function(){SENT_LOADED=true;render();});}',
@@ -525,10 +539,79 @@ function mount(app, opts = {}) {
     return Object.keys(set).map(k => ({ slug: k, name: set[k] })).sort((a, b) => a.name.localeCompare(b.name));
   }
 
+  // Pull flagged-creator follow-up lists from Sisyphus proxy and upsert blasts.
+  async function syncFollowups(blasts) {
+    const SIS_PROXY = `http://localhost:${process.env.PORT || process.env.DASHBOARD_PORT || 3457}/api/sms-communication/followup/lists`;
+    let lists;
+    try {
+      const resp = await axios.get(SIS_PROXY, {
+        timeout: 8000,
+        headers: { 'x-ic-admin-key': process.env.IC_ADMIN_KEY || '' },
+      });
+      lists = resp.data;
+    } catch (_) { return; } // upstream unavailable — leave existing blasts untouched
+
+    const ready = (lists && lists.ready && Array.isArray(lists.ready.creators)) ? lists.ready.creators : [];
+    if (!ready.length) return;
+
+    // Group by brand (each creator has a .brand or derive from first)
+    const byBrand = {};
+    for (const c of ready) {
+      const b = c.brand || 'Unknown Brand';
+      if (!byBrand[b]) byBrand[b] = [];
+      byBrand[b].push(c);
+    }
+
+    const FOLLOWUP_TEMPLATE = (brand) =>
+      `Hey {firstName}! You grabbed your ${brand} product but haven't posted yet — let's fix that 👁️ Even one quick video gets you in the algorithm and earning. Need anything (hook ideas, product Qs)? Just reply here.`;
+
+    const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    let changed = false;
+
+    for (const [brand, creators] of Object.entries(byBrand)) {
+      const slug = brandSlug(brand);
+      const baseId = `${slug}-followup`;
+      const existingDraft = blasts.find(b => b.id === baseId && b.cadence === 'followup' && b.status === 'draft');
+      const recipients = creators.filter(c => c.phone && (c.contactId || c.creatorId)).map(c => ({
+        handle: c.handle || '', name: c.name || c.handle || '',
+        firstName: c.firstName || (c.name || c.handle || '').split(' ')[0] || c.handle || '',
+        phone: c.phone, contactId: c.contactId || c.creatorId || '',
+      }));
+      const skipped = creators.filter(c => !c.phone || (!c.contactId && !c.creatorId)).map(c => ({
+        handle: c.handle || '', name: c.name || c.handle || '', reason: 'no phone on file',
+      }));
+      if (!recipients.length) continue;
+
+      if (existingDraft) {
+        existingDraft.recipients = recipients;
+        existingDraft.skipped = skipped;
+        changed = true;
+      } else {
+        // Skip if a sent blast exists with the base id (use date-suffix for next cycle)
+        const sentExists = blasts.find(b => b.id === baseId && b.cadence === 'followup' && b.status === 'sent');
+        const id = sentExists ? `${baseId}-${today}` : baseId;
+        if (blasts.find(b => b.id === id)) continue;
+        blasts.push({
+          id, cadence: 'followup', brand, brandSlug: slug, step: 'FOLLOWUP',
+          label: `Non-poster follow-up · ${brand}`,
+          audienceTag: null, recipients, skipped,
+          body: FOLLOWUP_TEMPLATE(brand),
+          status: 'draft', createdAt: new Date().toISOString(), sentAt: null, sentCount: 0,
+        });
+        changed = true;
+      }
+    }
+
+    if (changed) saveBlasts(DATA_DIR, blasts);
+  }
+
   // List blasts (sync first so new brands show up). Read-only payload.
-  app.get('/api/sms-communication/blasts', requireAdmin, (req, res) => {
-    try { res.json({ blasts: syncBlasts(), events: EVENT_TRIGGERS, brands: loadBrandList() }); }
-    catch (e) { res.status(500).json({ error: e.message }); }
+  app.get('/api/sms-communication/blasts', requireAdmin, async (req, res) => {
+    try {
+      const blasts = syncBlasts();
+      await syncFollowups(blasts).catch(() => {});
+      res.json({ blasts: loadBlasts(DATA_DIR), events: EVENT_TRIGGERS, brands: loadBrandList() });
+    } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
   // Recently-sent audit feed (every outbound SMS, all sources). Read-only.
@@ -556,6 +639,35 @@ function mount(app, opts = {}) {
     } catch (e) {
       res.status(500).json({ error: e.response?.data?.message || e.message });
     }
+  });
+
+  // Per-recipient send for followup blasts (cadence==='followup').
+  // Uses existing sendSms() which already substitutes {firstName} and logs to sent feed.
+  app.post('/api/sms-communication/followup/:id/send', requireAdmin, async (req, res) => {
+    const blasts = loadBlasts(DATA_DIR);
+    const b = blasts.find(x => x.id === req.params.id);
+    if (!b) return res.status(404).json({ error: 'not found' });
+    if (b.cadence !== 'followup') return res.status(400).json({ error: 'not a followup blast' });
+    if (b.status === 'sent') return res.status(400).json({ error: 'already sent' });
+    if (!process.env.GHL_API_KEY || !LOC()) return res.status(500).json({ error: 'GHL not configured' });
+    const body = (typeof req.body.body === 'string' && req.body.body.trim()) ? req.body.body.trim() : b.body;
+    const recipients = Array.isArray(b.recipients) ? b.recipients : [];
+    let sent = 0, fail = 0, firstError = null;
+    for (const r of recipients) {
+      try {
+        await sendSms(
+          { id: r.contactId, firstName: r.firstName || r.name || '', contactName: r.name || r.handle || '' },
+          body
+        );
+        sent++;
+      } catch (e) {
+        fail++;
+        if (!firstError) firstError = e.response?.data?.message || e.message;
+      }
+    }
+    b.status = 'sent'; b.sentAt = new Date().toISOString(); b.sentCount = sent;
+    saveBlasts(DATA_DIR, blasts);
+    res.json({ ok: true, total: recipients.length, sent, fail, firstError: firstError || null });
   });
 
   // Create an ad-hoc manual draft blast. Appears in the console as a draft;

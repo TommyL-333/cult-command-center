@@ -7319,8 +7319,8 @@ app.post('/api/reacher/conversations/:handle/reply', express.json(), async (req,
   } catch(e) { res.status(500).json({ ok: false, error: e.response?.data || e.message }); }
 });
 
-// ─── SMS Follow-up proxy ───────────────────────────────────────────────────────
-app.get('/api/sms-followup/lists', requirePortalAdmin, async (req, res) => {
+// ─── SMS Follow-up proxy (feeds /sms-communication approval feed) ─────────────
+app.get('/api/sms-communication/followup/lists', requirePortalAdmin, async (req, res) => {
   const SIS_BASE = process.env.SISYPHUS_URL || 'https://sisyphus.cultcontent.cc';
   try {
     const { data } = await axios.get(`${SIS_BASE}/api/sms-followup/lists`, {
