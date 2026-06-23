@@ -958,6 +958,69 @@
         <div class="cw-product-list" id="cw-product-list">
           <div class="cw-state"><span class="cw-spinner"></span>Loading products…</div>
         </div>
+
+        <!-- (3) Creator audience profile -->
+        <div class="cw-section">
+          <p class="cw-section-title">Your audience</p>
+          <p class="cw-section-hint">Tell us about the people who follow you.</p>
+          <div class="cw-field">
+            <label class="cw-field-label" for="cw-creator-age">Audience age group</label>
+            <select id="cw-creator-age" class="cw-select" oninput="captureAudienceState()">
+              <option value="">Select age group…</option>
+              <option value="13-17">13–17</option>
+              <option value="18-24">18–24</option>
+              <option value="25-34">25–34</option>
+              <option value="35-44">35–44</option>
+              <option value="45-54">45–54</option>
+              <option value="55+">55+</option>
+              <option value="mixed">Mixed / broad</option>
+            </select>
+          </div>
+          <div class="cw-field">
+            <label class="cw-field-label" for="cw-creator-details">Extra details / credibility <span style="color:rgba(255,255,255,0.4);font-weight:400">(optional)</span></label>
+            <textarea id="cw-creator-details" class="cw-textarea" placeholder="e.g. I’m a registered nurse, my audience trusts my skincare reviews, 80% women in the US…" oninput="captureAudienceState()"></textarea>
+          </div>
+        </div>
+
+        <!-- (4) Target audience -->
+        <div class="cw-section">
+          <p class="cw-section-title">Who is this video for?</p>
+          <p class="cw-section-hint">The target audience you want this content to reach.</p>
+          <div class="cw-field">
+            <label class="cw-field-label">Target gender</label>
+            <div class="cw-radio-group" id="cw-target-gender" role="radiogroup" aria-label="Target gender">
+              <label class="cw-radio"><input type="radio" name="cw-target-gender" value="female" onchange="captureAudienceState()"><span>Female</span></label>
+              <label class="cw-radio"><input type="radio" name="cw-target-gender" value="male" onchange="captureAudienceState()"><span>Male</span></label>
+              <label class="cw-radio"><input type="radio" name="cw-target-gender" value="non-binary" onchange="captureAudienceState()"><span>Non-binary</span></label>
+            </div>
+          </div>
+          <div class="cw-field">
+            <label class="cw-field-label" for="cw-target-age">Target age range</label>
+            <select id="cw-target-age" class="cw-select" oninput="captureAudienceState()">
+              <option value="">Select age range…</option>
+              <option value="13-17">13–17</option>
+              <option value="18-24">18–24</option>
+              <option value="25-34">25–34</option>
+              <option value="35-44">35–44</option>
+              <option value="45-54">45–54</option>
+              <option value="55+">55+</option>
+              <option value="all">All ages</option>
+            </select>
+          </div>
+          <div class="cw-field">
+            <label class="cw-field-label" for="cw-target-interests">Interests</label>
+            <input id="cw-target-interests" class="cw-input" type="text" placeholder="e.g. skincare, wellness, gym, budget beauty" autocomplete="off" oninput="captureAudienceState()">
+          </div>
+        </div>
+
+        <!-- (5) Target audience pain points -->
+        <div class="cw-section">
+          <div class="cw-field">
+            <label class="cw-field-label" for="cw-pain-points">Target audience pain points</label>
+            <p class="cw-section-hint" style="margin-top:-2px">What problems does this audience have that the product solves?</p>
+            <textarea id="cw-pain-points" class="cw-textarea" placeholder="e.g. dry skin that breaks out, hate complicated routines, on a tight budget, tried everything and nothing works…" oninput="captureAudienceState()"></textarea>
+          </div>
+        </div>
       </div>
     </div>
   </div>
