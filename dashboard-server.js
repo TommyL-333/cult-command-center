@@ -14013,6 +14013,19 @@ app.listen(CFG.port, () => {
     if (poDirty) { savePendingOnboards(po); console.log('[startup] Fixed Lode WTR cashback in pending onboards'); }
   } catch(e) { console.error('[startup] Lode WTR cashback fix error:', e.message); }
 
+  // One-time fix — AS Inner Circle July Freedom leaderboard: update stale places/threshold
+  try {
+    const bd = loadBrands();
+    const as = (bd.clients || []).find(b => (b.brandSlug || b.name || '').toLowerCase().includes('approved-science') || (b.name || '').toLowerCase().includes('approved science'));
+    const lb = as?.creatorPage?.incentives?.leaderboard;
+    if (lb && (JSON.stringify(lb.places) !== JSON.stringify([1500,1000,500]) || lb.threshold !== 2000)) {
+      lb.places = [1500, 1000, 500];
+      lb.threshold = 2000;
+      saveBrands(bd);
+      console.log('[startup] Fixed AS Inner Circle leaderboard: places=[1500,1000,500] threshold=2000');
+    }
+  } catch(e) { console.error('[startup] AS leaderboard fix error:', e.message); }
+
   // One-time cleanup — remove stale placeholder brands (NOT Organic Social Marketing — used for testing)
   try {
     const testNames = ['test brand', 'test'];
