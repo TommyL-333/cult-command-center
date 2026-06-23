@@ -923,6 +923,25 @@
     @keyframes cwspin { to { transform: rotate(360deg); } }
     .cw-retry { margin-top: 12px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14); color: #fff; padding: 8px 16px; border-radius: 8px; font-size: 13px; cursor: pointer; }
     .cw-retry:hover { background: rgba(255,255,255,0.14); }
+    /* ── audience profile + target audience fields ── */
+    .cw-section { margin-top: 22px; }
+    .cw-section:first-child { margin-top: 0; }
+    .cw-section-title { font-size: 14px; font-weight: 700; color: #fff; margin: 0 0 4px; }
+    .cw-section-hint { font-size: 12px; color: rgba(255,255,255,0.45); margin: 0 0 14px; }
+    .cw-input, .cw-select, .cw-textarea { width: 100%; box-sizing: border-box; padding: 12px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: #10121c; color: #fff; font-size: 14px; font-family: inherit; }
+    .cw-input:focus, .cw-select:focus, .cw-textarea:focus { outline: none; border-color: #00f2ea; }
+    .cw-select { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path fill='%23ffffff88' d='M1 1l5 5 5-5'/></svg>"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 38px; cursor: pointer; }
+    .cw-select option { background: #10121c; color: #fff; }
+    .cw-textarea { resize: vertical; min-height: 78px; line-height: 1.45; }
+    .cw-textarea::placeholder, .cw-input::placeholder { color: rgba(255,255,255,0.32); }
+    .cw-field { margin-bottom: 14px; }
+    .cw-field:last-child { margin-bottom: 0; }
+    .cw-radio-group { display: flex; flex-wrap: wrap; gap: 8px; }
+    .cw-radio { flex: 1 1 auto; min-width: 96px; }
+    .cw-radio input { position: absolute; opacity: 0; pointer-events: none; }
+    .cw-radio span { display: block; text-align: center; padding: 11px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: #10121c; color: rgba(255,255,255,0.75); font-size: 13px; cursor: pointer; transition: all 0.12s; }
+    .cw-radio input:checked + span { border-color: #00f2ea; background: rgba(0,242,234,0.12); color: #fff; }
+    .cw-radio input:focus-visible + span { box-shadow: 0 0 0 2px rgba(0,242,234,0.4); }
   </style>
   <div id="content-wizard" role="dialog" aria-modal="true" aria-labelledby="cw-title">
     <div class="cw-modal">
