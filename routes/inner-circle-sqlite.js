@@ -2183,6 +2183,86 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     }
   }
 
+  // ── resolveProductContext(brandSlug, productId, productName) ─────────────────
+  // Pure helper: loads brands.json, finds the brand by slug (creatorPage.slug or
+  // brand.id, case-insensitive), then locates a product within that brand's
+  // creatorPage.products[] — first by productId (matching product.productId /
+  // product.id / the brand-level tcHeroProductId), falling back to a name match
+  // (case-insensitive, trimmed). Returns a normalized object:
+  //   { productName, description, ingredients, shopifyData, tiktokData, brandName }
+  // or null when the brand or product cannot be resolved. Never throws — a bad
+  // brands.json read yields null. Used by the IC script-generation endpoint to
+  // assemble rich product context for the model. brands.json is the source of
+  // truth (same file the rest of this module reads via IC_BRANDS_FILE).
+  function resolveProductContext(brandSlug, productId, productName) {
+    let data;
+    try { data = JSON.parse(fs.readFileSync(IC_BRANDS_FILE, 'utf8')); }
+    catch (_) { return null; }
+    if (!data || !Array.isArray(data.clients)) return null;
+
+    const wantSlug = String(brandSlug || '').toLowerCase().trim();
+    if (!wantSlug) return null;
+
+    // Match brand by creatorPage.slug, brand.id, or a slugified brand.name.
+    const brand = data.clients.find((b) => {
+      if (!b) return false;
+      const cp = b.creatorPage || {};
+      const cpSlug = String(cp.slug || '').toLowerCase().trim();
+      const bId = String(b.id || '').toLowerCase().trim();
+      const nameSlug = String(b.name || '').toLowerCase().trim().replace(/\s+/g, '-');
+      return cpSlug === wantSlug || bId === wantSlug || nameSlug === wantSlug;
+    });
+    if (!brand) return null;
+
+    const cp = brand.creatorPage || {};
+    const products = Array.isArray(cp.products) ? cp.products : [];
+    const heroId = cp.tcHeroProductId != null ? String(cp.tcHeroProductId) : null;
+
+    const wantId = (productId != null && String(productId).trim() !== '')
+      ? String(productId).trim() : null;
+    const wantName = (productName != null && String(productName).trim() !== '')
+      ? String(productName).toLowerCase().trim() : null;
+
+    // 1) Resolve by productId: a product's own id field, or — when the caller
+    //    passes the brand hero id — the first product (hero product convention).
+    let product = null;
+    if (wantId) {
+      product = products.find((p) => {
+        if (!p) return false;
+        const pid = p.productId != null ? String(p.productId)
+          : (p.id != null ? String(p.id) : null);
+        return pid != null && pid === wantId;
+      }) || null;
+      if (!product && heroId && wantId === heroId && products.length) {
+        product = products[0];
+      }
+    }
+    // 2) Fall back to a name match.
+    if (!product && wantName) {
+      product = products.find((p) => p && String(p.name || '').toLowerCase().trim() === wantName) || null;
+    }
+    // 3) Last resort: if only a brand was identified and it has a single product,
+    //    use it (hero product). Keeps the resolver useful when callers pass just
+    //    the brand hero id or nothing precise.
+    if (!product && !wantId && !wantName && products.length === 1) {
+      product = products[0];
+    }
+    if (!product) return null;
+
+    return {
+      productName: product.name || null,
+      description: product.description || null,
+      ingredients: product.ingredients || null,
+      shopifyData: product.shopifyData || product.shopify ||
+        ((product.minPrice != null || product.url) ? { minPrice: product.minPrice != null ? product.minPrice : null, url: product.url || null } : null),
+      tiktokData: product.tiktokData ||
+        ((product.productId || product.id || heroId)
+          ? { productId: product.productId != null ? String(product.productId) : (product.id != null ? String(product.id) : heroId) }
+          : null),
+      brandName: brand.name || null,
+    };
+  }
+
   // Expose the working session middleware so other routes can adopt it later.
-  return { requireSqliteSession, getIcFunnel };
+  return { requireSqliteSession, getIcFunnel, resolveProductContext };
 };
