@@ -914,6 +914,11 @@
       window.location.href = '/inner-circle/login';
     }
 
+    // JS-string-literal safe escaper for inline on* handlers (backslash + quote escape, then esc() for attribute).
+    function jsStr(s) {
+      return esc(String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/'/g, "\\'"));
+    }
+
     function brandInitials(name) {
       return String(name || '?').split(/\s+/).map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
     }
@@ -925,8 +930,10 @@
       const earned = assigned ? (assigned.earned != null ? assigned.earned : assigned.earnedFromBrand || 0) : 0;
       const remaining = Math.max(0, 20 - videos);
       const color = brand.brandColor || '#00f2ea';
+      const brandSlug = brand.slug || String(brand.name || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
       const action = assigned
-        ? `<div class="covenant-confirm">✓ Selected — Hasan will send your target collab invite</div>`
+        ? `<div class="covenant-confirm">✓ Selected — Hasan will send your target collab invite</div>
+           <button class="brand-action create-videos-btn" onclick="openContentWizard('${jsStr(brand.id)}','${jsStr(brandSlug)}')">Create your next videos</button>`
         : `<button class="brand-action select-brand-btn" data-brand-id="${esc(brand.id)}" data-brand-name="${esc(brand.name)}">Select This Brand</button>`;
       const fallback = `<div class="brand-logo-fallback"${brand.logo ? ' style="display:none"' : ''}>${esc(brandInitials(brand.name))}</div>`;
       const logo = brand.logo
