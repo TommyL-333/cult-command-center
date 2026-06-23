@@ -3831,6 +3831,8 @@ app.get('/api/client/me', requireClientSession, async (req, res) => {
         shopId: brand.shopId || null,
         sampleBudget: brand.sampleBudget || 0,
         compensation,
+        creatorPageHeadline: brand.creatorPage?.headline || null,
+        creatorPageCampaigns: brand.creatorPage?.campaigns || null,
         innerCircle: !!brand.innerCircle,
         logoUrl: brand.logoUrl || null,
         brandColor: brand.brandColor || null,
@@ -3901,7 +3903,7 @@ app.patch('/api/client/settings', requireClientSession, express.json(), async (r
     const idx = (brands.clients || []).findIndex(b => b.id === req.session.clientBrandId);
     if (idx === -1) return res.status(404).json({ error: 'Brand not found' });
     const brand = brands.clients[idx];
-    const { sampleBudget, compensation, affiliatePageUrl, innerCircle, brandColor } = req.body || {};
+    const { sampleBudget, compensation, affiliatePageUrl, innerCircle, brandColor, headline, campaigns } = req.body || {};
     // brandColor — validate BEFORE any mutation/persistence; reject invalid hex
     if (brandColor !== undefined && (typeof brandColor !== 'string' || !/^#[0-9a-fA-F]{6}$/.test(brandColor))) {
       return res.status(400).json({ error: 'brandColor must be a hex color like #00f2ea' });
@@ -3913,6 +3915,29 @@ app.patch('/api/client/settings', requireClientSession, express.json(), async (r
       brand.creatorPage.incentives = compensation;
     }
     if (affiliatePageUrl !== undefined) brand.affiliatePageUrl = affiliatePageUrl || '';
+
+    // Campaign headline (hero <h1> on the creator page) — persisted to creatorPage.headline
+    if (headline !== undefined) {
+      if (!brand.creatorPage) brand.creatorPage = {};
+      brand.creatorPage.headline = headline === null ? null : String(headline).slice(0, 200);
+    }
+
+    // Reacher campaign CTA links (rendered on the /welcome page) — only http(s) URLs accepted
+    if (campaigns && typeof campaigns === 'object') {
+      if (!brand.creatorPage) brand.creatorPage = {};
+      if (!brand.creatorPage.campaigns) brand.creatorPage.campaigns = {};
+      const URL_KEYS = ['blitzUrl', 'cashbackUrl', 'quantityVideoUrl', 'leaderboardUrl'];
+      for (const k of URL_KEYS) {
+        if (campaigns[k] === undefined) continue;
+        const v = campaigns[k];
+        if (v === '' || v === null) { brand.creatorPage.campaigns[k] = ''; continue; }
+        if (typeof v !== 'string' || !/^https?:\/\//i.test(v)) {
+          return res.status(400).json({ error: `${k} must be empty or an http(s) URL` });
+        }
+        brand.creatorPage.campaigns[k] = v.trim();
+      }
+    }
+
     // Integration keys — store them, never return them in plain text
     if (req.body.bufferToken)     { brand.bufferToken     = req.body.bufferToken;     brand.bufferConnected = true; }
     if (req.body.arcadsClientId)  { brand.arcadsClientId  = req.body.arcadsClientId; }
