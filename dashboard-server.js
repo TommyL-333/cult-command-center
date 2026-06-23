@@ -2529,6 +2529,33 @@ app.post('/portal-admin/impersonate', requirePortalAdmin, express.json(), (req, 
   res.json({ ok: true });
 });
 
+// PATCH /portal-admin/open-collab/:brandId — toggle the open-collab onboarding flag for a brand.
+// Accepts brandId OR creatorPage.slug for lookup. Body: { openCollabEnabled: boolean }.
+// NOTE: open-collab status CANNOT currently be read or enabled via API. The Reacher relay
+// returns 404 for open-collab state, and there is no per-shop TikTok token available
+// (TIKTOK_SHOP_TOKENS is unconfigured), so the TikTok Shop Open API cannot be signed per-shop.
+// This flag is therefore a MANUAL onboarding gate: an operator flips open collab ON in the
+// TikTok seller center, then sets this flag true here. Autonomous read/enable of open-collab
+// status is DEFERRED to a future TikTok-token task. We mutate ONLY brand.openCollabEnabled and
+// write back via the same saveBrands() helper — no other fields are touched.
+app.patch("/portal-admin/open-collab/:brandId", requirePortalAdmin, express.json(), (req, res) => {
+  const brands = loadBrands();
+  const key = req.params.brandId;
+  const idx = (brands.clients || []).findIndex(b => b.id === key || b.creatorPage?.slug === key);
+  if (idx === -1) return res.status(404).json({ error: "Brand not found" });
+
+  // Strict boolean validation — reject anything that is not a real boolean.
+  const v = req.body?.openCollabEnabled;
+  if (typeof v !== "boolean") {
+    return res.status(400).json({ error: "openCollabEnabled must be a boolean" });
+  }
+
+  // Mutate ONLY this field; do not rebuild or touch the rest of the brand record.
+  brands.clients[idx].openCollabEnabled = v;
+  saveBrands(brands);
+  res.json({ ok: true, brandId: brands.clients[idx].id, openCollabEnabled: v });
+});
+
 // POST /portal-admin/exit — stop impersonating, back to admin client list
 app.post('/portal-admin/exit', (req, res) => {
   const wasAdmin = req.session?.isPortalAdmin;
