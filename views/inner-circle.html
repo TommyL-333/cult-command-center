@@ -942,6 +942,14 @@
     .cw-radio span { display: block; text-align: center; padding: 11px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: #10121c; color: rgba(255,255,255,0.75); font-size: 13px; cursor: pointer; transition: all 0.12s; }
     .cw-radio input:checked + span { border-color: #00f2ea; background: rgba(0,242,234,0.12); color: #fff; }
     .cw-radio input:focus-visible + span { box-shadow: 0 0 0 2px rgba(0,242,234,0.4); }
+    /* ── multi-select toggle (funnel stage): same look as cw-radio but allows multiple ── */
+    .cw-check-group { display: flex; flex-wrap: wrap; gap: 8px; }
+    .cw-check { flex: 1 1 auto; min-width: 96px; }
+    .cw-check input { position: absolute; opacity: 0; pointer-events: none; }
+    .cw-check span { display: block; text-align: center; padding: 11px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: #10121c; color: rgba(255,255,255,0.75); font-size: 13px; cursor: pointer; transition: all 0.12s; }
+    .cw-check input:checked + span { border-color: #00f2ea; background: rgba(0,242,234,0.12); color: #fff; }
+    .cw-check input:focus-visible + span { box-shadow: 0 0 0 2px rgba(0,242,234,0.4); }
+    .cw-check span small { display: block; font-size: 10px; font-weight: 400; color: rgba(255,255,255,0.4); margin-top: 2px; }
   </style>
   <div id="content-wizard" role="dialog" aria-modal="true" aria-labelledby="cw-title">
     <div class="cw-modal">
@@ -1019,6 +1027,44 @@
             <label class="cw-field-label" for="cw-pain-points">Target audience pain points</label>
             <p class="cw-section-hint" style="margin-top:-2px">What problems does this audience have that the product solves?</p>
             <textarea id="cw-pain-points" class="cw-textarea" placeholder="e.g. dry skin that breaks out, hate complicated routines, on a tight budget, tried everything and nothing works…" oninput="captureAudienceState()"></textarea>
+          </div>
+        </div>
+
+        <!-- (6) Funnel stage — multi-select -->
+        <div class="cw-section">
+          <div class="cw-field">
+            <label class="cw-field-label">Funnel stage <span style="color:rgba(255,255,255,0.4);font-weight:400">(select all that apply)</span></label>
+            <p class="cw-section-hint" style="margin-top:-2px">Where in the buying journey is this content aimed?</p>
+            <div class="cw-check-group" id="cw-funnel-stage" role="group" aria-label="Funnel stage">
+              <label class="cw-check"><input type="checkbox" name="cw-funnel-stage" value="TOF" onchange="captureFunnelState()"><span>TOF<small>Awareness</small></span></label>
+              <label class="cw-check"><input type="checkbox" name="cw-funnel-stage" value="MOF" onchange="captureFunnelState()"><span>MOF<small>Consideration</small></span></label>
+              <label class="cw-check"><input type="checkbox" name="cw-funnel-stage" value="BOF" onchange="captureFunnelState()"><span>BOF<small>Conversion</small></span></label>
+            </div>
+          </div>
+        </div>
+
+        <!-- (7) Script length — single-select -->
+        <div class="cw-section">
+          <div class="cw-field">
+            <label class="cw-field-label">Script length</label>
+            <div class="cw-radio-group" id="cw-script-length" role="radiogroup" aria-label="Script length">
+              <label class="cw-radio"><input type="radio" name="cw-script-length" value="15-30s" onchange="captureFunnelState()"><span>15–30s</span></label>
+              <label class="cw-radio"><input type="radio" name="cw-script-length" value="30-60s" onchange="captureFunnelState()"><span>30–60s</span></label>
+              <label class="cw-radio"><input type="radio" name="cw-script-length" value="1-2min" onchange="captureFunnelState()"><span>1–2min</span></label>
+            </div>
+          </div>
+        </div>
+
+        <!-- (8) Format — single-select -->
+        <div class="cw-section">
+          <div class="cw-field">
+            <label class="cw-field-label">Format</label>
+            <div class="cw-radio-group" id="cw-format" role="radiogroup" aria-label="Format">
+              <label class="cw-radio"><input type="radio" name="cw-format" value="talking-head" onchange="captureFunnelState()"><span>Talking head</span></label>
+              <label class="cw-radio"><input type="radio" name="cw-format" value="skit" onchange="captureFunnelState()"><span>Skit</span></label>
+              <label class="cw-radio"><input type="radio" name="cw-format" value="text-only" onchange="captureFunnelState()"><span>Text only</span></label>
+              <label class="cw-radio"><input type="radio" name="cw-format" value="product-demo" onchange="captureFunnelState()"><span>Product demo</span></label>
+            </div>
           </div>
         </div>
       </div>
@@ -1336,11 +1382,13 @@
     // ── IC Content Engine wizard: searchable product dropdown ──
     // State for the currently-open wizard.
     let cwState = { brandId: null, brandSlug: null, products: [], filtered: [], selectedId: null,
-      audience: { creatorAgeGroup: '', creatorDetails: '', targetGender: '', targetAgeRange: '', targetInterests: '', painPoints: '' } };
+      audience: { creatorAgeGroup: '', creatorDetails: '', targetGender: '', targetAgeRange: '', targetInterests: '', painPoints: '' },
+      brief: { funnelStage: [], scriptLength: '', format: '' } };
 
     function openContentWizard(brandId, brandSlug) {
       cwState = { brandId: brandId, brandSlug: brandSlug, products: [], filtered: [], selectedId: null,
-        audience: { creatorAgeGroup: '', creatorDetails: '', targetGender: '', targetAgeRange: '', targetInterests: '', painPoints: '' } };
+        audience: { creatorAgeGroup: '', creatorDetails: '', targetGender: '', targetAgeRange: '', targetInterests: '', painPoints: '' },
+      brief: { funnelStage: [], scriptLength: '', format: '' } };
       resetAudienceFields();
       const modal = document.getElementById('content-wizard');
       modal.classList.add('open');
@@ -1445,6 +1493,12 @@
       // Radios: tick the one matching stored gender, clear the rest.
       const radios = document.querySelectorAll('input[name="cw-target-gender"]');
       radios.forEach(function (r) { r.checked = (r.value === a.targetGender); });
+      // Reset funnel stage (multi), script length & format from cwState.brief.
+      const b = cwState.brief || { funnelStage: [], scriptLength: '', format: '' };
+      const stages = Array.isArray(b.funnelStage) ? b.funnelStage : [];
+      document.querySelectorAll('input[name="cw-funnel-stage"]').forEach(function (c) { c.checked = stages.indexOf(c.value) !== -1; });
+      document.querySelectorAll('input[name="cw-script-length"]').forEach(function (r) { r.checked = (r.value === b.scriptLength); });
+      document.querySelectorAll('input[name="cw-format"]').forEach(function (r) { r.checked = (r.value === b.format); });
     }
 
     // Read every audience/target input into cwState.audience. Called on every input/change so the
@@ -1459,6 +1513,18 @@
         targetAgeRange: val('cw-target-age'),
         targetInterests: val('cw-target-interests'),
         painPoints: val('cw-pain-points')
+      };
+    }
+
+    // Read funnel stage (multi-select), script length & format into cwState.brief.
+    // Called on every change of those controls so wizard state mirrors the form.
+    function captureFunnelState() {
+      const checkedRadio = function (name) { const el = document.querySelector('input[name="' + name + '"]:checked'); return el ? el.value : ''; };
+      const funnelStage = Array.prototype.slice.call(document.querySelectorAll('input[name="cw-funnel-stage"]:checked')).map(function (c) { return c.value; });
+      cwState.brief = {
+        funnelStage: funnelStage,
+        scriptLength: checkedRadio('cw-script-length'),
+        format: checkedRadio('cw-format')
       };
     }
 
