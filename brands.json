@@ -20,8 +20,8 @@
       "avoidTopics": "Medical or clinical weight-loss claims, aggressive or fear-based body language (the brand leans empowerment, not insecurity-based marketing), cheap or drugstore beauty comparisons, fast-fashion or disposable wellness aesthetics, anything that undercuts the premium and ritual-driven positioning",
       "extraContext": "DIAMANDIA appears to be founder-led based on the personal coaching and retreat offerings — TikTok content likely performs best when it feels personal, embodied, and expert-led rather than corporate. The brand bridges physical products with a lifestyle philosophy centered on anti-inflammation, which is a strong TikTok content hook with existing search demand. Gua sha is a visually demonstrable tool — tutorial and GRWM-style content is a natural fit. The Bridal Glow collection signals a gifting and occasion angle worth activating. Bundle naming (Goddess Platinum, Siren, Muse) creates a mythology-coded brand world that can be leaned into for aspirational content. The $4,000 retreat and $500 coaching program suggest the founder has authority positioning worth building on TikTok as a credibility pillar — even if those products are not the primary conversion driver.",
       "shopId": 8595,
-"openCollabEnabled": false,
-"creatorPage": {
+      "openCollabEnabled": false,
+      "creatorPage": {
         "tcCommission": 25,
         "tcHeroProductId": "1729491556857975130"
       }
@@ -63,8 +63,8 @@
       "pipelineStage": "Contract Signed",
       "startDate": "2026-05-12",
       "shopId": 8974,
-"openCollabEnabled": false,
-"creatorPage": {
+      "openCollabEnabled": false,
+      "creatorPage": {
         "tcCommission": 25,
         "tcHeroProductId": "1732230831415267648",
         "slug": "trusted-rituals",
@@ -286,8 +286,8 @@
       "startDate": "2026-05-07",
       "contactName": "Lenea",
       "shopId": 8913,
-"openCollabEnabled": false,
-"commissionRate": 0.1,
+      "openCollabEnabled": false,
+      "commissionRate": 0.1,
       "creatorPage": {
         "tcCommission": 20,
         "tcHeroProductId": "1731392689812508843",
@@ -306,27 +306,21 @@
           "Post your first video and start earning 20% commission on every sale"
         ],
         "incentives": {
-          "cashback": {
-            "enabled": true,
-            "amount": 100,
-            "unitsRequired": 0,
-            "description": "Hit $100 in GMV and earn $100 cash back"
-          },
           "volumeBonus": {
             "enabled": true,
-            "bonus": 100,
+            "bonus": 200,
             "videoCount": 10,
-            "description": "Post 10 videos and earn a one-time $100 cash bonus"
+            "description": "Post 10 videos and earn a one-time $200 cash bonus"
           },
           "leaderboard": {
             "enabled": true,
             "places": [
-              500,
-              250,
-              125
+              1500,
+              1000,
+              500
             ],
-            "threshold": 1000,
-            "description": "Monthly leaderboard — $1,000 min GMV to qualify"
+            "threshold": 2000,
+            "description": "Monthly leaderboard — $2,000 min GMV to qualify"
           }
         },
         "campaigns": {
