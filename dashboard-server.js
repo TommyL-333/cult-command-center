@@ -3297,11 +3297,12 @@ app.patch('/portal-admin/campaign-links/:brandId', requirePortalAdmin, express.j
   if (!brands.clients[idx].creatorPage) brands.clients[idx].creatorPage = {};
   const cp = brands.clients[idx].creatorPage;
   if (!cp.campaigns) cp.campaigns = {};
-  const { cashbackUrl, quantityVideoUrl, leaderboardUrl, blitzUrl } = req.body;
+  const { cashbackUrl, quantityVideoUrl, leaderboardUrl, blitzUrl, sprintUrl } = req.body;
   if (cashbackUrl      !== undefined) cp.campaigns.cashbackUrl      = cashbackUrl      || null;
   if (quantityVideoUrl !== undefined) cp.campaigns.quantityVideoUrl = quantityVideoUrl || null;
   if (leaderboardUrl   !== undefined) cp.campaigns.leaderboardUrl   = leaderboardUrl   || null;
   if (blitzUrl         !== undefined) cp.campaigns.blitzUrl         = blitzUrl         || null;
+  if (sprintUrl        !== undefined) cp.campaigns.sprintUrl        = sprintUrl        || null;
   cp.updatedAt = new Date().toISOString();
   saveBrands(brands);
   res.json({ ok: true, campaigns: cp.campaigns });
@@ -13041,6 +13042,7 @@ function renderWelcomePage(brand, cp, creatorHandle = '') {
   if (campaigns.blitzUrl)         campaignBtns.push({ label: campaigns.blitzLabel || '🚀 Blitz Launch Campaign', sub: campaigns.blitzSub || 'Post your videos on launch day — bonus for first-15-day GMV', url: campaigns.blitzUrl });
   if (campaigns.cashbackUrl)      campaignBtns.push({ label: 'Cashback Campaign',        sub: 'Earn cashback on every sale you drive',       url: campaigns.cashbackUrl });
   if (campaigns.quantityVideoUrl) campaignBtns.push({ label: 'Video Quantity Challenge', sub: 'Post 10 videos and earn a cash bonus',        url: campaigns.quantityVideoUrl });
+  if (campaigns.sprintUrl)        campaignBtns.push({ label: 'Freedom Sprint Challenge', sub: 'Hit your GMV target and earn a cash bonus',   url: campaigns.sprintUrl });
   if (campaigns.leaderboardUrl)   campaignBtns.push({ label: 'Leaderboard Challenge',    sub: 'Compete for top GMV and win monthly prizes',  url: campaigns.leaderboardUrl });
 
   const btnsHtml = campaignBtns.map(c => `
@@ -13663,10 +13665,11 @@ app.patch('/api/brands/:brandId/campaign-links', requireAuth, express.json(), (r
   if (!brands.clients[idx].creatorPage) brands.clients[idx].creatorPage = {};
   const cp = brands.clients[idx].creatorPage;
   if (!cp.campaigns) cp.campaigns = {};
-  const { cashbackUrl, quantityVideoUrl, leaderboardUrl, competitorVideos } = req.body;
+  const { cashbackUrl, quantityVideoUrl, leaderboardUrl, sprintUrl, competitorVideos } = req.body;
   if (cashbackUrl     !== undefined) cp.campaigns.cashbackUrl     = cashbackUrl     || null;
   if (quantityVideoUrl !== undefined) cp.campaigns.quantityVideoUrl = quantityVideoUrl || null;
   if (leaderboardUrl  !== undefined) cp.campaigns.leaderboardUrl  = leaderboardUrl  || null;
+  if (sprintUrl       !== undefined) cp.campaigns.sprintUrl       = sprintUrl       || null;
   if (competitorVideos !== undefined) cp.competitorVideos = (Array.isArray(competitorVideos) ? competitorVideos : []).slice(0, 8).filter(Boolean);
   cp.updatedAt = new Date().toISOString();
   saveBrands(brands);
@@ -14520,7 +14523,8 @@ app.listen(CFG.port, () => {
         campaigns: {
           cashbackUrl:      existingCp.campaigns?.cashbackUrl      || '',
           quantityVideoUrl: existingCp.campaigns?.quantityVideoUrl || '',
-          leaderboardUrl:   existingCp.campaigns?.leaderboardUrl   || '',
+          sprintUrl:        existingCp.campaigns?.sprintUrl        || 'https://creator.reacherapp.com/campaigns/8913/2128-70b915',
+          leaderboardUrl:   existingCp.campaigns?.leaderboardUrl   || 'https://creator.reacherapp.com/campaigns/8913/2129-5d80bb',
         },
         productRequestEnabled: true,
         catalogProducts: [], // Parastrin is the default for all creators — this form is for requesting other catalog products
