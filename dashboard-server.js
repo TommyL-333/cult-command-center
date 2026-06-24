@@ -907,11 +907,14 @@ app.post('/api/creator-pages/submit', express.json(), async (req, res) => {
       contactId = sr.data?.contacts?.[0]?.id || null;
     } catch(_) {}
     const TIKTOK_HANDLE_FIELD_ID = 'trnSmiM9oilkdQSInRPn'; // canonical GHL 'TikTok Handle' TEXT field
-    const payload = { locationId: CFG.locationId, firstName, lastName, email, phone: cleanPhone, tags: [tagName, 'creator-interest-form', 'affiliate', `${brandSlug}-affiliate`], source: `Creator Interest Page — ${brand.name}` };
+    // Canonical brand tag (step 5 convention) — used by weekly creator-call reminder targeting.
+    const brandTag = `brand:${brandSlug}`;
+    const matchTags = [tagName, 'creator-interest-form', 'affiliate', `${brandSlug}-affiliate`, brandTag];
+    const payload = { locationId: CFG.locationId, firstName, lastName, email, phone: cleanPhone, tags: matchTags, source: `Creator Interest Page — ${brand.name}` };
     if (handle) { payload.customFields = [{ id: TIKTOK_HANDLE_FIELD_ID, value: handle }]; }
     if (contactId) {
       await ghl.put(`/contacts/${contactId}`, payload).catch(() => {});
-      await ghl.post(`/contacts/${contactId}/tags`, { tags: [tagName, 'creator-interest-form', 'affiliate', `${brandSlug}-affiliate`] }).catch(() => {});
+      await ghl.post(`/contacts/${contactId}/tags`, { tags: matchTags }).catch(() => {});
     } else {
       try {
         const cr = await ghl.post('/contacts/', payload);
