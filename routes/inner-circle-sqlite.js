@@ -1906,6 +1906,44 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     }
   });
 
+  // ── GET /api/inner-circle/my-scripts ─────────────────────────────────────────
+  // Returns the authenticated creator's generated scripts (IC Content Engine),
+  // read from the local SQLite mirror (inner_circle_scripts) which is the source
+  // of truth for reads — the Lark Base write is a fire-and-forget mirror on top.
+  // Auth: requireSqliteSession (401 if unauthenticated). The creator id comes
+  // ONLY from the session (req.icCreator.id), never the query — IDOR-safe.
+  // Optional ?brand=<slug> filters to one brand (case-insensitive).
+  app.get('/api/inner-circle/my-scripts', requireSqliteSession, (req, res) => {
+    try {
+      const c = req.icCreator;
+      const brand = (req.query.brand || req.query.brandId || '').toString().trim();
+      const rows = brand
+        ? stmts.scriptsForCreatorBrand.all(c.id, brand)
+        : stmts.scriptsForCreator.all(c.id);
+      const scripts = rows.map((r) => {
+        let parsed = null;
+        if (r.script_json) { try { parsed = JSON.parse(r.script_json); } catch (_) { parsed = null; } }
+        return {
+          id: r.id,
+          brandId: r.brand_id || null,
+          shopId: r.shop_id || null,
+          productName: r.product_name || null,
+          funnelStage: r.funnel_stage || null,
+          hook: r.hook || null,
+          title: r.title || null,
+          fullScript: r.full_script || null,
+          script: parsed,
+          bitableRecordId: r.bitable_record_id || null,
+          createdAt: r.created_at,
+        };
+      });
+      return res.json({ ok: true, brand: brand || null, count: scripts.length, scripts });
+    } catch (e) {
+      console.error('[inner-circle-sqlite] my-scripts failed:', e.message);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  });
+
   // ── POST /api/inner-circle/offers/:id/respond ─────────────────────────────────
   // Creator accepts or declines an offer. Body: {action: 'accept'|'decline'}.
   // IDOR-safe: ownership enforced by creator_id from the session. The offer must
