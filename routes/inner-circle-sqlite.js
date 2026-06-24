@@ -152,6 +152,31 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       CREATE INDEX IF NOT EXISTS idx_retainer_agreements_creator ON retainer_agreements(creator_id);
     `);
 
+    // ── IC Content Engine: generated scripts (local SQLite mirror) ────────────
+    // Source of truth for reads via GET /api/inner-circle/my-scripts. The Lark
+    // Base (Bitable) write is a fire-and-forget mirror layered on top later; this
+    // table is what the creator portal queries, so reads never depend on Bitable
+    // availability. One row per generated script. brand_id is the brand SLUG
+    // (e.g. 'approved-science') so it matches the creator SPA's brand filter.
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS inner_circle_scripts (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        creator_id INTEGER NOT NULL REFERENCES inner_circle_creators(id),
+        brand_id TEXT,
+        shop_id INTEGER,
+        product_name TEXT,
+        funnel_stage TEXT,
+        hook TEXT,
+        title TEXT,
+        full_script TEXT,
+        script_json TEXT,
+        bitable_record_id TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+      CREATE INDEX IF NOT EXISTS idx_ic_scripts_creator ON inner_circle_scripts(creator_id);
+      CREATE INDEX IF NOT EXISTS idx_ic_scripts_creator_brand ON inner_circle_scripts(creator_id, brand_id);
+    `);
+
     stmts = {
       creatorByEmail: db.prepare(
         `SELECT * FROM inner_circle_creators WHERE lower(email) = lower(?) AND status = 'active'`
