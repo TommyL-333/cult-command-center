@@ -1290,7 +1290,37 @@ app.get('/api/inner-circle/recordings', requireCreatorSession, async (req, res) 
       .select('*')
       .order('call_date', { ascending: false });
     if (error) throw error;
-    const recordings = (rows || []).map((r) => {
+
+    // ── Brand-scope to the logged-in creator ────────────────────────────────
+    // Resolve the creator's committed brands so a creator only sees recordings
+    // for the brand(s) they're enrolled with. Recordings with no brand FK
+    // (global/all-hands calls) remain visible to everyone.
+    let brandClientIds = [];
+    try {
+      const { data: commitments } = await supabase
+        .from('inner_circle_brand_commitments')
+        .select('client_id')
+        .eq('creator_id', req.user.id);
+      brandClientIds = (commitments || [])
+        .map((c) => c && c.client_id)
+        .filter((id) => id != null)
+        .map((id) => String(id));
+    } catch (commitErr) {
+      console.error('[inner-circle] recordings brand-scope lookup failed:', commitErr.message);
+    }
+    const brandSet = new Set(brandClientIds);
+    const scopedRows = (rows || []).filter((r) => {
+      // Identify any brand-linkage column the recording row may carry.
+      const recBrand = r.client_id != null ? r.client_id
+                     : (r.brand_id != null ? r.brand_id
+                     : (r.shop_id  != null ? r.shop_id : null));
+      // Untagged/global recordings are visible to all creators.
+      if (recBrand == null || recBrand === '') return true;
+      // Brand-tagged recordings only show to creators committed to that brand.
+      return brandSet.has(String(recBrand));
+    });
+
+    const recordings = (scopedRows || []).map((r) => {
       const attendance = Array.isArray(r.attendance) ? r.attendance : [];
       return {
         id: r.id,
