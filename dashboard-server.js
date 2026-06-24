@@ -14484,7 +14484,8 @@ app.listen(CFG.port, () => {
     const bd = loadBrands();
     const as = (bd.clients || []).find(b => (b.name || '').toLowerCase().trim() === 'approved science');
     const asNeedsUpdate = !as?.creatorPage?.productRequestEnabled
-      || (as?.creatorPage?.catalogProducts || []).some(p => /shilajit|parastrin/i.test(p.name));
+      || (as?.creatorPage?.catalogProducts || []).some(p => /shilajit|parastrin/i.test(p.name))
+      || as?.creatorPage?.earnPotential !== 1700;
     if (as && asNeedsUpdate) {
       const existingCp = as.creatorPage || {};
       Object.assign(as, {
@@ -14507,7 +14508,7 @@ app.listen(CFG.port, () => {
         subheadline:     'Join the Approved Science TikTok Shop Creator Program',
         tcCommission:    20,
         tcHeroProductId: '1731392689812508843', // Parastrin
-        earnPotential:   875,
+        earnPotential:   1700,
         welcomeMessage:  'You\'re in the Approved Science Creator Program. Your sample is on its way — explore the full catalog and request any products you want to feature.',
         welcomeSteps: [
           'Apply for the campaigns below to unlock your cash bonuses',
@@ -14516,9 +14517,9 @@ app.listen(CFG.port, () => {
           'Post your first video and start earning 20% commission on every sale',
         ],
         incentives: {
-          cashback:    { enabled: true, amount: 100, unitsRequired: 0, description: 'Hit $100 in GMV and earn $100 cash back' },
-          volumeBonus: { enabled: true, bonus: 100, videoCount: 10, description: 'Post 10 videos and earn a one-time $100 cash bonus' },
-          leaderboard: { enabled: true, places: [500, 250, 125], threshold: 1000, description: 'Monthly leaderboard — $1,000 min GMV to qualify' },
+          cashback:    { enabled: false, amount: 0, unitsRequired: 0, description: '' },
+          volumeBonus: { enabled: true, bonus: 200, videoCount: 10, description: 'Post 10 videos and earn a one-time $200 cash bonus' },
+          leaderboard: { enabled: true, places: [1500, 1000, 500], threshold: 2000, description: 'Monthly leaderboard — $2,000 min GMV to qualify' },
         },
         campaigns: {
           cashbackUrl:      existingCp.campaigns?.cashbackUrl      || '',
