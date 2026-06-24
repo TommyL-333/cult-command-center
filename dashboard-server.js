@@ -14434,7 +14434,7 @@ app.listen(CFG.port, () => {
         active:          true,
         listed:          true,
         accentColor:     '#2E7EFB',
-        headline:        'Earn 20% Commission + Up to $875 in Bonuses',
+        headline:        'Earn $1,700+ in Bonuses + 20% Commission on the July Freedom Challenge',
         subheadline:     'Join the Approved Science TikTok Shop Creator Program',
         tcCommission:    20,
         tcHeroProductId: '1731392689812508843', // Parastrin
