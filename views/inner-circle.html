@@ -753,6 +753,37 @@
     }
     .rates-save-btn:hover { opacity: 0.92; box-shadow: 0 0 22px rgba(0,242,234,0.4); }
     .rates-save-btn:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
+    /* ── Weekly Call Recordings: brand-styled card grid ── */
+    #recordings-container.rec-grid {
+      display: grid; grid-template-columns: 1fr; gap: 18px;
+    }
+    @media (min-width: 768px) {
+      #recordings-container.rec-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    .rec-card {
+      position: relative; display: flex; flex-direction: column;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 16px; padding: 22px 22px 20px;
+      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+      overflow: hidden; transition: transform .25s, border-color .25s, box-shadow .25s;
+    }
+    .rec-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, #00f2ea, #ff0050);
+    }
+    .rec-card:hover {
+      transform: translateY(-3px);
+      border-color: rgba(0,242,234,0.4);
+      box-shadow: 0 12px 40px -18px rgba(0,242,234,0.6);
+    }
+    .rec-card-title { font-family: 'Montserrat', sans-serif; font-weight: 800;
+      font-size: 1.08rem; color: #fff; margin: 4px 0 10px; line-height: 1.3; }
+    .rec-card-meta { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-bottom: 18px; }
+    .rec-meta-item { display: inline-flex; align-items: center; gap: 6px;
+      color: #9ca3af; font-size: 0.86rem; }
+    .rec-meta-item .rec-meta-ico { opacity: 0.85; }
+    .rec-card .play-btn { align-self: flex-start; margin-top: auto; }
     /* ── IC_RATES_CSS_END ── */
 
   </style>
@@ -880,17 +911,17 @@
     </div>
     <!-- IC_RATES_CARD_END -->
 
-    <!-- Call Recordings Library -->
+    <!-- Weekly Call Recordings (fetched from GET /api/inner-circle/recordings) -->
     <div class="brand-chamber" style="animation-delay:0.4s">
       <div class="brand-header">
         <div class="brand-icon">🎥</div>
         <div class="brand-info">
-          <h2>Call Recordings</h2>
-          <p>Weekly group call library</p>
+          <h2>Weekly Call Recordings</h2>
+          <p>Replay your brand's weekly group calls</p>
         </div>
       </div>
-      <div class="recordings-list" id="recordings-container">
-        <p class="empty-note">Recordings from the weekly group calls will appear here.</p>
+      <div class="rec-grid" id="recordings-container">
+        <p class="empty-note">Loading recordings…</p>
       </div>
     </div>
   </div>
@@ -1196,21 +1227,7 @@
           btn.addEventListener('click', () => selectBrand(btn, btn.dataset.brandId, btn.dataset.brandName));
         });
 
-        // Call recordings library
-        const recs = data.recordings || [];
-        const recordingsContainer = document.getElementById('recordings-container');
-        recordingsContainer.innerHTML = recs.length ? recs.map(rec => `
-          <div class="recording-item">
-            <div class="recording-info">
-              <h4>${esc(rec.title)}</h4>
-              <p>${esc(rec.date)}${rec.duration ? ` • ${esc(rec.duration)}` : ''}</p>
-            </div>
-            <button class="play-btn" data-url="${esc(rec.url)}">▶ Watch</button>
-          </div>
-        `).join('') : '<p class="empty-note">Recordings from the weekly group calls will appear here.</p>';
-        recordingsContainer.querySelectorAll('.play-btn').forEach(btn => {
-          btn.addEventListener('click', () => playRecording(btn.dataset.url));
-        });
+        // Recordings now load independently via loadRecordings() -> GET /api/inner-circle/recordings
 
         // Linked TikTok handles
         renderHandles(data.handles || []);
@@ -1304,7 +1321,45 @@
       }
     }
 
+    // Weekly Call Recordings — dedicated fetch from the recordings endpoint.
+    // Renders brand recordings as cards: title, date, duration (when present), open link.
+    async function loadRecordings() {
+      const container = document.getElementById('recordings-container');
+      if (!container) return;
+      let recs = [];
+      try {
+        const res = await fetch('/api/inner-circle/recordings', { headers: AUTH_HEADERS });
+        if (res.status === 401) { logout(); return; }
+        if (!res.ok) throw new Error('Recordings fetch failed (' + res.status + ')');
+        const json = await res.json();
+        recs = json.recordings || [];
+      } catch (err) {
+        console.error('Recordings load failed:', err);
+        container.innerHTML = '<p class="empty-note">Recordings are syncing — check back soon.</p>';
+        return;
+      }
+      if (!recs.length) {
+        container.innerHTML = '<p class="empty-note">Recordings from the weekly group calls will appear here.</p>';
+        return;
+      }
+      container.innerHTML = recs.map(rec => {
+        const meta = [];
+        if (rec.date) meta.push('<span class="rec-meta-item"><span class="rec-meta-ico">📅</span>' + esc(rec.date) + '</span>');
+        if (rec.duration) meta.push('<span class="rec-meta-item"><span class="rec-meta-ico">⏱</span>' + esc(rec.duration) + '</span>');
+        return '<div class="rec-card">' +
+          '<h3 class="rec-card-title">' + esc(rec.title || 'Weekly Group Call') + '</h3>' +
+          (meta.length ? '<div class="rec-card-meta">' + meta.join('') + '</div>' : '') +
+          (rec.url ? '<button class="play-btn" data-url="' + esc(rec.url) + '">▶ Watch Recording</button>'
+                   : '<span class="empty-note">Recording link pending</span>') +
+        '</div>';
+      }).join('');
+      container.querySelectorAll('.play-btn').forEach(btn => {
+        btn.addEventListener('click', () => playRecording(btn.dataset.url));
+      });
+    }
+
     loadDashboard();
+    loadRecordings();
 
     // ── IC_RATES_JS_START: retainer-marketplace rates ──
     // Cents <-> dollars helpers. Inputs are whole-dollar USD; API stores integer cents.
