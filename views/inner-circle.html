@@ -989,6 +989,38 @@
     .cw-check input:checked + span { border-color: #00f2ea; background: rgba(0,242,234,0.12); color: #fff; }
     .cw-check input:focus-visible + span { box-shadow: 0 0 0 2px rgba(0,242,234,0.4); }
     .cw-check span small { display: block; font-size: 10px; font-weight: 400; color: rgba(255,255,255,0.4); margin-top: 2px; }
+    /* ── IC Content Engine: generated script results (cards + Copy + violation flags) ── */
+    .cw-results { margin-top: 22px; display: flex; flex-direction: column; gap: 16px; }
+    .cw-results-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 2px; }
+    .cw-results-head h3 { margin: 0; font-size: 15px; color: #fff; }
+    .cw-results-head .cw-back { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14); color: #fff; padding: 8px 14px; border-radius: 8px; font-size: 13px; cursor: pointer; }
+    .cw-results-head .cw-back:hover { background: rgba(255,255,255,0.14); }
+    .cw-script-card { border: 1px solid rgba(255,255,255,0.10); border-radius: 14px; background: #10121c; overflow: hidden; }
+    .cw-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .cw-card-title { font-size: 14px; font-weight: 700; color: #fff; line-height: 1.35; }
+    .cw-card-stage { display: inline-block; margin-top: 4px; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #00f2ea; }
+    .cw-copy-btn { flex-shrink: 0; background: linear-gradient(90deg, #00f2ea, #ff0050); color: #0a0b12; border: none; padding: 9px 16px; border-radius: 9px; font-size: 13px; font-weight: 700; cursor: pointer; transition: filter 0.15s; }
+    .cw-copy-btn:hover { filter: brightness(1.08); }
+    .cw-copy-btn.copied { background: #2ecc71; color: #07210f; }
+    .cw-card-body { padding: 14px 16px; }
+    .cw-beat { margin-bottom: 12px; }
+    .cw-beat:last-child { margin-bottom: 0; }
+    .cw-beat-label { font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-bottom: 4px; }
+    .cw-beat-text { font-size: 13px; color: rgba(255,255,255,0.85); line-height: 1.5; white-space: pre-wrap; }
+    /* violation flags */
+    .cw-flags { margin-top: 14px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px; }
+    .cw-clean { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: #2ecc71; background: rgba(46,204,113,0.10); border: 1px solid rgba(46,204,113,0.3); padding: 6px 12px; border-radius: 999px; }
+    .cw-flag { display: flex; gap: 10px; padding: 10px 12px; border-radius: 10px; margin-bottom: 8px; font-size: 12px; line-height: 1.45; }
+    .cw-flag:last-child { margin-bottom: 0; }
+    .cw-flag.high, .cw-flag.error, .cw-flag.critical { background: rgba(255,80,80,0.10); border: 1px solid rgba(255,80,80,0.32); }
+    .cw-flag.medium, .cw-flag.warning, .cw-flag.warn { background: rgba(255,176,32,0.10); border: 1px solid rgba(255,176,32,0.32); }
+    .cw-flag.low, .cw-flag.info { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.14); }
+    .cw-flag-icon { flex-shrink: 0; font-size: 14px; line-height: 1.3; }
+    .cw-flag-rule { font-weight: 700; color: #fff; }
+    .cw-flag-sev { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.8; margin-left: 6px; }
+    .cw-flag-detail { color: rgba(255,255,255,0.8); margin-top: 3px; }
+    .cw-flag-match { color: rgba(255,255,255,0.6); margin-top: 3px; font-style: italic; }
+    .cw-flag-fix { color: #00f2ea; margin-top: 3px; }
   </style>
   <div id="content-wizard" role="dialog" aria-modal="true" aria-labelledby="cw-title">
     <div class="cw-modal">
@@ -1684,6 +1716,135 @@
       } finally {
         setGenLoading(false);
       }
+    }
+
+
+    // ── IC Content Engine: results renderer — script cards w/ Copy + violation flags ──
+    function cwEsc(v) {
+      return String(v == null ? '' : v)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    // Assemble the full, copyable script text from a script object.
+    function cwScriptText(s) {
+      if (s && typeof s.fullScript === 'string' && s.fullScript.trim()) return s.fullScript.trim();
+      const parts = [];
+      if (s.hook) parts.push('HOOK: ' + s.hook);
+      if (s.credibility) parts.push('CREDIBILITY: ' + s.credibility);
+      if (s.painPoint) parts.push('PAIN POINT: ' + s.painPoint);
+      if (s.proofStack) parts.push('PROOF: ' + s.proofStack);
+      if (s.cta) parts.push('CTA: ' + s.cta);
+      if (s.visualHookIdeas) parts.push('VISUAL IDEAS: ' + s.visualHookIdeas);
+      return parts.join('\n\n');
+    }
+
+    function cwBeat(label, value) {
+      if (!value) return '';
+      return '<div class="cw-beat"><div class="cw-beat-label">' + cwEsc(label) +
+        '</div><div class="cw-beat-text">' + cwEsc(value) + '</div></div>';
+    }
+
+    function cwSevClass(sev) {
+      return String(sev || 'medium').toLowerCase().trim();
+    }
+
+    // Render the violation flags (or a clean badge) for one script.
+    function cwFlags(s) {
+      const violations = Array.isArray(s.violations) ? s.violations : [];
+      const fixes = Array.isArray(s.suggestedFixes) ? s.suggestedFixes : [];
+      if (s.clean === true || violations.length === 0) {
+        return '<div class="cw-flags"><span class="cw-clean">✓ Policy clean</span></div>';
+      }
+      let html = '<div class="cw-flags">';
+      violations.forEach(function (v) {
+        const sev = cwSevClass(v.severity);
+        const icon = (sev === 'high' || sev === 'error' || sev === 'critical') ? '⛔' : (sev === 'low' || sev === 'info') ? 'ℹ️' : '⚠️';
+        html += '<div class="cw-flag ' + cwEsc(sev) + '">' +
+          '<span class="cw-flag-icon">' + icon + '</span><div>' +
+          '<span class="cw-flag-rule">' + cwEsc(v.rule || 'Policy issue') + '</span>' +
+          '<span class="cw-flag-sev">' + cwEsc(sev) + '</span>' +
+          (v.explanation ? '<div class="cw-flag-detail">' + cwEsc(v.explanation) + '</div>' : '') +
+          (v.matchedText ? '<div class="cw-flag-match">“' + cwEsc(v.matchedText) + '”</div>' : '') +
+          '</div></div>';
+      });
+      if (fixes.length) {
+        html += '<div class="cw-flag low"><span class="cw-flag-icon">💡</span><div>' +
+          '<span class="cw-flag-rule">Suggested fixes</span>' +
+          fixes.map(function (f) { return '<div class="cw-flag-fix">• ' + cwEsc(f) + '</div>'; }).join('') +
+          '</div></div>';
+      }
+      return html + '</div>';
+    }
+
+    // Store the raw scripts so Copy can pull exact text by index.
+    let cwScripts = [];
+
+    function copyScript(idx, btn) {
+      const s = cwScripts[idx];
+      if (!s) return;
+      const text = cwScriptText(s);
+      const done = function () {
+        if (!btn) return;
+        const orig = btn.getAttribute('data-label') || 'Copy';
+        btn.classList.add('copied'); btn.textContent = '✓ Copied';
+        setTimeout(function () { btn.classList.remove('copied'); btn.textContent = orig; }, 1600);
+      };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done).catch(function () { cwFallbackCopy(text); done(); });
+      } else { cwFallbackCopy(text); done(); }
+    }
+
+    function cwFallbackCopy(text) {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.focus(); ta.select();
+        document.execCommand('copy'); document.body.removeChild(ta);
+      } catch (_) {}
+    }
+
+    // Main entry point invoked by generateScripts() once the API responds.
+    function renderScripts(data) {
+      const scripts = (data && Array.isArray(data.scripts)) ? data.scripts : [];
+      cwScripts = scripts;
+      const body = document.querySelector('#content-wizard .cw-body');
+      const sub = document.getElementById('cw-subtitle');
+      if (sub) sub.textContent = scripts.length + ' script' + (scripts.length === 1 ? '' : 's') + ' ready — copy and start filming';
+      if (!body) return;
+      if (!scripts.length) {
+        body.innerHTML = '<div class="cw-state">No scripts came back. Please try again.</div>' +
+          '<div class="cw-footer"><button class="cw-generate" type="button" onclick="closeContentWizard()">Close</button></div>';
+        return;
+      }
+      let html = '<div class="cw-results"><div class="cw-results-head">' +
+        '<h3>Your scripts</h3>' +
+        '<button class="cw-back" type="button" onclick="closeContentWizard()">Done</button></div>';
+      scripts.forEach(function (s, i) {
+        s = s || {};
+        const stage = Array.isArray(s.funnelStage) ? s.funnelStage.join(' · ') : (s.funnelStage || s.stage || '');
+        html += '<div class="cw-script-card">' +
+          '<div class="cw-card-top"><div>' +
+            '<div class="cw-card-title">' + cwEsc(s.hook || ('Script ' + (i + 1))) + '</div>' +
+            (stage ? '<span class="cw-card-stage">' + cwEsc(stage) + '</span>' : '') +
+          '</div>' +
+          '<button class="cw-copy-btn" type="button" data-label="Copy" onclick="copyScript(' + i + ', this)">Copy</button>' +
+          '</div>' +
+          '<div class="cw-card-body">' +
+            cwBeat('Hook', s.hook) +
+            cwBeat('Credibility', s.credibility) +
+            cwBeat('Pain point', s.painPoint) +
+            cwBeat('Proof stack', s.proofStack) +
+            cwBeat('Call to action', s.cta) +
+            cwBeat('Visual hook ideas', s.visualHookIdeas) +
+            (s.fullScript ? cwBeat('Full script', s.fullScript) : '') +
+            cwFlags(s) +
+          '</div>' +
+        '</div>';
+      });
+      html += '</div>';
+      body.innerHTML = html;
+      body.scrollTop = 0;
     }
 
     // ── end IC Content Engine wizard ──
