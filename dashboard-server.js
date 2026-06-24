@@ -906,7 +906,9 @@ app.post('/api/creator-pages/submit', express.json(), async (req, res) => {
       const sr = await ghl.get('/contacts/', { params: { locationId: CFG.locationId, query: email, limit: 1 } });
       contactId = sr.data?.contacts?.[0]?.id || null;
     } catch(_) {}
+    const TIKTOK_HANDLE_FIELD_ID = 'trnSmiM9oilkdQSInRPn'; // canonical GHL 'TikTok Handle' TEXT field
     const payload = { locationId: CFG.locationId, firstName, lastName, email, phone: cleanPhone, tags: [tagName, 'creator-interest-form', 'affiliate', `${brandSlug}-affiliate`], source: `Creator Interest Page — ${brand.name}` };
+    if (handle) { payload.customFields = [{ id: TIKTOK_HANDLE_FIELD_ID, value: handle }]; }
     if (contactId) {
       await ghl.put(`/contacts/${contactId}`, payload).catch(() => {});
       await ghl.post(`/contacts/${contactId}/tags`, { tags: [tagName, 'creator-interest-form', 'affiliate', `${brandSlug}-affiliate`] }).catch(() => {});
