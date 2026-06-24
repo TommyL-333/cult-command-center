@@ -767,6 +767,25 @@ async function sendCreatorTC(brand, brands, brandIdx, creatorHandle, tiktokOpenI
 
   const commissionDecimal = tcCommission / 100;
 
+  // ── PRODUCT ALLOW-LIST (fail-closed) ──────────────────────────────────────
+  // We NEVER dump the full catalog into a target collab. A TC is only sent for
+  // products explicitly approved for this brand. Resolution order:
+  //   1. cp.tcProductIds  (array of approved product_ids — the canonical allow-list)
+  //   2. cp.tcHeroProductId (single legacy hero product)
+  //   3. HARD STOP — no products approved => do NOT send (return [])
+  const resolveTcProductIds = () => {
+    if (Array.isArray(cp.tcProductIds) && cp.tcProductIds.length) {
+      return cp.tcProductIds.map(String).filter(Boolean);
+    }
+    if (cp.tcHeroProductId) return [String(cp.tcHeroProductId)];
+    return [];
+  };
+  const approvedProductIds = resolveTcProductIds();
+  if (!approvedProductIds.length) {
+    console.warn(`${label} BLOCKED — no approved TC products (tcProductIds/tcHeroProductId) configured for ${brand.name}. Refusing to send to avoid full-catalog collab.`);
+    return { ok: false, blocked: true, reason: 'no_approved_products', brand: brand.name };
+  }
+
   // ── Path A.5: Look up creator open_id by handle if not provided ──
   // Searches TikTok's creator database using the brand's own token.
   // Runs before Path A so we can use direct invite even when creator didn't do OAuth.
@@ -803,21 +822,9 @@ async function sendCreatorTC(brand, brands, brandIdx, creatorHandle, tiktokOpenI
     } else if (!shopTok?.shop_cipher) {
       console.log(`${label} brand token missing shop_cipher — falling through to Reacher`);
     } else {
-      // Build product list (hero product or fallback to first product in brand's TTS catalog)
-      let productIds = [];
-      if (cp.tcHeroProductId) {
-        productIds = [String(cp.tcHeroProductId)];
-        console.log(`${label} TikTok direct invite: hero product ${cp.tcHeroProductId}`);
-      } else {
-        try {
-          const prodResp = await ttsBrandPost(brand, brands, brandIdx, '/affiliate/seller/202309/products/search', { page_size: 1 });
-          const first = prodResp?.data?.products?.[0];
-          if (first?.product_id) productIds = [String(first.product_id)];
-        } catch(e) { console.error(`${label} TTS product fetch error:`, e.message); }
-      }
-      if (!productIds.length) {
-        console.log(`${label} no products found — skipping direct invite`); return;
-      }
+      // Product list comes ONLY from the approved allow-list (fail-closed above).
+      const productIds = approvedProductIds;
+      console.log(`${label} TikTok direct invite: ${productIds.length} approved product(s) [${productIds.join(',')}]`);
       try {
         const resp = await ttsBrandPost(brand, brands, brandIdx, '/affiliate/seller/202309/creators/invite', {
           creator_open_id: tiktokOpenId,
@@ -838,31 +845,12 @@ async function sendCreatorTC(brand, brands, brandIdx, creatorHandle, tiktokOpenI
     console.log(`${label} skip — no Reacher shopId on brand`); return;
   }
 
-  // Build product list
-  let tcProducts = [];
-  if (cp.tcHeroProductId) {
-    tcProducts = [{ product_id: String(cp.tcHeroProductId), commission_rate: commissionDecimal }];
-    console.log(`${label} Reacher TC: hero product ${cp.tcHeroProductId}`);
-  } else {
-    try {
-      const { data: prodResp } = await axios.post(
-        `${CFG.railwayUrl}/affiliate/shops/${brand.shopId}/products`,
-        { page: 1, page_size: 20 },
-        { timeout: 15_000 }
-      );
-      const rawProducts = prodResp?.data || [];
-      tcProducts = rawProducts.slice(0, 10).map(p => ({
-        product_id:      String(p.product_id || p.id),
-        commission_rate: commissionDecimal,
-      }));
-    } catch(e) {
-      console.error(`${label} Reacher products fetch error:`, e.message);
-    }
-  }
-
-  if (!tcProducts.length) {
-    console.log(`${label} skip — no products found for shop ${brand.shopId}`); return;
-  }
+  // Product list comes ONLY from the approved allow-list (fail-closed above).
+  const tcProducts = approvedProductIds.map(pid => ({
+    product_id:      String(pid),
+    commission_rate: commissionDecimal,
+  }));
+  console.log(`${label} Reacher TC: ${tcProducts.length} approved product(s) [${approvedProductIds.join(',')}]`);
 
   const message = `Hi! We'd love to collaborate with you on ${brand.name}. We offer ${tcCommission}% commission on our TikTok Shop products — click to view the details and accept the invite!`;
   try {
@@ -3377,6 +3365,49 @@ app.patch('/portal-admin/creator-accent/:brandId', requirePortalAdmin, express.j
   saveBrands(brands);
   res.json({ ok: true, slug: cp.slug || null, accentColor: cp.accentColor });
 });
+
+// ── TC PRODUCT ALLOW-LIST (prevents full-catalog target collabs) ──────────────
+// GET  /portal-admin/tc-products/:brandId  -> { catalog:[{product_id,product_name}], approved:[ids], heroProductId }
+// PATCH /portal-admin/tc-products/:brandId  body {productIds:[...]} -> sets cp.tcProductIds (the allow-list)
+app.get('/portal-admin/tc-products/:brandId', requirePortalAdmin, async (req, res) => {
+  const brands = loadBrands();
+  const idx = (brands.clients || []).findIndex(b => b.id === req.params.brandId || b.creatorPage?.slug === req.params.brandId);
+  if (idx === -1) return res.status(404).json({ error: 'Brand not found' });
+  const brand = brands.clients[idx];
+  const cp = brand.creatorPage || {};
+  let catalog = [];
+  if (brand.shopId) {
+    try {
+      const { data } = await axios.post(
+        `${CFG.railwayUrl}/affiliate/shops/${brand.shopId}/products`,
+        { page: 1, page_size: 100 }, { timeout: 15000 });
+      catalog = (data?.data || []).map(p => ({ product_id: String(p.product_id || p.id), product_name: p.product_name || p.name || p.title || '(unnamed)' }));
+    } catch (e) { console.error('[tc-products] catalog fetch error:', e.message); }
+  }
+  res.json({
+    ok: true, brand: brand.name, shopId: brand.shopId || null,
+    approved: Array.isArray(cp.tcProductIds) ? cp.tcProductIds.map(String) : [],
+    heroProductId: cp.tcHeroProductId || null,
+    catalog,
+  });
+});
+
+app.patch('/portal-admin/tc-products/:brandId', requirePortalAdmin, express.json(), (req, res) => {
+  const brands = loadBrands();
+  const idx = (brands.clients || []).findIndex(b => b.id === req.params.brandId || b.creatorPage?.slug === req.params.brandId);
+  if (idx === -1) return res.status(404).json({ error: 'Brand not found' });
+  let { productIds } = req.body || {};
+  if (!Array.isArray(productIds)) return res.status(400).json({ error: 'productIds must be an array of product_id strings' });
+  productIds = [...new Set(productIds.map(String).map(x => x.trim()).filter(Boolean))];
+  if (!brands.clients[idx].creatorPage) brands.clients[idx].creatorPage = {};
+  const cp = brands.clients[idx].creatorPage;
+  cp.tcProductIds = productIds;
+  cp.tcProductsUpdatedAt = new Date().toISOString();
+  saveBrands(brands);
+  console.log(`[tc-products] ${brands.clients[idx].name} allow-list set to ${productIds.length} product(s): ${productIds.join(',')}`);
+  res.json({ ok: true, brand: brands.clients[idx].name, approved: cp.tcProductIds });
+});
+
 
 // POST /portal-admin/regenerate-brief/:slug — regenerate creator brief for a brand
 // Body can include override fields: targetAudience, mainProblem, buyerObjections, customerResults, products, brandMission
