@@ -258,6 +258,22 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
           WHERE recording_url IS NOT NULL AND recording_url != ''
           ORDER BY scheduled_at DESC LIMIT 50`
       ),
+      // ── IC Content Engine: my-scripts reads (local SQLite mirror) ────────────
+      // Newest-first. Filtered by the session creator id; brand filter optional.
+      scriptsForCreator: db.prepare(
+        `SELECT id, brand_id, shop_id, product_name, funnel_stage, hook, title,
+                full_script, script_json, bitable_record_id, created_at
+           FROM inner_circle_scripts
+          WHERE creator_id = ?
+          ORDER BY created_at DESC, id DESC LIMIT 200`
+      ),
+      scriptsForCreatorBrand: db.prepare(
+        `SELECT id, brand_id, shop_id, product_name, funnel_stage, hook, title,
+                full_script, script_json, bitable_record_id, created_at
+           FROM inner_circle_scripts
+          WHERE creator_id = ? AND lower(brand_id) = lower(?)
+          ORDER BY created_at DESC, id DESC LIMIT 200`
+      ),
       getAssignment: db.prepare(
         `SELECT * FROM inner_circle_brand_assignments WHERE creator_id = ? AND shop_id = ?`
       ),
