@@ -12566,6 +12566,17 @@ async function runOnboardingPipeline(formData) {
   // 7. Send comprehensive Lark alert
   await sendLarkOnboardingAlert(formData, shopifyData, aiContent, larkDoc, creatorPage);
 
+  // 8. Sync to Ops Engine (fire-and-forget)
+  try {
+    const { syncClientToOpsEngine } = require('./lib/ops-engine-sync');
+    await syncClientToOpsEngine(formData, {
+      brandSlug: (formData.brandName||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''),
+      ghlContactId: typeof ghlContactId !== 'undefined' ? ghlContactId : null,
+      larkDocUrl: typeof larkDoc !== 'undefined' ? (larkDoc?.url||larkDoc||null) : null,
+      creatorPageUrl: typeof creatorPage !== 'undefined' ? (creatorPage?.url||null) : null
+    });
+  } catch (e) { console.error('[ops-engine] sync error:', e.message); }
+
   console.log(`[onboard] Pipeline complete: ${brandName} (id: ${entryId})`);
 }
 
