@@ -152,31 +152,6 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       CREATE INDEX IF NOT EXISTS idx_retainer_agreements_creator ON retainer_agreements(creator_id);
     `);
 
-    // ── IC Content Engine: generated scripts (local SQLite mirror) ────────────
-    // Source of truth for reads via GET /api/inner-circle/my-scripts. The Lark
-    // Base (Bitable) write is a fire-and-forget mirror layered on top later; this
-    // table is what the creator portal queries, so reads never depend on Bitable
-    // availability. One row per generated script. brand_id is the brand SLUG
-    // (e.g. 'approved-science') so it matches the creator SPA's brand filter.
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS inner_circle_scripts (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        creator_id INTEGER NOT NULL REFERENCES inner_circle_creators(id),
-        brand_id TEXT,
-        shop_id INTEGER,
-        product_name TEXT,
-        funnel_stage TEXT,
-        hook TEXT,
-        title TEXT,
-        full_script TEXT,
-        script_json TEXT,
-        bitable_record_id TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      );
-      CREATE INDEX IF NOT EXISTS idx_ic_scripts_creator ON inner_circle_scripts(creator_id);
-      CREATE INDEX IF NOT EXISTS idx_ic_scripts_creator_brand ON inner_circle_scripts(creator_id, brand_id);
-    `);
-
     stmts = {
       creatorByEmail: db.prepare(
         `SELECT * FROM inner_circle_creators WHERE lower(email) = lower(?) AND status = 'active'`
@@ -257,22 +232,6 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
         `SELECT id, title, scheduled_at, recording_url FROM inner_circle_calls
           WHERE recording_url IS NOT NULL AND recording_url != ''
           ORDER BY scheduled_at DESC LIMIT 50`
-      ),
-      // ── IC Content Engine: my-scripts reads (local SQLite mirror) ────────────
-      // Newest-first. Filtered by the session creator id; brand filter optional.
-      scriptsForCreator: db.prepare(
-        `SELECT id, brand_id, shop_id, product_name, funnel_stage, hook, title,
-                full_script, script_json, bitable_record_id, created_at
-           FROM inner_circle_scripts
-          WHERE creator_id = ?
-          ORDER BY created_at DESC, id DESC LIMIT 200`
-      ),
-      scriptsForCreatorBrand: db.prepare(
-        `SELECT id, brand_id, shop_id, product_name, funnel_stage, hook, title,
-                full_script, script_json, bitable_record_id, created_at
-           FROM inner_circle_scripts
-          WHERE creator_id = ? AND lower(brand_id) = lower(?)
-          ORDER BY created_at DESC, id DESC LIMIT 200`
       ),
       getAssignment: db.prepare(
         `SELECT * FROM inner_circle_brand_assignments WHERE creator_id = ? AND shop_id = ?`
@@ -396,48 +355,43 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       ),
     };
 
-    // ── ONE-TIME full Inner Circle wipe (guarded by sentinel) ─────────────────
-    //    The two hardcoded TEST creator seed inserts were removed so restarts no
-    //    longer re-seed phantom creators. To clear pre-existing seeded/test data
-    //    exactly once, run a guarded full wipe: if the sentinel file does not
-    //    exist (or IC_WIPE_ONCE=1 forces it) DELETE all Inner Circle rows inside a
-    //    single transaction, then write the sentinel so it never repeats.
-    try {
-      const _fs = require('fs');
-      const _path = require('path');
-      const _icDataDir = process.env.DATA_DIR || '/data';
-      const _sentinelPath = _path.join(_icDataDir, '.ic-wiped');
-      const _forceWipe = process.env.IC_WIPE_ONCE === '1';
-      const _alreadyWiped = _fs.existsSync(_sentinelPath);
+    // ── Idempotent TEST creator seed (E2E testing; TEST-prefixed per task
+    //    cleanup policy — flagged for Tommy, removable any time) ────────────��──
+    const existing = queries.getCreatorByHandle.get('@test_sisyphus_ic');
+    if (!existing) {
+      queries.insertCreator.run(
+        '@test_sisyphus_ic',
+        'TEST Creator Sisyphus',
+        'test.sisyphus@cultcontent.cc',
+        'tt_test_sisyphus_001',
+        '2026-06-10',
+        '2026-07-31',
+        20
+      );
+      console.log('[inner-circle-sqlite] seeded TEST creator @test_sisyphus_ic');
+    }
 
-      if (_forceWipe || !_alreadyWiped) {
-        // FK-safe order: children referencing inner_circle_creators(id) first,
-        // then the creators table itself. inner_circle_sessions, *_handles and
-        // *_resets all reference creator_id; brand_assignments references creators.
-        const _wipe = db.transaction(() => {
-          const _counts = {};
-          _counts.videos = db.prepare('DELETE FROM inner_circle_videos').run().changes;
-          _counts.assignments = db.prepare('DELETE FROM inner_circle_brand_assignments').run().changes;
-          _counts.sessions = db.prepare('DELETE FROM inner_circle_sessions').run().changes;
-          // Child tables that reference creators — clear before deleting creators
-          // so no orphan rows / FK violations remain. Guarded individually in case
-          // a table is absent on an older schema.
-          try { _counts.handles = db.prepare('DELETE FROM inner_circle_handles').run().changes; } catch (_) { _counts.handles = 0; }
-          try { _counts.resets = db.prepare('DELETE FROM inner_circle_resets').run().changes; } catch (_) { _counts.resets = 0; }
-          _counts.creators = db.prepare('DELETE FROM inner_circle_creators').run().changes;
-          return _counts;
-        });
-        const _deleted = _wipe();
-        _fs.writeFileSync(_sentinelPath, new Date().toISOString() + '\n');
-        console.log('[inner-circle-sqlite] ONE-TIME wipe complete' +
-          (_forceWipe ? ' (IC_WIPE_ONCE=1 forced)' : '') +
-          ' — deleted ' + JSON.stringify(_deleted) +
-          '; sentinel written: ' + _sentinelPath);
-      } else {
-        console.log('[inner-circle-sqlite] wipe skipped — sentinel present: ' + _sentinelPath);
-      }
-    } catch (_wipeErr) {
-      console.error('[inner-circle-sqlite] ONE-TIME wipe FAILED (continuing):', _wipeErr.message);
+    // ── Second TEST creator + distinct TEST brand assignment — data-isolation
+    //    E2E (step 8). Assignment goes straight into inner_circle_brand_assignments;
+    //    'test-brand-b-e2e' is NOT in brands.json so real creators never see it.
+    //    TEST-prefixed per cleanup policy — removable any time. ────────────────
+    let creator2 = queries.getCreatorByHandle.get('@test_sisyphus_ic2');
+    if (!creator2) {
+      queries.insertCreator.run(
+        '@test_sisyphus_ic2',
+        'TEST Creator Sisyphus Two',
+        'test.sisyphus2@cultcontent.cc',
+        'tt_test_sisyphus_002',
+        '2026-06-10',
+        '2026-07-31',
+        20
+      );
+      creator2 = queries.getCreatorByHandle.get('@test_sisyphus_ic2');
+      console.log('[inner-circle-sqlite] seeded TEST creator @test_sisyphus_ic2');
+    }
+    if (creator2 && !stmts.getAssignment.get(creator2.id, 'test-brand-b-e2e')) {
+      stmts.insertAssignment.run(creator2.id, 'test-brand-b-e2e', 'TEST Brand B (E2E isolation)');
+      console.log('[inner-circle-sqlite] seeded TEST brand assignment for @test_sisyphus_ic2');
     }
 
     console.log('[inner-circle-sqlite] mounted — SQLite layer ready');
@@ -551,84 +505,6 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
   // send Email message). Mirrors the confirmed pattern used in dashboard-server.js.
   // Returns { ok, reason? } and NEVER throws — callers wrap in try/catch anyway.
   const IC_PORTAL_BASE = process.env.IC_BASE_URL || 'https://portal.cultcontent.cc';
-
-  // ── GHL tagging helper ──────────────────────────────────────────────────────
-  // Find-or-create a GHL contact by email, then apply tags. Fire-and-forget:
-  // NEVER throws, NEVER blocks signup / brand selection. Returns { ok, reason? }.
-  // Mirrors the confirmed GHL v2 auth pattern used by icSendResetEmail above.
-  async function icApplyGhlTags(email, name, tags) {
-    try {
-      const list = Array.isArray(tags) ? tags.filter(Boolean) : [tags].filter(Boolean);
-      if (!list.length) return { ok: false, reason: 'no-tags' };
-      let axios;
-      try { axios = require('axios'); }
-      catch (e) { console.error('[inner-circle-sqlite] icApplyGhlTags: axios unavailable:', e.message); return { ok: false, reason: 'no-axios' }; }
-
-      const apiKey = process.env.GHL_API_KEY;
-      const locationId = process.env.GHL_LOC_ID;
-      if (!apiKey || !locationId) {
-        console.error('[inner-circle-sqlite] icApplyGhlTags: GHL_API_KEY / GHL_LOC_ID not configured');
-        return { ok: false, reason: 'ghl-not-configured' };
-      }
-      const cleanEmail = String(email || '').trim().toLowerCase();
-      if (!cleanEmail) return { ok: false, reason: 'no-email' };
-      const headers = { Authorization: `Bearer ${apiKey}`, Version: '2021-07-28', 'Content-Type': 'application/json' };
-
-      // 1) Find existing contact by email
-      let contactId = null;
-      try {
-        const sr = await axios.get('https://services.leadconnectorhq.com/contacts/', {
-          headers, params: { locationId, query: cleanEmail, limit: 1 }, timeout: 10000,
-        });
-        const found = (sr.data && sr.data.contacts) ? sr.data.contacts[0] : null;
-        if (found && found.id) contactId = found.id;
-      } catch (e) {
-        console.error('[inner-circle-sqlite] icApplyGhlTags: lookup failed:', e.response && e.response.data ? JSON.stringify(e.response.data) : e.message);
-      }
-
-      // 2) Create the contact if it does not exist (upsert is the safe path)
-      if (!contactId) {
-        try {
-          const parts = String(name || '').trim().split(/\s+/);
-          const firstName = parts.shift() || '';
-          const lastName = parts.join(' ');
-          const cr = await axios.post('https://services.leadconnectorhq.com/contacts/upsert', {
-            locationId, email: cleanEmail, firstName, lastName, tags: list,
-            source: 'Inner Circle Portal',
-          }, { headers, timeout: 10000 });
-          contactId = cr.data && (cr.data.contact && cr.data.contact.id || cr.data.id);
-          // upsert already applied tags — done.
-          if (contactId) return { ok: true, contactId, created: true, tags: list };
-        } catch (ce) {
-          console.error('[inner-circle-sqlite] icApplyGhlTags: upsert failed:', ce.response && ce.response.data ? JSON.stringify(ce.response.data) : ce.message);
-          return { ok: false, reason: 'upsert-failed' };
-        }
-      }
-      if (!contactId) return { ok: false, reason: 'no-contact' };
-
-      // 3) Apply tags to the existing contact (additive; GHL merges tags)
-      try {
-        await axios.post(`https://services.leadconnectorhq.com/contacts/${contactId}/tags`, {
-          tags: list,
-        }, { headers, timeout: 10000 });
-        return { ok: true, contactId, tags: list };
-      } catch (te) {
-        console.error('[inner-circle-sqlite] icApplyGhlTags: add-tags failed:', te.response && te.response.data ? JSON.stringify(te.response.data) : te.message);
-        return { ok: false, reason: 'tag-failed' };
-      }
-    } catch (e) {
-      console.error('[inner-circle-sqlite] icApplyGhlTags: unexpected error:', e.message);
-      return { ok: false, reason: 'error' };
-    }
-  }
-
-  // Brand name -> slug, matching the IC catalog slug convention (lowercase, spaces->dashes).
-  function icBrandSlug(name) {
-    return String(name || '').toLowerCase().trim()
-      .replace(/&/g, 'and')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-+|-+$/g, '');
-  }
 
   async function icSendResetEmail(creator, resetUrl) {
     let axios;
@@ -836,10 +712,6 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
           .catch((e) => console.error('[inner-circle-sqlite] signup alert notify failed:', e.message));
         icNotifyDM(IC_SIGNUP_DM_OPEN_ID, text)
           .catch((e) => console.error('[inner-circle-sqlite] signup DM notify failed:', e.message));
-        // GHL: tag the new creator as an Inner Circle member (fire-and-forget).
-        icApplyGhlTags(email, name, ['inner-circle-member'])
-          .then((r) => { if (!r.ok) console.error('[inner-circle-sqlite] signup GHL tag not applied:', r.reason); })
-          .catch((e) => console.error('[inner-circle-sqlite] signup GHL tag failed:', e.message));
       } catch (e) {
         console.error('[inner-circle-sqlite] signup notify dispatch failed:', e.message);
       }
@@ -1125,8 +997,50 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
   // which 500s in production (supabase client is undefined there). This module
   // mounts earlier in registration order, so this SQLite handler wins.
   app.get('/api/inner-circle/recordings', requireSqliteSession, (req, res) => {
+    // Optional per-brand filter. Accepts ?shop_id= (INTEGER, canonical brand key
+    // matching inner_circle_videos / brand_assignments) and/or ?brand_id= (TEXT,
+    // brands.json client id). No param => all recordings (unchanged behavior).
+    const shopIdRaw = req.query.shop_id;
+    const brandIdRaw = req.query.brand_id;
+    const shopId =
+      shopIdRaw !== undefined && shopIdRaw !== '' && !Number.isNaN(Number(shopIdRaw))
+        ? Number(shopIdRaw)
+        : null;
+    const brandId =
+      brandIdRaw !== undefined && String(brandIdRaw).trim() !== ''
+        ? String(brandIdRaw).trim()
+        : null;
+
     try {
-      const recordings = stmts.recordingsList.all().map((r) => ({
+      let rows;
+      if (shopId !== null || brandId !== null) {
+        // Build filtered query lazily so the shop_id/brand_id columns are only
+        // referenced when actually filtering. If the brand migration hasn't run
+        // yet, this throws and we fall back to an empty set below.
+        const conds = ["recording_url IS NOT NULL", "recording_url != ''"];
+        const params = [];
+        if (shopId !== null) { conds.push('shop_id = ?'); params.push(shopId); }
+        if (brandId !== null) { conds.push('brand_id = ?'); params.push(brandId); }
+        try {
+          rows = db
+            .prepare(
+              `SELECT id, title, scheduled_at, recording_url FROM inner_circle_calls
+                WHERE ${conds.join(' AND ')}
+                ORDER BY scheduled_at DESC LIMIT 50`
+            )
+            .all(...params);
+        } catch (colErr) {
+          // brand columns not present yet (pre-migration) — degrade gracefully:
+          // a brand-scoped request on an unmigrated DB returns an empty set
+          // rather than 500ing or leaking other brands' recordings.
+          console.warn('[inner-circle-sqlite] recordings brand filter unavailable:', colErr.message);
+          rows = [];
+        }
+      } else {
+        rows = stmts.recordingsList.all();
+      }
+
+      const recordings = rows.map((r) => ({
         id: r.id,
         title: r.title,
         date: r.scheduled_at ? String(r.scheduled_at).slice(0, 10) : '',
@@ -1175,6 +1089,20 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
   function icLoadBrandsFile() {
     try { return JSON.parse(fs.readFileSync(IC_BRANDS_FILE, 'utf8')); }
     catch (_) { return null; }
+  }
+
+  // ── slug → numeric Reacher/TikTok shop_id ──────────────────────────────────
+  // brands.json shape: { clients: [ { id: <slug>, shopId: <number>, ... } ] }.
+  // Reuses IC_BRANDS_FILE + icLoadBrandsFile() (defined above) — no new imports,
+  // no redeclared consts. Returns the numeric shopId or null if unmapped.
+  function resolveNumericShopId(slug) {
+    if (!slug) return null;
+    const data = icLoadBrandsFile();
+    if (!data || !Array.isArray(data.clients)) return null;
+    const rec = data.clients.find(c => c && c.id === slug);
+    if (!rec) return null;
+    const n = Number(rec.shopId);
+    return Number.isFinite(n) && n > 0 ? n : null;
   }
 
   function icNormalizeWebsite(w) {
@@ -1227,7 +1155,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
           logo: b.logoUrl || (cat && cat.logo) || null,
           description: (cat && cat.description) || b.description || '',
           website: icNormalizeWebsite(b.website || (cat && cat.website)),
-          brandColor: b.brandColor || (cat && cat.brandColor) || '#00f2ea',
+          brandColor: b.brandColor || (cat && cat.brandColor) || null,
           commission: { targetCollab: 0.5, ads: 0.25 },
           isTest: !!b.TEST,
         };
@@ -1360,6 +1288,185 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     }
   }
 
+  // ── POST /api/inner-circle/generate-scripts ──────────────────────────────────
+  // IC Content Engine — generate TikTok Shop affiliate scripts for a creator's
+  // assigned brand + a chosen product. Auth/authorization contract (Step 8):
+  //   401 → requireSqliteSession rejects (no/expired session)
+  //   403 → creator IS authenticated but is NOT actively assigned to brandId
+  //   404 → assigned, but productId does not resolve in the brand's catalog
+  //   200 → { scripts:[...] }  (each annotated with violations/clean)
+  // The LLM call is the swappable connector (lib/ic-script-generator.js).
+  app.post('/api/inner-circle/generate-scripts', requireSqliteSession, express.json(), async (req, res) => {
+    try {
+      const c = req.icCreator;
+      const body = req.body || {};
+      const brandId = body.brandId != null ? String(body.brandId).trim() : '';
+      const productId = body.productId != null ? String(body.productId).trim() : '';
+      if (!brandId) return res.status(400).json({ error: 'brandId required' });
+      if (!productId) return res.status(400).json({ error: 'productId required' });
+
+      // ── AUTHORIZATION (403) — must hold an ACTIVE assignment to this brand ────
+      // Assignments store brand.id in the shop_id column (see select-brand).
+      let assignment = null;
+      try { assignment = stmts.getAssignment.get(c.id, brandId); }
+      catch (e) { return res.status(500).json({ error: 'Server error' }); }
+      if (!assignment || !assignment.active) {
+        return res.status(403).json({ error: 'Not assigned to this brand' });
+      }
+
+      // Resolve the brand record (source of truth: brands.json) → numeric shopId.
+      const data = icLoadBrandsFile();
+      const brand = ((data && data.clients) || []).find((b) =>
+        b && (String(b.id) === brandId || String(b.name || '').toLowerCase().trim() === brandId.toLowerCase())
+      );
+      if (!brand) return res.status(404).json({ error: 'Brand not found' });
+      const numericShopId = brand.shopId || brand.shop_id || brand.shopID || null;
+
+      // ── PRODUCT RESOLUTION (404) — productId must exist in the brand catalog ──
+      let resolver = null;
+      try { resolver = require('../lib/product-resolver'); } catch (_) { resolver = null; }
+      let catalog = [];
+      if (resolver && typeof resolver.fetchCatalog === 'function' && numericShopId != null) {
+        try { catalog = await resolver.fetchCatalog(numericShopId); } catch (_) { catalog = []; }
+      }
+      const product = Array.isArray(catalog)
+        ? catalog.find((p) => p && String(p.product_id) === productId)
+        : null;
+      if (!product) {
+        return res.status(404).json({ error: 'Product not found for this brand', productId });
+      }
+
+      // ── BUILD productContext + GENERATE (swappable connector) ────────────────
+      const productContext = {
+        brandName: brand.name,
+        productName: product.name || product.title || '',
+        productId: String(product.product_id),
+        shopId: numericShopId,
+        products: brand.products || '',
+        audience: brand.audience || '',
+        voice: brand.voice || '',
+        proofPoints: brand.proofPoints || '',
+        cta: brand.cta || '',
+        avoidTopics: brand.avoidTopics || '',
+        contentPillars: brand.contentPillars || '',
+        extraContext: brand.extraContext || '',
+      };
+
+      let gen;
+      try { gen = require('../lib/ic-script-generator'); }
+      catch (e) { return res.status(500).json({ error: 'Script engine unavailable' }); }
+
+      let result;
+      try {
+        result = await gen.generateScripts(body, productContext);
+      } catch (e) {
+        const code = (e && e.code) || 'GENERATION_FAILED';
+        const status = code === 'NO_API_KEY' ? 503 : 502;
+        console.error('[inner-circle-sqlite] generate-scripts failed:', code, e && e.message);
+        return res.status(status).json({ error: 'Script generation failed', code });
+      }
+
+      const scripts = gen.runViolationChecks((result && result.scripts) || []);
+
+      // ── FIRE-AND-FORGET Bitable mirror (non-blocking) ────────────────────────
+      // Mirror each generated script to Lark Base for unified team visibility.
+      // The SQLite store remains the source of truth; a Bitable failure must
+      // NEVER delay or alter the creator's response. We therefore build the
+      // records, kick off the writes WITHOUT awaiting, and guard with .catch()
+      // so an unexpected rejection can never surface as an unhandled rejection.
+      try {
+        const bitable = require('../lib/ic-script-bitable');
+        const nowMs = Date.now();
+        const records = (scripts || []).map((s, i) => ({
+          hook: s && s.hook,
+          credibility: s && s.credibility,
+          problem: s && s.problem,
+          proofStack: s && (s.proofStack || s.proof_stack),
+          cta: s && s.cta,
+          visualHookIdeas: s && (s.visualHookIdeas || s.visual_hook_ideas),
+          fullScript: s && (s.fullScript || s.full_script || s.script),
+          funnelStages: s && (s.funnelStages || s.funnelStage || s.funnel_stage),
+          scriptIndex: i,
+          creatorHandle: (c && (c.tiktok_handle || c.handle || c.name)) || '',
+          brand: brand.name,
+          product: productContext.productName,
+          generatedAt: nowMs,
+        }));
+        if (records.length) {
+          // Non-awaited: returns immediately; failures are logged inside the lib
+          // (persistScriptsToBitable never throws) and the extra .catch() is a
+          // belt-and-suspenders guard against any synchronous throw on call.
+          Promise.resolve()
+            .then(() => bitable.persistScriptsToBitable(records))
+            .then((summary) => {
+              if (summary && summary.attempted) {
+                console.log('[inner-circle-sqlite] bitable mirror:', summary.persisted, '/', summary.attempted, 'scripts persisted');
+              }
+            })
+            .catch((e) => console.warn('[inner-circle-sqlite] bitable mirror failed (non-blocking):', e && e.message));
+        }
+      } catch (e) {
+        // Module load or record-build failure: log and continue. Never blocks.
+        console.warn('[inner-circle-sqlite] bitable mirror skipped (non-blocking):', e && e.message);
+      }
+
+      return res.json({
+        scripts,
+        brand: brand.name,
+        product: productContext.productName,
+        count: scripts.length,
+      });
+    } catch (e) {
+      console.error('[inner-circle-sqlite] generate-scripts error:', e.message);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  });
+
+  // ── GET /api/inner-circle/my-scripts ─────────────────────────────────────────
+  // Return the generated scripts for the LOGGED-IN creator, read from the Lark
+  // Base (Bitable) mirror. The creator identity comes ENTIRELY from the session
+  // (req.icCreator) — never from query params — so a creator can only ever see
+  // their own scripts (IDOR-safe).
+  //
+  // We resolve the creator's email AND tiktok handle from the session row and
+  // ask the Bitable helper to filter on "Creator Email" / "Creator Handle".
+  // Fields are mapped back to camelCase by the helper.
+  //
+  // HONEST CONTRACT: on any Bitable error we return 200 with an EMPTY array plus
+  // an `error` string — we NEVER fabricate scripts and never 500 the creator's
+  // dashboard over a mirror outage. (A 200 + empty array is acceptable.)
+  app.get('/api/inner-circle/my-scripts', requireSqliteSession, async (req, res) => {
+    const c = req.icCreator || {};
+    const email = String(c.email || '').trim();
+    const handle = String(c.creator_handle || c.tiktok_handle || c.handle || '').trim();
+
+    let bitable;
+    try {
+      bitable = require('../lib/ic-script-bitable');
+    } catch (e) {
+      console.warn('[inner-circle-sqlite] my-scripts: bitable lib load failed:', e && e.message);
+      return res.json({ ok: false, scripts: [], error: 'bitable-unavailable' });
+    }
+
+    try {
+      const result = await bitable.fetchScriptsFromBitable({ email, handle, limit: 200 });
+      if (result && result.ok) {
+        const scripts = Array.isArray(result.scripts) ? result.scripts : [];
+        return res.json({ ok: true, scripts });
+      }
+      // Honest failure: surface the reason, return an empty array (200).
+      return res.json({
+        ok: false,
+        scripts: [],
+        error: (result && (result.reason || result.msg)) || 'bitable-error',
+      });
+    } catch (e) {
+      // Defensive — the helper is contracted never to throw, but guard anyway.
+      console.warn('[inner-circle-sqlite] my-scripts failed:', e && e.message);
+      return res.json({ ok: false, scripts: [], error: 'exception' });
+    }
+  });
+
   app.post('/api/inner-circle/select-brand', requireSqliteSession, express.json(), async (req, res) => {
     try {
       const c = req.icCreator;
@@ -1415,14 +1522,6 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
         }) + '\n');
       } catch (e) { console.error('[inner-circle-sqlite] selection log write failed:', e.message); }
 
-      // GHL: tag the creator with the brand they joined (fire-and-forget).
-      try {
-        const brandTag = icBrandSlug(brand.name) + '-inner-circle';
-        icApplyGhlTags(c.creator_email || c.email, c.creator_name, [brandTag, 'inner-circle-member'])
-          .then((r) => { if (!r.ok) console.error('[inner-circle-sqlite] select-brand GHL tag not applied:', r.reason); })
-          .catch((e) => console.error('[inner-circle-sqlite] select-brand GHL tag failed:', e.message));
-      } catch (e) { console.error('[inner-circle-sqlite] select-brand GHL tag build failed:', e.message); }
-
       const handle = String(c.creator_handle || '').replace(/^@/, '');
       const text = `🤝 Inner Circle Brand Selection: ${c.creator_name}${handle ? ` (@${handle})` : ''} selected ${brand.name} — send target collab invite`;
       const { notified, via } = await icNotifyAlertChannel(text);
@@ -1441,6 +1540,30 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
   // ════════════════════════════════════════════════════════════════════════════
   // ADMIN + CLIENT-PORTAL VIEWS (read-only) — added June 2026
   // ════════════════════════════════════════════════════════════════════════════
+
+  // ── Shared admin gate for BOTH admin routes (JSON + HTML) ───────────────────
+  // Accepts ANY of: (a) portal-admin express-session (req.session.isPortalAdmin),
+  // (b) the IC_ADMIN_KEY shared secret via ?key= / x-ic-admin-key header, or
+  // (c) a Cloudflare Access identity header (cf-access-authenticated-user-email),
+  // which dashboard-server.js enforces upstream when CF_ACCESS_AUD is set.
+  // NOTE (for Tommy): confirm the intended auth model. Today any request that
+  // already carries cf-access-authenticated-user-email (i.e. passed Cloudflare
+  // Access) is treated as an authenticated admin here. If IC admin should be
+  // restricted to a specific allow-list of CF Access emails, set IC_ADMIN_EMAILS
+  // (comma-separated) and this gate will enforce membership.
+  function icAdminGate(req) {
+    if (req.session && req.session.isPortalAdmin) return true;
+    const want = process.env.IC_ADMIN_KEY;
+    const got = (req.query && req.query.key) || (req.body && req.body.key) || req.get('x-ic-admin-key');
+    if (want && typeof got === 'string' && got === want) return true;
+    const cfEmail = req.get('cf-access-authenticated-user-email');
+    if (cfEmail) {
+      const allow = (process.env.IC_ADMIN_EMAILS || '').split(',').map(function(e){return e.trim().toLowerCase();}).filter(Boolean);
+      if (!allow.length) return true; // no allow-list configured → any CF-authenticated user is admin
+      return allow.indexOf(String(cfEmail).toLowerCase()) !== -1;
+    }
+    return false;
+  }
 
   // Build a normalized roster row for a creator, optionally scoped to one shop_id.
   // When scopeShopId is provided, videos/gmv reflect ONLY that brand.
@@ -1524,10 +1647,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
   // Full roster across all brands. Env-key protected (IC_ADMIN_KEY).
   app.get('/api/inner-circle/admin/creators', (req, res) => {
     if (dbError) return res.status(503).json({ error: 'IC database unavailable' });
-    const want = process.env.IC_ADMIN_KEY;
-    const got = req.query.key || req.get('x-ic-admin-key');
-    const sessionAdmin = !!(req.session && req.session.isPortalAdmin);
-    if (!sessionAdmin && (!want || got !== want)) return res.status(401).json({ error: 'Unauthorized' });
+    if (!icAdminGate(req)) return res.status(401).json({ error: 'Unauthorized' });
     try {
       const creators = icCreatorRoster(null);
       // Enrich each creator's brand list with per-brand video/gmv/progress.
@@ -1592,10 +1712,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
   // session — same gate as the roster endpoint above. Runs in a transaction.
   app.delete('/api/inner-circle/admin/creators/:id', (req, res) => {
     if (dbError) return res.status(503).json({ error: 'IC database unavailable' });
-    const want = process.env.IC_ADMIN_KEY;
-    const got = req.query.key || req.get('x-ic-admin-key');
-    const sessionAdmin = !!(req.session && req.session.isPortalAdmin);
-    if (!sessionAdmin && (!want || got !== want)) return res.status(401).json({ error: 'Unauthorized' });
+    if (!icAdminGate(req)) return res.status(401).json({ error: 'Unauthorized' });
     const id = parseInt(req.params.id, 10);
     if (!Number.isFinite(id)) return res.status(400).json({ error: 'Invalid creator id' });
     try {
@@ -1672,10 +1789,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
   // ── GET /inner-circle/admin?key=… (PAGE) ────────────────────────────────────
   // Self-contained dark-themed admin roster page. Reads from the JSON endpoint.
   app.get('/inner-circle/admin', (req, res) => {
-    const want = process.env.IC_ADMIN_KEY;
-    const got = req.query.key;
-    const sessionAdmin = !!(req.session && req.session.isPortalAdmin);
-    if (!sessionAdmin && (!want || got !== want)) {
+    if (!icAdminGate(req)) {
       return res.redirect('/portal-admin');
     }
     return res.sendFile(path.join(__dirname, '..', 'views', 'inner-circle-admin.html'));
@@ -1906,44 +2020,6 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     }
   });
 
-  // ── GET /api/inner-circle/my-scripts ─────────────────────────────────────────
-  // Returns the authenticated creator's generated scripts (IC Content Engine),
-  // read from the local SQLite mirror (inner_circle_scripts) which is the source
-  // of truth for reads — the Lark Base write is a fire-and-forget mirror on top.
-  // Auth: requireSqliteSession (401 if unauthenticated). The creator id comes
-  // ONLY from the session (req.icCreator.id), never the query — IDOR-safe.
-  // Optional ?brand=<slug> filters to one brand (case-insensitive).
-  app.get('/api/inner-circle/my-scripts', requireSqliteSession, (req, res) => {
-    try {
-      const c = req.icCreator;
-      const brand = (req.query.brand || req.query.brandId || '').toString().trim();
-      const rows = brand
-        ? stmts.scriptsForCreatorBrand.all(c.id, brand)
-        : stmts.scriptsForCreator.all(c.id);
-      const scripts = rows.map((r) => {
-        let parsed = null;
-        if (r.script_json) { try { parsed = JSON.parse(r.script_json); } catch (_) { parsed = null; } }
-        return {
-          id: r.id,
-          brandId: r.brand_id || null,
-          shopId: r.shop_id || null,
-          productName: r.product_name || null,
-          funnelStage: r.funnel_stage || null,
-          hook: r.hook || null,
-          title: r.title || null,
-          fullScript: r.full_script || null,
-          script: parsed,
-          bitableRecordId: r.bitable_record_id || null,
-          createdAt: r.created_at,
-        };
-      });
-      return res.json({ ok: true, brand: brand || null, count: scripts.length, scripts });
-    } catch (e) {
-      console.error('[inner-circle-sqlite] my-scripts failed:', e.message);
-      return res.status(500).json({ error: 'Server error' });
-    }
-  });
-
   // ── POST /api/inner-circle/offers/:id/respond ─────────────────────────────────
   // Creator accepts or declines an offer. Body: {action: 'accept'|'decline'}.
   // IDOR-safe: ownership enforced by creator_id from the session. The offer must
@@ -2163,185 +2239,6 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     }
   });
 
-  // ── POST /api/inner-circle/upload-video ─────────────────────────────────────
-  // Creator uploads a video deliverable for ONE of their selected Inner Circle
-  // brands. brandId MUST correspond to an ACTIVE row in
-  // inner_circle_brand_assignments for the logged-in creator — there is no
-  // selected_brands JSON column on inner_circle_creators; brand membership lives
-  // entirely in the assignments table (see /select-brand). This handler is the
-  // validation gate; multer file handling + the inner_circle_videos insert are
-  // layered on in subsequent steps. requireSqliteSession sets req.icCreator, so
-  // the creator id is taken from the session (IDOR-safe), never from the body.
-  app.post('/api/inner-circle/upload-video', requireSqliteSession, express.json(), (req, res) => {
-    try {
-      const c = req.icCreator;
-      if (!c || !c.id) return res.status(401).json({ error: 'Not authenticated' });
-
-      // Parse brandId from the request body. Accept string or number; the
-      // assignments table stores shop_id as the brand.id from brands.json.
-      const rawBrandId = (req.body && (req.body.brandId !== undefined ? req.body.brandId : req.body.brand_id));
-      if (rawBrandId === undefined || rawBrandId === null || String(rawBrandId).trim() === '') {
-        return res.status(400).json({ error: 'Brand not selected' });
-      }
-      const brandId = String(rawBrandId).trim();
-
-      // Validate: the creator must have an ACTIVE assignment to this brand.
-      // getAssignment matches inner_circle_brand_assignments(creator_id, shop_id).
-      const assignment = stmts.getAssignment.get(c.id, brandId);
-      if (!assignment || !assignment.active) {
-        return res.status(400).json({ error: 'Brand not selected' });
-      }
-
-      // Validation passed — brand is one of the creator's active selections.
-      // Insert the video row. SQLite (better-sqlite3) — use the prebuilt
-      // stmts.insertVideo prepared statement, which matches the schema:
-      //   (creator_id, shop_id, tiktok_video_id, tiktok_url, views, gmv, posted_at)
-      // NOTE: there is NO 'status' or 'uploaded_at' column on inner_circle_videos.
-      // posted_at drives the per-month video count (strftime('%Y-%m', posted_at)),
-      // so we set it to now on upload. shop_id comes from the validated assignment
-      // (never trust a body-supplied shop_id). views/gmv default to 0 until the
-      // TikTok relay backfills real numbers for this tiktok_url.
-      const tiktokUrl = (req.body && (req.body.tiktokUrl || req.body.tiktok_url)) || null;
-      const insertResult = stmts.insertVideo.run(
-        c.id,                    // creator_id (from session — IDOR-safe)
-        assignment.shop_id,      // shop_id (validated, not body-supplied)
-        null,                    // tiktok_video_id (unknown at upload; backfilled later)
-        tiktokUrl,               // tiktok_url (optional)
-        0,                       // views
-        0,                       // gmv
-        new Date().toISOString() // posted_at
-      );
-      const videoId = insertResult.lastInsertRowid;
-
-      return res.json({
-        ok: true,
-        validated: true,
-        videoId,
-        brand: { id: assignment.shop_id, name: assignment.shop_name },
-        tiktokUrl,
-      });
-    } catch (e) {
-      console.error('[inner-circle-sqlite] upload-video failed:', e.message);
-      return res.status(500).json({ error: 'Server error' });
-    }
-  });
-
-  // getIcFunnel(shopId): resolve the brand for a TikTok shopId from brands.json,
-  // then return the same {ok, brand, summary, creators} shape the client funnel
-  // route builds, by reusing icCreatorRoster({membershipId, shopId}). Used by the
-  // admin funnel endpoint in dashboard-server.js. Returns {error,...} on data-layer
-  // failure (never throws) so callers can map hard failures to 503.
-  function getIcFunnel(shopId) {
-    try {
-      const sid = String(shopId);
-      let brandsData;
-      // Use the canonical module-level IC_BRANDS_FILE (/data/brands.json) the rest
-      // of this module reads — NOT a repo-relative path — so shopId links resolve.
-      try { brandsData = JSON.parse(fs.readFileSync(IC_BRANDS_FILE, "utf8")); }
-      catch (_) { brandsData = { clients: [] }; }
-      const brand = (brandsData.clients || []).find(
-        (b) => String(b.shopId || b.shop_id || "") === sid
-      );
-      if (!brand) {
-        return { error: "Brand not found for shopId", shopId: sid, summary: { totalCreators: 0, totalVideos: 0, totalGmv: 0 }, creators: [] };
-      }
-      const creators = icCreatorRoster({ membershipId: brand.id, shopId: sid });
-      const summary = {
-        totalCreators: creators.length,
-        totalVideos: creators.reduce((s, c) => s + (c.videos || 0), 0),
-        totalGmv: Math.round(creators.reduce((s, c) => s + (c.gmv || 0), 0) * 100) / 100,
-      };
-      return {
-        ok: true,
-        brand: { id: brand.id, name: brand.name, shopId: sid, innerCircle: brand.innerCircle === true },
-        summary,
-        creators,
-      };
-    } catch (e) {
-      return { error: e.message, summary: { totalCreators: 0, totalVideos: 0, totalGmv: 0 }, creators: [] };
-    }
-  }
-
-  // ── resolveProductContext(brandSlug, productId, productName) ─────────────────
-  // Pure helper: loads brands.json, finds the brand by slug (creatorPage.slug or
-  // brand.id, case-insensitive), then locates a product within that brand's
-  // creatorPage.products[] — first by productId (matching product.productId /
-  // product.id / the brand-level tcHeroProductId), falling back to a name match
-  // (case-insensitive, trimmed). Returns a normalized object:
-  //   { productName, description, ingredients, shopifyData, tiktokData, brandName }
-  // or null when the brand or product cannot be resolved. Never throws — a bad
-  // brands.json read yields null. Used by the IC script-generation endpoint to
-  // assemble rich product context for the model. brands.json is the source of
-  // truth (same file the rest of this module reads via IC_BRANDS_FILE).
-  function resolveProductContext(brandSlug, productId, productName) {
-    let data;
-    try { data = JSON.parse(fs.readFileSync(IC_BRANDS_FILE, 'utf8')); }
-    catch (_) { return null; }
-    if (!data || !Array.isArray(data.clients)) return null;
-
-    const wantSlug = String(brandSlug || '').toLowerCase().trim();
-    if (!wantSlug) return null;
-
-    // Match brand by creatorPage.slug, brand.id, or a slugified brand.name.
-    const brand = data.clients.find((b) => {
-      if (!b) return false;
-      const cp = b.creatorPage || {};
-      const cpSlug = String(cp.slug || '').toLowerCase().trim();
-      const bId = String(b.id || '').toLowerCase().trim();
-      const nameSlug = String(b.name || '').toLowerCase().trim().replace(/\s+/g, '-');
-      return cpSlug === wantSlug || bId === wantSlug || nameSlug === wantSlug;
-    });
-    if (!brand) return null;
-
-    const cp = brand.creatorPage || {};
-    const products = Array.isArray(cp.products) ? cp.products : [];
-    const heroId = cp.tcHeroProductId != null ? String(cp.tcHeroProductId) : null;
-
-    const wantId = (productId != null && String(productId).trim() !== '')
-      ? String(productId).trim() : null;
-    const wantName = (productName != null && String(productName).trim() !== '')
-      ? String(productName).toLowerCase().trim() : null;
-
-    // 1) Resolve by productId: a product's own id field, or — when the caller
-    //    passes the brand hero id — the first product (hero product convention).
-    let product = null;
-    if (wantId) {
-      product = products.find((p) => {
-        if (!p) return false;
-        const pid = p.productId != null ? String(p.productId)
-          : (p.id != null ? String(p.id) : null);
-        return pid != null && pid === wantId;
-      }) || null;
-      if (!product && heroId && wantId === heroId && products.length) {
-        product = products[0];
-      }
-    }
-    // 2) Fall back to a name match.
-    if (!product && wantName) {
-      product = products.find((p) => p && String(p.name || '').toLowerCase().trim() === wantName) || null;
-    }
-    // 3) Last resort: if only a brand was identified and it has a single product,
-    //    use it (hero product). Keeps the resolver useful when callers pass just
-    //    the brand hero id or nothing precise.
-    if (!product && !wantId && !wantName && products.length === 1) {
-      product = products[0];
-    }
-    if (!product) return null;
-
-    return {
-      productName: product.name || null,
-      description: product.description || null,
-      ingredients: product.ingredients || null,
-      shopifyData: product.shopifyData || product.shopify ||
-        ((product.minPrice != null || product.url) ? { minPrice: product.minPrice != null ? product.minPrice : null, url: product.url || null } : null),
-      tiktokData: product.tiktokData ||
-        ((product.productId || product.id || heroId)
-          ? { productId: product.productId != null ? String(product.productId) : (product.id != null ? String(product.id) : heroId) }
-          : null),
-      brandName: brand.name || null,
-    };
-  }
-
   // Expose the working session middleware so other routes can adopt it later.
-  return { requireSqliteSession, getIcFunnel, resolveProductContext };
+  return { requireSqliteSession };
 };
