@@ -355,14 +355,26 @@ textarea{resize:vertical;min-height:80px}
     <div class="card-sub">These help us plan the right campaigns from day one.</div>
     <div class="row">
       <div class="field">
-        <label>Monthly Sample Budget <span class="req">*</span></label>
-        <input type="text" id="sampleBudget" placeholder="e.g. 50 units per product">
-        <div class="hint">Units of each product you're willing to send to creators per month</div>
+        <label>Monthly Sample Budget (units) <span class="req">*</span></label>
+        <input type="number" id="sampleBudget" placeholder="e.g. 50" min="0" step="1">
+        <div class="hint">Number of sample units per month across creators</div>
       </div>
+      <div class="field">
+        <label>Sample Budget Notes</label>
+        <input type="text" id="sampleBudgetNotes" placeholder="e.g. up to 50 units/product, hero SKU priority">
+        <div class="hint">Any nuance on how the sample budget should be split or prioritized</div>
+      </div>
+    </div>
+    <div class="row">
       <div class="field">
         <label>Monthly Retainer Budget</label>
         <input type="number" id="retainerBudget" placeholder="e.g. 2000" min="0">
         <div class="hint">Rough max you'd spend on creator retainers/month — we won't exceed this</div>
+      </div>
+      <div class="field">
+        <label>Monthly UGC / JoinBrands Budget</label>
+        <input type="number" id="ugcBudget" placeholder="e.g. 500" min="0">
+        <div class="hint">Budget for paid UGC content via JoinBrands — leave blank if none</div>
       </div>
     </div>
   </div>
@@ -387,6 +399,67 @@ textarea{resize:vertical;min-height:80px}
           <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px">%</span>
         </div>
         <div class="hint">Default rate for open / open-plan affiliate collaborations</div>
+      </div>
+      <div class="field" style="flex:1;min-width:180px">
+        <label>Ads Commission</label>
+        <div style="position:relative">
+          <input type="number" id="adsCommission" placeholder="e.g. 8" min="0" max="80" step="0.5" style="padding-right:32px">
+          <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px">%</span>
+        </div>
+        <div class="hint">Commission on creator-driven ads (GMV Max / Spark). Often ~half the TC rate.</div>
+      </div>
+      <div class="field" style="flex:1;min-width:180px">
+        <label>Net Sales Commission (rev-share)</label>
+        <div style="position:relative">
+          <input type="number" id="netSalesCommission" placeholder="e.g. 20" min="0" max="100" step="0.5" style="padding-right:32px">
+          <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px">%</span>
+        </div>
+        <div class="hint">Cult Content's share of net affiliate GMV — your agency rev-share rate</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Promotional Strategy -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="card-title">Promotional Strategy</div>
+    <div class="card-sub">Set once. We run these automatically while your shop isn't enrolled in a TikTok-wide campaign (Deals For You Days, etc.).</div>
+    <div class="row">
+      <div class="field">
+        <label>Flash Sale Cadence</label>
+        <select id="flashSaleCadence">
+          <option value="">— select —</option>
+          <option>None</option>
+          <option>Weekly</option>
+          <option>Bi-weekly</option>
+          <option>Monthly</option>
+        </select>
+        <div class="hint">How often we run a flash-sale promo on your hero products</div>
+      </div>
+      <div class="field">
+        <label>Free Shipping Threshold ($)</label>
+        <input type="text" id="freeShipThreshold" placeholder="e.g. 35  (or 'none')">
+        <div class="hint">Cart value for free shipping — leave 'none' if not offered</div>
+      </div>
+    </div>
+    <div class="field">
+      <label>Bundle / Gift-With-Purchase Strategy</label>
+      <input type="text" id="bundleStrategy" placeholder="e.g. Buy 2 get 1, free sample sachet over $40">
+      <div class="hint">Any BMSM / GWP offers you want creators and the shop to push</div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Auto-Approve Sample Requests?</label>
+        <select id="sampleAutoApprove">
+          <option value="">— select —</option>
+          <option>Yes</option>
+          <option>No</option>
+        </select>
+        <div class="hint">Auto-approve incoming creator sample requests in Reacher</div>
+      </div>
+      <div class="field">
+        <label>Sample Approval Criteria</label>
+        <input type="text" id="sampleApprovalCriteria" placeholder="e.g. 1k+ followers, US-based, on-niche">
+        <div class="hint">Who qualifies — used when auto-approve is off or as a filter</div>
       </div>
     </div>
   </div>
@@ -807,11 +880,16 @@ async function submitForm() {
     tiktokAccountManager: F.tiktokAccountManager, reviewsImported: F.reviewsImported,
     fbt: F.fbt, sendSamples: F.sendSamples,
     products: F.products.filter(p => p.name?.trim()),
-    sampleBudget: v('sampleBudget'), retainerBudget: v('retainerBudget'),
+    sampleBudget: v('sampleBudget'), sampleBudgetNotes: v('sampleBudgetNotes'),
+    retainerBudget: v('retainerBudget'), ugcBudget: v('ugcBudget'),
     compensation: F.compensation,
     usp1: v('usp1'), usp2: v('usp2'), usp3: v('usp3'),
     talkingPoints: v('talkingPoints'),
     tcCommission: v('tcCommission'), openCommission: v('openCommission'),
+    adsCommission: v('adsCommission'), netSalesCommission: v('netSalesCommission'),
+    flashSaleCadence: v('flashSaleCadence'), freeShipThreshold: v('freeShipThreshold'),
+    bundleStrategy: v('bundleStrategy'), sampleAutoApprove: v('sampleAutoApprove'),
+    sampleApprovalCriteria: v('sampleApprovalCriteria'),
     logoUrl: window._logoUrl || null,
     creatorKickoffDate: v('creatorKickoffDate'),
     weeklyCallDay: v('weeklyCallDay'),
