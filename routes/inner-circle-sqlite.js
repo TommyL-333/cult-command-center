@@ -26,7 +26,7 @@ const crypto = require('crypto');
 module.exports = function mountInnerCircleSqlite(app, deps = {}) {
   const express = deps.express || require('express');
 
-  // ── Load DB layer defensively ─────────────────────────────────��─────────────
+  // ── Load DB layer defensively ─────────────────────────────────����─────────────
   let db = null;
   let queries = null;
   let stmts = null;
@@ -1075,7 +1075,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     { id: 'yuglo', name: 'Yuglo', logo: null, website: 'https://yugloskin.com', brandColor: '#F39976', // sourced from yugloskin.com homepage accent palette (peach, ~8:1 contrast vs #161823); dominant #108474 excluded — shared review-widget green seen across client sites
       description: 'Yuglo skincare — TikTok Shop brand.' },
     { id: 'roots-by-ga', name: 'Roots by GA', logo: null, website: 'https://www.rootsbyga.com', brandColor: null,
-      description: 'Roots by GA �� TikTok Shop brand (Carla Brenner).' },
+      description: 'Roots by GA ���� TikTok Shop brand (Carla Brenner).' },
     { id: 'lode-wtr', name: 'Lode WTR', logo: null, website: 'https://lodewtr.com', brandColor: '#CCFF00', // verified: dominant accent color on lodewtr.com (electric lime), ~14:1 contrast vs #161823
       description: 'Lode WTR ��� scalp care that replaces traditional shampoo. "Your shampoo is the problem" positioning; strong hooks around scalp health, hair loss, and ingredient honesty.' },
     { id: 'dissolvd', name: 'Dissolvd', logo: null, website: null, brandColor: '#A78BFA', // PLACEHOLDER — dissolvd.com is behind Cloudflare Access, no public site to source brand color (6.49:1 contrast vs #161823)
@@ -1898,7 +1898,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     }
   });
 
-  // ── POST /api/inner-circle/offers ─────────────────��──────────────────────────
+  // ── POST /api/inner-circle/offers ─────────────��───��──────────────────────────
   // Brand (logged-in CLIENT via express-session → req.session.clientBrandId)
   // makes a retainer/per-video/package/custom offer to an IC creator. Durable
   // jsonl log is written BEFORE the Lark notify so a notify failure can never
@@ -2290,6 +2290,69 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     }
   });
 
+
+  // ── getIcFunnel(shopId) ──────────────────────────────────────────────────
+  // Exported so dashboard-server.js's /api/inner-circle/admin/funnel and
+  // /api/inner-circle/funnel routes can build the brand-scoped IC funnel.
+  // shopId = the NUMERIC TikTok shop_id (e.g. 10021). We resolve it to the
+  // brand slug (brand.id) via /data/brands.json, then call icCreatorRoster
+  // with the dual-ID scope { membershipId: slug, shopId: numericShopId }.
+  // Returns { summary, creators }. On a missing/unknown brand we still return
+  // an empty-but-valid funnel (NOT an error) so the route renders cleanly.
+  async function getIcFunnel(shopId) {
+    if (dbError) return { error: 'IC database unavailable', summary: null, creators: [] };
+    const numericShopId = shopId != null ? String(shopId) : null;
+    if (!numericShopId) return { error: 'shopId required', summary: null, creators: [] };
+
+    // Resolve numeric shopId -> brand slug from canonical brands.json.
+    let slug = null, brandName = null;
+    try {
+      const data = icLoadBrandsFile();
+      const rec = data && Array.isArray(data.clients)
+        ? data.clients.find((c) => c && String(c.shopId) === numericShopId)
+        : null;
+      if (rec) { slug = rec.id; brandName = rec.name || rec.id; }
+    } catch (_) { /* fall through to empty funnel */ }
+
+    // If we can't map the shopId to a brand, return an empty valid funnel
+    // rather than 503 — the brand may simply not be IC-enabled yet.
+    if (!slug) {
+      return {
+        summary: { shopId: numericShopId, brand: null, creatorCount: 0, totalVideos: 0, totalGmv: 0, videosGoalSum: 0, progressPct: 0 },
+        creators: [],
+      };
+    }
+
+    let creators = [];
+    try {
+      creators = icCreatorRoster({ membershipId: slug, shopId: numericShopId }) || [];
+    } catch (e) {
+      return { error: e.message, summary: null, creators: [] };
+    }
+
+    let totalVideos = 0, totalGmv = 0, goalSum = 0;
+    for (const c of creators) {
+      totalVideos += (c.videos || 0);
+      totalGmv += (c.gmv || 0);
+      goalSum += (c.videosGoal || 20);
+    }
+    totalGmv = Math.round(totalGmv * 100) / 100;
+
+    return {
+      summary: {
+        shopId: numericShopId,
+        brand: brandName,
+        slug,
+        creatorCount: creators.length,
+        totalVideos,
+        totalGmv,
+        videosGoalSum: goalSum,
+        progressPct: goalSum > 0 ? Math.min(100, Math.round((totalVideos / goalSum) * 100)) : 0,
+      },
+      creators,
+    };
+  }
+
   // Expose the working session middleware so other routes can adopt it later.
-  return { requireSqliteSession };
+  return { requireSqliteSession, getIcFunnel };
 };
