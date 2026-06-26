@@ -12577,6 +12577,17 @@ async function runOnboardingPipeline(formData) {
     });
   } catch (e) { console.error('[ops-engine] sync error:', e.message); }
 
+  // 9. Create per-client Lark group chat (fire-and-forget)
+  try {
+    const { syncClientChat } = require('./lib/client-chat-sync');
+    await syncClientChat(formData, {
+      brandSlug: (formData.brandName||'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''),
+      larkDocUrl: typeof larkDoc !== 'undefined' ? (larkDoc?.url||larkDoc||null) : null,
+      creatorPageUrl: typeof creatorPage !== 'undefined' ? (creatorPage?.url||null) : null,
+      affiliateLink: formData.affiliateLink || null
+    });
+  } catch (e) { console.error('[client-chat] sync error:', e.message); }
+
   console.log(`[onboard] Pipeline complete: ${brandName} (id: ${entryId})`);
 }
 
