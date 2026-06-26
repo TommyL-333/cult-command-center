@@ -2500,6 +2500,191 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     };
   }
 
+
+  // ── Cult Meetings recordings auto-sync ──────────────────────────────────────
+  // Pulls ended Lark VC meetings, matches "<Brand> Weekly Creator Call" topics to
+  // a brand (brands.json client), fetches the recording URL via the meeting
+  // INSTANCE id (the recurring meeting_id 404s — recordings are keyed by
+  // meeting_instance_id), and upserts into inner_circle_calls so the Cult
+  // Meetings recordings library populates automatically. No manual entry.
+  //
+  // HONEST CONSTRAINT (2026-06-27): this app currently lacks the Lark `minutes`
+  // scope, so it CANNOT make the recording links publicly viewable. Links play
+  // for anyone in the Cult Content Lark org (and creators added to Lark). To make
+  // them public for external creators, grant the app minutes + drive permission
+  // scopes, then flip RECORDINGS_PUBLICIZE = true below — the share step is
+  // already wired and will activate with zero further code changes.
+  const RECORDINGS_PUBLICIZE = false;
+  try {
+    const _httpsRec = require('https');
+    const _LARK_HOST = 'https://open.larksuite.com';
+
+    function _larkTenantToken() {
+      return new Promise((resolve) => {
+        const body = JSON.stringify({
+          app_id: process.env.LARK_APP_ID,
+          app_secret: process.env.LARK_APP_SECRET,
+        });
+        const r = _httpsRec.request(
+          _LARK_HOST + '/open-apis/auth/v3/tenant_access_token/internal',
+          { method: 'POST', headers: { 'Content-Type': 'application/json' } },
+          (x) => { let d = ''; x.on('data', (c) => (d += c)); x.on('end', () => { try { resolve(JSON.parse(d).tenant_access_token); } catch (_) { resolve(null); } }); }
+        );
+        r.on('error', () => resolve(null));
+        r.write(body); r.end();
+      });
+    }
+
+    function _larkGet(token, p) {
+      return new Promise((resolve) => {
+        _httpsRec.get(_LARK_HOST + p, { headers: { Authorization: 'Bearer ' + token } }, (x) => {
+          let d = ''; x.on('data', (c) => (d += c));
+          x.on('end', () => { try { resolve({ status: x.statusCode, json: JSON.parse(d) }); } catch (_) { resolve({ status: x.statusCode, json: null }); } });
+        }).on('error', () => resolve({ status: 0, json: null }));
+      });
+    }
+
+    // Ensure the table exists (idempotent) so a fresh DB doesn't 500 on sync.
+    try {
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS inner_circle_calls (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          title TEXT,
+          scheduled_at TEXT,
+          recording_url TEXT,
+          shop_id TEXT,
+          brand_id TEXT,
+          lark_meeting_url TEXT,
+          lark_instance_id TEXT UNIQUE,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )`);
+      // Best-effort add of newer columns if table predates them.
+      try { db.exec('ALTER TABLE inner_circle_calls ADD COLUMN lark_instance_id TEXT'); } catch (_) {}
+      try { db.exec('ALTER TABLE inner_circle_calls ADD COLUMN brand_id TEXT'); } catch (_) {}
+      try { db.exec('ALTER TABLE inner_circle_calls ADD COLUMN shop_id TEXT'); } catch (_) {}
+    } catch (e) { console.warn('[ic-recordings] ensure table failed:', e.message); }
+
+    function _brandForTopic(topic) {
+      if (!topic) return null;
+      const m = String(topic).match(/^(.*?)\s+weekly creator call\s*$/i);
+      const brandName = m ? m[1].trim() : null;
+      if (!brandName) return null;
+      let clients = [];
+      try { const bf = icLoadBrandsFile(); clients = (bf && bf.clients) || []; } catch (_) {}
+      const norm = (s) => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+      const c = clients.find((x) => x && norm(x.name) === norm(brandName));
+      if (!c) return null;
+      return { brandId: c.id, shopId: c.shopId != null ? String(c.shopId) : null, name: c.name };
+    }
+
+    async function _maybePublicize(token, recUrl) {
+      if (!RECORDINGS_PUBLICIZE) return;
+      const mt = String(recUrl).match(/minutes\/([A-Za-z0-9]+)/);
+      if (!mt) return;
+      const minToken = mt[1];
+      await new Promise((resolve) => {
+        const body = JSON.stringify({ link_share_entity: 'anyone_readable', external_access_entity: 'open' });
+        const r = _httpsRec.request(
+          _LARK_HOST + '/open-apis/drive/v2/permissions/' + minToken + '/public?type=minutes',
+          { method: 'PATCH', headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' } },
+          (x) => { let d = ''; x.on('data', (c) => (d += c)); x.on('end', () => resolve()); }
+        );
+        r.on('error', () => resolve());
+        r.write(body); r.end();
+      });
+    }
+
+    async function syncCultMeetingRecordings(windowDays = 14) {
+      if (dbError || !db) return { ok: false, error: 'IC database unavailable' };
+      const token = await _larkTenantToken();
+      if (!token) return { ok: false, error: 'lark token failed' };
+
+      const now = Math.floor(Date.now() / 1000);
+      const start = now - Math.max(1, windowDays) * 86400;
+      const result = { ok: true, scanned: 0, matched: 0, withRecording: 0, upserted: 0, brands: {} };
+
+      let pageToken = '';
+      for (let page = 0; page < 10; page++) {
+        const q = `/open-apis/vc/v1/meeting_list?start_time=${start}&end_time=${now}&meeting_status=2&page_size=50` + (pageToken ? `&page_token=${pageToken}` : '');
+        const r = await _larkGet(token, q);
+        const data = r.json && r.json.data;
+        const items = (data && data.meeting_list) || [];
+        result.scanned += items.length;
+
+        for (const m of items) {
+          const topic = m.meeting_topic || '';
+          const brand = _brandForTopic(topic);
+          if (!brand) continue;
+          result.matched += 1;
+          if (!m.recording) continue;
+          const inst = m.meeting_instance_id;
+          if (!inst) continue;
+
+          const rec = await _larkGet(token, `/open-apis/vc/v1/meetings/${inst}/recording`);
+          const url = rec.json && rec.json.data && rec.json.data.recording && rec.json.data.recording.url;
+          if (!url) continue;
+          result.withRecording += 1;
+
+          // meeting_start_time is a formatted string like
+          // "2026.06.26 23:58:43 (GMT+08:00)" — parse it to ISO.
+          let scheduledAt = null;
+          const st = m.meeting_start_time || m.start_time;
+          if (st) {
+            try {
+              const mm = String(st).match(/(\\d{4})\\.(\\d{2})\\.(\\d{2})\\s+(\\d{2}):(\\d{2}):(\\d{2})\\s*\\(GMT([+-]\\d{2}):?(\\d{2})\\)/);
+              if (mm) {
+                const iso = mm[1] + "-" + mm[2] + "-" + mm[3] + "T" + mm[4] + ":" + mm[5] + ":" + mm[6] + mm[7] + ":" + mm[8];
+                const d = new Date(iso);
+                if (!isNaN(d.getTime())) scheduledAt = d.toISOString();
+              } else if (/^\\d+$/.test(String(st))) {
+                scheduledAt = new Date(Number(st) * 1000).toISOString();
+              }
+            } catch (_) {}
+          }
+          if (!scheduledAt) scheduledAt = new Date().toISOString();
+
+          try {
+            const existing = db.prepare('SELECT id FROM inner_circle_calls WHERE lark_instance_id = ?').get(String(inst));
+            if (existing) {
+              db.prepare('UPDATE inner_circle_calls SET recording_url = ?, title = ?, brand_id = ?, shop_id = ? WHERE lark_instance_id = ?')
+                .run(url, topic, brand.brandId, brand.shopId, String(inst));
+            } else {
+              db.prepare('INSERT INTO inner_circle_calls (title, scheduled_at, recording_url, shop_id, brand_id, lark_meeting_url, lark_instance_id) VALUES (?,?,?,?,?,?,?)')
+                .run(topic, scheduledAt, url, brand.shopId, brand.brandId, url, String(inst));
+            }
+            await _maybePublicize(token, url);
+            result.upserted += 1;
+            result.brands[brand.brandId] = (result.brands[brand.brandId] || 0) + 1;
+          } catch (e) { console.warn('[ic-recordings] upsert failed:', e.message); }
+        }
+
+        pageToken = (data && data.page_token) || '';
+        if (!pageToken || !(data && data.has_more)) break;
+      }
+      console.log('[ic-recordings] sync done:', JSON.stringify(result));
+      return result;
+    }
+
+    // Admin trigger (portal-admin session OR x-ic-admin-key header).
+    app.post('/api/inner-circle/admin/sync-recordings', async (req, res) => {
+      const keyOk = process.env.IC_ADMIN_KEY && req.headers['x-ic-admin-key'] === process.env.IC_ADMIN_KEY;
+      const sessOk = req.session && req.session.isPortalAdmin;
+      if (!keyOk && !sessOk) return res.status(401).json({ error: 'Not authorized' });
+      const days = Number(req.query.days) || 14;
+      try { const out = await syncCultMeetingRecordings(days); return res.json(out); }
+      catch (e) { return res.status(500).json({ error: e.message }); }
+    });
+
+    // Daily self-scheduling sync (window is 14d so a weekly-or-better cadence
+    // never drops a call). Fires once ~60s after boot, then every 24h.
+    const _RUN_SYNC = () => { syncCultMeetingRecordings(14).catch((e) => console.warn('[ic-recordings] scheduled sync error:', e.message)); };
+    setTimeout(_RUN_SYNC, 60 * 1000);
+    setInterval(_RUN_SYNC, 24 * 60 * 60 * 1000);
+  } catch (recErr) {
+    console.warn('[ic-recordings] init failed (non-fatal):', recErr.message);
+  }
+
+
   // Expose the working session middleware so other routes can adopt it later.
   return { requireSqliteSession, getIcFunnel };
 };
