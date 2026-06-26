@@ -798,7 +798,7 @@
       color: #9ca3af; font-size: 0.86rem; }
     .rec-meta-item .rec-meta-ico { opacity: 0.85; }
     .rec-card .play-btn { align-self: flex-start; margin-top: auto; }
-    /* ── IC_RATES_CSS_END ── */
+    /* ── IC_RATES_CSS_END ─��� */
 
   </style>
 </head>
@@ -862,87 +862,9 @@
       <p class="empty-note">Loading your brands…</p>
     </div>
 
-    <!-- Linked TikTok Handles -->
-    <div class="brand-chamber" style="animation-delay:0.35s">
-      <div class="brand-header">
-        <div class="brand-icon">🎭</div>
-        <div class="brand-info">
-          <h2>Your TikTok Handles</h2>
-          <p>Link every account you post from so all your videos count</p>
-        </div>
-      </div>
-      <div class="handles-list" id="handles-list">
-        <p class="empty-note">Loading your handles…</p>
-      </div>
-      <div class="handle-add">
-        <input id="handle-input" type="text" placeholder="@yourhandle" autocomplete="off" />
-        <button id="handle-add-btn" onclick="addHandle()">+ Add</button>
-      </div>
-      <div class="handle-error" id="handle-error"></div>
-    </div>
 
 
-    <!-- IC_RATES_CARD_START: Your Rates (retainer marketplace) -->
-    <div class="brand-chamber" id="rates-chamber" style="animation-delay:0.38s">
-      <div class="brand-header">
-        <div class="brand-icon">💵</div>
-        <div class="brand-info">
-          <h2>Your Rates</h2>
-          <p>Set what you charge so brands can send you paid offers</p>
-        </div>
-      </div>
-      <div class="rates-grid">
-        <div class="rate-field">
-          <label for="rate-per-video">Per-video price (USD)</label>
-          <div class="rate-input-wrap"><span class="rate-prefix">$</span><input id="rate-per-video" type="number" min="0" step="1" placeholder="—" autocomplete="off" /></div>
-        </div>
-        <div class="rate-field">
-          <label for="rate-retainer">Monthly retainer (USD)</label>
-          <div class="rate-input-wrap"><span class="rate-prefix">$</span><input id="rate-retainer" type="number" min="0" step="1" placeholder="—" autocomplete="off" /></div>
-        </div>
-      </div>
-      <div class="rates-package">
-        <div class="rates-package-title">Package <span class="rates-package-hint">(optional)</span></div>
-        <div class="rates-grid rates-grid-3">
-          <div class="rate-field">
-            <label for="rate-pkg-label">Label</label>
-            <input id="rate-pkg-label" type="text" maxlength="80" placeholder="e.g. Starter Bundle" autocomplete="off" />
-          </div>
-          <div class="rate-field">
-            <label for="rate-pkg-videos">Videos</label>
-            <input id="rate-pkg-videos" type="number" min="0" step="1" placeholder="—" autocomplete="off" />
-          </div>
-          <div class="rate-field">
-            <label for="rate-pkg-price">Price (USD)</label>
-            <div class="rate-input-wrap"><span class="rate-prefix">$</span><input id="rate-pkg-price" type="number" min="0" step="1" placeholder="—" autocomplete="off" /></div>
-          </div>
-        </div>
-      </div>
-      <label class="rates-toggle">
-        <input id="rate-available" type="checkbox" />
-        <span class="rates-toggle-track"><span class="rates-toggle-thumb"></span></span>
-        <span class="rates-toggle-label">Available for paid offers</span>
-      </label>
-      <div class="rates-footer">
-        <span class="rates-status" id="rates-status">—</span>
-        <button class="rates-save-btn" id="rates-save-btn" onclick="saveRates()">Save Rates</button>
-      </div>
-    </div>
-    <!-- IC_RATES_CARD_END -->
 
-    <!-- Weekly Call Recordings (fetched from GET /api/inner-circle/recordings) -->
-    <div class="brand-chamber" style="animation-delay:0.4s">
-      <div class="brand-header">
-        <div class="brand-icon">🎥</div>
-        <div class="brand-info">
-          <h2>Weekly Call Recordings</h2>
-          <p>Replay your brand's weekly group calls</p>
-        </div>
-      </div>
-      <div class="rec-grid" id="recordings-container">
-        <p class="empty-note">Loading recordings…</p>
-      </div>
-    </div>
   </div>
 
   <!-- ── Profile + Cult Meetings modals ── -->
@@ -993,7 +915,15 @@
     .ic-tabs { display: flex; gap: 8px; margin-bottom: 18px; }
     .ic-tab { flex: 1; padding: 10px; text-align: center; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; color: rgba(255,255,255,0.6); font-weight: 600; cursor: pointer; font-size: 13px; }
     .ic-tab.active { background: rgba(0,242,234,0.12); border-color: rgba(0,242,234,0.4); color: #00f2ea; }
-  </style>
+  
+    /* ── Brand-colored call calendar (augment) ── */
+    .ic-cal-row.ic-cal-mine { background: rgba(255,255,255,0.04); }
+    .ic-cal-main { display:flex; flex-direction:column; gap:3px; }
+    .ic-cal-badge { font-size:11px; font-weight:700; margin-left:8px; letter-spacing:0.3px; }
+    .ic-cal-join { display:inline-block; padding:7px 14px; border-radius:8px; color:#0b0d16; font-weight:700; font-size:13px; text-decoration:none; white-space:nowrap; }
+    .ic-cal-join:hover { opacity:0.9; }
+    .ic-cal-tba { font-size:12px; color:#8a90a6; white-space:nowrap; }
+</style>
 
   <div class="ic-overlay" id="profile-modal">
     <div class="ic-modal">
@@ -1553,16 +1483,25 @@
     }
     async function loadCallSchedule() {
       const el = document.getElementById('meetings-cal');
+      if (!el) return;
       try {
         const r = await fetch('/api/inner-circle/call-schedule', { headers: AUTH_HEADERS });
         if (r.status === 401) { logout(); return; }
         const d = await r.json();
-        const calls = d.calls || [];
-        if (!calls.length) { el.innerHTML = '<p class="ic-empty-note">No weekly calls scheduled for your brands yet.</p>'; return; }
+        const calls = (d.calls || []).slice().sort((a,b)=>{
+          if ((b.enrolled?1:0)!==(a.enrolled?1:0)) return (b.enrolled?1:0)-(a.enrolled?1:0);
+          return String(a.brand||'').localeCompare(String(b.brand||''));
+        });
+        if (!calls.length) { el.innerHTML = '<p class="ic-empty-note">No weekly calls scheduled yet.</p>'; return; }
         el.innerHTML = calls.map(c => {
-          const join = c.meetingLink ? '<a class="ic-cal-join" href="' + esc(c.meetingLink) + '" target="_blank" rel="noopener">Join call</a>' : '';
+          const color = c.color || '#00f2ea';
+          const join = c.meetingLink ? '<a class="ic-cal-join" style="background:' + color + '" href="' + esc(c.meetingLink) + '" target="_blank" rel="noopener">Join</a>' : '<span class="ic-cal-tba">Link TBA</span>';
           const when = c.when ? esc(c.when) : 'Schedule TBA';
-          return '<div class="ic-cal-row"><div><div class="ic-cal-brand">' + esc(c.brand) + '</div><div class="ic-cal-when">' + when + '</div></div>' + join + '</div>';
+          const mine = c.enrolled ? ' ic-cal-mine' : '';
+          const badge = c.enrolled ? '<span class="ic-cal-badge" style="color:' + color + '">● Yours</span>' : '';
+          return '<div class="ic-cal-row' + mine + '" style="border-left:3px solid ' + color + '">' +
+                 '<div class="ic-cal-main"><div class="ic-cal-brand" style="color:' + color + '">' + esc(c.brand) + badge + '</div>' +
+                 '<div class="ic-cal-when">' + when + '</div></div>' + join + '</div>';
         }).join('');
       } catch (e) { el.innerHTML = '<p class="ic-empty-note">Could not load schedule.</p>'; }
     }
