@@ -3126,7 +3126,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     // Lazy-init tab-specific data
     if (btn.dataset.tab === 'shortvideo')  { svuLoadChannels(); }
     if (btn.dataset.tab === 'paidmedia')   loadPaidMedia();
-    if (btn.dataset.tab === 'affiliates')  { loadAffiliate(); rvEnsureShops(); csEnsureClients(); ubLoadConversations(); }
+    if (btn.dataset.tab === 'affiliates')  { loadAffiliate(); rvEnsureShops(); csEnsureClients(); ubLoadConversations(); ocLoadQueue(); }
     if (btn.dataset.tab === 'pipeline')    renderPerformance();
     if (btn.dataset.tab === 'growth')      gpInit();
     if (btn.dataset.tab === 'community')   creatorsInit();
@@ -5131,6 +5131,70 @@ function afSubTab(tab) {
   });
   if (tab === 'clients' && !AF.shops.length) afLoadClients();
   if (tab === 'unibox') ubLoadConversations();
+}
+
+// ── Open Collab Outreach urgent card ──────────────────────────────────────────
+function ocEsc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+async function ocLoadQueue() {
+  const card = document.getElementById('oc-urgent-card');
+  const list = document.getElementById('oc-list');
+  const countEl = document.getElementById('oc-count');
+  if (!list) return;
+  try {
+    const r = await fetch('/api/open-collab/queue', { credentials: 'include' });
+    if (!r.ok) { card.style.display = 'none'; return; }
+    const { queue } = await r.json();
+    const pending = (queue || []).filter(q => (q.dmStatus || 'Pending') !== 'Sent');
+    if (countEl) countEl.textContent = pending.length;
+    if (!pending.length) { card.style.display = 'none'; return; }
+    card.style.display = '';
+    list.innerHTML = pending.map(q => {
+      const key = ocEsc(q.key);
+      const body = ocEsc(q.draft || '');
+      const failed = q.dmStatus === 'Failed';
+      return '<div style="background:#1c1f2e;border:1px solid #2a2e44;border-radius:12px;padding:14px">'
+        + '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">'
+        +   '<div><span style="font-weight:700;color:#fff;font-size:14px">@' + ocEsc(q.handle) + '</span>'
+        +   ' <span style="font-size:11px;color:#8a8d9f;margin-left:6px">' + ocEsc(q.brand || '') + '</span></div>'
+        +   (failed ? '<span style="font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px;background:rgba(255,0,80,.18);color:#ff5a7e">FAILED — RETRY</span>' : '')
+        + '</div>'
+        + '<textarea id="oc-ta-' + key + '" oninput="ocDirty(\'' + key + '\')" style="width:100%;min-height:84px;background:#12141f;border:1px solid #2a2e44;border-radius:8px;color:#e8e9f0;font-size:13px;line-height:1.5;padding:10px;resize:vertical;font-family:inherit">' + body + '</textarea>'
+        + '<div style="display:flex;gap:8px;margin-top:10px;justify-content:flex-end">'
+        +   '<button onclick="ocSaveDraft(\'' + key + '\')" style="background:rgba(255,255,255,0.06);border:1px solid var(--border);color:var(--muted);font-size:12px;font-weight:700;padding:7px 14px;border-radius:8px;cursor:pointer">Save draft</button>'
+        +   '<button id="oc-send-' + key + '" onclick="ocSend(\'' + key + '\')" style="background:linear-gradient(90deg,#00f2ea,#ff0050);border:none;color:#fff;font-size:12px;font-weight:800;padding:7px 16px;border-radius:8px;cursor:pointer">Approve &amp; Send →</button>'
+        + '</div></div>';
+    }).join('');
+  } catch (e) { console.error('ocLoadQueue:', e); card.style.display = 'none'; }
+}
+function ocDirty(key) { /* placeholder for future unsaved-state UI */ }
+async function ocSaveDraft(key) {
+  const ta = document.getElementById('oc-ta-' + key);
+  if (!ta) return;
+  try {
+    await fetch('/api/open-collab/draft', { method:'POST', credentials:'include',
+      headers:{'Content-Type':'application/json'}, body: JSON.stringify({ key, draft: ta.value }) });
+  } catch (e) { console.error('ocSaveDraft:', e); }
+}
+async function ocSend(key) {
+  const ta = document.getElementById('oc-ta-' + key);
+  const btn = document.getElementById('oc-send-' + key);
+  if (!ta) return;
+  if (!confirm('Send this open-collab DM to @' + key.split(':')[1] + ' via Reacher?')) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; btn.style.opacity = '.6'; }
+  try {
+    const r = await fetch('/api/open-collab/send', { method:'POST', credentials:'include',
+      headers:{'Content-Type':'application/json'}, body: JSON.stringify({ key, body: ta.value }) });
+    const j = await r.json().catch(()=>({}));
+    if (r.ok && j.ok !== false && j.dmStatus !== 'Failed') {
+      ocLoadQueue();
+    } else {
+      alert('Send failed: ' + (j.error || j.lastError || 'unknown error'));
+      if (btn) { btn.disabled = false; btn.textContent = 'Approve & Send →'; btn.style.opacity = '1'; }
+    }
+  } catch (e) {
+    alert('Send failed: ' + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = 'Approve & Send →'; btn.style.opacity = '1'; }
+  }
 }
 
 // Normalize shop objects — Reacher returns {shop_id, shop_name}, map to consistent shape
