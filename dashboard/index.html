@@ -1116,6 +1116,24 @@
   </div>
 
   <!-- ══════════════════════════════════════════════════════════════════════
+       URGENT — Open Collab Outreach approval queue (above the sub-tabs)
+  ══════════════════════════════════════════════════════════════════════ -->
+  <div id="oc-urgent-card" style="display:none;max-width:1200px;margin:0 auto 24px;background:linear-gradient(135deg,rgba(255,0,80,0.10),rgba(255,140,0,0.06));border:1px solid rgba(255,0,80,0.45);border-radius:14px;padding:18px 20px;box-shadow:0 0 0 1px rgba(255,0,80,0.06),0 6px 24px rgba(255,0,80,0.08)">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap">
+      <div style="display:flex;align-items:center;gap:12px">
+        <span style="display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:9px;background:rgba(255,0,80,0.18);font-size:18px;animation:ocPulse 1.6s ease-in-out infinite">⚠️</span>
+        <div>
+          <div style="font-size:15px;font-weight:800;color:#fff;letter-spacing:.01em">Approve these messages</div>
+          <div style="font-size:12px;color:#b8bbcf;margin-top:2px">Open-collab DMs for creators TikTok can't reach for a Target Collab yet — <b id="oc-count" style="color:#ff5a7e">0</b> waiting</div>
+        </div>
+      </div>
+      <button onclick="ocLoadQueue()" style="background:rgba(255,255,255,0.06);border:1px solid var(--border);color:var(--muted);font-size:12px;font-weight:700;padding:7px 14px;border-radius:8px;cursor:pointer">↻ Refresh</button>
+    </div>
+    <div id="oc-list" style="margin-top:16px;display:flex;flex-direction:column;gap:12px"></div>
+  </div>
+  <style>@keyframes ocPulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.12);opacity:.7}}</style>
+
+  <!-- ══════════════════════════════════════════════════════════════════════
        NEW AFFILIATE TAB v2 — Unibox + Clients
   ══════════════════════════════════════════════════════════════════════ -->
   <div style="max-width:1200px;margin:0 auto;padding:0 0 24px">
