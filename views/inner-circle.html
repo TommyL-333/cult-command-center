@@ -1286,7 +1286,17 @@
         confirm.textContent = '✓ Brand selected — Hasan will send your target collab invite';
         const card = btn.closest('.brand-card');
         if (card) card.classList.add('selected');
-        btn.replaceWith(confirm);
+        // Render the 'Create your next videos' wizard button immediately,
+        // mirroring the selected-state markup in renderBrandCard (no reload needed).
+        const brandSlug = String(brandName || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        const wrap = document.createElement('div');
+        wrap.appendChild(confirm);
+        const cvBtn = document.createElement('button');
+        cvBtn.className = 'brand-action create-videos-btn';
+        cvBtn.textContent = 'Create your next videos';
+        cvBtn.onclick = () => openContentWizard(brandId, brandSlug);
+        wrap.appendChild(cvBtn);
+        btn.replaceWith(wrap);
       } catch (err) {
         console.error('Brand selection failed:', err);
         btn.disabled = false;
