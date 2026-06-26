@@ -1055,6 +1055,63 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     }
   });
 
+  // ── GET /api/inner-circle/call-schedule ──────────────────────────────────────
+  // Returns the weekly creator-call schedule for the brands this creator is
+  // assigned to. Schedule data is sourced from the Ops Engine Clients Lark base
+  // (Weekly Call Day/Time + Creator Call Meeting Link), mirrored here as a static
+  // map keyed by brand slug so the endpoint stays fast and dependency-free.
+  const IC_CALL_SCHEDULE = {
+    'approved-science':     { when: 'Tuesdays · 12:00 PM ET',   meetingLink: 'https://vc-usttp.larksuite.com/j/438787376' },
+    'diamandia':            { when: 'Fridays · 4:00 PM ET',     meetingLink: 'https://vc-usttp.larksuite.com/j/438787376' },
+    'lode-wtr':             { when: 'Fridays · 12:00 PM ET',    meetingLink: 'https://vc-usttp.larksuite.com/j/781105654' },
+    'trusted-rituals':      { when: 'Tuesdays · 10:00 AM ET',   meetingLink: 'https://vc-usttp.larksuite.com/j/295587698' },
+    'the-perfect-haircare': { when: 'Tuesdays · 10:30 AM ET',   meetingLink: 'https://vc-usttp.larksuite.com/j/475877234' },
+    'dissolvd':             { when: 'Wednesdays · 10:00 AM ET',  meetingLink: 'https://vc-usttp.larksuite.com/j/764870287' },
+    'yuglo':                { when: 'Wednesdays · 10:30 AM ET',  meetingLink: 'https://vc-usttp.larksuite.com/j/387170441' },
+    'b-noor':               { when: 'Thursdays · 10:00 AM ET',   meetingLink: 'https://vc-usttp.larksuite.com/j/361089866' },
+    'roots-by-ga':          { when: 'Thursdays · 10:30 AM ET',   meetingLink: 'https://vc-usttp.larksuite.com/j/687799951' },
+    'dear-miss-gina':       { when: 'Fridays · 10:30 AM ET',    meetingLink: 'https://vc-usttp.larksuite.com/j/257394728' },
+  };
+
+  app.get('/api/inner-circle/call-schedule', requireSqliteSession, (req, res) => {
+    try {
+      // brandsForCreator returns rows keyed by shop_id (= brand slug) + shop_name.
+      let rows = [];
+      try { rows = stmts.brandsForCreator.all(req.icCreator.id, req.icCreator.id) || []; }
+      catch (_) { rows = []; }
+
+      // Resolve display name from brands.json when available.
+      let clients = [];
+      try { const bf = icLoadBrandsFile(); clients = (bf && bf.clients) || []; } catch (_) {}
+      const nameBySlug = {};
+      for (const c of clients) { if (c && c.id) nameBySlug[c.id] = c.name || c.id; }
+
+      const seen = new Set();
+      const calls = [];
+      for (const r of rows) {
+        const slug = String(r.shop_id || '').trim();
+        if (!slug || seen.has(slug)) continue;
+        seen.add(slug);
+        const sched = IC_CALL_SCHEDULE[slug] || {};
+        calls.push({
+          slug,
+          brand: nameBySlug[slug] || r.shop_name || slug,
+          when: sched.when || null,
+          meetingLink: sched.meetingLink || null,
+        });
+      }
+      // Sort: brands with a scheduled time first, then alphabetically.
+      calls.sort((a, b) => {
+        if (!!a.when !== !!b.when) return a.when ? -1 : 1;
+        return String(a.brand).localeCompare(String(b.brand));
+      });
+      return res.json({ calls });
+    } catch (e) {
+      console.error('[inner-circle-sqlite] GET call-schedule failed:', e.message);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  });
+
   // ── GET /api/inner-circle/brands ────────────────────────────────────────────
   // Lists brands with Inner Circle toggled ON. Source of truth: brands.json
   // (brand.innerCircle flag, toggled from the client portal settings page).
@@ -2091,7 +2148,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     }
   });
 
-  // ── POST /api/inner-circle/offers/:id/respond ─────────────────────────────────
+  // ── POST /api/inner-circle/offers/:id/respond ────────────────────���────────────
   // Creator accepts or declines an offer. Body: {action: 'accept'|'decline'}.
   // IDOR-safe: ownership enforced by creator_id from the session. The offer must
   // belong to this creator (404 otherwise) and still be pending (409 otherwise).
