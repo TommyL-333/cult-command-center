@@ -13,7 +13,8 @@
  * activates it -> writes status back into the base. Once the creator joins open
  * collab and becomes resolvable, the TC Auto-Retry nymph fires the real TC.
  *
- * Mount (one line in dashboard-server.js, before app.use(requireAuth)):
+ * Mount (one line in dashboard-server.js, AFTER app.use(requireAuth) so the
+ * Command Center CF Access session powers it — same as the Unibox affiliate APIs):
  *   require('./routes/open-collab-queue').mount(app, { DATA_DIR });
  *
  * Auth: requireAdmin (portal-admin session OR x-ic-admin-key header) — same gate
@@ -255,9 +256,13 @@ function mount(app, opts = {}) {
   const DATA_DIR = opts.DATA_DIR || process.env.DATA_DIR || '/data';
   const jsonMw = express.json({ limit: '256kb' });
 
-  // requireAdmin: portal-admin session OR x-ic-admin-key header (mirrors SMS console)
+  // requireAdmin: portal-admin session OR x-ic-admin-key header OR Cloudflare Access session.
+  // When mounted AFTER app.use(requireAuth) (the Command Center / manifest.cultcontent.cc),
+  // the CF Access (Google login) session has already cleared upstream — the cf-access header
+  // proves it — so we pass through, matching the Unibox affiliate-API auth model.
   function requireAdmin(req, res, next) {
     if (req.session && req.session.isPortalAdmin) return next();
+    if (req.headers['cf-access-authenticated-user-email']) return next();
     const key = req.headers['x-ic-admin-key'];
     if (process.env.IC_ADMIN_KEY && key && key === process.env.IC_ADMIN_KEY) return next();
     if (req.accepts('html') && !key) return res.redirect('/portal-admin');
