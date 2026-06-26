@@ -690,7 +690,7 @@
     }
     .brand-website:hover { opacity: 0.75; text-decoration: underline; }
 
-    /* ── IC_RATES_CSS_START: Your Rates card ── */
+    /* ── IC_RATES_CSS_START: Your Rates card ─�� */
     .rates-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     .rates-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
     @media (max-width: 640px) { .rates-grid, .rates-grid-3 { grid-template-columns: 1fr; } }
@@ -990,6 +990,19 @@
     .cw-check input:focus-visible + span { box-shadow: 0 0 0 2px rgba(0,242,234,0.4); }
     .cw-check span small { display: block; font-size: 10px; font-weight: 400; color: rgba(255,255,255,0.4); margin-top: 2px; }
     /* ── IC Content Engine: generated script results (cards + Copy + violation flags) ── */
+    /* ── IC wizard tabs + history ── */
+    .cw-tabs { display: flex; gap: 8px; padding: 0 24px; margin-top: -6px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .cw-tab { background: none; border: none; color: #8a8fa3; font-size: 13px; font-weight: 600; padding: 12px 6px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+    .cw-tab.active { color: #fff; border-bottom-color: #00f2ea; }
+    .cw-tab:hover:not(.active) { color: #c4c8d6; }
+    .cw-history { padding: 20px 24px; display: none; }
+    .cw-history.active { display: block; }
+    .cw-hist-card { border: 1px solid rgba(255,255,255,0.10); border-radius: 12px; background: #10121c; padding: 14px 16px; margin-bottom: 12px; }
+    .cw-hist-meta { font-size: 11px; color: #8a8fa3; margin-bottom: 6px; display: flex; gap: 10px; flex-wrap: wrap; }
+    .cw-hist-hook { font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 8px; }
+    .cw-hist-body { font-size: 13px; color: #c4c8d6; line-height: 1.5; white-space: pre-wrap; }
+    .cw-hist-copy { margin-top: 10px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14); color: #fff; padding: 6px 12px; border-radius: 8px; font-size: 12px; cursor: pointer; }
+    .cw-hist-copy:hover { background: rgba(255,255,255,0.14); }
     .cw-results { margin-top: 22px; display: flex; flex-direction: column; gap: 16px; }
     .cw-results-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 2px; }
     .cw-results-head h3 { margin: 0; font-size: 15px; color: #fff; }
@@ -1031,6 +1044,11 @@
         </div>
         <button class="cw-close" type="button" onclick="closeContentWizard()" aria-label="Close">&times;</button>
       </div>
+      <div class="cw-tabs">
+        <button class="cw-tab active" type="button" data-cwtab="create" onclick="switchWizardTab('create')">Create new</button>
+        <button class="cw-tab" type="button" data-cwtab="history" onclick="switchWizardTab('history')">Previous scripts</button>
+      </div>
+      <div class="cw-history" id="cw-history"></div>
       <div class="cw-body">
         <label class="cw-field-label" for="cw-search">Product</label>
         <input id="cw-search" class="cw-search" type="text" placeholder="Search products…" autocomplete="off" oninput="filterWizardProducts(this.value)" disabled>
@@ -1186,7 +1204,7 @@
       const brandSlug = brand.slug || String(brand.name || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
       const action = assigned
         ? `<div class="covenant-confirm">✓ Selected — Hasan will send your target collab invite</div>
-           <button class="brand-action create-videos-btn" onclick="openContentWizard('${jsStr(brand.id)}','${jsStr(brandSlug)}')">Create your next videos</button>`
+           <button class="brand-action create-videos-btn" onclick="openContentWizard('${jsStr(brand.id)}','${jsStr(brandSlug)}','${jsStr(brand.name)}')">Create your next videos</button>`
         : `<button class="brand-action select-brand-btn" data-brand-id="${esc(brand.id)}" data-brand-name="${esc(brand.name)}">Select This Brand</button>`;
       const fallback = `<div class="brand-logo-fallback"${brand.logo ? ' style="display:none"' : ''}>${esc(brandInitials(brand.name))}</div>`;
       const logo = brand.logo
@@ -1294,7 +1312,7 @@
         const cvBtn = document.createElement('button');
         cvBtn.className = 'brand-action create-videos-btn';
         cvBtn.textContent = 'Create your next videos';
-        cvBtn.onclick = () => openContentWizard(brandId, brandSlug);
+        cvBtn.onclick = () => openContentWizard(brandId, brandSlug, brandName);
         wrap.appendChild(cvBtn);
         btn.replaceWith(wrap);
       } catch (err) {
@@ -1496,17 +1514,120 @@
       audience: { creatorAgeGroup: '', creatorDetails: '', targetGender: '', targetAgeRange: '', targetInterests: '', painPoints: '' },
       brief: { funnelStage: [], scriptLength: '', format: '' } };
 
-    function openContentWizard(brandId, brandSlug) {
-      cwState = { brandId: brandId, brandSlug: brandSlug, products: [], filtered: [], selectedId: null,
+    // Pristine snapshot of the wizard form body — captured ONCE on first open so
+    // we can fully restore it every time the wizard reopens. renderScripts()
+    // overwrites .cw-body with results; without this restore, reopening on a
+    // different brand showed the previous brand's scripts (state bleed) and the
+    // Done/X buttons appeared dead. Restoring the form fixes the whole flow.
+    let cwBodyPristine = null;
+    let cwActiveTab = 'create';
+
+    function snapshotWizardBody() {
+      if (cwBodyPristine != null) return;
+      const body = document.querySelector('#content-wizard .cw-body');
+      if (body) cwBodyPristine = body.innerHTML;
+    }
+
+    function restoreWizardBody() {
+      const body = document.querySelector('#content-wizard .cw-body');
+      if (body && cwBodyPristine != null) body.innerHTML = cwBodyPristine;
+    }
+
+    function switchWizardTab(tab) {
+      cwActiveTab = tab;
+      document.querySelectorAll('#content-wizard .cw-tab').forEach(function (t) {
+        t.classList.toggle('active', t.getAttribute('data-cwtab') === tab);
+      });
+      const body = document.querySelector('#content-wizard .cw-body');
+      const hist = document.getElementById('cw-history');
+      if (tab === 'history') {
+        if (body) body.style.display = 'none';
+        if (hist) { hist.classList.add('active'); }
+        loadWizardHistory();
+      } else {
+        if (body) body.style.display = '';
+        if (hist) { hist.classList.remove('active'); hist.style.display = 'none'; }
+      }
+    }
+
+    async function loadWizardHistory() {
+      const hist = document.getElementById('cw-history');
+      if (!hist) return;
+      hist.innerHTML = '<div class="cw-state"><span class="cw-spinner"></span>Loading your scripts…</div>';
+      let data;
+      try {
+        const res = await fetch('/api/inner-circle/my-scripts', { headers: AUTH_HEADERS });
+        if (res.status === 401) { logout(); return; }
+        data = await res.json();
+      } catch (e) {
+        hist.innerHTML = '<div class="cw-state">Couldn\'t load your scripts. Please try again.</div>';
+        return;
+      }
+      const all = (data && Array.isArray(data.scripts)) ? data.scripts : [];
+      // Filter to the brand the wizard is currently open on (match by name or slug).
+      const bn = String(cwState.brandName || '').toLowerCase().trim();
+      const bs = String(cwState.brandSlug || '').toLowerCase().trim();
+      const scripts = all.filter(function (s) {
+        const b = String(s.brand || s.Brand || '').toLowerCase().trim();
+        if (!bn && !bs) return true;
+        return b === bn || b === bs || (bn && b.indexOf(bn) !== -1);
+      });
+      if (!scripts.length) {
+        hist.innerHTML = '<div class="cw-state">No saved scripts for this brand yet. Generate some on the Create new tab.</div>';
+        return;
+      }
+      let html = '';
+      scripts.forEach(function (s, i) {
+        s = s || {};
+        const stage = Array.isArray(s.funnelStages) ? s.funnelStages.join(' · ')
+          : (s.funnelStage || s.funnelStages || s.stage || '');
+        const product = s.product || s.Product || '';
+        const when = s.generatedAt || s.createdAt || s.generated_at || '';
+        const meta = [product, stage, when].filter(Boolean).map(function (m) { return cwEsc(m); }).join('<span style="opacity:.4">·</span>');
+        const full = s.fullScript || s.full_script || s.script || s.body || '';
+        html += '<div class="cw-hist-card">' +
+          (meta ? '<div class="cw-hist-meta">' + meta + '</div>' : '') +
+          '<div class="cw-hist-hook">' + cwEsc(s.hook || ('Script ' + (i + 1))) + '</div>' +
+          '<div class="cw-hist-body">' + cwEsc(full) + '</div>' +
+          '<button class="cw-hist-copy" type="button" onclick="copyHistScript(' + i + ', this)">Copy</button>' +
+          '</div>';
+      });
+      hist.innerHTML = html;
+      cwHistScripts = scripts;
+    }
+
+    let cwHistScripts = [];
+    function copyHistScript(i, btn) {
+      const s = cwHistScripts[i] || {};
+      const txt = [s.hook, (s.fullScript || s.full_script || s.script || s.body || '')].filter(Boolean).join('\n\n');
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.focus(); ta.select();
+        document.execCommand('copy'); document.body.removeChild(ta);
+        if (btn) { const o = btn.textContent; btn.textContent = 'Copied!'; setTimeout(function(){ btn.textContent = o; }, 1400); }
+      } catch (_) {}
+    }
+
+    function openContentWizard(brandId, brandSlug, brandName) {
+      // Snapshot the pristine form body ONCE, before any generation overwrites it.
+      snapshotWizardBody();
+      // Always restore the form first so a previous brand's rendered scripts can
+      // never bleed into this open. This is the core fix for the state-bleed bug.
+      restoreWizardBody();
+      cwState = { brandId: brandId, brandSlug: brandSlug, brandName: brandName || '', products: [], filtered: [], selectedId: null,
         audience: { creatorAgeGroup: '', creatorDetails: '', targetGender: '', targetAgeRange: '', targetInterests: '', painPoints: '' },
       brief: { funnelStage: [], scriptLength: '', format: '' } };
+      cwScripts = [];
       resetAudienceFields();
       const modal = document.getElementById('content-wizard');
       modal.classList.add('open');
       document.body.style.overflow = 'hidden';
+      const sub = document.getElementById('cw-subtitle');
+      if (sub) sub.textContent = 'Pick the product you want to feature';
+      switchWizardTab('create');
       const search = document.getElementById('cw-search');
-      search.value = '';
-      search.disabled = true;
+      if (search) { search.value = ''; search.disabled = true; }
       loadWizardProducts(brandId);
     }
 
