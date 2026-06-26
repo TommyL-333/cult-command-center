@@ -1075,7 +1075,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     { id: 'yuglo', name: 'Yuglo', logo: null, website: 'https://yugloskin.com', brandColor: '#F39976', // sourced from yugloskin.com homepage accent palette (peach, ~8:1 contrast vs #161823); dominant #108474 excluded — shared review-widget green seen across client sites
       description: 'Yuglo skincare — TikTok Shop brand.' },
     { id: 'roots-by-ga', name: 'Roots by GA', logo: null, website: 'https://www.rootsbyga.com', brandColor: null,
-      description: 'Roots by GA — TikTok Shop brand (Carla Brenner).' },
+      description: 'Roots by GA �� TikTok Shop brand (Carla Brenner).' },
     { id: 'lode-wtr', name: 'Lode WTR', logo: null, website: 'https://lodewtr.com', brandColor: '#CCFF00', // verified: dominant accent color on lodewtr.com (electric lime), ~14:1 contrast vs #161823
       description: 'Lode WTR ��� scalp care that replaces traditional shampoo. "Your shampoo is the problem" positioning; strong hooks around scalp health, hair loss, and ingredient honesty.' },
     { id: 'dissolvd', name: 'Dissolvd', logo: null, website: null, brandColor: '#A78BFA', // PLACEHOLDER — dissolvd.com is behind Cloudflare Access, no public site to source brand color (6.49:1 contrast vs #161823)
@@ -1288,6 +1288,57 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     }
   }
 
+  // ── GET /api/inner-circle/brands/:brandId/products ───────────────────────────
+  // IC Content Engine — product catalog for a creator's assigned brand, used by
+  // the "Create your next videos" wizard. Returns proper JSON 401/403 (not the
+  // global plain-text auth wall) so the SPA never false-logs-out on open.
+  //   401 → requireSqliteSession rejects (no/expired session)
+  //   403 → authenticated but NOT actively assigned to this brand
+  //   200 → { products:[{ productId, name, image }] }
+  app.get('/api/inner-circle/brands/:brandId/products', requireSqliteSession, async (req, res) => {
+    try {
+      const c = req.icCreator;
+      const brandId = req.params.brandId != null ? String(req.params.brandId).trim() : '';
+      if (!brandId) return res.status(400).json({ error: 'brandId required' });
+
+      // Authorization (403) — must hold an ACTIVE assignment to this brand.
+      let assignment = null;
+      try { assignment = stmts.getAssignment.get(c.id, brandId); }
+      catch (e) { return res.status(500).json({ error: 'Server error' }); }
+      if (!assignment || !assignment.active) {
+        return res.status(403).json({ error: 'Not assigned to this brand' });
+      }
+
+      // Resolve the brand record (source of truth: brands.json) → numeric shopId.
+      const data = icLoadBrandsFile();
+      const brand = ((data && data.clients) || []).find((b) =>
+        b && (String(b.id) === brandId || String(b.name || '').toLowerCase().trim() === brandId.toLowerCase())
+      );
+      if (!brand) return res.status(404).json({ error: 'Brand not found' });
+      const numericShopId = brand.shopId || brand.shop_id || brand.shopID || null;
+      if (numericShopId == null) return res.json({ products: [] });
+
+      // Fetch the live catalog via the same resolver generate-scripts uses.
+      let resolver = null;
+      try { resolver = require('../lib/product-resolver'); } catch (_) { resolver = null; }
+      let catalog = [];
+      if (resolver && typeof resolver.fetchCatalog === 'function') {
+        try { catalog = await resolver.fetchCatalog(numericShopId); } catch (_) { catalog = []; }
+      }
+
+      const products = (Array.isArray(catalog) ? catalog : []).filter(Boolean).map((p) => ({
+        productId: (p.product_id != null ? p.product_id : (p.productId != null ? p.productId : (p.id != null ? p.id : ''))),
+        name: (p.product_name != null ? p.product_name : (p.name != null ? p.name : (p.title != null ? p.title : ''))),
+        image: (p.main_image || p.image || p.imageUrl || p.thumbnail || '')
+      }));
+
+      return res.json({ products });
+    } catch (e) {
+      console.error('[inner-circle-sqlite] brand-products error:', e.message);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  });
+
   // ── POST /api/inner-circle/generate-scripts ──────────────────────────────────
   // IC Content Engine — generate TikTok Shop affiliate scripts for a creator's
   // assigned brand + a chosen product. Auth/authorization contract (Step 8):
@@ -1422,7 +1473,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     }
   });
 
-  // ── GET /api/inner-circle/my-scripts ─────────────────────────────────────────
+  // ── GET /api/inner-circle/my-scripts ──────────────────��──────────────────────
   // Return the generated scripts for the LOGGED-IN creator, read from the Lark
   // Base (Bitable) mirror. The creator identity comes ENTIRELY from the session
   // (req.icCreator) — never from query params — so a creator can only ever see
@@ -1643,7 +1694,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     return out;
   }
 
-  // ── GET /api/inner-circle/admin/creators?key=… ──────────────────────────────
+  // ── GET /api/inner-circle/admin/creators?key=… ─────────��────────────────────
   // Full roster across all brands. Env-key protected (IC_ADMIN_KEY).
   app.get('/api/inner-circle/admin/creators', (req, res) => {
     if (dbError) return res.status(503).json({ error: 'IC database unavailable' });
@@ -1795,7 +1846,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     return res.sendFile(path.join(__dirname, '..', 'views', 'inner-circle-admin.html'));
   });
 
-  // ── GET /inner-circle/dashboard (PAGE) ──────────────────────────────────────
+  // ── GET /inner-circle/dashboard (PAGE) ───────────────────────────��──────────
   // Shadows the legacy supabase-checked page route in dashboard-server.js
   // (~line 1434), which could never succeed: `supabase` is undefined there and
   // req.cookies doesn't exist (no cookie-parser) — every creator got bounced
@@ -2184,7 +2235,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     }
   });
 
-  // ── POST /api/inner-circle/agreements/:id/progress ───────────────────────────
+  // ���─ POST /api/inner-circle/agreements/:id/progress ───────────────────────────
   // Brand owner reports delivery progress. Body: {videosDelivered} — absolute
   // count (not an increment) of videos delivered so far. Guarded to the brand
   // that owns the agreement (client session → req.session.clientBrandId); later
