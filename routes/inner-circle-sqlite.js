@@ -356,7 +356,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     };
 
     // ── Idempotent TEST creator seed (E2E testing; TEST-prefixed per task
-    //    cleanup policy — flagged for Tommy, removable any time) ────────────��──
+    //    cleanup policy — flagged for Tommy, removable any time) ────────────����─
     const existing = queries.getCreatorByHandle.get('@test_sisyphus_ic');
     if (!existing) {
       queries.insertCreator.run(
@@ -1061,53 +1061,123 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
   // (Weekly Call Day/Time + Creator Call Meeting Link), mirrored here as a static
   // map keyed by brand slug so the endpoint stays fast and dependency-free.
   const IC_CALL_SCHEDULE = {
-    'approved-science':     { when: 'Tuesdays · 12:00 PM ET',   meetingLink: 'https://vc-usttp.larksuite.com/j/438787376' },
-    'diamandia':            { when: 'Fridays · 4:00 PM ET',     meetingLink: 'https://vc-usttp.larksuite.com/j/438787376' },
-    'lode-wtr':             { when: 'Fridays · 12:00 PM ET',    meetingLink: 'https://vc-usttp.larksuite.com/j/781105654' },
-    'trusted-rituals':      { when: 'Tuesdays · 10:00 AM ET',   meetingLink: 'https://vc-usttp.larksuite.com/j/295587698' },
-    'the-perfect-haircare': { when: 'Tuesdays · 10:30 AM ET',   meetingLink: 'https://vc-usttp.larksuite.com/j/475877234' },
-    'dissolvd':             { when: 'Wednesdays · 10:00 AM ET',  meetingLink: 'https://vc-usttp.larksuite.com/j/764870287' },
-    'yuglo':                { when: 'Wednesdays · 10:30 AM ET',  meetingLink: 'https://vc-usttp.larksuite.com/j/387170441' },
-    'b-noor':               { when: 'Thursdays · 10:00 AM ET',   meetingLink: 'https://vc-usttp.larksuite.com/j/361089866' },
-    'roots-by-ga':          { when: 'Thursdays · 10:30 AM ET',   meetingLink: 'https://vc-usttp.larksuite.com/j/687799951' },
-    'dear-miss-gina':       { when: 'Fridays · 10:30 AM ET',    meetingLink: 'https://vc-usttp.larksuite.com/j/257394728' },
+    // when + meetingLink mirrored from Ops Engine Clients Lark base.
+    // color = brand creator-page accent (single source of truth, no runtime scraping).
+    'approved-science':     { when: 'Tuesdays · 12:00 PM ET',   meetingLink: 'https://vc-usttp.larksuite.com/j/438787376', color: '#00a3a3' },
+    'diamandia':            { when: 'Fridays · 4:00 PM ET',     meetingLink: 'https://vc-usttp.larksuite.com/j/438787376', color: '#E5E4E2' },
+    'lode-wtr':             { when: 'Fridays · 12:00 PM ET',    meetingLink: 'https://vc-usttp.larksuite.com/j/781105654', color: '#ccff00' },
+    'trusted-rituals':      { when: 'Tuesdays · 10:00 AM ET',   meetingLink: 'https://vc-usttp.larksuite.com/j/295587698', color: '#108474' },
+    'the-perfect-haircare': { when: 'Tuesdays · 10:30 AM ET',   meetingLink: 'https://vc-usttp.larksuite.com/j/475877234', color: '#e35186' },
+    'dissolvd':             { when: 'Wednesdays · 10:00 AM ET',  meetingLink: 'https://vc-usttp.larksuite.com/j/764870287', color: '#ffbc00' },
+    'yuglo':                { when: 'Wednesdays · 10:30 AM ET',  meetingLink: 'https://vc-usttp.larksuite.com/j/387170441', color: '#f39976' },
+    'b-noor':               { when: 'Thursdays · 10:00 AM ET',   meetingLink: 'https://vc-usttp.larksuite.com/j/361089866', color: '#c9a84c' },
+    'roots-by-ga':          { when: 'Thursdays · 10:30 AM ET',   meetingLink: 'https://vc-usttp.larksuite.com/j/687799951', color: '#f4efe6' },
+    'dear-miss-gina':       { when: 'Fridays · 10:30 AM ET',    meetingLink: 'https://vc-usttp.larksuite.com/j/257394728', color: '#e8449c' },
+  };
+
+  // Weekday + 24h time per slug, for building .ics calendar events.
+  const IC_CALL_ICS = {
+    'approved-science':     { day: 2, h: 12, m: 0 },
+    'diamandia':            { day: 5, h: 16, m: 0 },
+    'lode-wtr':             { day: 5, h: 12, m: 0 },
+    'trusted-rituals':      { day: 2, h: 10, m: 0 },
+    'the-perfect-haircare': { day: 2, h: 10, m: 30 },
+    'dissolvd':             { day: 3, h: 10, m: 0 },
+    'yuglo':                { day: 3, h: 10, m: 30 },
+    'b-noor':               { day: 4, h: 10, m: 0 },
+    'roots-by-ga':          { day: 4, h: 10, m: 30 },
+    'dear-miss-gina':       { day: 5, h: 10, m: 30 },
   };
 
   app.get('/api/inner-circle/call-schedule', requireSqliteSession, (req, res) => {
     try {
-      // brandsForCreator returns rows keyed by shop_id (= brand slug) + shop_name.
+      // Which brands is THIS creator enrolled in? (shop_id = brand slug)
       let rows = [];
       try { rows = stmts.brandsForCreator.all(req.icCreator.id, req.icCreator.id) || []; }
       catch (_) { rows = []; }
+      const enrolledSlugs = new Set(rows.map(r => String(r.shop_id || '').trim()).filter(Boolean));
 
-      // Resolve display name from brands.json when available.
+      // Display names from brands.json when available.
       let clients = [];
       try { const bf = icLoadBrandsFile(); clients = (bf && bf.clients) || []; } catch (_) {}
       const nameBySlug = {};
       for (const c of clients) { if (c && c.id) nameBySlug[c.id] = c.name || c.id; }
 
-      const seen = new Set();
-      const calls = [];
-      for (const r of rows) {
-        const slug = String(r.shop_id || '').trim();
-        if (!slug || seen.has(slug)) continue;
-        seen.add(slug);
+      // Return ALL brands that have a weekly call, flag the creator's own.
+      const calls = Object.keys(IC_CALL_SCHEDULE).map(slug => {
         const sched = IC_CALL_SCHEDULE[slug] || {};
-        calls.push({
+        return {
           slug,
-          brand: nameBySlug[slug] || r.shop_name || slug,
+          brand: nameBySlug[slug] || slug,
           when: sched.when || null,
           meetingLink: sched.meetingLink || null,
-        });
-      }
-      // Sort: brands with a scheduled time first, then alphabetically.
+          color: sched.color || '#00f2ea',
+          enrolled: enrolledSlugs.has(slug),
+        };
+      });
+      // Enrolled first; then by weekday so the list reads like a week.
+      const dayOf = (slug) => (IC_CALL_ICS[slug] ? IC_CALL_ICS[slug].day : 9);
+      const minOf = (slug) => (IC_CALL_ICS[slug] ? IC_CALL_ICS[slug].h * 60 + IC_CALL_ICS[slug].m : 9999);
       calls.sort((a, b) => {
-        if (!!a.when !== !!b.when) return a.when ? -1 : 1;
-        return String(a.brand).localeCompare(String(b.brand));
+        if (a.enrolled !== b.enrolled) return a.enrolled ? -1 : 1;
+        const dd = dayOf(a.slug) - dayOf(b.slug); if (dd) return dd;
+        return minOf(a.slug) - minOf(b.slug);
       });
       return res.json({ calls });
     } catch (e) {
       console.error('[inner-circle-sqlite] GET call-schedule failed:', e.message);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  });
+
+  // ── GET /api/inner-circle/calls.ics ──────────────────────────────────────────
+  // Downloadable calendar (RFC 5545) of every weekly creator call, as recurring
+  // weekly events. Public-ish but harmless — no creator data, just the schedule.
+  app.get('/api/inner-circle/calls.ics', (req, res) => {
+    try {
+      const DAYNAME = ['SU','MO','TU','WE','TH','FR','SA'];
+      // Anchor the first occurrence to the next matching weekday from a fixed
+      // recent Monday so DTSTART is stable across requests.
+      const baseMonday = new Date(Date.UTC(2026, 5, 29, 0, 0, 0)); // 2026-06-29 = Monday
+      const pad = (n) => String(n).padStart(2, '0');
+      // ET is UTC-4 (EDT) in summer; store events in UTC by adding 4h.
+      const fmtUTC = (d) => d.getUTCFullYear() + pad(d.getUTCMonth() + 1) + pad(d.getUTCDate()) +
+        'T' + pad(d.getUTCHours()) + pad(d.getUTCMinutes()) + '00Z';
+
+      let lines = [
+        'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Cult Content//Inner Circle Calls//EN',
+        'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'X-WR-CALNAME:Cult Content — Weekly Calls',
+      ];
+      for (const slug of Object.keys(IC_CALL_ICS)) {
+        const ics = IC_CALL_ICS[slug];
+        const sched = IC_CALL_SCHEDULE[slug] || {};
+        const brand = (function () {
+          try { const bf = icLoadBrandsFile(); const c = ((bf && bf.clients) || []).find(x => x && x.id === slug); return c ? (c.name || slug) : slug; }
+          catch (_) { return slug; }
+        })();
+        // First occurrence: baseMonday + (day-1) days, at h:m ET (+4h => UTC).
+        const start = new Date(baseMonday.getTime());
+        start.setUTCDate(start.getUTCDate() + (ics.day - 1));
+        start.setUTCHours(ics.h + 4, ics.m, 0, 0);
+        const endD = new Date(start.getTime() + 30 * 60000);
+        lines.push('BEGIN:VEVENT');
+        lines.push('UID:cc-call-' + slug + '@cultcontent.cc');
+        lines.push('DTSTAMP:' + fmtUTC(new Date()));
+        lines.push('DTSTART:' + fmtUTC(start));
+        lines.push('DTEND:' + fmtUTC(endD));
+        lines.push('RRULE:FREQ=WEEKLY;BYDAY=' + DAYNAME[ics.day]);
+        lines.push('SUMMARY:' + brand + ' — Creator Call');
+        if (sched.meetingLink) { lines.push('LOCATION:' + sched.meetingLink); lines.push('URL:' + sched.meetingLink); }
+        lines.push('DESCRIPTION:Weekly ' + brand + ' creator call. Join: ' + (sched.meetingLink || 'TBA'));
+        lines.push('END:VEVENT');
+      }
+      lines.push('END:VCALENDAR');
+      const body = lines.join('\r\n');
+      res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+      res.setHeader('Content-Disposition', 'attachment; filename="cult-content-calls.ics"');
+      return res.send(body);
+    } catch (e) {
+      console.error('[inner-circle-sqlite] GET calls.ics failed:', e.message);
       return res.status(500).json({ error: 'Server error' });
     }
   });
@@ -1665,7 +1735,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     }
   });
 
-  // ══════════════════════════════════════════════════════════════════════════���═
+  // ════════════════════════════════════��═════════════════════════════════════���═
   // ADMIN + CLIENT-PORTAL VIEWS (read-only) — added June 2026
   // ════════════════════════════════════════════════════════════════════════════
 
@@ -1833,7 +1903,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     }
   });
 
-  // ── DELETE /api/inner-circle/admin/creators/:id?key=… ────────────────��──────
+  // ── DELETE /api/inner-circle/admin/creators/:id?key=… ──────────────���─��──────
   // Key-protected hard delete of a single creator + their child rows
   // (videos, extra handles, brand assignments). Used for test-row cleanup and
   // removing accidental dupes. Env-key protected (IC_ADMIN_KEY) or portal admin
