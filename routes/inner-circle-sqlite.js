@@ -1332,6 +1332,24 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
         image: (p.main_image || p.image || p.imageUrl || p.thumbnail || '')
       }));
 
+      // Enrich missing thumbnails from TikTok Shop (per-brand token).
+      // Never throws — on any failure the dropdown still renders (names only).
+      try {
+        const needImages = products.some((p) => !p.image);
+        if (needImages && brand.tiktokShopToken && brand.tiktokShopToken.access_token) {
+          const tts = require('../lib/tts-product-images');
+          if (tts && typeof tts.fetchProductImages === 'function') {
+            const imgMap = await tts.fetchProductImages(brand);
+            for (const p of products) {
+              if (!p.image) {
+                const imgs = imgMap[String(p.productId)];
+                if (imgs && imgs.length) p.image = imgs[0];
+              }
+            }
+          }
+        }
+      } catch (_) { /* image enrichment is best-effort */ }
+
       return res.json({ products });
     } catch (e) {
       console.error('[inner-circle-sqlite] brand-products error:', e.message);
@@ -1588,7 +1606,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     }
   });
 
-  // ════════════════════════════════════════════════════════════════════════════
+  // ══════════════════════════════════════════════════════════════════════════���═
   // ADMIN + CLIENT-PORTAL VIEWS (read-only) — added June 2026
   // ════════════════════════════════════════════════════════════════════════════
 
@@ -1756,7 +1774,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     }
   });
 
-  // ── DELETE /api/inner-circle/admin/creators/:id?key=… ───────────────────────
+  // ── DELETE /api/inner-circle/admin/creators/:id?key=… ────────────────��──────
   // Key-protected hard delete of a single creator + their child rows
   // (videos, extra handles, brand assignments). Used for test-row cleanup and
   // removing accidental dupes. Env-key protected (IC_ADMIN_KEY) or portal admin
