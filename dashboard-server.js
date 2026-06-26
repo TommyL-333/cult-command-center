@@ -5577,6 +5577,13 @@ financialDashboard.mount(app, { requirePortalAdmin });
 
 app.use(requireAuth); // all other routes require auth in production
 
+// Open Collab Outreach queue — surfaces TC-backlog creators (CREATOR_NOT_FOUND) for
+// approve-and-send Reacher DMs. Mounted AFTER requireAuth so the CF Access session
+// (same as the Unibox affiliate APIs) powers /api/open-collab/* in the Command Center.
+try {
+  require('./routes/open-collab-queue').mount(app, { DATA_DIR: process.env.DATA_DIR || '/data' });
+} catch (e) { console.error('[open-collab-queue] mount failed:', e.message); }
+
 // POST /api/client/admin/set-password — CF Access protected; sets/resets a client's login password
 app.post('/api/client/admin/set-password', express.json(), async (req, res) => {
   try {
