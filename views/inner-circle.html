@@ -487,6 +487,20 @@
       font-size: 13px;
     }
 
+    .nav-actions { display: flex; align-items: center; gap: 12px; }
+    .nav-meetings-btn {
+      display: flex; align-items: center; gap: 8px;
+      padding: 8px 18px;
+      background: rgba(0,242,234,0.07);
+      border: 1px solid rgba(0,242,234,0.25);
+      border-radius: 100px; color: rgba(255,255,255,0.9);
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      transition: all 0.3s; font-family: inherit;
+    }
+    .nav-meetings-btn:hover { background: rgba(0,242,234,0.14); border-color: rgba(0,242,234,0.5); }
+    .nav-meetings-icon { font-size: 15px; }
+    @media (max-width: 768px) { .nav-meetings-label { display: none; } }
+
     /* Responsive */
     @media (max-width: 768px) {
       .hero h1 { font-size: 48px; }
@@ -801,9 +815,14 @@
   <!-- Top Navigation -->
   <nav class="top-nav">
     <div class="nav-logo">INNER CIRCLE</div>
-    <div class="nav-user">
-      <div class="user-avatar">IC</div>
-      <span id="creator-name">Loading…</span>
+    <div class="nav-actions">
+      <button class="nav-meetings-btn" id="nav-meetings-btn" onclick="openMeetings()" title="Cult Meetings">
+        <span class="nav-meetings-icon">📅</span><span class="nav-meetings-label">Cult Meetings</span>
+      </button>
+      <div class="nav-user" id="nav-user" onclick="openProfile()" title="Your profile">
+        <div class="user-avatar" id="nav-avatar">IC</div>
+        <span id="creator-name">Loading…</span>
+      </div>
     </div>
   </nav>
 
@@ -922,6 +941,105 @@
       </div>
       <div class="rec-grid" id="recordings-container">
         <p class="empty-note">Loading recordings…</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Profile + Cult Meetings modals ── -->
+  <style>
+    .ic-overlay { position: fixed; inset: 0; z-index: 1000; display: none; align-items: flex-start; justify-content: center; background: rgba(8,9,18,0.78); backdrop-filter: blur(6px); overflow-y: auto; padding: 48px 16px; }
+    .ic-overlay.open { display: flex; }
+    .ic-modal { width: 100%; max-width: 620px; background: #161823; border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; box-shadow: 0 24px 80px rgba(0,0,0,0.55); overflow: hidden; }
+    .ic-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 22px 24px; background: linear-gradient(135deg, rgba(0,242,234,0.10), rgba(255,0,80,0.10)); border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .ic-modal-header h2 { margin: 0; font-size: 19px; color: #fff; font-family: 'Montserrat', sans-serif; }
+    .ic-modal-header p { margin: 4px 0 0; font-size: 13px; color: rgba(255,255,255,0.55); }
+    .ic-modal-close { background: none; border: none; color: rgba(255,255,255,0.6); font-size: 26px; line-height: 1; cursor: pointer; padding: 0 4px; }
+    .ic-modal-close:hover { color: #fff; }
+    .ic-modal-body { padding: 22px 24px 28px; }
+    .ic-prof-id { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; }
+    .ic-prof-avatar { width: 54px; height: 54px; border-radius: 50%; background: linear-gradient(135deg, #00f2ea, #ff0050); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 20px; color: #06070d; flex-shrink: 0; }
+    .ic-prof-id .nm { font-size: 17px; font-weight: 700; color: #fff; }
+    .ic-prof-id .em { font-size: 13px; color: rgba(255,255,255,0.5); }
+    .ic-section-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.45); margin: 22px 0 10px; font-weight: 700; }
+    .ic-handles-list .handle-row, .ic-modal .handle-row { display: flex; align-items: center; justify-content: space-between; padding: 11px 14px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; margin-bottom: 8px; }
+    .ic-modal .handle-name { color: #fff; font-weight: 600; }
+    .ic-modal .handle-badge { margin-left: 8px; font-size: 11px; padding: 2px 8px; border-radius: 100px; background: rgba(0,242,234,0.15); color: #00f2ea; }
+    .ic-modal .handle-remove { background: none; border: none; color: rgba(255,255,255,0.4); font-size: 18px; cursor: pointer; }
+    .ic-modal .handle-remove:hover { color: #ff0050; }
+    .ic-handle-add { display: flex; gap: 8px; margin-top: 6px; }
+    .ic-handle-add input { flex: 1; padding: 11px 14px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: #fff; font-family: inherit; font-size: 14px; }
+    .ic-handle-add button, .ic-prof-save { padding: 11px 18px; background: linear-gradient(135deg, #00f2ea, #ff0050); border: none; border-radius: 10px; color: #06070d; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 14px; }
+    .ic-prof-save { width: 100%; margin-top: 16px; padding: 14px; }
+    .ic-prof-save:disabled { opacity: 0.6; cursor: wait; }
+    .ic-rates-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .ic-rate-field label { display: block; font-size: 12px; color: rgba(255,255,255,0.55); margin-bottom: 6px; }
+    .ic-rate-wrap { display: flex; align-items: center; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 0 12px; }
+    .ic-rate-wrap span { color: rgba(255,255,255,0.4); }
+    .ic-rate-wrap input { flex: 1; padding: 11px 6px; background: none; border: none; color: #fff; font-family: inherit; font-size: 14px; outline: none; }
+    .ic-prof-msg { font-size: 13px; margin-top: 10px; min-height: 16px; }
+    .ic-prof-msg.ok { color: #00f2ea; } .ic-prof-msg.err { color: #ff0050; }
+    .ic-empty-note { color: rgba(255,255,255,0.4); font-size: 14px; padding: 8px 0; }
+    /* Cult Meetings */
+    .ic-cal-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; margin-bottom: 10px; }
+    .ic-cal-brand { font-weight: 700; color: #fff; font-size: 15px; }
+    .ic-cal-when { font-size: 13px; color: rgba(255,255,255,0.55); margin-top: 2px; }
+    .ic-cal-join { padding: 9px 16px; background: rgba(0,242,234,0.1); border: 1px solid rgba(0,242,234,0.35); border-radius: 100px; color: #00f2ea; font-weight: 600; font-size: 13px; text-decoration: none; white-space: nowrap; }
+    .ic-cal-join:hover { background: rgba(0,242,234,0.18); }
+    .ic-rec-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 16px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; margin-bottom: 8px; }
+    .ic-rec-row .t { color: #fff; font-weight: 600; font-size: 14px; }
+    .ic-rec-row .d { font-size: 12px; color: rgba(255,255,255,0.45); margin-top: 2px; }
+    .ic-rec-play { padding: 8px 16px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 100px; color: #fff; font-weight: 600; font-size: 13px; cursor: pointer; }
+    .ic-rec-play:hover { border-color: #00f2ea; }
+    .ic-tabs { display: flex; gap: 8px; margin-bottom: 18px; }
+    .ic-tab { flex: 1; padding: 10px; text-align: center; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; color: rgba(255,255,255,0.6); font-weight: 600; cursor: pointer; font-size: 13px; }
+    .ic-tab.active { background: rgba(0,242,234,0.12); border-color: rgba(0,242,234,0.4); color: #00f2ea; }
+  </style>
+
+  <div class="ic-overlay" id="profile-modal">
+    <div class="ic-modal">
+      <div class="ic-modal-header">
+        <div><h2>Your Profile</h2><p>Manage your handles, rates &amp; info</p></div>
+        <button class="ic-modal-close" onclick="closeProfile()">&times;</button>
+      </div>
+      <div class="ic-modal-body">
+        <div class="ic-prof-id">
+          <div class="ic-prof-avatar" id="prof-avatar">IC</div>
+          <div><div class="nm" id="prof-name">—</div><div class="em" id="prof-email">—</div></div>
+        </div>
+
+        <div class="ic-section-title">TikTok Handles</div>
+        <p style="font-size:12px;color:rgba(255,255,255,0.45);margin:0 0 10px;">Link every account you post from so all your videos count.</p>
+        <div class="ic-handles-list" id="prof-handles"><p class="ic-empty-note">Loading…</p></div>
+        <div class="ic-handle-add">
+          <input id="prof-handle-input" type="text" placeholder="@yourhandle" autocomplete="off" />
+          <button onclick="profAddHandle()">+ Add</button>
+        </div>
+
+        <div class="ic-section-title">Your Rates</div>
+        <p style="font-size:12px;color:rgba(255,255,255,0.45);margin:0 0 10px;">Set what you charge so brands can send you paid offers.</p>
+        <div class="ic-rates-grid">
+          <div class="ic-rate-field"><label>Per-video price</label><div class="ic-rate-wrap"><span>$</span><input id="prof-rate-video" type="number" min="0" step="1" placeholder="—" /></div></div>
+          <div class="ic-rate-field"><label>Monthly retainer</label><div class="ic-rate-wrap"><span>$</span><input id="prof-rate-retainer" type="number" min="0" step="1" placeholder="—" /></div></div>
+        </div>
+        <button class="ic-prof-save" id="prof-save-btn" onclick="profSaveRates()">Save rates</button>
+        <div class="ic-prof-msg" id="prof-msg"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="ic-overlay" id="meetings-modal">
+    <div class="ic-modal">
+      <div class="ic-modal-header">
+        <div><h2>Cult Meetings</h2><p>Your weekly calls &amp; recordings</p></div>
+        <button class="ic-modal-close" onclick="closeMeetings()">&times;</button>
+      </div>
+      <div class="ic-modal-body">
+        <div class="ic-tabs">
+          <div class="ic-tab active" id="mtab-cal" onclick="meetingsTab('cal')">Schedule</div>
+          <div class="ic-tab" id="mtab-rec" onclick="meetingsTab('rec')">Recordings</div>
+        </div>
+        <div id="meetings-cal"><p class="ic-empty-note">Loading your call schedule…</p></div>
+        <div id="meetings-rec" style="display:none;"><p class="ic-empty-note">Loading recordings…</p></div>
       </div>
     </div>
   </div>
@@ -1325,6 +1443,143 @@
 
     function playRecording(url) {
       if (url) window.open(url, '_blank');
+    }
+
+    /* ── Profile modal ── */
+    function openProfile() {
+      const m = document.getElementById('profile-modal');
+      if (!m) return;
+      const cd = (typeof creatorData !== 'undefined' && creatorData) ? creatorData : {};
+      const name = cd.name || document.getElementById('creator-name')?.textContent || 'Creator';
+      const email = cd.email || '';
+      const initials = String(name).trim().split(/\s+/).map(w => w[0]).slice(0,2).join('').toUpperCase() || 'IC';
+      document.getElementById('prof-name').textContent = name;
+      document.getElementById('prof-email').textContent = email || '—';
+      document.getElementById('prof-avatar').textContent = initials;
+      const av = document.getElementById('nav-avatar'); if (av) av.textContent = initials;
+      m.classList.add('open');
+      profLoadHandles();
+      profLoadRates();
+    }
+    function closeProfile() { document.getElementById('profile-modal')?.classList.remove('open'); }
+
+    async function profLoadHandles() {
+      const el = document.getElementById('prof-handles');
+      try {
+        const r = await fetch('/api/inner-circle/handles', { headers: AUTH_HEADERS });
+        if (r.status === 401) { logout(); return; }
+        const d = await r.json();
+        profRenderHandles(d.handles || []);
+      } catch (e) { el.innerHTML = '<p class="ic-empty-note">Could not load handles.</p>'; }
+    }
+    function profRenderHandles(handles) {
+      const el = document.getElementById('prof-handles');
+      if (!handles.length) { el.innerHTML = '<p class="ic-empty-note">No handles linked yet.</p>'; return; }
+      el.innerHTML = handles.map(h => {
+        const badge = h.primary ? '<span class="handle-badge">Primary</span>' : '';
+        const rm = h.primary ? '' : '<button class="handle-remove" title="Unlink" onclick="profRemoveHandle(' + h.id + ')">\u00d7</button>';
+        return '<div class="handle-row"><span><span class="handle-name">' + esc(h.handle) + '</span>' + badge + '</span>' + rm + '</div>';
+      }).join('');
+    }
+    async function profAddHandle() {
+      const input = document.getElementById('prof-handle-input');
+      const handle = (input.value || '').trim();
+      if (!handle) return;
+      try {
+        const r = await fetch('/api/inner-circle/handles', {
+          method: 'POST', headers: { ...AUTH_HEADERS, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ handle })
+        });
+        const d = await r.json();
+        if (!r.ok) { setProfMsg(d.error || 'Could not add handle', false); return; }
+        input.value = '';
+        profRenderHandles(d.handles || []);
+        if (typeof loadHandles === 'function') loadHandles();
+      } catch (e) { setProfMsg('Network error', false); }
+    }
+    async function profRemoveHandle(id) {
+      try {
+        const r = await fetch('/api/inner-circle/handles/' + id, { method: 'DELETE', headers: AUTH_HEADERS });
+        const d = await r.json();
+        if (r.ok) { profRenderHandles(d.handles || []); if (typeof loadHandles === 'function') loadHandles(); }
+      } catch (e) {}
+    }
+    async function profLoadRates() {
+      try {
+        const r = await fetch('/api/inner-circle/my-rates', { headers: AUTH_HEADERS });
+        if (!r.ok) return;
+        const d = await r.json();
+        const rt = d.rates || d || {};
+        if (rt.perVideoCents != null) document.getElementById('prof-rate-video').value = Math.round(rt.perVideoCents) / 100;
+        if (rt.retainerMonthlyCents != null) document.getElementById('prof-rate-retainer').value = Math.round(rt.retainerMonthlyCents) / 100;
+      } catch (e) {}
+    }
+    async function profSaveRates() {
+      const btn = document.getElementById('prof-save-btn');
+      const v = document.getElementById('prof-rate-video').value;
+      const ret = document.getElementById('prof-rate-retainer').value;
+      btn.disabled = true; btn.textContent = 'Saving…';
+      try {
+        const toCents = (x) => (x === '' || x == null || isNaN(Number(x))) ? null : Math.round(Number(x) * 100);
+        const r = await fetch('/api/inner-circle/my-rates', {
+          method: 'POST', headers: { ...AUTH_HEADERS, 'Content-Type': 'application/json' },
+          body: JSON.stringify({ perVideoCents: toCents(v), retainerMonthlyCents: toCents(ret) })
+        });
+        if (r.ok) setProfMsg('Saved ✓', true); else setProfMsg('Could not save', false);
+        if (typeof loadRates === 'function') loadRates();
+      } catch (e) { setProfMsg('Network error', false); }
+      btn.disabled = false; btn.textContent = 'Save rates';
+    }
+    function setProfMsg(t, ok) {
+      const el = document.getElementById('prof-msg');
+      el.textContent = t; el.className = 'ic-prof-msg ' + (ok ? 'ok' : 'err');
+      if (ok) setTimeout(() => { el.textContent = ''; el.className = 'ic-prof-msg'; }, 2500);
+    }
+
+    /* ── Cult Meetings modal ── */
+    function openMeetings() {
+      const m = document.getElementById('meetings-modal'); if (!m) return;
+      m.classList.add('open');
+      meetingsTab('cal');
+      loadCallSchedule();
+      loadMeetingRecordings();
+    }
+    function closeMeetings() { document.getElementById('meetings-modal')?.classList.remove('open'); }
+    function meetingsTab(which) {
+      const cal = document.getElementById('meetings-cal'), rec = document.getElementById('meetings-rec');
+      const tc = document.getElementById('mtab-cal'), tr = document.getElementById('mtab-rec');
+      if (which === 'rec') { cal.style.display = 'none'; rec.style.display = 'block'; tr.classList.add('active'); tc.classList.remove('active'); }
+      else { cal.style.display = 'block'; rec.style.display = 'none'; tc.classList.add('active'); tr.classList.remove('active'); }
+    }
+    async function loadCallSchedule() {
+      const el = document.getElementById('meetings-cal');
+      try {
+        const r = await fetch('/api/inner-circle/call-schedule', { headers: AUTH_HEADERS });
+        if (r.status === 401) { logout(); return; }
+        const d = await r.json();
+        const calls = d.calls || [];
+        if (!calls.length) { el.innerHTML = '<p class="ic-empty-note">No weekly calls scheduled for your brands yet.</p>'; return; }
+        el.innerHTML = calls.map(c => {
+          const join = c.meetingLink ? '<a class="ic-cal-join" href="' + esc(c.meetingLink) + '" target="_blank" rel="noopener">Join call</a>' : '';
+          const when = c.when ? esc(c.when) : 'Schedule TBA';
+          return '<div class="ic-cal-row"><div><div class="ic-cal-brand">' + esc(c.brand) + '</div><div class="ic-cal-when">' + when + '</div></div>' + join + '</div>';
+        }).join('');
+      } catch (e) { el.innerHTML = '<p class="ic-empty-note">Could not load schedule.</p>'; }
+    }
+    async function loadMeetingRecordings() {
+      const el = document.getElementById('meetings-rec');
+      try {
+        const r = await fetch('/api/inner-circle/recordings', { headers: AUTH_HEADERS });
+        if (!r.ok) { el.innerHTML = '<p class="ic-empty-note">Could not load recordings.</p>'; return; }
+        const d = await r.json();
+        const recs = d.recordings || [];
+        if (!recs.length) { el.innerHTML = '<p class="ic-empty-note">No recordings yet — they\'ll appear here after each call.</p>'; return; }
+        el.innerHTML = recs.map(rc => {
+          const dt = rc.scheduled_at ? new Date(rc.scheduled_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+          const url = rc.recording_url || rc.url || '';
+          return '<div class="ic-rec-row"><div><div class="t">' + esc(rc.title || 'Weekly Call') + '</div><div class="d">' + esc(dt) + '</div></div><button class="ic-rec-play" onclick="playRecording(\'' + esc(url).replace(/'/g, "\\'") + '\')">▶ Play</button></div>';
+        }).join('');
+      } catch (e) { el.innerHTML = '<p class="ic-empty-note">Could not load recordings.</p>'; }
     }
 
     function renderHandles(handles) {
