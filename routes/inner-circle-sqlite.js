@@ -1457,6 +1457,8 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
           funnelStages: s && (s.funnelStages || s.funnelStage || s.funnel_stage),
           scriptIndex: i,
           creatorHandle: (c && (c.tiktok_handle || c.handle || c.name)) || '',
+          creatorName: (c && c.creator_name) || (c && c.name) || '',
+          creatorEmail: (c && c.email) || '',
           brand: brand.name,
           product: productContext.productName,
           generatedAt: nowMs,
