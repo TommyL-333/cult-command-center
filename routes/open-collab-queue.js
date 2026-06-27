@@ -91,11 +91,20 @@ function saveState(DATA_DIR, state) {
 let _larkTok = { token: null, exp: 0 };
 async function larkToken() {
   if (_larkTok.token && Date.now() < _larkTok.exp) return _larkTok.token;
-  const { data } = await axios.post(
-    'https://open.larksuite.com/open-apis/auth/v3/tenant_access_token/internal',
-    { app_id: process.env.LARK_APP_ID, app_secret: process.env.LARK_APP_SECRET },
-    { headers: { 'Content-Type': 'application/json' } }
-  );
+  let data;
+  try {
+    ({ data } = await axios.post(
+      'https://open.larksuite.com/open-apis/auth/v3/tenant_access_token/internal',
+      { app_id: process.env.LARK_APP_ID, app_secret: process.env.LARK_APP_SECRET },
+      { headers: { 'Content-Type': 'application/json' } }
+    ));
+  } catch (e) {
+    const body = e.response && e.response.data;
+    throw new Error('LARK_TOKEN_FAIL app=' + String(process.env.LARK_APP_ID).slice(0,12) + ' status=' + (e.response && e.response.status) + ' body=' + JSON.stringify(body));
+  }
+  if (!data.tenant_access_token) {
+    throw new Error('LARK_TOKEN_FAIL app=' + String(process.env.LARK_APP_ID).slice(0,12) + ' code=' + data.code + ' msg=' + data.msg);
+  }
   _larkTok = { token: data.tenant_access_token, exp: Date.now() + (data.expire - 60) * 1000 };
   return _larkTok.token;
 }
@@ -107,7 +116,16 @@ async function fetchNeedsDmCreators() {
   let pageToken = '';
   do {
     const url = `https://open.larksuite.com/open-apis/bitable/v1/apps/${TC_NEEDS_APP_TOKEN}/tables/${TC_NEEDS_TABLE_ID}/records?page_size=200${pageToken ? '&page_token=' + pageToken : ''}`;
-    const { data } = await axios.get(url, { headers: { Authorization: `Bearer ${tok}` } });
+    let data;
+    try {
+      ({ data } = await axios.get(url, { headers: { Authorization: `Bearer ${tok}` } }));
+    } catch (e) {
+      const body = e.response && e.response.data;
+      throw new Error('LARK_BASE_READ_FAIL app=' + String(process.env.LARK_APP_ID).slice(0,12) + ' base=' + TC_NEEDS_APP_TOKEN.slice(0,8) + ' status=' + (e.response && e.response.status) + ' body=' + JSON.stringify(body));
+    }
+    if (data.code && data.code !== 0) {
+      throw new Error('LARK_BASE_READ_CODE app=' + String(process.env.LARK_APP_ID).slice(0,12) + ' base=' + TC_NEEDS_APP_TOKEN.slice(0,8) + ' code=' + data.code + ' msg=' + data.msg);
+    }
     const items = data?.data?.items || [];
     for (const r of items) {
       const f = r.fields || {};
