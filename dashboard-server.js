@@ -5575,6 +5575,9 @@ tiktokApiMap.mount(app, { requirePortalAdmin });
 const financialDashboard = require('./routes/financial-dashboard');
 financialDashboard.mount(app, { requirePortalAdmin });
 
+const openCollabQueue = require('./routes/open-collab-queue');
+openCollabQueue.mount(app, { DATA_DIR, requirePortalAdmin });
+
 app.use(requireAuth); // all other routes require auth in production
 
 // Open Collab Outreach queue — surfaces TC-backlog creators (CREATOR_NOT_FOUND) for
