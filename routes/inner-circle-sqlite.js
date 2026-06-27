@@ -1063,16 +1063,16 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
   const IC_CALL_SCHEDULE = {
     // when + meetingLink mirrored from Ops Engine Clients Lark base.
     // color = brand creator-page accent (single source of truth, no runtime scraping).
-    'approved-science':     { when: 'Tuesdays · 12:00 PM ET',   meetingLink: 'https://vc-usttp.larksuite.com/j/438787376', color: '#00a3a3' },
-    'diamandia':            { when: 'Fridays · 4:00 PM ET',     meetingLink: 'https://vc-usttp.larksuite.com/j/438787376', color: '#E5E4E2' },
-    'lode-wtr':             { when: 'Fridays · 12:00 PM ET',    meetingLink: 'https://vc-usttp.larksuite.com/j/781105654', color: '#ccff00' },
-    'trusted-rituals':      { when: 'Tuesdays · 10:00 AM ET',   meetingLink: 'https://vc-usttp.larksuite.com/j/295587698', color: '#108474' },
-    'the-perfect-haircare': { when: 'Tuesdays · 10:30 AM ET',   meetingLink: 'https://vc-usttp.larksuite.com/j/475877234', color: '#e35186' },
-    'dissolvd':             { when: 'Wednesdays · 10:00 AM ET',  meetingLink: 'https://vc-usttp.larksuite.com/j/764870287', color: '#ffbc00' },
-    'yuglo':                { when: 'Wednesdays · 10:30 AM ET',  meetingLink: 'https://vc-usttp.larksuite.com/j/387170441', color: '#f39976' },
-    'b-noor':               { when: 'Thursdays · 10:00 AM ET',   meetingLink: 'https://vc-usttp.larksuite.com/j/361089866', color: '#c9a84c' },
-    'roots-by-ga':          { when: 'Thursdays · 10:30 AM ET',   meetingLink: 'https://vc-usttp.larksuite.com/j/687799951', color: '#f4efe6' },
-    'dear-miss-gina':       { when: 'Fridays · 10:30 AM ET',    meetingLink: 'https://vc-usttp.larksuite.com/j/257394728', color: '#e8449c' },
+    'approved-science':     { when: 'Tuesdays · 12:00 PM ET',   meetingLink: 'https://vc-usttp.larksuite.com/j/438787376', color: '#00a3a3', chatLink: 'https://applink.larksuite.com/client/chat/chatter/add_by_link?link_token=307k275f-3285-42f1-9592-412t6oj62r7r' },
+    'diamandia':            { when: 'Fridays · 4:00 PM ET',     meetingLink: 'https://vc-usttp.larksuite.com/j/438787376', color: '#E5E4E2', chatLink: 'https://applink.larksuite.com/client/chat/chatter/add_by_link?link_token=076ged1c-bef5-43e3-a7f4-6dakfqi85p6k' },
+    'lode-wtr':             { when: 'Fridays · 12:00 PM ET',    meetingLink: 'https://vc-usttp.larksuite.com/j/781105654', color: '#ccff00', chatLink: 'https://applink.larksuite.com/client/chat/chatter/add_by_link?link_token=5d9h0434-928d-49dd-bccd-51fnaqt64h0u' },
+    'trusted-rituals':      { when: 'Tuesdays · 10:00 AM ET',   meetingLink: 'https://vc-usttp.larksuite.com/j/295587698', color: '#108474', chatLink: 'https://applink.larksuite.com/client/chat/chatter/add_by_link?link_token=b2eq4bf0-bdb1-4ed5-b011-f52p4im57mfg' },
+    'the-perfect-haircare': { when: 'Tuesdays · 10:30 AM ET',   meetingLink: 'https://vc-usttp.larksuite.com/j/475877234', color: '#e35186', chatLink: 'https://applink.larksuite.com/client/chat/chatter/add_by_link?link_token=ff2v0f33-82fa-470f-a8c5-627g0on18kfu' },
+    'dissolvd':             { when: 'Wednesdays · 10:00 AM ET',  meetingLink: 'https://vc-usttp.larksuite.com/j/764870287', color: '#ffbc00', chatLink: 'https://applink.larksuite.com/client/chat/chatter/add_by_link?link_token=506jd69b-fb5f-4846-bd8b-5a4h3mt35l3j' },
+    'yuglo':                { when: 'Wednesdays · 10:30 AM ET',  meetingLink: 'https://vc-usttp.larksuite.com/j/387170441', color: '#f39976', chatLink: 'https://applink.larksuite.com/client/chat/chatter/add_by_link?link_token=297h04f4-30b1-4920-8e9b-586s6ssedq9h' },
+    'b-noor':               { when: 'Thursdays · 10:00 AM ET',   meetingLink: 'https://vc-usttp.larksuite.com/j/361089866', color: '#c9a84c', chatLink: 'https://applink.larksuite.com/client/chat/chatter/add_by_link?link_token=a16of81b-9217-4651-a7c6-cf8h8lqc3g6r' },
+    'roots-by-ga':          { when: 'Thursdays · 10:30 AM ET',   meetingLink: 'https://vc-usttp.larksuite.com/j/687799951', color: '#f4efe6', chatLink: 'https://applink.larksuite.com/client/chat/chatter/add_by_link?link_token=9bcp4885-b1a3-4a2f-b625-0f5s9vq94iev' },
+    'dear-miss-gina':       { when: 'Fridays · 10:30 AM ET',    meetingLink: 'https://vc-usttp.larksuite.com/j/257394728', color: '#e8449c', chatLink: 'https://applink.larksuite.com/client/chat/chatter/add_by_link?link_token=406qe0ba-6d25-4924-8e74-a95q0lm43k1p' },
   };
 
   // Weekday + 24h time per slug, for building .ics calendar events.
@@ -1112,6 +1112,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
           when: sched.when || null,
           meetingLink: sched.meetingLink || null,
           color: sched.color || '#00f2ea',
+          chatLink: sched.chatLink || null,
           enrolled: enrolledSlugs.has(slug),
         };
       });
