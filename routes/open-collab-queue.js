@@ -160,14 +160,82 @@ function textOf(v) {
 }
 
 // ─── Default DM copy ─────────────────────────────────────────────────────────
-function defaultDm(handle, brandName) {
-  const info = brandInfo(brandName) || {};
-  const link = info.slug ? `${CREATOR_BASE}/creators/${info.slug}` : `${CREATOR_BASE}/creators`;
-  const brand = brandName || 'our brand';
-  return (
-`Hey! 👋 We'd love to work with you on ${brand}. To unlock the collab + your sample, join our Open Collaboration here: ${link}
+// ── Hero product resolver: tap-to-Showcase link for a brand's allow-listed SKU ──
+// Reads brands.json (creatorPage.tcHeroProductId / tcProductIds[0]) for the SKU,
+// and the affiliate relay products list for its name. Cached per shop.
+const AFFILIATE_BASE = (process.env.AFFILIATE_API_BASE || 'https://sisyphus.cultcontent.cc').replace(/\/$/, '');
+const AFFILIATE_FALLBACK = (process.env.AFFILIATE_API_FALLBACK || 'https://consultants.cultcontent.cc').replace(/\/$/, '');
+const _heroCache = {}; // shopId -> { link, name } | null
 
-Once you're in, we'll send your Target Collab invite straight to your TikTok inbox with your commission locked in. Can't wait to create with you! 💫`
+function _loadBrandsFile() {
+  try {
+    const p = path.join(process.env.DATA_DIR || '/data', 'brands.json');
+    const raw = JSON.parse(fs.readFileSync(p, 'utf8'));
+    return raw.clients || raw.brands || raw;
+  } catch (_) { return []; }
+}
+
+async function _relayProducts(shopId) {
+  for (const base of [AFFILIATE_BASE, AFFILIATE_FALLBACK]) {
+    try {
+      const { data } = await axios.post(`${base}/affiliate/shops/${shopId}/products`,
+        { page: 1, page_size: 50 }, { timeout: 12000 });
+      const arr = data && Array.isArray(data.data) ? data.data : [];
+      if (arr.length) return arr;
+    } catch (_) { /* try next host */ }
+  }
+  return [];
+}
+
+// Returns { link, name } for the brand's hero product, or null.
+async function heroProductForShop(shopId, brandSlug) {
+  if (!shopId) return null;
+  if (Object.prototype.hasOwnProperty.call(_heroCache, shopId)) return _heroCache[shopId];
+  let result = null;
+  try {
+    const brands = _loadBrandsFile();
+    const b = brands.find(x =>
+      String(x.shopId || x.shop_id) === String(shopId) ||
+      (brandSlug && (x.id === brandSlug || x.slug === brandSlug))
+    );
+    const cp = (b && b.creatorPage) || {};
+    let heroId = cp.tcHeroProductId
+      || (Array.isArray(cp.tcProductIds) && cp.tcProductIds[0])
+      || null;
+    const products = await _relayProducts(shopId);
+    // If no configured hero, fall back to the first relay product so the link still works.
+    if (!heroId && products.length) heroId = products[0].product_id;
+    if (heroId) {
+      const match = products.find(p => String(p.product_id) === String(heroId));
+      const name = match
+        ? String(match.product_name || '').split(',')[0].trim().slice(0, 70)
+        : null;
+      result = { link: `https://shop.tiktok.com/view/product/${heroId}`, name };
+    }
+  } catch (_) { result = null; }
+  _heroCache[shopId] = result;
+  return result;
+}
+
+function defaultDm(handle, brandName, product) {
+  const info = brandInfo(brandName) || {};
+  const brand = brandName || 'our brand';
+  // Preferred path: tap-to-add the brand's hero (allow-listed) product to Showcase.
+  if (product && product.link) {
+    const pname = product.name || `our ${brand} product`;
+    return (
+`Hey! ✨ Your free ${pname} sample from ${brand} is ready 🎁
+
+Grab it here → ${product.link}
+Add it to your TikTok Showcase, then reply "done" 🌙 and we'll send your sample + collab invite straight to your inbox — commission locked in 👁️💫`
+    );
+  }
+  // Fallback: no hero product configured -> brand creator page + manual showcase nudge.
+  const link = info.slug ? `${CREATOR_BASE}/creators/${info.slug}` : `${CREATOR_BASE}/creators`;
+  return (
+`Hey! ✨ We'd love to work with you on ${brand} 🌙 To unlock the collab + your free sample, start here: ${link}
+
+Add the product to your TikTok Showcase, then reply "done" and we'll send your Target Collab invite straight to your inbox — commission locked in 👁️💫`
   );
 }
 
@@ -175,10 +243,20 @@ Once you're in, we'll send your Target Collab invite straight to your TikTok inb
 async function buildQueue(DATA_DIR) {
   const creators = await fetchNeedsDmCreators();
   const state = loadState(DATA_DIR);
-  return creators.map(c => {
+  // Resolve each brand's hero product link once (cached) before building drafts.
+  const shopSeen = {};
+  for (const c of creators) {
+    const inf = brandInfo(c.brand) || {};
+    if (inf.shopId && !shopSeen[inf.shopId]) {
+      shopSeen[inf.shopId] = true;
+      try { await heroProductForShop(inf.shopId, inf.slug); } catch (_) {}
+    }
+  }
+  return Promise.all(creators.map(async c => {
     const info = brandInfo(c.brand) || {};
     const key = `${info.shopId || 'na'}:${c.handle}`;
     const ov = state.items[key] || {};
+    const product = info.shopId ? await heroProductForShop(info.shopId, info.slug) : null;
     return {
       key,
       record_id: c.record_id,
@@ -190,14 +268,14 @@ async function buildQueue(DATA_DIR) {
       reason: c.reason,
       baseStatus: c.status,
       // local overlay
-      draft: typeof ov.draft === 'string' ? ov.draft : defaultDm(c.handle, c.brand),
+      draft: typeof ov.draft === 'string' ? ov.draft : defaultDm(c.handle, c.brand, product),
       dmStatus: ov.dmStatus || 'Not Sent',       // Not Sent | Sent | Failed
       automationId: ov.automationId || null,
       lastError: ov.lastError || null,
       sentAt: ov.sentAt || null,
       sendable: !!info.shopId,                    // can only send if we know the shop
     };
-  });
+  }));
 }
 
 // ─── Send one DM (create targeted automation + activate) ─────────────────────
