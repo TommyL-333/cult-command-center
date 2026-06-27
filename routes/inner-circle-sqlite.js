@@ -356,7 +356,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     };
 
     // ── Idempotent TEST creator seed (E2E testing; TEST-prefixed per task
-    //    cleanup policy — flagged for Tommy, removable any time) ────────────����─
+    //    cleanup policy — flagged for Tommy, removable any time) ────────��───����─
     const existing = queries.getCreatorByHandle.get('@test_sisyphus_ic');
     if (!existing) {
       queries.insertCreator.run(
@@ -1993,7 +1993,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     return res.sendFile(path.join(__dirname, '..', 'views', 'inner-circle-admin.html'));
   });
 
-  // ── GET /inner-circle/dashboard (PAGE) ───────────────────────────��──────────
+  // ── GET /inner-circle/dashboard (PAGE) ───────────────────────────��───────���──
   // Shadows the legacy supabase-checked page route in dashboard-server.js
   // (~line 1434), which could never succeed: `supabase` is undefined there and
   // req.cookies doesn't exist (no cookie-parser) — every creator got bounced
@@ -2603,64 +2603,51 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       const start = now - Math.max(1, windowDays) * 86400;
       const result = { ok: true, scanned: 0, matched: 0, withRecording: 0, upserted: 0, brands: {} };
 
-      let pageToken = '';
-      for (let page = 0; page < 10; page++) {
-        const q = `/open-apis/vc/v1/meeting_list?start_time=${start}&end_time=${now}&meeting_status=2&page_size=50` + (pageToken ? `&page_token=${pageToken}` : '');
-        const r = await _larkGet(token, q);
-        const data = r.json && r.json.data;
-        const items = (data && data.meeting_list) || [];
-        result.scanned += items.length;
-
-        for (const m of items) {
-          const topic = m.meeting_topic || '';
-          const brand = _brandForTopic(topic);
-          if (!brand) continue;
-          result.matched += 1;
-          if (!m.recording) continue;
-          const inst = m.meeting_instance_id;
-          if (!inst) continue;
-
-          const rec = await _larkGet(token, `/open-apis/vc/v1/meetings/${inst}/recording`);
-          const url = rec.json && rec.json.data && rec.json.data.recording && rec.json.data.recording.url;
-          if (!url) continue;
-          result.withRecording += 1;
-
-          // meeting_start_time is a formatted string like
-          // "2026.06.26 23:58:43 (GMT+08:00)" — parse it to ISO.
-          let scheduledAt = null;
-          const st = m.meeting_start_time || m.start_time;
-          if (st) {
-            try {
-              const mm = String(st).match(/(\\d{4})\\.(\\d{2})\\.(\\d{2})\\s+(\\d{2}):(\\d{2}):(\\d{2})\\s*\\(GMT([+-]\\d{2}):?(\\d{2})\\)/);
-              if (mm) {
-                const iso = mm[1] + "-" + mm[2] + "-" + mm[3] + "T" + mm[4] + ":" + mm[5] + ":" + mm[6] + mm[7] + ":" + mm[8];
-                const d = new Date(iso);
-                if (!isNaN(d.getTime())) scheduledAt = d.toISOString();
-              } else if (/^\\d+$/.test(String(st))) {
-                scheduledAt = new Date(Number(st) * 1000).toISOString();
-              }
-            } catch (_) {}
-          }
-          if (!scheduledAt) scheduledAt = new Date().toISOString();
-
-          try {
-            const existing = db.prepare('SELECT id FROM inner_circle_calls WHERE lark_instance_id = ?').get(String(inst));
-            if (existing) {
-              db.prepare('UPDATE inner_circle_calls SET recording_url = ?, title = ?, brand_id = ?, shop_id = ? WHERE lark_instance_id = ?')
-                .run(url, topic, brand.brandId, brand.shopId, String(inst));
-            } else {
-              db.prepare('INSERT INTO inner_circle_calls (title, scheduled_at, recording_url, shop_id, brand_id, lark_meeting_url, lark_instance_id) VALUES (?,?,?,?,?,?,?)')
-                .run(topic, scheduledAt, url, brand.shopId, brand.brandId, url, String(inst));
-            }
-            await _maybePublicize(token, url);
-            result.upserted += 1;
-            result.brands[brand.brandId] = (result.brands[brand.brandId] || 0) + 1;
-          } catch (e) { console.warn('[ic-recordings] upsert failed:', e.message); }
-        }
-
-        pageToken = (data && data.page_token) || '';
-        if (!pageToken || !(data && data.has_more)) break;
+      // Fetch matched creator-call recordings from the Sisyphus VC relay.
+      // cult-command-center's Lark app lacks tenant-wide VC visibility, so its
+      // own meeting_list returns 0 rows. The Sisyphus app (cli_a93c68c186f8c060)
+      // has the vc:meeting scope and exposes /vc/creator-call-recordings.
+      const RELAY_BASE = process.env.SISYPHUS_RELAY_BASE || 'https://sisyphus.cultcontent.cc';
+      let recordings = [];
+      let _axios;
+      try { _axios = require('axios'); } catch (e) { return { ok:false, error:'axios unavailable' }; }
+      try {
+        const relayResp = await _axios.get(
+          RELAY_BASE + '/vc/creator-call-recordings?days=' + Math.max(1, windowDays),
+          { headers: { 'x-ic-admin-key': process.env.IC_ADMIN_KEY || '' }, timeout: 30000 }
+        );
+        recordings = (relayResp.data && relayResp.data.recordings) || [];
+        result.scanned = (relayResp.data && relayResp.data.scanned) || recordings.length;
+      } catch (e) {
+        return { ok: false, error: 'vc relay failed: ' + (e.response ? e.response.status + ' ' + JSON.stringify(e.response.data).slice(0,200) : e.message) };
       }
+
+      for (const rd of recordings) {
+        const topic = rd.topic || '';
+        const brand = _brandForTopic(topic);
+        if (!brand) continue;
+        result.matched += 1;
+        const inst = rd.instanceId;
+        const url = rd.recordingUrl;
+        if (!inst || !url) continue;
+        result.withRecording += 1;
+        const scheduledAt = rd.scheduledAt || new Date().toISOString();
+
+        try {
+          const existing = db.prepare('SELECT id FROM inner_circle_calls WHERE lark_instance_id = ?').get(String(inst));
+          if (existing) {
+            db.prepare('UPDATE inner_circle_calls SET recording_url = ?, title = ?, brand_id = ?, shop_id = ? WHERE lark_instance_id = ?')
+              .run(url, topic, brand.brandId, brand.shopId, String(inst));
+          } else {
+            db.prepare('INSERT INTO inner_circle_calls (title, scheduled_at, recording_url, shop_id, brand_id, lark_meeting_url, lark_instance_id) VALUES (?,?,?,?,?,?,?)')
+              .run(topic, scheduledAt, url, brand.shopId, brand.brandId, url, String(inst));
+          }
+          await _maybePublicize(token, url);
+          result.upserted += 1;
+          result.brands[brand.brandId] = (result.brands[brand.brandId] || 0) + 1;
+        } catch (e) { console.warn('[ic-recordings] upsert failed:', e.message); }
+      }
+
       console.log('[ic-recordings] sync done:', JSON.stringify(result));
       return result;
     }
