@@ -1505,20 +1505,54 @@
         }).join('');
       } catch (e) { el.innerHTML = '<p class="ic-empty-note">Could not load schedule.</p>'; }
     }
+    // Derive a clean brand name from a recording title like
+    // "Lode WTR Weekly Creator Call" -> "Lode WTR". Falls back to full title.
+    function recBrand(rc) {
+      if (rc && rc.brand) return String(rc.brand).trim();
+      const t = String((rc && rc.title) || '').trim();
+      const m = t.match(/^(.*?)\s+weekly\s+(creator\s+)?call\s*$/i);
+      return (m ? m[1] : t).trim() || 'Other';
+    }
+    function recDateMs(rc) {
+      const raw = (rc && (rc.scheduled_at || rc.date)) || '';
+      const ms = raw ? Date.parse(raw) : NaN;
+      return Number.isFinite(ms) ? ms : 0;
+    }
+    let _recAll = [];
+    let _recFilter = '__all__';
     async function loadMeetingRecordings() {
       const el = document.getElementById('meetings-rec');
       try {
         const r = await fetch('/api/inner-circle/recordings', { headers: AUTH_HEADERS });
         if (!r.ok) { el.innerHTML = '<p class="ic-empty-note">Could not load recordings.</p>'; return; }
         const d = await r.json();
-        const recs = d.recordings || [];
-        if (!recs.length) { el.innerHTML = '<p class="ic-empty-note">No recordings yet — they\'ll appear here after each call.</p>'; return; }
-        el.innerHTML = recs.map(rc => {
-          const dt = rc.scheduled_at ? new Date(rc.scheduled_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
-          const url = rc.recording_url || rc.url || '';
-          return '<div class="ic-rec-row"><div><div class="t">' + esc(rc.title || 'Weekly Call') + '</div><div class="d">' + esc(dt) + '</div></div><button class="ic-rec-play" onclick="playRecording(\'' + esc(url).replace(/'/g, "\\'") + '\')">▶ Play</button></div>';
-        }).join('');
+        _recAll = (d.recordings || []).slice().sort((a, b) => recDateMs(b) - recDateMs(a));
+        renderRecordings();
       } catch (e) { el.innerHTML = '<p class="ic-empty-note">Could not load recordings.</p>'; }
+    }
+    function setRecFilter(v) { _recFilter = v; renderRecordings(); }
+    function renderRecordings() {
+      const el = document.getElementById('meetings-rec');
+      if (!el) return;
+      if (!_recAll.length) { el.innerHTML = '<p class="ic-empty-note">No recordings yet — they\'ll appear here after each call.</p>'; return; }
+      const brands = Array.from(new Set(_recAll.map(recBrand))).sort((a, b) => a.localeCompare(b));
+      const opts = ['<option value="__all__">All brands</option>']
+        .concat(brands.map(b => '<option value="' + esc(b) + '"' + (b === _recFilter ? ' selected' : '') + '>' + esc(b) + '</option>'))
+        .join('');
+      const filterBar = '<div class="ic-rec-filter"><label>Brand</label><select onchange="setRecFilter(this.value)">' + opts + '</select></div>';
+      const list = _recAll.filter(rc => _recFilter === '__all__' || recBrand(rc) === _recFilter);
+      let rowsHtml;
+      if (!list.length) {
+        rowsHtml = '<p class="ic-empty-note">No recordings for this brand yet.</p>';
+      } else {
+        rowsHtml = list.map(rc => {
+          const dt = recDateMs(rc) ? new Date(recDateMs(rc)).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+          const url = rc.recording_url || rc.url || '';
+          const brand = recBrand(rc);
+          return '<div class="ic-rec-row"><div class="ic-rec-info"><div class="t">' + esc(rc.title || 'Weekly Call') + '</div><div class="d"><span class="ic-rec-brand">' + esc(brand) + '</span>' + (dt ? '<span class="ic-rec-dot">•</span>' + esc(dt) : '') + '</div></div><button class="ic-rec-play" onclick="playRecording(\'' + esc(url).replace(/'/g, "\\'") + '\')">▶ Play</button></div>';
+        }).join('');
+      }
+      el.innerHTML = filterBar + rowsHtml;
     }
 
     function renderHandles(handles) {
