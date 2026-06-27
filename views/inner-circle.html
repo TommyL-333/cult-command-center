@@ -931,6 +931,9 @@
     .ic-cal-join { display:inline-block; padding:7px 14px; border-radius:8px; color:#0b0d16; font-weight:700; font-size:13px; text-decoration:none; white-space:nowrap; }
     .ic-cal-join:hover { opacity:0.9; }
     .ic-cal-tba { font-size:12px; color:#8a90a6; white-space:nowrap; }
+    .ic-cal-actions { display:inline-flex; align-items:center; gap:8px; white-space:nowrap; }
+    .ic-cal-chat { display:inline-block; padding:7px 14px; border-radius:8px; background:transparent; border:1px solid; font-weight:700; font-size:13px; text-decoration:none; white-space:nowrap; }
+    .ic-cal-chat:hover { opacity:0.85; }
 </style>
 
   <div class="ic-overlay" id="profile-modal">
@@ -1504,12 +1507,13 @@
         el.innerHTML = calls.map(c => {
           const color = c.color || '#00f2ea';
           const join = c.meetingLink ? '<a class="ic-cal-join" style="background:' + color + '" href="' + esc(c.meetingLink) + '" target="_blank" rel="noopener">Join</a>' : '<span class="ic-cal-tba">Link TBA</span>';
+          const chat = c.chatLink ? '<a class="ic-cal-chat" style="color:' + color + ';border-color:' + color + '" href="' + esc(c.chatLink) + '" target="_blank" rel="noopener">Chat</a>' : '';
           const when = c.when ? esc(c.when) : 'Schedule TBA';
           const mine = c.enrolled ? ' ic-cal-mine' : '';
           const badge = c.enrolled ? '<span class="ic-cal-badge" style="color:' + color + '">● Yours</span>' : '';
           return '<div class="ic-cal-row' + mine + '" style="border-left:3px solid ' + color + '">' +
                  '<div class="ic-cal-main"><div class="ic-cal-brand" style="color:' + color + '">' + esc(c.brand) + badge + '</div>' +
-                 '<div class="ic-cal-when">' + when + '</div></div>' + join + '</div>';
+                 '<div class="ic-cal-when">' + when + '</div></div>' + '<div class="ic-cal-actions">' + chat + join + '</div>' + '</div>';
         }).join('');
       } catch (e) { el.innerHTML = '<p class="ic-empty-note">Could not load schedule.</p>'; }
     }
