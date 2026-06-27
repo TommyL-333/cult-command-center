@@ -109,24 +109,30 @@ async function larkToken() {
   return _larkTok.token;
 }
 
-// ─── Read TC Needs base: only CREATOR_NOT_FOUND rows ─────────────────────────
+// ─── Read TC Needs base via Sisyphus relay (this app lacks bitable scopes) ────
+const SISYPHUS_RELAY_BASE = process.env.SISYPHUS_RELAY_BASE || 'https://sisyphus.cultcontent.cc';
 async function fetchNeedsDmCreators() {
-  const tok = await larkToken();
   const out = [];
   let pageToken = '';
   do {
-    const url = `https://open.larksuite.com/open-apis/bitable/v1/apps/${TC_NEEDS_APP_TOKEN}/tables/${TC_NEEDS_TABLE_ID}/records?page_size=200${pageToken ? '&page_token=' + pageToken : ''}`;
+    const url = SISYPHUS_RELAY_BASE + '/lark-base/' + TC_NEEDS_APP_TOKEN + '/' + TC_NEEDS_TABLE_ID +
+      '/records?page_size=200&single=1' + (pageToken ? '&page_token=' + encodeURIComponent(pageToken) : '');
     let data;
     try {
-      ({ data } = await axios.get(url, { headers: { Authorization: `Bearer ${tok}` } }));
+      ({ data } = await axios.get(url, {
+        timeout: 20000,
+        headers: process.env.LARK_RELAY_SECRET ? { 'x-relay-secret': process.env.LARK_RELAY_SECRET } : {},
+      }));
     } catch (e) {
       const body = e.response && e.response.data;
-      throw new Error('LARK_BASE_READ_FAIL app=' + String(process.env.LARK_APP_ID).slice(0,12) + ' base=' + TC_NEEDS_APP_TOKEN.slice(0,8) + ' status=' + (e.response && e.response.status) + ' body=' + JSON.stringify(body));
+      throw new Error('TC_NEEDS_RELAY_FAIL base=' + TC_NEEDS_APP_TOKEN.slice(0,8) +
+        ' status=' + (e.response && e.response.status) + ' body=' + JSON.stringify(body));
     }
-    if (data.code && data.code !== 0) {
-      throw new Error('LARK_BASE_READ_CODE app=' + String(process.env.LARK_APP_ID).slice(0,12) + ' base=' + TC_NEEDS_APP_TOKEN.slice(0,8) + ' code=' + data.code + ' msg=' + data.msg);
+    if (!data || data.ok === false) {
+      throw new Error('TC_NEEDS_RELAY_ERR base=' + TC_NEEDS_APP_TOKEN.slice(0,8) +
+        ' detail=' + JSON.stringify(data));
     }
-    const items = data?.data?.items || [];
+    const items = (data && data.items) || [];
     for (const r of items) {
       const f = r.fields || {};
       const handle = normHandle(textOf(f['Creator Handle']));
@@ -138,7 +144,7 @@ async function fetchNeedsDmCreators() {
       if (!/not interacted|CREATOR_NOT_FOUND/i.test(reason)) continue;
       out.push({ record_id: r.record_id, handle, brand, reason, status });
     }
-    pageToken = data?.data?.has_more ? data.data.page_token : '';
+    pageToken = data.has_more ? data.page_token : '';
   } while (pageToken);
   return out;
 }
