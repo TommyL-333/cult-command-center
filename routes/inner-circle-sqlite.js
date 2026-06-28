@@ -966,6 +966,18 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
         if (cm && cm.brand_id != null) commitByKey[String(cm.brand_id).toLowerCase()] = cm;
         if (cm && cm.brand_name != null) commitByKey[String(cm.brand_name).toLowerCase()] = cm;
       }
+      // Resolve canonical creator-page slug (brands.json id) by name, so card
+      // links go to /creators/<slug> not a name-slugified 404 (e.g. yuglo not yuglo-skin).
+      let icBrandsForSlug = [];
+      try { const _bf = icLoadBrandsFile(); icBrandsForSlug = (_bf && _bf.clients) || []; } catch (_) { icBrandsForSlug = []; }
+      const icSlugForName = (nm) => {
+        const key = String(nm || '').toLowerCase().trim();
+        const hit = icBrandsForSlug.find((x) => x && x.name && String(x.name).toLowerCase().trim() === key);
+        if (hit && hit.id) return hit.id;
+        const cat = icCatalogFor(nm);
+        if (cat && cat.id) return cat.id;
+        return key.replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      };
       const brands = stmts.brandsForCreator.all(c.id, c.id).map((b) => {
         const cm = commitByKey[String(b.shop_id).toLowerCase()]
                 || commitByKey[String(b.shop_name || '').toLowerCase()]
@@ -974,6 +986,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
         return {
           id: b.shop_id,
           name: b.shop_name,
+          slug: icSlugForName(b.shop_name),
           videosForBrand: b.videos_for_brand,
           earnedFromBrand: Math.round(b.gmv_for_brand * commissionRate * 100) / 100,
           // Aliases matching the dashboard SPA (views/inner-circle.html)
