@@ -150,9 +150,32 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       CREATE UNIQUE INDEX IF NOT EXISTS ux_retainer_agreements_offer ON retainer_agreements(offer_id);
       CREATE INDEX IF NOT EXISTS idx_retainer_agreements_brand ON retainer_agreements(brand_id);
       CREATE INDEX IF NOT EXISTS idx_retainer_agreements_creator ON retainer_agreements(creator_id);
+    
+      CREATE TABLE IF NOT EXISTS inner_circle_commitments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        creator_id INTEGER NOT NULL,
+        brand_id TEXT NOT NULL,
+        brand_name TEXT,
+        videos_per_month INTEGER DEFAULT 20,
+        weekly_call INTEGER DEFAULT 1,
+        committed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(creator_id, brand_id)
+      );
     `);
 
     stmts = {
+      getCommitment: db.prepare(
+        `SELECT * FROM inner_circle_commitments WHERE creator_id = ? AND brand_id = ?`
+      ),
+      upsertCommitment: db.prepare(
+        `INSERT INTO inner_circle_commitments (creator_id, brand_id, brand_name, videos_per_month, weekly_call, committed_at)
+         VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+         ON CONFLICT(creator_id, brand_id) DO UPDATE SET
+           brand_name = excluded.brand_name,
+           videos_per_month = excluded.videos_per_month,
+           weekly_call = excluded.weekly_call,
+           committed_at = CURRENT_TIMESTAMP`
+      ),
       creatorByEmail: db.prepare(
         `SELECT * FROM inner_circle_creators WHERE lower(email) = lower(?) AND status = 'active'`
       ),
@@ -356,7 +379,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     };
 
     // ── Idempotent TEST creator seed (E2E testing; TEST-prefixed per task
-    //    cleanup policy — flagged for Tommy, removable any time) ────────��───����─
+    //    cleanup policy — flagged for Tommy, removable any time) ────────��───�����─
     const existing = queries.getCreatorByHandle.get('@test_sisyphus_ic');
     if (!existing) {
       queries.insertCreator.run(
@@ -1219,6 +1242,117 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     catch (_) { return null; }
   }
 
+  // ── Brand → Lark chat_id routing (Ops Engine base = source of truth) ───────
+  // The Ops Engine Clients base holds each brand's "Creator Chat ID" (the oc_…
+  // id needed to POST messages via the Lark API — the human invite *link*
+  // cannot be used to send). We load the map from the base at startup + on a
+  // 10-min interval and cache it. BRAND_CHAT_FALLBACK is the embedded safety
+  // net: if the base read fails or a brand row is missing its chat id, we fall
+  // back to this constant and log a warning — a Lark outage or a fat-fingered
+  // base edit can never silently send a commitment notification into the void.
+  const OPS_BASE_APP_TOKEN = process.env.OPS_ENGINE_APP_TOKEN || 'EsfBbIqfkauKozsxMHMuilDztod';
+  const OPS_CLIENTS_TABLE_ID = process.env.OPS_ENGINE_CLIENTS_TABLE || 'tblgM1L7myeAfYQm';
+  const BRAND_CHAT_FALLBACK = {
+    'approved-science': 'oc_35c8179c0e156a643e23f7981f50bd2c',
+    'b-noor': 'oc_4fe3c15d30ef7900e046e1b426624cb8',
+    'dear-miss-gina': 'oc_a058282a4fc8bbcf196718b39c71a973',
+    'diamandia': 'oc_ef2b3e823ae7a5de0fc48fd73b46c8ad',
+    'dissolvd': 'oc_88ec974690c18323fab18cdafa729a3a',
+    'lode-wtr': 'oc_be48b3b11e5ca6484060b7325130a3e7',
+    'roots-by-ga': 'oc_9cbdf9cab3f129ff51b48156575d31b9',
+    'the-perfect-haircare': 'oc_4c6994ef6ae2c704c1efb0d837962b63',
+    'trusted-rituals': 'oc_5e113890fa729e692be260464be10b3b',
+    'yuglo': 'oc_2e62d2f056fa43b07200dec3d3a729f4',
+  };
+  // brand name → slug, matching the canonical IC slug rules.
+  function _brandSlugify(name) {
+    return String(name || '').toLowerCase().trim()
+      .replace(/&/g, 'and').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  }
+  let _brandChatCache = null;       // { slugOrName: oc_id }
+  let _brandChatLoadedAt = 0;
+
+  async function loadBrandChatIdsFromBase() {
+    let axios; try { axios = require('axios'); } catch (_) { return; }
+    try {
+      const token = await icGetLarkToken(axios);
+      if (!token) { console.warn('[ic-commitment] base chat load: no Lark token, keeping cache/fallback'); return; }
+      const map = {};
+      let pageToken = '';
+      for (let i = 0; i < 5; i++) {
+        const url = 'https://open.larksuite.com/open-apis/bitable/v1/apps/' + OPS_BASE_APP_TOKEN +
+          '/tables/' + OPS_CLIENTS_TABLE_ID + '/records?page_size=100' + (pageToken ? '&page_token=' + pageToken : '');
+        const r = await axios.get(url, { headers: { Authorization: 'Bearer ' + token }, timeout: 8000 });
+        const items = (r.data && r.data.data && r.data.data.items) || [];
+        for (const it of items) {
+          const f = it.fields || {};
+          const brandName = (typeof f['Brand'] === 'string') ? f['Brand']
+            : (Array.isArray(f['Brand']) && f['Brand'][0] && (f['Brand'][0].text || f['Brand'][0].name)) || '';
+          let chatId = f['Creator Chat ID'];
+          if (Array.isArray(chatId)) chatId = chatId[0] && (chatId[0].text || chatId[0]);
+          chatId = (typeof chatId === 'string') ? chatId.trim() : '';
+          if (brandName && chatId && /^oc_/.test(chatId)) {
+            map[_brandSlugify(brandName)] = chatId;
+            map[String(brandName).toLowerCase().trim()] = chatId;
+          }
+        }
+        const more = r.data && r.data.data && r.data.data.has_more;
+        pageToken = (r.data && r.data.data && r.data.data.page_token) || '';
+        if (!more || !pageToken) break;
+      }
+      if (Object.keys(map).length) {
+        _brandChatCache = map;
+        _brandChatLoadedAt = Date.now();
+        console.log('[ic-commitment] loaded ' + Object.keys(map).length + ' brand chat ids from Ops base');
+      } else {
+        console.warn('[ic-commitment] base returned no chat ids — keeping fallback');
+      }
+    } catch (e) {
+      console.warn('[ic-commitment] base chat load failed (' + (e.response?.status || e.message) + ') — using fallback');
+    }
+  }
+
+  // Resolve a brand to its oc_ chat id: cache (base) → fallback constant.
+  function getBrandChatId(brandId, brandName) {
+    const slug = brandId ? _brandSlugify(brandId) : _brandSlugify(brandName);
+    const nameKey = String(brandName || '').toLowerCase().trim();
+    if (_brandChatCache) {
+      const hit = _brandChatCache[slug] || (nameKey && _brandChatCache[nameKey]);
+      if (hit) return hit;
+    }
+    const fb = BRAND_CHAT_FALLBACK[slug];
+    if (fb) {
+      if (_brandChatCache) console.warn('[ic-commitment] base missing chat id for "' + slug + '" — using fallback constant');
+      return fb;
+    }
+    console.warn('[ic-commitment] NO chat id (base or fallback) for brand "' + (brandId || brandName) + '"');
+    return null;
+  }
+
+  // Post a text message directly to a brand's creator-call chat by chat_id.
+  async function icNotifyBrandChat(chatId, text) {
+    if (!chatId) return { notified: false, via: null };
+    let axios; try { axios = require('axios'); } catch (_) { return { notified: false, via: null }; }
+    try {
+      const token = await icGetLarkToken(axios);
+      if (!token) return { notified: false, via: null };
+      await axios.post(
+        'https://open.larksuite.com/open-apis/im/v1/messages?receive_id_type=chat_id',
+        { receive_id: chatId, msg_type: 'text', content: JSON.stringify({ text }) },
+        { headers: { Authorization: 'Bearer ' + token }, timeout: 8000 }
+      );
+      return { notified: true, via: 'brand-chat' };
+    } catch (e) {
+      console.error('[ic-commitment] brand chat notify failed:', e.response?.data || e.message);
+      return { notified: false, via: null };
+    }
+  }
+
+  // Kick off the initial base load + periodic refresh (non-blocking).
+  loadBrandChatIdsFromBase().catch(() => {});
+  setInterval(() => { loadBrandChatIdsFromBase().catch(() => {}); }, 10 * 60 * 1000);
+
+
   // ── slug → numeric Reacher/TikTok shop_id ──────────────────────────────────
   // brands.json shape: { clients: [ { id: <slug>, shopId: <number>, ... } ] }.
   // Reuses IC_BRANDS_FILE + icLoadBrandsFile() (defined above) — no new imports,
@@ -1669,6 +1803,72 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       // Defensive — the helper is contracted never to throw, but guard anyway.
       console.warn('[inner-circle-sqlite] my-scripts failed:', e && e.message);
       return res.json({ ok: false, scripts: [], error: 'exception' });
+    }
+  });
+
+  // ── POST /api/inner-circle/commitment ───────────────────────────────────────
+  // Creator pledges to a brand: 20 videos/month + weekly call attendance.
+  // Allowed for ANY client brand (the dashboard now shows all 10 cards), not
+  // just IC-toggled ones. Upserts one row per creator+brand, logs to jsonl,
+  // and notifies BOTH the brand's creator-call chat (via Ops base routing)
+  // and the main alert channel. Notify failure never loses the commitment.
+  app.post('/api/inner-circle/commitment', requireSqliteSession, express.json(), async (req, res) => {
+    try {
+      const c = req.icCreator;
+      const { brandId, brandName, videosPerMonth, weeklyCall } = req.body || {};
+      if (!brandId && !brandName) return res.status(400).json({ error: 'brandId required' });
+
+      // Resolve the brand against brands.json (any client brand is valid).
+      const data = icLoadBrandsFile();
+      const clients = (data && data.clients) || [];
+      const brand = clients.find((b) =>
+        (brandId != null && String(b.id) === String(brandId)) ||
+        (brandName && String(b.name || '').toLowerCase().trim() === String(brandName).toLowerCase().trim())
+      );
+      if (!brand) return res.status(404).json({ error: 'Brand not found' });
+
+      const videos = Number.isFinite(Number(videosPerMonth)) && Number(videosPerMonth) > 0
+        ? Math.round(Number(videosPerMonth)) : 20;
+      const callPledge = (weeklyCall === false || weeklyCall === 0) ? 0 : 1;
+
+      const existing = stmts.getCommitment.get(c.id, brand.id);
+      stmts.upsertCommitment.run(c.id, brand.id, brand.name, videos, callPledge);
+      const action = existing ? 'updated' : 'created';
+
+      // Durable log first — notify failure must never lose the commitment.
+      try {
+        fs.appendFileSync(path.join(IC_DATA_DIR, 'inner-circle-commitments.jsonl'), JSON.stringify({
+          at: new Date().toISOString(), creatorId: c.id, creatorName: c.creator_name,
+          tiktokHandle: c.creator_handle, brandId: brand.id, brandName: brand.name,
+          videosPerMonth: videos, weeklyCall: !!callPledge, action,
+        }) + '\n');
+      } catch (e) { console.error('[ic-commitment] log write failed:', e.message); }
+
+      // Notify the brand's creator-call chat (base-routed) + the alert channel.
+      const pledgeText = '🔥 *Inner Circle Commitment* — ' + (c.creator_name || 'A creator') +
+        (c.creator_handle ? ' (@' + c.creator_handle + ')' : '') +
+        ' just committed to *' + brand.name + '*: ' + videos + ' videos/month' +
+        (callPledge ? ' + weekly call attendance' : '') + '. 👁️';
+      let brandChatNotified = false;
+      try {
+        const chatId = getBrandChatId(brand.id, brand.name);
+        const r = await icNotifyBrandChat(chatId, pledgeText);
+        brandChatNotified = !!(r && r.notified);
+      } catch (e) { console.error('[ic-commitment] brand chat notify error:', e.message); }
+      try { await icNotifyAlertChannel(pledgeText); } catch (_) {}
+
+      console.log('[ic-commitment] ' + (c.creator_name || c.id) + ' → ' + brand.name +
+        ' (' + action + ', ' + videos + ' vids, brandChat: ' + brandChatNotified + ')');
+
+      return res.json({
+        ok: true, success: true, action,
+        brand: { id: brand.id, name: brand.name },
+        videosPerMonth: videos, weeklyCall: !!callPledge,
+        brandChatNotified,
+      });
+    } catch (e) {
+      console.error('[ic-commitment] failed:', e.message);
+      return res.status(500).json({ error: 'Could not save commitment' });
     }
   });
 
