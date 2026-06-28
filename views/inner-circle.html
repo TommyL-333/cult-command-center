@@ -1261,10 +1261,16 @@
       const remaining = Math.max(0, 20 - videos);
       const color = brand.brandColor || '#00f2ea';
       const brandSlug = brand.slug || String(brand.name || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-      const action = assigned
-        ? `<div class="covenant-confirm">✓ Selected — Hasan will send your target collab invite</div>
-           <button class="brand-action create-videos-btn" onclick="openContentWizard('${jsStr(brand.id)}','${jsStr(brandSlug)}','${jsStr(brand.name)}')">Create your next videos</button>`
-        : `<button class="brand-action select-brand-btn" data-brand-id="${esc(brand.id)}" data-brand-name="${esc(brand.name)}">Select This Brand</button>`;
+      // Two resource buttons on EVERY card; commit button swaps to a "sent" state once assigned.
+      const resourceBtns =
+        `<a class="brand-action resource-btn" href="/creators/${esc(brandSlug)}" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none;">Begin Collaborating</a>
+         <a class="brand-action resource-btn" href="/creators/${esc(brandSlug)}/welcome" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none;background:transparent;border:1px solid var(--brand-color);color:var(--brand-color);margin-top:8px;">Creator Resources</a>`;
+      const commitBtn = assigned
+        ? `<div class="covenant-confirm" style="margin-top:8px;">50% Target Collab will be sent soon</div>`
+        : `<button class="brand-action commit-btn" data-brand-id="${esc(brand.id)}" data-brand-name="${esc(brand.name)}" data-brand-slug="${esc(brandSlug)}" style="margin-top:8px;">Make a Commitment for 50% Commission</button>`;
+      // "Create your next videos" shows on EVERY card, not just assigned ones.
+      const createBtn = `<button class="brand-action create-videos-btn" style="margin-top:8px;" onclick="openContentWizard('${jsStr(brand.id)}','${jsStr(brandSlug)}','${jsStr(brand.name)}')">Create your next videos</button>`;
+      const action = resourceBtns + commitBtn + createBtn;
       const fallback = `<div class="brand-logo-fallback"${brand.logo ? ' style="display:none"' : ''}>${esc(brandInitials(brand.name))}</div>`;
       const logo = brand.logo
         ? `<img class="brand-logo" src="${esc(brand.logo)}" alt="${esc(brand.name)} logo" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">${fallback}`
@@ -1284,7 +1290,6 @@
           </div>
           ${website}
           ${action}
-          <button class="brand-action commit-btn" data-brand-id="${esc(brand.id)}" data-brand-name="${esc(brand.name)}" style="background:transparent;border:1px solid var(--brand-color);color:var(--brand-color);margin-top:8px;">I Commit — 20 videos/mo</button>
         </div>`;
     }
 
@@ -1337,7 +1342,7 @@
           btn.addEventListener('click', () => selectBrand(btn, btn.dataset.brandId, btn.dataset.brandName));
         });
         brandsContainer.querySelectorAll('.commit-btn').forEach(btn => {
-          btn.addEventListener('click', () => commitToBrand(btn, btn.dataset.brandId, btn.dataset.brandName));
+          btn.addEventListener('click', () => openCommitModal(btn.dataset.brandId, btn.dataset.brandName, btn.dataset.brandSlug));
         });
 
         // Recordings now load independently via loadRecordings() -> GET /api/inner-circle/recordings
@@ -1352,30 +1357,65 @@
     // Brand selection (MVP covenant flow): persists creator→brand link and
     // notifies Hasan in Lark to send the target collab invite. NO video upload
     // in MVP — videos sync automatically via TikTok.
-    async function commitToBrand(btn, brandId, brandName) {
-      if (!confirm('Commit to ' + brandName + '?\n\nYou are pledging 20 videos/month and weekly call attendance for this brand.')) return;
-      const original = btn.textContent;
-      btn.disabled = true;
-      btn.textContent = 'Committing…';
-      try {
-        const res = await fetch('/api/inner-circle/commitment', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
-          body: JSON.stringify({ brandId, brandName, videosPerMonth: 20, weeklyCall: true })
-        });
-        if (res.status === 401) { logout(); return; }
-        if (!res.ok) throw new Error('Commitment failed (' + res.status + ')');
-        const data = await res.json().catch(() => ({}));
-        btn.textContent = '\u2713 Committed \u2014 20 videos/mo';
-        btn.style.opacity = '0.85';
-        btn.style.background = 'var(--brand-color)';
-        btn.style.color = '#0c0c14';
-      } catch (err) {
-        console.error('Commit failed:', err);
-        btn.disabled = false;
-        btn.textContent = original;
-        alert('Could not record your commitment. Please try again.');
-      }
+    // ── The Inner Circle Covenant — contract modal + typed signature ──────────
+    function openCommitModal(brandId, brandName, brandSlug) {
+      const today = new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
+      let modal = document.getElementById('commit-modal');
+      if (modal) modal.remove();
+      modal = document.createElement('div');
+      modal.id = 'commit-modal';
+      modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(8,8,14,0.86);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;';
+      modal.innerHTML =
+        '<div style="max-width:560px;width:100%;background:#12121c;border:1px solid rgba(255,255,255,0.12);border-radius:18px;padding:30px 28px;box-shadow:0 24px 80px rgba(0,0,0,0.6);max-height:92vh;overflow-y:auto;">' +
+          '<div style="text-align:center;font-size:13px;letter-spacing:3px;color:#00f2ea;text-transform:uppercase;margin-bottom:6px;">The Inner Circle Covenant</div>' +
+          '<h2 style="text-align:center;margin:0 0 4px;font-size:22px;color:#fff;">' + esc(brandName) + '</h2>' +
+          '<p style="text-align:center;color:#9aa0b5;font-style:italic;margin:0 0 20px;font-size:13px;">Between you, ' + esc(brandName) + ', and the Cult Content community.</p>' +
+          '<div style="font-size:14px;line-height:1.65;color:#d7dae6;">' +
+            '<p style="margin:0 0 14px;">By signing below, I make a commitment \u2014 not a transaction, a covenant \u2014 to three:</p>' +
+            '<p style="margin:0 0 12px;"><strong style="color:#fff;">To ' + esc(brandName) + '</strong> \u2014 I will create <strong style="color:#fff;">20 videos this month</strong> and show up to the <strong style="color:#fff;">weekly creator call</strong>. I will treat this brand\u2019s growth as my own, because when it grows, I grow with it.</p>' +
+            '<p style="margin:0 0 12px;"><strong style="color:#fff;">To the Cult Content community</strong> \u2014 I will bring my full effort, share what\u2019s working, and lift the creators beside me. We are building something together that none of us could build alone.</p>' +
+            '<p style="margin:0 0 12px;"><strong style="color:#fff;">To myself</strong> \u2014 I will live up to the highest version of myself. I will work <strong style="color:#fff;">through</strong> pain instead of around it. I will treat this not as a side hustle but as a practice \u2014 a way of building my own version of heaven on earth, one video, one day, one inch at a time.</p>' +
+            '<p style="margin:0 0 18px;">I understand this is a 50% Target Collab commitment. I understand the work is mine to do. I\u2019m in.</p>' +
+          '</div>' +
+          '<label style="display:block;font-size:12px;color:#9aa0b5;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">Sign \u2014 type your full name</label>' +
+          '<input id="commit-sig" type="text" placeholder="Your full name" autocomplete="name" style="width:100%;box-sizing:border-box;padding:12px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.18);background:#0c0c14;color:#fff;font-size:16px;font-family:Georgia,serif;margin-bottom:6px;">' +
+          '<div style="text-align:right;font-size:12px;color:#777;margin-bottom:18px;">Date: ' + esc(today) + '</div>' +
+          '<div style="display:flex;gap:10px;">' +
+            '<button id="commit-cancel" style="flex:1;padding:13px;border-radius:10px;border:1px solid rgba(255,255,255,0.18);background:transparent;color:#aaa;font-size:15px;cursor:pointer;">Not yet</button>' +
+            '<button id="commit-sign" style="flex:2;padding:13px;border-radius:10px;border:none;background:linear-gradient(90deg,#00f2ea,#ff0050);color:#0c0c14;font-weight:700;font-size:15px;cursor:pointer;">Sign &amp; Commit</button>' +
+          '</div>' +
+          '<div id="commit-err" style="color:#ff6b81;font-size:13px;margin-top:10px;text-align:center;min-height:16px;"></div>' +
+        '</div>';
+      document.body.appendChild(modal);
+      const close = () => modal.remove();
+      modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
+      document.getElementById('commit-cancel').addEventListener('click', close);
+      const sigInput = document.getElementById('commit-sig');
+      sigInput.focus();
+      document.getElementById('commit-sign').addEventListener('click', async () => {
+        const signBtn = document.getElementById('commit-sign');
+        const errEl = document.getElementById('commit-err');
+        const signature = (sigInput.value || '').trim();
+        if (signature.length < 2) { errEl.textContent = 'Please type your full name to sign.'; sigInput.focus(); return; }
+        signBtn.disabled = true; signBtn.textContent = 'Sealing\u2026'; errEl.textContent = '';
+        try {
+          const res = await fetch('/api/inner-circle/commitment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+            body: JSON.stringify({ brandId, brandName, videosPerMonth: 20, weeklyCall: true, signature })
+          });
+          if (res.status === 401) { logout(); return; }
+          if (!res.ok) throw new Error('Commitment failed (' + res.status + ')');
+          await res.json().catch(() => ({}));
+          close();
+          await loadDashboard();
+        } catch (err) {
+          console.error('Commit failed:', err);
+          signBtn.disabled = false; signBtn.textContent = 'Sign & Commit';
+          errEl.textContent = 'Could not record your commitment. Please try again.';
+        }
+      });
+      sigInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('commit-sign').click(); });
     }
 
     async function selectBrand(btn, brandId, brandName) {
