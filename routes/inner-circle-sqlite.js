@@ -973,6 +973,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       const icSlugForName = (nm) => {
         const key = String(nm || '').toLowerCase().trim();
         const hit = icBrandsForSlug.find((x) => x && x.name && String(x.name).toLowerCase().trim() === key);
+        if (hit && hit.creatorPage && hit.creatorPage.slug) return hit.creatorPage.slug;
         if (hit && hit.id) return hit.id;
         const cat = icCatalogFor(nm);
         if (cat && cat.id) return cat.id;
@@ -1459,7 +1460,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       const allClients = ((data && data.clients) || []).filter((b) => b && b.name && !b.TEST);
       const brands = allClients.map((b) => {
         const cat = icCatalogFor(b.name);
-        const slug = b.id || (cat && cat.id) || String(b.name || '').toLowerCase().trim().replace(/\s+/g, '-');
+        const slug = (b.creatorPage && b.creatorPage.slug) || (cat && cat.id) || b.id || String(b.name || '').toLowerCase().trim().replace(/\s+/g, '-');
         return {
           id: slug,
           slug,
