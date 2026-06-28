@@ -1691,7 +1691,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       // Resolve the brand record (source of truth: brands.json) → numeric shopId.
       const data = icLoadBrandsFile();
       const brand = ((data && data.clients) || []).find((b) =>
-        b && (String(b.id) === brandId || String(b.name || '').toLowerCase().trim() === brandId.toLowerCase())
+        b && (String(b.id) === brandId || (b.creatorPage && b.creatorPage.slug === brandId) || String(b.name || '').toLowerCase().trim() === brandId.toLowerCase())
       );
       if (!brand) return res.status(404).json({ error: 'Brand not found' });
       const numericShopId = brand.shopId || brand.shop_id || brand.shopID || null;
@@ -1703,11 +1703,19 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       if (resolver && typeof resolver.fetchCatalog === 'function' && numericShopId != null) {
         try { catalog = await resolver.fetchCatalog(numericShopId); } catch (_) { catalog = []; }
       }
-      const product = Array.isArray(catalog)
+      let product = Array.isArray(catalog)
         ? catalog.find((p) => p && String(p.product_id) === productId)
         : null;
+      // GRACEFUL DEGRADATION: if the catalog is unavailable (Reacher upstream down)
+      // the creator has still picked a valid productId — proceed with a minimal
+      // product record rather than 404ing or blocking on a dead upstream.
       if (!product) {
-        return res.status(404).json({ error: 'Product not found for this brand', productId });
+        if (Array.isArray(catalog) && catalog.length > 0) {
+          // catalog loaded but this id is genuinely absent
+          return res.status(404).json({ error: 'Product not found for this brand', productId });
+        }
+        console.warn('[inner-circle-sqlite] generate-scripts: empty catalog (upstream down) — proceeding with selected productId', productId);
+        product = { product_id: productId, name: (body.productName || ''), title: (body.productName || '') };
       }
 
       // ── BUILD productContext + GENERATE (swappable connector) ────────────────
