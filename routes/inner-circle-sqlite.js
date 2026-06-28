@@ -1110,6 +1110,9 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
   const IC_CALL_SCHEDULE = {
     // when + meetingLink mirrored from Ops Engine Clients Lark base.
     // color = brand creator-page accent (single source of truth, no runtime scraping).
+    // Community-wide calls (every Inner Circle creator, all brands). community:true => always shown, pinned to top.
+    'inner-circle':         { when: 'Saturdays · 2:00 PM ET',   meetingLink: 'https://vc-usttp.larksuite.com/j/397129210', color: '#a78bfa', name: 'Inner Circle Call',  community: true },
+    'culture-hour':         { when: 'Fridays · 3:00 PM ET',     meetingLink: 'https://vc-usttp.larksuite.com/j/397129210', color: '#00f2ea', name: 'Culture Hour',       community: true },
     'approved-science':     { when: 'Tuesdays · 12:00 PM ET',   meetingLink: 'https://vc-usttp.larksuite.com/j/438787376', color: '#00a3a3', chatLink: 'https://applink.larksuite.com/client/chat/chatter/add_by_link?link_token=307k275f-3285-42f1-9592-412t6oj62r7r' },
     'diamandia':            { when: 'Fridays · 4:00 PM ET',     meetingLink: 'https://vc-usttp.larksuite.com/j/438787376', color: '#E5E4E2', chatLink: 'https://applink.larksuite.com/client/chat/chatter/add_by_link?link_token=076ged1c-bef5-43e3-a7f4-6dakfqi85p6k' },
     'lode-wtr':             { when: 'Fridays · 12:00 PM ET',    meetingLink: 'https://vc-usttp.larksuite.com/j/781105654', color: '#ccff00', chatLink: 'https://applink.larksuite.com/client/chat/chatter/add_by_link?link_token=5d9h0434-928d-49dd-bccd-51fnaqt64h0u' },
@@ -1124,6 +1127,8 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
 
   // Weekday + 24h time per slug, for building .ics calendar events.
   const IC_CALL_ICS = {
+    'inner-circle':         { day: 6, h: 14, m: 0 },
+    'culture-hour':         { day: 5, h: 15, m: 0 },
     'approved-science':     { day: 2, h: 12, m: 0 },
     'diamandia':            { day: 5, h: 16, m: 0 },
     'lode-wtr':             { day: 5, h: 12, m: 0 },
@@ -1155,18 +1160,20 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
         const sched = IC_CALL_SCHEDULE[slug] || {};
         return {
           slug,
-          brand: nameBySlug[slug] || slug,
+          brand: sched.community ? sched.name : (nameBySlug[slug] || slug),
           when: sched.when || null,
           meetingLink: sched.meetingLink || null,
           color: sched.color || '#00f2ea',
           chatLink: sched.chatLink || null,
           enrolled: enrolledSlugs.has(slug),
+          community: !!sched.community,
         };
       });
       // Enrolled first; then by weekday so the list reads like a week.
       const dayOf = (slug) => (IC_CALL_ICS[slug] ? IC_CALL_ICS[slug].day : 9);
       const minOf = (slug) => (IC_CALL_ICS[slug] ? IC_CALL_ICS[slug].h * 60 + IC_CALL_ICS[slug].m : 9999);
       calls.sort((a, b) => {
+        if (a.community !== b.community) return a.community ? -1 : 1;
         if (a.enrolled !== b.enrolled) return a.enrolled ? -1 : 1;
         const dd = dayOf(a.slug) - dayOf(b.slug); if (dd) return dd;
         return minOf(a.slug) - minOf(b.slug);
@@ -1200,7 +1207,8 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
         const ics = IC_CALL_ICS[slug];
         const sched = IC_CALL_SCHEDULE[slug] || {};
         const brand = (function () {
-          try { const bf = icLoadBrandsFile(); const c = ((bf && bf.clients) || []).find(x => x && x.id === slug); return c ? (c.name || slug) : slug; }
+          if (sched && sched.community && sched.name) return sched.name;
+          try { const bf = icLoadBrandsFile(); const cc = ((bf && bf.clients) || []).find(x => x && x.id === slug); return cc ? (cc.name || slug) : slug; }
           catch (_) { return slug; }
         })();
         // First occurrence: baseMonday + (day-1) days, at h:m ET (+4h => UTC).
