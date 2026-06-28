@@ -1589,6 +1589,7 @@
         if (r.status === 401) { logout(); return; }
         const d = await r.json();
         const calls = (d.calls || []).slice().sort((a,b)=>{
+          if ((b.community?1:0)!==(a.community?1:0)) return (b.community?1:0)-(a.community?1:0);
           if ((b.enrolled?1:0)!==(a.enrolled?1:0)) return (b.enrolled?1:0)-(a.enrolled?1:0);
           return String(a.brand||'').localeCompare(String(b.brand||''));
         });
@@ -1598,8 +1599,10 @@
           const join = c.meetingLink ? '<a class="ic-cal-join" style="background:' + color + '" href="' + esc(c.meetingLink) + '" target="_blank" rel="noopener">Join</a>' : '<span class="ic-cal-tba">Link TBA</span>';
           const chat = c.chatLink ? '<a class="ic-cal-chat" style="color:' + color + ';border-color:' + color + '" href="' + esc(c.chatLink) + '" target="_blank" rel="noopener">Chat</a>' : '';
           const when = c.when ? esc(c.when) : 'Schedule TBA';
-          const mine = c.enrolled ? ' ic-cal-mine' : '';
-          const badge = c.enrolled ? '<span class="ic-cal-badge" style="color:' + color + '">● Yours</span>' : '';
+          const mine = (c.community || c.enrolled) ? ' ic-cal-mine' : '';
+          const badge = c.community
+            ? '<span class="ic-cal-badge" style="color:' + color + '">✦ Everyone</span>'
+            : c.enrolled ? '<span class="ic-cal-badge" style="color:' + color + '">● Yours</span>' : '';
           return '<div class="ic-cal-row' + mine + '" style="border-left:3px solid ' + color + '">' +
                  '<div class="ic-cal-main"><div class="ic-cal-brand" style="color:' + color + '">' + esc(c.brand) + badge + '</div>' +
                  '<div class="ic-cal-when">' + when + '</div></div>' + '<div class="ic-cal-actions">' + chat + join + '</div>' + '</div>';
