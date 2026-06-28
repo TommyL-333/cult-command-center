@@ -1258,26 +1258,31 @@
     function renderBrandCard(brand, assigned) {
       const videos = assigned ? (assigned.videosDelivered != null ? assigned.videosDelivered : assigned.videosForBrand || 0) : 0;
       const earned = assigned ? (assigned.earned != null ? assigned.earned : assigned.earnedFromBrand || 0) : 0;
-      const remaining = Math.max(0, 20 - videos);
+      const committedGoal = assigned && (assigned.videosGoal || assigned.committed) ? (assigned.videosGoal || 20) : 0;
+      const remaining = committedGoal ? Math.max(0, committedGoal - videos) : null;
       const color = brand.brandColor || '#00f2ea';
       const brandSlug = brand.slug || String(brand.name || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
       // Two resource buttons on EVERY card; commit button swaps to a "sent" state once assigned.
+      const websiteBtn = brand.website
+        ? `<a class="brand-action resource-btn mini-btn" href="${esc(brand.website)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="flex:1;display:block;text-align:center;text-decoration:none;background:transparent;border:1px solid rgba(255,255,255,0.18);color:#cfd3e0;padding:9px 6px;font-size:12px;">Visit Website</a>`
+        : '';
       const resourceBtns =
-        `<a class="brand-action resource-btn" href="/creators/${esc(brandSlug)}" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none;">Begin Collaborating</a>
-         <a class="brand-action resource-btn" href="/creators/${esc(brandSlug)}/welcome" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none;background:transparent;border:1px solid var(--brand-color);color:var(--brand-color);margin-top:8px;">Creator Resources</a>`;
+        `<div style="display:flex;gap:8px;">` +
+          `<a class="brand-action resource-btn mini-btn" href="/creators/${esc(brandSlug)}" target="_blank" rel="noopener" style="flex:1;display:block;text-align:center;text-decoration:none;padding:9px 6px;font-size:12px;">Begin Collaborating</a>` +
+          `<a class="brand-action resource-btn mini-btn" href="/creators/${esc(brandSlug)}/welcome" target="_blank" rel="noopener" style="flex:1;display:block;text-align:center;text-decoration:none;background:transparent;border:1px solid var(--brand-color);color:var(--brand-color);padding:9px 6px;font-size:12px;">Creator Resources</a>` +
+          websiteBtn +
+        `</div>`;
       const commitBtn = assigned
         ? `<div class="covenant-confirm" style="margin-top:8px;">50% Target Collab will be sent soon</div>`
         : `<button class="brand-action commit-btn" data-brand-id="${esc(brand.id)}" data-brand-name="${esc(brand.name)}" data-brand-slug="${esc(brandSlug)}" style="margin-top:8px;">Make a Commitment for 50% Commission</button>`;
       // "Create your next videos" shows on EVERY card, not just assigned ones.
-      const createBtn = `<button class="brand-action create-videos-btn" style="margin-top:8px;" onclick="openContentWizard('${jsStr(brand.id)}','${jsStr(brandSlug)}','${jsStr(brand.name)}')">Create your next videos</button>`;
+      const createBtn = `<button class="brand-action create-videos-btn" style="margin-top:8px;background:var(--brand-color);color:#161823;border:none;font-weight:700;" onclick="openContentWizard('${jsStr(brand.id)}','${jsStr(brandSlug)}','${jsStr(brand.name)}')">Create your next videos</button>`;
       const action = resourceBtns + commitBtn + createBtn;
       const fallback = `<div class="brand-logo-fallback"${brand.logo ? ' style="display:none"' : ''}>${esc(brandInitials(brand.name))}</div>`;
       const logo = brand.logo
         ? `<img class="brand-logo" src="${esc(brand.logo)}" alt="${esc(brand.name)} logo" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">${fallback}`
         : fallback;
-      const website = brand.website
-        ? `<a class="brand-website" href="${esc(brand.website)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Visit Website ↗</a>`
-        : '';
+      const website = '';
       return `
         <div class="brand-card${assigned ? ' selected' : ''}" style="--brand-color: ${esc(color)}">
           <div class="brand-logo-wrap">${logo}</div>
@@ -1286,7 +1291,7 @@
           <div class="brand-stats">
             <div class="brand-stat"><span class="brand-stat-value">${videos}</span><span class="brand-stat-label">Videos Posted</span></div>
             <div class="brand-stat"><span class="brand-stat-value">${earned}</span><span class="brand-stat-label">Earned</span></div>
-            <div class="brand-stat"><span class="brand-stat-value">${remaining}</span><span class="brand-stat-label">Remaining</span></div>
+            <div class="brand-stat"><span class="brand-stat-value">${remaining == null ? '—' : remaining}</span><span class="brand-stat-label">${remaining == null ? 'Not committed' : 'Remaining'}</span></div>
           </div>
           ${website}
           ${action}
@@ -1374,8 +1379,9 @@
             '<p style="margin:0 0 14px;">By signing below, I make a commitment \u2014 not a transaction, a covenant \u2014 to three:</p>' +
             '<p style="margin:0 0 12px;"><strong style="color:#fff;">To ' + esc(brandName) + '</strong> \u2014 I will create <strong style="color:#fff;">20 videos this month</strong> and show up to the <strong style="color:#fff;">weekly creator call</strong>. I will treat this brand\u2019s growth as my own, because when it grows, I grow with it.</p>' +
             '<p style="margin:0 0 12px;"><strong style="color:#fff;">To the Cult Content community</strong> \u2014 I will bring my full effort, share what\u2019s working, and lift the creators beside me. We are building something together that none of us could build alone.</p>' +
-            '<p style="margin:0 0 12px;"><strong style="color:#fff;">To myself</strong> \u2014 I will live up to the highest version of myself. I will work <strong style="color:#fff;">through</strong> pain instead of around it. I will treat this not as a side hustle but as a practice \u2014 a way of building my own version of heaven on earth, one video, one day, one inch at a time.</p>' +
-            '<p style="margin:0 0 18px;">I understand this is a 50% Target Collab commitment. I understand the work is mine to do. I\u2019m in.</p>' +
+            '<p style="margin:0 0 12px;"><strong style="color:#fff;">To myself</strong> \u2014 I will live up to the highest version of myself. I will work <em>through</em> pain instead of around it. I will treat this not as a side hustle but as a practice: as a way of building my own version of heaven on earth, one video and one moment at a time.</p>' +
+            '<p style="margin:0 0 12px;">I understand this is a <strong style="color:#fff;">50% Target Collab</strong> commitment. I understand the work is mine to do.</p>' +
+            '<p style="margin:0 0 18px;color:#9aa0b5;font-size:13px;line-height:1.6;">I understand this commitment runs <strong style="color:#fff;">through the end of this month</strong> \u2014 20 videos by month\u2019s end. Each month resets, and I recommit fresh. I understand that if I don\u2019t meet my commitment, I lose access to the Inner Circle portal for the following month, and I make my peace with that. I\u2019m in.</p>' +
           '</div>' +
           '<label style="display:block;font-size:12px;color:#9aa0b5;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">Sign \u2014 type your full name</label>' +
           '<input id="commit-sig" type="text" placeholder="Your full name" autocomplete="name" style="width:100%;box-sizing:border-box;padding:12px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.18);background:#0c0c14;color:#fff;font-size:16px;font-family:Georgia,serif;margin-bottom:6px;">' +
