@@ -1268,7 +1268,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     { id: 'diamandia', name: 'DIAMANDIA', logo: '/logos/diamandia-white.png', website: 'https://diamandia.com', brandColor: '#E5E4E2',
       description: 'Gua sha & lymphatic body tools — "change your body in 4 min a day." Wellness-ritual positioning with strong hooks around lymphatic drainage, body sculpting, morning routines, and self-care.' },
     { id: 'approved-science', name: 'Approved Science', logo: '/logos/approved-science.png', website: 'https://www.approvedscience.com', brandColor: '#1188DD',
-      description: 'Science-backed supplements (Marketily / Lenea). Evidence-led content angles.' },
+      description: 'Science-backed supplements formulated with clinically studied ingredients — gut health, metabolism, hair, skin & joint support. Doctor-formulated, third-party tested. Hooks around real ingredient science, bloating, energy, and why most supplements quietly underdose.' },
     { id: 'yuglo', name: 'Yuglo', logo: null, website: 'https://yugloskin.com', brandColor: '#F39976', // sourced from yugloskin.com homepage accent palette (peach, ~8:1 contrast vs #161823); dominant #108474 excluded — shared review-widget green seen across client sites
       description: 'Affordable skincare — face moisturizer plus viral lip masks & plumpers ($6–$14). "Skincare for everyone" budget angle; strong hooks around smooth lips, glass skin, and overnight sleeping masks.' },
     { id: 'roots-by-ga', name: 'Roots by GA', logo: null, website: 'https://www.rootsbyga.com', brandColor: null,
@@ -1281,6 +1281,8 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       description: 'Microfiber hair towels, scrunching towels & detangling brushes. "No more t-shirt plopping" angle; hooks around heat-free drying, curl care, frizz, and wash-day routines.' },
     { id: 'b-noor', name: 'B NOOR', logo: null, website: 'https://bnoor.com', brandColor: '#C9A24B', // placeholder gold accent (~6.8:1 contrast vs #161823); update when client uploads logo/color
       description: 'Clean skincare — "be light." Gentle, glow-focused routines; hooks around radiance, simplicity, and skin confidence.' },
+    { id: 'dear-miss-gina', name: 'dear miss gina', logo: null, website: 'https://dearmissgina.com', brandColor: '#E8449C',
+      description: 'pH-balanced intimate care — safe, fun, and feels good. Intimate cleanser, the first-ever shave jelly, intimate & ingrown serums. A science-not-shame voice; strong hooks around ingrowns, smooth shaves, freshness, and breaking the taboo.' },
   ];
 
   function icLoadBrandsFile() {
