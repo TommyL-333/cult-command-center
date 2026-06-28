@@ -1815,7 +1815,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
   app.post('/api/inner-circle/commitment', requireSqliteSession, express.json(), async (req, res) => {
     try {
       const c = req.icCreator;
-      const { brandId, brandName, videosPerMonth, weeklyCall } = req.body || {};
+      const { brandId, brandName, videosPerMonth, weeklyCall, signature } = req.body || {};
       if (!brandId && !brandName) return res.status(400).json({ error: 'brandId required' });
 
       // Resolve the brand against brands.json (any client brand is valid).
@@ -1843,6 +1843,34 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
           videosPerMonth: videos, weeklyCall: !!callPledge, action,
         }) + '\n');
       } catch (e) { console.error('[ic-commitment] log write failed:', e.message); }
+
+      // Persist the signed covenant to the dedicated Inner Circle Commitments Lark base.
+      // Fire-and-forget — a base/token hiccup must never lose the commitment (already logged above).
+      try {
+        let _bx; try { _bx = require("axios"); } catch (_) { _bx = null; }
+        const token = _bx ? await icGetLarkToken(_bx) : null;
+        if (token && _bx) {
+          const COMMIT_BASE = process.env.IC_COMMITMENTS_BASE || 'IqWBbhn9EaG3bYsfX7wu0uCqtwb';
+          const COMMIT_TABLE = process.env.IC_COMMITMENTS_TABLE || 'tblgr9dPO5kmy5rx';
+          const fields = {
+            'Creator': c.creator_name || ('Creator #' + c.id),
+            'Creator Name': c.creator_name || '',
+            'TikTok Handle': c.creator_handle ? ('@' + String(c.creator_handle).replace(/^@/, '')) : '',
+            'Email': c.email || '',
+            'Brand': brand.name,
+            'Videos / Month': videos,
+            'Weekly Call Pledge': callPledge ? 'Yes' : 'No',
+            'Signature (typed name)': (signature && String(signature).trim()) || (c.creator_name || ''),
+            'Committed At': Date.now(),
+            'Contract Version': 'covenant-v1',
+          };
+          await _bx.post(
+            'https://open.larksuite.com/open-apis/bitable/v1/apps/' + COMMIT_BASE + '/tables/' + COMMIT_TABLE + '/records',
+            { fields },
+            { headers: { Authorization: 'Bearer ' + token }, timeout: 8000 }
+          );
+        }
+      } catch (e) { console.error('[ic-commitment] base write failed:', e.response?.data || e.message); }
 
       // Notify the brand's creator-call chat (base-routed) + the alert channel.
       const pledgeText = '🔥 *Inner Circle Commitment* — ' + (c.creator_name || 'A creator') +
