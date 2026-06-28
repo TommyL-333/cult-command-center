@@ -3241,7 +3241,14 @@ app.post('/portal-admin/fix-shop-cipher/:brandId', requirePortalAdmin, async (re
       });
       if (rd?.code === 0 && rd?.data?.access_token) {
         const expireVal = rd.data.access_token_expire_in;
-        const expiresAt = expireVal > 9_000_000_000 ? expireVal * 1000 : Date.now() + (expireVal || 86400) * 1000;
+        const expiresAt = (() => {
+      // TikTok access_token_expire_in is an ABSOLUTE Unix timestamp.
+      // Distinguish ms-epoch (>1e12), seconds-epoch (1e9..1e12 -> *1000), or a raw duration in seconds (<1e9 -> now + dur*1000).
+      const v = Number(expireVal) || 0;
+      if (v > 1e12) return v;                       // already milliseconds
+      if (v > 1e9)  return v * 1000;                // seconds-epoch -> ms
+      return Date.now() + (v || 86400) * 1000;      // raw duration in seconds
+    })();
         brands = loadBrands(); // reload in case of concurrent writes
         brands.clients[brandIdx].tiktokShopToken = {
           ...brands.clients[brandIdx].tiktokShopToken,
@@ -4379,7 +4386,14 @@ app.get('/api/tiktokshop/callback', async (req, res) => {
     }
     // TikTok returns access_token_expire_in as an absolute Unix timestamp (seconds), not a duration
     const expireVal = data.data.access_token_expire_in;
-    const expiresAt = expireVal > 9_000_000_000 ? expireVal * 1000 : Date.now() + (expireVal || 86400) * 1000;
+    const expiresAt = (() => {
+      // TikTok access_token_expire_in is an ABSOLUTE Unix timestamp.
+      // Distinguish ms-epoch (>1e12), seconds-epoch (1e9..1e12 -> *1000), or a raw duration in seconds (<1e9 -> now + dur*1000).
+      const v = Number(expireVal) || 0;
+      if (v > 1e12) return v;                       // already milliseconds
+      if (v > 1e9)  return v * 1000;                // seconds-epoch -> ms
+      return Date.now() + (v || 86400) * 1000;      // raw duration in seconds
+    })();
     const tokenData = {
       access_token:  data.data.access_token,
       refresh_token: data.data.refresh_token,
@@ -10614,7 +10628,14 @@ async function refreshBrandShopToken(brand, brands, brandIdx) {
     });
     if (data?.code === 0 && data?.data?.access_token) {
       const expireVal = data.data.access_token_expire_in;
-      const expiresAt = expireVal > 9_000_000_000 ? expireVal * 1000 : Date.now() + (expireVal || 86400) * 1000;
+      const expiresAt = (() => {
+      // TikTok access_token_expire_in is an ABSOLUTE Unix timestamp.
+      // Distinguish ms-epoch (>1e12), seconds-epoch (1e9..1e12 -> *1000), or a raw duration in seconds (<1e9 -> now + dur*1000).
+      const v = Number(expireVal) || 0;
+      if (v > 1e12) return v;                       // already milliseconds
+      if (v > 1e9)  return v * 1000;                // seconds-epoch -> ms
+      return Date.now() + (v || 86400) * 1000;      // raw duration in seconds
+    })();
       brand.tiktokShopToken = {
         ...t,
         access_token:  data.data.access_token,
