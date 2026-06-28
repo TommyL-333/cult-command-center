@@ -167,6 +167,9 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       getCommitment: db.prepare(
         `SELECT * FROM inner_circle_commitments WHERE creator_id = ? AND brand_id = ?`
       ),
+      commitmentsForCreator: db.prepare(
+        `SELECT * FROM inner_circle_commitments WHERE creator_id = ?`
+      ),
       upsertCommitment: db.prepare(
         `INSERT INTO inner_circle_commitments (creator_id, brand_id, brand_name, videos_per_month, weekly_call, committed_at)
          VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
@@ -951,15 +954,36 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       const commissionRate = c.commission_rate != null ? c.commission_rate : 0.5;
       const commissionEarned = Math.round(totalGmv * commissionRate * 100) / 100;
 
-      const brands = stmts.brandsForCreator.all(c.id, c.id).map((b) => ({
-        id: b.shop_id,
-        name: b.shop_name,
-        videosForBrand: b.videos_for_brand,
-        earnedFromBrand: Math.round(b.gmv_for_brand * commissionRate * 100) / 100,
-        // Aliases matching the dashboard SPA (views/inner-circle.html)
-        videosDelivered: b.videos_for_brand,
-        earned: Math.round(b.gmv_for_brand * commissionRate * 100) / 100,
-      }));
+      // Commitments live in a separate table (inner_circle_commitments) keyed by
+      // creator_id + brand_id. The brand_id stored there is the brands.json slug,
+      // while brandsForCreator keys on shop_id. Build a lookup by BOTH so the SPA
+      // can show "Remaining" only once a real commitment exists.
+      let commitmentRows = [];
+      try { commitmentRows = stmts.commitmentsForCreator ? stmts.commitmentsForCreator.all(c.id) : []; }
+      catch (_) { commitmentRows = []; }
+      const commitByKey = {};
+      for (const cm of commitmentRows) {
+        if (cm && cm.brand_id != null) commitByKey[String(cm.brand_id).toLowerCase()] = cm;
+        if (cm && cm.brand_name != null) commitByKey[String(cm.brand_name).toLowerCase()] = cm;
+      }
+      const brands = stmts.brandsForCreator.all(c.id, c.id).map((b) => {
+        const cm = commitByKey[String(b.shop_id).toLowerCase()]
+                || commitByKey[String(b.shop_name || '').toLowerCase()]
+                || null;
+        const videosGoal = cm ? (cm.videos_per_month || 20) : null;
+        return {
+          id: b.shop_id,
+          name: b.shop_name,
+          videosForBrand: b.videos_for_brand,
+          earnedFromBrand: Math.round(b.gmv_for_brand * commissionRate * 100) / 100,
+          // Aliases matching the dashboard SPA (views/inner-circle.html)
+          videosDelivered: b.videos_for_brand,
+          earned: Math.round(b.gmv_for_brand * commissionRate * 100) / 100,
+          // Commitment surface — null when the creator has not committed to this brand.
+          committed: !!cm,
+          videosGoal: videosGoal,
+        };
+      });
 
       let daysRemaining = null;
       if (c.cohort_end) {
@@ -1422,7 +1446,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
           logo: b.logoUrl || (cat && cat.logo) || null,
           description: (cat && cat.description) || b.description || '',
           website: icNormalizeWebsite(b.website || (cat && cat.website)),
-          brandColor: b.brandColor || (cat && cat.brandColor) || null,
+          brandColor: (b.creatorPage && b.creatorPage.accentColor) || b.brandColor || (cat && cat.brandColor) || null,
           innerCircle: !!b.innerCircle,
           commission: { targetCollab: 0.5, ads: 0.25 },
           isTest: !!b.TEST,
@@ -1569,13 +1593,9 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       const brandId = req.params.brandId != null ? String(req.params.brandId).trim() : '';
       if (!brandId) return res.status(400).json({ error: 'brandId required' });
 
-      // Authorization (403) — must hold an ACTIVE assignment to this brand.
-      let assignment = null;
-      try { assignment = stmts.getAssignment.get(c.id, brandId); }
-      catch (e) { return res.status(500).json({ error: 'Server error' }); }
-      if (!assignment || !assignment.active) {
-        return res.status(403).json({ error: 'Not assigned to this brand' });
-      }
+      // Script generation is available on EVERY live client brand — no assignment
+      // gate. (Previously 403'd brands the creator hadn't selected, which broke
+      // "Create Your Next Videos" on cards like B NOOR.)
 
       // Resolve the brand record (source of truth: brands.json) → numeric shopId.
       const data = icLoadBrandsFile();
