@@ -1274,16 +1274,22 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
   app.get('/api/inner-circle/brands', requireSqliteSession, (req, res) => {
     try {
       const data = icLoadBrandsFile();
-      const enabled = ((data && data.clients) || []).filter((b) => b && b.innerCircle);
-      const brands = enabled.map((b) => {
+      // Show EVERY live client brand — the script generator is available to all.
+      // The Inner Circle commitment (50% commission) is offered only on brands
+      // where the client has toggled Inner Circle on (brand.innerCircle).
+      const allClients = ((data && data.clients) || []).filter((b) => b && b.name && !b.TEST);
+      const brands = allClients.map((b) => {
         const cat = icCatalogFor(b.name);
+        const slug = b.id || (cat && cat.id) || String(b.name || '').toLowerCase().trim().replace(/\s+/g, '-');
         return {
-          id: b.id || (cat && cat.id) || String(b.name || '').toLowerCase().trim().replace(/\s+/g, '-'),
+          id: slug,
+          slug,
           name: b.name,
           logo: b.logoUrl || (cat && cat.logo) || null,
           description: (cat && cat.description) || b.description || '',
           website: icNormalizeWebsite(b.website || (cat && cat.website)),
           brandColor: b.brandColor || (cat && cat.brandColor) || null,
+          innerCircle: !!b.innerCircle,
           commission: { targetCollab: 0.5, ads: 0.25 },
           isTest: !!b.TEST,
         };
