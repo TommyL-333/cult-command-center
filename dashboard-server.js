@@ -14212,15 +14212,19 @@ app.listen(CFG.port, () => {
     }
   } catch(e) { console.error('[startup] AS leaderboard fix error:', e.message); }
 
-  // One-time cleanup — remove stale placeholder brands (NOT Organic Social Marketing — used for testing)
+  // One-time cleanup — remove stale placeholder brands and internal test brands
   try {
     const testNames = ['test brand', 'test'];
+    const internalIds = new Set(['orgsocsmarketing001', 'dnoor001']);
     const bd = loadBrands();
     const before = (bd.clients || []).length;
-    bd.clients = (bd.clients || []).filter(b => !testNames.includes((b.name || '').toLowerCase().trim()));
+    bd.clients = (bd.clients || []).filter(b =>
+      !testNames.includes((b.name || '').toLowerCase().trim()) &&
+      !internalIds.has(b.id)
+    );
     if (bd.clients.length < before) {
       saveBrands(bd);
-      console.log(`[startup] Removed ${before - bd.clients.length} test brand(s)`);
+      console.log(`[startup] Removed ${before - bd.clients.length} test/internal brand(s)`);
     }
   } catch(e) { console.error('[startup] test brand cleanup error:', e.message); }
 
