@@ -10580,11 +10580,17 @@ async function refreshShopToken() {
       },
     });
     if (data?.code === 0 && data?.data?.access_token) {
+      const expireVal = data.data.access_token_expire_in;
+      // If expireVal looks like a seconds-epoch (> ~year 2000 in seconds), treat as absolute;
+      // otherwise treat as a duration in seconds.
+      const expiresAt = expireVal > 1_500_000_000
+        ? expireVal * 1000
+        : Date.now() + (expireVal || 86400) * 1000;
       tokens.shop = {
         ...shopTok,
         access_token:  data.data.access_token,
         refresh_token: data.data.refresh_token || shopTok.refresh_token,
-        expires_at:    Date.now() + (data.data.access_token_expire_in || 86400) * 1000,
+        expires_at:    expiresAt,
       };
       saveTikTokTokens(tokens);
       return true;
@@ -10670,10 +10676,15 @@ async function ttsBrandRequest(brandToken, method, apiPath, params = {}, body = 
   return data;
 }
 
+// Year 2030 in ms — any expires_at beyond this is likely corrupted
+const TOKEN_EXPIRY_CEILING_MS = 1_893_456_000_000;
+
 async function ttsBrandGet(brand, brands, brandIdx, apiPath, params = {}) {
   let t = brand.tiktokShopToken;
   if (!t?.access_token) throw new Error('No TikTok Shop token for brand');
-  if (t.expires_at && Date.now() > t.expires_at - 120_000) {
+  const expired = !t.expires_at || Date.now() > t.expires_at - 120_000;
+  const corrupted = t.expires_at > TOKEN_EXPIRY_CEILING_MS;
+  if (expired || corrupted) {
     await refreshBrandShopToken(brand, brands, brandIdx);
     t = brands.clients[brandIdx].tiktokShopToken;
   }
@@ -10683,7 +10694,9 @@ async function ttsBrandGet(brand, brands, brandIdx, apiPath, params = {}) {
 async function ttsBrandPost(brand, brands, brandIdx, apiPath, body = {}, params = {}) {
   let t = brand.tiktokShopToken;
   if (!t?.access_token) throw new Error('No TikTok Shop token for brand');
-  if (t.expires_at && Date.now() > t.expires_at - 120_000) {
+  const expired = !t.expires_at || Date.now() > t.expires_at - 120_000;
+  const corrupted = t.expires_at > TOKEN_EXPIRY_CEILING_MS;
+  if (expired || corrupted) {
     await refreshBrandShopToken(brand, brands, brandIdx);
     t = brands.clients[brandIdx].tiktokShopToken;
   }
@@ -14211,33 +14224,6 @@ app.listen(CFG.port, () => {
     }
   } catch(e) { console.error('[startup] test brand cleanup error:', e.message); }
 
-  // Ensure Organic Social Marketing exists as Tommy's test brand
-  try {
-    const bd = loadBrands();
-    const existing = (bd.clients || []).find(b => (b.name || '').toLowerCase().trim() === 'organic social marketing');
-    if (!existing) {
-      bd.clients = bd.clients || [];
-      bd.clients.push({
-        id:          'orgsocsmarketing001',
-        createdAt:   new Date().toISOString(),
-        name:        'Organic Social Marketing',
-        contactName: 'Tommy Lynch',
-        email:       'tommy@cultcontent.cc',
-        loginEmail:  'tommy@cultcontent.cc',
-        industry:    'Internal test shop',
-        products:    'Test',
-        audience:    'Internal',
-        voice:       'Internal',
-        contentPillars: 'Internal',
-        tiktokHandle: '',
-        cta:         '',
-        source:      'internal',
-        commissionRate: 0.2,
-      });
-      saveBrands(bd);
-      console.log('[startup] Created Organic Social Marketing test brand');
-    }
-  } catch(e) { console.error('[startup] Organic Social Marketing setup error:', e.message); }
 
   // Backfill Reacher shopIds, TC config, and billing defaults for known brands (idempotent — skips if already set)
   try {
@@ -14249,7 +14235,6 @@ app.listen(CFG.port, () => {
       'the perfect haircare': { contractValue: 1500, commissionRate: 0.1 },
       'yuglo':                { contractValue: 1500, commissionRate: 0.1, billingEmail: 'evaaadee1@gmail.com', proratedFirstRetainer: 1150 },
       'roots by ga':          { contractValue: 1500, commissionRate: 0.1, billingEmail: 'carla@rootsbyga.com', proratedFirstRetainer: 950 },
-      'd noor':               { contractValue: 1500, commissionRate: 0.1, billingEmail: 'afaneh0407@gmail.com', proratedFirstRetainer: 950 },
     };
     const bd = loadBrands(); let dirty = false;
     for (const client of (bd.clients || [])) {
@@ -14293,35 +14278,6 @@ app.listen(CFG.port, () => {
     if (dirty) saveBrands(bd);
   } catch(e) { console.error('[startup] brand defaults backfill error:', e.message); }
 
-  // Add D Noor if not yet in brands.json
-  try {
-    const bd = loadBrands();
-    const exists = (bd.clients || []).some(b => (b.name || '').toLowerCase().trim() === 'd noor');
-    if (!exists) {
-      bd.clients = bd.clients || [];
-      bd.clients.push({
-        id:                    'dnoor001',
-        createdAt:             '2026-06-12T00:00:00.000Z',
-        name:                  'D Noor',
-        billingEmail:          'afaneh0407@gmail.com',
-        contractValue:         1500,
-        commissionRate:        0.10,
-        proratedFirstRetainer: 950,
-        pipelineStage:         'Contract Signed',
-        startDate:             '2026-06-12',
-        contacts:              'Sami Afaneh (afaneh0407@gmail.com)',
-        industry:              'Skincare',
-        products:              'TBD',
-        audience:              'TBD',
-        voice:                 'TBD',
-        contentPillars:        'TBD',
-        tiktokHandle:          'TBD',
-        cta:                   'TBD',
-      });
-      saveBrands(bd);
-      console.log('[startup] Added D Noor to brands.json');
-    }
-  } catch(e) { console.error('[startup] D Noor setup error:', e.message); }
 
   // Add Roots by GA if not yet in brands.json
   try {
