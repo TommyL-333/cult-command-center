@@ -1273,8 +1273,8 @@
           websiteBtn +
         `</div>`;
       const commitBtn = assigned
-        ? `<div class="covenant-confirm" style="margin-top:8px;">50% Target Collab will be sent soon</div>`
-        : `<button class="brand-action commit-btn" data-brand-id="${esc(brand.id)}" data-brand-name="${esc(brand.name)}" data-brand-slug="${esc(brandSlug)}" style="margin-top:8px;">Make a Commitment for 50% Commission</button>`;
+        ? `<div class="covenant-confirm" style="margin-top:8px;background:color-mix(in srgb, var(--brand-color) 10%, transparent);border:1px solid var(--brand-color);color:var(--brand-color);">50% Target Collab will be sent soon</div>`
+        : `<button class="brand-action commit-btn" data-brand-id="${esc(brand.id)}" data-brand-name="${esc(brand.name)}" data-brand-slug="${esc(brandSlug)}" style="margin-top:8px;background:var(--brand-color);color:#161823;border:none;font-weight:700;">Make a Commitment for 50% Commission</button>`;
       // "Create your next videos" shows on EVERY card, not just assigned ones.
       const createBtn = `<button class="brand-action create-videos-btn" style="margin-top:8px;background:var(--brand-color);color:#161823;border:none;font-weight:700;" onclick="openContentWizard('${jsStr(brand.id)}','${jsStr(brandSlug)}','${jsStr(brand.name)}')">Create your next videos</button>`;
       const action = resourceBtns + commitBtn + createBtn;
