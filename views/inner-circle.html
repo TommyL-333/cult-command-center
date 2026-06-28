@@ -1351,7 +1351,7 @@
         const cards = availableBrands.map(b => renderBrandCard(b, byKey[b.id] || byKey[b.name]));
         assigned.forEach(a => {
           if (!availableBrands.some(b => b.id === a.id || b.name === a.name)) {
-            cards.push(renderBrandCard({ id: a.id, name: a.name }, a));
+            cards.push(renderBrandCard({ id: a.id, name: a.name, slug: a.slug, website: a.website }, a));
           }
         });
         const brandsContainer = document.getElementById('brands-container');
