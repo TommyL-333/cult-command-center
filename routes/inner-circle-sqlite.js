@@ -1662,14 +1662,9 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       if (!brandId) return res.status(400).json({ error: 'brandId required' });
       if (!productId) return res.status(400).json({ error: 'productId required' });
 
-      // ── AUTHORIZATION (403) — must hold an ACTIVE assignment to this brand ────
-      // Assignments store brand.id in the shop_id column (see select-brand).
-      let assignment = null;
-      try { assignment = stmts.getAssignment.get(c.id, brandId); }
-      catch (e) { return res.status(500).json({ error: 'Server error' }); }
-      if (!assignment || !assignment.active) {
-        return res.status(403).json({ error: 'Not assigned to this brand' });
-      }
+      // Script generation is available on EVERY live client brand — no assignment
+      // gate (matches the products endpoint). A creator can write scripts for any
+      // brand before formally committing.
 
       // Resolve the brand record (source of truth: brands.json) → numeric shopId.
       const data = icLoadBrandsFile();
