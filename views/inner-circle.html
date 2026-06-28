@@ -1277,7 +1277,7 @@
       const brandSlug = brand.slug || String(brand.name || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
       // Two resource buttons on EVERY card; commit button swaps to a "sent" state once assigned.
       const websiteBtn = brand.website
-        ? `<a class="brand-action resource-btn mini-btn" href="${esc(brand.website)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="flex:1;display:block;text-align:center;text-decoration:none;background:transparent;border:1px solid rgba(255,255,255,0.18);color:#cfd3e0;padding:9px 6px;font-size:12px;">Visit Website</a>`
+        ? `<a class="brand-action resource-btn mini-btn" href="${esc(brand.website)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="flex:1;display:block;text-align:center;text-decoration:none;background:transparent;border:1px solid var(--brand-color);color:var(--brand-color);padding:9px 6px;font-size:12px;">Visit Website</a>`
         : '';
       const resourceBtns =
         `<div style="display:flex;gap:8px;">` +
