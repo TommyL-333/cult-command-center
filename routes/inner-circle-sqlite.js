@@ -1622,7 +1622,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       // Resolve the brand record (source of truth: brands.json) → numeric shopId.
       const data = icLoadBrandsFile();
       const brand = ((data && data.clients) || []).find((b) =>
-        b && (String(b.id) === brandId || String(b.name || '').toLowerCase().trim() === brandId.toLowerCase())
+        b && (String(b.id) === brandId || (b.creatorPage && b.creatorPage.slug === brandId) || String(b.name || '').toLowerCase().trim() === brandId.toLowerCase())
       );
       if (!brand) return res.status(404).json({ error: 'Brand not found' });
       const numericShopId = brand.shopId || brand.shop_id || brand.shopID || null;
