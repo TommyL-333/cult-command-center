@@ -2882,7 +2882,11 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
 
       for (const rd of recordings) {
         const topic = rd.topic || '';
-        const brand = _brandForTopic(topic);
+        // Community calls (Inner Circle, Culture Hour) carry a slug from the relay
+        // and map to pseudo-brands rather than a real client.
+        const brand = rd.community
+          ? { brandId: rd.community, shopId: null, name: rd.brandName || topic }
+          : _brandForTopic(topic);
         if (!brand) continue;
         result.matched += 1;
         const inst = rd.instanceId;
