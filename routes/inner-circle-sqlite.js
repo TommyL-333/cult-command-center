@@ -1628,37 +1628,31 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       const numericShopId = brand.shopId || brand.shop_id || brand.shopID || null;
       if (numericShopId == null) return res.json({ products: [] });
 
-      // Fetch the live catalog via the same resolver generate-scripts uses.
-      let resolver = null;
-      try { resolver = require('../lib/product-resolver'); } catch (_) { resolver = null; }
+      // Catalog SOURCE OF TRUTH = our own connected TikTok Shop app (per-brand token),
+      // fetched directly via lib/tts-product-images.fetchCatalog (id + name + image in
+      // one signed call). Falls back to the legacy Reacher resolver only if the brand
+      // has no TikTok token yet, so the dropdown is never silently empty.
       let catalog = [];
-      if (resolver && typeof resolver.fetchCatalog === 'function') {
-        try { catalog = await resolver.fetchCatalog(numericShopId); } catch (_) { catalog = []; }
+      try {
+        const tts = require('../lib/tts-product-images');
+        if (tts && typeof tts.fetchCatalog === 'function' && brand.tiktokShopToken && brand.tiktokShopToken.access_token) {
+          catalog = await tts.fetchCatalog(brand);
+        }
+      } catch (_) { catalog = []; }
+      if (!Array.isArray(catalog) || catalog.length === 0) {
+        try {
+          const resolver = require('../lib/product-resolver');
+          if (resolver && typeof resolver.fetchCatalog === 'function') {
+            catalog = await resolver.fetchCatalog(numericShopId);
+          }
+        } catch (_) { /* both sources down → empty dropdown */ }
       }
 
       const products = (Array.isArray(catalog) ? catalog : []).filter(Boolean).map((p) => ({
         productId: (p.product_id != null ? p.product_id : (p.productId != null ? p.productId : (p.id != null ? p.id : ''))),
         name: (p.product_name != null ? p.product_name : (p.name != null ? p.name : (p.title != null ? p.title : ''))),
-        image: (p.main_image || p.image || p.imageUrl || p.thumbnail || '')
+        image: (p.image || p.main_image || p.imageUrl || p.thumbnail || '')
       }));
-
-      // Enrich missing thumbnails from TikTok Shop (per-brand token).
-      // Never throws — on any failure the dropdown still renders (names only).
-      try {
-        const needImages = products.some((p) => !p.image);
-        if (needImages && brand.tiktokShopToken && brand.tiktokShopToken.access_token) {
-          const tts = require('../lib/tts-product-images');
-          if (tts && typeof tts.fetchProductImages === 'function') {
-            const imgMap = await tts.fetchProductImages(brand);
-            for (const p of products) {
-              if (!p.image) {
-                const imgs = imgMap[String(p.productId)];
-                if (imgs && imgs.length) p.image = imgs[0];
-              }
-            }
-          }
-        }
-      } catch (_) { /* image enrichment is best-effort */ }
 
       return res.json({ products });
     } catch (e) {
@@ -1697,11 +1691,20 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       const numericShopId = brand.shopId || brand.shop_id || brand.shopID || null;
 
       // ── PRODUCT RESOLUTION (404) — productId must exist in the brand catalog ──
-      let resolver = null;
-      try { resolver = require('../lib/product-resolver'); } catch (_) { resolver = null; }
       let catalog = [];
-      if (resolver && typeof resolver.fetchCatalog === 'function' && numericShopId != null) {
-        try { catalog = await resolver.fetchCatalog(numericShopId); } catch (_) { catalog = []; }
+      try {
+        const tts = require('../lib/tts-product-images');
+        if (tts && typeof tts.fetchCatalog === 'function' && brand.tiktokShopToken && brand.tiktokShopToken.access_token) {
+          catalog = await tts.fetchCatalog(brand);
+        }
+      } catch (_) { catalog = []; }
+      if ((!Array.isArray(catalog) || catalog.length === 0) && numericShopId != null) {
+        try {
+          const resolver = require('../lib/product-resolver');
+          if (resolver && typeof resolver.fetchCatalog === 'function') {
+            catalog = await resolver.fetchCatalog(numericShopId);
+          }
+        } catch (_) { catalog = []; }
       }
       let product = Array.isArray(catalog)
         ? catalog.find((p) => p && String(p.product_id) === productId)
