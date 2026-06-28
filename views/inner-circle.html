@@ -519,13 +519,26 @@
     /* ── Wiring components (carried from production SPA) ── */
     .brand-action {
       width: 100%; padding: 14px; margin-top: 16px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.1);
-      border-radius: 12px; color: #fff; font-weight: 700;
-      cursor: pointer; transition: all 0.3s; font-family: inherit; font-size: 0.95rem;
+      background: transparent;
+      border: 1.5px solid var(--brand-color);
+      border-radius: 12px; color: var(--brand-color); font-weight: 700;
+      cursor: pointer; transition: all 0.25s ease; font-family: inherit; font-size: 0.95rem;
     }
-    .brand-action:hover { background: rgba(0,242,234,0.1); border-color: #00f2ea; }
+    .brand-action:hover {
+      background: color-mix(in srgb, var(--brand-color) 12%, transparent);
+      border-color: var(--brand-color);
+      box-shadow: 0 0 18px -2px var(--brand-color), 0 0 4px var(--brand-color);
+      transform: translateY(-1px);
+    }
     .brand-action:disabled { opacity: 0.6; cursor: wait; }
+    /* Filled CTA buttons keep their solid brand fill, but glow on hover */
+    .brand-action.create-videos-btn:hover,
+    .brand-action.commit-btn:hover {
+      background: var(--brand-color);
+      box-shadow: 0 0 22px -2px var(--brand-color), 0 0 8px var(--brand-color);
+      filter: brightness(1.08);
+      transform: translateY(-1px);
+    }
     .covenant-confirm {
       width: 100%; padding: 14px; margin-top: 16px;
       background: rgba(0,242,234,0.08); border: 1px solid rgba(0,242,234,0.4);
