@@ -798,7 +798,7 @@
       color: #9ca3af; font-size: 0.86rem; }
     .rec-meta-item .rec-meta-ico { opacity: 0.85; }
     .rec-card .play-btn { align-self: flex-start; margin-top: auto; }
-    /* ── IC_RATES_CSS_END ─��� */
+    /* ── IC_RATES_CSS_END ─����� */
 
   </style>
 </head>
@@ -1284,6 +1284,7 @@
           </div>
           ${website}
           ${action}
+          <button class="brand-action commit-btn" data-brand-id="${esc(brand.id)}" data-brand-name="${esc(brand.name)}" style="background:transparent;border:1px solid var(--brand-color);color:var(--brand-color);margin-top:8px;">I Commit — 20 videos/mo</button>
         </div>`;
     }
 
@@ -1335,6 +1336,9 @@
         brandsContainer.querySelectorAll('.select-brand-btn').forEach(btn => {
           btn.addEventListener('click', () => selectBrand(btn, btn.dataset.brandId, btn.dataset.brandName));
         });
+        brandsContainer.querySelectorAll('.commit-btn').forEach(btn => {
+          btn.addEventListener('click', () => commitToBrand(btn, btn.dataset.brandId, btn.dataset.brandName));
+        });
 
         // Recordings now load independently via loadRecordings() -> GET /api/inner-circle/recordings
 
@@ -1348,6 +1352,32 @@
     // Brand selection (MVP covenant flow): persists creator→brand link and
     // notifies Hasan in Lark to send the target collab invite. NO video upload
     // in MVP — videos sync automatically via TikTok.
+    async function commitToBrand(btn, brandId, brandName) {
+      if (!confirm('Commit to ' + brandName + '?\n\nYou are pledging 20 videos/month and weekly call attendance for this brand.')) return;
+      const original = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Committing…';
+      try {
+        const res = await fetch('/api/inner-circle/commitment', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
+          body: JSON.stringify({ brandId, brandName, videosPerMonth: 20, weeklyCall: true })
+        });
+        if (res.status === 401) { logout(); return; }
+        if (!res.ok) throw new Error('Commitment failed (' + res.status + ')');
+        const data = await res.json().catch(() => ({}));
+        btn.textContent = '\u2713 Committed \u2014 20 videos/mo';
+        btn.style.opacity = '0.85';
+        btn.style.background = 'var(--brand-color)';
+        btn.style.color = '#0c0c14';
+      } catch (err) {
+        console.error('Commit failed:', err);
+        btn.disabled = false;
+        btn.textContent = original;
+        alert('Could not record your commitment. Please try again.');
+      }
+    }
+
     async function selectBrand(btn, brandId, brandName) {
       btn.disabled = true;
       btn.textContent = 'Selecting…';
