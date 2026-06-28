@@ -4644,6 +4644,32 @@ app.get('/api/admin/brand-products/:id', async (req, res) => {
   } catch(e) { res.status(500).json({ error: e.response?.data || e.message }); }
 });
 
+// GET /api/admin/brand-refresh-token/:id — force TikTok Shop token refresh + report state (secret-gated debug)
+app.get('/api/admin/brand-refresh-token/:id', async (req, res) => {
+  const secret = process.env.ADMIN_BATCH_SECRET || 'cult-batch-2026';
+  if (req.headers['x-admin-secret'] !== secret) return res.status(401).json({ error: 'Unauthorized' });
+  const brands = loadBrands();
+  const bi = (brands.clients || []).findIndex(b => b.id === req.params.id);
+  if (bi === -1) return res.status(404).json({ error: 'Brand not found' });
+  const b = brands.clients[bi];
+  const t = b.tiktokShopToken || {};
+  const before = {
+    has_access_token: !!t.access_token,
+    has_refresh_token: !!t.refresh_token,
+    expires_at: t.expires_at || null,
+    expired: t.expires_at ? (Date.now() > t.expires_at) : null,
+  };
+  let ok = false, err = null;
+  try { ok = await refreshBrandShopToken(b, brands, bi); } catch (e) { err = e.message; }
+  const t2 = (brands.clients[bi].tiktokShopToken) || {};
+  const after = {
+    has_access_token: !!t2.access_token,
+    expires_at: t2.expires_at || null,
+    expired: t2.expires_at ? (Date.now() > t2.expires_at) : null,
+  };
+  res.json({ ok, err, before, after });
+});
+
 // GET /api/admin/brand-debug/:id — show brand storista key prefix for debugging
 app.get('/api/admin/brand-debug/:id', (req, res) => {
   const secret = process.env.ADMIN_BATCH_SECRET || 'cult-batch-2026';
