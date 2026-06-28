@@ -1111,7 +1111,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     // when + meetingLink mirrored from Ops Engine Clients Lark base.
     // color = brand creator-page accent (single source of truth, no runtime scraping).
     // Community-wide calls (every Inner Circle creator, all brands). community:true => always shown, pinned to top.
-    'inner-circle':         { when: 'Saturdays · 2:00 PM ET',   meetingLink: 'https://vc-usttp.larksuite.com/j/397129210', color: '#a78bfa', name: 'Inner Circle Call',  community: true },
+    'inner-circle':         { when: 'Saturdays · 2:00 PM ET',   meetingLink: 'https://vc-usttp.larksuite.com/j/836289754', color: '#a78bfa', name: 'Inner Circle Call',  community: true },
     'culture-hour':         { when: 'Fridays · 3:00 PM ET',     meetingLink: 'https://vc-usttp.larksuite.com/j/397129210', color: '#00f2ea', name: 'Culture Hour',       community: true },
     'approved-science':     { when: 'Tuesdays · 12:00 PM ET',   meetingLink: 'https://vc-usttp.larksuite.com/j/438787376', color: '#00a3a3', chatLink: 'https://applink.larksuite.com/client/chat/chatter/add_by_link?link_token=307k275f-3285-42f1-9592-412t6oj62r7r' },
     'diamandia':            { when: 'Fridays · 4:00 PM ET',     meetingLink: 'https://vc-usttp.larksuite.com/j/438787376', color: '#E5E4E2', chatLink: 'https://applink.larksuite.com/client/chat/chatter/add_by_link?link_token=076ged1c-bef5-43e3-a7f4-6dakfqi85p6k' },
