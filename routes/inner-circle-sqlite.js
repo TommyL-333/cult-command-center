@@ -305,7 +305,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
           WHERE r.available = 1 AND c.status != 'removed'
           ORDER BY c.creator_name COLLATE NOCASE ASC`
       ),
-      // ── Retainer offers ──────────────────────────────────────────────────────
+      // ── Retainer offers ────────────────────��─────────────────────────────────
       creatorByIdBasic: db.prepare(
         `SELECT id, creator_name, creator_handle FROM inner_circle_creators WHERE id = ?`
       ),
@@ -818,6 +818,8 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     String(process.env.INTERCOM_TEAM_EMAILS || 'tommy@cultcontent.cc,hasan@cultcontent.cc,shayan@cultcontent.cc')
       .split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
   );
+  app.get('/api/inner-circle/intercom-diag', (req, res) => { res.json({ last: (global.__ic_last||{}) }); });
+
   app.get('/api/inner-circle/identity', requireSqliteSession, (req, res) => {
     try {
       const c = req.icCreator || {};
@@ -900,26 +902,24 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
             _r.on('error', (e) => cb(e)); _r.write(_b); _r.end();
           } catch (e) { cb(e); }
         };
-        // 1) search by external_id
+        // 1) search by external_id  (diag-instrumented)
+        global.__ic_last = global.__ic_last || {};
         _icReq('POST', '/contacts/search',
           { query: { field: 'external_id', operator: '=', value: userId } },
           (err, sc, sbody) => {
-            if (err) { console.error('[inner-circle-sqlite] intercom search err:', err.message); return; }
-            let found = null;
-            try { const j = JSON.parse(sbody); if (j && j.data && j.data[0]) found = j.data[0].id; } catch (_) {}
+            if (err) { global.__ic_last[userId] = { stage:'search', err: err.message }; console.error('[ic] search err', err.message); return; }
+            let found = null, parsed = null;
+            try { parsed = JSON.parse(sbody); if (parsed && parsed.data && parsed.data[0]) found = parsed.data[0].id; } catch(e) {}
+            global.__ic_last[userId] = { stage:'search', sc, found, total: parsed && parsed.total_count };
             if (found) {
-              // 2a) update existing
               _icReq('PUT', '/contacts/' + found, { custom_attributes: _icAttrs }, (e2, c2, b2) => {
-                if (e2) return console.error('[inner-circle-sqlite] intercom put err:', e2.message);
-                if (c2 >= 300) console.error('[inner-circle-sqlite] intercom put', c2, String(b2).slice(0,200));
+                global.__ic_last[userId] = { stage:'put', sc, found, putStatus: c2, putErr: e2 && e2.message, putBody: String(b2||'').slice(0,300) };
               });
             } else {
-              // 2b) create new
               _icReq('POST', '/contacts',
                 { external_id: userId, email: email || undefined, name: payload.name, custom_attributes: _icAttrs },
                 (e3, c3, b3) => {
-                  if (e3) return console.error('[inner-circle-sqlite] intercom create err:', e3.message);
-                  if (c3 >= 300 && c3 !== 409) console.error('[inner-circle-sqlite] intercom create', c3, String(b3).slice(0,200));
+                  global.__ic_last[userId] = { stage:'create', createStatus: c3, createErr: e3 && e3.message, createBody: String(b3||'').slice(0,300) };
                 });
             }
           });
@@ -2167,7 +2167,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     const cfEmail = req.get('cf-access-authenticated-user-email');
     if (cfEmail) {
       const allow = (process.env.IC_ADMIN_EMAILS || '').split(',').map(function(e){return e.trim().toLowerCase();}).filter(Boolean);
-      if (!allow.length) return true; // no allow-list configured → any CF-authenticated user is admin
+      if (!allow.length) return true; // no allow-list configured ��� any CF-authenticated user is admin
       return allow.indexOf(String(cfEmail).toLowerCase()) !== -1;
     }
     return false;
