@@ -2316,5 +2316,38 @@
     // ── end IC Content Engine wizard ──
 
   </script>
+  <!-- Intercom Messenger (verified identity from session) -->
+  <script id="intercom-snippet-ic">
+  (function(){
+    var APP_ID = 'wf9rqc2t';
+    // Standard Intercom loader (vanilla, no bundler).
+    var w=window,ic=w.Intercom;
+    if(typeof ic==="function"){ic('reattach_activator');ic('update',w.intercomSettings);}
+    else{var d=document;var i=function(){i.c(arguments);};i.q=[];i.c=function(args){i.q.push(args);};w.Intercom=i;
+      var l=function(){var s=d.createElement('script');s.type='text/javascript';s.async=true;
+        s.src='https://widget.intercom.io/widget/'+APP_ID;
+        var x=d.getElementsByTagName('script')[0];x.parentNode.insertBefore(s,x);};
+      if(d.readyState==='complete'){l();}else if(w.attachEvent){w.addEventListener('load',l,false);}else{w.addEventListener('load',l,false);}}
+    // Boot with verified identity once available, fall back to anonymous.
+    fetch('/api/inner-circle/identity', { credentials:'include' })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(id){
+        var s = { app_id: APP_ID };
+        if (id && id.user_id) {
+          s.user_id = id.user_id;
+          if (id.name) s.name = id.name;
+          if (id.email) s.email = id.email;
+          if (id.created_at) s.created_at = id.created_at;
+          if (id.user_hash) s.user_hash = id.user_hash;
+          s.user_type = id.user_type || 'affiliate';
+          if (id.tiktok_handle) s.tiktok_handle = id.tiktok_handle;
+          s.portal = 'inner-circle';
+        }
+        window.intercomSettings = s;
+        window.Intercom('boot', s);
+      })
+      .catch(function(){ window.Intercom('boot', { app_id: APP_ID }); });
+  })();
+  </script>
 </body>
 </html>
