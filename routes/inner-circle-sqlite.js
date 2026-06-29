@@ -622,8 +622,8 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
       const creator = stmts.creatorByEmail.get(email);
       if (creator) {
         const token = crypto.randomBytes(32).toString('hex');
-        const expiresAt = new Date(Date.now() + 60 * 60 * 1000)
-          .toISOString().replace('T', ' ').slice(0, 19); // SQLite datetime, +1h
+        const expiresAt = new Date(Date.now() + 12 * 60 * 60 * 1000)
+          .toISOString().replace('T', ' ').slice(0, 19); // SQLite datetime, +12h
         stmts.insertReset.run(token, creator.id, expiresAt);
         const resetUrl = `${IC_PORTAL_BASE}/inner-circle/reset?token=${token}`;
         try {
