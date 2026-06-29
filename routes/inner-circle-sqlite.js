@@ -839,14 +839,35 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
         tiktok_handle: c.creator_handle || undefined,
         portal: 'inner-circle'
       };
+      // Intercom now uses JWT-based Messenger Security (intercom_user_jwt),
+      // replacing the deprecated HMAC user_hash. Sign an HS256 JWT with the
+      // Messenger API Secret. Sensitive identity attributes are carried INSIDE
+      // the JWT payload so they cannot be spoofed via insecure Messenger updates.
       const secret = process.env.INTERCOM_IDENTITY_SECRET;
       if (secret) {
         try {
           const crypto = require('crypto');
-          // Intercom verifies the HMAC over the user_id (the identifier used to boot).
-          payload.user_hash = crypto.createHmac('sha256', secret).update(userId).digest('hex');
+          const b64url = (buf) => Buffer.from(buf).toString('base64')
+            .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+          const nowSec = Math.floor(Date.now() / 1000);
+          const header = { alg: 'HS256', typ: 'JWT' };
+          const jwtPayload = {
+            user_id: userId,
+            email: email || undefined,
+            name: payload.name,
+            created_at: createdUnix,
+            user_type: payload.user_type,
+            tiktok_handle: c.creator_handle || undefined,
+            portal: 'inner-circle',
+            iat: nowSec,
+            exp: nowSec + 3600 // 1h, refreshed on each page load
+          };
+          const signingInput = b64url(JSON.stringify(header)) + '.' + b64url(JSON.stringify(jwtPayload));
+          const signature = crypto.createHmac('sha256', secret).update(signingInput).digest('base64')
+            .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+          payload.intercom_user_jwt = signingInput + '.' + signature;
         } catch (e) {
-          console.error('[inner-circle-sqlite] intercom hmac failed:', e.message);
+          console.error('[inner-circle-sqlite] intercom jwt failed:', e.message);
         }
       }
       return res.json(payload);
