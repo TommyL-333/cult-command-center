@@ -856,9 +856,15 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
             email: email || undefined,
             name: payload.name,
             created_at: createdUnix,
-            user_type: payload.user_type,
-            tiktok_handle: c.creator_handle || undefined,
-            portal: 'inner-circle',
+            // Custom data attributes MUST be nested under custom_attributes,
+            // otherwise Intercom silently ignores them (they won't land on the
+            // contact record / won't be segmentable). Created in workspace as:
+            // user_type (10037183), tiktok_handle (10037184), portal (10037185).
+            custom_attributes: {
+              user_type: payload.user_type,
+              tiktok_handle: c.creator_handle || undefined,
+              portal: 'inner-circle'
+            },
             iat: nowSec,
             exp: nowSec + 3600 // 1h, refreshed on each page load
           };
