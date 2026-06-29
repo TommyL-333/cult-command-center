@@ -1116,6 +1116,34 @@
   </div>
 
   <!-- ══════════════════════════════════════════════════════════════════════
+       Creator Link Clicks — are creators opening their portal links?
+  ══════════════════════════════════════════════════════════════════════ -->
+  <div id="lc-card" style="max-width:1200px;margin:0 auto 24px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:18px">👁️</span>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--text)">Creator Link Clicks</div>
+          <div style="font-size:11px;color:var(--muted)">Opens of creator portal links sent via DMs &amp; outreach (<span id="lc-window-label">14d</span>)</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <select id="lc-days" onchange="lcLoadMetrics()" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:12px;padding:6px 10px;border-radius:7px;cursor:pointer">
+          <option value="7">Last 7 days</option>
+          <option value="14" selected>Last 14 days</option>
+          <option value="30">Last 30 days</option>
+          <option value="0">All time</option>
+        </select>
+        <button onclick="lcLoadMetrics()" style="background:rgba(255,255,255,0.06);border:1px solid var(--border);color:var(--muted);font-size:12px;font-weight:700;padding:6px 12px;border-radius:7px;cursor:pointer">↻</button>
+      </div>
+    </div>
+    <div id="lc-stats" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:16px">
+      <div style="text-align:center;padding:8px 0;color:var(--muted);font-size:12px">Loading…</div>
+    </div>
+    <div id="lc-body" style="display:grid;grid-template-columns:1fr 1fr;gap:20px"></div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════════════════
        URGENT — Open Collab Outreach approval queue (above the sub-tabs)
   ══════════════════════════════════════════════════════════════════════ -->
   <div id="oc-urgent-card" style="display:none;max-width:1200px;margin:0 auto 24px;background:linear-gradient(135deg,rgba(255,0,80,0.10),rgba(255,140,0,0.06));border:1px solid rgba(255,0,80,0.45);border-radius:14px;padding:18px 20px;box-shadow:0 0 0 1px rgba(255,0,80,0.06),0 6px 24px rgba(255,0,80,0.08)">
@@ -3126,7 +3154,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     // Lazy-init tab-specific data
     if (btn.dataset.tab === 'shortvideo')  { svuLoadChannels(); }
     if (btn.dataset.tab === 'paidmedia')   loadPaidMedia();
-    if (btn.dataset.tab === 'affiliates')  { loadAffiliate(); rvEnsureShops(); csEnsureClients(); ubLoadConversations(); ocLoadQueue(); }
+    if (btn.dataset.tab === 'affiliates')  { loadAffiliate(); rvEnsureShops(); csEnsureClients(); ubLoadConversations(); ocLoadQueue(); lcLoadMetrics(); }
     if (btn.dataset.tab === 'pipeline')    renderPerformance();
     if (btn.dataset.tab === 'growth')      gpInit();
     if (btn.dataset.tab === 'community')   creatorsInit();
@@ -5135,6 +5163,33 @@ function afSubTab(tab) {
 
 // ── Open Collab Outreach urgent card ──────────────────────────────────────────
 function ocEsc(s){return String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+async function lcLoadMetrics() {
+  const days = (document.getElementById('lc-days')||{}).value || '14';
+  const lbl = document.getElementById('lc-window-label'); if (lbl) lbl.textContent = days === '0' ? 'all time' : days + 'd';
+  const stats = document.getElementById('lc-stats');
+  const body = document.getElementById('lc-body');
+  try {
+    const r = await fetch('/api/link-metrics/summary?days=' + days, { credentials: 'include' });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    const d = await r.json();
+    const t = d.totals || {};
+    const tile = (n, v, c) => '<div style="background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px 10px;text-align:center"><div style="font-size:22px;font-weight:800;color:' + (c||'var(--teal)') + '">' + (v==null?0:v) + '</div><div style="font-size:10.5px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.04em">' + n + '</div></div>';
+    stats.innerHTML = tile('Total Opens', t.totalClicks, 'var(--teal)') + tile('From Creator Links', t.trackedClicks, '#00f2ea') + tile('Direct / Untracked', t.directClicks, 'var(--muted)') + tile('Unique Creators', t.uniqueCreators, '#ff8c00');
+    const esc = x => String(x==null?'':x).replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));
+    const brands = (d.brands||[]).slice(0,12);
+    const brandRows = brands.length ? brands.map(b => '<tr><td style="padding:6px 8px;color:var(--text)">' + esc(b.slug) + '</td><td style="padding:6px 8px;text-align:right;color:var(--teal);font-weight:700">' + b.clicks + '</td><td style="padding:6px 8px;text-align:right;color:var(--muted)">' + b.uniqueCreators + '</td></tr>').join('') : '<tr><td colspan="3" style="padding:10px;text-align:center;color:var(--muted);font-size:12px">No clicks yet in this window.</td></tr>';
+    const creators = (d.creators||[]).slice(0,15);
+    const credRows = creators.length ? creators.map(c => '<tr><td style="padding:6px 8px;color:var(--text)">@' + esc(c.handle) + '</td><td style="padding:6px 8px;color:var(--muted);font-size:11px">' + esc(c.slug) + '</td><td style="padding:6px 8px;text-align:right;color:var(--teal);font-weight:700">' + c.clicks + '</td></tr>').join('') : '<tr><td colspan="3" style="padding:10px;text-align:center;color:var(--muted);font-size:12px">No tracked creator opens yet.</td></tr>';
+    body.innerHTML =
+      '<div><div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">By Brand</div><table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr style="border-bottom:1px solid var(--border)"><th style="padding:6px 8px;text-align:left;color:var(--muted);font-weight:600">Brand</th><th style="padding:6px 8px;text-align:right;color:var(--muted);font-weight:600">Opens</th><th style="padding:6px 8px;text-align:right;color:var(--muted);font-weight:600">Creators</th></tr></thead><tbody>' + brandRows + '</tbody></table></div>' +
+      '<div><div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:.04em">Top Creators</div><table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr style="border-bottom:1px solid var(--border)"><th style="padding:6px 8px;text-align:left;color:var(--muted);font-weight:600">Creator</th><th style="padding:6px 8px;text-align:left;color:var(--muted);font-weight:600">Brand</th><th style="padding:6px 8px;text-align:right;color:var(--muted);font-weight:600">Opens</th></tr></thead><tbody>' + credRows + '</tbody></table></div>';
+  } catch (e) {
+    console.error('lcLoadMetrics:', e);
+    stats.innerHTML = '<div style="text-align:center;padding:8px 0;color:var(--muted);font-size:12px">Could not load click metrics.</div>';
+    body.innerHTML = '';
+  }
+}
+
 async function ocLoadQueue() {
   const card = document.getElementById('oc-urgent-card');
   const list = document.getElementById('oc-list');
