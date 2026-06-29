@@ -1144,6 +1144,58 @@
   </div>
 
   <!-- ══════════════════════════════════════════════════════════════════════
+       Creator Link Clicks — are creators opening their portal links?
+  ══════════════════════════════════════════════════════════════════════ -->
+  <div id="lc-card" style="max-width:1200px;margin:0 auto 24px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <span style="font-size:18px">🔗</span>
+        <div>
+          <div style="font-size:14px;font-weight:700;color:var(--text)">Creator Link Clicks</div>
+          <div style="font-size:11px;color:var(--muted)">Opens of the creator portal links we DM. Tracked via <code style="color:var(--teal)">?ref={handle}</code>.</div>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <select id="lc-days" onchange="lcLoadMetrics()" style="background:var(--bg);border:1px solid var(--border);color:var(--text);font-size:12px;padding:6px 10px;border-radius:8px;cursor:pointer">
+          <option value="7">Last 7 days</option>
+          <option value="14" selected>Last 14 days</option>
+          <option value="30">Last 30 days</option>
+          <option value="0">All time</option>
+        </select>
+        <button onclick="lcLoadMetrics()" style="background:rgba(255,255,255,0.06);border:1px solid var(--border);color:var(--muted);font-size:12px;font-weight:700;padding:6px 12px;border-radius:8px;cursor:pointer">↻ Refresh</button>
+      </div>
+    </div>
+    <div id="lc-stats" style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px">
+      <div class="lc-tile"><div class="lc-num" id="lc-total">–</div><div class="lc-lbl">Total opens</div></div>
+      <div class="lc-tile"><div class="lc-num" id="lc-tracked">–</div><div class="lc-lbl">From creator DMs</div></div>
+      <div class="lc-tile"><div class="lc-num" id="lc-direct">–</div><div class="lc-lbl">Direct / untagged</div></div>
+      <div class="lc-tile"><div class="lc-num" id="lc-creators">–</div><div class="lc-lbl">Unique creators</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em">By brand</div>
+        <div id="lc-brands" style="font-size:12.5px;color:var(--text)"></div>
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:700;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em">Top creators</div>
+        <div id="lc-creators-list" style="font-size:12.5px;color:var(--text)"></div>
+      </div>
+    </div>
+    <div id="lc-empty" style="display:none;font-size:12.5px;color:var(--muted);padding:8px 0">No clicks logged yet for this window. Once creators tap their DM links, opens show here.</div>
+  </div>
+
+  <style>
+    #lc-card .lc-tile{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
+    #lc-card .lc-num{font-size:24px;font-weight:800;color:var(--teal);line-height:1.1}
+    #lc-card .lc-lbl{font-size:11px;color:var(--muted);margin-top:3px}
+    #lc-card .lc-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)}
+    #lc-card .lc-row:last-child{border-bottom:none}
+    #lc-card .lc-handle{color:var(--text)}
+    #lc-card .lc-c{font-weight:800;color:var(--teal)}
+    @media(max-width:760px){#lc-stats{grid-template-columns:repeat(2,1fr)!important}}
+  </style>
+
+  <!-- ══════════════════════════════════════════════════════════════════════
        URGENT — Open Collab Outreach approval queue (above the sub-tabs)
   ══════════════════════════════════════════════════════════════════════ -->
   <div id="oc-urgent-card" style="display:none;max-width:1200px;margin:0 auto 24px;background:linear-gradient(135deg,rgba(255,0,80,0.10),rgba(255,140,0,0.06));border:1px solid rgba(255,0,80,0.45);border-radius:14px;padding:18px 20px;box-shadow:0 0 0 1px rgba(255,0,80,0.06),0 6px 24px rgba(255,0,80,0.08)">
@@ -3154,7 +3206,7 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     // Lazy-init tab-specific data
     if (btn.dataset.tab === 'shortvideo')  { svuLoadChannels(); }
     if (btn.dataset.tab === 'paidmedia')   loadPaidMedia();
-    if (btn.dataset.tab === 'affiliates')  { loadAffiliate(); rvEnsureShops(); csEnsureClients(); ubLoadConversations(); ocLoadQueue(); lcLoadMetrics(); }
+    if (btn.dataset.tab === 'affiliates')  { loadAffiliate(); rvEnsureShops(); csEnsureClients(); ubLoadConversations(); ocLoadQueue(); lcLoadMetrics(); lcLoadMetrics(); }
     if (btn.dataset.tab === 'pipeline')    renderPerformance();
     if (btn.dataset.tab === 'growth')      gpInit();
     if (btn.dataset.tab === 'community')   creatorsInit();
@@ -5188,6 +5240,30 @@ async function lcLoadMetrics() {
     stats.innerHTML = '<div style="text-align:center;padding:8px 0;color:var(--muted);font-size:12px">Could not load click metrics.</div>';
     body.innerHTML = '';
   }
+}
+
+async function lcLoadMetrics() {
+  const days = document.getElementById('lc-days') ? document.getElementById('lc-days').value : '14';
+  try {
+    const r = await fetch('/api/link-metrics/summary?days=' + encodeURIComponent(days), { credentials: 'include' });
+    if (!r.ok) { console.warn('lc metrics', r.status); return; }
+    const d = await r.json();
+    const t = d.totals || {};
+    const set = (id,v)=>{ const e=document.getElementById(id); if(e) e.textContent = (v==null?0:v).toLocaleString(); };
+    set('lc-total', t.totalClicks); set('lc-tracked', t.trackedClicks);
+    set('lc-direct', t.directClicks); set('lc-creators', t.uniqueCreators);
+    const brands = d.brands || [], creators = (d.creators||[]).slice(0,12);
+    const bEl = document.getElementById('lc-brands');
+    const cEl = document.getElementById('lc-creators-list');
+    const empty = document.getElementById('lc-empty');
+    if (bEl) bEl.innerHTML = brands.length ? brands.map(function(b){
+      return '<div class="lc-row"><span class="lc-handle">'+(b.slug||'unknown')+'</span><span><span class="lc-c">'+b.clicks+'</span> <span style="color:var(--muted);font-size:11px">('+b.uniqueCreators+' creators)</span></span></div>';
+    }).join('') : '<div style="color:var(--muted)">—</div>';
+    if (cEl) cEl.innerHTML = creators.length ? creators.map(function(c){
+      return '<div class="lc-row"><span class="lc-handle">@'+c.handle+' <span style="color:var(--muted);font-size:11px">'+(c.slug||'')+'</span></span><span class="lc-c">'+c.clicks+'</span></div>';
+    }).join('') : '<div style="color:var(--muted)">—</div>';
+    if (empty) empty.style.display = (t.totalClicks ? 'none' : 'block');
+  } catch (e) { console.error('lcLoadMetrics:', e); }
 }
 
 async function ocLoadQueue() {
