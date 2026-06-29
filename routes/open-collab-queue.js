@@ -231,7 +231,8 @@ Add it to your TikTok Showcase, then reply "done" 🌙 and we'll send your sampl
     );
   }
   // Fallback: no hero product configured -> brand creator page + manual showcase nudge.
-  const link = info.slug ? `${CREATOR_BASE}/creators/${info.slug}` : `${CREATOR_BASE}/creators`;
+  const ref = handle ? `?ref=${encodeURIComponent(String(handle).replace(/^@+/, ""))}` : "";
+  const link = info.slug ? `${CREATOR_BASE}/creators/${info.slug}${ref}` : `${CREATOR_BASE}/creators`;
   return (
 `Hey! ✨ We'd love to work with you on ${brand} 🌙 To unlock the collab + your free sample, start here: ${link}
 
@@ -264,7 +265,7 @@ async function buildQueue(DATA_DIR) {
       brand: c.brand,
       slug: info.slug || null,
       shopId: info.shopId || null,
-      signupLink: info.slug ? `${CREATOR_BASE}/creators/${info.slug}` : null,
+      signupLink: info.slug ? `${CREATOR_BASE}/creators/${info.slug}?ref=${encodeURIComponent(String(c.handle||"").replace(/^@+/, ""))}` : null,
       reason: c.reason,
       baseStatus: c.status,
       // local overlay
