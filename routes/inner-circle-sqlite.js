@@ -26,7 +26,7 @@ const crypto = require('crypto');
 module.exports = function mountInnerCircleSqlite(app, deps = {}) {
   const express = deps.express || require('express');
 
-  // ── Load DB layer defensively ─────────────────────────────────�����─────────────
+  // ── Load DB layer defensively ─────────────────────────────────������─────────────
   let db = null;
   let queries = null;
   let stmts = null;
@@ -876,45 +876,53 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
           console.error('[inner-circle-sqlite] intercom jwt failed:', e.message);
         }
       }
-      // Fire-and-forget: write segmentation custom attributes to Intercom via the
-      // REST API (api_writable), since the attributes are messenger_writable:false
-      // and therefore cannot be set through the (even JWT-signed) Messenger boot.
-      // Non-blocking — identity response never waits on or fails because of this.
+      // Intercom segmentation attrs are messenger_writable:false, so they must be
+      // written via REST. POST /contacts does NOT upsert (409s on existing
+      // external_id) — so we search by external_id, then PUT by internal id;
+      // only POST-create when the contact does not yet exist. Fully non-blocking.
       const _icTok = process.env.INTERCOM_ACCESS_TOKEN;
       if (_icTok) {
-        try {
-          const _icBody = JSON.stringify({
-            external_id: userId,
-            email: email || undefined,
-            name: payload.name,
-            custom_attributes: {
-              user_type: payload.user_type,
-              tiktok_handle: c.creator_handle || undefined,
-              portal: 'inner-circle'
+        const _icAttrs = { user_type: payload.user_type, tiktok_handle: c.creator_handle || undefined, portal: 'inner-circle' };
+        const _icHeaders = (len) => ({
+          'Authorization': 'Bearer ' + _icTok,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Intercom-Version': '2.11',
+          'Content-Length': len
+        });
+        const _icReq = (method, path, payloadObj, cb) => {
+          try {
+            const _b = JSON.stringify(payloadObj);
+            const _r = require('https').request(
+              { hostname: 'api.intercom.io', path, method, headers: _icHeaders(Buffer.byteLength(_b)) },
+              (resp) => { let _d=''; resp.on('data', x => _d += x); resp.on('end', () => cb(null, resp.statusCode, _d)); }
+            );
+            _r.on('error', (e) => cb(e)); _r.write(_b); _r.end();
+          } catch (e) { cb(e); }
+        };
+        // 1) search by external_id
+        _icReq('POST', '/contacts/search',
+          { query: { field: 'external_id', operator: '=', value: userId } },
+          (err, sc, sbody) => {
+            if (err) { console.error('[inner-circle-sqlite] intercom search err:', err.message); return; }
+            let found = null;
+            try { const j = JSON.parse(sbody); if (j && j.data && j.data[0]) found = j.data[0].id; } catch (_) {}
+            if (found) {
+              // 2a) update existing
+              _icReq('PUT', '/contacts/' + found, { custom_attributes: _icAttrs }, (e2, c2, b2) => {
+                if (e2) return console.error('[inner-circle-sqlite] intercom put err:', e2.message);
+                if (c2 >= 300) console.error('[inner-circle-sqlite] intercom put', c2, String(b2).slice(0,200));
+              });
+            } else {
+              // 2b) create new
+              _icReq('POST', '/contacts',
+                { external_id: userId, email: email || undefined, name: payload.name, custom_attributes: _icAttrs },
+                (e3, c3, b3) => {
+                  if (e3) return console.error('[inner-circle-sqlite] intercom create err:', e3.message);
+                  if (c3 >= 300 && c3 !== 409) console.error('[inner-circle-sqlite] intercom create', c3, String(b3).slice(0,200));
+                });
             }
           });
-          const _icReq = require('https').request({
-            hostname: 'api.intercom.io', path: '/contacts', method: 'POST',
-            headers: {
-              'Authorization': 'Bearer ' + _icTok,
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-              'Intercom-Version': '2.11',
-              'Content-Length': Buffer.byteLength(_icBody)
-            }
-          }, (r) => {
-            // 409 = external_id exists; retry as update-by-id is unnecessary —
-            // Intercom upserts on external_id for 2xx. Log non-2xx for visibility.
-            if (r.statusCode >= 300 && r.statusCode !== 409) {
-              let b = ''; r.on('data', d => b += d);
-              r.on('end', () => console.error('[inner-circle-sqlite] intercom attr upsert', r.statusCode, b.slice(0, 200)));
-            } else { r.resume(); }
-          });
-          _icReq.on('error', (e) => console.error('[inner-circle-sqlite] intercom attr upsert err:', e.message));
-          _icReq.write(_icBody); _icReq.end();
-        } catch (e) {
-          console.error('[inner-circle-sqlite] intercom attr upsert threw:', e.message);
-        }
       }
       return res.json(payload);
     } catch (e) {
