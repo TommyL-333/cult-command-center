@@ -26,7 +26,7 @@ const crypto = require('crypto');
 module.exports = function mountInnerCircleSqlite(app, deps = {}) {
   const express = deps.express || require('express');
 
-  // ── Load DB layer defensively ─────────────────────────────────����─────────────
+  // ── Load DB layer defensively ─────────────────────────────────�����─────────────
   let db = null;
   let queries = null;
   let stmts = null;
@@ -874,6 +874,46 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
           payload.intercom_user_jwt = signingInput + '.' + signature;
         } catch (e) {
           console.error('[inner-circle-sqlite] intercom jwt failed:', e.message);
+        }
+      }
+      // Fire-and-forget: write segmentation custom attributes to Intercom via the
+      // REST API (api_writable), since the attributes are messenger_writable:false
+      // and therefore cannot be set through the (even JWT-signed) Messenger boot.
+      // Non-blocking — identity response never waits on or fails because of this.
+      const _icTok = process.env.INTERCOM_ACCESS_TOKEN;
+      if (_icTok) {
+        try {
+          const _icBody = JSON.stringify({
+            external_id: userId,
+            email: email || undefined,
+            name: payload.name,
+            custom_attributes: {
+              user_type: payload.user_type,
+              tiktok_handle: c.creator_handle || undefined,
+              portal: 'inner-circle'
+            }
+          });
+          const _icReq = require('https').request({
+            hostname: 'api.intercom.io', path: '/contacts', method: 'POST',
+            headers: {
+              'Authorization': 'Bearer ' + _icTok,
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+              'Intercom-Version': '2.11',
+              'Content-Length': Buffer.byteLength(_icBody)
+            }
+          }, (r) => {
+            // 409 = external_id exists; retry as update-by-id is unnecessary —
+            // Intercom upserts on external_id for 2xx. Log non-2xx for visibility.
+            if (r.statusCode >= 300 && r.statusCode !== 409) {
+              let b = ''; r.on('data', d => b += d);
+              r.on('end', () => console.error('[inner-circle-sqlite] intercom attr upsert', r.statusCode, b.slice(0, 200)));
+            } else { r.resume(); }
+          });
+          _icReq.on('error', (e) => console.error('[inner-circle-sqlite] intercom attr upsert err:', e.message));
+          _icReq.write(_icBody); _icReq.end();
+        } catch (e) {
+          console.error('[inner-circle-sqlite] intercom attr upsert threw:', e.message);
         }
       }
       return res.json(payload);
