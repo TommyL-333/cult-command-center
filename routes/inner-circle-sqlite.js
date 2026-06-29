@@ -640,7 +640,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     return res.json({ ok: true });
   });
 
-  // ── POST /api/inner-circle/reset-password ───────────────────────────────────
+  // ── POST /api/inner-circle/reset-password ───────���───────────────────────────
   // Body: {token, password}. Completes the forgot-password flow. Validates the
   // single-use token (resetByToken already filters used=0 AND not expired), sets
   // a new scrypt password hash (same format login's verifyPassword expects — NOT
@@ -924,6 +924,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
             }
           });
       }
+      try { payload._ic_diag = { token_present: !!process.env.INTERCOM_ACCESS_TOKEN, token_len: (process.env.INTERCOM_ACCESS_TOKEN||'').length, user_type: payload.user_type, handle: c.creator_handle || null }; } catch(_) {}
       return res.json(payload);
     } catch (e) {
       console.error('[inner-circle-sqlite] GET intercom identity failed:', e.message);
@@ -2571,7 +2572,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     }
   });
 
-  // ── GET /api/inner-circle/offers ─────────────────────────────────────────────
+  // ── GET /api/inner-circle/offers ���────────────────────────────────────────────
   // Lists every offer this brand (client session) has sent. 401 if no session.
   app.get('/api/inner-circle/offers', (req, res) => {
     if (dbError) return res.status(503).json({ error: 'IC database unavailable' });
