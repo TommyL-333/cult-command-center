@@ -807,6 +807,55 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     ];
   }
 
+  // --- Intercom Messenger identity (Phase 1) ---------------------------------
+  // Returns the logged-in creator's identity for the Intercom Messenger widget.
+  // user_type is set SERVER-SIDE from the session, so it is always trustworthy
+  // (a creator on the IC portal is, by definition, an affiliate). If
+  // INTERCOM_IDENTITY_SECRET is set, we also return an HMAC user_hash so Intercom
+  // can cryptographically verify identity. Team emails are tagged user_type=team
+  // so internal traffic does not pollute affiliate feedback.
+  const IC_INTERCOM_TEAM = new Set(
+    String(process.env.INTERCOM_TEAM_EMAILS || 'tommy@cultcontent.cc,hasan@cultcontent.cc,shayan@cultcontent.cc')
+      .split(',').map(e => e.trim().toLowerCase()).filter(Boolean)
+  );
+  app.get('/api/inner-circle/identity', requireSqliteSession, (req, res) => {
+    try {
+      const c = req.icCreator || {};
+      const email = String(c.email || '').trim();
+      const userId = 'ic_' + c.id;
+      const isTeam = email && IC_INTERCOM_TEAM.has(email.toLowerCase());
+      let createdUnix = Math.floor(Date.now() / 1000);
+      if (c.created_at) {
+        const t = Date.parse(String(c.created_at).replace(' ', 'T') + 'Z');
+        if (!isNaN(t)) createdUnix = Math.floor(t / 1000);
+      }
+      const payload = {
+        app_id: process.env.INTERCOM_APP_ID || 'wf9rqc2t',
+        user_id: userId,
+        name: c.creator_name || c.creator_handle || 'Inner Circle Creator',
+        email: email || undefined,
+        created_at: createdUnix,
+        user_type: isTeam ? 'team' : 'affiliate',
+        tiktok_handle: c.creator_handle || undefined,
+        portal: 'inner-circle'
+      };
+      const secret = process.env.INTERCOM_IDENTITY_SECRET;
+      if (secret) {
+        try {
+          const crypto = require('crypto');
+          // Intercom verifies the HMAC over the user_id (the identifier used to boot).
+          payload.user_hash = crypto.createHmac('sha256', secret).update(userId).digest('hex');
+        } catch (e) {
+          console.error('[inner-circle-sqlite] intercom hmac failed:', e.message);
+        }
+      }
+      return res.json(payload);
+    } catch (e) {
+      console.error('[inner-circle-sqlite] GET intercom identity failed:', e.message);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  });
+
   app.get('/api/inner-circle/handles', requireSqliteSession, (req, res) => {
     try {
       return res.json({ handles: icHandlesList(req.icCreator) });
@@ -1663,7 +1712,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     }
   });
 
-  // ── POST /api/inner-circle/generate-scripts ──────────────────────────────────
+  // ── POST /api/inner-circle/generate-scripts ─��────────────────────────────────
   // IC Content Engine — generate TikTok Shop affiliate scripts for a creator's
   // assigned brand + a chosen product. Auth/authorization contract (Step 8):
   //   401 → requireSqliteSession rejects (no/expired session)
@@ -1850,7 +1899,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
         error: (result && (result.reason || result.msg)) || 'bitable-error',
       });
     } catch (e) {
-      // Defensive — the helper is contracted never to throw, but guard anyway.
+      // Defensive �� the helper is contracted never to throw, but guard anyway.
       console.warn('[inner-circle-sqlite] my-scripts failed:', e && e.message);
       return res.json({ ok: false, scripts: [], error: 'exception' });
     }
@@ -2022,7 +2071,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
 
   // ════════════════════════════════════��═════════════════════════════════════���═
   // ADMIN + CLIENT-PORTAL VIEWS (read-only) — added June 2026
-  // ════════════════════════════════════════════════════════════════════════════
+  // ═══════════════════════════════════════════════════════════════════���════════
 
   // ── Shared admin gate for BOTH admin routes (JSON + HTML) ───────────────────
   // Accepts ANY of: (a) portal-admin express-session (req.session.isPortalAdmin),
@@ -2269,7 +2318,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     }
   });
 
-  // ── GET /inner-circle/admin?key=… (PAGE) ────────────────────────────────────
+  // ��─ GET /inner-circle/admin?key=… (PAGE) ────────────────────────────────────
   // Self-contained dark-themed admin roster page. Reads from the JSON endpoint.
   app.get('/inner-circle/admin', (req, res) => {
     if (!icAdminGate(req)) {
@@ -2503,7 +2552,7 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     }
   });
 
-  // ── POST /api/inner-circle/offers/:id/respond ────────────────────���────────────
+  // ── POST /api/inner-circle/offers/:id/respond ─────────────────��──���────────────
   // Creator accepts or declines an offer. Body: {action: 'accept'|'decline'}.
   // IDOR-safe: ownership enforced by creator_id from the session. The offer must
   // belong to this creator (404 otherwise) and still be pending (409 otherwise).
