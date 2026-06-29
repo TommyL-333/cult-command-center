@@ -84,42 +84,51 @@ module.exports = function (app, deps) {
         }
       }
 
-      // Fire-and-forget REST upsert of segmentation attributes (api_writable).
+      // Intercom segmentation attrs are messenger_writable:false, so they must be
+      // written via REST. POST /contacts does NOT upsert (409s on existing
+      // external_id) — so we search by external_id, then PUT by internal id;
+      // only POST-create when the contact does not yet exist. Fully non-blocking.
       const icTok = process.env.INTERCOM_ACCESS_TOKEN;
       if (icTok) {
-        try {
-          const body = JSON.stringify({
-            external_id: userId,
-            email: email || undefined,
-            name: payload.name,
-            custom_attributes: {
-              user_type: payload.user_type,
-              brand: brand.name || undefined,
-              portal: 'client'
+        const icAttrs = { user_type: payload.user_type, brand: brand.name || undefined, portal: 'client' };
+        const icHeaders = (len) => ({
+          'Authorization': 'Bearer ' + icTok,
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Intercom-Version': '2.11',
+          'Content-Length': len
+        });
+        const icCall = (method, path, payloadObj, cb) => {
+          try {
+            const b = JSON.stringify(payloadObj);
+            const r = require('https').request(
+              { hostname: 'api.intercom.io', path, method, headers: icHeaders(Buffer.byteLength(b)) },
+              (resp) => { let d = ''; resp.on('data', x => d += x); resp.on('end', () => cb(null, resp.statusCode, d)); }
+            );
+            r.on('error', (e) => cb(e)); r.write(b); r.end();
+          } catch (e) { cb(e); }
+        };
+        icCall('POST', '/contacts/search',
+          { query: { field: 'external_id', operator: '=', value: userId } },
+          (err, sc, sbody) => {
+            if (err) { console.error('[client-intercom-identity] search err:', err.message); return; }
+            let found = null;
+            try { const j = JSON.parse(sbody); if (j && j.data && j.data[0]) found = j.data[0].id; } catch (_) {}
+            if (found) {
+              icCall('PUT', '/contacts/' + found, { custom_attributes: icAttrs }, (e2, c2, b2) => {
+                if (e2) return console.error('[client-intercom-identity] put err:', e2.message);
+                if (c2 >= 300) console.error('[client-intercom-identity] put', c2, String(b2).slice(0,200));
+              });
+            } else {
+              icCall('POST', '/contacts',
+                { external_id: userId, email: email || undefined, name: payload.name, custom_attributes: icAttrs },
+                (e3, c3, b3) => {
+                  if (e3) return console.error('[client-intercom-identity] create err:', e3.message);
+                  if (c3 >= 300 && c3 !== 409) console.error('[client-intercom-identity] create', c3, String(b3).slice(0,200));
+                });
             }
           });
-          const r = require('https').request({
-            hostname: 'api.intercom.io', path: '/contacts', method: 'POST',
-            headers: {
-              'Authorization': 'Bearer ' + icTok,
-              'Content-Type': 'application/json',
-              'Accept': 'application/json',
-              'Intercom-Version': '2.11',
-              'Content-Length': Buffer.byteLength(body)
-            }
-          }, (resp) => {
-            if (resp.statusCode >= 300 && resp.statusCode !== 409) {
-              let b = ''; resp.on('data', d => b += d);
-              resp.on('end', () => console.error('[client-intercom-identity] attr upsert', resp.statusCode, b.slice(0, 200)));
-            } else { resp.resume(); }
-          });
-          r.on('error', (e) => console.error('[client-intercom-identity] attr upsert err:', e.message));
-          r.write(body); r.end();
-        } catch (e) {
-          console.error('[client-intercom-identity] attr upsert threw:', e.message);
-        }
       }
-
       return res.json(payload);
     } catch (e) {
       console.error('[client-intercom-identity] GET failed:', e.message);
