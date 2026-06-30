@@ -747,6 +747,7 @@ app.get('/creators/:brandSlug', (req, res) => {
   if (!brand?.creatorPage || brand.creatorPage.active === false) {
     return res.status(404).send(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Not found</title></head><body style="font-family:sans-serif;text-align:center;padding:80px 20px;background:#0d0b14;color:#fff"><h1 style="margin-bottom:12px">Page not found</h1><p style="color:#666">This creator page doesn't exist or has been taken down.</p></body></html>`);
   }
+  try { require('./routes/link-tracker').trackClick(req.params.brandSlug, req.query.ref, req); } catch (_) {}
   res.set('Content-Type', 'text/html');
   res.send(renderCreatorPage(brand, brand.creatorPage));
 });
@@ -1216,6 +1217,9 @@ catch (e) { console.error('[content-studio] schema init failed:', e.message); }
 try {
   require('./routes/content-studio-gen')(app, { requireClientSession, loadBrands });
 } catch (e) { console.error('[content-studio-gen] registration failed:', e.message); }
+try {
+  require('./routes/client-intercom-identity')(app, { requireClientSession, loadBrands });
+} catch (e) { console.error('[client-intercom-identity] registration failed:', e.message); }
 
 
 // ─── GET /api/inner-circle/admin/funnel?shopId=NNN ───────────────────────────
@@ -5617,6 +5621,8 @@ financialDashboard.mount(app, { requirePortalAdmin });
 
 const openCollabQueue = require('./routes/open-collab-queue');
 openCollabQueue.mount(app, { DATA_DIR, requirePortalAdmin });
+const linkTracker = require('./routes/link-tracker');
+linkTracker.mount(app, { DATA_DIR });
 
 app.use(requireAuth); // all other routes require auth in production
 

@@ -3965,5 +3965,37 @@
   /* ===== end Cult AI Generator ===== */
 
 </script>
+
+  <!-- Intercom Messenger (verified identity from session) -->
+  <script id="intercom-snippet-client">
+  (function(){
+    var APP_ID = 'wf9rqc2t';
+    var w=window,ic=w.Intercom;
+    if(typeof ic==="function"){ic('reattach_activator');ic('update',w.intercomSettings);}
+    else{var d=document;var i=function(){i.c(arguments);};i.q=[];i.c=function(args){i.q.push(args);};w.Intercom=i;
+      var l=function(){var s=d.createElement('script');s.type='text/javascript';s.async=true;
+        s.src='https://widget.intercom.io/widget/'+APP_ID;
+        var x=d.getElementsByTagName('script')[0];x.parentNode.insertBefore(s,x);};
+      if(d.readyState==='complete'){l();}else if(w.attachEvent){w.addEventListener('load',l,false);}else{w.addEventListener('load',l,false);}}
+    fetch('/api/client/intercom-identity', { credentials:'include' })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(id){
+        var s = { app_id: APP_ID };
+        if (id && id.user_id) {
+          s.user_id = id.user_id;
+          if (id.name) s.name = id.name;
+          if (id.email) s.email = id.email;
+          if (id.created_at) s.created_at = id.created_at;
+          if (id.intercom_user_jwt) s.intercom_user_jwt = id.intercom_user_jwt;
+          s.user_type = id.user_type || 'client';
+          if (id.brand) s.brand = id.brand;
+          s.portal = 'client';
+        }
+        window.intercomSettings = s;
+        window.Intercom('boot', s);
+      })
+      .catch(function(){ window.Intercom('boot', { app_id: APP_ID }); });
+  })();
+  </script>
 </body>
 </html>
