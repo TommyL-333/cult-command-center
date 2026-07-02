@@ -82,7 +82,7 @@ app.use(session({
   },
 }));
 
-// ─── Security: Cloudflare Access authentication ─────────────────────�������─────────
+// ─── Security: Cloudflare Access authentication ─────────────────────��������─────────
 // Cloudflare Access injects CF-Access-Authenticated-User-Email on every request.
 // If CF_ACCESS_AUD is set, we enforce this header — unauthenticated requests get 401.
 const ALLOWED_DOMAINS = (process.env.ALLOWED_EMAIL_DOMAINS || 'cultcontent.cc')
@@ -2098,7 +2098,7 @@ function ensureH264(filePath) {
     });
   });
 }
-// ─────────────────────────────────────────────────────────────────────────────
+// ──────────────────────────────────────────────────────────────────���──────────
 
 const uploadDirect = multer({
   storage: multer.diskStorage({
@@ -3061,11 +3061,17 @@ async function stripeHasPaymentMethod(customerId) {
 app.get('/portal-admin/billing/preview', requirePortalAdmin, async (req, res) => {
   const cycle = billingCycle();
   const now   = new Date();
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  // dataPeriod label: "Jun 1–4" style
-  const startLabel = monthStart.toLocaleString('en-US', { month: 'short', day: 'numeric' });
-  const endLabel   = now.toLocaleString('en-US', { month: 'short', day: 'numeric' });
-  cycle.dataPeriod = startLabel === endLabel ? startLabel : `${startLabel}–${endLabel}`;
+  // Locked-formula billing window (default = current month MTD, or ?month=YYYY-MM)
+  const win = monthWindow(req.query.month);
+  cycle.dataPeriod = win.label;
+  // Available months for the picker: current + trailing 11 closed months
+  const availableMonths = [];
+  { const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+    for (let k = 0; k < 12; k++) {
+      const w = monthWindow(`${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}`);
+      availableMonths.push({ key: w.key, label: w.label });
+      d.setUTCMonth(d.getUTCMonth() - 1);
+    } }
 
   // Only include active clients — exclude internal/test brands
   const INTERNAL_IDS = new Set(['orgsocsmarketing001', 'tctestbrand001']);
@@ -3080,9 +3086,7 @@ app.get('/portal-admin/billing/preview', requirePortalAdmin, async (req, res) =>
   const [gmvResults, pmResults] = await Promise.all([
     Promise.allSettled(active.map((b, i) => {
       const idx = (allBrands.clients || []).findIndex(c => c.id === b.id);
-      return fetchNetGmvForBrand(allBrands.clients[idx] || b, allBrands, idx, {
-        startTs: cycle.monthStart, endTs: cycle.nowTs,
-      });
+      return fetchNetProductSalesForWindow(allBrands.clients[idx] || b, allBrands, idx, win);
     })),
     Promise.allSettled(active.map(b => stripeHasPaymentMethod(b.stripeCustomerId))),
   ]);
@@ -3126,7 +3130,7 @@ app.get('/portal-admin/billing/preview', requirePortalAdmin, async (req, res) =>
       pendingTierChange: b.pendingTierChange || null,
     };
   });
-  res.json({ ok: true, period: cycle.period, dataPeriod: cycle.dataPeriod, nextBillingLabel: cycle.nextBillingLabel, daysUntilBilling: cycle.daysUntilBilling, previews });
+  res.json({ ok: true, period: cycle.period, dataPeriod: cycle.dataPeriod, nextBillingLabel: cycle.nextBillingLabel, daysUntilBilling: cycle.daysUntilBilling, window: { key: win.key, label: win.label, isCurrent: win.isCurrent }, availableMonths, previews });
 });
 
 // GET /portal-admin/billing/history — Stripe invoice history for all active clients
@@ -5788,7 +5792,7 @@ const ghl = axios.create({
   },
 });
 
-// ─── Reacher API client ───────────────────────────────────────────────────────
+// ─── Reacher API client ───────────────────────────────────────��───────────────
 const REACHER_BASE = 'https://api.reacherapp.com/public/v1';
 function reacherClient(shopId) {
   const headers = { 'x-api-key': process.env.REACHER_API_KEY || '', 'Content-Type': 'application/json' };
@@ -7876,7 +7880,7 @@ setInterval(async () => {
 }, 60_000);
 
 // ─── Affiliate Agent routes ──────────────────────────────────────────────────
-// ─────────��──────────────────────────��────────────────────────────────────────
+// ─────────��───────────────��──────────��────────────────────────────────────────
 // Affiliate Agent — routes.js
 // New Express routes to append to dashboard-server.js.
 //
@@ -11431,7 +11435,7 @@ Return ONLY valid JSON: {"caption": "...", "hashtags": ["tag1", "tag2", ...]}
   }
 });
 
-// ─── Fireflies.ai — recent meeting list ──────────────────────────────────────
+// ─── Fireflies.ai — recent meeting list ���─────────────────────────────────────
 app.get('/api/fireflies/meetings', async (req, res) => {
   const keys = [process.env.FIREFLIES_API_KEY, process.env.FIREFLIES_API_KEY_2].filter(Boolean);
   if (!keys.length) return res.json({ connected: false, error: 'FIREFLIES_API_KEY not set' });
