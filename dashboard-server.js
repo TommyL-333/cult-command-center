@@ -3102,7 +3102,9 @@ app.get('/portal-admin/billing/preview', requirePortalAdmin, async (req, res) =>
     const liveGmv = gmvResults[i]?.status === 'fulfilled' ? gmvResults[i].value : null;
     const hasPaymentMethod = pmResults[i]?.status === 'fulfilled' ? pmResults[i].value : false;
     const bill     = clientBilling(b);
-    const gmv      = liveGmv ?? bill.gmv;
+    // Never fall back to the stale relay cache for billing display.
+    // Retainer-only brands (commRate 0, e.g. Diamandia) show no GMV.
+    const gmv      = bill.commRate === 0 ? 0 : (liveGmv ?? 0);
     const commRate = bill.commRate;
     const retainer = bill.retainer;
     const revShare = parseFloat((gmv * commRate).toFixed(2));
@@ -3143,12 +3145,18 @@ app.get('/portal-admin/billing/history', requirePortalAdmin, async (req, res) =>
     !INTERNAL_IDS.has(b.id) && b.source !== 'internal'
   );
   const results = await Promise.allSettled(active.map(async b => {
-    if (!b.stripeCustomerId) return { id: b.id, name: b.name, invoices: [] };
-    const list = await stripe.invoices.list({ customer: b.stripeCustomerId, limit: 24 });
+    const custIds = Array.isArray(b.stripeCustomerIds) && b.stripeCustomerIds.length
+      ? b.stripeCustomerIds
+      : (b.stripeCustomerId ? [b.stripeCustomerId] : []);
+    if (!custIds.length) return { id: b.id, name: b.name, invoices: [] };
+    const lists = await Promise.all(
+      custIds.map(cid => stripe.invoices.list({ customer: cid, limit: 24 }))
+    );
+    const allInvoices = lists.flatMap(l => l.data);
     return {
       id:   b.id,
       name: b.name,
-      invoices: list.data.map(inv => ({
+      invoices: allInvoices.map(inv => ({
         id:         inv.id,
         amountDue:  (inv.amount_due  / 100).toFixed(2),
         amountPaid: (inv.amount_paid / 100).toFixed(2),
