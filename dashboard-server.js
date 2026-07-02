@@ -2485,11 +2485,34 @@ app.get('/portal-admin/clients', requirePortalAdmin, async (req, res) => {
   }
   try {
   const brands = loadBrands();
-  const CANCELLED_STATUSES = new Set([140, 121, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND']);
+
+  // Billing window: ?month=YYYY-MM (a full closed month) or omitted => current month (MTD).
+  const win = monthWindow(req.query.month);
 
   const gmvResults = await Promise.allSettled(
-    (brands.clients || []).map((b, i) => fetchNetGmvForBrand(b, brands, i))
+    (brands.clients || []).map((b, i) => fetchNetProductSalesForWindow(b, brands, i, win))
   );
+
+  // Build the month picker options: from the earliest brand onboarding (floored),
+  // capped at the last 12 months, newest first, always including the current month.
+  const availableMonths = (() => {
+    const nowD = new Date();
+    let earliest = new Date(Date.UTC(nowD.getUTCFullYear(), nowD.getUTCMonth(), 1));
+    for (const b of (brands.clients || [])) {
+      const t = b.onboardedAt ? new Date(b.onboardedAt) : null;
+      if (t && !isNaN(t) && t < earliest) earliest = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth(), 1));
+    }
+    const twelveAgo = new Date(Date.UTC(nowD.getUTCFullYear(), nowD.getUTCMonth() - 11, 1));
+    if (earliest < twelveAgo) earliest = twelveAgo;
+    const out = [];
+    let cur = new Date(Date.UTC(nowD.getUTCFullYear(), nowD.getUTCMonth(), 1));
+    while (cur >= earliest) {
+      const w = monthWindow(`${cur.getUTCFullYear()}-${String(cur.getUTCMonth() + 1).padStart(2, '0')}`);
+      out.push({ key: w.key, label: w.label });
+      cur = new Date(Date.UTC(cur.getUTCFullYear(), cur.getUTCMonth() - 1, 1));
+    }
+    return out;
+  })();
 
   const clients = (brands.clients || []).map((b, i) => {
     const liveGmv  = gmvResults[i]?.status === 'fulfilled' ? gmvResults[i].value : null;
@@ -2514,7 +2537,7 @@ app.get('/portal-admin/clients', requirePortalAdmin, async (req, res) => {
       campaigns:        b.creatorPage?.campaigns || null,
     };
   });
-  res.json({ ok: true, clients });
+  res.json({ ok: true, clients, window: { key: win.key, label: win.label, isCurrent: win.isCurrent }, availableMonths });
   } catch (err) {
     console.error('[portal-admin/clients] failed:', err && err.message);
     try {
