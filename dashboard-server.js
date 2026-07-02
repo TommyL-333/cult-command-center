@@ -2516,8 +2516,9 @@ app.get('/portal-admin/clients', requirePortalAdmin, async (req, res) => {
 
   const clients = (brands.clients || []).map((b, i) => {
     const liveGmv  = gmvResults[i]?.status === 'fulfilled' ? gmvResults[i].value : null;
-    const gmv      = liveGmv ?? b.cachedNetGmv ?? 0;
     const commRate = b.commissionRate ?? 0.10;
+    // Never show the stale relay cache for billing. Retainer-only brands (commRate 0) show 0.
+    const gmv      = commRate === 0 ? 0 : (liveGmv ?? 0);
     return {
       id:               b.id,
       name:             b.name,
