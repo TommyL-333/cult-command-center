@@ -2787,6 +2787,75 @@ app.get('/portal-admin/shop-metrics/:brandId', requirePortalAdmin, async (req, r
 // Fetches net product sales from TikTok Shop orders API.
 // opts.startTs / opts.endTs allow custom date ranges (default: rolling 30 days).
 // Always persists result to brands.json so billing preview can read it.
+// ── LOCKED Net Product Sales (billing base) ────────────────────────────────
+// Net Product Sales = Σ over qualifying line_items of (original_price − seller_discount).
+// Qualifying = NOT is_sample_order AND order_status !== 'CANCELLED'.
+// Do NOT subtract platform_discount (platform-funded). Reconciled to TikTok Seller
+// Center "Net product sales" to the penny (Diamandia Jun 2026 = $11,567.46).
+const NPS_CACHE = new Map(); // key: brandId:YYYY-MM  ->  { value, at }
+
+// Returns { ge, lt, label, key, isCurrent } for a given YYYY-MM (or current month if omitted).
+function monthWindow(monthStr) {
+  const now = new Date();
+  let y, m; // m is 0-indexed
+  if (monthStr && /^\d{4}-\d{2}$/.test(monthStr)) {
+    y = parseInt(monthStr.slice(0, 4), 10);
+    m = parseInt(monthStr.slice(5, 7), 10) - 1;
+  } else {
+    y = now.getUTCFullYear();
+    m = now.getUTCMonth();
+  }
+  const ge = Math.floor(Date.UTC(y, m, 1, 0, 0, 0) / 1000);
+  const lt = Math.floor(Date.UTC(y, m + 1, 1, 0, 0, 0) / 1000);
+  const isCurrent = (y === now.getUTCFullYear() && m === now.getUTCMonth());
+  const label = new Date(Date.UTC(y, m, 1)).toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+    + (isCurrent ? ' (MTD)' : '');
+  const key = `${y}-${String(m + 1).padStart(2, '0')}`;
+  return { ge, lt, label, key, isCurrent };
+}
+
+// Locked-formula Net Product Sales for a brand over an explicit [ge, lt) window.
+// Direct signed TikTok order-search (NOT the relay). Paginates via next_page_token.
+// Caches closed months indefinitely; current (MTD) month ~5 min.
+async function fetchNetProductSalesForWindow(brand, brandsObj, brandIdx, win) {
+  const cacheKey = `${brand.id}:${win.key}`;
+  const cached = NPS_CACHE.get(cacheKey);
+  const ttl = win.isCurrent ? 5 * 60 * 1000 : Infinity;
+  if (cached && (Date.now() - cached.at) < ttl) return cached.value;
+
+  const CANCELLED = new Set(['CANCELLED', 'CANCEL', 140, 4]);
+  let total = 0;
+  try {
+    let pageToken = null;
+    let pageNum = 0;
+    while (pageNum++ < 40) { // up to 40 pages = 2000 orders
+      const body = { create_time_ge: win.ge, create_time_lt: win.lt, sort_field: 'create_time', sort_order: 'DESC' };
+      if (pageToken) body.page_token = pageToken;
+      const resp = await ttsBrandPost(brand, brandsObj, brandIdx, '/order/202309/orders/search', body, { page_size: 50 });
+      const orders = resp?.data?.orders || resp?.data?.order_list || [];
+      for (const o of orders) {
+        if (o.is_sample_order === true) continue;
+        const status = o.order_status ?? o.status;
+        if (status !== undefined && CANCELLED.has(status)) continue;
+        const items = o.line_items || o.item_list || o.items || [];
+        for (const it of items) {
+          const orig = parseFloat(it.original_price ?? it.price ?? 0) || 0;
+          const sellerDisc = parseFloat(it.seller_discount ?? 0) || 0;
+          total += (orig - sellerDisc);
+        }
+      }
+      pageToken = resp?.data?.next_page_token || null;
+      if (!pageToken || orders.length === 0) break;
+    }
+  } catch (err) {
+    console.error(`[nps] ${brand.name} ${win.key} order-search failed:`, err.message);
+    return cached ? cached.value : null; // fall back to any stale cache, else null (honest)
+  }
+  const rounded = Math.round(total * 100) / 100;
+  NPS_CACHE.set(cacheKey, { value: rounded, at: Date.now() });
+  return rounded;
+}
+
 async function fetchNetGmvForBrand(brand, brandsObj, brandIdx, opts = {}) {
   // GMV source priority: (1) direct TikTok app via the client's own token,
   // (2) Sisyphus/Reacher affiliate relay (keyed by shopId), (3) last-known cache.
