@@ -482,6 +482,7 @@
         <div style="font-size:0.78rem;color:var(--muted);margin-top:3px;" id="billingSubtitle">Fetching billing data…</div>
       </div>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <select id="billingMonth" onchange="loadBilling()" style="background:var(--bg);border:1px solid var(--border);border-radius:8px;color:var(--fg);font-size:0.78rem;font-weight:600;padding:5px 10px;cursor:pointer;font-family:inherit;"></select>
         <span class="billing-countdown" id="billingCountdown" style="display:none;"></span>
         <button class="billing-subtab active" id="bstabCurrent" onclick="setBillingTab('current')">Current Month</button>
         <button class="billing-subtab" id="bstabHistory" onclick="setBillingTab('history')">History</button>
@@ -831,11 +832,21 @@
   async function loadBilling() {
     window._billingLoaded = true;
     const grid = document.getElementById('billingGrid');
+    const sel = document.getElementById('billingMonth');
+    const monthParam = sel && sel.value ? ('?month=' + encodeURIComponent(sel.value)) : '';
+    grid.innerHTML = '<div class="empty-state">Computing net product sales…</div>';
     try {
-      const res  = await fetch('/portal-admin/billing/preview');
+      const res  = await fetch('/portal-admin/billing/preview' + monthParam);
       if (res.status === 401) { window.location.href = '/portal-admin'; return; }
       const data = await res.json();
       if (!data.ok) throw new Error(data.error || 'Failed');
+
+      // Populate month picker once (or refresh options), preserve selection
+      if (sel && Array.isArray(data.availableMonths) && data.availableMonths.length) {
+        const current = sel.value || (data.window && data.window.key) || data.availableMonths[0].key;
+        sel.innerHTML = data.availableMonths.map(m => '<option value="' + m.key + '">' + m.label + '</option>').join('');
+        sel.value = current;
+      }
 
       document.getElementById('billingPeriod').textContent = `${data.period} Invoices`;
       document.getElementById('billingSubtitle').textContent =
