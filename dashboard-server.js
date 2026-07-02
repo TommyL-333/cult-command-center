@@ -2544,8 +2544,9 @@ app.get('/portal-admin/clients', requirePortalAdmin, async (req, res) => {
     try {
       const brands = loadBrands();
       const clients = (brands.clients || []).map((b) => {
-        const gmv = b.cachedNetGmv ?? 0;
         const commRate = b.commissionRate ?? 0.10;
+        const gmv = 0; // error fallback: never show a stale billing figure
+        void b.cachedNetGmv;
         return {
           id: b.id, name: b.name, email: b.loginEmail || '',
           hasPassword: !!b.passwordHash,
