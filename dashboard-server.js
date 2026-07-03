@@ -13625,6 +13625,23 @@ ${talkingHtml ? `
   </div>
 </div>` : ''}
 
+${(() => { const guideUrl = cp.guideUrl || (brief && brief.guideUrl) || ''; if (!guideUrl) return ''; return `
+<hr class="page-divider">
+<div class="section">
+  <div class="section-inner">
+    <div class="section-label" style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:${accent};margin-bottom:10px">The Full Playbook</div>
+    <div class="section-title">Go deeper</div>
+    <div class="section-sub">The complete creator guide — hooks, scripts, FAQs, do\u0027s and don\u0027ts, and how to use the product on camera.</div>
+    <a href="${guideUrl}" target="_blank" rel="noopener" class="camp-btn" style="margin-top:16px">
+      <div class="camp-btn-text">
+        <div class="camp-btn-label">\ud83d\udcd6 Read the full ${name} playbook</div>
+        <div class="camp-btn-sub">Everything you need to make content that converts</div>
+      </div>
+      <div class="camp-btn-arrow">\u2192</div>
+    </a>
+  </div>
+</div>`; })()}
+
 ${cp.productRequestEnabled ? `
 <hr class="page-divider">
 <div class="section">
