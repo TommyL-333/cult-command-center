@@ -116,7 +116,9 @@
     <div class="error" id="errMsg"></div>
 
     <form id="loginForm">
-      <label for="password">Admin Password</label>
+      <label for="username">Username or Email <span style="opacity:.55;font-weight:400">(leave blank for shared admin password)</span></label>
+      <input type="text" id="username" name="username" autocomplete="username" placeholder="danny">
+      <label for="password" style="margin-top:14px;display:block">Password</label>
       <input type="password" id="password" name="password" autocomplete="current-password" required placeholder="••••••••">
       <button type="submit" class="btn" id="submitBtn">Sign In</button>
     </form>
@@ -134,10 +136,14 @@
       submitBtn.textContent = 'Signing in…';
 
       try {
-        const res = await fetch('/portal-admin/login', {
+        const uname = (document.getElementById('username').value || '').trim();
+        const pw = document.getElementById('password').value;
+        const url = uname ? '/portal-admin/team-login' : '/portal-admin/login';
+        const payload = uname ? { username: uname, password: pw } : { password: pw };
+        const res = await fetch(url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ password: document.getElementById('password').value }),
+          body: JSON.stringify(payload),
         });
         const data = await res.json();
         if (data.ok) {
