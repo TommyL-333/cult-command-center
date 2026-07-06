@@ -663,6 +663,10 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
   app.get('/my-tasks', requireAuth, (req, res) => {
     res.type('html').send(MY_TASKS_HTML);
   });
+  // Alias: the portal-admin nav links to /ops/my-tasks — serve the same page there.
+  app.get('/ops/my-tasks', requireAuth, (req, res) => {
+    res.type('html').send(MY_TASKS_HTML);
+  });
 
   // Expose helpers for later steps / test harnesses.
   registerOpsMyTasks._helpers = {
