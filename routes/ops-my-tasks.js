@@ -56,6 +56,214 @@ const SEED_EMAIL_OPENID = {
   'shayan@cultcontent.cc': 'ou_19a69dda7462358e4b3c31e2f157a238',
 };
 
+const MY_TASKS_HTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>My Tasks · Cult Content</title>
+<style>
+  :root{
+    --bg:#161823; --panel:#1e2030; --panel2:#252838; --border:#2f3346;
+    --txt:#e8eaf2; --muted:#9aa0b5; --cyan:#00f2ea; --red:#ff0050;
+    --p1:#ff0050; --p2:#ff9f0a; --p3:#ffd60a; --p4:#5a6072;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:860px;margin:0 auto;padding:28px 18px 80px}
+  header.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  h1{font-size:24px;margin:0;font-weight:700;background:linear-gradient(90deg,var(--cyan),var(--red));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .sub{color:var(--muted);font-size:13px;margin:2px 0 20px}
+  .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:22px}
+  .chip{background:var(--panel2);border:1px solid var(--border);color:var(--muted);padding:6px 13px;border-radius:20px;font-size:12.5px;cursor:pointer;transition:.15s;user-select:none}
+  .chip:hover{border-color:var(--cyan);color:var(--txt)}
+  .chip.active{background:linear-gradient(90deg,rgba(0,242,234,.16),rgba(255,0,80,.16));border-color:var(--cyan);color:var(--txt)}
+  .group{margin-bottom:26px}
+  .group h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 11px;display:flex;align-items:center;gap:8px}
+  .dot{width:9px;height:9px;border-radius:50%}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px 15px;margin-bottom:10px;display:flex;justify-content:space-between;gap:14px;align-items:flex-start}
+  .card .body{flex:1;min-width:0}
+  .card .task-title{font-size:15px;font-weight:600;margin:0 0 5px;line-height:1.35}
+  .meta{display:flex;gap:7px;flex-wrap:wrap;margin-top:7px}
+  .tag{font-size:11px;color:var(--muted);background:var(--panel2);border:1px solid var(--border);padding:2px 8px;border-radius:6px}
+  .tag.client{color:var(--cyan);border-color:rgba(0,242,234,.3)}
+  .prompt{color:var(--muted);font-size:12.5px;margin-top:7px;line-height:1.45;white-space:pre-wrap}
+  .btn{background:linear-gradient(90deg,var(--cyan),var(--red));color:#0c0d15;border:none;padding:8px 15px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap}
+  .btn:hover{opacity:.9}
+  .btn.ghost{background:var(--panel2);color:var(--txt);border:1px solid var(--border)}
+  .empty{text-align:center;color:var(--muted);padding:60px 20px;font-size:14px}
+  .empty .big{font-size:40px;margin-bottom:10px}
+  /* modal */
+  .overlay{position:fixed;inset:0;background:rgba(6,7,12,.72);backdrop-filter:blur(3px);display:none;align-items:center;justify-content:center;padding:20px;z-index:50}
+  .overlay.show{display:flex}
+  .modal{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:22px;width:100%;max-width:480px}
+  .modal h3{margin:0 0 4px;font-size:17px}
+  .modal .mt{color:var(--muted);font-size:13px;margin:0 0 16px}
+  .modal label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+  .modal textarea{width:100%;min-height:110px;background:var(--panel2);border:1px solid var(--border);border-radius:9px;color:var(--txt);padding:11px;font-size:14px;font-family:inherit;resize:vertical}
+  .modal textarea:focus{outline:none;border-color:var(--cyan)}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:16px}
+  .err{color:var(--red);font-size:12.5px;margin-top:8px;display:none}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--cyan);color:var(--txt);padding:11px 18px;border-radius:10px;font-size:13.5px;display:none;z-index:60}
+  .banner{background:rgba(255,159,10,.12);border:1px solid rgba(255,159,10,.4);color:#ffcf8a;padding:12px 15px;border-radius:10px;font-size:13.5px;margin-bottom:20px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div><h1>My Tasks</h1></div>
+    <button class="chip" onclick="load()" title="Refresh">↻ Refresh</button>
+  </header>
+  <div class="sub" id="sub">Loading your Ops Engine tasks…</div>
+
+  <div id="unlinked" class="banner" style="display:none"></div>
+  <div class="filters" id="filters" style="display:none"></div>
+  <div id="board"></div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <h3>Complete task</h3>
+    <p class="mt" id="modalTask"></p>
+    <label for="resultBox">Result / Output <span style="color:var(--red)">*</span> — what did you do?</label>
+    <textarea id="resultBox" placeholder="Describe the outcome. Required."></textarea>
+    <div class="err" id="modalErr">A result / output note is required.</div>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn" id="confirmBtn" disabled onclick="doComplete()">Mark complete</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+var ALL=[]; var FILTER='all'; var CURRENT=null;
+var PRIO=[
+  {key:'Critical',label:'Critical',color:'var(--p1)',match:['critical','p0','urgent']},
+  {key:'High',label:'High',color:'var(--p2)',match:['high','p1']},
+  {key:'Medium',label:'Medium',color:'var(--p3)',match:['medium','normal','p2']},
+  {key:'Low',label:'Low',color:'var(--p4)',match:['low','p3','']}
+];
+function prioBucket(p){
+  var s=(p||'').toLowerCase().trim();
+  for(var i=0;i<PRIO.length;i++){ if(PRIO[i].match.indexOf(s)>=0) return PRIO[i]; }
+  // default unknown -> Medium
+  return PRIO[2];
+}
+function esc(s){return (s||'').replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+
+function load(){
+  document.getElementById('sub').textContent='Loading your Ops Engine tasks…';
+  fetch('/api/my-tasks/list',{credentials:'include'}).then(function(r){return r.json();}).then(function(d){
+    if(d.unlinked){
+      document.getElementById('unlinked').style.display='block';
+      document.getElementById('unlinked').textContent=d.message||'Your account is not linked to a task owner yet.';
+      document.getElementById('sub').textContent='';
+      return;
+    }
+    ALL=d.tasks||[];
+    document.getElementById('sub').textContent=ALL.length+' active task'+(ALL.length===1?'':'s')+' assigned to you.';
+    renderFilters(); render();
+  }).catch(function(e){
+    document.getElementById('sub').textContent='Failed to load tasks: '+e;
+  });
+}
+
+function renderFilters(){
+  var pillars={}; ALL.forEach(function(t){ if(t.pillar) pillars[t.pillar]=1; });
+  var keys=Object.keys(pillars).sort();
+  var el=document.getElementById('filters');
+  el.style.display='flex';
+  var html='<div class="chip'+(FILTER==='all'?' active':'')+'" onclick="setFilter(\\'all\\')">All Pillars</div>';
+  keys.forEach(function(k){
+    html+='<div class="chip'+(FILTER===k?' active':'')+'" onclick="setFilter(\\''+esc(k).replace(/'/g,"")+'\\')">'+esc(k)+'</div>';
+  });
+  el.innerHTML=html;
+}
+function setFilter(f){FILTER=f;renderFilters();render();}
+
+function render(){
+  var board=document.getElementById('board');
+  var list=ALL.filter(function(t){return FILTER==='all'||t.pillar===FILTER;});
+  if(!list.length){
+    board.innerHTML='<div class="empty"><div class="big">✓</div>Nothing here. You are all caught up.</div>';
+    return;
+  }
+  var html='';
+  PRIO.forEach(function(P){
+    var g=list.filter(function(t){return prioBucket(t.priority).key===P.key;});
+    if(!g.length) return;
+    html+='<div class="group"><h2><span class="dot" style="background:'+P.color+'"></span>'+P.label+' · '+g.length+'</h2>';
+    g.forEach(function(t){
+      html+='<div class="card"><div class="body">';
+      html+='<div class="task-title">'+esc(t.task||'(untitled)')+'</div>';
+      html+='<div class="meta">';
+      if(t.client) html+='<span class="tag client">'+esc(t.client)+'</span>';
+      if(t.pillar) html+='<span class="tag">'+esc(t.pillar)+'</span>';
+      if(t.status) html+='<span class="tag">'+esc(t.status)+'</span>';
+      if(t.executionMode) html+='<span class="tag">'+esc(t.executionMode)+'</span>';
+      html+='</div>';
+      if(t.promptAction) html+='<div class="prompt">'+esc(t.promptAction)+'</div>';
+      html+='</div>';
+      html+='<button class="btn" onclick="openModal(\\''+t.record_id+'\\')">Complete</button>';
+      html+='</div>';
+    });
+    html+='</div>';
+  });
+  board.innerHTML=html;
+}
+
+function openModal(id){
+  CURRENT=ALL.filter(function(t){return t.record_id===id;})[0];
+  if(!CURRENT) return;
+  document.getElementById('modalTask').textContent=CURRENT.task||'';
+  var box=document.getElementById('resultBox'); box.value='';
+  document.getElementById('modalErr').style.display='none';
+  document.getElementById('confirmBtn').disabled=true;
+  document.getElementById('overlay').classList.add('show');
+  setTimeout(function(){box.focus();},50);
+}
+function closeModal(){document.getElementById('overlay').classList.remove('show');CURRENT=null;}
+document.getElementById('resultBox').addEventListener('input',function(){
+  // CLIENT-SIDE required-result guard: submit disabled until non-empty (trimmed).
+  document.getElementById('confirmBtn').disabled = this.value.trim().length===0;
+});
+
+function doComplete(){
+  if(!CURRENT) return;
+  var result=document.getElementById('resultBox').value.trim();
+  if(!result){ document.getElementById('modalErr').style.display='block'; return; }
+  var btn=document.getElementById('confirmBtn'); btn.disabled=true; btn.textContent='Saving…';
+  fetch('/api/my-tasks/complete',{
+    method:'POST',credentials:'include',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({record_id:CURRENT.record_id,result:result})
+  }).then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j};});})
+  .then(function(x){
+    btn.textContent='Mark complete';
+    if(x.ok&&x.j.verified){
+      ALL=ALL.filter(function(t){return t.record_id!==CURRENT.record_id;});
+      closeModal(); renderFilters(); render();
+      document.getElementById('sub').textContent=ALL.length+' active task'+(ALL.length===1?'':'s')+' assigned to you.';
+      toast('✓ Completed & verified in Bitable');
+    } else {
+      document.getElementById('modalErr').style.display='block';
+      document.getElementById('modalErr').textContent=(x.j&&x.j.error)||'Failed to complete.';
+      btn.disabled=false;
+    }
+  }).catch(function(e){
+    document.getElementById('modalErr').style.display='block';
+    document.getElementById('modalErr').textContent='Network error: '+e;
+    btn.disabled=false; btn.textContent='Mark complete';
+  });
+}
+function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(function(){t.style.display='none';},2600);}
+
+load();
+</script>
+</body>
+</html>`;
+
 module.exports = function registerOpsMyTasks(app, deps = {}) {
   const axios = deps.axios || require('axios');
   const express = deps.express || require('express');
@@ -444,6 +652,16 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
       console.error('[ops-my-tasks] complete error:', e.message);
       res.status(500).json({ error: 'Failed to complete task', detail: e.message });
     }
+  });
+
+
+  // ---------- ROUTE: GET /my-tasks (HTML page) ----------
+  // The per-person task board. Auth-gated. Renders a dark-theme page that
+  // fetches /api/my-tasks/list on load, groups tasks by Priority, offers a
+  // Pillar filter, and completes tasks via a modal with a CLIENT-SIDE
+  // required-result guard (submit disabled until the textarea is non-empty).
+  app.get('/my-tasks', requireAuth, (req, res) => {
+    res.type('html').send(MY_TASKS_HTML);
   });
 
   // Expose helpers for later steps / test harnesses.
