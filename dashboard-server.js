@@ -1221,6 +1221,14 @@ try {
   require('./routes/client-intercom-identity')(app, { requireClientSession, loadBrands });
 } catch (e) { console.error('[client-intercom-identity] registration failed:', e.message); }
 
+// Ops Engine "My Tasks" per-person UI. Mounted BEFORE app.use(requireAuth) so
+// unauthenticated API hits return a clean JSON 401 (the module carries its own
+// self-contained auth guard reading req.userEmail / session). Serves
+// /api/my-tasks/list, /api/my-tasks/complete on manifest.cultcontent.cc.
+try {
+  require('./routes/ops-my-tasks')(app, { express });
+} catch (e) { console.error('[ops-my-tasks] registration failed:', e.message); }
+
 
 // ─── GET /api/inner-circle/admin/funnel?shopId=NNN ───────────────────────────
 // Admin-only Inner Circle funnel: shows each IC signup's state for one shop —
