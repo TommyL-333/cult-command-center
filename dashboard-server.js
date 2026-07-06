@@ -1226,7 +1226,7 @@ try {
 // self-contained auth guard reading req.userEmail / session). Serves
 // /api/my-tasks/list, /api/my-tasks/complete on manifest.cultcontent.cc.
 try {
-  require('./routes/ops-my-tasks')(app, { express });
+  require('./routes/ops-my-tasks')(app, { express, requireAuth, getLarkTenantToken });
 } catch (e) { console.error('[ops-my-tasks] registration failed:', e.message); }
 
 
