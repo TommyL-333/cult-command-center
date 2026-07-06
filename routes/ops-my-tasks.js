@@ -59,7 +59,21 @@ const SEED_EMAIL_OPENID = {
 module.exports = function registerOpsMyTasks(app, deps = {}) {
   const axios = deps.axios || require('axios');
   const express = deps.express || require('express');
-  const requireAuth = deps.requireAuth || ((req, res, next) => next());
+  // Auth gate. Prefer the host app's requireAuth (CF Access / team session).
+  // When none is provided (e.g. standalone/dynamic mount before the auth wall),
+  // fall back to a self-contained guard that returns a CLEAN JSON 401 when the
+  // request carries no authenticated identity — so unauthenticated API hits are
+  // never silently allowed through. (DoD: unauth /api/my-tasks/* -> JSON 401.)
+  const requireAuth =
+    deps.requireAuth ||
+    ((req, res, next) => {
+      const email = req.userEmail || (req.session && req.session.userEmail);
+      const isAdmin = !!(req.session && req.session.isPortalAdmin);
+      if (email || isAdmin) return next();
+      return res
+        .status(401)
+        .json({ error: 'Authentication required', code: 401 });
+    });
   const providedGetToken = deps.getLarkTenantToken;
   const jsonBody = express.json();
 
