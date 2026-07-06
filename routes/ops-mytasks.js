@@ -62,6 +62,25 @@ async function liveStatus(recordId) {
   return (s && (s.text || s)) || s || null;
 }
 
+// Read the live Owner (User field) open_ids of a record straight from Bitable.
+// Owner cells come back as an array of user objects [{ id: "ou_...", name, ... }].
+// Returns an array of open_id strings (may be empty).
+async function ownerIds(recordId) {
+  const token = await lib._internal.larkToken();
+  const app = lib._internal.OPS_APP_TOKEN, tbl = lib._internal.TASKS_TABLE_ID;
+  const axios = require("axios");
+  const r = await axios.get(
+    `https://open.larksuite.com/open-apis/bitable/v1/apps/${app}/tables/${tbl}/records/${recordId}`,
+    { headers: { Authorization: `Bearer ${token}` }, timeout: 15000 }
+  );
+  const f = (((r.data || {}).data || {}).record || {}).fields || {};
+  const owner = f["Owner"];
+  const arr = Array.isArray(owner) ? owner : (owner ? [owner] : []);
+  return arr
+    .map((u) => (u && typeof u === "object" ? (u.id || u.open_id) : u))
+    .filter((id) => typeof id === "string" && id.startsWith("ou_"));
+}
+
 function mount(app, deps = {}) {
   const requirePortalAdmin = deps.requirePortalAdmin || function (req, res, next) {
     if (req.session && req.session.isPortalAdmin === true) return next();
@@ -97,18 +116,44 @@ function mount(app, deps = {}) {
     }
   });
 
-  // POST status transition (guarded)
+  // POST status transition (guarded + ownership-enforced)
+  // Step 5 scope: one-click Start / Block transitions -> {recordId, status[, note]}.
+  // status must be one of To Do | In Progress | Blocked (Completed goes via /complete).
+  // Ownership: the signed-in user's open_id MUST be in the record's Owner cell -> else 403.
+  // When status === Blocked and a note is present, the note is appended to
+  // Result / Output prefixed with 'BLOCKED: ' so blockers are visible in the base.
   app.post('/ops/my-tasks/api/status', requirePortalAdmin, async (req, res) => {
     const { recordId, status, note } = req.body || {};
     if (!recordId) return res.status(400).json({ error: 'recordId required' });
     if (!status) return res.status(400).json({ error: 'status required' });
+
+    // Restrict to the one-click transition set for this endpoint.
+    const ALLOWED = ['To Do', 'In Progress', 'Blocked'];
+    if (!ALLOWED.includes(status)) {
+      return res.status(400).json({ error: `status must be one of ${ALLOWED.join(', ')}` });
+    }
+
     try {
+      // Ownership check — resolve the caller's open_id and confirm it owns this record.
+      const openId = await lib.resolveOpenId(req.session || {});
+      if (!openId) return res.status(403).json({ ok: false, error: 'could not resolve your Lark open_id' });
+      const owners = await ownerIds(recordId);
+      if (!owners.includes(openId)) {
+        return res.status(403).json({ ok: false, error: 'you are not the Owner of this task' });
+      }
+
       const from = await liveStatus(recordId);          // live source of truth
       const chk = checkTransition(from, status);
       if (!chk.ok) return res.status(chk.code).json({ ok: false, from, to: status, error: chk.error });
-      // note is optional here (used e.g. when moving to Blocked)
+
+      // Blocked: append the reason to Result / Output prefixed BLOCKED:. Other
+      // transitions carry the note through verbatim (optional).
       const opts = { status };
-      if (note && String(note).trim()) opts.resultNote = String(note).trim();
+      const trimmed = note && String(note).trim();
+      if (trimmed) {
+        opts.resultNote = status === 'Blocked' ? `BLOCKED: ${trimmed}` : trimmed;
+      }
+
       const w = await lib.updateTaskStatus(recordId, opts);
       if (!w.ok) return res.status(500).json({ ok: false, from, to: status, error: w.error });
       res.json({ ok: true, recordId, from, to: status, noteWritten: !!opts.resultNote });
