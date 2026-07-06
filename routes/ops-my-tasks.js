@@ -525,6 +525,15 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
     return { email, isAdmin, openId };
   }
 
+  app.get('/api/my-tasks/whoami', requireAuth, async (req, res) => {
+    const email = req.userEmail || (req.session && req.session.userEmail) || null;
+    let openId = null, err = null;
+    try { openId = await resolveOpenId(email); } catch (e) { err = e.message; }
+    let teamKeys = [];
+    try { const t = await getTeamByEmail(); teamKeys = Object.keys(t); } catch (e) {}
+    res.json({ email, openId, seedHasEmail: !!(email && SEED_EMAIL_OPENID[email.toLowerCase()]), teamEmailKeys: teamKeys, err });
+  });
+
   // ---------- ROUTE: GET /api/my-tasks/list ----------
   app.get('/api/my-tasks/list', requireAuth, async (req, res) => {
     try {
