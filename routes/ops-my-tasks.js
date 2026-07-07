@@ -78,6 +78,9 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .chip{background:var(--panel2);border:1px solid var(--border);color:var(--muted);padding:6px 13px;border-radius:20px;font-size:12.5px;cursor:pointer;transition:.15s;user-select:none}
   .chip:hover{border-color:var(--cyan);color:var(--txt)}
   .chip.active{background:linear-gradient(90deg,rgba(0,242,234,.16),rgba(255,0,80,.16));border-color:var(--cyan);color:var(--txt)}
+  a.chip{text-decoration:none;display:inline-flex;align-items:center;gap:5px}
+  .chip.sisy{background:linear-gradient(90deg,rgba(0,242,234,.22),rgba(255,0,80,.22));border-color:var(--cyan);color:var(--txt);font-weight:600}
+  .chip.sisy:hover{box-shadow:0 0 12px rgba(0,242,234,.35)}
   .group{margin-bottom:26px}
   .group h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 11px;display:flex;align-items:center;gap:8px}
   .dot{width:9px;height:9px;border-radius:50%}
@@ -112,7 +115,10 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
 <div class="wrap">
   <header class="top">
     <div><h1>My Tasks</h1></div>
-    <button class="chip" onclick="load()" title="Refresh">↻ Refresh</button>
+    <div style="display:flex;gap:8px;align-items:center">
+      <a class="chip sisy" href="https://sisyphus.cultcontent.cc" target="_blank" rel="noopener" title="Work on your tasks with Sisyphus">🪨 Go to Sisyphus</a>
+      <button class="chip" onclick="load()" title="Refresh">↻ Refresh</button>
+    </div>
   </header>
   <div class="sub" id="sub">Loading your Ops Engine tasks…</div>
 
@@ -128,9 +134,12 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     <label for="resultBox">Result / Output <span style="color:var(--red)">*</span> — what did you do?</label>
     <textarea id="resultBox" placeholder="Describe the outcome. Required."></textarea>
     <div class="err" id="modalErr">A result / output note is required.</div>
-    <div class="modal-actions">
-      <button class="btn ghost" onclick="closeModal()">Cancel</button>
-      <button class="btn" id="confirmBtn" disabled onclick="doComplete()">Mark complete</button>
+    <div class="modal-actions" style="justify-content:space-between">
+      <a class="chip sisy" id="sisyLink" href="https://sisyphus.cultcontent.cc" target="_blank" rel="noopener">🪨 Work on this in Sisyphus</a>
+      <div style="display:flex;gap:10px">
+        <button class="btn ghost" onclick="closeModal()">Cancel</button>
+        <button class="btn" id="confirmBtn" disabled onclick="doComplete()">Mark complete</button>
+      </div>
     </div>
   </div>
 </div>
@@ -217,6 +226,8 @@ function openModal(id){
   CURRENT=ALL.filter(function(t){return t.record_id===id;})[0];
   if(!CURRENT) return;
   document.getElementById('modalTask').textContent=CURRENT.task||'';
+  var sl=document.getElementById('sisyLink');
+  if(sl){var q='Help me work on this Ops Engine task: '+(CURRENT.task||'')+(CURRENT.client?' (client: '+CURRENT.client+')':'');sl.href='https://sisyphus.cultcontent.cc/?prefill='+encodeURIComponent(q);}
   var box=document.getElementById('resultBox'); box.value='';
   document.getElementById('modalErr').style.display='none';
   document.getElementById('confirmBtn').disabled=true;
