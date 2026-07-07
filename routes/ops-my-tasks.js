@@ -131,7 +131,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   <div class="modal">
     <h3 id="modalTitle">Complete task</h3>
     <p class="mt" id="modalTask"></p>
-    <div id="assignWrap" style="display:none;margin-bottom:10px"><label for="assignSel">Reassign to</label><select id="assignSel" style="width:100%;margin-top:6px;padding:10px;border-radius:8px;background:var(--panel2);color:var(--txt);border:1px solid var(--border)"></select></div>
+    <div id="assignWrap" style="display:none;margin-bottom:10px"><label for="assignSel">Reassign to</label><select id="assignSel" style="width:100%;margin-top:6px;padding:10px;border-radius:8px;background:var(--panel2);color:var(--txt);border:1px solid var(--border)"></select><label for="prioSel" style="display:block;margin-top:12px">Priority</label><select id="prioSel" style="width:100%;margin-top:6px;padding:10px;border-radius:8px;background:var(--panel2);color:var(--txt);border:1px solid var(--border)"><option value="🔴 Critical">🔴 Critical</option><option value="🟠 High">🟠 High</option><option value="🟡 Normal">🟡 Normal</option><option value="⚪ Low">⚪ Low</option></select></div>
     <label for="resultBox" id="modalLabel">Result / Output <span style="color:var(--red)">*</span> — what did you do?</label>
     <textarea id="resultBox" placeholder="Describe the outcome. Required."></textarea>
     <div class="err" id="modalErr">A result / output note is required.</div>
@@ -257,6 +257,10 @@ function openAssignModal(id){
     sel.innerHTML='<option value="">Choose a teammate…</option>'+TEAM.map(function(m){return '<option value="'+m.openId+'">'+esc(m.name)+(m.role?' — '+esc(m.role):'')+'</option>';}).join('');
     sel.onchange=function(){btn.disabled=!this.value;};
   };
+  var ps=document.getElementById('prioSel');
+  var curP=(CURRENT.priority||'').trim();
+  var match=['🔴 Critical','🟠 High','🟡 Normal','⚪ Low'].filter(function(p){return p===curP||p.indexOf(curP)>=0&&curP;});
+  ps.value=(match[0])||'🟡 Normal';
   if(TEAM.length){fill();}
   else{
     fetch('/api/my-tasks/team',{credentials:'include'}).then(function(r){return r.json();}).then(function(d){
@@ -273,7 +277,7 @@ function doReassign(){
   fetch('/api/my-tasks/reassign',{
     method:'POST',credentials:'include',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({record_id:CURRENT.record_id,to_open_id:to})
+    body:JSON.stringify({record_id:CURRENT.record_id,to_open_id:to,priority:document.getElementById('prioSel').value})
   }).then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j};});})
   .then(function(x){
     btn.textContent='Reassign';
@@ -769,12 +773,16 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
   // write shape [{id: open_id}]) -> read-back verification.
   app.post('/api/my-tasks/reassign', requireAuth, jsonBody, async (req, res) => {
     try {
-      const { record_id, to_open_id } = req.body || {};
+      const { record_id, to_open_id, priority } = req.body || {};
       if (!record_id || typeof record_id !== 'string') {
         return res.status(400).json({ error: 'record_id is required' });
       }
       if (!to_open_id || typeof to_open_id !== 'string' || !/^ou_[a-f0-9]+$/i.test(to_open_id)) {
         return res.status(400).json({ error: 'A valid to_open_id is required.' });
+      }
+      const PRIORITIES = ['🔴 Critical', '🟠 High', '🟡 Normal', '⚪ Low'];
+      if (priority !== undefined && priority !== null && priority !== '' && !PRIORITIES.includes(priority)) {
+        return res.status(400).json({ error: 'Invalid priority. Must be one of: ' + PRIORITIES.join(', ') });
       }
 
       const { openId, isAdmin } = await resolveCaller(req);
@@ -794,19 +802,24 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
         return res.status(403).json({ error: "You can't reassign a task you don't own." });
       }
 
-      await patchRecord(record_id, { Owner: [{ id: to_open_id }] });
+      const patchFields = { Owner: [{ id: to_open_id }] };
+      if (priority && PRIORITIES.includes(priority)) patchFields.Priority = priority;
+      await patchRecord(record_id, patchFields);
 
       const after = await readRecord(record_id);
-      const afterOwners = ownerIds((after && after.fields) || {});
-      const verified = afterOwners.includes(to_open_id);
+      const afterFields = (after && after.fields) || {};
+      const afterOwners = ownerIds(afterFields);
+      const afterPriority = textVal(afterFields.Priority) || afterFields.Priority || '';
+      const prioVerified = !priority || String(afterPriority) === priority;
+      const verified = afterOwners.includes(to_open_id) && prioVerified;
       if (!verified) {
         return res.status(500).json({
           ok: false, verified: false,
           error: 'Write did not verify on read-back',
-          readback: { owners: afterOwners },
+          readback: { owners: afterOwners, priority: afterPriority },
         });
       }
-      return res.json({ ok: true, verified: true, record_id, owners: afterOwners });
+      return res.json({ ok: true, verified: true, record_id, owners: afterOwners, priority: afterPriority });
     } catch (e) {
       console.error('[ops-my-tasks] reassign error:', e.message);
       res.status(500).json({ error: 'Failed to reassign task', detail: e.message });
@@ -967,51 +980,6 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
     }
   });
 
-
-  // ---------- ROUTE: GET /api/my-tasks/team ----------
-  // Returns all active tasks across the whole team, keyed by owner open_id.
-  // Accessible to any CF Access authenticated user (the gate is already at the edge).
-  // Response: { byOwner: { [open_id]: { email, tasks[] } }, unowned: tasks[] }
-  app.get('/api/my-tasks/team', requireAuth, async (req, res) => {
-    try {
-      const [records, clientsMap, teamByEmail] = await Promise.all([
-        listAllTaskRecords(),
-        getClientsMap().catch(() => ({})),
-        getTeamByEmail().catch(() => ({})),
-      ]);
-
-      // Build reverse map: open_id -> email
-      const openIdToEmail = {};
-      for (const [email, oid] of Object.entries(teamByEmail)) openIdToEmail[oid] = email;
-      // Seed map fallback
-      for (const [email, oid] of Object.entries(SEED_EMAIL_OPENID)) {
-        if (!openIdToEmail[oid]) openIdToEmail[oid] = email;
-      }
-
-      const byOwner = {};
-      const unowned = [];
-
-      for (const rec of records) {
-        const f = rec.fields || {};
-        if (textVal(f.Status) === STATUS.COMPLETED) continue;
-        const shaped = { ...shapeTask(rec, clientsMap), owners: ownerIds(f) };
-        const ids = shaped.owners;
-        if (!ids.length) {
-          unowned.push(shaped);
-        } else {
-          for (const oid of ids) {
-            if (!byOwner[oid]) byOwner[oid] = { email: openIdToEmail[oid] || null, tasks: [] };
-            byOwner[oid].tasks.push(shaped);
-          }
-        }
-      }
-
-      res.json({ byOwner, unowned });
-    } catch (e) {
-      console.error('[ops-my-tasks] team error:', e.message);
-      res.status(500).json({ error: 'Failed to load team tasks', detail: e.message });
-    }
-  });
 
   // ---------- ROUTE: GET /my-tasks (HTML page) ----------
   // The per-person task board. Auth-gated. Renders a dark-theme page that
