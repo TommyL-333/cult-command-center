@@ -2485,6 +2485,8 @@ app.post('/portal-admin/login', express.json(), (req, res) => {
   res.json({ ok: true });
 });
 
+try { require('./routes/portal-team-auth')(app, { express }); } catch (e) { console.error('[portal-team-auth] registration failed:', e.message); }
+
 // GET /portal-admin/clients — returns client list as JSON (admin only)
 app.get('/portal-admin/clients', requirePortalAdmin, async (req, res) => {
   // If Accept is text/html, serve the admin page
