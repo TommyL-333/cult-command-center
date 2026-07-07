@@ -288,7 +288,14 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
   // ---------- (a) tenant token ----------
   let _tokenCache = { token: null, exp: 0 };
   async function getTenantToken() {
-    if (providedGetToken) return providedGetToken();
+    // Try injected token first, but if it yields null/empty (wrong-app or transient),
+    // fall back to this module's own LARK_APP_ID/LARK_APP_SECRET self-fetch.
+    if (providedGetToken) {
+      try {
+        const t = await providedGetToken();
+        if (t) return t;
+      } catch (e) { /* fall through to self-fetch */ }
+    }
     const now = Date.now();
     if (_tokenCache.token && now < _tokenCache.exp) return _tokenCache.token;
     const app_id = process.env.LARK_APP_ID;
@@ -541,7 +548,12 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
         sample.push(textVal(f.Task).slice(0,50));
       }
       activeCount = sample.length;
-    } catch (e) { err = (err||"") + " listErr:" + e.message; }
+    } catch (e) {
+      const detail = e.response ? JSON.stringify(e.response.data) : e.message;
+      const url = e.config ? (e.config.url + "?" + JSON.stringify(e.config.params||{})) : "";
+      const authHdr = e.config && e.config.headers ? String(e.config.headers.Authorization||"").slice(0,20) : "";
+      err = (err||"") + " listErr:" + e.message + " | detail:" + detail + " | url:" + url + " | auth:" + authHdr;
+    }
     res.json({ email, openId, activeCount, sample, seedHasEmail: !!(email && SEED_EMAIL_OPENID[email.toLowerCase()]), teamEmailKeys: teamKeys, err });
   });
 
