@@ -22,8 +22,7 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .topbar-links a:hover{color:var(--accent);}
 
 .hero{padding:64px 48px 52px;background:linear-gradient(155deg,rgba(32,213,196,.05) 0%,transparent 55%);border-bottom:1px solid var(--border);max-width:940px;margin:0 auto;}
-.hero-logo-wrap{margin-bottom:28px;}
-.hero-brand-name{font-size:1.1rem;font-weight:900;letter-spacing:.04em;color:var(--text);text-transform:uppercase;}
+.hero-brand-name{font-size:1.1rem;font-weight:900;letter-spacing:.04em;color:var(--text);text-transform:uppercase;margin-bottom:28px;}
 .eyebrow{display:inline-flex;align-items:center;gap:7px;background:rgba(32,213,196,.1);border:1px solid rgba(32,213,196,.22);color:var(--accent);font-size:.67rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;padding:5px 12px;border-radius:20px;}
 .dot{width:6px;height:6px;background:var(--accent);border-radius:50%;animation:pulse 2s infinite;}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
@@ -39,6 +38,7 @@ h1 span{color:var(--accent);}
 .kpi{background:var(--surface);padding:22px 20px;}
 .kpi-val{font-size:1.85rem;font-weight:900;color:var(--accent);line-height:1;}
 .kpi-label{font-size:.66rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-top:4px;}
+.kpi-sub{font-size:.65rem;color:var(--muted);margin-top:3px;}
 
 .main{max-width:940px;margin:0 auto;padding:56px 48px;}
 .section{margin-bottom:60px;}
@@ -54,6 +54,7 @@ h1 span{color:var(--accent);}
 .card.tl{border-left:3px solid var(--accent);}
 .card.gl{border-left:3px solid var(--green);}
 .card.yl{border-left:3px solid var(--yellow);}
+.card.rl{border-left:3px solid var(--red);}
 
 .cklist{list-style:none;display:flex;flex-direction:column;gap:7px;}
 .cklist li{display:flex;align-items:flex-start;gap:8px;font-size:.8rem;color:var(--light);}
@@ -81,27 +82,28 @@ h1 span{color:var(--accent);}
 .rm-body{padding:18px 0 18px 24px;border-left:1px solid var(--border);}
 .rm-title{font-size:.87rem;font-weight:800;color:var(--text);margin-bottom:8px;}
 
-/* Budget comparison */
-.budget-wrap{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:20px;}
-.budget-tier{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
-.budget-tier.ideal{border-color:rgba(32,213,196,.35);}
-.budget-head{padding:18px 20px 14px;border-bottom:1px solid var(--border);}
-.budget-tier.ideal .budget-head{background:rgba(32,213,196,.05);}
-.bt-tag{display:inline-block;font-size:.6rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px;border-radius:10px;margin-bottom:8px;}
-.bt-tag.min{background:rgba(100,116,139,.15);color:var(--muted);}
-.bt-tag.rec{background:rgba(32,213,196,.15);color:var(--accent);}
-.bt-name{font-size:1rem;font-weight:900;margin-bottom:4px;}
-.bt-sub{font-size:.77rem;color:var(--muted);}
-.budget-rows{padding:0;}
-.br{display:flex;justify-content:space-between;align-items:center;padding:10px 20px;border-bottom:1px solid rgba(30,30,48,.5);font-size:.8rem;}
-.br:last-child{border-bottom:none;}
-.br.br-total{background:rgba(32,213,196,.05);border-top:1px solid rgba(32,213,196,.2);padding:13px 20px;}
-.br-label{color:var(--light);}
-.br-val{font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;}
-.br.br-total .br-label{color:var(--text);font-weight:800;font-size:.83rem;}
-.br.br-total .br-val{color:var(--accent);font-size:.93rem;}
-.br-note{font-size:.66rem;color:var(--muted);margin-top:2px;}
-.br-stack{display:flex;flex-direction:column;}
+/* Investment */
+.invest-card{background:var(--card);border:1px solid rgba(32,213,196,.25);border-radius:var(--radius);overflow:hidden;}
+.invest-head{padding:20px 22px 16px;background:rgba(32,213,196,.04);border-bottom:1px solid var(--border);}
+.invest-title{font-size:1rem;font-weight:900;margin-bottom:4px;}
+.invest-sub{font-size:.78rem;color:var(--muted);}
+.invest-rows{padding:0;}
+.ir{display:flex;justify-content:space-between;align-items:center;padding:10px 22px;border-bottom:1px solid rgba(30,30,48,.5);font-size:.8rem;}
+.ir:last-child{border-bottom:none;}
+.ir.ir-total{background:rgba(32,213,196,.05);border-top:1px solid rgba(32,213,196,.2);padding:13px 22px;}
+.ir-label{color:var(--light);}
+.ir-val{font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;}
+.ir.ir-total .ir-label{color:var(--text);font-weight:800;font-size:.83rem;}
+.ir.ir-total .ir-val{color:var(--accent);font-size:.93rem;}
+.ir-note{font-size:.66rem;color:var(--muted);margin-top:2px;}
+.ir-stack{display:flex;flex-direction:column;}
+
+/* Role spec table */
+.role-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px;}
+.role-row{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;}
+.role-label{font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:4px;}
+.role-val{font-size:.83rem;font-weight:700;color:var(--text);line-height:1.5;}
+.role-note{font-size:.74rem;color:var(--light);margin-top:3px;}
 
 /* Deliverables grid */
 .deliv-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
@@ -113,7 +115,7 @@ h1 span{color:var(--accent);}
 .ditems li::before{content:"·";position:absolute;left:0;color:var(--accent);}
 
 /* Steps */
-.steps{display:flex;flex-direction:column;gap:14px;counter-reset:step;}
+.steps{display:flex;flex-direction:column;gap:14px;}
 .step{display:flex;gap:18px;align-items:flex-start;}
 .step-num{min-width:32px;height:32px;background:rgba(32,213,196,.12);border:1px solid rgba(32,213,196,.25);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:900;color:var(--accent);flex-shrink:0;}
 .step-body{padding-top:5px;}
@@ -121,11 +123,13 @@ h1 span{color:var(--accent);}
 .step-desc{font-size:.78rem;color:var(--light);}
 
 /* Insight cards */
-.insight-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:6px;}
+.insight-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:6px;}
 .insight-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px;}
+.insight-card.hl{border-color:rgba(239,68,68,.3);}
 .insight-icon{font-size:1.3rem;margin-bottom:8px;}
 .insight-label{font-size:.62rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:5px;}
 .insight-val{font-size:.9rem;font-weight:800;color:var(--text);margin-bottom:6px;}
+.insight-val.red{color:var(--red);}
 .insight-note{font-size:.75rem;color:var(--light);line-height:1.5;}
 
 /* Mechanism cards */
@@ -134,6 +138,24 @@ h1 span{color:var(--accent);}
 .mech-num{font-size:1.6rem;font-weight:900;color:rgba(32,213,196,.25);line-height:1;}
 .mech-title{font-size:.83rem;font-weight:800;color:var(--text);}
 .mech-desc{font-size:.77rem;color:var(--light);line-height:1.6;}
+
+/* Flywheel */
+.flywheel{display:grid;grid-template-columns:repeat(4,1fr);gap:0;margin-top:20px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+.fw-step{padding:20px 16px;border-right:1px solid var(--border);position:relative;}
+.fw-step:last-child{border-right:none;}
+.fw-step::after{content:"→";position:absolute;right:-10px;top:50%;transform:translateY(-50%);color:var(--accent);font-weight:800;font-size:.9rem;z-index:1;}
+.fw-step:last-child::after{display:none;}
+.fw-num{font-size:.6rem;font-weight:900;color:var(--accent);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px;}
+.fw-title{font-size:.8rem;font-weight:800;color:var(--text);margin-bottom:5px;}
+.fw-desc{font-size:.73rem;color:var(--light);line-height:1.5;}
+
+/* Lark link */
+.lark-card{display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid rgba(32,213,196,.25);border-radius:var(--radius);padding:16px 20px;margin-top:16px;text-decoration:none;}
+.lark-left{display:flex;align-items:center;gap:12px;}
+.lark-icon{font-size:1.3rem;}
+.lark-title{font-size:.83rem;font-weight:800;color:var(--text);}
+.lark-sub{font-size:.73rem;color:var(--muted);}
+.lark-btn{background:var(--accent);color:#000;font-size:.72rem;font-weight:800;padding:7px 14px;border-radius:7px;letter-spacing:.02em;}
 
 /* Footer */
 .footer{max-width:940px;margin:0 auto;padding:32px 48px 48px;border-top:1px solid var(--border);}
@@ -153,23 +175,22 @@ h1 span{color:var(--accent);}
     <a href="#situation">Situation</a>
     <a href="#pivot">The Pivot</a>
     <a href="#challenge">The Challenge</a>
-    <a href="#plan">90-Day Plan</a>
+    <a href="#role">The Role</a>
+    <a href="#flywheel">Affiliate Flywheel</a>
     <a href="#investment">Investment</a>
     <a href="#start">Get Started</a>
   </nav>
 </div>
 
 <div class="hero">
-  <div class="hero-logo-wrap">
-    <div class="hero-brand-name">Approved Science</div>
-  </div>
+  <div class="hero-brand-name">Approved Science</div>
   <div class="eyebrow"><span class="dot"></span>Growth Plan 2.0 · July 2026</div>
   <h1>The <span>Brand Ambassador</span><br/>Program</h1>
   <p class="hero-sub">A focused pivot for scaling Appetite Suppressant on TikTok Shop — replacing scattered creator outreach with a retained ambassador program that posts through your brand page, eliminates violation risk, and builds compounding video volume month over month.</p>
   <div class="hero-meta">
     <div class="meta-item">
       <span class="meta-label">Prepared for</span>
-      <span class="meta-val">Lenea Markowitz &amp; Dan</span>
+      <span class="meta-val">Lenea Ma &amp; Dan Markowitz</span>
     </div>
     <div class="meta-item">
       <span class="meta-label">Brand</span>
@@ -188,20 +209,24 @@ h1 span{color:var(--accent);}
 
 <div class="kpi-strip">
   <div class="kpi">
-    <div class="kpi-val">50+</div>
-    <div class="kpi-label">Creators targeted for kickoff call</div>
+    <div class="kpi-val">300</div>
+    <div class="kpi-label">Creators outreached all time</div>
+    <div class="kpi-sub">72 active in last 30 days</div>
   </div>
   <div class="kpi">
-    <div class="kpi-val">2–3</div>
-    <div class="kpi-label">Long-term ambassadors hired</div>
+    <div class="kpi-val">$532</div>
+    <div class="kpi-label">GMV last 30 days</div>
+    <div class="kpi-sub">13 orders · 8 creators converting</div>
   </div>
   <div class="kpi">
-    <div class="kpi-val">50–75</div>
-    <div class="kpi-label">Brand page videos/month at scale</div>
+    <div class="kpi-val">11%</div>
+    <div class="kpi-label">Creator GMV conversion rate</div>
+    <div class="kpi-sub">8 of 72 active generated any revenue</div>
   </div>
   <div class="kpi">
     <div class="kpi-val">Zero</div>
-    <div class="kpi-label">Violation risk — brand page posts</div>
+    <div class="kpi-label">Violation risk on brand page</div>
+    <div class="kpi-sub">Ambassador content posts under your account</div>
   </div>
 </div>
 
@@ -210,97 +235,93 @@ h1 span{color:var(--accent);}
   <!-- SITUATION -->
   <div class="section" id="situation">
     <div class="sec-label">01 · Where We Are</div>
-    <h2 class="sec-title">What the data is telling us</h2>
-    <p class="sec-sub">Before we can scale, we need to be honest about what's working and what isn't. Here's the unfiltered read on the past 90 days.</p>
+    <h2 class="sec-title">What the live data is telling us</h2>
+    <p class="sec-sub">Numbers pulled directly from Reacher as of July 6, 2026. Here's the honest picture.</p>
 
-    <div class="callout red">
-      <span class="ci">🚨</span>
-      <div class="cb"><strong>The core problem:</strong> TikTok content violations are the single biggest blocker. Creators who post about supplement products — especially appetite suppressants — risk account strikes. That risk is killing participation and making it nearly impossible to build consistent video volume.</div>
-    </div>
-
-    <div class="insight-row" style="margin-top:20px;">
+    <div class="insight-row">
       <div class="insight-card">
         <div class="insight-icon">📊</div>
-        <div class="insight-label">Total Creator Sales</div>
-        <div class="insight-val">6 sales</div>
-        <div class="insight-note">From all creator activity to date. Primarily driven by Appetite Suppressant — Collagen and Paris Strand have generated near-zero sales despite outreach.</div>
+        <div class="insight-label">Active Creators (30 days)</div>
+        <div class="insight-val">72</div>
+        <div class="insight-note">300 total outreached all time. 72 engaged in the last month — but only 8 have generated any sales.</div>
       </div>
       <div class="insight-card">
-        <div class="insight-icon">👥</div>
-        <div class="insight-label">Active Creators (July)</div>
-        <div class="insight-val">10 creators</div>
-        <div class="insight-note">This is not enough. Meaningful GMV volume requires 50–100+ active creators posting consistently. We're not near that threshold yet.</div>
+        <div class="insight-icon">💰</div>
+        <div class="insight-label">GMV (last 30 days)</div>
+        <div class="insight-val">$532</div>
+        <div class="insight-note">13 orders across 8 creators. Appetite Suppressant leads, followed by Collagen. Paris Strand near zero.</div>
       </div>
-      <div class="insight-card">
-        <div class="insight-icon">⚡</div>
-        <div class="insight-label">Appetite Suppressant Signal</div>
-        <div class="insight-val">Strongest GMV</div>
-        <div class="insight-note">Despite having less content than Paris Strand or Shilajit, Appetite Suppressant is generating all the organic affiliate sales and best ad response.</div>
+      <div class="insight-card hl">
+        <div class="insight-icon">⚠️</div>
+        <div class="insight-label">Concentration Risk</div>
+        <div class="insight-val red">Top 2 = 45%</div>
+        <div class="insight-note">Jenna ($159) and Priscilla ($79) account for 45% of all GMV. One creator going quiet halves results.</div>
+      </div>
+      <div class="insight-card hl">
+        <div class="insight-icon">🎬</div>
+        <div class="insight-label">Video Volume Problem</div>
+        <div class="insight-val red">1 video avg</div>
+        <div class="insight-note">Outside Jenna (18 videos) and Priscilla (31), most creators post once then go silent. Volume is the core constraint.</div>
       </div>
     </div>
 
     <div style="margin-top:16px;" class="grid2">
-      <div class="card yl">
-        <div class="card-title">What's blocking creator volume</div>
+      <div class="card rl">
+        <div class="card-title">What's blocking scale</div>
         <ul class="blist">
-          <li><strong>Violation risk deters creators</strong> — posting about "Appetite Suppressant" triggers TikTok's health content filters; creators protect their own accounts first</li>
-          <li><strong>Scale ceiling on cold outreach</strong> — 2,000 outreach messages yielding ~5 active creators is an unsustainable ratio</li>
-          <li><strong>No face for the brand</strong> — Marketily team doesn't have on-camera creators internally, and paying per-video ($1,000+) isn't scalable</li>
-          <li><strong>AI-generated video fell short</strong> — Arcads demos didn't translate to usable outputs; the product shots and body movements weren't realistic enough</li>
+          <li><strong>Content violations deter posting</strong> — supplement content triggers TikTok health filters; creators protect their own accounts before your GMV</li>
+          <li><strong>No creator posts consistently</strong> — outside Jenna and Priscilla, every creator posts once and stops; there's no relationship deep enough to sustain volume</li>
+          <li><strong>Cold outreach ceiling</strong> — 300 creators yielding $532/month is a structural problem, not a volume problem; adding more cold creators won't change the ratio</li>
+          <li><strong>No proven format for Appetite Suppressant</strong> — without violation-safe angles proven out at scale, creators can't post confidently even if they want to</li>
         </ul>
       </div>
       <div class="card gl">
-        <div class="card-title">What IS working</div>
+        <div class="card-title">What's actually working</div>
         <ul class="cklist">
-          <li>Appetite Suppressant is getting sales even with minimal content — the product converts when it gets in front of the right audience</li>
-          <li>Ads are providing useful signal — the data shows where demand is</li>
-          <li>Jenna and a small set of creators are engaged and producing — proof the relationship model works when it's built properly</li>
-          <li>Lenea's direct creator relationships are a competitive advantage — 1:1 engagement drives participation in a way mass outreach doesn't</li>
+          <li>Appetite Suppressant converts when content hits — it's generating the most orders with the least content behind it</li>
+          <li>Jenna's relationship with Lenea drives 18 videos and the most GMV — the model works when there's a real commitment on both sides</li>
+          <li>Priscilla's 31 Collagen videos show that a committed creator can build real volume — the problem is she's the exception, not the rule</li>
+          <li>Lenea's 1:1 creator relationships (Jenna, Candy, Danielle) consistently outperform cold-outreach creators — personal engagement is a multiplier</li>
         </ul>
       </div>
     </div>
 
     <div class="callout" style="margin-top:16px;">
       <span class="ci">💡</span>
-      <div class="cb"><strong>The insight:</strong> The violation problem is not an Approved Science problem — it's a structural limitation of creator-owned accounts. The fix is simple: move content onto <strong>your brand pages</strong>. When creators post through Approved Science's TikTok account, the violation risk shifts to the brand-level compliance review, not their personal creator score. Creators can post freely. You control the volume.</div>
+      <div class="cb"><strong>The core insight:</strong> The violation problem is structural to creator-owned accounts. When a creator posts from their personal account, they risk their score. The fix is simple — move content to <strong>Approved Science's brand pages</strong>. The creator produces the content, but it lives on your account. Their score is protected. Your volume compounds. Violations become irrelevant.</div>
     </div>
   </div>
 
   <!-- THE PIVOT -->
   <div class="section" id="pivot">
     <div class="sec-label">02 · The Strategy Pivot</div>
-    <h2 class="sec-title">From scattered affiliates to retained brand ambassadors</h2>
-    <p class="sec-sub">Instead of trying to activate hundreds of cold creators who post once and disappear, we identify 2–3 creators who are talented, committed, and willing to represent Approved Science full-time — then pay them like employees.</p>
+    <h2 class="sec-title">From cold outreach to retained brand ambassadors</h2>
+    <p class="sec-sub">Stop trying to activate hundreds of one-video creators. Find 2–3 creators who are committed, on-camera talented, and willing to represent Approved Science long-term — then build the content engine around them.</p>
 
     <div class="mech-row">
       <div class="mech-card">
         <div class="mech-num">01</div>
         <div class="mech-title">Brand Page Publishing</div>
-        <div class="mech-desc">Ambassadors create the content, but it posts under the Approved Science TikTok account. No personal account risk. No violation strikes. Full creative control over brand messaging.</div>
+        <div class="mech-desc">Ambassadors produce the content. It posts under the Approved Science TikTok account. No personal account risk. No violation strikes. Full brand control over messaging and angle consistency.</div>
       </div>
       <div class="mech-card">
         <div class="mech-num">02</div>
-        <div class="mech-title">Monthly Retainer Model</div>
-        <div class="mech-desc">Each ambassador earns a guaranteed monthly retainer ($3,000/mo) with a minimum video output requirement — typically 25 videos/month. They know exactly what they're making. You know exactly what you're getting.</div>
+        <div class="mech-title">Monthly Retainer — 30 Videos</div>
+        <div class="mech-desc">Each ambassador earns $3,000/month guaranteed for a minimum of 30 videos. They know their income. You know your output. $100/video with a committed creator is cheaper and more consistent than $1,000 one-off rates.</div>
       </div>
       <div class="mech-card">
         <div class="mech-num">03</div>
-        <div class="mech-title">Commission Layer Still Intact</div>
-        <div class="mech-desc">Ambassadors can still earn commission on sales from their content. This gives them real skin in the game on top of the base retainer — they want the videos to convert, not just go up.</div>
+        <div class="mech-title">Commission Still Intact</div>
+        <div class="mech-desc">Ambassadors earn commission on every sale their content drives — even from the brand page. This gives them real skin in the game beyond the retainer. They want the videos to convert, not just post.</div>
       </div>
-    </div>
-
-    <div class="callout green" style="margin-top:20px;">
-      <span class="ci">✅</span>
-      <div class="cb"><strong>Why this works for Approved Science:</strong> You don't need 200 creators posting once each. You need 2–3 creators posting 25 times each, every month, compounding over time. A creator on a $3,000/mo retainer delivering 25 videos is paying $120/video for talent that's bought into your brand and improving with every post. That's cheaper than Jenna's rate — and far more sustainable.</div>
     </div>
   </div>
 
   <!-- THE CHALLENGE -->
   <div class="section" id="challenge">
     <div class="sec-label">03 · How We Find Them</div>
-    <h2 class="sec-title">The creator challenge — a competition to find your ambassadors</h2>
-    <p class="sec-sub">We don't just post a job listing. We run a structured challenge that attracts creators who are already motivated, already on TikTok, and willing to prove themselves for a long-term role. The challenge is how we find the top 2–3 out of a broad field.</p>
+    <h2 class="sec-title">The creator challenge — earn the role</h2>
+    <p class="sec-sub">We don't just post a job listing. We run a structured, tracked challenge that attracts creators who can prove themselves before we commit. <strong style="color:var(--text);">Creators must post at least 10 videos during the challenge to qualify</strong> — this filters for commitment upfront and surfaces who can actually sustain volume.</p>
 
     <div class="roadmap">
       <div class="rm-row">
@@ -308,58 +329,111 @@ h1 span{color:var(--accent);}
         <div class="rm-body">
           <div class="rm-title">Open Applications — Community Blast</div>
           <ul class="cklist">
-            <li>Application form + brief goes live: what the role is, what they'll earn, what's expected</li>
-            <li>Blast across Cult Content creator community, TikTok affiliate groups, Skool communities, and online creator forums</li>
-            <li>Reacher outreach campaign to qualified creators in the supplement/wellness space</li>
-            <li>Target: 50+ applicants — enough to select the best 2–3 for the challenge period</li>
+            <li>Application form + role brief goes live: compensation, output expectations, brand page posting model</li>
+            <li>Blast across Cult Content creator community, TikTok affiliate groups, Skool communities, and wellness/supplement creator forums</li>
+            <li>Reacher outreach campaign to qualified supplement/wellness creators already in the system</li>
+            <li>Target: 50+ applicants on the kickoff call</li>
           </ul>
         </div>
       </div>
       <div class="rm-row">
         <div class="rm-phase"><span class="rm-tag t2">Week 2</span></div>
         <div class="rm-body">
-          <div class="rm-title">Kickoff Call — Live Onboarding</div>
+          <div class="rm-title">Kickoff Call — Lenea &amp; Tommy Host</div>
           <ul class="cklist">
-            <li>Lenea and Tommy host a live call for all applicants — introduces the brand, the product, the program</li>
-            <li>Challenge brief distributed: approved scripts, content angles, brand guidelines, violation avoidance tips</li>
-            <li>Each participant commits to posting at least 1–2 videos during the 2-week challenge window</li>
-            <li>Fixed participation payouts for completing challenge — incentivizes execution over just applying</li>
+            <li>Live call for all applicants — Lenea introduces the brand and vision; Tommy walks the challenge structure</li>
+            <li>Challenge brief distributed: violation-safe angles, approved hooks, what the role pays, what it requires</li>
+            <li>Qualifier clearly stated: post a minimum of 10 videos during the 3-week window to be eligible for the role</li>
+            <li>Lenea's booking link shared — creators can schedule 1:1 brand calls at any point during the challenge</li>
           </ul>
         </div>
       </div>
       <div class="rm-row">
-        <div class="rm-phase"><span class="rm-tag t2">Weeks 2–3</span></div>
+        <div class="rm-phase"><span class="rm-tag t2">Weeks 2–4</span></div>
         <div class="rm-body">
-          <div class="rm-title">Challenge Period — Tracked Performance</div>
+          <div class="rm-title">Challenge Period — 10 Videos to Qualify</div>
           <ul class="cklist">
-            <li>All challenge videos tracked through Reacher — views, GMV, engagement, content quality</li>
-            <li>Lenea can connect directly with standout creators for relationship building (calendar link distributed)</li>
-            <li>Weekly check-in message sequence to keep participants active and posting</li>
-            <li>Tommy and team review every video for content quality, brand fit, and violation risk</li>
+            <li>All challenge videos tracked through Reacher — volume, views, GMV, content quality scored by Cult Content</li>
+            <li>Fixed participation payouts for hitting the 10-video threshold — incentivizes the volume we're looking for</li>
+            <li>Weekly brief updates with new angles from Cult Content — iterating on what's performing</li>
+            <li>Creators who don't reach 10 videos exit the ambassador selection but stay in the open affiliate program</li>
           </ul>
         </div>
       </div>
       <div class="rm-row">
-        <div class="rm-phase"><span class="rm-tag t3">Week 4</span></div>
+        <div class="rm-phase"><span class="rm-tag t3">Week 5</span></div>
         <div class="rm-body">
-          <div class="rm-title">Selection + Onboarding as Ambassadors</div>
+          <div class="rm-title">Selection — Flexible Based on Who Performs</div>
           <ul class="cklist">
-            <li>Review all challenge results — select top 2–3 creators based on content quality, posting consistency, and audience fit</li>
-            <li>Offer long-term ambassador agreements — $3,000/mo retainer, 25 videos/month minimum, brand page publishing</li>
-            <li>Rejected participants still remain in the affiliate program — they can keep posting on commission</li>
-            <li>Month 2 begins: ambassadors onboarded, content calendar built, first brand-page videos scheduled</li>
+            <li>Review all qualifying creators (10+ videos) — select whoever genuinely performed well; there's no fixed quota</li>
+            <li>If one creator is outstanding → hire one. If three are strong → hire three. Quality drives the number, not a pre-set budget</li>
+            <li>Offer ambassador agreements: $3,000/mo for 30 videos/month, posting through Approved Science brand pages</li>
+            <li>Month 2 begins: ambassadors onboarded, content calendar built, brand page posting starts</li>
           </ul>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- 90-DAY PLAN -->
-  <div class="section" id="plan">
-    <div class="sec-label">04 · 90-Day Plan</div>
-    <h2 class="sec-title">The full picture — Month 1 through Month 3</h2>
-    <p class="sec-sub">What Approved Science can expect over the first 90 days of the program, from challenge launch through ambassador content scaling.</p>
+  <!-- ROLE SPEC -->
+  <div class="section" id="role">
+    <div class="sec-label">04 · What the Role Looks Like</div>
+    <h2 class="sec-title">The ambassador contract — fully specced out</h2>
+    <p class="sec-sub">Everything needed to approve this role internally and hire directly from the challenge results. No extra step required — the spec is already here.</p>
 
+    <div class="callout">
+      <span class="ci">📋</span>
+      <div class="cb"><strong>Role title:</strong> Brand Content Creator (Part-Time Contract) · Approved Science × Cult Content</div>
+    </div>
+
+    <div class="role-grid">
+      <div class="role-row">
+        <div class="role-label">Monthly Output</div>
+        <div class="role-val">30 videos minimum</div>
+        <div class="role-note">~1 video/day. Each video is a short-form TikTok (30s–3min) for Appetite Suppressant. Cult Content provides weekly briefs with hooks, angles, and approved language.</div>
+      </div>
+      <div class="role-row">
+        <div class="role-label">Compensation</div>
+        <div class="role-val">$3,000/month retainer + commission</div>
+        <div class="role-note">$100/video base via monthly retainer. Commission on all sales generated from their content continues — paid out directly by Approved Science.</div>
+      </div>
+      <div class="role-row">
+        <div class="role-label">Posting Setup</div>
+        <div class="role-val">Through Approved Science brand page</div>
+        <div class="role-note">Creator produces and films content on their device. Videos are submitted to Cult Content, reviewed for quality and compliance, then posted under the Approved Science TikTok account.</div>
+      </div>
+      <div class="role-row">
+        <div class="role-label">Content Review</div>
+        <div class="role-val">Cult Content reviews every video</div>
+        <div class="role-note">All videos reviewed for brand fit, violation risk, and quality before posting. Typical turnaround: 24 hours. Creator gets feedback to improve over time.</div>
+      </div>
+      <div class="role-row">
+        <div class="role-label">Time Commitment</div>
+        <div class="role-val">~15–20 hours/month</div>
+        <div class="role-note">30 videos at ~30 min average per video. Flexible scheduling — creators can batch-film on their own time and submit on a rolling basis.</div>
+      </div>
+      <div class="role-row">
+        <div class="role-label">Contract Term</div>
+        <div class="role-val">Month-to-month, reviewed monthly</div>
+        <div class="role-note">No minimum lock-in required — either side can end with 2 weeks' notice. Continuity is earned through performance. Top performers are retained; underperformers are replaced with the next challenger.</div>
+      </div>
+      <div class="role-row">
+        <div class="role-label">KPIs Tracked</div>
+        <div class="role-val">Volume · Views · GMV · Conversion</div>
+        <div class="role-note">Monthly report covering: videos posted, total views, GMV generated, orders attributed. Reviewed on biweekly calls with Lenea.</div>
+      </div>
+      <div class="role-row">
+        <div class="role-label">Communication</div>
+        <div class="role-val">Lenea direct + Cult Content briefs</div>
+        <div class="role-note">Ambassadors have direct contact with Lenea for brand questions and relationship. Weekly content briefs from Cult Content. Optional 1:1 call via Lenea's booking link anytime.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 90-DAY PLAN -->
+  <div class="section">
+    <div class="sec-label">05 · 90-Day Plan</div>
+    <h2 class="sec-title">Month by month</h2>
     <div class="roadmap">
       <div class="rm-row">
         <div class="rm-phase"><span class="rm-tag">Month 1</span></div>
@@ -367,58 +441,90 @@ h1 span{color:var(--accent);}
           <div class="rm-title">Challenge Launch + Ambassador Selection</div>
           <ul class="blist">
             <li>Challenge live, community blast complete, kickoff call hosted</li>
-            <li>50+ applicants engaged, 10–15 posting challenge videos</li>
-            <li>Top 2–3 selected and onboarded as brand ambassadors</li>
-            <li>Content briefs built for Appetite Suppressant: violation-safe hooks, approved angles, script templates</li>
-            <li>Lenea's booking calendar live — creators can book 1:1 brand calls directly</li>
-            <li>Shift to biweekly 1:1 strategy calls (replacing group calls)</li>
+            <li>50+ applicants, 10-video qualifier filters for commitment</li>
+            <li>1–3 ambassadors selected based on actual challenge performance</li>
+            <li>Lenea's booking calendar live — creators can self-schedule brand calls</li>
+            <li>Biweekly 1:1 calls begin (replacing group calls)</li>
           </ul>
         </div>
       </div>
       <div class="rm-row">
         <div class="rm-phase"><span class="rm-tag t2">Month 2</span></div>
         <div class="rm-body">
-          <div class="rm-title">Brand Page Content Goes Live</div>
+          <div class="rm-title">Brand Page Content at Volume</div>
           <ul class="blist">
-            <li>Ambassadors producing 20–25 videos each through the Approved Science brand page</li>
-            <li>40–75 brand page videos posted — all violation-safe, on-brand, consistent</li>
-            <li>Weekly performance review with Lenea — what's getting views, what's converting</li>
+            <li>30–90 brand page videos posted (depending on ambassador count)</li>
+            <li>Weekly performance review — what's getting views, what's converting, what needs new angles</li>
+            <li>Violation-safe content formats proven out at scale for the first time</li>
             <li>GMV Max layered on any organic video that breaks out — amplify what's already working</li>
-            <li>Content iteration: Cult Content provides updated briefs based on performance data each week</li>
           </ul>
         </div>
       </div>
       <div class="rm-row">
         <div class="rm-phase"><span class="rm-tag t3">Month 3</span></div>
         <div class="rm-body">
-          <div class="rm-title">Scale + Diversify</div>
+          <div class="rm-title">Affiliate Flywheel Activates</div>
           <ul class="blist">
-            <li>50–75 brand page videos/month at full ambassador capacity</li>
-            <li>Best-performing angles identified — replicate across affiliate pool as well</li>
-            <li>Data-driven decision on expanding to Collagen or Paris Strand with proven content formats</li>
-            <li>Evaluate ambassador performance — extend contracts, replace underperformers if needed</li>
-            <li>Monthly GMV target set and tracked — real accountability for results</li>
+            <li>Winning content angles from brand page are now proven — distributed to open affiliate pool as new briefs</li>
+            <li>Organic affiliates can post those same formats with confidence — violation risk drops when the angle is already known-safe</li>
+            <li>Brand page success as social proof: "this product + this angle = sales" drives new creator participation</li>
+            <li>Evaluate ambassador performance — extend, replace, or expand based on data</li>
           </ul>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- SCOPE OF WORK -->
+  <!-- AFFILIATE FLYWHEEL -->
+  <div class="section" id="flywheel">
+    <div class="sec-label">06 · The Bigger Picture</div>
+    <h2 class="sec-title">From ambassador program to affiliate flywheel</h2>
+    <p class="sec-sub">The ambassador program isn't just a content play — it's the R&amp;D lab for the entire organic affiliate strategy. Here's how it compounds.</p>
+
+    <div class="flywheel">
+      <div class="fw-step">
+        <div class="fw-num">Step 1</div>
+        <div class="fw-title">Prove safe angles</div>
+        <div class="fw-desc">Ambassadors test formats on the brand page. Brand-page posts don't threaten creator accounts. High-output volume lets us iterate fast.</div>
+      </div>
+      <div class="fw-step">
+        <div class="fw-num">Step 2</div>
+        <div class="fw-title">Identify what converts</div>
+        <div class="fw-desc">30–90 videos/month generates real data — which hooks get views, which angles drive add-to-cart, which formats get flagged.</div>
+      </div>
+      <div class="fw-step">
+        <div class="fw-num">Step 3</div>
+        <div class="fw-title">Distribute proven briefs</div>
+        <div class="fw-desc">Winning, violation-safe formats become the brief we send to open affiliates. They're not improvising — they're replicating what's already proven to work and be safe.</div>
+      </div>
+      <div class="fw-step">
+        <div class="fw-num">Step 4</div>
+        <div class="fw-title">Organic volume scales</div>
+        <div class="fw-desc">Affiliates who know what to post, know it's safe, and can see it converting are far more likely to post consistently. The violation problem largely solves itself.</div>
+      </div>
+    </div>
+
+    <div class="callout green" style="margin-top:20px;">
+      <span class="ci">🚀</span>
+      <div class="cb"><strong>The compounding effect:</strong> Today we have 72 active creators generating $532/month because they don't know what to post and don't want to risk their accounts. In 90 days, with proven violation-safe angles, those same 72 creators have a brief they can confidently follow. The ambassador program doesn't replace the affiliate channel — it unlocks it.</div>
+    </div>
+  </div>
+
+  <!-- SCOPE -->
   <div class="section">
-    <div class="sec-label">05 · Scope of Work</div>
-    <h2 class="sec-title">What Cult Content handles</h2>
-    <p class="sec-sub">Everything below is included in your existing retainer — no additional agency fees for the program setup, community blast, or ongoing management.</p>
+    <div class="sec-label">07 · Scope of Work</div>
+    <h2 class="sec-title">What's covered in the retainer</h2>
+    <p class="sec-sub">The Cult Content retainer stays at <strong style="color:var(--text);">$1,500/month</strong>. All agency work below is included — challenge setup, content strategy, reporting, calls. The only new cost to Approved Science is the ambassador retainers themselves.</p>
     <div class="deliv-grid">
       <div class="dcard">
         <div class="dcard-icon">🏆</div>
         <div class="dcard-title">Challenge Setup &amp; Campaign Management</div>
         <ul class="ditems">
-          <li>Challenge brief, application form, and landing page</li>
+          <li>Challenge brief, application form, and role spec</li>
           <li>Reacher campaign build — outreach sequences, tracking, reporting</li>
-          <li>Community blast across all relevant channels</li>
-          <li>Challenge participation tracking and performance scoring</li>
-          <li>Creator vetting and final ambassador selection</li>
+          <li>Community blast across all relevant creator channels</li>
+          <li>Challenge performance tracking and ambassador selection</li>
+          <li>Kickoff call co-hosted with Lenea</li>
         </ul>
       </div>
       <div class="dcard">
@@ -426,21 +532,21 @@ h1 span{color:var(--accent);}
         <div class="dcard-title">Content Strategy &amp; Briefs</div>
         <ul class="ditems">
           <li>Violation-safe angle development for Appetite Suppressant</li>
-          <li>Script templates and hook frameworks — updated weekly based on performance</li>
-          <li>Content quality review on all ambassador videos before posting</li>
+          <li>Weekly briefs: hooks, scripts, approved language — updated from performance data</li>
+          <li>Quality review on every ambassador video before posting</li>
           <li>Winning content identification for GMV Max amplification</li>
-          <li>Monthly creative refresh — new hooks, angles, trends</li>
+          <li>Proven brief distribution to open affiliate pool (Month 3+)</li>
         </ul>
       </div>
       <div class="dcard">
         <div class="dcard-icon">📞</div>
         <div class="dcard-title">Client Strategy &amp; Reporting</div>
         <ul class="ditems">
-          <li>Biweekly 1:1 calls with Lenea (replacing group calls)</li>
-          <li>Monthly performance reports — GMV, videos posted, top creators</li>
-          <li>Ambassador performance reviews and contract renewal decisions</li>
+          <li>Biweekly 1:1 calls with Lenea — replacing group format</li>
+          <li>Monthly performance reports: GMV, videos, top creators, conversion</li>
           <li>Creator contact list shared with Lenea for direct outreach</li>
-          <li>Ongoing Reacher campaign management for affiliate pipeline</li>
+          <li>Ambassador performance reviews and contract decisions</li>
+          <li>Ongoing Reacher campaign management for open affiliate pipeline</li>
         </ul>
       </div>
       <div class="dcard">
@@ -449,170 +555,139 @@ h1 span{color:var(--accent);}
         <ul class="ditems">
           <li>Shop health monitoring — compliance, SPS score, listing quality</li>
           <li>Affiliate program configuration and commission structure</li>
-          <li>Campaign and coupon setup for product promotions</li>
-          <li>GMV Max campaign setup and management for top content</li>
-          <li>Analytics dashboard — weekly GMV, creator leaderboard, conversion rates</li>
+          <li>Flash sale and campaign setup for promotional windows</li>
+          <li>GMV Max campaign management on top brand page content</li>
+          <li>Analytics: weekly GMV, creator leaderboard, conversion rates</li>
         </ul>
       </div>
     </div>
+
+    <a href="https://cedw5xj2shl.usttp.larksuite.com/base/HYbgbsW5AaosQpsa0iSu3uOstZd" target="_blank" class="lark-card">
+      <div class="lark-left">
+        <div class="lark-icon">📊</div>
+        <div>
+          <div class="lark-title">Approved Science — Creator Tracker</div>
+          <div class="lark-sub">Live Lark Base · top creators pre-loaded with GMV, video counts, and status from Reacher</div>
+        </div>
+      </div>
+      <div class="lark-btn">Open Tracker →</div>
+    </a>
   </div>
 
   <!-- INVESTMENT -->
   <div class="section" id="investment">
-    <div class="sec-label">06 · Investment</div>
-    <h2 class="sec-title">What Dan needs to approve</h2>
-    <p class="sec-sub">The Cult Content retainer covers all agency work — challenge setup, community blast, content strategy, calls, reporting. The investment below is the direct creator cost that Approved Science funds separately.</p>
+    <div class="sec-label">08 · Investment</div>
+    <h2 class="sec-title">What Approved Science funds directly</h2>
+    <p class="sec-sub">The Cult Content retainer stays at $1,500/month — no change. The investment below is the creator cost that scales with challenge results. We hire whoever genuinely performs well. If one person is worth it, we hire one. If three are, we hire three.</p>
 
     <div class="callout warn">
       <span class="ci">📌</span>
-      <div class="cb"><strong>How to think about this:</strong> The Minimum Plan proves the model with one ambassador. The Ideal Plan scales it fast enough to generate real GMV signal within 90 days. Either way, the cost per video ($100–$120) is significantly lower than one-off creator rates like Jenna's — and you get continuity, not just one video at a time.</div>
+      <div class="cb"><strong>How to think about the scale:</strong> There's no fixed commitment upfront. The challenge tells us how many quality ambassadors we can actually find. Budget for 1–3. If the challenge produces one clear winner, start there and grow. $3,000/month for 30 videos is $100/video — cheaper than any one-off UGC rate, and these creators are improving every week.</div>
     </div>
 
-    <div class="budget-wrap">
-      <div class="budget-tier">
-        <div class="budget-head">
-          <div class="bt-tag min">Minimum</div>
-          <div class="bt-name">Proof of Concept</div>
-          <div class="bt-sub">Validate the ambassador model with one creator before scaling</div>
+    <div class="invest-card" style="margin-top:20px;">
+      <div class="invest-head">
+        <div class="invest-title">Ambassador Program — Flexible Model</div>
+        <div class="invest-sub">Scales from 1 to 3 ambassadors based on challenge results</div>
+      </div>
+      <div class="invest-rows">
+        <div class="ir">
+          <div class="ir-stack">
+            <div class="ir-label">Challenge participant payouts (one-time)</div>
+            <div class="ir-note">Fixed reward for creators who complete the 10-video qualifier — drives the volume that surfaces the best talent</div>
+          </div>
+          <div class="ir-val">~$500–$750</div>
         </div>
-        <div class="budget-rows">
-          <div class="br">
-            <div class="br-stack">
-              <div class="br-label">Challenge participant payouts (one-time)</div>
-              <div class="br-note">Fixed reward for creators who complete the challenge — drives participation</div>
-            </div>
-            <div class="br-val">~$750</div>
+        <div class="ir">
+          <div class="ir-stack">
+            <div class="ir-label">Ambassador retainer — per creator</div>
+            <div class="ir-note">$3,000/mo · 30 videos min · brand page posting · commission on top · month-to-month</div>
           </div>
-          <div class="br">
-            <div class="br-stack">
-              <div class="br-label">1 brand ambassador retainer</div>
-              <div class="br-note">25 videos/month minimum · Posts through Approved Science brand page</div>
-            </div>
-            <div class="br-val">$3,000/mo</div>
+          <div class="ir-val">$3,000/mo each</div>
+        </div>
+        <div class="ir">
+          <div class="ir-stack">
+            <div class="ir-label">GMV Max ad spend (optional)</div>
+            <div class="ir-note">Layer paid amplification only on proven organic content — not a requirement in Month 1</div>
           </div>
-          <div class="br">
-            <div class="br-stack">
-              <div class="br-label">GMV Max ad spend (optional)</div>
-              <div class="br-note">Amplify top-performing brand page videos — only when organic content converts</div>
-            </div>
-            <div class="br-val">$500–$1,000/mo</div>
+          <div class="ir-val">$500–$2,000/mo</div>
+        </div>
+        <div class="ir">
+          <div class="ir-stack">
+            <div class="ir-label">Cult Content retainer</div>
+            <div class="ir-note">All agency work — challenge, briefs, calls, reporting, shop management. No increase.</div>
           </div>
-          <div class="br br-total">
-            <div class="br-label">Month 1 total</div>
-            <div class="br-val">~$4,250</div>
-          </div>
-          <div class="br br-total" style="background:transparent;border-top:none;">
-            <div class="br-label">Monthly ongoing</div>
-            <div class="br-val">$3,000–$4,000/mo</div>
-          </div>
+          <div class="ir-val">$1,500/mo</div>
+        </div>
+        <div class="ir ir-total">
+          <div class="ir-label">1 ambassador (minimum)</div>
+          <div class="ir-val">$4,500–$5,000/mo</div>
+        </div>
+        <div class="ir ir-total" style="background:transparent;border-top:none;">
+          <div class="ir-label">3 ambassadors (full scale)</div>
+          <div class="ir-val">$10,500–$12,000/mo</div>
         </div>
       </div>
-
-      <div class="budget-tier ideal">
-        <div class="budget-head">
-          <div class="bt-tag rec">Recommended</div>
-          <div class="bt-name">Full Scale</div>
-          <div class="bt-sub">3 ambassadors generating 50–75 videos/month — enough to build real GMV momentum</div>
-        </div>
-        <div class="budget-rows">
-          <div class="br">
-            <div class="br-stack">
-              <div class="br-label">Challenge participant payouts (one-time)</div>
-              <div class="br-note">Larger challenge pool = more talent to choose from, better final 3</div>
-            </div>
-            <div class="br-val">~$1,500</div>
-          </div>
-          <div class="br">
-            <div class="br-stack">
-              <div class="br-label">3 brand ambassador retainers</div>
-              <div class="br-note">75 videos/month minimum · Brand page publishing · Commission layer on top</div>
-            </div>
-            <div class="br-val">$9,000/mo</div>
-          </div>
-          <div class="br">
-            <div class="br-stack">
-              <div class="br-label">GMV Max ad spend</div>
-              <div class="br-note">Layer paid amplification on proven organic content — compounds the organic flywheel</div>
-            </div>
-            <div class="br-val">$1,500–$3,000/mo</div>
-          </div>
-          <div class="br br-total">
-            <div class="br-label">Month 1 total</div>
-            <div class="br-val">~$12,000</div>
-          </div>
-          <div class="br br-total" style="background:transparent;border-top:none;">
-            <div class="br-label">Monthly ongoing</div>
-            <div class="br-val">$10,500–$12,000/mo</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="callout green" style="margin-top:20px;">
-      <span class="ci">📐</span>
-      <div class="cb"><strong>The math at scale:</strong> 3 ambassadors × 25 videos = 75 videos/month on the brand page. At 3,000 average views per video, that's 225,000 views/month. At a 2.5% click-through and 1.2% CVR, you're looking at ~67 sales/month from purely organic content — before any ads. That's a baseline, not a ceiling. Creators who get good improve over time.</div>
     </div>
   </div>
 
   <!-- OPERATIONAL UPGRADES -->
   <div class="section">
-    <div class="sec-label">07 · Operational Upgrades</div>
+    <div class="sec-label">09 · Operational Upgrades</div>
     <h2 class="sec-title">Changes starting immediately</h2>
-    <p class="sec-sub">Separate from the ambassador program — these are fixes to how we work together that take effect now.</p>
     <div class="grid2">
       <div class="card tl">
         <div class="card-title">Biweekly 1:1 Calls</div>
-        <p style="font-size:.8rem;color:var(--light);line-height:1.65;">Group calls are being replaced with biweekly 1:1s between Tommy and Lenea. This allows us to actually go deep on blockers specific to Approved Science — not split 30 minutes across 5–10 brands. The feedback loop is faster and the decisions we make are sharper.</p>
+        <p style="font-size:.8rem;color:var(--light);line-height:1.65;">Group calls replaced with biweekly 1:1s between Tommy and Lenea. Deep on what's actually blocking Approved Science — not split across 10 brands. The decisions we make are faster and sharper.</p>
       </div>
       <div class="card tl">
         <div class="card-title">Creator Contact Sharing</div>
-        <p style="font-size:.8rem;color:var(--light);line-height:1.65;">Lenea will receive direct contact info for all active creators in the Approved Science pipeline — names, handles, Discord/WhatsApp contacts. Lenea's relationship-building (Jenna, Candy, etc.) is a real competitive advantage. We should be enabling it, not bottlenecking it through our team.</p>
+        <p style="font-size:.8rem;color:var(--light);line-height:1.65;">Lenea receives direct contact info for all active creators — TikTok handles, Discord, phone where available. Lenea's 1:1 relationships (Jenna, Candy, Danielle) are a real competitive advantage. We're enabling it, not bottlenecking it.</p>
       </div>
       <div class="card tl">
         <div class="card-title">Lenea's Booking Calendar</div>
-        <p style="font-size:.8rem;color:var(--light);line-height:1.65;">Lenea creates a Calendly (or similar) booking link that gets distributed to all creators. Any creator who wants a 1:1 call to discuss the brand, their content, or their strategy can book time directly with Lenea. This converts interested creators into engaged ones.</p>
+        <p style="font-size:.8rem;color:var(--light);line-height:1.65;">A Calendly link distributed to all creators so any of them can book time with Lenea directly. Converts interested creators into engaged ones — and gives creators like Jenna a structured channel instead of late-night messages.</p>
       </div>
       <div class="card tl">
-        <div class="card-title">Single Product Focus</div>
-        <p style="font-size:.8rem;color:var(--light);line-height:1.65;">For the first 90 days, all ambassador content, briefs, and ad spend go exclusively toward <strong style="color:var(--text);">Appetite Suppressant</strong>. It has the strongest GMV signal and the highest commercial intent. Once we have repeatable content formats proven out, we'll expand the playbook to Collagen and Paris Strand.</p>
+        <div class="card-title">Single Product Focus — 90 Days</div>
+        <p style="font-size:.8rem;color:var(--light);line-height:1.65;">All ambassador content, briefs, and ad spend go exclusively toward <strong style="color:var(--text);">Appetite Suppressant</strong> for the first 90 days. It has the strongest GMV signal. Once we have repeatable formats, we expand the playbook to Collagen and Paris Strand.</p>
       </div>
     </div>
   </div>
 
   <!-- NOT INCLUDED -->
   <div class="section">
-    <div class="sec-label">08 · Not Included</div>
+    <div class="sec-label">10 · Not Included</div>
     <h2 class="sec-title">Client responsibilities</h2>
-    <p class="sec-sub">A clear split of who owns what.</p>
     <div class="card">
       <ul class="blist">
-        <li><strong>Ambassador retainer payments</strong> — Approved Science pays creators directly (or via Cult Content as pass-through). Monthly retainers are not included in the Cult Content agency fee.</li>
-        <li><strong>Challenge participant payouts</strong> — The fixed challenge incentive payments (~$750–$1,500 one-time) are funded by Approved Science.</li>
-        <li><strong>GMV Max / ad spend</strong> — Any TikTok paid amplification budget is funded by Approved Science, managed by Cult Content. We do not mark up ad spend.</li>
-        <li><strong>Product samples</strong> — Samples for challenge participants and ambassadors are sourced and shipped by Approved Science's fulfillment team.</li>
-        <li><strong>Brand page access</strong> — Approved Science grants Cult Content and ambassadors appropriate TikTok account access for brand page publishing.</li>
-        <li><strong>Content approval</strong> — Lenea or Dan approves the first round of ambassador content before it goes live. Ongoing approval cadence agreed at kickoff.</li>
+        <li><strong>Ambassador retainer payments</strong> — Approved Science pays creators directly. $3,000/month per ambassador, funded outside the Cult Content retainer.</li>
+        <li><strong>Challenge participant payouts</strong> — one-time ~$500–$750 to reward creators who complete the 10-video qualifier. Funded by Approved Science.</li>
+        <li><strong>GMV Max / ad spend</strong> — any TikTok paid amplification budget is funded by Approved Science and managed by Cult Content. No markup on ad spend.</li>
+        <li><strong>Product samples</strong> — samples for challenge participants and ambassadors are sourced and shipped by Approved Science's fulfillment team.</li>
+        <li><strong>Brand page access</strong> — Approved Science grants Cult Content and ambassadors TikTok account access for brand page content posting.</li>
+        <li><strong>Content approval</strong> — Lenea or Dan approves the first round of ambassador content before it goes live. Ongoing cadence agreed at kickoff.</li>
       </ul>
     </div>
   </div>
 
   <!-- HOW WE GET STARTED -->
   <div class="section" id="start">
-    <div class="sec-label">09 · How We Get Started</div>
+    <div class="sec-label">11 · How We Get Started</div>
     <h2 class="sec-title">Four steps to kickoff</h2>
     <div class="steps" style="margin-top:20px;">
       <div class="step">
         <div class="step-num">1</div>
         <div class="step-body">
-          <div class="step-title">Lenea confirms budget range with Dan</div>
-          <div class="step-desc">Minimum ($3,000/mo for 1 ambassador) or full scale ($9,000/mo for 3). This determines challenge size, number of ambassadors we're targeting, and ad spend budget from Month 2.</div>
+          <div class="step-title">Dan approves the ambassador budget</div>
+          <div class="step-desc">Confirm the per-creator retainer ($3,000/mo) and challenge payout budget (~$500–$750 one-time). The number of ambassadors we hire is determined by the challenge results — no commitment to a specific headcount upfront.</div>
         </div>
       </div>
       <div class="step">
         <div class="step-num">2</div>
         <div class="step-body">
-          <div class="step-title">Tommy sends challenge brief + application form</div>
-          <div class="step-desc">Within 48 hours of budget confirmation, Cult Content delivers the challenge brief, application form, and all Reacher campaign materials for review. Lenea reviews and signs off.</div>
+          <div class="step-title">Tommy delivers the challenge brief</div>
+          <div class="step-desc">Within 48 hours of approval: challenge brief, application form, role spec, Reacher campaign materials. Lenea reviews and signs off before anything goes live.</div>
         </div>
       </div>
       <div class="step">
@@ -625,8 +700,8 @@ h1 span{color:var(--accent);}
       <div class="step">
         <div class="step-num">4</div>
         <div class="step-body">
-          <div class="step-title">Kickoff call scheduled with Lenea</div>
-          <div class="step-desc">Lenea and Tommy co-host the kickoff call for challenge applicants. Lenea introduces the brand and the vision. Tommy walks through the challenge structure, requirements, and ambassador opportunity. The challenge begins.</div>
+          <div class="step-title">Lenea co-hosts the kickoff call</div>
+          <div class="step-desc">Lenea introduces the brand and the opportunity. Tommy walks the challenge rules, the 10-video qualifier, and the ambassador offer. The challenge begins. We start building the content engine.</div>
         </div>
       </div>
     </div>
@@ -638,7 +713,7 @@ h1 span{color:var(--accent);}
   <div class="footer-inner">
     <div class="footer-brand">
       <strong>Cult Content</strong> · Prepared for Approved Science · July 2026<br/>
-      <span style="font-size:.72rem;">Questions? Tommy@cultcontent.cc</span>
+      <span style="font-size:.72rem;">Tommy@cultcontent.cc · $1,500/mo retainer unchanged</span>
     </div>
     <a class="footer-cta" href="mailto:Tommy@cultcontent.cc?subject=Approved Science — Ambassador Program Approval">
       Approve &amp; Get Started →
