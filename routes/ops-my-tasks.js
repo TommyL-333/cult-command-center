@@ -129,16 +129,16 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
 
 <div class="overlay" id="overlay">
   <div class="modal">
-    <h3>Complete task</h3>
+    <h3 id="modalTitle">Complete task</h3>
     <p class="mt" id="modalTask"></p>
-    <label for="resultBox">Result / Output <span style="color:var(--red)">*</span> — what did you do?</label>
+    <label for="resultBox" id="modalLabel">Result / Output <span style="color:var(--red)">*</span> — what did you do?</label>
     <textarea id="resultBox" placeholder="Describe the outcome. Required."></textarea>
     <div class="err" id="modalErr">A result / output note is required.</div>
     <div class="modal-actions" style="justify-content:space-between">
       <a class="chip sisy" id="sisyLink" href="https://sisyphus.cultcontent.cc" target="_blank" rel="noopener">🪨 Work on this in Sisyphus</a>
       <div style="display:flex;gap:10px">
         <button class="btn ghost" onclick="closeModal()">Cancel</button>
-        <button class="btn" id="confirmBtn" disabled onclick="doComplete()">Mark complete</button>
+        <button class="btn" id="confirmBtn" disabled onclick="doConfirm()">Mark complete</button>
       </div>
     </div>
   </div>
@@ -146,7 +146,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
 <div class="toast" id="toast"></div>
 
 <script>
-var ALL=[]; var FILTER='all'; var CURRENT=null;
+var ALL=[]; var FILTER='all'; var CURRENT=null; var MODE='complete';
 var PRIO=[
   {key:'Critical',label:'Critical',color:'var(--p1)',match:['critical','p0','urgent']},
   {key:'High',label:'High',color:'var(--p2)',match:['high','p1']},
@@ -213,8 +213,12 @@ function render(){
       if(t.executionMode) html+='<span class="tag">'+esc(t.executionMode)+'</span>';
       html+='</div>';
       if(t.promptAction) html+='<div class="prompt">'+esc(t.promptAction)+'</div>';
+      if(t.status==='Blocked'&&t.blockedReason) html+='<div class="prompt" style="color:var(--red)">⛔ '+esc(t.blockedReason)+'</div>';
       html+='</div>';
+      html+='<div style="display:flex;flex-direction:column;gap:8px">';
       html+='<button class="btn" onclick="openModal(\\''+t.record_id+'\\')">Complete</button>';
+      html+='<button class="btn ghost" onclick="openBlockModal(\\''+t.record_id+'\\')">Block</button>';
+      html+='</div>';
       html+='</div>';
     });
     html+='</div>';
@@ -222,7 +226,17 @@ function render(){
   board.innerHTML=html;
 }
 
+function setModalMode(mode){
+  MODE=mode;
+  var isBlock=mode==='block';
+  document.getElementById('modalTitle').textContent=isBlock?'Block task':'Complete task';
+  document.getElementById('modalLabel').innerHTML=isBlock?'Reason <span style="color:var(--red)">*</span> — why is this blocked?':'Result / Output <span style="color:var(--red)">*</span> — what did you do?';
+  document.getElementById('resultBox').placeholder=isBlock?'What is blocking this task? Required.':'Describe the outcome. Required.';
+  document.getElementById('modalErr').textContent=isBlock?'A reason is required to block a task.':'A result / output note is required.';
+  document.getElementById('confirmBtn').textContent=isBlock?'Mark blocked':'Mark complete';
+}
 function openModal(id){
+  setModalMode('complete');
   CURRENT=ALL.filter(function(t){return t.record_id===id;})[0];
   if(!CURRENT) return;
   document.getElementById('modalTask').textContent=CURRENT.task||'';
@@ -266,6 +280,48 @@ function doComplete(){
     document.getElementById('modalErr').style.display='block';
     document.getElementById('modalErr').textContent='Network error: '+e;
     btn.disabled=false; btn.textContent='Mark complete';
+  });
+}
+function openBlockModal(id){
+  setModalMode('block');
+  CURRENT=ALL.filter(function(t){return t.record_id===id;})[0];
+  if(!CURRENT) return;
+  document.getElementById('modalTask').textContent=CURRENT.task||'';
+  var sl=document.getElementById('sisyLink');
+  if(sl){var q='Help me unblock this Ops Engine task: '+(CURRENT.task||'')+(CURRENT.client?' (client: '+CURRENT.client+')':'');sl.href='https://sisyphus.cultcontent.cc/?prefill='+encodeURIComponent(q);}
+  var box=document.getElementById('resultBox'); box.value='';
+  document.getElementById('modalErr').style.display='none';
+  document.getElementById('confirmBtn').disabled=true;
+  document.getElementById('overlay').classList.add('show');
+  setTimeout(function(){box.focus();},50);
+}
+function doConfirm(){ if(MODE==='block'){ doBlock(); } else { doComplete(); } }
+function doBlock(){
+  if(!CURRENT) return;
+  var reason=document.getElementById('resultBox').value.trim();
+  if(!reason){ document.getElementById('modalErr').style.display='block'; return; }
+  var btn=document.getElementById('confirmBtn'); btn.disabled=true; btn.textContent='Saving…';
+  fetch('/api/my-tasks/block',{
+    method:'POST',credentials:'include',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({record_id:CURRENT.record_id,reason:reason})
+  }).then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j};});})
+  .then(function(x){
+    btn.textContent='Mark blocked';
+    if(x.ok&&x.j.verified){
+      var rid=CURRENT.record_id;
+      ALL=ALL.map(function(t){ if(t.record_id===rid){ t.status='Blocked'; t.blockedReason=x.j.reason; } return t; });
+      closeModal(); renderFilters(); render();
+      toast('⛔ Blocked & verified in Bitable');
+    } else {
+      document.getElementById('modalErr').style.display='block';
+      document.getElementById('modalErr').textContent=(x.j&&x.j.error)||'Failed to block.';
+      btn.disabled=false;
+    }
+  }).catch(function(e){
+    document.getElementById('modalErr').style.display='block';
+    document.getElementById('modalErr').textContent='Network error: '+e;
+    btn.disabled=false; btn.textContent='Mark blocked';
   });
 }
 function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(function(){t.style.display='none';},2600);}
@@ -532,6 +588,7 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
       promptAction: textVal(f['Prompt / Action']),
       dueDate: f['Due Date'] || null,
       sopLink: textVal(f['SOP Link']),
+      blockedReason: textVal(f['Blocked Reason']),
       source: textVal(f.Source),
     };
   }
@@ -543,6 +600,79 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
     const openId = await resolveOpenId(email);
     return { email, isAdmin, openId };
   }
+
+
+  // ---------- ROUTE: POST /api/my-tasks/block ----------
+  // Mark a task Blocked with a required reason. Mirrors /complete:
+  // owner check -> patch (keyed by NAME) -> read-back verification.
+  app.post('/api/my-tasks/block', requireAuth, jsonBody, async (req, res) => {
+    try {
+      const { record_id } = req.body || {};
+      const rawReason = (req.body && req.body.reason) != null ? req.body.reason : '';
+      const reason = typeof rawReason === 'string' ? rawReason.trim() : '';
+
+      if (!record_id || typeof record_id !== 'string') {
+        return res.status(400).json({ error: 'record_id is required' });
+      }
+      if (!reason) {
+        return res
+          .status(400)
+          .json({ error: 'A reason is required to block a task.' });
+      }
+
+      const { openId } = await resolveCaller(req);
+      if (!openId) {
+        return res
+          .status(403)
+          .json({ error: "Your account isn't linked to a task owner. Ping Tommy." });
+      }
+
+      let existing;
+      try {
+        existing = await readRecord(record_id);
+      } catch (e) {
+        return res.status(404).json({ error: 'Task not found', detail: e.message });
+      }
+      const existingFields = (existing && existing.fields) || {};
+      const owners = ownerIds(existingFields);
+      if (!owners.includes(openId)) {
+        return res
+          .status(403)
+          .json({ error: "You can't block a task you don't own." });
+      }
+
+      await patchRecord(record_id, {
+        Status: STATUS.BLOCKED,
+        'Blocked Reason': reason,
+      });
+
+      const after = await readRecord(record_id);
+      const afterFields = (after && after.fields) || {};
+      const afterStatus = textVal(afterFields.Status);
+      const afterReason = textVal(afterFields['Blocked Reason']);
+
+      const verified = afterStatus === STATUS.BLOCKED && afterReason === reason;
+      if (!verified) {
+        return res.status(500).json({
+          ok: false,
+          verified: false,
+          error: 'Write did not verify on read-back',
+          readback: { status: afterStatus, reason: afterReason },
+        });
+      }
+
+      return res.json({
+        ok: true,
+        verified: true,
+        record_id,
+        status: afterStatus,
+        reason: afterReason,
+      });
+    } catch (e) {
+      console.error('[ops-my-tasks] block error:', e.message);
+      res.status(500).json({ error: 'Failed to block task', detail: e.message });
+    }
+  });
 
   app.get('/api/my-tasks/whoami', requireAuth, async (req, res) => {
     const email = req.userEmail || (req.session && req.session.userEmail) || null;
