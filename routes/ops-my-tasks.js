@@ -288,9 +288,10 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
   // ---------- (a) tenant token ----------
   let _tokenCache = { token: null, exp: 0 };
   async function getTenantToken() {
-    // Try injected token first, but if it yields null/empty (wrong-app or transient),
-    // fall back to this module's own LARK_APP_ID/LARK_APP_SECRET self-fetch.
-    if (providedGetToken) {
+    // If a dedicated base-owning app is configured (OPS_LARK_APP_ID), ALWAYS self-fetch
+    // with it — the injected token belongs to an app that lacks Bitable scopes on this base.
+    const haveDedicated = !!(process.env.OPS_LARK_APP_ID && process.env.OPS_LARK_APP_SECRET);
+    if (providedGetToken && !haveDedicated) {
       try {
         const t = await providedGetToken();
         if (t) return t;
@@ -298,9 +299,9 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
     }
     const now = Date.now();
     if (_tokenCache.token && now < _tokenCache.exp) return _tokenCache.token;
-    const app_id = process.env.LARK_APP_ID;
-    const app_secret = process.env.LARK_APP_SECRET;
-    if (!app_id || !app_secret) throw new Error('LARK_APP_ID/LARK_APP_SECRET missing');
+    const app_id = process.env.OPS_LARK_APP_ID || process.env.LARK_APP_ID;
+    const app_secret = process.env.OPS_LARK_APP_SECRET || process.env.LARK_APP_SECRET;
+    if (!app_id || !app_secret) throw new Error('OPS_LARK_APP_ID/SECRET or LARK_APP_ID/SECRET missing');
     const r = await axios.post(
       `${LARK_BASE}/open-apis/auth/v3/tenant_access_token/internal`,
       { app_id, app_secret },
