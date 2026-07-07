@@ -131,6 +131,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   <div class="modal">
     <h3 id="modalTitle">Complete task</h3>
     <p class="mt" id="modalTask"></p>
+    <div id="assignWrap" style="display:none;margin-bottom:10px"><label for="assignSel">Reassign to</label><select id="assignSel" style="width:100%;margin-top:6px;padding:10px;border-radius:8px;background:var(--panel2);color:var(--txt);border:1px solid var(--border)"></select></div>
     <label for="resultBox" id="modalLabel">Result / Output <span style="color:var(--red)">*</span> — what did you do?</label>
     <textarea id="resultBox" placeholder="Describe the outcome. Required."></textarea>
     <div class="err" id="modalErr">A result / output note is required.</div>
@@ -218,6 +219,7 @@ function render(){
       html+='<div style="display:flex;flex-direction:column;gap:8px">';
       html+='<button class="btn" onclick="openModal(\\''+t.record_id+'\\')">Complete</button>';
       html+='<button class="btn ghost" onclick="openBlockModal(\\''+t.record_id+'\\')">Block</button>';
+      html+='<button class="btn ghost" onclick="openAssignModal(\\''+t.record_id+'\\')">Reassign</button>';
       html+='</div>';
       html+='</div>';
     });
@@ -228,12 +230,69 @@ function render(){
 
 function setModalMode(mode){
   MODE=mode;
+  document.getElementById('modalLabel').style.display='';
+  document.getElementById('resultBox').style.display='';
+  document.getElementById('assignWrap').style.display='none';
   var isBlock=mode==='block';
   document.getElementById('modalTitle').textContent=isBlock?'Block task':'Complete task';
   document.getElementById('modalLabel').innerHTML=isBlock?'Reason <span style="color:var(--red)">*</span> — why is this blocked?':'Result / Output <span style="color:var(--red)">*</span> — what did you do?';
   document.getElementById('resultBox').placeholder=isBlock?'What is blocking this task? Required.':'Describe the outcome. Required.';
   document.getElementById('modalErr').textContent=isBlock?'A reason is required to block a task.':'A result / output note is required.';
   document.getElementById('confirmBtn').textContent=isBlock?'Mark blocked':'Mark complete';
+}
+var TEAM=[];
+function openAssignModal(id){
+  MODE='assign';
+  CURRENT=ALL.filter(function(t){return t.record_id===id;})[0];
+  if(!CURRENT) return;
+  document.getElementById('modalTitle').textContent='Reassign task';
+  document.getElementById('modalTask').textContent=CURRENT.task||'';
+  document.getElementById('modalLabel').style.display='none';
+  document.getElementById('resultBox').style.display='none';
+  document.getElementById('assignWrap').style.display='block';
+  document.getElementById('modalErr').style.display='none';
+  var btn=document.getElementById('confirmBtn'); btn.textContent='Reassign'; btn.disabled=true;
+  var fill=function(){
+    var sel=document.getElementById('assignSel');
+    sel.innerHTML='<option value="">Choose a teammate…</option>'+TEAM.map(function(m){return '<option value="'+m.openId+'">'+esc(m.name)+(m.role?' — '+esc(m.role):'')+'</option>';}).join('');
+    sel.onchange=function(){btn.disabled=!this.value;};
+  };
+  if(TEAM.length){fill();}
+  else{
+    fetch('/api/my-tasks/team',{credentials:'include'}).then(function(r){return r.json();}).then(function(d){
+      TEAM=d.team||[]; fill();
+    }).catch(function(){document.getElementById('modalErr').style.display='block';document.getElementById('modalErr').textContent='Could not load team roster.';});
+  }
+  document.getElementById('overlay').classList.add('show');
+}
+function doReassign(){
+  if(!CURRENT) return;
+  var to=document.getElementById('assignSel').value;
+  if(!to) return;
+  var btn=document.getElementById('confirmBtn'); btn.disabled=true; btn.textContent='Saving…';
+  fetch('/api/my-tasks/reassign',{
+    method:'POST',credentials:'include',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({record_id:CURRENT.record_id,to_open_id:to})
+  }).then(function(r){return r.json().then(function(j){return {ok:r.ok,j:j};});})
+  .then(function(x){
+    btn.textContent='Reassign';
+    if(x.ok&&x.j.verified){
+      var rid=CURRENT.record_id;
+      ALL=ALL.filter(function(t){return t.record_id!==rid;});
+      closeModal(); renderFilters(); render();
+      document.getElementById('sub').textContent=ALL.length+' active task'+(ALL.length===1?'':'s');
+      toast('✅ Reassigned & verified in Bitable');
+    } else {
+      document.getElementById('modalErr').style.display='block';
+      document.getElementById('modalErr').textContent=(x.j&&x.j.error)||'Failed to reassign.';
+      btn.disabled=false;
+    }
+  }).catch(function(e){
+    document.getElementById('modalErr').style.display='block';
+    document.getElementById('modalErr').textContent='Network error: '+e;
+    btn.disabled=false; btn.textContent='Reassign';
+  });
 }
 function openModal(id){
   setModalMode('complete');
@@ -295,7 +354,7 @@ function openBlockModal(id){
   document.getElementById('overlay').classList.add('show');
   setTimeout(function(){box.focus();},50);
 }
-function doConfirm(){ if(MODE==='block'){ doBlock(); } else { doComplete(); } }
+function doConfirm(){ if(MODE==='assign'){ doReassign(); } else if(MODE==='block'){ doBlock(); } else { doComplete(); } }
 function doBlock(){
   if(!CURRENT) return;
   var reason=document.getElementById('resultBox').value.trim();
@@ -671,6 +730,86 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
     } catch (e) {
       console.error('[ops-my-tasks] block error:', e.message);
       res.status(500).json({ error: 'Failed to block task', detail: e.message });
+    }
+  });
+
+  // ---------- ROUTE: GET /api/my-tasks/team ----------
+  // Active Team roster for the reassign dropdown: [{name, openId, role}]
+  app.get('/api/my-tasks/team', requireAuth, async (req, res) => {
+    try {
+      const data = await larkGet(
+        `/open-apis/bitable/v1/apps/${OPS_APP_TOKEN}/tables/${TEAM_TABLE}/records`,
+        { page_size: 100 }
+      );
+      if (data.code !== 0) throw new Error('team read: ' + data.code + ' ' + data.msg);
+      const items = (data.data && data.data.items) || [];
+      const team = [];
+      for (const it of items) {
+        const f = it.fields || {};
+        if (f.Active === false) continue;
+        const openId = textVal(f['Open ID']) ||
+          (Array.isArray(f.Person) && f.Person[0] && f.Person[0].id) || '';
+        if (!openId) continue;
+        team.push({
+          name: textVal(f.Name) ||
+            (Array.isArray(f.Person) && f.Person[0] && (f.Person[0].name || f.Person[0].en_name)) || openId,
+          openId,
+          role: textVal(f.Role) || '',
+        });
+      }
+      res.json({ team });
+    } catch (e) {
+      console.error('[ops-my-tasks] team error:', e.message);
+      res.status(500).json({ error: 'Failed to load team', detail: e.message });
+    }
+  });
+
+  // ---------- ROUTE: POST /api/my-tasks/reassign ----------
+  // Hand a task to another team member. Owner check -> patch Owner (User field,
+  // write shape [{id: open_id}]) -> read-back verification.
+  app.post('/api/my-tasks/reassign', requireAuth, jsonBody, async (req, res) => {
+    try {
+      const { record_id, to_open_id } = req.body || {};
+      if (!record_id || typeof record_id !== 'string') {
+        return res.status(400).json({ error: 'record_id is required' });
+      }
+      if (!to_open_id || typeof to_open_id !== 'string' || !/^ou_[a-f0-9]+$/i.test(to_open_id)) {
+        return res.status(400).json({ error: 'A valid to_open_id is required.' });
+      }
+
+      const { openId, isAdmin } = await resolveCaller(req);
+      if (!openId && !isAdmin) {
+        return res.status(403).json({ error: "Your account isn't linked to a task owner. Ping Tommy." });
+      }
+
+      let existing;
+      try {
+        existing = await readRecord(record_id);
+      } catch (e) {
+        return res.status(404).json({ error: 'Task not found', detail: e.message });
+      }
+      const existingFields = (existing && existing.fields) || {};
+      const owners = ownerIds(existingFields);
+      if (!isAdmin && !owners.includes(openId)) {
+        return res.status(403).json({ error: "You can't reassign a task you don't own." });
+      }
+
+      await patchRecord(record_id, { Owner: [{ id: to_open_id }] });
+
+      const after = await readRecord(record_id);
+      const afterOwners = ownerIds((after && after.fields) || {});
+      const verified = afterOwners.includes(to_open_id);
+      if (!verified) {
+        return res.status(500).json({
+          ok: false, verified: false,
+          error: 'Write did not verify on read-back',
+          readback: { owners: afterOwners },
+        });
+      }
+      return res.json({ ok: true, verified: true, record_id, owners: afterOwners });
+    } catch (e) {
+      console.error('[ops-my-tasks] reassign error:', e.message);
+      res.status(500).json({ error: 'Failed to reassign task', detail: e.message });
     }
   });
 
