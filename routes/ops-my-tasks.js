@@ -968,6 +968,51 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
   });
 
 
+  // ---------- ROUTE: GET /api/my-tasks/team ----------
+  // Returns all active tasks across the whole team, keyed by owner open_id.
+  // Accessible to any CF Access authenticated user (the gate is already at the edge).
+  // Response: { byOwner: { [open_id]: { email, tasks[] } }, unowned: tasks[] }
+  app.get('/api/my-tasks/team', requireAuth, async (req, res) => {
+    try {
+      const [records, clientsMap, teamByEmail] = await Promise.all([
+        listAllTaskRecords(),
+        getClientsMap().catch(() => ({})),
+        getTeamByEmail().catch(() => ({})),
+      ]);
+
+      // Build reverse map: open_id -> email
+      const openIdToEmail = {};
+      for (const [email, oid] of Object.entries(teamByEmail)) openIdToEmail[oid] = email;
+      // Seed map fallback
+      for (const [email, oid] of Object.entries(SEED_EMAIL_OPENID)) {
+        if (!openIdToEmail[oid]) openIdToEmail[oid] = email;
+      }
+
+      const byOwner = {};
+      const unowned = [];
+
+      for (const rec of records) {
+        const f = rec.fields || {};
+        if (textVal(f.Status) === STATUS.COMPLETED) continue;
+        const shaped = { ...shapeTask(rec, clientsMap), owners: ownerIds(f) };
+        const ids = shaped.owners;
+        if (!ids.length) {
+          unowned.push(shaped);
+        } else {
+          for (const oid of ids) {
+            if (!byOwner[oid]) byOwner[oid] = { email: openIdToEmail[oid] || null, tasks: [] };
+            byOwner[oid].tasks.push(shaped);
+          }
+        }
+      }
+
+      res.json({ byOwner, unowned });
+    } catch (e) {
+      console.error('[ops-my-tasks] team error:', e.message);
+      res.status(500).json({ error: 'Failed to load team tasks', detail: e.message });
+    }
+  });
+
   // ---------- ROUTE: GET /my-tasks (HTML page) ----------
   // The per-person task board. Auth-gated. Renders a dark-theme page that
   // fetches /api/my-tasks/list on load, groups tasks by Priority, offers a
