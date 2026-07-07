@@ -531,7 +531,18 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
     try { openId = await resolveOpenId(email); } catch (e) { err = e.message; }
     let teamKeys = [];
     try { const t = await getTeamByEmail(); teamKeys = Object.keys(t); } catch (e) {}
-    res.json({ email, openId, seedHasEmail: !!(email && SEED_EMAIL_OPENID[email.toLowerCase()]), teamEmailKeys: teamKeys, err });
+    let activeCount = null, sample = [];
+    try {
+      const records = await listAllTaskRecords();
+      for (const rec of records) {
+        const f = rec.fields || {};
+        if (textVal(f.Status) === "Completed") continue;
+        if (openId && !ownerIds(f).includes(openId)) continue;
+        sample.push(textVal(f.Task).slice(0,50));
+      }
+      activeCount = sample.length;
+    } catch (e) { err = (err||"") + " listErr:" + e.message; }
+    res.json({ email, openId, activeCount, sample, seedHasEmail: !!(email && SEED_EMAIL_OPENID[email.toLowerCase()]), teamEmailKeys: teamKeys, err });
   });
 
   // ---------- ROUTE: GET /api/my-tasks/list ----------
