@@ -3494,6 +3494,38 @@ app.patch('/portal-admin/creator-accent/:brandId', requirePortalAdmin, express.j
   res.json({ ok: true, slug: cp.slug || null, accentColor: cp.accentColor });
 });
 
+// PATCH /portal-admin/creator-brief/:brandId — update the structured creator BRIEF on the creator page.
+// Source of truth is brands.json (brand.creatorPage.brief). Follows the surgical PATCH pattern:
+// looks up by brandId OR creatorPage.slug, mutates ONLY creatorPage.brief (+ timestamps), writes back
+// via saveBrands(). Body: { brief: {...} } to REPLACE the brief, or { merge:true, brief:{...} } to
+// SHALLOW-MERGE the given keys into the existing brief (preserving untouched brief keys). An explicit
+// brief key is REQUIRED — an empty/omitted brief returns 400 so a stray PATCH can never wipe the brief.
+// The brief object shape used by the creator page: { hooks:[], frameworks:[], sampleScripts:[],
+// talkingPoints:{benefits:[],powerPhrases:[]}, doAndDont:{dos:[],donts:[]}, guideUrl:'' }.
+app.patch('/portal-admin/creator-brief/:brandId', requirePortalAdmin, express.json(), (req, res) => {
+  const brands = loadBrands();
+  const idx = (brands.clients || []).findIndex(b => b.id === req.params.brandId || b.creatorPage?.slug === req.params.brandId);
+  if (idx === -1) return res.status(404).json({ error: 'Brand not found' });
+  if (!brands.clients[idx].creatorPage) brands.clients[idx].creatorPage = {};
+  const cp = brands.clients[idx].creatorPage;
+
+  const body = req.body || {};
+  const incoming = (body && typeof body === 'object' && body.brief !== undefined) ? body.brief : undefined;
+  if (incoming === undefined || incoming === null || typeof incoming !== 'object' || Array.isArray(incoming)) {
+    return res.status(400).json({ error: 'Body must include a brief object. Send { brief: {...} } to replace, or { merge:true, brief:{...} } to shallow-merge existing brief keys.' });
+  }
+  const doMerge = body.merge === true;
+  if (doMerge && cp.brief && typeof cp.brief === 'object' && !Array.isArray(cp.brief)) {
+    cp.brief = { ...cp.brief, ...incoming };
+  } else {
+    cp.brief = incoming;
+  }
+  cp.briefUpdatedAt = new Date().toISOString();
+  cp.updatedAt = new Date().toISOString();
+  saveBrands(brands);
+  res.json({ ok: true, brandId: brands.clients[idx].id, slug: cp.slug || null, merged: !!doMerge, brief: cp.brief });
+});
+
 // ── TC PRODUCT ALLOW-LIST (prevents full-catalog target collabs) ──────────────
 // GET  /portal-admin/tc-products/:brandId  -> { catalog:[{product_id,product_name}], approved:[ids], heroProductId }
 // PATCH /portal-admin/tc-products/:brandId  body {productIds:[...]} -> sets cp.tcProductIds (the allow-list)
