@@ -487,20 +487,6 @@
       font-size: 13px;
     }
 
-    .nav-actions { display: flex; align-items: center; gap: 12px; }
-    .nav-meetings-btn {
-      display: flex; align-items: center; gap: 8px;
-      padding: 8px 18px;
-      background: rgba(0,242,234,0.07);
-      border: 1px solid rgba(0,242,234,0.25);
-      border-radius: 100px; color: rgba(255,255,255,0.9);
-      font-size: 14px; font-weight: 600; cursor: pointer;
-      transition: all 0.3s; font-family: inherit;
-    }
-    .nav-meetings-btn:hover { background: rgba(0,242,234,0.14); border-color: rgba(0,242,234,0.5); }
-    .nav-meetings-icon { font-size: 15px; }
-    @media (max-width: 768px) { .nav-meetings-label { display: none; } }
-
     /* Responsive */
     @media (max-width: 768px) {
       .hero h1 { font-size: 48px; }
@@ -519,26 +505,13 @@
     /* ── Wiring components (carried from production SPA) ── */
     .brand-action {
       width: 100%; padding: 14px; margin-top: 16px;
-      background: transparent;
-      border: 1.5px solid var(--brand-color);
-      border-radius: 12px; color: var(--brand-color); font-weight: 700;
-      cursor: pointer; transition: all 0.25s ease; font-family: inherit; font-size: 0.95rem;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 12px; color: #fff; font-weight: 700;
+      cursor: pointer; transition: all 0.3s; font-family: inherit; font-size: 0.95rem;
     }
-    .brand-action:hover {
-      background: color-mix(in srgb, var(--brand-color) 12%, transparent);
-      border-color: var(--brand-color);
-      box-shadow: 0 0 18px -2px var(--brand-color), 0 0 4px var(--brand-color);
-      transform: translateY(-1px);
-    }
+    .brand-action:hover { background: rgba(0,242,234,0.1); border-color: #00f2ea; }
     .brand-action:disabled { opacity: 0.6; cursor: wait; }
-    /* Filled CTA buttons keep their solid brand fill, but glow on hover */
-    .brand-action.create-videos-btn:hover,
-    .brand-action.commit-btn:hover {
-      background: var(--brand-color);
-      box-shadow: 0 0 22px -2px var(--brand-color), 0 0 8px var(--brand-color);
-      filter: brightness(1.08);
-      transform: translateY(-1px);
-    }
     .covenant-confirm {
       width: 100%; padding: 14px; margin-top: 16px;
       background: rgba(0,242,234,0.08); border: 1px solid rgba(0,242,234,0.4);
@@ -546,27 +519,6 @@
       text-align: center; font-size: 0.9rem; box-sizing: border-box;
     }
     .recordings-list { display: grid; gap: 16px; }
-    .handles-list { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
-    .handle-row { display: flex; align-items: center; justify-content: space-between;
-      padding: 12px 16px; border-radius: 12px; background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.08); }
-    .handle-name { font-weight: 600; letter-spacing: 0.2px; }
-    .handle-badge { font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
-      padding: 3px 9px; border-radius: 999px; margin-left: 10px;
-      background: linear-gradient(90deg, #00f2ea, #ff0050); color: #0b0c14; font-weight: 700; }
-    .handle-remove { background: none; border: none; color: rgba(255,255,255,0.45);
-      cursor: pointer; font-size: 18px; line-height: 1; padding: 4px 8px; border-radius: 8px; transition: all .15s; }
-    .handle-remove:hover { color: #ff0050; background: rgba(255,0,80,0.1); }
-    .handle-add { display: flex; gap: 10px; margin-top: 14px; }
-    .handle-add input { flex: 1; padding: 12px 14px; border-radius: 12px;
-      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.12);
-      color: #fff; font-family: 'Inter', sans-serif; font-size: 14px; }
-    .handle-add input:focus { outline: none; border-color: #00f2ea; }
-    .handle-add button { padding: 12px 18px; border-radius: 12px; border: none; cursor: pointer;
-      font-weight: 700; color: #0b0c14; background: linear-gradient(90deg, #00f2ea, #ff0050); transition: opacity .15s; }
-    .handle-add button:hover { opacity: 0.9; }
-    .handle-add button:disabled { opacity: 0.5; cursor: default; }
-    .handle-error { color: #ff5a7a; font-size: 13px; margin-top: 8px; min-height: 16px; }
     .recording-item {
       background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1);
       border-radius: 16px; padding: 24px;
@@ -582,6 +534,15 @@
     }
     .play-btn:hover { background: #00f2ea; color: #161823; box-shadow: 0 0 20px rgba(0,242,234,0.5); }
     .empty-note { color: #9ca3af; }
+    .recording-info h4 { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .attended-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: 100px;
+      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em;
+      text-transform: uppercase; line-height: 1;
+    }
+    .attended-badge.yes { background: rgba(0,242,234,0.12); border: 1px solid rgba(0,242,234,0.5); color: #00f2ea; }
+    .attended-badge.no  { background: rgba(255,0,80,0.10);  border: 1px solid rgba(255,0,80,0.4);  color: #ff5d8a; }
 
     /* ── Brand selection cards: responsive grid, logos, brand colors, websites ── */
     #brands-container {
@@ -717,101 +678,117 @@
     }
     .brand-website:hover { opacity: 0.75; text-decoration: underline; }
 
-    /* ── IC_RATES_CSS_START: Your Rates card ─�� */
-    .rates-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
-    .rates-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
-    @media (max-width: 640px) { .rates-grid, .rates-grid-3 { grid-template-columns: 1fr; } }
-    .rate-field { display: flex; flex-direction: column; gap: 6px; }
-    .rate-field label {
-      font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em;
-      color: rgba(255,255,255,0.45); font-weight: 600;
+    /* ── Brand Ad Authorization (Spark / Whitelisting / Partnership Ads) ── */
+    #spark-container { display: grid; gap: 20px; }
+    .spark-brand-row {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-left: 3px solid var(--brand-color, #00f2ea);
+      border-radius: 18px;
+      padding: 24px 26px;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      transition: all 0.3s cubic-bezier(0.4,0,0.2,1);
     }
-    .rate-input-wrap { position: relative; display: flex; align-items: center; }
-    .rate-prefix {
-      position: absolute; left: 14px; color: rgba(0,242,234,0.7);
-      font-weight: 700; font-size: 14px; pointer-events: none;
+    .spark-brand-row:hover {
+      border-color: rgba(0,242,234,0.35);
+      box-shadow: 0 12px 40px rgba(0,0,0,0.4);
     }
-    .rate-input-wrap input { padding-left: 28px !important; }
-    .rate-field input {
-      width: 100%; padding: 12px 14px; border-radius: 12px;
-      background: #161823; border: 1px solid rgba(255,255,255,0.12);
-      color: #fff; font-family: 'Inter', sans-serif; font-size: 14px;
-      transition: border-color 0.2s;
+    .spark-row-head {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 16px; flex-wrap: wrap;
     }
-    .rate-field input::placeholder { color: rgba(255,255,255,0.3); }
-    .rate-field input:focus { outline: none; border-color: #00f2ea; }
-    .rates-package {
+    .spark-brand-name {
+      font-family: 'Montserrat', sans-serif;
+      font-size: 20px; font-weight: 800; letter-spacing: -0.01em;
+      display: flex; align-items: center; gap: 12px;
+    }
+    /* Authorize toggle switch */
+    .spark-authorize {
+      display: inline-flex; align-items: center; gap: 12px;
+      font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.7);
+      cursor: pointer; user-select: none;
+    }
+    .spark-toggle {
+      position: relative; width: 54px; height: 30px; flex-shrink: 0;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 100px; transition: all 0.3s;
+    }
+    .spark-toggle::after {
+      content: ''; position: absolute; top: 3px; left: 3px;
+      width: 22px; height: 22px; border-radius: 50%;
+      background: #fff; transition: all 0.3s;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    }
+    .spark-authorize.on .spark-toggle {
+      background: linear-gradient(135deg, #00f2ea, #ff0050);
+      border-color: transparent;
+      box-shadow: 0 0 18px rgba(0,242,234,0.5);
+    }
+    .spark-authorize.on .spark-toggle::after { left: 27px; }
+    .spark-authorize.busy { opacity: 0.6; cursor: wait; }
+    /* Status badges */
+    .spark-badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 12px; border-radius: 100px;
+      font-size: 0.72rem; font-weight: 700; letter-spacing: 0.04em;
+      text-transform: uppercase; line-height: 1;
+    }
+    .spark-badge.authorized { background: rgba(0,242,234,0.12); border: 1px solid rgba(0,242,234,0.5); color: #00f2ea; }
+    .spark-badge.not_authorized { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.18); color: rgba(255,255,255,0.55); }
+    .spark-badge.revoked { background: rgba(255,0,80,0.10); border: 1px solid rgba(255,0,80,0.4); color: #ff5d8a; }
+    .spark-badge.pending { background: rgba(251,191,36,0.10); border: 1px solid rgba(251,191,36,0.4); color: #fbbf24; }
+    .spark-badge.verified { background: rgba(0,242,234,0.12); border: 1px solid rgba(0,242,234,0.5); color: #00f2ea; }
+    .spark-badge.unverified { background: rgba(251,191,36,0.10); border: 1px solid rgba(251,191,36,0.4); color: #fbbf24; }
+    /* Ad-code entry */
+    .spark-adcode-block {
       margin-top: 20px; padding-top: 18px;
       border-top: 1px solid rgba(255,255,255,0.08);
     }
-    .rates-package-title {
-      font-family: 'Montserrat', sans-serif; font-weight: 800; font-size: 15px;
-      margin-bottom: 14px; letter-spacing: -0.01em;
+    .spark-adcode-block h4 {
+      font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em;
+      color: rgba(255,255,255,0.4); font-weight: 600; margin-bottom: 12px;
     }
-    .rates-package-hint { color: rgba(255,255,255,0.4); font-weight: 600; font-size: 12px; }
-    .rates-toggle {
-      display: flex; align-items: center; gap: 12px; margin-top: 22px; cursor: pointer; user-select: none;
+    .spark-adcode-form { display: grid; gap: 10px; }
+    @media (min-width: 640px) {
+      .spark-adcode-form {
+        grid-template-columns: 1.4fr 1fr auto;
+        align-items: start;
+      }
     }
-    .rates-toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
-    .rates-toggle-track {
-      position: relative; width: 48px; height: 26px; border-radius: 999px;
-      background: rgba(255,255,255,0.12); transition: background 0.25s; flex-shrink: 0;
+    .spark-input {
+      width: 100%; padding: 12px 14px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 10px; color: #fff; font-family: inherit; font-size: 0.9rem;
+      transition: all 0.25s; box-sizing: border-box;
     }
-    .rates-toggle-thumb {
-      position: absolute; top: 3px; left: 3px; width: 20px; height: 20px;
-      border-radius: 50%; background: #fff; transition: transform 0.25s;
+    .spark-input::placeholder { color: rgba(255,255,255,0.35); }
+    .spark-input:focus { outline: none; border-color: #00f2ea; background: rgba(0,242,234,0.06); }
+    .spark-submit {
+      padding: 12px 22px;
+      background: linear-gradient(135deg, #00f2ea, #ff0050);
+      border: none; border-radius: 10px; color: #161823;
+      font-weight: 800; font-family: inherit; font-size: 0.9rem;
+      cursor: pointer; transition: all 0.3s; white-space: nowrap;
     }
-    .rates-toggle input:checked + .rates-toggle-track {
-      background: linear-gradient(90deg, #00f2ea, #ff0050);
+    .spark-submit:hover { box-shadow: 0 0 22px rgba(0,242,234,0.5); transform: translateY(-1px); }
+    .spark-submit:disabled { opacity: 0.6; cursor: wait; transform: none; }
+    .spark-codes-list { margin-top: 16px; display: grid; gap: 10px; }
+    .spark-code-item {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; flex-wrap: wrap;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px; padding: 12px 16px; font-size: 0.86rem;
     }
-    .rates-toggle input:checked + .rates-toggle-track .rates-toggle-thumb { transform: translateX(22px); }
-    .rates-toggle-label { font-size: 14px; font-weight: 600; color: rgba(255,255,255,0.85); }
-    .rates-footer {
-      display: flex; align-items: center; justify-content: space-between; gap: 16px;
-      margin-top: 24px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,0.08);
-    }
-    .rates-status { color: rgba(255,255,255,0.5); font-size: 13px; min-height: 16px; }
-    .rates-status.ok { color: #00f2ea; }
-    .rates-status.err { color: #ff5a7a; }
-    .rates-save-btn {
-      padding: 12px 26px; border-radius: 12px; border: none; cursor: pointer;
-      font-weight: 700; font-family: 'Inter', sans-serif; font-size: 14px; color: #0b0c14;
-      background: linear-gradient(90deg, #00f2ea, #ff0050); transition: opacity 0.15s, box-shadow 0.2s;
-    }
-    .rates-save-btn:hover { opacity: 0.92; box-shadow: 0 0 22px rgba(0,242,234,0.4); }
-    .rates-save-btn:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
-    /* ── Weekly Call Recordings: brand-styled card grid ── */
-    #recordings-container.rec-grid {
-      display: grid; grid-template-columns: 1fr; gap: 18px;
-    }
-    @media (min-width: 768px) {
-      #recordings-container.rec-grid { grid-template-columns: repeat(2, 1fr); }
-    }
-    .rec-card {
-      position: relative; display: flex; flex-direction: column;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.10);
-      border-radius: 16px; padding: 22px 22px 20px;
-      backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
-      overflow: hidden; transition: transform .25s, border-color .25s, box-shadow .25s;
-    }
-    .rec-card::before {
-      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
-      background: linear-gradient(90deg, #00f2ea, #ff0050);
-    }
-    .rec-card:hover {
-      transform: translateY(-3px);
-      border-color: rgba(0,242,234,0.4);
-      box-shadow: 0 12px 40px -18px rgba(0,242,234,0.6);
-    }
-    .rec-card-title { font-family: 'Montserrat', sans-serif; font-weight: 800;
-      font-size: 1.08rem; color: #fff; margin: 4px 0 10px; line-height: 1.3; }
-    .rec-card-meta { display: flex; flex-wrap: wrap; gap: 8px 14px; margin-bottom: 18px; }
-    .rec-meta-item { display: inline-flex; align-items: center; gap: 6px;
-      color: #9ca3af; font-size: 0.86rem; }
-    .rec-meta-item .rec-meta-ico { opacity: 0.85; }
-    .rec-card .play-btn { align-self: flex-start; margin-top: auto; }
-    /* ── IC_RATES_CSS_END ─����� */
+    .spark-code-item .spark-code-meta { color: rgba(255,255,255,0.75); display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+    .spark-code-item .spark-code-video a { color: #00f2ea; text-decoration: none; word-break: break-all; }
+    .spark-code-item .spark-code-video a:hover { text-decoration: underline; }
+    .spark-code-item .spark-code-value { font-family: monospace; color: rgba(255,255,255,0.55); font-size: 0.8rem; }
+    .spark-hint { color: rgba(255,255,255,0.4); font-size: 0.82rem; margin-top: 6px; }
+    .spark-locked-note { color: rgba(255,255,255,0.4); font-size: 0.85rem; margin-top: 14px; font-style: italic; }
 
   </style>
 </head>
@@ -828,14 +805,9 @@
   <!-- Top Navigation -->
   <nav class="top-nav">
     <div class="nav-logo">INNER CIRCLE</div>
-    <div class="nav-actions">
-      <button class="nav-meetings-btn" id="nav-meetings-btn" onclick="openMeetings()" title="Cult Meetings">
-        <span class="nav-meetings-icon">📅</span><span class="nav-meetings-label">Cult Meetings</span>
-      </button>
-      <div class="nav-user" id="nav-user" onclick="openProfile()" title="Your profile">
-        <div class="user-avatar" id="nav-avatar">IC</div>
-        <span id="creator-name">Loading…</span>
-      </div>
+    <div class="nav-user">
+      <div class="user-avatar">IC</div>
+      <span id="creator-name">Loading…</span>
     </div>
   </nav>
 
@@ -875,365 +847,31 @@
       <p class="empty-note">Loading your brands…</p>
     </div>
 
-
-
-
-  </div>
-
-  <!-- ── Profile + Cult Meetings modals ── -->
-  <style>
-    .ic-overlay { position: fixed; inset: 0; z-index: 1000; display: none; align-items: flex-start; justify-content: center; background: rgba(8,9,18,0.78); backdrop-filter: blur(6px); overflow-y: auto; padding: 48px 16px; }
-    .ic-overlay.open { display: flex; }
-    .ic-modal { width: 100%; max-width: 620px; background: #161823; border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; box-shadow: 0 24px 80px rgba(0,0,0,0.55); overflow: hidden; }
-    .ic-modal-header { display: flex; align-items: center; justify-content: space-between; padding: 22px 24px; background: linear-gradient(135deg, rgba(0,242,234,0.10), rgba(255,0,80,0.10)); border-bottom: 1px solid rgba(255,255,255,0.06); }
-    .ic-modal-header h2 { margin: 0; font-size: 19px; color: #fff; font-family: 'Montserrat', sans-serif; }
-    .ic-modal-header p { margin: 4px 0 0; font-size: 13px; color: rgba(255,255,255,0.55); }
-    .ic-modal-close { background: none; border: none; color: rgba(255,255,255,0.6); font-size: 26px; line-height: 1; cursor: pointer; padding: 0 4px; }
-    .ic-modal-close:hover { color: #fff; }
-    .ic-modal-body { padding: 22px 24px 28px; }
-    .ic-prof-id { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; }
-    .ic-prof-avatar { width: 54px; height: 54px; border-radius: 50%; background: linear-gradient(135deg, #00f2ea, #ff0050); display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 20px; color: #06070d; flex-shrink: 0; }
-    .ic-prof-id .nm { font-size: 17px; font-weight: 700; color: #fff; }
-    .ic-prof-id .em { font-size: 13px; color: rgba(255,255,255,0.5); }
-    .ic-section-title { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.45); margin: 22px 0 10px; font-weight: 700; }
-    .ic-handles-list .handle-row, .ic-modal .handle-row { display: flex; align-items: center; justify-content: space-between; padding: 11px 14px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 10px; margin-bottom: 8px; }
-    .ic-modal .handle-name { color: #fff; font-weight: 600; }
-    .ic-modal .handle-badge { margin-left: 8px; font-size: 11px; padding: 2px 8px; border-radius: 100px; background: rgba(0,242,234,0.15); color: #00f2ea; }
-    .ic-modal .handle-remove { background: none; border: none; color: rgba(255,255,255,0.4); font-size: 18px; cursor: pointer; }
-    .ic-modal .handle-remove:hover { color: #ff0050; }
-    .ic-handle-add { display: flex; gap: 8px; margin-top: 6px; }
-    .ic-handle-add input { flex: 1; padding: 11px 14px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; color: #fff; font-family: inherit; font-size: 14px; }
-    .ic-handle-add button, .ic-prof-save { padding: 11px 18px; background: linear-gradient(135deg, #00f2ea, #ff0050); border: none; border-radius: 10px; color: #06070d; font-weight: 700; cursor: pointer; font-family: inherit; font-size: 14px; }
-    .ic-prof-save { width: 100%; margin-top: 16px; padding: 14px; }
-    .ic-prof-save:disabled { opacity: 0.6; cursor: wait; }
-    .ic-rates-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .ic-rate-field label { display: block; font-size: 12px; color: rgba(255,255,255,0.55); margin-bottom: 6px; }
-    .ic-rate-wrap { display: flex; align-items: center; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 0 12px; }
-    .ic-rate-wrap span { color: rgba(255,255,255,0.4); }
-    .ic-rate-wrap input { flex: 1; padding: 11px 6px; background: none; border: none; color: #fff; font-family: inherit; font-size: 14px; outline: none; }
-    .ic-prof-msg { font-size: 13px; margin-top: 10px; min-height: 16px; }
-    .ic-prof-msg.ok { color: #00f2ea; } .ic-prof-msg.err { color: #ff0050; }
-    .ic-empty-note { color: rgba(255,255,255,0.4); font-size: 14px; padding: 8px 0; }
-    /* Cult Meetings */
-    .ic-cal-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; margin-bottom: 10px; }
-    .ic-cal-brand { font-weight: 700; color: #fff; font-size: 15px; }
-    .ic-cal-when { font-size: 13px; color: rgba(255,255,255,0.55); margin-top: 2px; }
-    .ic-cal-join { padding: 9px 16px; background: rgba(0,242,234,0.1); border: 1px solid rgba(0,242,234,0.35); border-radius: 100px; color: #00f2ea; font-weight: 600; font-size: 13px; text-decoration: none; white-space: nowrap; }
-    .ic-cal-join:hover { background: rgba(0,242,234,0.18); }
-    .ic-rec-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 16px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 12px; margin-bottom: 8px; }
-    .ic-rec-row .t { color: #fff; font-weight: 600; font-size: 14px; }
-    .ic-rec-row .d { font-size: 12px; color: rgba(255,255,255,0.45); margin-top: 2px; }
-    .ic-rec-play { padding: 8px 16px; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 100px; color: #fff; font-weight: 600; font-size: 13px; cursor: pointer; }
-    .ic-rec-play:hover { border-color: #00f2ea; }
-    .ic-rec-filter { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
-    .ic-rec-filter label { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: rgba(255,255,255,0.4); font-weight: 700; }
-    .ic-rec-filter select { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.14); border-radius: 100px; color: #fff; font-size: 13px; font-weight: 600; padding: 8px 14px; cursor: pointer; outline: none; }
-    .ic-rec-filter select:hover { border-color: #00f2ea; }
-    .ic-rec-filter select option { background: #161823; color: #fff; }
-    .ic-rec-info { min-width: 0; }
-    .ic-rec-brand { display: inline-block; padding: 2px 9px; border-radius: 100px; background: linear-gradient(90deg, rgba(0,242,234,0.18), rgba(255,0,80,0.18)); border: 1px solid rgba(0,242,234,0.3); color: #cfeffd; font-weight: 700; font-size: 11px; }
-    .ic-rec-dot { margin: 0 7px; color: rgba(255,255,255,0.25); }
-    .ic-tabs { display: flex; gap: 8px; margin-bottom: 18px; }
-    .ic-tab { flex: 1; padding: 10px; text-align: center; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; color: rgba(255,255,255,0.6); font-weight: 600; cursor: pointer; font-size: 13px; }
-    .ic-tab.active { background: rgba(0,242,234,0.12); border-color: rgba(0,242,234,0.4); color: #00f2ea; }
-  
-    /* ── Brand-colored call calendar (augment) ── */
-    .ic-cal-row.ic-cal-mine { background: rgba(255,255,255,0.04); }
-    .ic-cal-main { display:flex; flex-direction:column; gap:3px; }
-    .ic-cal-badge { font-size:11px; font-weight:700; margin-left:8px; letter-spacing:0.3px; }
-    .ic-cal-join { display:inline-block; padding:7px 14px; border-radius:8px; color:#0b0d16; font-weight:700; font-size:13px; text-decoration:none; white-space:nowrap; }
-    .ic-cal-join:hover { opacity:0.9; }
-    .ic-cal-tba { font-size:12px; color:#8a90a6; white-space:nowrap; }
-    .ic-cal-actions { display:inline-flex; align-items:center; gap:8px; white-space:nowrap; }
-    .ic-cal-chat { display:inline-block; padding:7px 14px; border-radius:8px; background:transparent; border:1px solid; font-weight:700; font-size:13px; text-decoration:none; white-space:nowrap; }
-    .ic-cal-chat:hover { opacity:0.85; }
-</style>
-
-  <div class="ic-overlay" id="profile-modal">
-    <div class="ic-modal">
-      <div class="ic-modal-header">
-        <div><h2>Your Profile</h2><p>Manage your handles, rates &amp; info</p></div>
-        <button class="ic-modal-close" onclick="closeProfile()">&times;</button>
+    <!-- Call Recordings Library -->
+    <div class="brand-chamber" style="animation-delay:0.4s">
+      <div class="brand-header">
+        <div class="brand-icon">🎥</div>
+        <div class="brand-info">
+          <h2>Call Recordings</h2>
+          <p>Weekly group call library</p>
+        </div>
       </div>
-      <div class="ic-modal-body">
-        <div class="ic-prof-id">
-          <div class="ic-prof-avatar" id="prof-avatar">IC</div>
-          <div><div class="nm" id="prof-name">—</div><div class="em" id="prof-email">—</div></div>
-        </div>
-
-        <div class="ic-section-title">TikTok Handles</div>
-        <p style="font-size:12px;color:rgba(255,255,255,0.45);margin:0 0 10px;">Link every account you post from so all your videos count.</p>
-        <div class="ic-handles-list" id="prof-handles"><p class="ic-empty-note">Loading…</p></div>
-        <div class="ic-handle-add">
-          <input id="prof-handle-input" type="text" placeholder="@yourhandle" autocomplete="off" />
-          <button onclick="profAddHandle()">+ Add</button>
-        </div>
-
-        <div class="ic-section-title">Your Rates</div>
-        <p style="font-size:12px;color:rgba(255,255,255,0.45);margin:0 0 10px;">Set what you charge so brands can send you paid offers.</p>
-        <div class="ic-rates-grid">
-          <div class="ic-rate-field"><label>Per-video price</label><div class="ic-rate-wrap"><span>$</span><input id="prof-rate-video" type="number" min="0" step="1" placeholder="—" /></div></div>
-          <div class="ic-rate-field"><label>Monthly retainer</label><div class="ic-rate-wrap"><span>$</span><input id="prof-rate-retainer" type="number" min="0" step="1" placeholder="—" /></div></div>
-        </div>
-        <button class="ic-prof-save" id="prof-save-btn" onclick="profSaveRates()">Save rates</button>
-        <div class="ic-prof-msg" id="prof-msg"></div>
+      <div class="recordings-list" id="recordings-container">
+        <p class="empty-note">Recordings from the weekly group calls will appear here.</p>
       </div>
     </div>
-  </div>
 
-  <div class="ic-overlay" id="meetings-modal">
-    <div class="ic-modal">
-      <div class="ic-modal-header">
-        <div><h2>Cult Meetings</h2><p>Your weekly calls &amp; recordings</p></div>
-        <button class="ic-modal-close" onclick="closeMeetings()">&times;</button>
+    <!-- Brand Ad Authorization (Spark / Whitelisting / Partnership Ads) -->
+    <div class="brand-chamber" style="animation-delay:0.5s">
+      <div class="brand-header">
+        <div class="brand-icon">🚀</div>
+        <div class="brand-info">
+          <h2>Brand Ad Authorization</h2>
+          <p>Authorize brands to boost your posted videos as Spark / partnership ads</p>
+        </div>
       </div>
-      <div class="ic-modal-body">
-        <div class="ic-tabs">
-          <div class="ic-tab active" id="mtab-cal" onclick="meetingsTab('cal')">Schedule</div>
-          <div class="ic-tab" id="mtab-rec" onclick="meetingsTab('rec')">Recordings</div>
-        </div>
-        <div id="meetings-cal"><p class="ic-empty-note">Loading your call schedule…</p></div>
-        <div id="meetings-rec" style="display:none;"><p class="ic-empty-note">Loading recordings…</p></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ── IC Content Engine: "Create your next videos" wizard ── -->
-  <style>
-    #content-wizard { position: fixed; inset: 0; z-index: 1000; display: none; align-items: flex-start; justify-content: center; background: rgba(8,9,18,0.78); backdrop-filter: blur(6px); overflow-y: auto; padding: 48px 16px; }
-    #content-wizard.open { display: flex; }
-    .cw-modal { width: 100%; max-width: 640px; background: #161823; border: 1px solid rgba(255,255,255,0.08); border-radius: 18px; box-shadow: 0 24px 80px rgba(0,0,0,0.55); overflow: hidden; }
-    .cw-header { display: flex; align-items: center; justify-content: space-between; padding: 22px 24px; background: linear-gradient(135deg, rgba(0,242,234,0.10), rgba(255,0,80,0.10)); border-bottom: 1px solid rgba(255,255,255,0.06); }
-    .cw-header h2 { margin: 0; font-size: 19px; color: #fff; }
-    .cw-header p { margin: 4px 0 0; font-size: 13px; color: rgba(255,255,255,0.55); }
-    .cw-close { background: none; border: none; color: rgba(255,255,255,0.6); font-size: 26px; line-height: 1; cursor: pointer; padding: 0 4px; }
-    .cw-close:hover { color: #fff; }
-    .cw-body { padding: 24px; }
-    .cw-field-label { display: block; font-size: 13px; font-weight: 600; color: rgba(255,255,255,0.85); margin-bottom: 8px; }
-    .cw-search { width: 100%; box-sizing: border-box; padding: 12px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: #10121c; color: #fff; font-size: 14px; margin-bottom: 10px; }
-    .cw-search:focus { outline: none; border-color: #00f2ea; }
-    .cw-search:disabled { opacity: 0.5; cursor: not-allowed; }
-    .cw-product-list { max-height: 280px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.08); border-radius: 10px; background: #10121c; }
-    .cw-product-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; cursor: pointer; border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.12s; }
-    .cw-product-item:last-child { border-bottom: none; }
-    .cw-product-item:hover { background: rgba(0,242,234,0.06); }
-    .cw-product-item.selected { background: rgba(0,242,234,0.12); }
-    .cw-product-thumb { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; background: rgba(255,255,255,0.06); flex-shrink: 0; }
-    .cw-product-name { font-size: 14px; color: #fff; line-height: 1.3; }
-    .cw-state { padding: 28px 14px; text-align: center; color: rgba(255,255,255,0.55); font-size: 14px; }
-    .cw-state.error { color: #ff6b81; }
-    .cw-spinner { display: inline-block; width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.2); border-top-color: #00f2ea; border-radius: 50%; animation: cwspin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
-    @keyframes cwspin { to { transform: rotate(360deg); } }
-    /* ── Generate button / wizard footer (IC Content Engine) ── */
-    .cw-footer { margin-top: 26px; padding-top: 18px; border-top: 1px solid rgba(255,255,255,0.08); }
-    .cw-generate { width: 100%; box-sizing: border-box; padding: 14px 18px; border: none; border-radius: 12px; font-size: 15px; font-weight: 700; color: #0a0b12; cursor: pointer; background: linear-gradient(90deg, #00f2ea, #ff0050); transition: opacity 0.15s, filter 0.15s; }
-    .cw-generate:hover:not(:disabled) { filter: brightness(1.08); }
-    .cw-generate:disabled { opacity: 0.55; cursor: not-allowed; }
-    .cw-generate .cw-spinner { border-top-color: #0a0b12; border-color: rgba(10,11,18,0.3); border-top-color: #0a0b12; margin-right: 8px; }
-    .cw-gen-error { margin-top: 12px; padding: 12px 14px; border-radius: 10px; background: rgba(255,107,129,0.12); border: 1px solid rgba(255,107,129,0.3); color: #ff6b81; font-size: 13px; line-height: 1.4; display: none; }
-    .cw-gen-error.show { display: block; }
-    .cw-retry { margin-top: 12px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14); color: #fff; padding: 8px 16px; border-radius: 8px; font-size: 13px; cursor: pointer; }
-    .cw-retry:hover { background: rgba(255,255,255,0.14); }
-    /* ── audience profile + target audience fields ── */
-    .cw-section { margin-top: 22px; }
-    .cw-section:first-child { margin-top: 0; }
-    .cw-section-title { font-size: 14px; font-weight: 700; color: #fff; margin: 0 0 4px; }
-    .cw-section-hint { font-size: 12px; color: rgba(255,255,255,0.45); margin: 0 0 14px; }
-    .cw-input, .cw-select, .cw-textarea { width: 100%; box-sizing: border-box; padding: 12px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: #10121c; color: #fff; font-size: 14px; font-family: inherit; }
-    .cw-input:focus, .cw-select:focus, .cw-textarea:focus { outline: none; border-color: #00f2ea; }
-    .cw-select { appearance: none; -webkit-appearance: none; background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path fill='%23ffffff88' d='M1 1l5 5 5-5'/></svg>"); background-repeat: no-repeat; background-position: right 14px center; padding-right: 38px; cursor: pointer; }
-    .cw-select option { background: #10121c; color: #fff; }
-    .cw-textarea { resize: vertical; min-height: 78px; line-height: 1.45; }
-    .cw-textarea::placeholder, .cw-input::placeholder { color: rgba(255,255,255,0.32); }
-    .cw-field { margin-bottom: 14px; }
-    .cw-field:last-child { margin-bottom: 0; }
-    .cw-radio-group { display: flex; flex-wrap: wrap; gap: 8px; }
-    .cw-radio { flex: 1 1 auto; min-width: 96px; }
-    .cw-radio input { position: absolute; opacity: 0; pointer-events: none; }
-    .cw-radio span { display: block; text-align: center; padding: 11px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: #10121c; color: rgba(255,255,255,0.75); font-size: 13px; cursor: pointer; transition: all 0.12s; }
-    .cw-radio input:checked + span { border-color: #00f2ea; background: rgba(0,242,234,0.12); color: #fff; }
-    .cw-radio input:focus-visible + span { box-shadow: 0 0 0 2px rgba(0,242,234,0.4); }
-    /* ── multi-select toggle (funnel stage): same look as cw-radio but allows multiple ── */
-    .cw-check-group { display: flex; flex-wrap: wrap; gap: 8px; }
-    .cw-check { flex: 1 1 auto; min-width: 96px; }
-    .cw-check input { position: absolute; opacity: 0; pointer-events: none; }
-    .cw-check span { display: block; text-align: center; padding: 11px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.12); background: #10121c; color: rgba(255,255,255,0.75); font-size: 13px; cursor: pointer; transition: all 0.12s; }
-    .cw-check input:checked + span { border-color: #00f2ea; background: rgba(0,242,234,0.12); color: #fff; }
-    .cw-check input:focus-visible + span { box-shadow: 0 0 0 2px rgba(0,242,234,0.4); }
-    .cw-check span small { display: block; font-size: 10px; font-weight: 400; color: rgba(255,255,255,0.4); margin-top: 2px; }
-    /* ── IC Content Engine: generated script results (cards + Copy + violation flags) ── */
-    /* ── IC wizard tabs + history ── */
-    .cw-tabs { display: flex; gap: 8px; padding: 0 24px; margin-top: -6px; border-bottom: 1px solid rgba(255,255,255,0.08); }
-    .cw-tab { background: none; border: none; color: #8a8fa3; font-size: 13px; font-weight: 600; padding: 12px 6px; cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -1px; }
-    .cw-tab.active { color: #fff; border-bottom-color: #00f2ea; }
-    .cw-tab:hover:not(.active) { color: #c4c8d6; }
-    .cw-history { padding: 20px 24px; display: none; }
-    .cw-history.active { display: block; }
-    .cw-hist-card { border: 1px solid rgba(255,255,255,0.10); border-radius: 12px; background: #10121c; padding: 14px 16px; margin-bottom: 12px; }
-    .cw-hist-meta { font-size: 11px; color: #8a8fa3; margin-bottom: 6px; display: flex; gap: 10px; flex-wrap: wrap; }
-    .cw-hist-hook { font-size: 14px; font-weight: 600; color: #fff; margin-bottom: 8px; }
-    .cw-hist-body { font-size: 13px; color: #c4c8d6; line-height: 1.5; white-space: pre-wrap; }
-    .cw-hist-copy { margin-top: 10px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14); color: #fff; padding: 6px 12px; border-radius: 8px; font-size: 12px; cursor: pointer; }
-    .cw-hist-copy:hover { background: rgba(255,255,255,0.14); }
-    .cw-results { margin-top: 22px; display: flex; flex-direction: column; gap: 16px; }
-    .cw-results-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 2px; }
-    .cw-results-head h3 { margin: 0; font-size: 15px; color: #fff; }
-    .cw-results-head .cw-back { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.14); color: #fff; padding: 8px 14px; border-radius: 8px; font-size: 13px; cursor: pointer; }
-    .cw-results-head .cw-back:hover { background: rgba(255,255,255,0.14); }
-    .cw-script-card { border: 1px solid rgba(255,255,255,0.10); border-radius: 14px; background: #10121c; overflow: hidden; }
-    .cw-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.06); }
-    .cw-card-title { font-size: 14px; font-weight: 700; color: #fff; line-height: 1.35; }
-    .cw-card-stage { display: inline-block; margin-top: 4px; font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: #00f2ea; }
-    .cw-copy-btn { flex-shrink: 0; background: linear-gradient(90deg, #00f2ea, #ff0050); color: #0a0b12; border: none; padding: 9px 16px; border-radius: 9px; font-size: 13px; font-weight: 700; cursor: pointer; transition: filter 0.15s; }
-    .cw-copy-btn:hover { filter: brightness(1.08); }
-    .cw-copy-btn.copied { background: #2ecc71; color: #07210f; }
-    .cw-card-body { padding: 14px 16px; }
-    .cw-beat { margin-bottom: 12px; }
-    .cw-beat:last-child { margin-bottom: 0; }
-    .cw-beat-label { font-size: 10px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: rgba(255,255,255,0.4); margin-bottom: 4px; }
-    .cw-beat-text { font-size: 13px; color: rgba(255,255,255,0.85); line-height: 1.5; white-space: pre-wrap; }
-    /* violation flags */
-    .cw-flags { margin-top: 14px; border-top: 1px solid rgba(255,255,255,0.06); padding-top: 12px; }
-    .cw-clean { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: #2ecc71; background: rgba(46,204,113,0.10); border: 1px solid rgba(46,204,113,0.3); padding: 6px 12px; border-radius: 999px; }
-    .cw-flag { display: flex; gap: 10px; padding: 10px 12px; border-radius: 10px; margin-bottom: 8px; font-size: 12px; line-height: 1.45; }
-    .cw-flag:last-child { margin-bottom: 0; }
-    .cw-flag.high, .cw-flag.error, .cw-flag.critical { background: rgba(255,80,80,0.10); border: 1px solid rgba(255,80,80,0.32); }
-    .cw-flag.medium, .cw-flag.warning, .cw-flag.warn { background: rgba(255,176,32,0.10); border: 1px solid rgba(255,176,32,0.32); }
-    .cw-flag.low, .cw-flag.info { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.14); }
-    .cw-flag-icon { flex-shrink: 0; font-size: 14px; line-height: 1.3; }
-    .cw-flag-rule { font-weight: 700; color: #fff; }
-    .cw-flag-sev { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; opacity: 0.8; margin-left: 6px; }
-    .cw-flag-detail { color: rgba(255,255,255,0.8); margin-top: 3px; }
-    .cw-flag-match { color: rgba(255,255,255,0.6); margin-top: 3px; font-style: italic; }
-    .cw-flag-fix { color: #00f2ea; margin-top: 3px; }
-  </style>
-  <div id="content-wizard" role="dialog" aria-modal="true" aria-labelledby="cw-title">
-    <div class="cw-modal">
-      <div class="cw-header">
-        <div>
-          <h2 id="cw-title">Create your next videos</h2>
-          <p id="cw-subtitle">Pick the product you want to feature</p>
-        </div>
-        <button class="cw-close" type="button" onclick="closeContentWizard()" aria-label="Close">&times;</button>
-      </div>
-      <div class="cw-tabs">
-        <button class="cw-tab active" type="button" data-cwtab="create" onclick="switchWizardTab('create')">Create new</button>
-        <button class="cw-tab" type="button" data-cwtab="history" onclick="switchWizardTab('history')">Previous scripts</button>
-      </div>
-      <div class="cw-history" id="cw-history"></div>
-      <div class="cw-body">
-        <label class="cw-field-label" for="cw-search">Product</label>
-        <input id="cw-search" class="cw-search" type="text" placeholder="Search products…" autocomplete="off" oninput="filterWizardProducts(this.value)" disabled>
-        <div class="cw-product-list" id="cw-product-list">
-          <div class="cw-state"><span class="cw-spinner"></span>Loading products…</div>
-        </div>
-
-        <!-- (3) Creator audience profile -->
-        <div class="cw-section">
-          <p class="cw-section-title">Your audience</p>
-          <p class="cw-section-hint">Tell us about the people who follow you.</p>
-          <div class="cw-field">
-            <label class="cw-field-label" for="cw-creator-age">Audience age group</label>
-            <select id="cw-creator-age" class="cw-select" oninput="captureAudienceState()">
-              <option value="">Select age group…</option>
-              <option value="13-17">13–17</option>
-              <option value="18-24">18–24</option>
-              <option value="25-34">25–34</option>
-              <option value="35-44">35–44</option>
-              <option value="45-54">45–54</option>
-              <option value="55+">55+</option>
-              <option value="mixed">Mixed / broad</option>
-            </select>
-          </div>
-          <div class="cw-field">
-            <label class="cw-field-label" for="cw-creator-details">Extra details / credibility <span style="color:rgba(255,255,255,0.4);font-weight:400">(optional)</span></label>
-            <textarea id="cw-creator-details" class="cw-textarea" placeholder="e.g. I’m a registered nurse, my audience trusts my skincare reviews, 80% women in the US…" oninput="captureAudienceState()"></textarea>
-          </div>
-        </div>
-
-        <!-- (4) Target audience -->
-        <div class="cw-section">
-          <p class="cw-section-title">Who is this video for?</p>
-          <p class="cw-section-hint">The target audience you want this content to reach.</p>
-          <div class="cw-field">
-            <label class="cw-field-label">Target gender</label>
-            <div class="cw-radio-group" id="cw-target-gender" role="radiogroup" aria-label="Target gender">
-              <label class="cw-radio"><input type="radio" name="cw-target-gender" value="female" onchange="captureAudienceState()"><span>Female</span></label>
-              <label class="cw-radio"><input type="radio" name="cw-target-gender" value="male" onchange="captureAudienceState()"><span>Male</span></label>
-              <label class="cw-radio"><input type="radio" name="cw-target-gender" value="non-binary" onchange="captureAudienceState()"><span>Non-binary</span></label>
-            </div>
-          </div>
-          <div class="cw-field">
-            <label class="cw-field-label" for="cw-target-age">Target age range</label>
-            <select id="cw-target-age" class="cw-select" oninput="captureAudienceState()">
-              <option value="">Select age range…</option>
-              <option value="13-17">13–17</option>
-              <option value="18-24">18–24</option>
-              <option value="25-34">25–34</option>
-              <option value="35-44">35–44</option>
-              <option value="45-54">45–54</option>
-              <option value="55+">55+</option>
-              <option value="all">All ages</option>
-            </select>
-          </div>
-          <div class="cw-field">
-            <label class="cw-field-label" for="cw-target-interests">Interests</label>
-            <input id="cw-target-interests" class="cw-input" type="text" placeholder="e.g. skincare, wellness, gym, budget beauty" autocomplete="off" oninput="captureAudienceState()">
-          </div>
-        </div>
-
-        <!-- (5) Target audience pain points -->
-        <div class="cw-section">
-          <div class="cw-field">
-            <label class="cw-field-label" for="cw-pain-points">Target audience pain points</label>
-            <p class="cw-section-hint" style="margin-top:-2px">What problems does this audience have that the product solves?</p>
-            <textarea id="cw-pain-points" class="cw-textarea" placeholder="e.g. dry skin that breaks out, hate complicated routines, on a tight budget, tried everything and nothing works…" oninput="captureAudienceState()"></textarea>
-          </div>
-        </div>
-
-        <!-- (6) Funnel stage — multi-select -->
-        <div class="cw-section">
-          <div class="cw-field">
-            <label class="cw-field-label">Funnel stage <span style="color:rgba(255,255,255,0.4);font-weight:400">(select all that apply)</span></label>
-            <p class="cw-section-hint" style="margin-top:-2px">Where in the buying journey is this content aimed?</p>
-            <div class="cw-check-group" id="cw-funnel-stage" role="group" aria-label="Funnel stage">
-              <label class="cw-check"><input type="checkbox" name="cw-funnel-stage" value="TOF" onchange="captureFunnelState()"><span>TOF<small>Awareness</small></span></label>
-              <label class="cw-check"><input type="checkbox" name="cw-funnel-stage" value="MOF" onchange="captureFunnelState()"><span>MOF<small>Consideration</small></span></label>
-              <label class="cw-check"><input type="checkbox" name="cw-funnel-stage" value="BOF" onchange="captureFunnelState()"><span>BOF<small>Conversion</small></span></label>
-            </div>
-          </div>
-        </div>
-
-        <!-- (7) Script length — single-select -->
-        <div class="cw-section">
-          <div class="cw-field">
-            <label class="cw-field-label">Script length</label>
-            <div class="cw-radio-group" id="cw-script-length" role="radiogroup" aria-label="Script length">
-              <label class="cw-radio"><input type="radio" name="cw-script-length" value="15-30s" onchange="captureFunnelState()"><span>15–30s</span></label>
-              <label class="cw-radio"><input type="radio" name="cw-script-length" value="30-60s" onchange="captureFunnelState()"><span>30–60s</span></label>
-              <label class="cw-radio"><input type="radio" name="cw-script-length" value="1-2min" onchange="captureFunnelState()"><span>1–2min</span></label>
-            </div>
-          </div>
-        </div>
-
-        <!-- (8) Format — single-select -->
-        <div class="cw-section">
-          <div class="cw-field">
-            <label class="cw-field-label">Format</label>
-            <div class="cw-radio-group" id="cw-format" role="radiogroup" aria-label="Format">
-              <label class="cw-radio"><input type="radio" name="cw-format" value="talking-head" onchange="captureFunnelState()"><span>Talking head</span></label>
-              <label class="cw-radio"><input type="radio" name="cw-format" value="skit" onchange="captureFunnelState()"><span>Skit</span></label>
-              <label class="cw-radio"><input type="radio" name="cw-format" value="text-only" onchange="captureFunnelState()"><span>Text only</span></label>
-              <label class="cw-radio"><input type="radio" name="cw-format" value="product-demo" onchange="captureFunnelState()"><span>Product demo</span></label>
-            </div>
-          </div>
-        </div>
-
-        <!-- (9) Generate -->
-        <div class="cw-footer">
-          <button id="cw-generate-btn" class="cw-generate" type="button" onclick="generateScripts()">Generate scripts</button>
-          <div id="cw-gen-error" class="cw-gen-error" role="alert"></div>
-        </div>
+      <div id="spark-container">
+        <p class="empty-note">Loading your brand ad authorizations…</p>
       </div>
     </div>
   </div>
@@ -1257,11 +895,6 @@
       window.location.href = '/inner-circle/login';
     }
 
-    // JS-string-literal safe escaper for inline on* handlers (backslash + quote escape, then esc() for attribute).
-    function jsStr(s) {
-      return esc(String(s == null ? '' : s).replace(/\\/g, '\\\\').replace(/'/g, "\\'"));
-    }
-
     function brandInitials(name) {
       return String(name || '?').split(/\s+/).map(w => w[0]).filter(Boolean).slice(0, 2).join('').toUpperCase();
     }
@@ -1271,34 +904,18 @@
     function renderBrandCard(brand, assigned) {
       const videos = assigned ? (assigned.videosDelivered != null ? assigned.videosDelivered : assigned.videosForBrand || 0) : 0;
       const earned = assigned ? (assigned.earned != null ? assigned.earned : assigned.earnedFromBrand || 0) : 0;
-      const committedGoal = assigned && (assigned.videosGoal || assigned.committed) ? (assigned.videosGoal || 20) : 0;
-      const remaining = committedGoal ? Math.max(0, committedGoal - videos) : null;
+      const remaining = Math.max(0, 15 - videos);
       const color = brand.brandColor || '#00f2ea';
-      const brandSlug = brand.slug || String(brand.name || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-      // Two resource buttons on EVERY card; commit button swaps to a "sent" state once assigned.
-      const websiteBtn = brand.website
-        ? `<a class="brand-action resource-btn mini-btn" href="${esc(brand.website)}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="flex:1;display:block;text-align:center;text-decoration:none;background:transparent;border:1px solid var(--brand-color);color:var(--brand-color);padding:9px 6px;font-size:12px;">Visit Website</a>`
-        : '';
-      const resourceBtns =
-        `<div style="display:flex;gap:8px;">` +
-          `<a class="brand-action resource-btn mini-btn" href="/creators/${esc(brandSlug)}" target="_blank" rel="noopener" style="flex:1;display:block;text-align:center;text-decoration:none;padding:9px 6px;font-size:12px;">Begin Collaborating</a>` +
-          `<a class="brand-action resource-btn mini-btn" href="/creators/${esc(brandSlug)}/welcome" target="_blank" rel="noopener" style="flex:1;display:block;text-align:center;text-decoration:none;background:transparent;border:1px solid var(--brand-color);color:var(--brand-color);padding:9px 6px;font-size:12px;">Creator Resources</a>` +
-          websiteBtn +
-        `</div>`;
-      // Commit button (50% commission) only on brands where the client has Inner Circle toggled on.
-      const commitBtn = !brand.innerCircle
-        ? ''
-        : (assigned
-          ? `<div class="covenant-confirm" style="margin-top:8px;background:color-mix(in srgb, var(--brand-color) 10%, transparent);border:1px solid var(--brand-color);color:var(--brand-color);">50% Target Collab will be sent soon</div>`
-          : `<button class="brand-action commit-btn" data-brand-id="${esc(brand.id)}" data-brand-name="${esc(brand.name)}" data-brand-slug="${esc(brandSlug)}" style="margin-top:8px;background:var(--brand-color);color:#161823;border:none;font-weight:700;">Make a Commitment for 50% Commission</button>`);
-      // "Create your next videos" shows on EVERY card, not just assigned ones.
-      const createBtn = `<button class="brand-action create-videos-btn" style="margin-top:8px;background:var(--brand-color);color:#161823;border:none;font-weight:700;" onclick="openContentWizard('${jsStr(brand.id)}','${jsStr(brandSlug)}','${jsStr(brand.name)}')">Create your next videos</button>`;
-      const action = resourceBtns + commitBtn + createBtn;
+      const action = assigned
+        ? `<div class="covenant-confirm">✓ Selected — Hasan will send your target collab invite</div>`
+        : `<button class="brand-action select-brand-btn" data-brand-id="${esc(brand.id)}" data-brand-name="${esc(brand.name)}">Select This Brand</button>`;
       const fallback = `<div class="brand-logo-fallback"${brand.logo ? ' style="display:none"' : ''}>${esc(brandInitials(brand.name))}</div>`;
       const logo = brand.logo
         ? `<img class="brand-logo" src="${esc(brand.logo)}" alt="${esc(brand.name)} logo" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">${fallback}`
         : fallback;
-      const website = '';
+      const website = brand.website
+        ? `<a class="brand-website" href="${esc(brand.website)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Visit Website ↗</a>`
+        : '';
       return `
         <div class="brand-card${assigned ? ' selected' : ''}" style="--brand-color: ${esc(color)}">
           <div class="brand-logo-wrap">${logo}</div>
@@ -1307,7 +924,7 @@
           <div class="brand-stats">
             <div class="brand-stat"><span class="brand-stat-value">${videos}</span><span class="brand-stat-label">Videos Posted</span></div>
             <div class="brand-stat"><span class="brand-stat-value">${earned}</span><span class="brand-stat-label">Earned</span></div>
-            <div class="brand-stat"><span class="brand-stat-value">${remaining == null ? '—' : remaining}</span><span class="brand-stat-label">${remaining == null ? 'Not committed' : 'Remaining'}</span></div>
+            <div class="brand-stat"><span class="brand-stat-value">${remaining}</span><span class="brand-stat-label">Remaining</span></div>
           </div>
           ${website}
           ${action}
@@ -1354,7 +971,7 @@
         const cards = availableBrands.map(b => renderBrandCard(b, byKey[b.id] || byKey[b.name]));
         assigned.forEach(a => {
           if (!availableBrands.some(b => b.id === a.id || b.name === a.name)) {
-            cards.push(renderBrandCard({ id: a.id, name: a.name, slug: a.slug, website: a.website }, a));
+            cards.push(renderBrandCard({ id: a.id, name: a.name }, a));
           }
         });
         const brandsContainer = document.getElementById('brands-container');
@@ -1362,14 +979,14 @@
         brandsContainer.querySelectorAll('.select-brand-btn').forEach(btn => {
           btn.addEventListener('click', () => selectBrand(btn, btn.dataset.brandId, btn.dataset.brandName));
         });
-        brandsContainer.querySelectorAll('.commit-btn').forEach(btn => {
-          btn.addEventListener('click', () => openCommitModal(btn.dataset.brandId, btn.dataset.brandName, btn.dataset.brandSlug));
-        });
 
-        // Recordings now load independently via loadRecordings() -> GET /api/inner-circle/recordings
-
-        // Linked TikTok handles
-        renderHandles(data.handles || []);
+        // Call recordings library — fetched from the per-brand filtered
+        // endpoint (GET /api/inner-circle/recordings?brand_id=…). Keyed off the
+        // creator's first matched brand; falls back to all recordings if the
+        // creator has no brand assigned yet.
+        const matchedBrandId = (assigned[0] && assigned[0].id != null) ? assigned[0].id : null;
+        loadRecordings(matchedBrandId);
+        loadSparkAuthorizations();
       } catch (err) {
         console.error('Dashboard render failed:', err);
       }
@@ -1378,68 +995,6 @@
     // Brand selection (MVP covenant flow): persists creator→brand link and
     // notifies Hasan in Lark to send the target collab invite. NO video upload
     // in MVP — videos sync automatically via TikTok.
-    // ── The Inner Circle Covenant — contract modal + typed signature ──────────
-    function openCommitModal(brandId, brandName, brandSlug) {
-      const today = new Date().toLocaleDateString('en-US', { year:'numeric', month:'long', day:'numeric' });
-      let modal = document.getElementById('commit-modal');
-      if (modal) modal.remove();
-      modal = document.createElement('div');
-      modal.id = 'commit-modal';
-      modal.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(8,8,14,0.86);backdrop-filter:blur(6px);display:flex;align-items:center;justify-content:center;padding:20px;overflow-y:auto;';
-      modal.innerHTML =
-        '<div style="max-width:560px;width:100%;background:#12121c;border:1px solid rgba(255,255,255,0.12);border-radius:18px;padding:30px 28px;box-shadow:0 24px 80px rgba(0,0,0,0.6);max-height:92vh;overflow-y:auto;">' +
-          '<div style="text-align:center;font-size:13px;letter-spacing:3px;color:#00f2ea;text-transform:uppercase;margin-bottom:6px;">The Inner Circle Covenant</div>' +
-          '<h2 style="text-align:center;margin:0 0 4px;font-size:22px;color:#fff;">' + esc(brandName) + '</h2>' +
-          '<p style="text-align:center;color:#9aa0b5;font-style:italic;margin:0 0 20px;font-size:13px;">Between you, ' + esc(brandName) + ', and the Cult Content community.</p>' +
-          '<div style="font-size:14px;line-height:1.65;color:#d7dae6;">' +
-            '<p style="margin:0 0 14px;">By signing below, I make a commitment \u2014 not a transaction, a covenant \u2014 to three:</p>' +
-            '<p style="margin:0 0 12px;"><strong style="color:#fff;">To ' + esc(brandName) + '</strong> \u2014 I will create <strong style="color:#fff;">20 videos this month</strong> and show up to the <strong style="color:#fff;">weekly creator call</strong>. I will treat this brand\u2019s growth as my own, because when it grows, I grow with it.</p>' +
-            '<p style="margin:0 0 12px;"><strong style="color:#fff;">To the Cult Content community</strong> \u2014 I will bring my full effort, share what\u2019s working, and lift the creators beside me. We are building something together that none of us could build alone.</p>' +
-            '<p style="margin:0 0 12px;"><strong style="color:#fff;">To myself</strong> \u2014 I will live up to the highest version of myself. I will work <em>through</em> pain instead of around it. I will treat this not as a side hustle but as a practice: as a way of building my own version of heaven on earth, one video and one moment at a time.</p>' +
-            '<p style="margin:0 0 12px;">I understand this is a <strong style="color:#fff;">50% Target Collab</strong> commitment. I understand the work is mine to do.</p>' +
-            '<p style="margin:0 0 18px;color:#9aa0b5;font-size:13px;line-height:1.6;">I understand this commitment runs <strong style="color:#fff;">through the end of this month</strong> \u2014 20 videos by month\u2019s end. Each month resets, and I recommit fresh. I understand that if I don\u2019t meet my commitment, I lose access to the Inner Circle portal for the following month, and I make my peace with that. I\u2019m in.</p>' +
-          '</div>' +
-          '<label style="display:block;font-size:12px;color:#9aa0b5;margin-bottom:6px;text-transform:uppercase;letter-spacing:1px;">Sign \u2014 type your full name</label>' +
-          '<input id="commit-sig" type="text" placeholder="Your full name" autocomplete="name" style="width:100%;box-sizing:border-box;padding:12px 14px;border-radius:10px;border:1px solid rgba(255,255,255,0.18);background:#0c0c14;color:#fff;font-size:16px;font-family:Georgia,serif;margin-bottom:6px;">' +
-          '<div style="text-align:right;font-size:12px;color:#777;margin-bottom:18px;">Date: ' + esc(today) + '</div>' +
-          '<div style="display:flex;gap:10px;">' +
-            '<button id="commit-cancel" style="flex:1;padding:13px;border-radius:10px;border:1px solid rgba(255,255,255,0.18);background:transparent;color:#aaa;font-size:15px;cursor:pointer;">Not yet</button>' +
-            '<button id="commit-sign" style="flex:2;padding:13px;border-radius:10px;border:none;background:linear-gradient(90deg,#00f2ea,#ff0050);color:#0c0c14;font-weight:700;font-size:15px;cursor:pointer;">Sign &amp; Commit</button>' +
-          '</div>' +
-          '<div id="commit-err" style="color:#ff6b81;font-size:13px;margin-top:10px;text-align:center;min-height:16px;"></div>' +
-        '</div>';
-      document.body.appendChild(modal);
-      const close = () => modal.remove();
-      modal.addEventListener('click', (e) => { if (e.target === modal) close(); });
-      document.getElementById('commit-cancel').addEventListener('click', close);
-      const sigInput = document.getElementById('commit-sig');
-      sigInput.focus();
-      document.getElementById('commit-sign').addEventListener('click', async () => {
-        const signBtn = document.getElementById('commit-sign');
-        const errEl = document.getElementById('commit-err');
-        const signature = (sigInput.value || '').trim();
-        if (signature.length < 2) { errEl.textContent = 'Please type your full name to sign.'; sigInput.focus(); return; }
-        signBtn.disabled = true; signBtn.textContent = 'Sealing\u2026'; errEl.textContent = '';
-        try {
-          const res = await fetch('/api/inner-circle/commitment', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
-            body: JSON.stringify({ brandId, brandName, videosPerMonth: 20, weeklyCall: true, signature })
-          });
-          if (res.status === 401) { logout(); return; }
-          if (!res.ok) throw new Error('Commitment failed (' + res.status + ')');
-          await res.json().catch(() => ({}));
-          close();
-          await loadDashboard();
-        } catch (err) {
-          console.error('Commit failed:', err);
-          signBtn.disabled = false; signBtn.textContent = 'Sign & Commit';
-          errEl.textContent = 'Could not record your commitment. Please try again.';
-        }
-      });
-      sigInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('commit-sign').click(); });
-    }
-
     async function selectBrand(btn, brandId, brandName) {
       btn.disabled = true;
       btn.textContent = 'Selecting…';
@@ -1455,17 +1010,7 @@
         confirm.textContent = '✓ Brand selected — Hasan will send your target collab invite';
         const card = btn.closest('.brand-card');
         if (card) card.classList.add('selected');
-        // Render the 'Create your next videos' wizard button immediately,
-        // mirroring the selected-state markup in renderBrandCard (no reload needed).
-        const brandSlug = String(brandName || '').toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-        const wrap = document.createElement('div');
-        wrap.appendChild(confirm);
-        const cvBtn = document.createElement('button');
-        cvBtn.className = 'brand-action create-videos-btn';
-        cvBtn.textContent = 'Create your next videos';
-        cvBtn.onclick = () => openContentWizard(brandId, brandSlug, brandName);
-        wrap.appendChild(cvBtn);
-        btn.replaceWith(wrap);
+        btn.replaceWith(confirm);
       } catch (err) {
         console.error('Brand selection failed:', err);
         btn.disabled = false;
@@ -1474,880 +1019,212 @@
       }
     }
 
-    function playRecording(url) {
-      if (url) window.open(url, '_blank');
-    }
-
-    /* ── Profile modal ── */
-    function openProfile() {
-      const m = document.getElementById('profile-modal');
-      if (!m) return;
-      const cd = (typeof creatorData !== 'undefined' && creatorData) ? creatorData : {};
-      const name = cd.name || document.getElementById('creator-name')?.textContent || 'Creator';
-      const email = cd.email || '';
-      const initials = String(name).trim().split(/\s+/).map(w => w[0]).slice(0,2).join('').toUpperCase() || 'IC';
-      document.getElementById('prof-name').textContent = name;
-      document.getElementById('prof-email').textContent = email || '—';
-      document.getElementById('prof-avatar').textContent = initials;
-      const av = document.getElementById('nav-avatar'); if (av) av.textContent = initials;
-      m.classList.add('open');
-      profLoadHandles();
-      profLoadRates();
-    }
-    function closeProfile() { document.getElementById('profile-modal')?.classList.remove('open'); }
-
-    async function profLoadHandles() {
-      const el = document.getElementById('prof-handles');
-      try {
-        const r = await fetch('/api/inner-circle/handles', { headers: AUTH_HEADERS });
-        if (r.status === 401) { logout(); return; }
-        const d = await r.json();
-        profRenderHandles(d.handles || []);
-      } catch (e) { el.innerHTML = '<p class="ic-empty-note">Could not load handles.</p>'; }
-    }
-    function profRenderHandles(handles) {
-      const el = document.getElementById('prof-handles');
-      if (!handles.length) { el.innerHTML = '<p class="ic-empty-note">No handles linked yet.</p>'; return; }
-      el.innerHTML = handles.map(h => {
-        const badge = h.primary ? '<span class="handle-badge">Primary</span>' : '';
-        const rm = h.primary ? '' : '<button class="handle-remove" title="Unlink" onclick="profRemoveHandle(' + h.id + ')">\u00d7</button>';
-        return '<div class="handle-row"><span><span class="handle-name">' + esc(h.handle) + '</span>' + badge + '</span>' + rm + '</div>';
-      }).join('');
-    }
-    async function profAddHandle() {
-      const input = document.getElementById('prof-handle-input');
-      const handle = (input.value || '').trim();
-      if (!handle) return;
-      try {
-        const r = await fetch('/api/inner-circle/handles', {
-          method: 'POST', headers: { ...AUTH_HEADERS, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ handle })
-        });
-        const d = await r.json();
-        if (!r.ok) { setProfMsg(d.error || 'Could not add handle', false); return; }
-        input.value = '';
-        profRenderHandles(d.handles || []);
-        if (typeof loadHandles === 'function') loadHandles();
-      } catch (e) { setProfMsg('Network error', false); }
-    }
-    async function profRemoveHandle(id) {
-      try {
-        const r = await fetch('/api/inner-circle/handles/' + id, { method: 'DELETE', headers: AUTH_HEADERS });
-        const d = await r.json();
-        if (r.ok) { profRenderHandles(d.handles || []); if (typeof loadHandles === 'function') loadHandles(); }
-      } catch (e) {}
-    }
-    async function profLoadRates() {
-      try {
-        const r = await fetch('/api/inner-circle/my-rates', { headers: AUTH_HEADERS });
-        if (!r.ok) return;
-        const d = await r.json();
-        const rt = d.rates || d || {};
-        if (rt.perVideoCents != null) document.getElementById('prof-rate-video').value = Math.round(rt.perVideoCents) / 100;
-        if (rt.retainerMonthlyCents != null) document.getElementById('prof-rate-retainer').value = Math.round(rt.retainerMonthlyCents) / 100;
-      } catch (e) {}
-    }
-    async function profSaveRates() {
-      const btn = document.getElementById('prof-save-btn');
-      const v = document.getElementById('prof-rate-video').value;
-      const ret = document.getElementById('prof-rate-retainer').value;
-      btn.disabled = true; btn.textContent = 'Saving…';
-      try {
-        const toCents = (x) => (x === '' || x == null || isNaN(Number(x))) ? null : Math.round(Number(x) * 100);
-        const r = await fetch('/api/inner-circle/my-rates', {
-          method: 'POST', headers: { ...AUTH_HEADERS, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ perVideoCents: toCents(v), retainerMonthlyCents: toCents(ret) })
-        });
-        if (r.ok) setProfMsg('Saved ✓', true); else setProfMsg('Could not save', false);
-        if (typeof loadRates === 'function') loadRates();
-      } catch (e) { setProfMsg('Network error', false); }
-      btn.disabled = false; btn.textContent = 'Save rates';
-    }
-    function setProfMsg(t, ok) {
-      const el = document.getElementById('prof-msg');
-      el.textContent = t; el.className = 'ic-prof-msg ' + (ok ? 'ok' : 'err');
-      if (ok) setTimeout(() => { el.textContent = ''; el.className = 'ic-prof-msg'; }, 2500);
-    }
-
-    /* ── Cult Meetings modal ── */
-    function openMeetings() {
-      const m = document.getElementById('meetings-modal'); if (!m) return;
-      m.classList.add('open');
-      meetingsTab('cal');
-      loadCallSchedule();
-      loadMeetingRecordings();
-    }
-    function closeMeetings() { document.getElementById('meetings-modal')?.classList.remove('open'); }
-    function meetingsTab(which) {
-      const cal = document.getElementById('meetings-cal'), rec = document.getElementById('meetings-rec');
-      const tc = document.getElementById('mtab-cal'), tr = document.getElementById('mtab-rec');
-      if (which === 'rec') { cal.style.display = 'none'; rec.style.display = 'block'; tr.classList.add('active'); tc.classList.remove('active'); }
-      else { cal.style.display = 'block'; rec.style.display = 'none'; tc.classList.add('active'); tr.classList.remove('active'); }
-    }
-    async function loadCallSchedule() {
-      const el = document.getElementById('meetings-cal');
-      if (!el) return;
-      try {
-        const r = await fetch('/api/inner-circle/call-schedule', { headers: AUTH_HEADERS });
-        if (r.status === 401) { logout(); return; }
-        const d = await r.json();
-        const calls = (d.calls || []).slice().sort((a,b)=>{
-          if ((b.community?1:0)!==(a.community?1:0)) return (b.community?1:0)-(a.community?1:0);
-          if ((b.enrolled?1:0)!==(a.enrolled?1:0)) return (b.enrolled?1:0)-(a.enrolled?1:0);
-          return String(a.brand||'').localeCompare(String(b.brand||''));
-        });
-        if (!calls.length) { el.innerHTML = '<p class="ic-empty-note">No weekly calls scheduled yet.</p>'; return; }
-        el.innerHTML = calls.map(c => {
-          const color = c.color || '#00f2ea';
-          const join = c.meetingLink ? '<a class="ic-cal-join" style="background:' + color + '" href="' + esc(c.meetingLink) + '" target="_blank" rel="noopener">Join</a>' : '<span class="ic-cal-tba">Link TBA</span>';
-          const chat = c.chatLink ? '<a class="ic-cal-chat" style="color:' + color + ';border-color:' + color + '" href="' + esc(c.chatLink) + '" target="_blank" rel="noopener">Chat</a>' : '';
-          const when = c.when ? esc(c.when) : 'Schedule TBA';
-          const mine = (c.community || c.enrolled) ? ' ic-cal-mine' : '';
-          const badge = c.community
-            ? '<span class="ic-cal-badge" style="color:' + color + '">✦ Everyone</span>'
-            : c.enrolled ? '<span class="ic-cal-badge" style="color:' + color + '">● Yours</span>' : '';
-          return '<div class="ic-cal-row' + mine + '" style="border-left:3px solid ' + color + '">' +
-                 '<div class="ic-cal-main"><div class="ic-cal-brand" style="color:' + color + '">' + esc(c.brand) + badge + '</div>' +
-                 '<div class="ic-cal-when">' + when + '</div></div>' + '<div class="ic-cal-actions">' + chat + join + '</div>' + '</div>';
-        }).join('');
-      } catch (e) { el.innerHTML = '<p class="ic-empty-note">Could not load schedule.</p>'; }
-    }
-    // Derive a clean brand name from a recording title like
-    // "Lode WTR Weekly Creator Call" -> "Lode WTR". Falls back to full title.
-    function recBrand(rc) {
-      if (rc && rc.brand) return String(rc.brand).trim();
-      const t = String((rc && rc.title) || '').trim();
-      const m = t.match(/^(.*?)\s+weekly\s+(creator\s+)?call\s*$/i);
-      return (m ? m[1] : t).trim() || 'Other';
-    }
-    function recDateMs(rc) {
-      const raw = (rc && (rc.scheduled_at || rc.date)) || '';
-      const ms = raw ? Date.parse(raw) : NaN;
-      return Number.isFinite(ms) ? ms : 0;
-    }
-    let _recAll = [];
-    let _recFilter = '__all__';
-    async function loadMeetingRecordings() {
-      const el = document.getElementById('meetings-rec');
-      try {
-        const r = await fetch('/api/inner-circle/recordings', { headers: AUTH_HEADERS });
-        if (!r.ok) { el.innerHTML = '<p class="ic-empty-note">Could not load recordings.</p>'; return; }
-        const d = await r.json();
-        _recAll = (d.recordings || []).slice().sort((a, b) => recDateMs(b) - recDateMs(a));
-        renderRecordings();
-      } catch (e) { el.innerHTML = '<p class="ic-empty-note">Could not load recordings.</p>'; }
-    }
-    function setRecFilter(v) { _recFilter = v; renderRecordings(); }
-    function renderRecordings() {
-      const el = document.getElementById('meetings-rec');
-      if (!el) return;
-      if (!_recAll.length) { el.innerHTML = '<p class="ic-empty-note">No recordings yet — they\'ll appear here after each call.</p>'; return; }
-      const brands = Array.from(new Set(_recAll.map(recBrand))).sort((a, b) => a.localeCompare(b));
-      const opts = ['<option value="__all__">All brands</option>']
-        .concat(brands.map(b => '<option value="' + esc(b) + '"' + (b === _recFilter ? ' selected' : '') + '>' + esc(b) + '</option>'))
-        .join('');
-      const filterBar = '<div class="ic-rec-filter"><label>Brand</label><select onchange="setRecFilter(this.value)">' + opts + '</select></div>';
-      const list = _recAll.filter(rc => _recFilter === '__all__' || recBrand(rc) === _recFilter);
-      let rowsHtml;
-      if (!list.length) {
-        rowsHtml = '<p class="ic-empty-note">No recordings for this brand yet.</p>';
-      } else {
-        rowsHtml = list.map(rc => {
-          const dt = recDateMs(rc) ? new Date(recDateMs(rc)).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
-          const url = rc.recording_url || rc.url || '';
-          const brand = recBrand(rc);
-          return '<div class="ic-rec-row"><div class="ic-rec-info"><div class="t">' + esc(rc.title || 'Weekly Call') + '</div><div class="d"><span class="ic-rec-brand">' + esc(brand) + '</span>' + (dt ? '<span class="ic-rec-dot">•</span>' + esc(dt) : '') + '</div></div><button class="ic-rec-play" onclick="playRecording(\'' + esc(url).replace(/'/g, "\\'") + '\')">▶ Play</button></div>';
-        }).join('');
-      }
-      el.innerHTML = filterBar + rowsHtml;
-    }
-
-    function renderHandles(handles) {
-      const el = document.getElementById('handles-list');
-      if (!el) return;
-      if (!handles.length) {
-        el.innerHTML = '<p class="empty-note">No handles linked yet.</p>';
-        return;
-      }
-      el.innerHTML = handles.map(h => {
-        const badge = h.primary ? '<span class="handle-badge">Primary</span>' : '';
-        const remove = h.primary ? '' : '<button class="handle-remove" title="Unlink" onclick="removeHandle(' + h.id + ')">\u00d7</button>';
-        return '<div class="handle-row"><span><span class="handle-name">' + esc(h.handle) + '</span>' + badge + '</span>' + remove + '</div>';
-      }).join('');
-    }
-
-    async function addHandle() {
-      const input = document.getElementById('handle-input');
-      const btn = document.getElementById('handle-add-btn');
-      const errEl = document.getElementById('handle-error');
-      errEl.textContent = '';
-      const handle = (input.value || '').trim();
-      if (!handle) { errEl.textContent = 'Enter a TikTok handle.'; return; }
-      btn.disabled = true; btn.textContent = 'Adding\u2026';
-      try {
-        const res = await fetch('/api/inner-circle/handles', {
-          method: 'POST',
-          headers: { ...AUTH_HEADERS, 'Content-Type': 'application/json' },
-          body: JSON.stringify({ handle })
-        });
-        const out = await res.json();
-        if (!res.ok) { errEl.textContent = out.error || 'Could not add handle.'; return; }
-        input.value = '';
-        renderHandles(out.handles || []);
-      } catch (e) {
-        errEl.textContent = 'Network error \u2014 please try again.';
-      } finally {
-        btn.disabled = false; btn.textContent = '+ Add';
-      }
-    }
-
-    async function removeHandle(id) {
-      const errEl = document.getElementById('handle-error');
-      errEl.textContent = '';
-      try {
-        const res = await fetch('/api/inner-circle/handles/' + id, {
-          method: 'DELETE', headers: AUTH_HEADERS
-        });
-        const out = await res.json();
-        if (!res.ok) { errEl.textContent = out.error || 'Could not remove handle.'; return; }
-        renderHandles(out.handles || []);
-      } catch (e) {
-        errEl.textContent = 'Network error \u2014 please try again.';
-      }
-    }
-
-    // Weekly Call Recordings — dedicated fetch from the recordings endpoint.
-    // Renders brand recordings as cards: title, date, duration (when present), open link.
-    async function loadRecordings() {
+    // Fetch the per-brand call-recordings library from the FILTERED endpoint.
+    // GET /api/inner-circle/recordings?brand_id={creator's matched brand}.
+    // When the creator has no matched brand, the brand_id param is omitted and
+    // the endpoint returns all recordings. Renders date, title, duration, an
+    // attended badge (when known), and a watch link — with empty-state copy.
+    async function loadRecordings(brandId) {
       const container = document.getElementById('recordings-container');
       if (!container) return;
+      let url = '/api/inner-circle/recordings';
+      if (brandId != null && brandId !== '') {
+        url += '?brand_id=' + encodeURIComponent(brandId);
+      }
       let recs = [];
       try {
-        const res = await fetch('/api/inner-circle/recordings', { headers: AUTH_HEADERS });
+        const res = await fetch(url, { headers: AUTH_HEADERS });
         if (res.status === 401) { logout(); return; }
         if (!res.ok) throw new Error('Recordings fetch failed (' + res.status + ')');
         const json = await res.json();
         recs = json.recordings || [];
       } catch (err) {
         console.error('Recordings load failed:', err);
-        container.innerHTML = '<p class="empty-note">Recordings are syncing — check back soon.</p>';
+        container.innerHTML = '<p class="empty-note">Couldn\'t load call recordings right now — please refresh.</p>';
         return;
       }
+
       if (!recs.length) {
         container.innerHTML = '<p class="empty-note">Recordings from the weekly group calls will appear here.</p>';
         return;
       }
+
       container.innerHTML = recs.map(rec => {
-        const meta = [];
-        if (rec.date) meta.push('<span class="rec-meta-item"><span class="rec-meta-ico">📅</span>' + esc(rec.date) + '</span>');
-        if (rec.duration) meta.push('<span class="rec-meta-item"><span class="rec-meta-ico">⏱</span>' + esc(rec.duration) + '</span>');
-        return '<div class="rec-card">' +
-          '<h3 class="rec-card-title">' + esc(rec.title || 'Weekly Group Call') + '</h3>' +
-          (meta.length ? '<div class="rec-card-meta">' + meta.join('') + '</div>' : '') +
-          (rec.url ? '<button class="play-btn" data-url="' + esc(rec.url) + '">▶ Watch Recording</button>'
-                   : '<span class="empty-note">Recording link pending</span>') +
-        '</div>';
+        let badge = '';
+        if (rec.attended === true)  badge = '<span class="attended-badge yes">✓ Attended</span>';
+        else if (rec.attended === false) badge = '<span class="attended-badge no">Missed</span>';
+        const meta = [esc(rec.date), rec.duration ? esc(rec.duration) : '']
+          .filter(Boolean).join(' • ');
+        return `
+          <div class="recording-item">
+            <div class="recording-info">
+              <h4>${esc(rec.title)}${badge}</h4>
+              <p>${meta}</p>
+            </div>
+            <button class="play-btn" data-url="${esc(rec.url)}">▶ Watch</button>
+          </div>`;
       }).join('');
+
       container.querySelectorAll('.play-btn').forEach(btn => {
         btn.addEventListener('click', () => playRecording(btn.dataset.url));
       });
     }
 
-    loadDashboard();
-    loadRecordings();
+    function playRecording(url) {
+      if (url) window.open(url, '_blank');
+    }
 
-    // ── IC_RATES_JS_START: retainer-marketplace rates ──
-    // Cents <-> dollars helpers. Inputs are whole-dollar USD; API stores integer cents.
-    function centsToDollars(c) {
-      if (c === null || c === undefined || c === '') return '';
-      const n = Number(c);
-      if (!Number.isFinite(n)) return '';
-      return String(Math.round(n) / 100);
-    }
-    function dollarsToCents(v) {
-      if (v === null || v === undefined || String(v).trim() === '') return null;
-      const n = Number(v);
-      if (!Number.isFinite(n) || n < 0) return null;
-      return Math.round(n * 100);
-    }
-    function setRatesStatus(msg, kind) {
-      const el = document.getElementById('rates-status');
-      if (!el) return;
-      el.textContent = msg || '—';
-      el.className = 'rates-status' + (kind ? ' ' + kind : '');
-    }
-    function populateRates(r) {
-      r = r || {};
-      // Never fabricate: only show a value when the API actually returned one.
-      document.getElementById('rate-per-video').value = centsToDollars(r.perVideoCents);
-      document.getElementById('rate-retainer').value  = centsToDollars(r.retainerMonthlyCents);
-      const lbl = (r.packageLabel && r.packageLabel !== '—') ? r.packageLabel : '';
-      document.getElementById('rate-pkg-label').value  = lbl;
-      document.getElementById('rate-pkg-videos').value = (r.packageVideos === null || r.packageVideos === undefined) ? '' : String(r.packageVideos);
-      document.getElementById('rate-pkg-price').value  = centsToDollars(r.packagePriceCents);
-      document.getElementById('rate-available').checked = (r.available !== false);
-      if (r.updatedAt) {
-        setRatesStatus('Last saved ' + String(r.updatedAt).replace('T', ' ').slice(0, 16), null);
-      } else {
-        setRatesStatus('Not set yet', null);
-      }
-    }
-    async function loadRates() {
+
+    // ── Brand Ad Authorization (Spark / Whitelisting) ──────────────────────────
+    // Data source: creator-side endpoints backed by spark_authorizations +
+    // spark_ad_codes. All requests carry the same Bearer token as the rest of
+    // the portal (requireSqliteSession accepts Authorization: Bearer <token>).
+    //   GET  /api/inner-circle/spark/authorizations
+    //   POST /api/inner-circle/spark/authorize   { brandId }
+    //   POST /api/inner-circle/spark/revoke      { brandId }
+    //   POST /api/inner-circle/spark/ad-code     { brandId, videoUrl, adCode }
+    async function loadSparkAuthorizations() {
+      const container = document.getElementById('spark-container');
+      if (!container) return;
+      let auths = [];
       try {
-        const res = await fetch('/api/inner-circle/my-rates', { headers: AUTH_HEADERS });
+        const res = await fetch('/api/inner-circle/spark/authorizations', { headers: AUTH_HEADERS });
         if (res.status === 401) { logout(); return; }
-        if (!res.ok) throw new Error('rates fetch failed (' + res.status + ')');
-        const data = await res.json();
-        populateRates(data.rates);
+        if (!res.ok) throw new Error('Spark authorizations fetch failed (' + res.status + ')');
+        const json = await res.json();
+        auths = json.authorizations || [];
       } catch (err) {
-        console.error('Rates load failed:', err);
-        setRatesStatus('Could not load rates', 'err');
+        console.error('Spark authorizations load failed:', err);
+        container.innerHTML = '<p class="empty-note">Couldn\'t load brand ad authorizations right now — please refresh.</p>';
+        return;
+      }
+
+      if (!auths.length) {
+        container.innerHTML = '<p class="empty-note">Once you\'re matched with a brand, you can authorize them to run Spark ads here.</p>';
+        return;
+      }
+
+      container.innerHTML = auths.map(renderSparkRow).join('');
+      wireSparkRow(container);
+    }
+
+    function sparkStatusBadge(status) {
+      const label = {
+        authorized: 'Authorized',
+        not_authorized: 'Not Authorized',
+        revoked: 'Revoked',
+        pending: 'Pending'
+      }[status] || esc(status);
+      return '<span class="spark-badge ' + esc(status) + '">' + label + '</span>';
+    }
+
+    function renderSparkRow(a) {
+      const authorized = a.status === 'authorized';
+      const codes = a.adCodes || [];
+      const codesHtml = codes.length
+        ? '<div class="spark-codes-list">' + codes.map(c => {
+            const video = c.videoUrl
+              ? '<span class="spark-code-video"><a href="' + esc(c.videoUrl) + '" target="_blank" rel="noopener">' + esc(c.videoUrl) + '</a></span>'
+              : (c.videoId ? '<span class="spark-code-video">Video ' + esc(c.videoId) + '</span>' : '<span class="spark-code-video">Video</span>');
+            const codeVal = c.adCode || c.ttcmItemId || '';
+            const vbadge = c.verified
+              ? '<span class="spark-badge verified">Verified</span>'
+              : '<span class="spark-badge unverified">Pending</span>';
+            return '<div class="spark-code-item"><div class="spark-code-meta">' + video +
+              (codeVal ? '<span class="spark-code-value">' + esc(codeVal) + '</span>' : '') +
+              '</div>' + vbadge + '</div>';
+          }).join('') + '</div>'
+        : '';
+
+      const adCodeBlock = authorized
+        ? '<div class="spark-adcode-block">' +
+            '<h4>Submit a Spark Ad Code for a Posted Video</h4>' +
+            '<div class="spark-adcode-form">' +
+              '<input type="text" class="spark-input spark-video-url" placeholder="Your TikTok video URL">' +
+              '<input type="text" class="spark-input spark-ad-code" placeholder="Spark ad code / TTCM item id">' +
+              '<button class="spark-submit spark-submit-code">Submit Code</button>' +
+            '</div>' +
+            '<p class="spark-hint">Paste the ad authorization code (or TTCM item id) from TikTok so the brand can boost that video.</p>' +
+            codesHtml +
+          '</div>'
+        : '<p class="spark-locked-note">Turn on authorization to submit Spark ad codes for your posted videos.</p>';
+
+      const toggleCls = 'spark-authorize' + (authorized ? ' on' : '');
+      return '<div class="spark-brand-row" data-brand-id="' + esc(a.brandId) + '">' +
+        '<div class="spark-row-head">' +
+          '<div class="spark-brand-name">' + esc(a.brandName || a.brandId) + ' ' + sparkStatusBadge(a.status) + '</div>' +
+          '<div class="' + toggleCls + '" role="switch" aria-checked="' + (authorized ? 'true' : 'false') + '">' +
+            '<span>Authorize for Spark Ads</span>' +
+            '<span class="spark-toggle"></span>' +
+          '</div>' +
+        '</div>' +
+        adCodeBlock +
+      '</div>';
+    }
+
+    function wireSparkRow(scope) {
+      scope.querySelectorAll('.spark-brand-row').forEach(row => {
+        const brandId = row.dataset.brandId;
+        const toggle = row.querySelector('.spark-authorize');
+        if (toggle) {
+          toggle.addEventListener('click', () => toggleSparkAuthorization(toggle, brandId));
+        }
+        const submitBtn = row.querySelector('.spark-submit-code');
+        if (submitBtn) {
+          submitBtn.addEventListener('click', () => submitSparkAdCode(row, brandId, submitBtn));
+        }
+      });
+    }
+
+    async function toggleSparkAuthorization(toggle, brandId) {
+      const wasOn = toggle.classList.contains('on');
+      const endpoint = wasOn ? '/api/inner-circle/spark/revoke' : '/api/inner-circle/spark/authorize';
+      toggle.classList.add('busy');
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+          body: JSON.stringify({ brandId })
+        });
+        if (res.status === 401) { logout(); return; }
+        if (!res.ok) throw new Error((wasOn ? 'Revoke' : 'Authorize') + ' failed (' + res.status + ')');
+        // Re-render the whole section so status badge + ad-code block reflect the new state.
+        await loadSparkAuthorizations();
+      } catch (err) {
+        console.error('Spark authorization toggle failed:', err);
+        toggle.classList.remove('busy');
+        alert('Could not update authorization — please try again.');
       }
     }
-    async function saveRates() {
-      const btn = document.getElementById('rates-save-btn');
-      setRatesStatus('Saving…', null);
+
+    async function submitSparkAdCode(row, brandId, btn) {
+      const urlInput = row.querySelector('.spark-video-url');
+      const codeInput = row.querySelector('.spark-ad-code');
+      const videoUrl = (urlInput && urlInput.value || '').trim();
+      const adCode = (codeInput && codeInput.value || '').trim();
+      if (!videoUrl) { alert('Enter your TikTok video URL.'); return; }
+      if (!adCode) { alert('Enter the Spark ad code or TTCM item id.'); return; }
       btn.disabled = true;
-      const lblRaw = (document.getElementById('rate-pkg-label').value || '').trim();
-      const payload = {
-        perVideoCents:        dollarsToCents(document.getElementById('rate-per-video').value),
-        retainerMonthlyCents: dollarsToCents(document.getElementById('rate-retainer').value),
-        packageVideos:        (function () {
-          const v = (document.getElementById('rate-pkg-videos').value || '').trim();
-          if (v === '') return null;
-          const n = Number(v);
-          return (Number.isInteger(n) && n >= 0) ? n : null;
-        })(),
-        packagePriceCents:    dollarsToCents(document.getElementById('rate-pkg-price').value),
-        packageLabel:         lblRaw === '' ? null : lblRaw,
-        available:            document.getElementById('rate-available').checked
-      };
+      const orig = btn.textContent;
+      btn.textContent = 'Submitting…';
       try {
-        const res = await fetch('/api/inner-circle/my-rates', {
+        const res = await fetch('/api/inner-circle/spark/ad-code', {
           method: 'POST',
-          headers: { ...AUTH_HEADERS, 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + authToken },
+          body: JSON.stringify({ brandId, videoUrl, adCode })
         });
         if (res.status === 401) { logout(); return; }
-        const out = await res.json().catch(() => ({}));
-        if (!res.ok) { setRatesStatus(out.error || 'Could not save rates', 'err'); return; }
-        populateRates(out.rates);
-        setRatesStatus('Saved ✓', 'ok');
+        if (!res.ok) throw new Error('Ad code submit failed (' + res.status + ')');
+        await loadSparkAuthorizations();
       } catch (err) {
-        console.error('Rates save failed:', err);
-        setRatesStatus('Network error — please try again', 'err');
-      } finally {
+        console.error('Spark ad code submit failed:', err);
         btn.disabled = false;
-      }
-    }
-    loadRates();
-    // ── IC_RATES_JS_END ──
-
-    // ── IC Content Engine wizard: searchable product dropdown ──
-    // State for the currently-open wizard.
-    let cwState = { brandId: null, brandSlug: null, products: [], filtered: [], selectedId: null,
-      audience: { creatorAgeGroup: '', creatorDetails: '', targetGender: '', targetAgeRange: '', targetInterests: '', painPoints: '' },
-      brief: { funnelStage: [], scriptLength: '', format: '' } };
-
-    // Pristine snapshot of the wizard form body — captured ONCE on first open so
-    // we can fully restore it every time the wizard reopens. renderScripts()
-    // overwrites .cw-body with results; without this restore, reopening on a
-    // different brand showed the previous brand's scripts (state bleed) and the
-    // Done/X buttons appeared dead. Restoring the form fixes the whole flow.
-    let cwBodyPristine = null;
-    let cwActiveTab = 'create';
-
-    function snapshotWizardBody() {
-      if (cwBodyPristine != null) return;
-      const body = document.querySelector('#content-wizard .cw-body');
-      if (body) cwBodyPristine = body.innerHTML;
-    }
-
-    function restoreWizardBody() {
-      const body = document.querySelector('#content-wizard .cw-body');
-      if (body && cwBodyPristine != null) body.innerHTML = cwBodyPristine;
-    }
-
-    function switchWizardTab(tab) {
-      cwActiveTab = tab;
-      document.querySelectorAll('#content-wizard .cw-tab').forEach(function (t) {
-        t.classList.toggle('active', t.getAttribute('data-cwtab') === tab);
-      });
-      const body = document.querySelector('#content-wizard .cw-body');
-      const hist = document.getElementById('cw-history');
-      if (tab === 'history') {
-        if (body) body.style.display = 'none';
-        if (hist) { hist.classList.add('active'); }
-        loadWizardHistory();
-      } else {
-        if (body) body.style.display = '';
-        if (hist) { hist.classList.remove('active'); hist.style.display = 'none'; }
+        btn.textContent = orig;
+        alert('Could not submit the ad code — please try again.');
       }
     }
 
-    async function loadWizardHistory() {
-      const hist = document.getElementById('cw-history');
-      if (!hist) return;
-      hist.innerHTML = '<div class="cw-state"><span class="cw-spinner"></span>Loading your scripts…</div>';
-      let data;
-      try {
-        const res = await fetch('/api/inner-circle/my-scripts', { headers: AUTH_HEADERS });
-        if (res.status === 401) { logout(); return; }
-        data = await res.json();
-      } catch (e) {
-        hist.innerHTML = '<div class="cw-state">Couldn\'t load your scripts. Please try again.</div>';
-        return;
-      }
-      const all = (data && Array.isArray(data.scripts)) ? data.scripts : [];
-      // Filter to the brand the wizard is currently open on (match by name or slug).
-      const bn = String(cwState.brandName || '').toLowerCase().trim();
-      const bs = String(cwState.brandSlug || '').toLowerCase().trim();
-      const scripts = all.filter(function (s) {
-        const b = String(s.brand || s.Brand || '').toLowerCase().trim();
-        if (!bn && !bs) return true;
-        return b === bn || b === bs || (bn && b.indexOf(bn) !== -1);
-      });
-      if (!scripts.length) {
-        hist.innerHTML = '<div class="cw-state">No saved scripts for this brand yet. Generate some on the Create new tab.</div>';
-        return;
-      }
-      let html = '';
-      scripts.forEach(function (s, i) {
-        s = s || {};
-        const stage = Array.isArray(s.funnelStages) ? s.funnelStages.join(' · ')
-          : (s.funnelStage || s.funnelStages || s.stage || '');
-        const product = s.product || s.Product || '';
-        const when = s.generatedAt || s.createdAt || s.generated_at || '';
-        const meta = [product, stage, when].filter(Boolean).map(function (m) { return cwEsc(m); }).join('<span style="opacity:.4">·</span>');
-        const full = s.fullScript || s.full_script || s.script || s.body || '';
-        html += '<div class="cw-hist-card">' +
-          (meta ? '<div class="cw-hist-meta">' + meta + '</div>' : '') +
-          '<div class="cw-hist-hook">' + cwEsc(s.hook || ('Script ' + (i + 1))) + '</div>' +
-          '<div class="cw-hist-body">' + cwEsc(full) + '</div>' +
-          '<button class="cw-hist-copy" type="button" onclick="copyHistScript(' + i + ', this)">Copy</button>' +
-          '</div>';
-      });
-      hist.innerHTML = html;
-      cwHistScripts = scripts;
-    }
-
-    let cwHistScripts = [];
-    function copyHistScript(i, btn) {
-      const s = cwHistScripts[i] || {};
-      const txt = [s.hook, (s.fullScript || s.full_script || s.script || s.body || '')].filter(Boolean).join('\n\n');
-      try {
-        const ta = document.createElement('textarea');
-        ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
-        document.body.appendChild(ta); ta.focus(); ta.select();
-        document.execCommand('copy'); document.body.removeChild(ta);
-        if (btn) { const o = btn.textContent; btn.textContent = 'Copied!'; setTimeout(function(){ btn.textContent = o; }, 1400); }
-      } catch (_) {}
-    }
-
-    function openContentWizard(brandId, brandSlug, brandName) {
-      // Snapshot the pristine form body ONCE, before any generation overwrites it.
-      snapshotWizardBody();
-      // Always restore the form first so a previous brand's rendered scripts can
-      // never bleed into this open. This is the core fix for the state-bleed bug.
-      restoreWizardBody();
-      cwState = { brandId: brandId, brandSlug: brandSlug, brandName: brandName || '', products: [], filtered: [], selectedId: null,
-        audience: { creatorAgeGroup: '', creatorDetails: '', targetGender: '', targetAgeRange: '', targetInterests: '', painPoints: '' },
-      brief: { funnelStage: [], scriptLength: '', format: '' } };
-      cwScripts = [];
-      resetAudienceFields();
-      const modal = document.getElementById('content-wizard');
-      modal.classList.add('open');
-      document.body.style.overflow = 'hidden';
-      const sub = document.getElementById('cw-subtitle');
-      if (sub) sub.textContent = 'Pick the product you want to feature';
-      switchWizardTab('create');
-      const search = document.getElementById('cw-search');
-      if (search) { search.value = ''; search.disabled = true; }
-      loadWizardProducts(brandId);
-    }
-
-    function closeContentWizard() {
-      const modal = document.getElementById('content-wizard');
-      modal.classList.remove('open');
-      document.body.style.overflow = '';
-    }
-
-    // Close on backdrop click / Escape.
-    document.getElementById('content-wizard').addEventListener('click', function (e) {
-      if (e.target === this) closeContentWizard();
-    });
-    document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape' && document.getElementById('content-wizard').classList.contains('open')) closeContentWizard();
-    });
-
-    function setWizardState(html) {
-      document.getElementById('cw-product-list').innerHTML = html;
-    }
-
-    async function loadWizardProducts(brandId) {
-      setWizardState('<div class="cw-state"><span class="cw-spinner"></span>Loading products…</div>');
-      try {
-        const res = await fetch('/api/inner-circle/brands/' + encodeURIComponent(brandId) + '/products', { headers: AUTH_HEADERS });
-        if (res.status === 401) { logout(); return; }
-        if (!res.ok) throw new Error('products fetch failed (' + res.status + ')');
-        const data = await res.json();
-        // Accept a few shapes: {products:[...]}, [...], or {data:{products:[...]}}
-        const list = Array.isArray(data) ? data
-          : Array.isArray(data.products) ? data.products
-          : (data.data && Array.isArray(data.data.products)) ? data.data.products
-          : [];
-        // Only show this brand's products; guard against null entries.
-        cwState.products = list.filter(Boolean).map(function (p) {
-          return {
-            id: (p.productId != null ? p.productId : (p.id != null ? p.id : (p.product_id != null ? p.product_id : ''))),
-            name: (p.name != null ? p.name : (p.title != null ? p.title : '')),
-            image: (p.image || p.imageUrl || p.thumbnail || '')
-          };
-        });
-        cwState.filtered = cwState.products.slice();
-        const search = document.getElementById('cw-search');
-        search.disabled = false;
-        renderWizardProducts();
-      } catch (err) {
-        console.error('Wizard products load failed:', err);
-        setWizardState(
-          '<div class="cw-state error">Could not load products. Please try again.' +
-          '<br><button class="cw-retry" type="button" onclick="loadWizardProducts(' + "'" + jsStr(brandId) + "'" + ')">Retry</button></div>'
-        );
-      }
-    }
-
-    function filterWizardProducts(q) {
-      const needle = String(q || '').toLowerCase().trim();
-      cwState.filtered = !needle
-        ? cwState.products.slice()
-        : cwState.products.filter(function (p) { return String(p.name).toLowerCase().includes(needle); });
-      renderWizardProducts();
-    }
-
-    function renderWizardProducts() {
-      if (!cwState.filtered.length) {
-        setWizardState('<div class="cw-state">' + (cwState.products.length ? 'No products match your search.' : 'No products available for this brand yet.') + '</div>');
-        return;
-      }
-      const html = cwState.filtered.map(function (p) {
-        const sel = (cwState.selectedId != null && String(cwState.selectedId) === String(p.id)) ? ' selected' : '';
-        const thumb = p.image
-          ? '<img class="cw-product-thumb" src="' + esc(p.image) + '" alt="" onerror="this.style.visibility=' + "'hidden'" + '">'
-          : '<div class="cw-product-thumb"></div>';
-        return '<div class="cw-product-item' + sel + '" data-product-id="' + esc(String(p.id)) + '" onclick="selectWizardProduct(' + "'" + jsStr(String(p.id)) + "'" + ')">' +
-          thumb +
-          '<div class="cw-product-name">' + esc(p.name) + '</div>' +
-          '</div>';
-      }).join('');
-      setWizardState(html);
-    }
-
-    function selectWizardProduct(productId) {
-      cwState.selectedId = productId;
-      renderWizardProducts();
-    }
-    // Clear all audience/target fields to match the reset cwState.audience. esc() is applied when
-    // assigning any pre-filled value so stored values can never break out into markup.
-    function resetAudienceFields() {
-      const a = cwState.audience;
-      const setVal = function (id, v) { const el = document.getElementById(id); if (el) el.value = esc(v == null ? '' : v); };
-      setVal('cw-creator-age', a.creatorAgeGroup);
-      setVal('cw-creator-details', a.creatorDetails);
-      setVal('cw-target-age', a.targetAgeRange);
-      setVal('cw-target-interests', a.targetInterests);
-      setVal('cw-pain-points', a.painPoints);
-      // Radios: tick the one matching stored gender, clear the rest.
-      const radios = document.querySelectorAll('input[name="cw-target-gender"]');
-      radios.forEach(function (r) { r.checked = (r.value === a.targetGender); });
-      // Reset funnel stage (multi), script length & format from cwState.brief.
-      const b = cwState.brief || { funnelStage: [], scriptLength: '', format: '' };
-      const stages = Array.isArray(b.funnelStage) ? b.funnelStage : [];
-      document.querySelectorAll('input[name="cw-funnel-stage"]').forEach(function (c) { c.checked = stages.indexOf(c.value) !== -1; });
-      document.querySelectorAll('input[name="cw-script-length"]').forEach(function (r) { r.checked = (r.value === b.scriptLength); });
-      document.querySelectorAll('input[name="cw-format"]').forEach(function (r) { r.checked = (r.value === b.format); });
-    }
-
-    // Read every audience/target input into cwState.audience. Called on every input/change so the
-    // wizard state object always mirrors the form. Trims free text; gender comes from the checked radio.
-    function captureAudienceState() {
-      const val = function (id) { const el = document.getElementById(id); return el ? String(el.value || '').trim() : ''; };
-      const checkedGender = document.querySelector('input[name="cw-target-gender"]:checked');
-      cwState.audience = {
-        creatorAgeGroup: val('cw-creator-age'),
-        creatorDetails: val('cw-creator-details'),
-        targetGender: checkedGender ? checkedGender.value : '',
-        targetAgeRange: val('cw-target-age'),
-        targetInterests: val('cw-target-interests'),
-        painPoints: val('cw-pain-points')
-      };
-    }
-
-    // Read funnel stage (multi-select), script length & format into cwState.brief.
-    // Called on every change of those controls so wizard state mirrors the form.
-    function captureFunnelState() {
-      const checkedRadio = function (name) { const el = document.querySelector('input[name="' + name + '"]:checked'); return el ? el.value : ''; };
-      const funnelStage = Array.prototype.slice.call(document.querySelectorAll('input[name="cw-funnel-stage"]:checked')).map(function (c) { return c.value; });
-      cwState.brief = {
-        funnelStage: funnelStage,
-        scriptLength: checkedRadio('cw-script-length'),
-        format: checkedRadio('cw-format')
-      };
-    }
-
-    // ── Generate: collect wizard state, validate, POST to Task 2 contract ──
-    // Payload matches /api/inner-circle/generate-scripts (resolveProductContext expects
-    // brandSlug + productId + productName; audience + brief carry the rest of the brief).
-    function setGenError(msg) {
-      const el = document.getElementById('cw-gen-error');
-      if (!el) return;
-      if (msg) { el.textContent = msg; el.classList.add('show'); }
-      else { el.textContent = ''; el.classList.remove('show'); }
-    }
-
-    function setGenLoading(loading) {
-      const btn = document.getElementById('cw-generate-btn');
-      if (!btn) return;
-      btn.disabled = !!loading;
-      btn.innerHTML = loading
-        ? '<span class="cw-spinner"></span>Generating…'
-        : 'Generate scripts';
-    }
-
-    async function generateScripts() {
-      // Make sure the latest form values are captured before validating.
-      captureAudienceState();
-      captureFunnelState();
-      setGenError('');
-
-      // ── Required-field validation ──
-      if (cwState.selectedId == null || String(cwState.selectedId) === '') {
-        setGenError('Please pick a product to feature first.');
-        return;
-      }
-      const a = cwState.audience || {};
-      const b = cwState.brief || {};
-      if (!a.targetGender) { setGenError('Please choose who this video is for (target gender).'); return; }
-      if (!a.painPoints) { setGenError('Tell us the pain points this product solves for the audience.'); return; }
-      if (!Array.isArray(b.funnelStage) || b.funnelStage.length === 0) { setGenError('Pick at least one funnel stage.'); return; }
-      if (!b.scriptLength) { setGenError('Choose a script length.'); return; }
-      if (!b.format) { setGenError('Choose a video format.'); return; }
-
-      // Resolve the selected product object so we can pass its name (Task 2 contract).
-      const selected = (cwState.products || []).find(function (p) {
-        return p && String(p.id) === String(cwState.selectedId);
-      }) || null;
-
-      const payload = {
-        brandId: cwState.brandId,
-        brandSlug: cwState.brandSlug,
-        productId: cwState.selectedId,
-        productName: selected ? selected.name : null,
-        audience: {
-          creatorAgeGroup: a.creatorAgeGroup || '',
-          creatorDetails: a.creatorDetails || '',
-          targetGender: a.targetGender || '',
-          targetAgeRange: a.targetAgeRange || '',
-          targetInterests: a.targetInterests || '',
-          painPoints: a.painPoints || ''
-        },
-        brief: {
-          funnelStage: Array.isArray(b.funnelStage) ? b.funnelStage : [],
-          scriptLength: b.scriptLength || '',
-          format: b.format || ''
-        }
-      };
-
-      setGenLoading(true);
-      try {
-        const res = await fetch('/api/inner-circle/generate-scripts', {
-          method: 'POST',
-          headers: { ...AUTH_HEADERS, 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        if (res.status === 401) { logout(); return; }
-        let data = null;
-        try { data = await res.json(); } catch (_) { data = null; }
-        if (!res.ok) {
-          const msg = (data && (data.error || data.message)) || ('Generation failed (' + res.status + '). Please try again.');
-          throw new Error(msg);
-        }
-        // Hand off to the results renderer (next wizard step). renderScripts is defined
-        // by the results step; guard so a missing renderer never throws here.
-        if (typeof renderScripts === 'function') { renderScripts(data); }
-        else { console.log('[IC wizard] scripts generated:', data); }
-      } catch (err) {
-        console.error('Script generation failed:', err);
-        setGenError(err && err.message ? err.message : 'Something went wrong generating your scripts. Please try again.');
-      } finally {
-        setGenLoading(false);
-      }
-    }
-
-
-    // ── IC Content Engine: results renderer — script cards w/ Copy + violation flags ──
-    function cwEsc(v) {
-      return String(v == null ? '' : v)
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-    }
-
-    // Assemble the full, copyable script text from a script object.
-    function cwScriptText(s) {
-      if (s && typeof s.fullScript === 'string' && s.fullScript.trim()) return s.fullScript.trim();
-      const parts = [];
-      if (s.hook) parts.push('HOOK: ' + s.hook);
-      if (s.credibility) parts.push('CREDIBILITY: ' + s.credibility);
-      if (s.painPoint) parts.push('PAIN POINT: ' + s.painPoint);
-      if (s.proofStack) parts.push('PROOF: ' + s.proofStack);
-      if (s.cta) parts.push('CTA: ' + s.cta);
-      if (s.visualHookIdeas) parts.push('VISUAL IDEAS: ' + s.visualHookIdeas);
-      return parts.join('\n\n');
-    }
-
-    function cwBeat(label, value) {
-      if (!value) return '';
-      return '<div class="cw-beat"><div class="cw-beat-label">' + cwEsc(label) +
-        '</div><div class="cw-beat-text">' + cwEsc(value) + '</div></div>';
-    }
-
-    function cwSevClass(sev) {
-      return String(sev || 'medium').toLowerCase().trim();
-    }
-
-    // Render the violation flags (or a clean badge) for one script.
-    function cwFlags(s) {
-      const violations = Array.isArray(s.violations) ? s.violations : [];
-      const fixes = Array.isArray(s.suggestedFixes) ? s.suggestedFixes : [];
-      if (s.clean === true || violations.length === 0) {
-        return '<div class="cw-flags"><span class="cw-clean">✓ Policy clean</span></div>';
-      }
-      let html = '<div class="cw-flags">';
-      violations.forEach(function (v) {
-        const sev = cwSevClass(v.severity);
-        const icon = (sev === 'high' || sev === 'error' || sev === 'critical') ? '⛔' : (sev === 'low' || sev === 'info') ? 'ℹ️' : '⚠️';
-        html += '<div class="cw-flag ' + cwEsc(sev) + '">' +
-          '<span class="cw-flag-icon">' + icon + '</span><div>' +
-          '<span class="cw-flag-rule">' + cwEsc(v.rule || 'Policy issue') + '</span>' +
-          '<span class="cw-flag-sev">' + cwEsc(sev) + '</span>' +
-          (v.explanation ? '<div class="cw-flag-detail">' + cwEsc(v.explanation) + '</div>' : '') +
-          (v.matchedText ? '<div class="cw-flag-match">“' + cwEsc(v.matchedText) + '”</div>' : '') +
-          '</div></div>';
-      });
-      if (fixes.length) {
-        html += '<div class="cw-flag low"><span class="cw-flag-icon">💡</span><div>' +
-          '<span class="cw-flag-rule">Suggested fixes</span>' +
-          fixes.map(function (f) { return '<div class="cw-flag-fix">• ' + cwEsc(f) + '</div>'; }).join('') +
-          '</div></div>';
-      }
-      return html + '</div>';
-    }
-
-    // Store the raw scripts so Copy can pull exact text by index.
-    let cwScripts = [];
-
-    function copyScript(idx, btn) {
-      const s = cwScripts[idx];
-      if (!s) return;
-      const text = cwScriptText(s);
-      const done = function () {
-        if (!btn) return;
-        const orig = btn.getAttribute('data-label') || 'Copy';
-        btn.classList.add('copied'); btn.textContent = '✓ Copied';
-        setTimeout(function () { btn.classList.remove('copied'); btn.textContent = orig; }, 1600);
-      };
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).then(done).catch(function () { cwFallbackCopy(text); done(); });
-      } else { cwFallbackCopy(text); done(); }
-    }
-
-    function cwFallbackCopy(text) {
-      try {
-        const ta = document.createElement('textarea');
-        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
-        document.body.appendChild(ta); ta.focus(); ta.select();
-        document.execCommand('copy'); document.body.removeChild(ta);
-      } catch (_) {}
-    }
-
-    // Main entry point invoked by generateScripts() once the API responds.
-    function renderScripts(data) {
-      const scripts = (data && Array.isArray(data.scripts)) ? data.scripts : [];
-      cwScripts = scripts;
-      const body = document.querySelector('#content-wizard .cw-body');
-      const sub = document.getElementById('cw-subtitle');
-      if (sub) sub.textContent = scripts.length + ' script' + (scripts.length === 1 ? '' : 's') + ' ready — copy and start filming';
-      if (!body) return;
-      if (!scripts.length) {
-        body.innerHTML = '<div class="cw-state">No scripts came back. Please try again.</div>' +
-          '<div class="cw-footer"><button class="cw-generate" type="button" onclick="closeContentWizard()">Close</button></div>';
-        return;
-      }
-      let html = '<div class="cw-results"><div class="cw-results-head">' +
-        '<h3>Your scripts</h3>' +
-        '<button class="cw-back" type="button" onclick="closeContentWizard()">Done</button></div>';
-      scripts.forEach(function (s, i) {
-        s = s || {};
-        const stage = Array.isArray(s.funnelStage) ? s.funnelStage.join(' · ') : (s.funnelStage || s.stage || '');
-        html += '<div class="cw-script-card">' +
-          '<div class="cw-card-top"><div>' +
-            '<div class="cw-card-title">' + cwEsc(s.hook || ('Script ' + (i + 1))) + '</div>' +
-            (stage ? '<span class="cw-card-stage">' + cwEsc(stage) + '</span>' : '') +
-          '</div>' +
-          '<button class="cw-copy-btn" type="button" data-label="Copy" onclick="copyScript(' + i + ', this)">Copy</button>' +
-          '</div>' +
-          '<div class="cw-card-body">' +
-            cwBeat('Hook', s.hook) +
-            cwBeat('Credibility', s.credibility) +
-            cwBeat('Pain point', s.painPoint) +
-            cwBeat('Proof stack', s.proofStack) +
-            cwBeat('Call to action', s.cta) +
-            cwBeat('Visual hook ideas', s.visualHookIdeas) +
-            (s.fullScript ? cwBeat('Full script', s.fullScript) : '') +
-            cwFlags(s) +
-          '</div>' +
-        '</div>';
-      });
-      html += '</div>';
-      body.innerHTML = html;
-      body.scrollTop = 0;
-    }
-
-    // ── end IC Content Engine wizard ──
-
-  </script>
-  <!-- Intercom Messenger (verified identity from session) -->
-  <script id="intercom-snippet-ic">
-  (function(){
-    var APP_ID = 'wf9rqc2t';
-    // Standard Intercom loader (vanilla, no bundler).
-    var w=window,ic=w.Intercom;
-    if(typeof ic==="function"){ic('reattach_activator');ic('update',w.intercomSettings);}
-    else{var d=document;var i=function(){i.c(arguments);};i.q=[];i.c=function(args){i.q.push(args);};w.Intercom=i;
-      var l=function(){var s=d.createElement('script');s.type='text/javascript';s.async=true;
-        s.src='https://widget.intercom.io/widget/'+APP_ID;
-        var x=d.getElementsByTagName('script')[0];x.parentNode.insertBefore(s,x);};
-      if(d.readyState==='complete'){l();}else if(w.attachEvent){w.addEventListener('load',l,false);}else{w.addEventListener('load',l,false);}}
-    // Boot with verified identity once available, fall back to anonymous.
-    fetch('/api/inner-circle/identity', { credentials:'include' })
-      .then(function(r){ return r.ok ? r.json() : null; })
-      .then(function(id){
-        var s = { app_id: APP_ID };
-        if (id && id.user_id) {
-          s.user_id = id.user_id;
-          if (id.name) s.name = id.name;
-          if (id.email) s.email = id.email;
-          if (id.created_at) s.created_at = id.created_at;
-          if (id.intercom_user_jwt) s.intercom_user_jwt = id.intercom_user_jwt;
-          s.user_type = id.user_type || 'affiliate';
-          if (id.tiktok_handle) s.tiktok_handle = id.tiktok_handle;
-          s.portal = 'inner-circle';
-        }
-        window.intercomSettings = s;
-        window.Intercom('boot', s);
-      })
-      .catch(function(){ window.Intercom('boot', { app_id: APP_ID }); });
-  })();
+    loadDashboard();
   </script>
 </body>
 </html>
