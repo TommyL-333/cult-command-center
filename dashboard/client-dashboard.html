@@ -482,6 +482,7 @@
   <button class="tab-btn" onclick="switchTab('billing')">Billing</button>
   <button class="tab-btn" onclick="switchTab('inner-circle')">Inner Circle</button>
   <button class="tab-btn" onclick="switchTab('marketplace')">Creator Marketplace</button>
+  <button class="tab-btn" onclick="switchTab('spark-ads')">Spark Ads</button>
 </nav>
 
 <div id="tab-overview">
@@ -1377,6 +1378,53 @@
 </main>
 </div><!-- end #tab-marketplace -->
 
+<!-- ───────────────────────── Whitelisting / Spark Ads tab ────────────────── -->
+<div id="tab-spark-ads" style="display:none">
+<main>
+
+  <div class="billing-header">
+    <div>
+      <div class="billing-title">⚡ Whitelisting / Spark Ads</div>
+      <div style="font-size:0.8rem;color:var(--muted);margin-top:3px;">Inner Circle creators who authorized <span id="sparkBrandName">your brand</span> to run partnership (Spark) ads on their posts. Copy their ad codes / TTCM item IDs into TikTok Ads Manager to amplify.</div>
+    </div>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <button id="sparkCopyAllBtn" class="mkt-submit" style="background:var(--teal);color:var(--bg);border:none;border-radius:8px;padding:9px 16px;font-size:0.82rem;font-weight:700;cursor:pointer;white-space:nowrap;" onclick="copyAllSparkCodes()">Copy all codes</button>
+      <a id="sparkExportBtn" class="mkt-submit" href="/api/inner-circle/spark/codes?format=csv" style="text-decoration:none;background:transparent;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:9px 16px;font-size:0.82rem;font-weight:700;cursor:pointer;white-space:nowrap;">Export all (CSV)</a>
+    </div>
+  </div>
+
+  <!-- Summary stat cards -->
+  <div class="stats-row mb-32">
+    <div class="stat-card"><div class="stat-label">Authorized Creators</div><div class="stat-value teal" id="sparkStatCreators">—</div><div class="stat-sub">Granted you Spark Ads rights</div></div>
+    <div class="stat-card"><div class="stat-label">Ad Codes</div><div class="stat-value" id="sparkStatCodes">—</div><div class="stat-sub">Submitted across all posts</div></div>
+    <div class="stat-card"><div class="stat-label">Verified Codes</div><div class="stat-value gold" id="sparkStatVerified">—</div><div class="stat-sub">Confirmed usable</div></div>
+  </div>
+
+  <div class="section-label mb-20">Authorized Creators &amp; Ad Codes</div>
+  <div id="sparkNote" style="font-size:0.82rem;color:var(--muted);margin-bottom:16px;line-height:1.6"></div>
+
+  <!-- Authorized creators + ad codes table -->
+  <div class="billing-history">
+    <table class="inv-table" id="sparkCreatorsTable">
+      <thead>
+        <tr>
+          <th>Creator</th>
+          <th>Status</th>
+          <th>Video</th>
+          <th>Ad Code / TTCM Item ID</th>
+          <th>Verified</th>
+          <th>Submitted</th>
+        </tr>
+      </thead>
+      <tbody id="sparkCreatorsBody">
+        <tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px;">Loading…</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+</main>
+</div><!-- end #tab-spark-ads -->
+
 <!-- Offer modal -->
 <div class="mkt-modal-bg" id="mktModalBg">
   <div class="mkt-modal">
@@ -2064,12 +2112,130 @@
   }
 
   // ─── Tab navigation ────────────────────────────────────────────────────────
+  // ─── Whitelisting / Spark Ads (brand-side) ───────────────────────────────────
+  window._sparkLoaded = false;
+  window._sparkAllCodes = [];
+  async function loadSpark() {
+    const body = document.getElementById('sparkCreatorsBody');
+    const note = document.getElementById('sparkNote');
+    try {
+      const r = await fetch('/api/inner-circle/spark/creators');
+      if (r.status === 401) { window.location.href = '/client'; return; }
+      if (r.status === 503) {
+        if (note) note.textContent = 'Spark Ads data layer is temporarily unavailable. Please try again shortly.';
+        if (body) body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px;">Unavailable.</td></tr>';
+        return;
+      }
+      const data = await r.json();
+      const creators = Array.isArray(data.creators) ? data.creators : [];
+      if (data.brand && data.brand.name) {
+        const bn = document.getElementById('sparkBrandName');
+        if (bn) bn.textContent = data.brand.name;
+      }
+
+      // Summary stats
+      const totalCodes = creators.reduce(function(s,c){ return s + (Number(c.adCodeCount)||0); }, 0);
+      const verifiedCodes = creators.reduce(function(s,c){ return s + (Number(c.verifiedCodeCount)||0); }, 0);
+      document.getElementById('sparkStatCreators').textContent = fmtN(data.authorizedCount != null ? data.authorizedCount : creators.length);
+      document.getElementById('sparkStatCodes').textContent = fmtN(totalCodes);
+      document.getElementById('sparkStatVerified').textContent = fmtN(verifiedCodes);
+
+      // Flatten ad codes for copy-all / export (only authorized creators' codes)
+      window._sparkAllCodes = [];
+      creators.forEach(function(c){
+        if (String(c.status) !== 'authorized') return;
+        (c.adCodes||[]).forEach(function(code){
+          var val = code.adCode || code.ttcmItemId;
+          if (val) window._sparkAllCodes.push(String(val));
+        });
+      });
+
+      if (!creators.length) {
+        if (note) note.textContent = 'No creators have authorized your brand for Spark Ads yet. Once your Inner Circle creators enable Spark authorization and submit ad codes for their posts, they will appear here.';
+        if (body) body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px;">No authorized creators yet.</td></tr>';
+        window._sparkLoaded = true;
+        return;
+      }
+      if (note) note.textContent = '';
+
+      // One row per (creator, ad code). Creators with no codes still show a row.
+      var rows = [];
+      creators.forEach(function(c){
+        var handleCell = '<div style="font-weight:600;">@' + esc(c.creatorHandle || '—') + '</div>'
+          + (c.creatorName ? '<div style="font-size:0.74rem;color:var(--muted);margin-top:2px;">' + esc(c.creatorName) + '</div>' : '');
+        var statusCell = renderSparkStatus(c.status);
+        if (!(c.adCodes && c.adCodes.length)) {
+          rows.push('<tr>'
+            + '<td>' + handleCell + '</td>'
+            + '<td>' + statusCell + '</td>'
+            + '<td colspan="4" style="color:var(--muted);">No ad codes submitted yet.</td>'
+            + '</tr>');
+          return;
+        }
+        c.adCodes.forEach(function(code, i){
+          var codeVal = code.adCode || code.ttcmItemId || '';
+          var codeCell = codeVal
+            ? '<code style="font-size:0.78rem;background:rgba(0,242,234,0.06);border:1px solid var(--border);border-radius:6px;padding:3px 7px;">' + esc(codeVal) + '</code>'
+              + ' <button onclick="copySparkCode(this,\'' + esc(codeVal).replace(/'/g,"&#39;") + '\')" style="background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:6px;font-size:0.68rem;font-weight:700;padding:3px 8px;cursor:pointer;margin-left:4px;">Copy</button>'
+            : '<span style="color:var(--muted);">—</span>';
+          var videoCell = code.videoUrl
+            ? '<a href="' + esc(code.videoUrl) + '" target="_blank" rel="noopener" style="color:var(--teal);text-decoration:none;">View post →</a>'
+            : (code.videoId ? '<span style="color:var(--muted);font-size:0.76rem;">' + esc(code.videoId) + '</span>' : '<span style="color:var(--muted);">—</span>');
+          var verifiedCell = code.verified
+            ? '<span class="offer-status accepted">Verified</span>'
+            : '<span class="offer-status pending">Unverified</span>';
+          rows.push('<tr>'
+            + '<td>' + (i === 0 ? handleCell : '') + '</td>'
+            + '<td>' + (i === 0 ? statusCell : '') + '</td>'
+            + '<td>' + videoCell + '</td>'
+            + '<td>' + codeCell + '</td>'
+            + '<td>' + verifiedCell + '</td>'
+            + '<td>' + fmtDate(code.submittedAt) + '</td>'
+            + '</tr>');
+        });
+      });
+      body.innerHTML = rows.join('');
+      window._sparkLoaded = true;
+    } catch (e) {
+      if (note) note.textContent = 'Could not load Spark Ads authorizations. Please try again.';
+      if (body) body.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px;">Error loading data.</td></tr>';
+    }
+  }
+
+  function renderSparkStatus(status) {
+    var s = String(status || 'pending');
+    var cls = s === 'authorized' ? 'accepted' : (s === 'revoked' ? 'declined' : 'pending');
+    var label = s === 'authorized' ? 'Authorized' : (s === 'revoked' ? 'Revoked' : (s.charAt(0).toUpperCase() + s.slice(1)));
+    return '<span class="offer-status ' + cls + '">' + esc(label) + '</span>';
+  }
+
+  function copySparkCode(btn, val) {
+    if (!val) return;
+    navigator.clipboard.writeText(val).then(function(){
+      var orig = btn.textContent;
+      btn.textContent = '✓';
+      setTimeout(function(){ btn.textContent = orig; }, 1600);
+    });
+  }
+
+  function copyAllSparkCodes() {
+    var codes = window._sparkAllCodes || [];
+    var btn = document.getElementById('sparkCopyAllBtn');
+    if (!codes.length) {
+      if (btn) { var o = btn.textContent; btn.textContent = 'No codes yet'; setTimeout(function(){ btn.textContent = o; }, 1800); }
+      return;
+    }
+    navigator.clipboard.writeText(codes.join('\n')).then(function(){
+      if (btn) { var o2 = btn.textContent; btn.textContent = '✓ Copied ' + codes.length + ' codes'; setTimeout(function(){ btn.textContent = o2; }, 2200); }
+    });
+  }
+
   function switchTab(name) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('[id^="tab-"]').forEach(el => el.style.display = 'none');
     document.getElementById('tab-' + name).style.display = 'block';
     const btns = document.querySelectorAll('.tab-btn');
-    const labels = { 'overview': 'Overview', 'content-studio': 'Content Studio', 'billing': 'Billing', 'inner-circle': 'Inner Circle', 'marketplace': 'Creator Marketplace' };
+    const labels = { 'overview': 'Overview', 'content-studio': 'Content Studio', 'billing': 'Billing', 'inner-circle': 'Inner Circle', 'marketplace': 'Creator Marketplace', 'spark-ads': 'Spark Ads' };
     btns.forEach(b => { if (b.textContent.trim() === labels[name]) b.classList.add('active'); });
     if (name === 'content-studio' && !window._channelsLoaded) loadChannels();
     if (name === 'content-studio' && !window._arcadsLoaded) loadArcads();
@@ -2080,6 +2246,7 @@
     if (name === 'billing' && !window._billingLoaded) loadBilling();
     if (name === 'inner-circle' && !_icLoaded) loadInnerCircle();
     if (name === 'marketplace' && !_mktLoaded) loadMarketplace();
+    if (name === 'spark-ads' && !window._sparkLoaded) loadSpark();
   }
 
   // ─── Affiliate URL ──────────────────────────────────────────────────────────
