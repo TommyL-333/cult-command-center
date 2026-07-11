@@ -1221,6 +1221,13 @@ try {
   require('./routes/client-intercom-identity')(app, { requireClientSession, loadBrands });
 } catch (e) { console.error('[client-intercom-identity] registration failed:', e.message); }
 
+// Inner Circle Spark/Whitelisting Ads: creator-side API
+// Lets logged-in creators authorize brands to run Spark partnership ads, submit
+// ad codes, and revoke authorizations. Auth: Bearer token via requireSqliteSession.
+try {
+  require('./routes/inner-circle-spark')(app, { express, requireSqliteSession: icSqlite && icSqlite.requireSqliteSession });
+} catch (e) { console.error('[inner-circle-spark] registration failed:', e.message); }
+
 // Ops Engine "My Tasks" per-person UI. Mounted BEFORE app.use(requireAuth) so
 // unauthenticated API hits return a clean JSON 401 (the module carries its own
 // self-contained auth guard reading req.userEmail / session). Serves
