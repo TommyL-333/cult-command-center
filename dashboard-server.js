@@ -1266,7 +1266,7 @@ app.get('/api/inner-circle/admin/funnel', async (req, res) => {
 // Routes using this MUST be registered before app.use(requireAuth) because
 // creators do not have Cloudflare Access sessions.
 async function requireCreatorSession(req, res, next) {
-  const sessionToken = req.cookies?.ic_session || req.headers.authorization?.replace('Bearer ', '');
+  const sessionToken = getInnerCircleSessionToken(req);
   if (!sessionToken) return res.status(401).json({ error: 'Not authenticated' });
   try {
     const { data: session } = await supabase
@@ -1424,7 +1424,7 @@ app.post('/api/inner-circle/login', express.json(), async (req, res) => {
 // Session-checked here; page data is fetched client-side from /api/inner-circle/dashboard.
 // Registered BEFORE the legacy inline dashboard route below so it takes precedence.
 app.get('/inner-circle/dashboard', async (req, res, next) => {
-  const sessionToken = req.cookies?.ic_session || req.headers.authorization?.replace('Bearer ', '');
+  const sessionToken = getInnerCircleSessionToken(req);
   if (!sessionToken) return res.redirect('/inner-circle');
   try {
     const { data: session } = await supabase
@@ -1445,176 +1445,15 @@ app.get('/inner-circle/dashboard', async (req, res, next) => {
 // send them to the existing creator login page at /inner-circle.
 app.get('/inner-circle/login', (req, res) => res.redirect('/inner-circle'));
 
-// Inner Circle dashboard
-app.get('/inner-circle/dashboard', async (req, res) => {
-  // Get session from cookie or header
-  const sessionToken = req.cookies?.ic_session || req.headers.authorization?.replace('Bearer ', '');
-  
-  if (!sessionToken) {
-    return res.redirect('/inner-circle');
-  }
-  
-  try {
-    // Verify session
-    const {data: session} = await supabase
-      .from('creator_sessions')
-      .select('*, creators(*)')
-      .eq('token', sessionToken)
-      .gt('expires_at', new Date().toISOString())
-      .single();
-    
-    if (!session) {
-      return res.redirect('/inner-circle');
-    }
-    
-    const creator = session.creators;
-    
-    // Get creator's Inner Circle enrollment
-    const {data: enrollment} = await supabase
-      .from('inner_circle_enrollments')
-      .select('*')
-      .eq('creator_id', creator.id)
-      .single();
-    
-    // Get creator's brand commitments
-    const {data: commitments} = await supabase
-      .from('inner_circle_brand_commitments')
-      .select('*, clients(*)')
-      .eq('creator_id', creator.id);
-    
-    // Get video count this month
-    const {data: videos} = await supabase
-      .from('creator_videos')
-      .select('id')
-      .eq('creator_id', creator.id)
-      .gte('created_at', new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString());
-    
-    const videoCount = videos?.length || 0;
-    
-    res.send(`<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Inner Circle Dashboard — ${creator.name}</title>
-<link rel="icon" type="image/png" href="/favicon.png">
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0a0f;color:#e2e8f0;min-height:100vh}
-.header{background:rgba(255,255,255,.02);border-bottom:1px solid rgba(255,255,255,.07);padding:20px 24px;display:flex;justify-content:space-between;align-items:center}
-.header h1{font-size:1.3rem;font-weight:800;background:linear-gradient(135deg,#00f2ea,#a855f7);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
-.header .user{font-size:.9rem;color:#94a3b8}
-.container{max-width:1400px;margin:0 auto;padding:40px 24px}
-.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;margin-bottom:40px}
-.stat-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:24px}
-.stat-card .label{font-size:.85rem;color:#94a3b8;margin-bottom:8px}
-.stat-card .value{font-size:2.2rem;font-weight:900;color:#fff}
-.stat-card .progress{margin-top:12px;height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden}
-.stat-card .progress-bar{height:100%;background:linear-gradient(90deg,#00f2ea,#a855f7);transition:width .3s}
-.section{margin-bottom:40px}
-.section h2{font-size:1.5rem;font-weight:800;margin-bottom:20px}
-.brands{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}
-.brand-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:20px;transition:border-color .2s}
-.brand-card:hover{border-color:rgba(0,242,234,.3)}
-.brand-card h3{font-size:1.1rem;color:#00f2ea;margin-bottom:8px}
-.brand-card p{font-size:.88rem;color:#94a3b8;margin-bottom:4px}
-.btn{padding:10px 20px;background:linear-gradient(135deg,#00f2ea,#a855f7);border:none;border-radius:8px;color:#fff;font-weight:600;font-size:.9rem;cursor:pointer;transition:transform .2s}
-.btn:hover{transform:translateY(-1px)}
-.btn-secondary{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1)}
-.empty{text-align:center;padding:60px 20px;color:#64748b}
-</style>
-</head>
-<body>
+function getInnerCircleSessionToken(req) {
+  const cookieHeader = req.headers.cookie || '';
+  const match = cookieHeader.match(/(?:^|;\s*)ic_session=([^;]+)/);
+  if (match) return decodeURIComponent(match[1]);
+  const auth = req.headers.authorization || '';
+  if (auth.startsWith('Bearer ')) return auth.slice(7).trim();
+  return null;
+}
 
-<div class="header">
-  <h1>Inner Circle</h1>
-  <div class="user">
-    ${creator.name} • <a href="/api/inner-circle/logout" style="color:#00f2ea;text-decoration:none">Logout</a>
-  </div>
-</div>
-
-<div class="container">
-  <div class="stats">
-    <div class="stat-card">
-      <div class="label">Videos This Month</div>
-      <div class="value">${videoCount}</div>
-      <div class="progress">
-        <div class="progress-bar" style="width:${Math.min((videoCount/15)*100, 100)}%"></div>
-      </div>
-      <div class="label" style="margin-top:8px">${videoCount}/15 goal</div>
-    </div>
-    
-    <div class="stat-card">
-      <div class="label">Brand Commitments</div>
-      <div class="value">${commitments?.length || 0}</div>
-    </div>
-    
-    <div class="stat-card">
-      <div class="label">Call Attendance</div>
-      <div class="value">${enrollment?.calls_attended || 0}</div>
-    </div>
-    
-    <div class="stat-card">
-      <div class="label">Commission Rate</div>
-      <div class="value">50%</div>
-      <div class="label" style="margin-top:8px">Target collabs</div>
-    </div>
-  </div>
-  
-  <div class="section">
-    <h2>Your Brands</h2>
-    ${commitments && commitments.length > 0 ? `
-      <div class="brands">
-        ${commitments.map(c => `
-          <div class="brand-card">
-            <h3>${c.clients.name}</h3>
-            <p>Videos posted: ${c.videos_posted || 0}</p>
-            <p>Status: ${c.status}</p>
-            <button class="btn" onclick="window.location.href='/creators/${c.clients.slug}'">View Brand Page</button>
-          </div>
-        `).join('')}
-      </div>
-    ` : `
-      <div class="empty">
-        <p>No brand commitments yet.</p>
-        <button class="btn" style="margin-top:16px" onclick="window.location.href='/inner-circle/brands'">Browse Brands</button>
-      </div>
-    `}
-  </div>
-  
-  <div class="section">
-    <h2>Recent Call Recordings</h2>
-    <div id="recordings"></div>
-  </div>
-</div>
-
-<script>
-// Load call recordings
-fetch('/api/inner-circle/recordings')
-  .then(r => r.json())
-  .then(data => {
-    const container = document.getElementById('recordings');
-    if (data.recordings && data.recordings.length > 0) {
-      container.innerHTML = data.recordings.map(r => \`
-        <div class="brand-card" style="margin-bottom:12px">
-          <h3>\${r.title}</h3>
-          <p>\${new Date(r.date).toLocaleDateString()}</p>
-          <button class="btn-secondary btn" onclick="window.open('\${r.url}', '_blank')">Watch Recording</button>
-        </div>
-      \`).join('');
-    } else {
-      container.innerHTML = '<div class="empty">No recordings yet.</div>';
-    }
-  });
-</script>
-
-</body>
-</html>`);
-    
-  } catch (error) {
-    console.error('Inner Circle dashboard error:', error);
-    res.redirect('/inner-circle');
-  }
-});
 
 // Covenant: creator commits to a brand → Lark alert to Hasan for manual TC invite.
 // Mounted here (before app.use(requireAuth)) because creators lack CF Access sessions.
