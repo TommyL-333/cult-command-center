@@ -13137,6 +13137,25 @@ function renderWelcomePage(brand, cp, creatorHandle = '', productKey = '') {
   if (_pbKeys.length) {
     const _activeKey = (productKey && _pbKeys.includes(productKey)) ? productKey : _pbKeys[0];
     brief = (cp.productBriefs[_activeKey] && cp.productBriefs[_activeKey].brief) || _baseBrief;
+    // Normalize string-schema briefs (e.g. glutathione) into the object schema the renderer expects
+    if (brief && typeof brief === 'object') {
+      brief = Object.assign({}, brief);
+      if (Array.isArray(brief.hooks)) {
+        brief.hooks = brief.hooks.map(function(h){ return (typeof h === 'string') ? { text: h, type: '' } : h; });
+      }
+      if (Array.isArray(brief.frameworks)) {
+        brief.frameworks = brief.frameworks.map(function(f){
+          if (typeof f !== 'string') return f;
+          var i = f.indexOf(':');
+          return { name: i > 0 ? f.slice(0, i) : f, why: i > 0 ? f.slice(i + 1).trim() : '', outline: [] };
+        });
+      }
+      if (Array.isArray(brief.sampleScripts)) {
+        brief.sampleScripts = brief.sampleScripts.map(function(s, idx){
+          return (typeof s === 'string') ? { framework: 'Script', title: 'Script ' + (idx + 1), duration: '~30s', script: s } : s;
+        });
+      }
+    }
     const _hq = creatorHandle ? '&handle=' + encodeURIComponent(creatorHandle) : '';
     productSwitcherHtml = `
 <div class="product-switcher">${_pbKeys.map(k => {
