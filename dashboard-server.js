@@ -732,11 +732,12 @@ app.get('/creators', (req, res) => {
 app.get('/creators/:brandSlug/welcome', (req, res) => {
   const { brandSlug } = req.params;
   const handle = (req.query.handle || '').replace(/^@/, '').trim();
+  const productKey = req.query.product || undefined;
   const brands = loadBrands();
   const brand  = (brands.clients || []).find(b => b.creatorPage?.slug === brandSlug);
   if (!brand || !brand.creatorPage) return res.status(404).send('Page not found');
   res.set('Content-Type', 'text/html');
-  res.send(renderWelcomePage(brand, brand.creatorPage, handle));
+  res.send(renderWelcomePage(brand, brand.creatorPage, handle, productKey));
 });
 
 // GET /creators/:brandSlug — public creator interest page
