@@ -732,12 +732,11 @@ app.get('/creators', (req, res) => {
 app.get('/creators/:brandSlug/welcome', (req, res) => {
   const { brandSlug } = req.params;
   const handle = (req.query.handle || '').replace(/^@/, '').trim();
-  const productKey = req.query.product || undefined;
   const brands = loadBrands();
   const brand  = (brands.clients || []).find(b => b.creatorPage?.slug === brandSlug);
   if (!brand || !brand.creatorPage) return res.status(404).send('Page not found');
   res.set('Content-Type', 'text/html');
-  res.send(renderWelcomePage(brand, brand.creatorPage, handle, productKey));
+  res.send(renderWelcomePage(brand, brand.creatorPage, handle));
 });
 
 // GET /creators/:brandSlug — public creator interest page
@@ -1221,13 +1220,6 @@ try {
 try {
   require('./routes/client-intercom-identity')(app, { requireClientSession, loadBrands });
 } catch (e) { console.error('[client-intercom-identity] registration failed:', e.message); }
-
-// Inner Circle Spark/Whitelisting Ads: creator-side API
-// Lets logged-in creators authorize brands to run Spark partnership ads, submit
-// ad codes, and revoke authorizations. Auth: Bearer token via requireSqliteSession.
-try {
-  require('./routes/inner-circle-spark')(app, { express, requireSqliteSession: icSqlite && icSqlite.requireSqliteSession });
-} catch (e) { console.error('[inner-circle-spark] registration failed:', e.message); }
 
 // Ops Engine "My Tasks" per-person UI. Mounted BEFORE app.use(requireAuth) so
 // unauthenticated API hits return a clean JSON 401 (the module carries its own
@@ -13118,7 +13110,7 @@ document.getElementById('cpForm').addEventListener('submit', async function(e) {
 </html>`;
 }
 
-function renderWelcomePage(brand, cp, creatorHandle = '', productKey = '') {
+function renderWelcomePage(brand, cp, creatorHandle = '') {
   const accent   = cp.accentColor || '#00f2ea';
   const ar       = hexToRgb(accent);
   const name     = brand.name || 'Brand';
@@ -13129,41 +13121,7 @@ function renderWelcomePage(brand, cp, creatorHandle = '', productKey = '') {
   const usps     = (cp.usps || []).filter(Boolean);
   const talking  = (cp.talkingPoints || '').split('\n').map(s => s.trim()).filter(Boolean);
   const videos   = (cp.competitorVideos || []).filter(Boolean);
-  const _baseBrief = cp.brief || null;
-  // Multi-product brief support (backward compatible): if productBriefs map exists, switch on active key
-  let brief = _baseBrief;
-  let productSwitcherHtml = '';
-  const _pbKeys = cp.productBriefs && typeof cp.productBriefs === 'object' ? Object.keys(cp.productBriefs) : [];
-  if (_pbKeys.length) {
-    const _activeKey = (productKey && _pbKeys.includes(productKey)) ? productKey : _pbKeys[0];
-    brief = (cp.productBriefs[_activeKey] && cp.productBriefs[_activeKey].brief) || _baseBrief;
-    // Normalize string-schema briefs (e.g. glutathione) into the object schema the renderer expects
-    if (brief && typeof brief === 'object') {
-      brief = Object.assign({}, brief);
-      if (Array.isArray(brief.hooks)) {
-        brief.hooks = brief.hooks.map(function(h){ return (typeof h === 'string') ? { text: h, type: '' } : h; });
-      }
-      if (Array.isArray(brief.frameworks)) {
-        brief.frameworks = brief.frameworks.map(function(f){
-          if (typeof f !== 'string') return f;
-          var i = f.indexOf(':');
-          return { name: i > 0 ? f.slice(0, i) : f, why: i > 0 ? f.slice(i + 1).trim() : '', outline: [] };
-        });
-      }
-      if (Array.isArray(brief.sampleScripts)) {
-        brief.sampleScripts = brief.sampleScripts.map(function(s, idx){
-          return (typeof s === 'string') ? { framework: 'Script', title: 'Script ' + (idx + 1), duration: '~30s', script: s } : s;
-        });
-      }
-    }
-    const _hq = creatorHandle ? '&handle=' + encodeURIComponent(creatorHandle) : '';
-    productSwitcherHtml = `
-<div class="product-switcher">${_pbKeys.map(k => {
-      const _lbl = (cp.productBriefs[k] && cp.productBriefs[k].label) || k;
-      const _isActive = k === _activeKey;
-      return `<a href="?product=${encodeURIComponent(k)}${_hq}" class="prod-pill${_isActive ? ' prod-pill-active' : ''}">${String(_lbl).replace(/</g,'&lt;')}</a>`;
-    }).join('')}</div>`;
-  }
+  const brief    = cp.brief || null;
 
   const campaignBtns = [];
   if (campaigns.blitzUrl)         campaignBtns.push({ label: campaigns.blitzLabel || '🚀 Blitz Launch Campaign', sub: campaigns.blitzSub || 'Post your videos on launch day — bonus for first-15-day GMV', url: campaigns.blitzUrl });
@@ -13348,10 +13306,6 @@ h1{font-size:clamp(22px,4vw,30px);font-weight:900;letter-spacing:-.02em;margin-b
 .camp-btn-label{font-size:14px;font-weight:900;margin-bottom:3px}
 .camp-btn-sub{font-size:12px;color:rgba(255,255,255,.42);line-height:1.4}
 .camp-btn-arrow{font-size:18px;color:${accent};opacity:.7;flex-shrink:0}
-.product-switcher{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;max-width:680px;margin:32px auto 0;padding:0 20px}
-.prod-pill{display:inline-block;padding:9px 18px;border-radius:999px;font-size:13px;font-weight:700;text-decoration:none;color:rgba(255,255,255,.7);background:rgba(255,255,255,.05);border:1.5px solid rgba(255,255,255,.12);transition:background .18s,border-color .18s,color .18s,transform .1s}
-.prod-pill:hover{background:rgba(${ar},.12);border-color:rgba(${ar},.4);color:#fff;transform:translateY(-1px)}
-.prod-pill-active{background:rgba(${ar},.18);border-color:${accent};color:#fff}
 .inc-card{display:flex;align-items:center;gap:14px;background:rgba(${ar},.06);border:1.5px solid rgba(${ar},.18);border-radius:14px;padding:16px 20px;margin-bottom:10px;color:#fff}
 .inc-card-link{text-decoration:none;transition:background .18s,transform .1s,border-color .18s;cursor:pointer}
 .inc-card-link:hover{background:rgba(${ar},.14);border-color:rgba(${ar},.45);transform:translateY(-1px)}
@@ -13501,7 +13455,6 @@ footer a{color:${accent};text-decoration:none}
   </a>` : ''}
 </div>
 
-${productSwitcherHtml}
 ${hooksHtml}
 ${frameworksHtml}
 ${scriptsHtml}

@@ -477,6 +477,7 @@
         const res = await fetch('/api/inner-circle/login', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
+          credentials: 'include',
           body: JSON.stringify({email, password})
         });
 
@@ -523,6 +524,7 @@
         const res = await fetch('/api/inner-circle/signup', {
           method: 'POST',
           headers: {'Content-Type': 'application/json'},
+          credentials: 'include',
           body: JSON.stringify({name, email, tiktokHandle, password, phone})
         });
 
