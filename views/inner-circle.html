@@ -1321,7 +1321,7 @@
           fetch('/api/inner-circle/dashboard', { headers: AUTH_HEADERS }),
           fetch('/api/inner-circle/brands', { headers: AUTH_HEADERS })
         ]);
-        // if (dashRes.status === 401) { logout(); return; }
+        if (dashRes.status === 401) { logout(); return; }
         if (!dashRes.ok) throw new Error(`Dashboard fetch failed (${dashRes.status})`);
         data = await dashRes.json();
         creatorData = data.creator;
