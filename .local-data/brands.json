@@ -1,0 +1,42 @@
+{
+  "clients": [
+    {
+      "id": "rootsbyga001",
+      "createdAt": "2026-06-12T00:00:00.000Z",
+      "name": "Roots by GA",
+      "billingEmail": "carla@rootsbyga.com",
+      "contractValue": 1500,
+      "commissionRate": 0.1,
+      "proratedFirstRetainer": 950,
+      "pipelineStage": "Contract Signed",
+      "startDate": "2026-06-12",
+      "contacts": "Carla Brenner (carla@rootsbyga.com)",
+      "industry": "TBD — to be completed during onboarding",
+      "products": "TBD",
+      "audience": "TBD",
+      "voice": "TBD",
+      "contentPillars": "TBD",
+      "tiktokHandle": "TBD",
+      "cta": "TBD"
+    },
+    {
+      "id": "yuglo001",
+      "createdAt": "2026-06-08T00:00:00.000Z",
+      "name": "Yuglo",
+      "billingEmail": "evaaadee1@gmail.com",
+      "contractValue": 1500,
+      "commissionRate": 0.1,
+      "proratedFirstRetainer": 1150,
+      "pipelineStage": "Contract Signed",
+      "startDate": "2026-06-08",
+      "contacts": "Eva Dee (evaaadee1@gmail.com)",
+      "industry": "TBD — to be completed during onboarding",
+      "products": "TBD",
+      "audience": "TBD",
+      "voice": "TBD",
+      "contentPillars": "TBD",
+      "tiktokHandle": "TBD",
+      "cta": "TBD"
+    }
+  ]
+}

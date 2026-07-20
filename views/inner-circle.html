@@ -1321,7 +1321,7 @@
           fetch('/api/inner-circle/dashboard', { headers: AUTH_HEADERS }),
           fetch('/api/inner-circle/brands', { headers: AUTH_HEADERS })
         ]);
-        if (dashRes.status === 401) { logout(); return; }
+        // if (dashRes.status === 401) { logout(); return; }
         if (!dashRes.ok) throw new Error(`Dashboard fetch failed (${dashRes.status})`);
         data = await dashRes.json();
         creatorData = data.creator;
@@ -1426,7 +1426,7 @@
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${authToken}` },
             body: JSON.stringify({ brandId, brandName, videosPerMonth: 20, weeklyCall: true, signature })
           });
-          if (res.status === 401) { logout(); return; }
+          // if (res.status === 401) { logout(); return; }
           if (!res.ok) throw new Error('Commitment failed (' + res.status + ')');
           await res.json().catch(() => ({}));
           close();
@@ -1500,7 +1500,7 @@
       const el = document.getElementById('prof-handles');
       try {
         const r = await fetch('/api/inner-circle/handles', { headers: AUTH_HEADERS });
-        if (r.status === 401) { logout(); return; }
+        // if (r.status === 401) { logout(); return; }
         const d = await r.json();
         profRenderHandles(d.handles || []);
       } catch (e) { el.innerHTML = '<p class="ic-empty-note">Could not load handles.</p>'; }
@@ -1589,7 +1589,7 @@
       if (!el) return;
       try {
         const r = await fetch('/api/inner-circle/call-schedule', { headers: AUTH_HEADERS });
-        if (r.status === 401) { logout(); return; }
+        // if (r.status === 401) { logout(); return; }
         const d = await r.json();
         const calls = (d.calls || []).slice().sort((a,b)=>{
           if ((b.community?1:0)!==(a.community?1:0)) return (b.community?1:0)-(a.community?1:0);
@@ -1724,7 +1724,7 @@
       let recs = [];
       try {
         const res = await fetch('/api/inner-circle/recordings', { headers: AUTH_HEADERS });
-        if (res.status === 401) { logout(); return; }
+        // if (res.status === 401) { logout(); return; }
         if (!res.ok) throw new Error('Recordings fetch failed (' + res.status + ')');
         const json = await res.json();
         recs = json.recordings || [];
@@ -1795,7 +1795,7 @@
     async function loadRates() {
       try {
         const res = await fetch('/api/inner-circle/my-rates', { headers: AUTH_HEADERS });
-        if (res.status === 401) { logout(); return; }
+        // if (res.status === 401) { logout(); return; }
         if (!res.ok) throw new Error('rates fetch failed (' + res.status + ')');
         const data = await res.json();
         populateRates(data.rates);
@@ -1828,7 +1828,7 @@
           headers: { ...AUTH_HEADERS, 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-        if (res.status === 401) { logout(); return; }
+        // if (res.status === 401) { logout(); return; }
         const out = await res.json().catch(() => ({}));
         if (!res.ok) { setRatesStatus(out.error || 'Could not save rates', 'err'); return; }
         populateRates(out.rates);
@@ -1892,7 +1892,7 @@
       let data;
       try {
         const res = await fetch('/api/inner-circle/my-scripts', { headers: AUTH_HEADERS });
-        if (res.status === 401) { logout(); return; }
+        // if (res.status === 401) { logout(); return; }
         data = await res.json();
       } catch (e) {
         hist.innerHTML = '<div class="cw-state">Couldn\'t load your scripts. Please try again.</div>';
@@ -1988,7 +1988,7 @@
       setWizardState('<div class="cw-state"><span class="cw-spinner"></span>Loading products…</div>');
       try {
         const res = await fetch('/api/inner-circle/brands/' + encodeURIComponent(brandId) + '/products', { headers: AUTH_HEADERS });
-        if (res.status === 401) { logout(); return; }
+        // if (res.status === 401) { logout(); return; }
         if (!res.ok) throw new Error('products fetch failed (' + res.status + ')');
         const data = await res.json();
         // Accept a few shapes: {products:[...]}, [...], or {data:{products:[...]}}
@@ -2165,7 +2165,7 @@
           headers: { ...AUTH_HEADERS, 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-        if (res.status === 401) { logout(); return; }
+        // if (res.status === 401) { logout(); return; }
         let data = null;
         try { data = await res.json(); } catch (_) { data = null; }
         if (!res.ok) {
