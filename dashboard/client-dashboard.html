@@ -1696,8 +1696,8 @@
       $aOpen.classList.add('disabled');
     }
 
-    // Tasks
-    renderTasks(tasks);
+    // Tasks — load live data from Lark Bitable (ignores stale client-meetings.json)
+    loadOverviewTasks();
 
     // Connections
     renderConnections(brand);
@@ -1776,33 +1776,46 @@
     };
   }
 
-  function renderTasks(tasks) {
+  function loadOverviewTasks() {
     const $tf = document.getElementById('taskFeed');
-    if (!tasks?.length) {
-      $tf.innerHTML = '<span class="empty">No action items yet — check back after your next Cult Content meeting.</span>';
-      return;
-    }
-    $tf.innerHTML = tasks.map(t => {
-      const badgeCls = t.status === 'done' ? 'badge-done' : t.status === 'in-progress' ? 'badge-progress' : 'badge-pending';
-      const badgeTxt = t.status === 'in-progress' ? 'In Progress' : t.status === 'done' ? 'Done' : 'Pending';
-      const priCls   = t.priority === 'high' ? 'priority-high' : t.priority === 'low' ? 'priority-low' : 'priority-medium';
-      const meta = [
-        t.source   ? `<span class="task-source">${esc(t.source)}</span>` : '',
-        t.assignee ? `<span class="task-assignee">→ ${esc(t.assignee)}</span>` : '',
-        t.priority ? `<span class="${priCls}">${t.priority.toUpperCase()}</span>` : '',
-        t.updatedAt ? `<span class="task-source">${fmtAge(t.updatedAt)}</span>` : '',
-      ].filter(Boolean).join('<span style="color:var(--border);margin:0 4px">·</span>');
-      return `
-        <div class="task-item">
-          <div class="task-row">
-            <div class="task-body">
-              <div class="task-title">${esc(t.title)}</div>
-              ${meta ? `<div class="task-meta">${meta}</div>` : ''}
+    $tf.innerHTML = '<span class="empty">Loading…</span>';
+    fetch('/api/client/tasks', { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => {
+        const tasks = (d.tasks || []).filter(t => t.status !== 'Completed');
+        if (!tasks.length) {
+          $tf.innerHTML = '<span class="empty">No active tasks right now.</span>';
+          return;
+        }
+        const PRIO_ORDER = ['Critical','High','Medium','Low'];
+        function bucket(p) {
+          const s = (p || '').toLowerCase().replace(/[^a-z]/g,'');
+          if (['critical','p0','urgent'].some(k => s.includes(k))) return 0;
+          if (['high','p1'].some(k => s.includes(k))) return 1;
+          if (['low','p3'].some(k => s.includes(k))) return 3;
+          return 2;
+        }
+        const sorted = tasks.slice().sort((a,b) => bucket(a.priority) - bucket(b.priority));
+        const preview = sorted.slice(0, 6);
+        const statusClass = s => s === 'In Progress' ? 'badge-progress' : s === 'Blocked' ? 'badge-done' : 'badge-pending';
+        const statusLabel = s => s === 'In Progress' ? 'In Progress' : s === 'Blocked' ? 'Blocked' : 'Pending';
+        $tf.innerHTML = preview.map(t => `
+          <div class="task-item">
+            <div class="task-row">
+              <div class="task-body">
+                <div class="task-title">${esc(t.task || '(untitled)')}</div>
+                ${t.pillar || t.phase ? `<div class="task-meta"><span class="task-source">${esc(t.pillar||'')}${t.pillar&&t.phase?' · ':''}${esc(t.phase||'')}</span></div>` : ''}
+              </div>
+              <span class="badge ${statusClass(t.status)}">${statusLabel(t.status)}</span>
             </div>
-            <span class="badge ${badgeCls}">${badgeTxt}</span>
-          </div>
-        </div>`;
-    }).join('');
+          </div>`).join('') +
+          (tasks.length > 6 ? `<div style="text-align:center;padding:12px 0 0"><button class="logout-btn" onclick="switchTab('tasks')" style="border-color:var(--teal);color:var(--teal)">See all ${tasks.length} tasks →</button></div>` : '');
+      })
+      .catch(() => { document.getElementById('taskFeed').innerHTML = '<span class="empty">Could not load tasks.</span>'; });
+  }
+
+  function renderTasks(tasks) {
+    // kept for legacy compatibility — overview now uses loadOverviewTasks()
   }
 
   function copyRef() {
