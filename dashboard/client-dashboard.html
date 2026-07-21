@@ -482,6 +482,7 @@
   <button class="tab-btn" onclick="switchTab('billing')">Billing</button>
   <button class="tab-btn" onclick="switchTab('inner-circle')">Inner Circle</button>
   <button class="tab-btn" onclick="switchTab('marketplace')">Creator Marketplace</button>
+  <button class="tab-btn" onclick="switchTab('tasks')">Tasks</button>
 </nav>
 
 <div id="tab-overview">
@@ -1377,6 +1378,36 @@
 </main>
 </div><!-- end #tab-marketplace -->
 
+<div id="tab-tasks" style="display:none">
+<main style="max-width:1120px;margin:0 auto;padding:36px 24px 60px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px">
+    <div>
+      <div class="section-label">Your Tasks</div>
+      <div style="font-size:0.82rem;color:var(--muted);margin-top:4px" id="tasks-sub">Loading…</div>
+    </div>
+    <button class="refresh-btn" onclick="loadClientTasks(true)">↻ Refresh</button>
+  </div>
+  <div id="tasks-board"></div>
+</main>
+</div><!-- end #tab-tasks -->
+
+<style>
+.task-card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px 18px; margin-bottom:10px; display:flex; gap:16px; align-items:flex-start; }
+.task-card-body { flex:1; min-width:0; }
+.task-card-title { font-size:0.92rem; font-weight:600; color:var(--text); margin-bottom:6px; line-height:1.4; }
+.task-tags { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+.task-tag { font-size:0.7rem; background:rgba(255,255,255,.05); border:1px solid var(--border); border-radius:5px; padding:2px 8px; color:var(--muted); }
+.task-tag.status-todo { color:#60a5fa; border-color:rgba(96,165,250,.3); }
+.task-tag.status-progress { color:#fbbf24; border-color:rgba(251,191,36,.3); }
+.task-tag.status-blocked { color:var(--red); border-color:rgba(255,59,48,.3); }
+.task-prompt { font-size:0.8rem; color:var(--muted); margin-top:8px; line-height:1.5; white-space:pre-wrap; }
+.task-prio-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; margin-top:5px; }
+.task-group-label { font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:20px 0 10px; display:flex; align-items:center; gap:8px; }
+.task-group-label:first-child { margin-top:0; }
+.tasks-empty { text-align:center; padding:60px 20px; color:var(--muted); }
+.tasks-empty .big { font-size:36px; margin-bottom:10px; }
+</style>
+
 <!-- Offer modal -->
 <div class="mkt-modal-bg" id="mktModalBg">
   <div class="mkt-modal">
@@ -2069,7 +2100,7 @@
     document.querySelectorAll('[id^="tab-"]').forEach(el => el.style.display = 'none');
     document.getElementById('tab-' + name).style.display = 'block';
     const btns = document.querySelectorAll('.tab-btn');
-    const labels = { 'overview': 'Overview', 'content-studio': 'Content Studio', 'billing': 'Billing', 'inner-circle': 'Inner Circle', 'marketplace': 'Creator Marketplace' };
+    const labels = { 'overview': 'Overview', 'content-studio': 'Content Studio', 'billing': 'Billing', 'inner-circle': 'Inner Circle', 'marketplace': 'Creator Marketplace', 'tasks': 'Tasks' };
     btns.forEach(b => { if (b.textContent.trim() === labels[name]) b.classList.add('active'); });
     if (name === 'content-studio' && !window._channelsLoaded) loadChannels();
     if (name === 'content-studio' && !window._arcadsLoaded) loadArcads();
@@ -2080,6 +2111,66 @@
     if (name === 'billing' && !window._billingLoaded) loadBilling();
     if (name === 'inner-circle' && !_icLoaded) loadInnerCircle();
     if (name === 'marketplace' && !_mktLoaded) loadMarketplace();
+    if (name === 'tasks' && !window._tasksLoaded) loadClientTasks();
+  }
+
+  // ─── Client Tasks ────────────────────────────────────────────────────────────
+  var _tasksLoaded = false;
+  function loadClientTasks(force) {
+    if (!force && _tasksLoaded) return;
+    _tasksLoaded = true;
+    document.getElementById('tasks-sub').textContent = 'Loading…';
+    document.getElementById('tasks-board').innerHTML = '';
+    fetch('/api/client/tasks', { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => {
+        if (!d.ok) { document.getElementById('tasks-sub').textContent = 'Failed to load tasks.'; return; }
+        var tasks = d.tasks || [];
+        var active = tasks.filter(t => t.status !== 'Completed');
+        document.getElementById('tasks-sub').textContent = active.length + ' active task' + (active.length === 1 ? '' : 's') + ' for ' + (d.brandName || 'your brand');
+        if (!active.length) {
+          document.getElementById('tasks-board').innerHTML = '<div class="tasks-empty"><div class="big">✓</div><div>No pending tasks — all caught up.</div></div>';
+          return;
+        }
+        var PRIO = [
+          { key: 'Critical', match: ['critical','p0','urgent','🔴 critical'], color: '#ff3b30' },
+          { key: 'High',     match: ['high','p1','🟠 high'],                  color: '#ff9f0a' },
+          { key: 'Medium',   match: ['medium','normal','p2','🟡 normal',''],  color: '#ffd60a' },
+          { key: 'Low',      match: ['low','p3','⚪ low'],                     color: '#64748b' },
+        ];
+        function bucket(p) {
+          var s = (p || '').toLowerCase().trim();
+          for (var i = 0; i < PRIO.length; i++) { if (PRIO[i].match.indexOf(s) >= 0) return PRIO[i]; }
+          return PRIO[2];
+        }
+        function statusClass(s) {
+          var m = { 'To Do': 'status-todo', 'In Progress': 'status-progress', 'Blocked': 'status-blocked' };
+          return m[s] || '';
+        }
+        function esc(s) { return (s||'').replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+        var html = '';
+        PRIO.forEach(function(P) {
+          var group = active.filter(function(t) { return bucket(t.priority).key === P.key; });
+          if (!group.length) return;
+          html += '<div class="task-group-label"><span style="width:9px;height:9px;border-radius:50%;background:' + P.color + ';display:inline-block;flex-shrink:0"></span>' + P.key + ' · ' + group.length + '</div>';
+          group.forEach(function(t) {
+            html += '<div class="task-card">';
+            html += '<div class="task-prio-dot" style="background:' + bucket(t.priority).color + '"></div>';
+            html += '<div class="task-card-body">';
+            html += '<div class="task-card-title">' + esc(t.task || '(untitled)') + '</div>';
+            html += '<div class="task-tags">';
+            if (t.status) html += '<span class="task-tag ' + statusClass(t.status) + '">' + esc(t.status) + '</span>';
+            if (t.pillar) html += '<span class="task-tag">' + esc(t.pillar) + '</span>';
+            if (t.phase)  html += '<span class="task-tag">' + esc(t.phase) + '</span>';
+            if (t.executionMode) html += '<span class="task-tag">' + esc(t.executionMode) + '</span>';
+            html += '</div>';
+            if (t.promptAction) html += '<div class="task-prompt">' + esc(t.promptAction) + '</div>';
+            html += '</div></div>';
+          });
+        });
+        document.getElementById('tasks-board').innerHTML = html;
+      })
+      .catch(function(e) { document.getElementById('tasks-sub').textContent = 'Error: ' + e; _tasksLoaded = false; });
   }
 
   // ─── Affiliate URL ──────────────────────────────────────────────────────────

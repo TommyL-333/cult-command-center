@@ -1220,6 +1220,7 @@ try {
 try {
   require('./routes/client-intercom-identity')(app, { requireClientSession, loadBrands });
 } catch (e) { console.error('[client-intercom-identity] registration failed:', e.message); }
+try { require('./routes/inner-circle-spark-brand')(app, { express, requireClientSession, loadBrands }); } catch (e) { console.error('[inner-circle-spark-brand] registration failed:', e.message); }
 
 // Ops Engine "My Tasks" per-person UI. Mounted BEFORE app.use(requireAuth) so
 // unauthenticated API hits return a clean JSON 401 (the module carries its own
@@ -4216,6 +4217,104 @@ app.post('/api/client/referrals', requireClientSession, express.json(), (req, re
   } catch (e) {
     sendClientBugReport({ brandId: req.session?.clientBrandId, route: 'POST /api/client/referrals', error: e.message });
     res.status(500).json({ error: e.message });
+  }
+});
+
+// GET /api/client/tasks — read-only view of Ops Engine tasks for this brand
+// Fetches from Lark Bitable (same base as /my-tasks) filtered by brand name.
+// Returns: { tasks: [...], brandName }  — clients cannot write to tasks.
+const OPS_APP_TOKEN_CLI = 'EsfBbIqfkauKozsxMHMuilDztod';
+const TASKS_TABLE_CLI   = 'tbl7XaSc37mtcBKg';
+const CLIENTS_TABLE_CLI = 'tblgM1L7myeAfYQm';
+
+app.get('/api/client/tasks', requireClientSession, async (req, res) => {
+  try {
+    const brands = loadBrands();
+    const brand = (brands.clients || []).find(b => b.id === req.session.clientBrandId);
+    if (!brand) return res.status(404).json({ error: 'Brand not found' });
+    const brandName = brand.name;
+
+    const token = await getLarkTenantToken();
+    const larkGet = (path, params) =>
+      axios.get(`https://open.larksuite.com${path}`, {
+        headers: { Authorization: `Bearer ${token}` }, params, timeout: 20000,
+      }).then(r => r.data);
+
+    // Build clients record_id → name map
+    const clientsMap = {};
+    let cPageToken = null;
+    for (let g = 0; g < 5; g++) {
+      const params = { page_size: 500 };
+      if (cPageToken) params.page_token = cPageToken;
+      const cd = await larkGet(`/open-apis/bitable/v1/apps/${OPS_APP_TOKEN_CLI}/tables/${CLIENTS_TABLE_CLI}/records`, params);
+      if (cd.code !== 0) break;
+      for (const it of (cd.data?.items || [])) {
+        const f = it.fields || {};
+        const name = [f['Brand'], f['Client'], f['Name'], f['Brand Name']]
+          .map(v => (typeof v === 'string' ? v : (Array.isArray(v) && v[0]) ? (v[0].text || v[0].name || '') : ''))
+          .find(v => v) || '';
+        if (name) clientsMap[it.record_id] = name;
+      }
+      cPageToken = cd.data?.has_more ? cd.data.page_token : null;
+      if (!cPageToken) break;
+    }
+
+    // Helper: extract text from any Bitable field value
+    const txt = v => {
+      if (v == null) return '';
+      if (typeof v === 'string') return v;
+      if (typeof v === 'number') return String(v);
+      if (Array.isArray(v)) {
+        const f = v[0];
+        if (f && typeof f === 'object') return f.text_arr?.[0] || f.text || f.name || '';
+        return v.map(x => typeof x === 'string' ? x : (x?.text || x?.name || '')).join(', ');
+      }
+      return v.text || v.link || '';
+    };
+
+    // Collect matching tasks (paginate)
+    const tasks = [];
+    let tPageToken = null;
+    for (let g = 0; g < 20; g++) {
+      const params = { page_size: 500 };
+      if (tPageToken) params.page_token = tPageToken;
+      const td = await larkGet(`/open-apis/bitable/v1/apps/${OPS_APP_TOKEN_CLI}/tables/${TASKS_TABLE_CLI}/records`, params);
+      if (td.code !== 0) break;
+      for (const rec of (td.data?.items || [])) {
+        const f = rec.fields || {};
+        if (txt(f.Status) === 'Completed') continue;
+        // Resolve client name from link field or clients map
+        let client = txt(f.Client);
+        if (!client) {
+          const links = Array.isArray(f.Client) ? f.Client : [];
+          for (const lnk of links) {
+            if (Array.isArray(lnk?.record_ids)) {
+              for (const rid of lnk.record_ids) { if (clientsMap[rid]) { client = clientsMap[rid]; break; } }
+            }
+          }
+        }
+        if (!client || client.toLowerCase() !== brandName.toLowerCase()) continue;
+        tasks.push({
+          record_id: rec.record_id,
+          task:          txt(f.Task),
+          status:        txt(f.Status),
+          pillar:        txt(f.Pillar),
+          phase:         txt(f.Phase),
+          priority:      txt(f.Priority),
+          executionMode: txt(f['Execution Mode']),
+          promptAction:  txt(f['Prompt / Action']),
+          dueDate:       f['Due Date'] || null,
+          category:      txt(f.Category),
+        });
+      }
+      tPageToken = td.data?.has_more ? td.data.page_token : null;
+      if (!tPageToken) break;
+    }
+
+    res.json({ ok: true, brandName, tasks });
+  } catch (e) {
+    console.error('[client-tasks] error:', e.message);
+    res.status(500).json({ error: 'Failed to load tasks', detail: e.message });
   }
 });
 
