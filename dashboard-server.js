@@ -4234,7 +4234,17 @@ app.get('/api/client/tasks', requireClientSession, async (req, res) => {
     if (!brand) return res.status(404).json({ error: 'Brand not found' });
     const brandName = brand.name;
 
-    const token = await getLarkTenantToken();
+    // Use OPS_LARK_APP_ID when set (dedicated Bitable app) — same logic as ops-my-tasks.
+    let token;
+    const opsAppId = process.env.OPS_LARK_APP_ID || process.env.LARK_APP_ID;
+    const opsAppSecret = process.env.OPS_LARK_APP_SECRET || process.env.LARK_APP_SECRET;
+    if (opsAppId && opsAppSecret) {
+      const tr = await axios.post('https://open.larksuite.com/open-apis/auth/v3/tenant_access_token/internal',
+        { app_id: opsAppId, app_secret: opsAppSecret }, { timeout: 10000 });
+      token = tr.data.tenant_access_token;
+    } else {
+      token = await getLarkTenantToken();
+    }
     const larkGet = (path, params) =>
       axios.get(`https://open.larksuite.com${path}`, {
         headers: { Authorization: `Bearer ${token}` }, params, timeout: 20000,
