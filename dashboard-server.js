@@ -557,11 +557,11 @@ app.get('/', (req, res, next) => {
   <p class="hero-sub">Select your role and we'll take you to the right place.</p>
 
   <div class="cards">
-    <a class="card" href="/creators">
+    <a class="card" href="/inner-circle">
       <div class="card-icon">⭐️</div>
       <div class="card-label">I'm a Creator</div>
       <div class="card-desc">Find brands to collaborate with and earn commissions</div>
-      <div class="card-arrow">Explore brands →</div>
+      <div class="card-arrow">Go to Inner Circle →</div>
     </a>
     <a class="card" href="/client/login">
       <div class="card-icon">👁️</div>
@@ -1372,6 +1372,59 @@ app.get('/api/inner-circle/admin/funnel', async (req, res) => {
     console.error('[inner-circle/admin/funnel] failed:', e.message);
     return res.status(500).json({ error: e.message });
   }
+});
+
+// ─── Inner Circle: session-check endpoint + nav script ───────────────────────
+// GET /api/ic/session-check — returns {ok, firstName} if ic_session cookie is valid.
+// Used by /ic-nav.js to decide whether to show the IC header bar.
+app.get('/api/ic/session-check', async (req, res) => {
+  const sessionToken = req.cookies?.ic_session;
+  if (!sessionToken) return res.json({ ok: false });
+  try {
+    const { data: session } = await supabase
+      .from('creator_sessions')
+      .select('creators(first_name)')
+      .eq('token', sessionToken)
+      .gt('expires_at', new Date().toISOString())
+      .single();
+    if (!session?.creators) return res.json({ ok: false });
+    return res.json({ ok: true, firstName: session.creators.first_name || '' });
+  } catch (e) {
+    return res.json({ ok: false });
+  }
+});
+
+// GET /ic-nav.js — injected into all creator-facing portal pages.
+// Checks for an IC session and, if found, inserts a sticky header bar
+// linking back to the Inner Circle dashboard.
+app.get('/ic-nav.js', (req, res) => {
+  res.type('application/javascript').send(`
+(function() {
+  if (window.location.pathname === '/') return;
+  fetch('/api/ic/session-check', { credentials: 'include' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (!d.ok) return;
+      var bar = document.createElement('div');
+      bar.id = 'ic-nav-bar';
+      bar.style.cssText = [
+        'position:fixed','top:0','left:0','right:0','z-index:9999',
+        'background:#1c1828','border-bottom:1px solid #2a2540',
+        'display:flex','align-items:center','justify-content:space-between',
+        'padding:0 20px','height:44px','font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif',
+        'font-size:13px','color:#e2e8f0',
+      ].join(';');
+      bar.innerHTML =
+        '<a href="/inner-circle/dashboard" style="display:flex;align-items:center;gap:7px;color:#00f2ea;text-decoration:none;font-weight:700;font-size:13px">' +
+          '<span style="font-size:16px">←</span> Inner Circle' +
+        '</a>' +
+        '<span style="color:#64748b;font-size:12px">👋 ' + (d.firstName ? 'Hey, ' + d.firstName : 'Welcome back') + '</span>';
+      document.body.insertBefore(bar, document.body.firstChild);
+      document.body.style.paddingTop = (parseInt(document.body.style.paddingTop || 0) + 44) + 'px';
+    })
+    .catch(function() {});
+})();
+`);
 });
 
 // ─── Inner Circle: creator session auth middleware ────────────────────────────
@@ -13202,6 +13255,7 @@ footer a{color:#00f2ea;text-decoration:none;}
 
 <footer>Powered by <a href="https://cultcontent.cc" target="_blank">Cult Content</a> — TikTok Shop Creator Agency &nbsp;·&nbsp; <a href="/terms" target="_blank">Terms of Service</a> &nbsp;·&nbsp; <a href="/privacy" target="_blank">Privacy Policy</a></footer>
 
+<script src="/ic-nav.js" defer></script>
 </body>
 </html>`;
 }
@@ -13489,6 +13543,7 @@ document.getElementById('cpForm').addEventListener('submit', async function(e) {
   }
 });
 </script>
+<script src="/ic-nav.js" defer></script>
 </body>
 </html>`;
 }
@@ -13995,6 +14050,7 @@ function toggleScript(i){
   });
 })();
 </script>
+<script src="/ic-nav.js" defer></script>
 </body>
 </html>`;
 }
