@@ -472,6 +472,22 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
   }
 
   // ── POST /api/inner-circle/login ────────────────────────────────────────────
+  // GET /api/ic/session-check — used by /ic-nav.js to decide whether to show the
+  // Inner Circle back-nav bar. Returns {ok, firstName} for valid sessions.
+  app.get('/api/ic/session-check', (req, res) => {
+    if (dbError) return res.json({ ok: false });
+    const token = getSessionToken(req);
+    if (!token) return res.json({ ok: false });
+    try {
+      const row = stmts.sessionByToken.get(token);
+      if (!row) return res.json({ ok: false });
+      const firstName = String(row.creator_name || '').trim().split(/\s+/)[0] || '';
+      return res.json({ ok: true, firstName });
+    } catch (e) {
+      return res.json({ ok: false });
+    }
+  });
+
   // Same contract as the legacy route: {email, password}, where password is the
   // creator's TikTok handle (with or without @) or last 4 digits of phone.
   app.post('/api/inner-circle/login', express.json(), (req, res) => {

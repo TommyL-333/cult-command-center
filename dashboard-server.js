@@ -1375,25 +1375,6 @@ app.get('/api/inner-circle/admin/funnel', async (req, res) => {
 });
 
 // ─── Inner Circle: session-check endpoint + nav script ───────────────────────
-// GET /api/ic/session-check — returns {ok, firstName} if ic_session cookie is valid.
-// Used by /ic-nav.js to decide whether to show the IC header bar.
-app.get('/api/ic/session-check', async (req, res) => {
-  const sessionToken = req.cookies?.ic_session;
-  if (!sessionToken) return res.json({ ok: false });
-  try {
-    const { data: session } = await supabase
-      .from('creator_sessions')
-      .select('creators(first_name)')
-      .eq('token', sessionToken)
-      .gt('expires_at', new Date().toISOString())
-      .single();
-    if (!session?.creators) return res.json({ ok: false });
-    return res.json({ ok: true, firstName: session.creators.first_name || '' });
-  } catch (e) {
-    return res.json({ ok: false });
-  }
-});
-
 // GET /ic-nav.js — injected into all creator-facing portal pages.
 // Checks for an IC session and, if found, inserts a sticky header bar
 // linking back to the Inner Circle dashboard.
