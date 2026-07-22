@@ -301,9 +301,45 @@
     cursor: pointer; font-family: inherit;
   }
   .btn-share:hover { border-color: #00F2EA; color: #00F2EA; }
+
+  /* Checkerboard wormhole — subtle, dreamlike motif living behind the hero.
+     Anchored to the top of the page (not the viewport) so it scrolls away
+     naturally once you're past the hero, instead of fighting the form below. */
+  .wormhole-bg {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 820px;
+    overflow: hidden;
+    z-index: 0;
+    pointer-events: none;
+    mask-image: linear-gradient(to bottom, black 0%, black 45%, transparent 92%);
+    -webkit-mask-image: linear-gradient(to bottom, black 0%, black 45%, transparent 92%);
+  }
+  .wormhole-bg::before {
+    content: '';
+    position: absolute;
+    top: -40px; left: 50%;
+    width: 1700px; height: 1700px;
+    margin-left: -850px;
+    background-image:
+      repeating-conic-gradient(from 0deg at 50% 50%, rgba(0,242,234,.05) 0deg 4deg, transparent 4deg 16deg),
+      repeating-radial-gradient(circle at 50% 50%, rgba(255,0,80,.035) 0px 1px, transparent 1px 34px);
+    border-radius: 50%;
+    animation: wormhole-spin 150s linear infinite;
+  }
+  @keyframes wormhole-spin {
+    from { transform: rotate(0deg) scale(1); }
+    50%  { transform: rotate(180deg) scale(1.05); }
+    to   { transform: rotate(360deg) scale(1); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .wormhole-bg::before { animation: none; }
+  }
+  #page-bg { position: relative; z-index: 1; }
 </style>
 </head>
 <body>
+<div class="wormhole-bg" aria-hidden="true"></div>
 <div id="page-bg">
 <div class="wrap">
 
@@ -324,10 +360,10 @@
       <span><strong>$2,750/mo base</strong> + 1% of TAP revenue you help generate</span>
     </div>
 
-    <p class="mission">You'll run creator outreach and onboarding, keep our top affiliates engaged and posting, and turn casual sign-ups into consistent sellers. This is a builder role — part community manager, part growth operator — sitting right on top of the affiliate pipeline that fuels our brand partners.</p>
+    <p class="mission">You'll run creator outreach and onboarding, keep our top affiliates engaged and posting, and turn casual sign-ups into consistent sellers. You'll also help build and grow our partnerships with Creators4MentalHealth and the Creators Guild of America. This is a builder role — part community manager, part growth operator — sitting right on top of the affiliate pipeline that fuels our brand partners.</p>
 
     <div class="requirement">
-      <strong>To qualify, post 2 TikTok videos</strong> about why you'd be a great Creator Lead, then paste both links below. You can post up to 10 videos total — the more you post, the more chances you have to stand out.
+      <strong>To qualify, post 2 TikTok videos</strong> about why you'd be a great Creator Lead — and make sure one of them answers: <em>&ldquo;If you had to describe the universe with one word, what would you choose and why?&rdquo;</em> Then paste both links below. You can post up to 10 videos total — the more you post, the more chances you have to stand out.
     </div>
 
     <div class="card">
@@ -420,7 +456,7 @@
       <div class="pill">Application Received</div>
       <h1>Thanks for<br><span class="cyan">applying.</span></h1>
       <p style="font-size:14px;color:#888;line-height:1.8;margin-top:12px;">
-        Remember — you need at least 2 TikTok videos about why you'd be a great Creator Lead on file to qualify. We review every application manually.
+        Remember — you need at least 2 TikTok videos on file to qualify, and one of them needs to answer the universe question. We review every application manually.
       </p>
     </div>
 
