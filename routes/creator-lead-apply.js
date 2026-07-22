@@ -195,7 +195,8 @@ module.exports = (app, deps = {}) => {
       return res.json({ ok: true, applicantId, returning: !!existing });
     } catch (e) {
       console.error('[creator-lead-apply] error:', e.response?.data || e.message);
-      return res.status(500).json({ ok: false, error: 'Something went wrong on our end — please try again shortly.' });
+      // TEMP diagnostic detail — remove once the reported 500 is root-caused.
+      return res.status(500).json({ ok: false, error: 'Something went wrong on our end — please try again shortly.', detail: e.response?.data || e.message });
     }
   });
 };
