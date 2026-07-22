@@ -707,11 +707,17 @@ function loadAll(){
   }).catch(function(e){document.getElementById('sub').textContent='Failed: '+e;});
 }
 function buildOpts(roster){
-  var owners={},clients={};
-  (roster||[]).forEach(function(m){if(m.name&&m.openId)owners[m.name]=m.openId;});
-  ALL.forEach(function(t){if(t.ownerName)owners[t.ownerName]=t.ownerOpenId;if(t.client)clients[t.client]=1;});
+  var byId={},clients={};
+  // Seed from team roster (short names) — keyed by open_id to prevent duplicates
+  (roster||[]).forEach(function(m){if(m.openId&&m.name)byId[m.openId]=m.name;});
+  // Task-derived names override (come from actual Lark user profiles, usually fuller)
+  ALL.forEach(function(t){
+    if(t.ownerOpenId&&t.ownerName)byId[t.ownerOpenId]=t.ownerName;
+    if(t.client)clients[t.client]=1;
+  });
   var os=document.getElementById('f-owner');
-  os.innerHTML='<option value="">All Team Members</option>'+Object.keys(owners).sort().map(function(n){return'<option value="'+esc(owners[n])+'">'+esc(n)+'</option>';}).join('');
+  var ownerOpts=Object.keys(byId).sort(function(a,b){return byId[a].localeCompare(byId[b]);});
+  os.innerHTML='<option value="">All Team Members</option>'+ownerOpts.map(function(id){return'<option value="'+esc(id)+'">'+esc(byId[id])+'</option>';}).join('');
   var cs=document.getElementById('f-client');
   cs.innerHTML='<option value="">All Clients</option>'+Object.keys(clients).sort().map(function(c){return'<option value="'+esc(c)+'">'+esc(c)+'</option>';}).join('');
 }
