@@ -463,12 +463,155 @@ app.post('/api/webhooks/ghl-to-instantly', async (req, res) => {
 // Public routes — registered BEFORE requireAuth so no login needed
 app.use('/uploads', express.static(UPLOAD_DIR));
 
-// Redirect portal.cultcontent.cc root to client login — prevents the command center index.html
-// from being served publicly (express.static would serve it as the default document)
+// portal.cultcontent.cc root — audience selector homepage
 app.get('/', (req, res, next) => {
   const host = req.hostname || '';
-  if (host.includes('portal.cultcontent.cc')) return res.redirect('/client/login');
-  next();
+  if (!host.includes('portal.cultcontent.cc')) return next();
+  res.type('html').send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Cult Content Portal</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Lato:wght@400;700&display=swap" rel="stylesheet"/>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --cream:#f7f3ec;--dark:#141210;--soft:#3a3530;--muted:#7a7268;
+    --teal:#00f2ea;--pink:#ff0050;--gold:#c9a84c;--border:#e8e2d9;
+  }
+  body{background:var(--cream);color:var(--dark);font-family:'Lato',sans-serif;min-height:100vh;display:flex;flex-direction:column}
+
+  /* ── Nav ── */
+  nav{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:0 40px;height:68px;
+    background:rgba(247,243,236,0.88);backdrop-filter:blur(16px);
+    border-bottom:1px solid var(--border);
+    position:sticky;top:0;z-index:20;
+  }
+  .nav-logo{display:flex;align-items:center;gap:10px;text-decoration:none}
+  .nav-logo-wordmark{
+    font-family:'Montserrat',sans-serif;font-weight:900;font-size:1.15rem;letter-spacing:.04em;
+    background:linear-gradient(90deg,var(--teal),var(--pink));
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+    filter:drop-shadow(0 0 10px rgba(0,242,234,0.25));
+  }
+  .nav-links{display:flex;align-items:center;gap:28px}
+  .nav-links a{color:var(--soft);text-decoration:none;font-size:0.88rem;font-weight:700;letter-spacing:.02em;transition:color .15s}
+  .nav-links a:hover{color:var(--dark)}
+  .nav-cta{
+    background:linear-gradient(90deg,var(--teal),var(--pink));
+    color:#fff !important;font-size:0.82rem !important;font-weight:700 !important;
+    padding:8px 20px;border-radius:8px;letter-spacing:.03em;
+    filter:drop-shadow(0 0 8px rgba(0,242,234,0.3));
+    transition:opacity .15s !important;
+  }
+  .nav-cta:hover{opacity:.88;color:#fff !important}
+  @media(max-width:600px){
+    nav{padding:0 20px}
+    .nav-links a:not(.nav-cta){display:none}
+  }
+
+  /* ── Hero ── */
+  .hero{
+    flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+    text-align:center;padding:80px 24px 100px;position:relative;overflow:hidden;
+  }
+  .hero-eyebrow{
+    font-family:'Montserrat',sans-serif;font-weight:700;font-size:0.72rem;
+    letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:22px;
+  }
+  .hero-title{
+    font-family:'Montserrat',sans-serif;font-weight:900;font-size:clamp(2.2rem,6vw,3.8rem);
+    line-height:1.1;color:var(--dark);margin-bottom:16px;max-width:760px;
+  }
+  .hero-title span{
+    background:linear-gradient(90deg,var(--teal),var(--pink));
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+    filter:drop-shadow(0 0 18px rgba(0,242,234,0.35));
+  }
+  .hero-sub{font-size:1.05rem;color:var(--soft);max-width:480px;line-height:1.65;margin-bottom:56px}
+
+  /* ── Cards ── */
+  .cards{display:flex;gap:20px;justify-content:center;flex-wrap:wrap;width:100%;max-width:780px}
+  .card{
+    flex:1;min-width:210px;max-width:240px;
+    background:#fff;border:1.5px solid var(--border);border-radius:20px;
+    padding:36px 28px 32px;text-align:center;text-decoration:none;color:inherit;
+    cursor:pointer;transition:transform .2s,box-shadow .2s,border-color .2s;
+    display:flex;flex-direction:column;align-items:center;gap:12px;
+  }
+  .card:hover{transform:translateY(-5px);box-shadow:0 20px 48px rgba(20,18,16,0.1);border-color:var(--teal)}
+  .card-icon{font-size:2.4rem;line-height:1}
+  .card-label{
+    font-family:'Montserrat',sans-serif;font-weight:900;font-size:1.05rem;
+    color:var(--dark);letter-spacing:.01em;
+  }
+  .card-desc{font-size:0.82rem;color:var(--muted);line-height:1.5}
+  .card-arrow{
+    margin-top:8px;font-size:1rem;
+    background:linear-gradient(90deg,var(--teal),var(--pink));
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
+    font-weight:700;
+  }
+
+  /* ── Orbs (decorative) ── */
+  .orb{position:absolute;border-radius:50%;pointer-events:none;opacity:.18}
+  .orb-1{width:340px;height:340px;top:-120px;right:-80px;background:radial-gradient(circle at 35% 35%,var(--teal),transparent 70%)}
+  .orb-2{width:260px;height:260px;bottom:-80px;left:-60px;background:radial-gradient(circle at 60% 40%,var(--pink),transparent 70%)}
+
+  /* ── Footer ── */
+  footer{text-align:center;padding:20px;font-size:0.75rem;color:var(--muted);border-top:1px solid var(--border)}
+</style>
+</head>
+<body>
+
+<nav>
+  <a class="nav-logo" href="https://cultcontent.cc">
+    <span class="nav-logo-wordmark">CULT CONTENT</span>
+  </a>
+  <div class="nav-links">
+    <a href="https://cultcontent.cc">Home</a>
+    <a href="https://cultcontent.cc/growth-partner">Services</a>
+    <a href="/client/login" class="nav-cta">Client Login</a>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+
+  <div class="hero-eyebrow">Welcome to the Portal</div>
+  <h1 class="hero-title">Who are <span>you</span>?</h1>
+  <p class="hero-sub">Tell us who you are and we'll send you to the right place.</p>
+
+  <div class="cards">
+    <a class="card" href="/creators">
+      <div class="card-icon">🎬</div>
+      <div class="card-label">I'm a Creator</div>
+      <div class="card-desc">Find brands to collaborate with and earn commissions</div>
+      <div class="card-arrow">Explore brands →</div>
+    </a>
+    <a class="card" href="/client/login">
+      <div class="card-icon">🏪</div>
+      <div class="card-label">I'm a Client</div>
+      <div class="card-desc">Log in to your brand dashboard and manage your shop</div>
+      <div class="card-arrow">Go to dashboard →</div>
+    </a>
+    <a class="card" href="https://cultcontent.cc/growth-partner">
+      <div class="card-icon">🚀</div>
+      <div class="card-label">I'm a Brand</div>
+      <div class="card-desc">Learn how we grow TikTok Shop brands end-to-end</div>
+      <div class="card-arrow">See how it works →</div>
+    </a>
+  </div>
+</div>
+
+<footer>© ${new Date().getFullYear()} Cult Content · <a href="https://cultcontent.cc" style="color:var(--muted)">cultcontent.cc</a></footer>
+
+</body>
+</html>`);
 });
 
 // Serve dashboard static assets (CSS/JS) before auth wall so portal.cultcontent.cc can load them
