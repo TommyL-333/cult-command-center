@@ -473,45 +473,22 @@ app.get('/', (req, res, next) => {
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Cult Content Portal</title>
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Lato:wght@400;700&display=swap" rel="stylesheet"/>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   :root{
-    --cream:#f7f3ec;--dark:#141210;--soft:#3a3530;--muted:#7a7268;
-    --teal:#00f2ea;--pink:#ff0050;--gold:#c9a84c;--border:#e8e2d9;
+    --bg:#12101a;--card:#1c1828;--border:#2a2540;
+    --text:#e2e8f0;--muted:#64748b;
+    --teal:#00f2ea;--pink:#ff0050;--red:#ff3b30;
   }
-  body{background:var(--cream);color:var(--dark);font-family:'Lato',sans-serif;min-height:100vh;display:flex;flex-direction:column}
+  body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,sans-serif;min-height:100vh;display:flex;flex-direction:column}
 
-  /* ── Nav ── */
-  nav{
+  /* ── Header — matches portal exactly ── */
+  header{
     display:flex;align-items:center;justify-content:space-between;
-    padding:0 40px;height:68px;
-    background:rgba(247,243,236,0.88);backdrop-filter:blur(16px);
-    border-bottom:1px solid var(--border);
-    position:sticky;top:0;z-index:20;
+    padding:14px 28px;background:var(--card);border-bottom:1px solid var(--border);
+    position:sticky;top:0;z-index:10;
   }
-  .nav-logo{display:flex;align-items:center;gap:10px;text-decoration:none}
-  .nav-logo-wordmark{
-    font-family:'Montserrat',sans-serif;font-weight:900;font-size:1.15rem;letter-spacing:.04em;
-    background:linear-gradient(90deg,var(--teal),var(--pink));
-    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
-    filter:drop-shadow(0 0 10px rgba(0,242,234,0.25));
-  }
-  .nav-links{display:flex;align-items:center;gap:28px}
-  .nav-links a{color:var(--soft);text-decoration:none;font-size:0.88rem;font-weight:700;letter-spacing:.02em;transition:color .15s}
-  .nav-links a:hover{color:var(--dark)}
-  .nav-cta{
-    background:linear-gradient(90deg,var(--teal),var(--pink));
-    color:#fff !important;font-size:0.82rem !important;font-weight:700 !important;
-    padding:8px 20px;border-radius:8px;letter-spacing:.03em;
-    filter:drop-shadow(0 0 8px rgba(0,242,234,0.3));
-    transition:opacity .15s !important;
-  }
-  .nav-cta:hover{opacity:.88;color:#fff !important}
-  @media(max-width:600px){
-    nav{padding:0 20px}
-    .nav-links a:not(.nav-cta){display:none}
-  }
+  .logo{height:30px}
 
   /* ── Hero ── */
   .hero{
@@ -519,64 +496,57 @@ app.get('/', (req, res, next) => {
     text-align:center;padding:80px 24px 100px;position:relative;overflow:hidden;
   }
   .hero-eyebrow{
-    font-family:'Montserrat',sans-serif;font-weight:700;font-size:0.72rem;
-    letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:22px;
+    font-size:0.72rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;
+    color:var(--muted);margin-bottom:20px;
   }
   .hero-title{
-    font-family:'Montserrat',sans-serif;font-weight:900;font-size:clamp(2.2rem,6vw,3.8rem);
-    line-height:1.1;color:var(--dark);margin-bottom:16px;max-width:760px;
+    font-size:clamp(2rem,5.5vw,3.2rem);font-weight:800;line-height:1.1;
+    color:var(--text);margin-bottom:14px;
   }
   .hero-title span{
     background:linear-gradient(90deg,var(--teal),var(--pink));
     -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
-    filter:drop-shadow(0 0 18px rgba(0,242,234,0.35));
   }
-  .hero-sub{font-size:1.05rem;color:var(--soft);max-width:480px;line-height:1.65;margin-bottom:56px}
+  .hero-sub{font-size:1rem;color:var(--muted);max-width:400px;line-height:1.65;margin-bottom:52px}
 
   /* ── Cards ── */
-  .cards{display:flex;gap:20px;justify-content:center;flex-wrap:wrap;width:100%;max-width:780px}
+  .cards{display:flex;gap:20px;justify-content:center;flex-wrap:wrap;width:100%;max-width:560px}
   .card{
-    flex:1;min-width:210px;max-width:240px;
-    background:#fff;border:1.5px solid var(--border);border-radius:20px;
-    padding:36px 28px 32px;text-align:center;text-decoration:none;color:inherit;
-    cursor:pointer;transition:transform .2s,box-shadow .2s,border-color .2s;
-    display:flex;flex-direction:column;align-items:center;gap:12px;
+    flex:1;min-width:200px;max-width:240px;
+    background:var(--card);border:1.5px solid var(--border);border-radius:16px;
+    padding:36px 24px 30px;text-align:center;text-decoration:none;color:inherit;
+    transition:transform .2s,border-color .2s,box-shadow .2s;
+    display:flex;flex-direction:column;align-items:center;gap:10px;
   }
-  .card:hover{transform:translateY(-5px);box-shadow:0 20px 48px rgba(20,18,16,0.1);border-color:var(--teal)}
-  .card-icon{font-size:2.4rem;line-height:1}
-  .card-label{
-    font-family:'Montserrat',sans-serif;font-weight:900;font-size:1.05rem;
-    color:var(--dark);letter-spacing:.01em;
+  .card:hover{
+    transform:translateY(-4px);border-color:var(--teal);
+    box-shadow:0 0 32px rgba(0,242,234,0.1);
   }
-  .card-desc{font-size:0.82rem;color:var(--muted);line-height:1.5}
+  .card-icon{font-size:2.6rem;line-height:1}
+  .card-label{font-size:1rem;font-weight:700;color:var(--text)}
+  .card-desc{font-size:0.8rem;color:var(--muted);line-height:1.5}
   .card-arrow{
-    margin-top:8px;font-size:1rem;
+    margin-top:6px;font-size:0.85rem;font-weight:700;
     background:linear-gradient(90deg,var(--teal),var(--pink));
     -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
-    font-weight:700;
   }
 
-  /* ── Orbs (decorative) ── */
-  .orb{position:absolute;border-radius:50%;pointer-events:none;opacity:.18}
-  .orb-1{width:340px;height:340px;top:-120px;right:-80px;background:radial-gradient(circle at 35% 35%,var(--teal),transparent 70%)}
-  .orb-2{width:260px;height:260px;bottom:-80px;left:-60px;background:radial-gradient(circle at 60% 40%,var(--pink),transparent 70%)}
+  /* ── Orbs ── */
+  .orb{position:absolute;border-radius:50%;pointer-events:none;opacity:.12}
+  .orb-1{width:400px;height:400px;top:-140px;right:-100px;background:radial-gradient(circle at 35% 35%,var(--teal),transparent 70%)}
+  .orb-2{width:300px;height:300px;bottom:-100px;left:-80px;background:radial-gradient(circle at 60% 40%,var(--pink),transparent 70%)}
 
   /* ── Footer ── */
   footer{text-align:center;padding:20px;font-size:0.75rem;color:var(--muted);border-top:1px solid var(--border)}
+  footer a{color:var(--muted);text-decoration:none}
+  footer a:hover{color:var(--teal)}
 </style>
 </head>
 <body>
 
-<nav>
-  <a class="nav-logo" href="https://cultcontent.cc">
-    <span class="nav-logo-wordmark">CULT CONTENT</span>
-  </a>
-  <div class="nav-links">
-    <a href="https://cultcontent.cc">Home</a>
-    <a href="https://cultcontent.cc/growth-partner">Services</a>
-    <a href="/client/login" class="nav-cta">Client Login</a>
-  </div>
-</nav>
+<header>
+  <img class="logo" src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png" alt="Cult Content">
+</header>
 
 <div class="hero">
   <div class="orb orb-1"></div>
@@ -584,31 +554,25 @@ app.get('/', (req, res, next) => {
 
   <div class="hero-eyebrow">Welcome to the Portal</div>
   <h1 class="hero-title">Who are <span>you</span>?</h1>
-  <p class="hero-sub">Tell us who you are and we'll send you to the right place.</p>
+  <p class="hero-sub">Select your role and we'll take you to the right place.</p>
 
   <div class="cards">
     <a class="card" href="/creators">
-      <div class="card-icon">🎬</div>
+      <div class="card-icon">⭐️</div>
       <div class="card-label">I'm a Creator</div>
       <div class="card-desc">Find brands to collaborate with and earn commissions</div>
       <div class="card-arrow">Explore brands →</div>
     </a>
     <a class="card" href="/client/login">
-      <div class="card-icon">🏪</div>
+      <div class="card-icon">👁️</div>
       <div class="card-label">I'm a Client</div>
       <div class="card-desc">Log in to your brand dashboard and manage your shop</div>
       <div class="card-arrow">Go to dashboard →</div>
     </a>
-    <a class="card" href="https://cultcontent.cc/growth-partner">
-      <div class="card-icon">🚀</div>
-      <div class="card-label">I'm a Brand</div>
-      <div class="card-desc">Learn how we grow TikTok Shop brands end-to-end</div>
-      <div class="card-arrow">See how it works →</div>
-    </a>
   </div>
 </div>
 
-<footer>© ${new Date().getFullYear()} Cult Content · <a href="https://cultcontent.cc" style="color:var(--muted)">cultcontent.cc</a></footer>
+<footer>© ${new Date().getFullYear()} Cult Content · <a href="https://cultcontent.cc">cultcontent.cc</a></footer>
 
 </body>
 </html>`);
