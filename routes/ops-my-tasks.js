@@ -72,6 +72,13 @@ const ADMIN_EMAILS = new Set([
   'tommy@organicsocialmarketing.com',
 ]);
 
+// Manager emails: the only people who can delete tasks.
+const MANAGER_EMAILS = new Set([
+  'tommy@cultcontent.cc',
+  'tommy@organicsocialmarketing.com',
+  'hasan@cultcontent.cc',
+]);
+
 const MY_TASKS_HTML = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -269,9 +276,22 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   </div>
 </div>
 
+<!-- delete confirmation modal -->
+<div class="overlay" id="delOverlay">
+  <div class="modal" style="max-width:420px">
+    <h3 style="color:var(--red)">Delete Task</h3>
+    <p class="mt" id="delTask" style="font-size:14px;margin-bottom:6px"></p>
+    <p style="font-size:13px;color:var(--muted);margin:0 0 16px">This permanently removes the task from the Ops Engine. It cannot be undone.</p>
+    <div class="err" id="delErr" style="display:none"></div>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="closeDelModal()">Cancel</button>
+      <button class="btn" style="background:var(--red);color:#fff" id="delBtn" onclick="doDelete()">Delete Task</button>
+    </div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 <script>
-var ALL=[],FILTER='all',CURRENT=null,MODE='complete',TEAM=[],SUBTASKS={},ST_PARENT=null;
+var ALL=[],FILTER='all',CURRENT=null,MODE='complete',TEAM=[],SUBTASKS={},ST_PARENT=null,IS_MANAGER=false,DEL_TARGET=null;
 var PRIO=[
   {key:'Critical',label:'Critical',color:'var(--p1)',match:['critical','p0','urgent']},
   {key:'High',label:'High',color:'var(--p2)',match:['high','p1']},
@@ -293,6 +313,7 @@ function load(){
   fetch('/api/my-tasks/list',{credentials:'include'}).then(function(r){return r.json();}).then(function(d){
     if(d.unlinked){document.getElementById('unlinked').style.display='block';document.getElementById('unlinked').textContent=d.message||'Account not linked.';document.getElementById('sub').textContent='';return;}
     ALL=d.tasks||[];
+    IS_MANAGER=!!d.isManager;
     document.getElementById('sub').textContent=ALL.length+' active task'+(ALL.length===1?'':'s')+' assigned to you.';
     loadSubtasks();renderFilters();render();
   }).catch(function(e){document.getElementById('sub').textContent='Failed: '+e;});
@@ -348,6 +369,7 @@ function render(){
       html+='<button class="btn" onclick="openModal(\\''+t.record_id+'\\')">Complete</button>';
       html+='<button class="btn ghost" onclick="openBlockModal(\\''+t.record_id+'\\')">Block</button>';
       html+='<button class="btn ghost" onclick="openAssignModal(\\''+t.record_id+'\\')">Reassign</button>';
+      if(IS_MANAGER)html+='<button class="btn ghost" style="color:var(--red);border-color:rgba(255,0,80,.4)" onclick="openDelModal(\\''+t.record_id+'\\')">Delete</button>';
       html+='</div></div>';
     });
     html+='</div>';
@@ -507,6 +529,40 @@ function doBlock(){
 }
 function doConfirm(){if(MODE==='assign'){doReassign();}else if(MODE==='block'){doBlock();}else{doComplete();}}
 function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(function(){t.style.display='none';},2600);}
+
+/* delete modal */
+function openDelModal(id){
+  DEL_TARGET=ALL.filter(function(t){return t.record_id===id;})[0];
+  if(!DEL_TARGET)return;
+  var label=DEL_TARGET.task+(DEL_TARGET.client?' — '+DEL_TARGET.client:'');
+  document.getElementById('delTask').textContent=label;
+  document.getElementById('delErr').style.display='none';
+  document.getElementById('delBtn').disabled=false;
+  document.getElementById('delBtn').textContent='Delete Task';
+  document.getElementById('delOverlay').classList.add('show');
+}
+function closeDelModal(){document.getElementById('delOverlay').classList.remove('show');DEL_TARGET=null;}
+function doDelete(){
+  if(!DEL_TARGET)return;
+  var btn=document.getElementById('delBtn');btn.disabled=true;btn.textContent='Deleting…';
+  fetch('/api/my-tasks/delete',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({record_id:DEL_TARGET.record_id})})
+  .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j};});})
+  .then(function(x){
+    btn.textContent='Delete Task';
+    if(x.ok&&x.j.ok){
+      var rid=DEL_TARGET.record_id;
+      ALL=ALL.filter(function(t){return t.record_id!==rid;});
+      closeDelModal();renderFilters();render();
+      document.getElementById('sub').textContent=ALL.length+' active task'+(ALL.length===1?'':'s')+' assigned to you.';
+      toast('🗑 Task deleted');
+    }else{
+      var e=document.getElementById('delErr');e.textContent=(x.j&&x.j.error)||'Failed to delete.';e.style.display='block';btn.disabled=false;
+    }
+  }).catch(function(e){
+    var el=document.getElementById('delErr');el.textContent='Network error: '+e;el.style.display='block';btn.disabled=false;btn.textContent='Delete Task';
+  });
+}
+
 load();
 </script>
 </body>
@@ -617,9 +673,21 @@ const TASK_MANAGEMENT_HTML = `<!DOCTYPE html>
     </div>
   </div>
 </div>
+<div class="overlay" id="adel-overlay">
+  <div class="modal" style="max-width:420px">
+    <h3 style="color:var(--red)">Delete Task</h3>
+    <p class="mt" id="adel-task" style="font-size:14px;margin-bottom:6px"></p>
+    <p style="font-size:13px;color:var(--muted);margin:0 0 16px">Permanently removes this task from the Ops Engine. Cannot be undone.</p>
+    <div class="err" id="adel-err" style="display:none"></div>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="closeAdminDel()">Cancel</button>
+      <button class="btn" style="background:var(--red);color:#fff" id="adel-btn" onclick="doAdminDelete()">Delete Task</button>
+    </div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 <script>
-var ALL=[],FILTERED=[],NT=null;
+var ALL=[],FILTERED=[],NT=null,ADEL_ID=null;
 function esc(s){return(s||'').replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function loadAll(){
   document.getElementById('sub').textContent='Loading…';
@@ -672,7 +740,10 @@ function renderTbl(){
       +'<td>'+sbadge(t.status)+'</td>'
       +'<td>'+esc(due)+'</td>'
       +'<td>'+esc(daysOpen(t))+'</td>'
-      +'<td>'+(t.ownerOpenId?'<button class="btn ghost" onclick="openNudge(\\''+t.ownerOpenId+'\\',\\''+esc(t.ownerName||'').replace(/'/g,'')+'\\',\\''+esc((t.task||'').replace(/[\\x27\\x22]/g,'')).slice(0,60)+'\\')">Nudge</button>':'')+'</td>'
+      +'<td style="white-space:nowrap">'
+      +(t.ownerOpenId?'<button class="btn ghost" style="margin-right:6px" onclick="openNudge(\\''+t.ownerOpenId+'\\',\\''+esc(t.ownerName||'').replace(/'/g,'')+'\\',\\''+esc((t.task||'').replace(/[\\x27\\x22]/g,'')).slice(0,60)+'\\')">Nudge</button>':'')
+      +'<button class="btn ghost" style="color:var(--red);border-color:rgba(255,0,80,.4)" onclick="openAdminDel(\\''+esc(t.record_id)+'\\',\\''+esc((t.task||'').replace(/[\\x27\\x22]/g,'')).slice(0,70)+'\\')">Delete</button>'
+      +'</td>'
       +'</tr>';
   }).join('');
 }
@@ -695,6 +766,31 @@ function sendNudge(){
   }).catch(function(e){var el=document.getElementById('nudge-err');el.textContent=''+e;el.style.display='block';});
 }
 function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(function(){t.style.display='none';},3000);}
+function openAdminDel(id,taskName){
+  ADEL_ID=id;
+  document.getElementById('adel-task').textContent=taskName||id;
+  document.getElementById('adel-err').style.display='none';
+  var btn=document.getElementById('adel-btn');btn.disabled=false;btn.textContent='Delete Task';
+  document.getElementById('adel-overlay').classList.add('show');
+}
+function closeAdminDel(){document.getElementById('adel-overlay').classList.remove('show');ADEL_ID=null;}
+function doAdminDelete(){
+  if(!ADEL_ID)return;
+  var btn=document.getElementById('adel-btn');btn.disabled=true;btn.textContent='Deleting…';
+  fetch('/api/my-tasks/delete',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({record_id:ADEL_ID})})
+  .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j};});})
+  .then(function(x){
+    btn.textContent='Delete Task';
+    if(x.ok&&x.j.ok){
+      ALL=ALL.filter(function(t){return t.record_id!==ADEL_ID;});
+      closeAdminDel();applyFilters();toast('🗑 Task deleted');
+    }else{
+      var e=document.getElementById('adel-err');e.textContent=(x.j&&x.j.error)||'Failed';e.style.display='block';btn.disabled=false;
+    }
+  }).catch(function(e){
+    var el=document.getElementById('adel-err');el.textContent=''+e;el.style.display='block';btn.disabled=false;btn.textContent='Delete Task';
+  });
+}
 loadAll();
 </script>
 </body>
@@ -795,6 +891,15 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
     const token = await getTenantToken();
     const r = await axios.put(`${LARK_BASE}${path}`, body, {
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      timeout: 20000,
+    });
+    return r.data;
+  }
+
+  async function larkDelete(path) {
+    const token = await getTenantToken();
+    const r = await axios.delete(`${LARK_BASE}${path}`, {
+      headers: { Authorization: `Bearer ${token}` },
       timeout: 20000,
     });
     return r.data;
@@ -1230,7 +1335,12 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
         tasks.push(shapeTask(rec, clientsMap));
       }
 
-      res.json({ tasks, owner: wantAll && isAdmin ? 'all' : openId });
+      const callerEmail = (email || '').toLowerCase();
+      res.json({
+        tasks,
+        owner: wantAll && isAdmin ? 'all' : openId,
+        isManager: MANAGER_EMAILS.has(callerEmail),
+      });
     } catch (e) {
       console.error('[ops-my-tasks] list error:', e.message);
       res.status(500).json({ error: 'Failed to load tasks', detail: e.message });
@@ -1517,6 +1627,41 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
     } catch (e) {
       console.error('[ops-my-tasks] bulk-reassign error:', e.message);
       res.status(500).json({ error: e.message });
+    }
+  });
+
+  // ---------- ROUTE: POST /api/my-tasks/delete ----------
+  // Permanently removes a task record from the Lark Bitable.
+  // Restricted to MANAGER_EMAILS (Tommy + Hasan). No one else can call this.
+  app.post('/api/my-tasks/delete', requireAuth, jsonBody, async (req, res) => {
+    try {
+      const email = (req.userEmail || (req.session && req.session.userEmail) || '').toLowerCase();
+      if (!MANAGER_EMAILS.has(email)) {
+        return res.status(403).json({ error: 'Only managers can delete tasks.' });
+      }
+      const { record_id } = req.body || {};
+      if (!record_id || typeof record_id !== 'string') {
+        return res.status(400).json({ error: 'record_id is required' });
+      }
+      // Read first so we can confirm it exists and log what was deleted.
+      let existing;
+      try {
+        existing = await readRecord(record_id);
+      } catch (e) {
+        return res.status(404).json({ error: 'Task not found', detail: e.message });
+      }
+      const taskName = textVal((existing.fields || {}).Task);
+      const data = await larkDelete(
+        `/open-apis/bitable/v1/apps/${OPS_APP_TOKEN}/tables/${TASKS_TABLE}/records/${record_id}`
+      );
+      if (data.code !== 0) {
+        return res.status(500).json({ error: 'Lark delete failed: ' + data.msg, code: data.code });
+      }
+      console.log(`[ops-my-tasks] DELETED record ${record_id} "${taskName}" by ${email}`);
+      res.json({ ok: true, deleted: record_id, task: taskName });
+    } catch (e) {
+      console.error('[ops-my-tasks] delete error:', e.message);
+      res.status(500).json({ error: 'Failed to delete task', detail: e.message });
     }
   });
 
