@@ -369,7 +369,7 @@ function render(){
       html+='<button class="btn" onclick="openModal(\\''+t.record_id+'\\')">Complete</button>';
       html+='<button class="btn ghost" onclick="openBlockModal(\\''+t.record_id+'\\')">Block</button>';
       html+='<button class="btn ghost" onclick="openAssignModal(\\''+t.record_id+'\\')">Reassign</button>';
-      if(IS_MANAGER)html+='<button class="btn ghost" style="color:var(--red);border-color:rgba(255,0,80,.4)" onclick="openDelModal(\\''+t.record_id+'\\')">Delete</button>';
+      html+='<button class="btn ghost" style="color:var(--red);border-color:rgba(255,0,80,.4)" onclick="openDelModal(\\''+t.record_id+'\\')">Delete</button>';
       html+='</div></div>';
     });
     html+='</div>';
@@ -1647,13 +1647,10 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
 
   // ---------- ROUTE: POST /api/my-tasks/delete ----------
   // Permanently removes a task record from the Lark Bitable.
-  // Restricted to MANAGER_EMAILS (Tommy + Hasan). No one else can call this.
+  // Open to all team members. Notifies Tommy + Hasan when a non-manager deletes.
   app.post('/api/my-tasks/delete', requireAuth, jsonBody, async (req, res) => {
     try {
       const email = (req.userEmail || (req.session && req.session.userEmail) || '').toLowerCase();
-      if (!MANAGER_EMAILS.has(email)) {
-        return res.status(403).json({ error: 'Only managers can delete tasks.' });
-      }
       const { record_id } = req.body || {};
       if (!record_id || typeof record_id !== 'string') {
         return res.status(400).json({ error: 'record_id is required' });
@@ -1665,7 +1662,12 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
       } catch (e) {
         return res.status(404).json({ error: 'Task not found', detail: e.message });
       }
-      const taskName = textVal((existing.fields || {}).Task);
+      const fields = existing.fields || {};
+      const taskName = textVal(fields.Task);
+      const clientsMap = await getClientsMap().catch(() => ({}));
+      const clientRecIds = (Array.isArray(fields.Client) ? fields.Client : [fields.Client])
+        .flatMap((c) => (c && c.link_record_ids) ? c.link_record_ids : []);
+      const clientName = clientRecIds.map((id) => clientsMap[id]).filter(Boolean).join(', ') || '—';
       const data = await larkDelete(
         `/open-apis/bitable/v1/apps/${OPS_APP_TOKEN}/tables/${TASKS_TABLE}/records/${record_id}`
       );
@@ -1673,6 +1675,14 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
         return res.status(500).json({ error: 'Lark delete failed: ' + data.msg, code: data.code });
       }
       console.log(`[ops-my-tasks] DELETED record ${record_id} "${taskName}" by ${email}`);
+      // Notify Tommy + Hasan when a non-manager deletes a task
+      if (!MANAGER_EMAILS.has(email)) {
+        const msg = `🗑️ Task deleted by ${email}\n\nTask: "${taskName}"\nClient: ${clientName}`;
+        await Promise.allSettled([
+          sendLarkMessage(SEED_EMAIL_OPENID['tommy@cultcontent.cc'], msg),
+          sendLarkMessage(SEED_EMAIL_OPENID['hasan@cultcontent.cc'], msg),
+        ]);
+      }
       res.json({ ok: true, deleted: record_id, task: taskName });
     } catch (e) {
       console.error('[ops-my-tasks] delete error:', e.message);
