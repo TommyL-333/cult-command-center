@@ -691,9 +691,13 @@ var ALL=[],FILTERED=[],NT=null,ADEL_ID=null;
 function esc(s){return(s||'').replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function loadAll(){
   document.getElementById('sub').textContent='Loading…';
-  fetch('/api/admin/tasks',{credentials:'include'}).then(function(r){return r.json();}).then(function(d){
+  Promise.all([
+    fetch('/api/admin/tasks',{credentials:'include'}).then(function(r){return r.json();}),
+    fetch('/api/my-tasks/team',{credentials:'include'}).then(function(r){return r.json();}).catch(function(){return{team:[]};})
+  ]).then(function(rs){
+    var d=rs[0],teamData=rs[1];
     if(d.error){document.getElementById('sub').textContent='Error: '+d.error;return;}
-    ALL=d.tasks||[];buildOpts();applyFilters();
+    ALL=d.tasks||[];buildOpts(teamData.team||[]);applyFilters();
     var active=ALL.filter(function(t){return t.status!=='Completed';});
     document.getElementById('s-total').textContent=active.length;
     document.getElementById('s-blocked').textContent=active.filter(function(t){return t.status==='Blocked';}).length;
@@ -702,8 +706,9 @@ function loadAll(){
     document.getElementById('sub').textContent=active.length+' active tasks across all team members.'+(d.avgDays?' Avg '+d.avgDays+' days to complete.':'');
   }).catch(function(e){document.getElementById('sub').textContent='Failed: '+e;});
 }
-function buildOpts(){
+function buildOpts(roster){
   var owners={},clients={};
+  (roster||[]).forEach(function(m){if(m.name&&m.openId)owners[m.name]=m.openId;});
   ALL.forEach(function(t){if(t.ownerName)owners[t.ownerName]=t.ownerOpenId;if(t.client)clients[t.client]=1;});
   var os=document.getElementById('f-owner');
   os.innerHTML='<option value="">All Team Members</option>'+Object.keys(owners).sort().map(function(n){return'<option value="'+esc(owners[n])+'">'+esc(n)+'</option>';}).join('');
@@ -1440,7 +1445,11 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
       let brands;
       if (isAdmin) {
         const clientsMap = await getClientsMap().catch(() => ({}));
-        brands = Object.values(clientsMap).filter(Boolean).sort();
+        const brandSet = new Set(Object.values(clientsMap).filter(Boolean));
+        for (const bList of Object.values(BRAND_MANAGERS)) {
+          for (const b of bList) brandSet.add(b);
+        }
+        brands = [...brandSet].sort();
       } else {
         brands = BRAND_MANAGERS[email] || [];
       }
