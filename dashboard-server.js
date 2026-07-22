@@ -1343,6 +1343,12 @@ try {
   require('./routes/creator-lead-apply')(app, { express, axios, getLarkTenantToken });
 } catch (e) { console.error('[creator-lead-apply] registration failed:', e.message); }
 
+// Careers listing page — public, no-login page at portal.cultcontent.cc/apply.
+// Must stay before app.use(requireAuth).
+try {
+  require('./routes/careers')(app, {});
+} catch (e) { console.error('[careers] registration failed:', e.message); }
+
 
 // ─── GET /api/inner-circle/admin/funnel?shopId=NNN ───────────────────────────
 // Admin-only Inner Circle funnel: shows each IC signup's state for one shop —
