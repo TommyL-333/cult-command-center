@@ -1337,6 +1337,12 @@ try {
   require('./routes/ops-my-tasks')(app, { express, requireAuth, getLarkTenantToken });
 } catch (e) { console.error('[ops-my-tasks] registration failed:', e.message); }
 
+// Creator Lead hiring page — public, no-login application at
+// portal.cultcontent.cc/apply/creator-lead. Must stay before app.use(requireAuth).
+try {
+  require('./routes/creator-lead-apply')(app, { express, axios, getLarkTenantToken });
+} catch (e) { console.error('[creator-lead-apply] registration failed:', e.message); }
+
 
 // ─── GET /api/inner-circle/admin/funnel?shopId=NNN ───────────────────────────
 // Admin-only Inner Circle funnel: shows each IC signup's state for one shop —
