@@ -55,6 +55,7 @@ const SEED_EMAIL_OPENID = {
   'hasan@cultcontent.cc': 'ou_c8f157f2f18a8c4ffe6a20d3971348e1',
   'shayan@cultcontent.cc': 'ou_19a69dda7462358e4b3c31e2f157a238',
   'daniel@cultcontent.cc': 'ou_4332cd6e701b50b0668f7dcbd7196a40',
+  'gourab@cultcontent.cc': 'ou_a391574932a4bf8a4d8d08a6297cceaa',
 };
 
 // Brand managers: email -> client names they own.
@@ -62,7 +63,7 @@ const SEED_EMAIL_OPENID = {
 // Add gourab@cultcontent.cc once they're added to the Lark Team table.
 const BRAND_MANAGERS = {
   'shayan@cultcontent.cc': ['Approved Science', 'The Perfect Haircare', 'Dissolvd', 'B NOOR'],
-  // 'gourab@cultcontent.cc': ['Lode WTR', 'Roots by Genetic Art', 'YUGLO Skin'],
+  'gourab@cultcontent.cc': ['Lode WTR', 'Roots by Genetic Art', 'YUGLO Skin'],
 };
 
 // Emails allowed to access /task-management admin view.
