@@ -3578,12 +3578,13 @@ app.patch('/portal-admin/campaign-links/:brandId', requirePortalAdmin, express.j
   if (!brands.clients[idx].creatorPage) brands.clients[idx].creatorPage = {};
   const cp = brands.clients[idx].creatorPage;
   if (!cp.campaigns) cp.campaigns = {};
-  const { cashbackUrl, quantityVideoUrl, leaderboardUrl, blitzUrl, sprintUrl } = req.body;
+  const { cashbackUrl, quantityVideoUrl, leaderboardUrl, blitzUrl, sprintUrl, reimbursementUrl } = req.body;
   if (cashbackUrl      !== undefined) cp.campaigns.cashbackUrl      = cashbackUrl      || null;
   if (quantityVideoUrl !== undefined) cp.campaigns.quantityVideoUrl = quantityVideoUrl || null;
   if (leaderboardUrl   !== undefined) cp.campaigns.leaderboardUrl   = leaderboardUrl   || null;
   if (blitzUrl         !== undefined) cp.campaigns.blitzUrl         = blitzUrl         || null;
   if (sprintUrl        !== undefined) cp.campaigns.sprintUrl        = sprintUrl        || null;
+  if (reimbursementUrl !== undefined) cp.campaigns.reimbursementUrl = reimbursementUrl || null;
   cp.updatedAt = new Date().toISOString();
   saveBrands(brands);
   res.json({ ok: true, campaigns: cp.campaigns });
@@ -13554,6 +13555,7 @@ function renderWelcomePage(brand, cp, creatorHandle = '') {
   if (campaigns.quantityVideoUrl) campaignBtns.push({ label: 'Video Quantity Challenge', sub: 'Post 10 videos and earn a cash bonus',        url: campaigns.quantityVideoUrl });
   if (campaigns.sprintUrl)        campaignBtns.push({ label: 'Freedom Sprint Challenge', sub: 'Hit your GMV target and earn a cash bonus',   url: campaigns.sprintUrl });
   if (campaigns.leaderboardUrl)   campaignBtns.push({ label: 'Leaderboard Challenge',    sub: 'Compete for top GMV and win monthly prizes',  url: campaigns.leaderboardUrl });
+  if (campaigns.reimbursementUrl) campaignBtns.push({ label: 'Sample Reimbursement Form', sub: 'Bought your own sample? Submit your order for a full refund.', url: campaigns.reimbursementUrl });
 
   const btnsHtml = campaignBtns.map(c => `
     <a href="${c.url}" target="_blank" rel="noopener" class="camp-btn">
@@ -14193,11 +14195,12 @@ app.patch('/api/brands/:brandId/campaign-links', requireAuth, express.json(), (r
   if (!brands.clients[idx].creatorPage) brands.clients[idx].creatorPage = {};
   const cp = brands.clients[idx].creatorPage;
   if (!cp.campaigns) cp.campaigns = {};
-  const { cashbackUrl, quantityVideoUrl, leaderboardUrl, sprintUrl, competitorVideos } = req.body;
+  const { cashbackUrl, quantityVideoUrl, leaderboardUrl, sprintUrl, reimbursementUrl, competitorVideos } = req.body;
   if (cashbackUrl     !== undefined) cp.campaigns.cashbackUrl     = cashbackUrl     || null;
   if (quantityVideoUrl !== undefined) cp.campaigns.quantityVideoUrl = quantityVideoUrl || null;
   if (leaderboardUrl  !== undefined) cp.campaigns.leaderboardUrl  = leaderboardUrl  || null;
   if (sprintUrl       !== undefined) cp.campaigns.sprintUrl       = sprintUrl       || null;
+  if (reimbursementUrl !== undefined) cp.campaigns.reimbursementUrl = reimbursementUrl || null;
   if (competitorVideos !== undefined) cp.competitorVideos = (Array.isArray(competitorVideos) ? competitorVideos : []).slice(0, 8).filter(Boolean);
   cp.updatedAt = new Date().toISOString();
   saveBrands(brands);
@@ -14748,6 +14751,25 @@ app.listen(CFG.port, () => {
       console.log('[startup] Added Roots by GA to brands.json');
     }
   } catch(e) { console.error('[startup] Roots by GA setup error:', e.message); }
+
+  // Roots by GA — campaign links (leaderboard challenge + sample reimbursement form)
+  // Preserves any existing creatorPage/campaigns fields; only fills these two if unset.
+  try {
+    const bd = loadBrands();
+    const roots = (bd.clients || []).find(b => (b.name || '').toLowerCase().trim() === 'roots by ga');
+    if (roots) {
+      if (!roots.creatorPage) roots.creatorPage = {};
+      if (!roots.creatorPage.campaigns) roots.creatorPage.campaigns = {};
+      const cam = roots.creatorPage.campaigns;
+      let dirty = false;
+      if (!cam.leaderboardUrl)   { cam.leaderboardUrl   = 'https://creator.reacherapp.com/campaigns/10091/2500-7bfb78'; dirty = true; }
+      if (!cam.reimbursementUrl) { cam.reimbursementUrl = 'https://cedw5xj2shl.usttp.larksuite.com/share/base/form/shrutTGz9ks0kgrAXSXF2tTsGad'; dirty = true; }
+      if (dirty) {
+        saveBrands(bd);
+        console.log('[startup] Set Roots by GA campaign links (leaderboard + reimbursement form)');
+      }
+    }
+  } catch(e) { console.error('[startup] Roots by GA campaign links error:', e.message); }
 
   // Add Yuglo if not yet in brands.json
   try {

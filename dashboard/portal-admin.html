@@ -683,6 +683,10 @@
             <label class="camp-link-lbl">🏆 Leaderboard</label>
             <input class="camp-link-input" id="cl-leader-${esc(c.id)}" type="url" placeholder="Paste leaderboard campaign URL" value="${esc(c.campaigns?.leaderboardUrl || '')}">
           </div>
+          <div class="camp-links-row">
+            <label class="camp-link-lbl">🧾 Reimbursement</label>
+            <input class="camp-link-input" id="cl-reimburse-${esc(c.id)}" type="url" placeholder="Paste sample reimbursement form URL" value="${esc(c.campaigns?.reimbursementUrl || '')}">
+          </div>
           <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
             <button class="camp-save-btn" onclick="saveCampaignLinks('${esc(c.id)}', this)">Save Links</button>
             <a class="camp-page-link" href="/creators/${esc(c.creatorPageSlug)}/welcome" target="_blank">Preview welcome page ↗</a>
@@ -1169,12 +1173,13 @@
     const cashbackUrl    = document.getElementById(`cl-cashback-${brandId}`)?.value.trim() || null;
     const quantityVideoUrl = document.getElementById(`cl-video-${brandId}`)?.value.trim() || null;
     const leaderboardUrl = document.getElementById(`cl-leader-${brandId}`)?.value.trim() || null;
+    const reimbursementUrl = document.getElementById(`cl-reimburse-${brandId}`)?.value.trim() || null;
     btn.disabled = true; btn.textContent = 'Saving…';
     try {
       const res = await fetch(`/portal-admin/campaign-links/${brandId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cashbackUrl, quantityVideoUrl, leaderboardUrl }),
+        body: JSON.stringify({ cashbackUrl, quantityVideoUrl, leaderboardUrl, reimbursementUrl }),
       });
       const d = await res.json();
       if (!d.ok) throw new Error(d.error || 'Failed');
