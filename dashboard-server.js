@@ -14752,7 +14752,7 @@ app.listen(CFG.port, () => {
     }
   } catch(e) { console.error('[startup] Roots by GA setup error:', e.message); }
 
-  // Roots by GA — campaign links (leaderboard challenge + sample reimbursement form)
+  // Roots by GA — campaign links (video posting challenge + sample reimbursement form)
   // Preserves any existing creatorPage/campaigns fields; only fills these two if unset.
   try {
     const bd = loadBrands();
@@ -14762,14 +14762,40 @@ app.listen(CFG.port, () => {
       if (!roots.creatorPage.campaigns) roots.creatorPage.campaigns = {};
       const cam = roots.creatorPage.campaigns;
       let dirty = false;
-      if (!cam.leaderboardUrl)   { cam.leaderboardUrl   = 'https://creator.reacherapp.com/campaigns/10091/2500-7bfb78'; dirty = true; }
+      if (!cam.quantityVideoUrl) { cam.quantityVideoUrl = 'https://creator.reacherapp.com/campaigns/10091/2500-7bfb78'; dirty = true; }
       if (!cam.reimbursementUrl) { cam.reimbursementUrl = 'https://cedw5xj2shl.usttp.larksuite.com/share/base/form/shrutTGz9ks0kgrAXSXF2tTsGad'; dirty = true; }
       if (dirty) {
         saveBrands(bd);
-        console.log('[startup] Set Roots by GA campaign links (leaderboard + reimbursement form)');
+        console.log('[startup] Set Roots by GA campaign links (video challenge + reimbursement form)');
       }
     }
   } catch(e) { console.error('[startup] Roots by GA campaign links error:', e.message); }
+
+  // Roots by GA — fix: prior deploy mislabeled the Reacher link as a leaderboard challenge
+  // (it's actually a video-posting challenge) and the bonus copy was wrong ($730 vs $2,600).
+  try {
+    const bd = loadBrands();
+    const roots = (bd.clients || []).find(b => (b.name || '').toLowerCase().trim() === 'roots by ga');
+    if (roots?.creatorPage) {
+      const cp = roots.creatorPage;
+      if (!cp.campaigns) cp.campaigns = {};
+      let dirty = false;
+      const reacherUrl = 'https://creator.reacherapp.com/campaigns/10091/2500-7bfb78';
+      if (cp.campaigns.leaderboardUrl === reacherUrl) {
+        cp.campaigns.leaderboardUrl = null;
+        if (!cp.campaigns.quantityVideoUrl) cp.campaigns.quantityVideoUrl = reacherUrl;
+        dirty = true;
+      }
+      if (cp.earnPotential === 730) {
+        cp.earnPotential = 2600;
+        dirty = true;
+      }
+      if (dirty) {
+        saveBrands(bd);
+        console.log('[startup] Fixed Roots by GA: video challenge link + $2,600 bonus copy');
+      }
+    }
+  } catch(e) { console.error('[startup] Roots by GA link/copy fix error:', e.message); }
 
   // Add Yuglo if not yet in brands.json
   try {
