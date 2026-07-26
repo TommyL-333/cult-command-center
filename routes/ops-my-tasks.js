@@ -66,6 +66,20 @@ const BRAND_MANAGERS = {
   'gourab@cultcontent.cc': ['Lode WTR', 'Roots by Genetic Art', 'YUGLO Skin'],
 };
 
+// Weekly report form type per team member.
+// brand_manager: per-brand GMV/content/SPS
+// operations: Hasan — automations, templates, blockers removed
+// video_editor: Gilbert — videos edited/delivered
+// ceo: Tommy — sales calls, proposals, community growth, strategic notes
+const REPORT_TYPES = {
+  'shayan@cultcontent.cc': 'brand_manager',
+  'gourab@cultcontent.cc': 'brand_manager',
+  'hasan@cultcontent.cc': 'operations',
+  'gilbert@cultcontent.cc': 'video_editor',
+  'tommy@cultcontent.cc': 'ceo',
+  'tommy@organicsocialmarketing.com': 'ceo',
+};
+
 // Emails allowed to access /task-management admin view.
 const ADMIN_EMAILS = new Set([
   'tommy@cultcontent.cc',
@@ -196,41 +210,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
         <h2 style="margin:0">Weekly Report</h2>
         <div style="font-size:12px;color:var(--muted)" id="wr-sub-label"></div>
       </div>
-      <div class="fr">
-        <div class="fg"><label>Brand / Client</label><select id="wr-brand"><option value="">Loading…</option></select></div>
-        <div class="fg"><label>Week of (Monday)</label><input type="date" id="wr-week"/></div>
-      </div>
-      <div class="wr-section-label">Content & Pipeline</div>
-      <div class="fr">
-        <div class="fg"><label>Videos Posted</label><input type="number" id="wr-videos" min="0" placeholder="0"/></div>
-        <div class="fg"><label>Samples Sent</label><input type="number" id="wr-samples" min="0" placeholder="0"/></div>
-      </div>
-      <div class="wr-section-label">Revenue</div>
-      <div class="fr">
-        <div class="fg"><label>Affiliate GMV ($)</label><input type="number" id="wr-gmv" min="0" step="0.01" placeholder="0.00"/></div>
-        <div class="fg"><label>Retainer Budget ($)</label><input type="number" id="wr-retainer" min="0" step="0.01" placeholder="0.00"/></div>
-      </div>
-      <div class="wr-section-label">Content Performance</div>
-      <div class="fr">
-        <div class="fg"><label>CTR (%)</label><input type="number" id="wr-ctr" min="0" max="100" step="0.01" placeholder="0.00"/></div>
-        <div class="fg"><label>CTOR (%)</label><input type="number" id="wr-ctor" min="0" max="100" step="0.01" placeholder="0.00"/></div>
-      </div>
-      <div class="wr-section-label">Client Health Scores <span style="font-weight:400;font-size:11px">(each /5)</span></div>
-      <div class="fr" style="grid-template-columns:repeat(2,1fr)">
-        <div class="fg"><label>SPS Overall</label><input type="number" id="wr-sps" min="0" max="5" step="0.1" placeholder="0.0"/></div>
-        <div class="fg"><label>Product Satisfaction</label><input type="number" id="wr-pss" min="0" max="5" step="0.1" placeholder="0.0"/></div>
-      </div>
-      <div class="fr" style="grid-template-columns:repeat(2,1fr)">
-        <div class="fg"><label>Fulfillment &amp; Logistics</label><input type="number" id="wr-fls" min="0" max="5" step="0.1" placeholder="0.0"/></div>
-        <div class="fg"><label>Customer Service</label><input type="number" id="wr-css" min="0" max="5" step="0.1" placeholder="0.0"/></div>
-      </div>
-      <div class="fr" style="margin-top:4px">
-        <div class="trow"><label>Promotion / Campaign Running?</label><label class="toggle"><input type="checkbox" id="wr-promo"/><span class="slider"></span></label></div>
-        <div class="trow"><label>Growth Opps All Enrolled?</label><label class="toggle"><input type="checkbox" id="wr-growth"/><span class="slider"></span></label></div>
-      </div>
-      <div class="fr full" style="margin-top:10px">
-        <div class="fg"><label>Notes / Wins / Blockers</label><textarea id="wr-notes" style="min-height:70px" placeholder="Any highlights, risks, or context for Tommy…"></textarea></div>
-      </div>
+      <div id="wr-form-body"><div style="color:var(--muted);font-size:13px">Loading…</div></div>
       <div class="err" id="wr-err" style="margin-top:8px"></div>
       <div style="display:flex;justify-content:flex-end;margin-top:14px">
         <button class="btn" onclick="submitReport()">Submit Report</button>
@@ -413,19 +393,69 @@ function toggleSt(id,parentId,done){
 }
 
 /* weekly report */
+var WR_REPORT_TYPE='brand_manager';
+function mondayStr(){var d=new Date(),day=d.getDay(),diff=d.getDate()-day+(day===0?-6:1);d.setDate(diff);return d.toISOString().slice(0,10);}
+function weekRow(){return'<div class="fr"><div class="fg"><label>Week of (Monday)</label><input type="date" id="wr-week" value="'+mondayStr()+'"/></div><div class="fg"></div></div>';}
+function numFg(id,label,opts){opts=opts||{};return'<div class="fg"><label>'+label+'</label><input type="number" id="'+id+'" min="0"'+(opts.step?' step="'+opts.step+'"':'')+(opts.max?' max="'+opts.max+'"':'')+' placeholder="'+(opts.placeholder||'0')+'"/></div>';}
+function toggleFg(id,label){return'<div class="trow"><label>'+label+'</label><label class="toggle"><input type="checkbox" id="'+id+'"/><span class="slider"></span></label></div>';}
+function notesFg(placeholder){return'<div class="fr full" style="margin-top:10px"><div class="fg"><label>Notes</label><textarea id="wr-notes" style="min-height:70px" placeholder="'+placeholder+'"></textarea></div></div>';}
+function sectionLabel(t){return'<div class="wr-section-label">'+t+'</div>';}
+
+function renderFormForType(type,brands){
+  var h='';
+  if(type==='brand_manager'){
+    var brandOpts='<option value="">Select brand…</option>'+(brands||[]).map(function(x){return'<option value="'+esc(x)+'">'+esc(x)+'</option>';}).join('');
+    h+='<div class="fr"><div class="fg"><label>Brand / Client</label><select id="wr-brand">'+brandOpts+'</select></div>';
+    h+='<div class="fg"><label>Week of (Monday)</label><input type="date" id="wr-week" value="'+mondayStr()+'"/></div></div>';
+    if(brands&&brands.length===1)setTimeout(function(){var s=document.getElementById('wr-brand');if(s)s.value=brands[0];},0);
+    h+=sectionLabel('Content & Pipeline');
+    h+='<div class="fr">'+numFg('wr-videos','Videos Posted')+numFg('wr-samples','Samples Sent')+'</div>';
+    h+=sectionLabel('Revenue');
+    h+='<div class="fr">'+numFg('wr-gmv','Affiliate GMV ($)',{step:'0.01',placeholder:'0.00'})+numFg('wr-retainer','Retainer Budget ($)',{step:'0.01',placeholder:'0.00'})+'</div>';
+    h+=sectionLabel('Content Performance');
+    h+='<div class="fr">'+numFg('wr-ctr','CTR (%)',{step:'0.01',max:'100',placeholder:'0.00'})+numFg('wr-ctor','CTOR (%)',{step:'0.01',max:'100',placeholder:'0.00'})+'</div>';
+    h+=sectionLabel('Client Health Scores <span style="font-weight:400;font-size:11px">(each /5)</span>');
+    h+='<div class="fr">'+numFg('wr-sps','SPS Overall',{step:'0.1',max:'5',placeholder:'0.0'})+numFg('wr-pss','Product Satisfaction',{step:'0.1',max:'5',placeholder:'0.0'})+'</div>';
+    h+='<div class="fr">'+numFg('wr-fls','Fulfillment &amp; Logistics',{step:'0.1',max:'5',placeholder:'0.0'})+numFg('wr-css','Customer Service',{step:'0.1',max:'5',placeholder:'0.0'})+'</div>';
+    h+='<div class="fr" style="margin-top:4px">'+toggleFg('wr-promo','Promotion / Campaign Running?')+toggleFg('wr-growth','Growth Opps All Enrolled?')+'</div>';
+    h+=notesFg('Wins, risks, or context for Tommy…');
+  } else if(type==='operations'){
+    h+=weekRow();
+    h+=sectionLabel('Productivity');
+    h+='<div class="fr">'+numFg('wr-automations','New Automations Built')+numFg('wr-templates','New Templates / Prompts Created')+'</div>';
+    h+='<div class="fr">'+numFg('wr-blockers','Team Blockers Removed')+numFg('wr-capacity','Capacity Issues Resolved')+'</div>';
+    h+=sectionLabel('Process Improvements');
+    h+='<div class="fr full"><div class="fg"><label>What did you improve, build, or streamline this week?</label><textarea id="wr-improvements" style="min-height:80px" placeholder="Describe any new workflows, tools, or processes that help the team…"></textarea></div></div>';
+    h+=notesFg('Any other notes, ideas, or escalations…');
+  } else if(type==='video_editor'){
+    h+=weekRow();
+    h+=sectionLabel('Output');
+    h+='<div class="fr">'+numFg('wr-edited','Videos Edited')+numFg('wr-delivered','Videos Delivered')+'</div>';
+    h+='<div class="fr">'+numFg('wr-revisions','Avg Revision Rounds',{step:'0.1',placeholder:'0.0'})+numFg('wr-turnaround','Avg Turnaround (days)',{step:'0.5',placeholder:'0.0'})+'</div>';
+    h+=sectionLabel('Brands Worked On');
+    h+='<div class="fr full"><div class="fg"><label>Which brands / clients did you edit for this week?</label><input type="text" id="wr-brands-worked" placeholder="e.g. Approved Science, Lode WTR"/></div></div>';
+    h+=notesFg('Any notes, issues with footage, or requests…');
+  } else if(type==='ceo'){
+    h+=weekRow();
+    h+=sectionLabel('Sales Pipeline');
+    h+='<div class="fr">'+numFg('wr-calls','Sales Calls Booked')+numFg('wr-proposals','Proposals Sent')+'</div>';
+    h+=sectionLabel('Growth');
+    h+='<div class="fr">'+numFg('wr-community','Community Size (affiliates w/ phone in CRM)')+numFg('wr-personal-videos','Personal Account Videos Posted')+'</div>';
+    h+=sectionLabel('Strategic Notes');
+    h+='<div class="fr full"><div class="fg"><label>Wins, priorities &amp; blockers this week</label><textarea id="wr-notes" style="min-height:90px" placeholder="What moved the needle? What\'s stuck? What needs a decision?"></textarea></div></div>';
+  }
+  document.getElementById('wr-form-body').innerHTML=h;
+}
+
 function loadReportTab(){
-  var d=new Date(),day=d.getDay(),diff=d.getDate()-day+(day===0?-6:1);
-  d.setDate(diff);
-  document.getElementById('wr-week').value=d.toISOString().slice(0,10);
   fetch('/api/weekly-reports/brands',{credentials:'include'}).then(function(r){return r.json();}).then(function(d){
-    var b=d.brands||[],sel=document.getElementById('wr-brand');
-    sel.innerHTML='<option value="">Select brand…</option>'+b.map(function(x){return'<option value="'+esc(x)+'">'+esc(x)+'</option>';}).join('');
-    if(b.length===1)sel.value=b[0];
+    WR_REPORT_TYPE=d.reportType||'brand_manager';
+    renderFormForType(WR_REPORT_TYPE,d.brands||[]);
     if(d.isAdmin){
-      document.getElementById('wr-sub-label').textContent='Admin — filling in as yourself';
+      document.getElementById('wr-sub-label').textContent='Admin view';
       document.getElementById('wr-hist-title').textContent='All Team Reports';
     }
-  }).catch(function(){document.getElementById('wr-brand').innerHTML='<option value="">Error</option>';});
+  }).catch(function(){document.getElementById('wr-form-body').innerHTML='<div style="color:var(--red);font-size:13px">Failed to load report config.</div>';});
   loadReportHistory();
 }
 function loadReportHistory(){
@@ -434,52 +464,83 @@ function loadReportHistory(){
     if(!rpts.length){el.innerHTML='<div style="color:var(--muted);font-size:13px">No reports yet.</div>';return;}
     var html='';
     rpts.slice(0,20).forEach(function(r){
-      var health=0,hCount=0;
-      if(r.spsOverall){health+=parseFloat(r.spsOverall);hCount++;}
-      if(r.productSatisfaction){health+=parseFloat(r.productSatisfaction);hCount++;}
-      if(r.fulfillmentScore){health+=parseFloat(r.fulfillmentScore);hCount++;}
-      if(r.customerServiceScore){health+=parseFloat(r.customerServiceScore);hCount++;}
-      var healthAvg=hCount?Math.round((health/hCount)*10)/10:null;
-      var healthColor=healthAvg===null?'var(--muted)':healthAvg>=4?'#6be86b':healthAvg>=3?'#ffcf8a':'var(--red)';
-      var gmvPerVideo=(r.videosPosted&&r.gmv)?'$'+Math.round(r.gmv/r.videosPosted).toLocaleString():'—';
+      var rt=r.reportType||'brand_manager';
       html+='<div class="wr-card">';
       html+='<div class="wr-head">';
-      html+='<div><span class="wr-brand">'+esc(r.brand)+'</span>'+(r.submittedBy?'<span style="font-size:11px;color:var(--muted);margin-left:8px">'+esc(r.submittedBy.split('@')[0])+'</span>':'')+'</div>';
+      html+='<div>'+(r.brand?'<span class="wr-brand">'+esc(r.brand)+'</span>':'')+
+        (r.submittedBy?'<span style="font-size:11px;color:var(--muted);margin-left:8px">'+esc(r.submittedBy.split('@')[0])+'</span>':'')+'</div>';
       html+='<span class="wr-week">Wk '+esc(r.week)+'</span>';
       html+='</div>';
       html+='<div class="wr-grid">';
-      html+='<div class="wr-stat"><div class="n">'+Number(r.gmv||0).toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0})+'</div><div class="l">GMV</div></div>';
-      html+='<div class="wr-stat"><div class="n">'+(r.videosPosted||0)+'</div><div class="l">Videos</div></div>';
-      html+='<div class="wr-stat"><div class="n">'+(r.samplesCount||0)+'</div><div class="l">Samples</div></div>';
-      html+='<div class="wr-stat"><div class="n" style="color:'+healthColor+'">'+(healthAvg!==null?healthAvg+'/5':'—')+'</div><div class="l">Health</div></div>';
-      html+='<div class="wr-stat"><div class="n">'+(r.ctr||'—')+'%</div><div class="l">CTR</div></div>';
-      html+='<div class="wr-stat"><div class="n">'+gmvPerVideo+'</div><div class="l">GMV/Video</div></div>';
+      if(rt==='brand_manager'){
+        var h=0,hc=0;
+        ['spsOverall','productSatisfaction','fulfillmentScore','customerServiceScore'].forEach(function(k){if(r[k]){h+=parseFloat(r[k]);hc++;}});
+        var ha=hc?Math.round(h/hc*10)/10:null;
+        var hColor=ha===null?'var(--muted)':ha>=4?'#6be86b':ha>=3?'#ffcf8a':'var(--red)';
+        var gpv=(r.videosPosted&&r.gmv)?'$'+Math.round(r.gmv/r.videosPosted).toLocaleString():'—';
+        html+='<div class="wr-stat"><div class="n">'+Number(r.gmv||0).toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0})+'</div><div class="l">GMV</div></div>';
+        html+='<div class="wr-stat"><div class="n">'+(r.videosPosted||0)+'</div><div class="l">Videos</div></div>';
+        html+='<div class="wr-stat"><div class="n">'+(r.samplesCount||0)+'</div><div class="l">Samples</div></div>';
+        html+='<div class="wr-stat"><div class="n" style="color:'+hColor+'">'+(ha!==null?ha+'/5':'—')+'</div><div class="l">Health</div></div>';
+        html+='<div class="wr-stat"><div class="n">'+(r.ctr||'—')+'%</div><div class="l">CTR</div></div>';
+        html+='<div class="wr-stat"><div class="n">'+gpv+'</div><div class="l">GMV/Video</div></div>';
+      } else if(rt==='operations'){
+        html+='<div class="wr-stat"><div class="n">'+(r.automationsBuilt||0)+'</div><div class="l">Automations</div></div>';
+        html+='<div class="wr-stat"><div class="n">'+(r.templatesCreated||0)+'</div><div class="l">Templates</div></div>';
+        html+='<div class="wr-stat"><div class="n">'+(r.blockersRemoved||0)+'</div><div class="l">Blockers Fixed</div></div>';
+        html+='<div class="wr-stat"><div class="n">'+(r.capacityResolved||0)+'</div><div class="l">Capacity Issues</div></div>';
+      } else if(rt==='video_editor'){
+        html+='<div class="wr-stat"><div class="n">'+(r.videosEdited||0)+'</div><div class="l">Edited</div></div>';
+        html+='<div class="wr-stat"><div class="n">'+(r.videosDelivered||0)+'</div><div class="l">Delivered</div></div>';
+        html+='<div class="wr-stat"><div class="n">'+(r.avgRevisions||'—')+'x</div><div class="l">Avg Revisions</div></div>';
+        html+='<div class="wr-stat"><div class="n">'+(r.avgTurnaround||'—')+'d</div><div class="l">Turnaround</div></div>';
+      } else if(rt==='ceo'){
+        html+='<div class="wr-stat"><div class="n">'+(r.callsBooked||0)+'</div><div class="l">Calls Booked</div></div>';
+        html+='<div class="wr-stat"><div class="n">'+(r.proposalsSent||0)+'</div><div class="l">Proposals</div></div>';
+        html+='<div class="wr-stat"><div class="n">'+(r.communitySize||'—')+'</div><div class="l">Community</div></div>';
+        html+='<div class="wr-stat"><div class="n">'+(r.personalVideos||0)+'</div><div class="l">Personal Videos</div></div>';
+      }
       html+='</div>';
-      if(r.notes)html+='<div style="font-size:12px;color:var(--muted);margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">'+esc(r.notes)+'</div>';
+      var noteText=(rt==='operations'&&r.improvements)?r.improvements:(r.notes||'');
+      if(noteText)html+='<div style="font-size:12px;color:var(--muted);margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">'+esc(noteText)+'</div>';
       html+='</div>';
     });
     el.innerHTML=html;
   }).catch(function(){document.getElementById('wr-list').innerHTML='<div style="color:var(--muted);font-size:13px">Failed to load.</div>';});
 }
+function val(id){var el=document.getElementById(id);return el?el.value.trim():'';}
+function numVal(id){return parseFloat(val(id))||0;}
+function chkVal(id){var el=document.getElementById(id);return el?el.checked:false;}
 function submitReport(){
-  var brand=document.getElementById('wr-brand').value,week=document.getElementById('wr-week').value;
-  if(!brand||!week){var e=document.getElementById('wr-err');e.textContent='Brand and week are required.';e.style.display='block';return;}
-  fetch('/api/weekly-reports/submit',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({
-    brand:brand,week:week,
-    samplesCount:parseFloat(document.getElementById('wr-samples').value)||0,
-    videosPosted:parseFloat(document.getElementById('wr-videos').value)||0,
-    retainerBudget:parseFloat(document.getElementById('wr-retainer').value)||0,
-    gmv:parseFloat(document.getElementById('wr-gmv').value)||0,
-    spsOverall:parseFloat(document.getElementById('wr-sps').value)||0,
-    productSatisfaction:parseFloat(document.getElementById('wr-pss').value)||0,
-    fulfillmentScore:parseFloat(document.getElementById('wr-fls').value)||0,
-    customerServiceScore:parseFloat(document.getElementById('wr-css').value)||0,
-    ctr:parseFloat(document.getElementById('wr-ctr').value)||0,
-    ctor:parseFloat(document.getElementById('wr-ctor').value)||0,
-    promotionRunning:document.getElementById('wr-promo').checked,
-    growthOppsEnrolled:document.getElementById('wr-growth').checked,
-    notes:document.getElementById('wr-notes').value.trim()
-  })}).then(function(r){return r.json();}).then(function(d){
+  var week=val('wr-week');
+  if(!week){var e=document.getElementById('wr-err');e.textContent='Week is required.';e.style.display='block';return;}
+  var payload={week:week,reportType:WR_REPORT_TYPE};
+  if(WR_REPORT_TYPE==='brand_manager'){
+    var brand=val('wr-brand');
+    if(!brand){var e=document.getElementById('wr-err');e.textContent='Brand is required.';e.style.display='block';return;}
+    payload.brand=brand;
+    payload.videosPosted=numVal('wr-videos');payload.samplesCount=numVal('wr-samples');
+    payload.gmv=numVal('wr-gmv');payload.retainerBudget=numVal('wr-retainer');
+    payload.ctr=numVal('wr-ctr');payload.ctor=numVal('wr-ctor');
+    payload.spsOverall=numVal('wr-sps');payload.productSatisfaction=numVal('wr-pss');
+    payload.fulfillmentScore=numVal('wr-fls');payload.customerServiceScore=numVal('wr-css');
+    payload.promotionRunning=chkVal('wr-promo');payload.growthOppsEnrolled=chkVal('wr-growth');
+    payload.notes=val('wr-notes');
+  } else if(WR_REPORT_TYPE==='operations'){
+    payload.automationsBuilt=numVal('wr-automations');payload.templatesCreated=numVal('wr-templates');
+    payload.blockersRemoved=numVal('wr-blockers');payload.capacityResolved=numVal('wr-capacity');
+    payload.improvements=val('wr-improvements');payload.notes=val('wr-notes');
+  } else if(WR_REPORT_TYPE==='video_editor'){
+    payload.videosEdited=numVal('wr-edited');payload.videosDelivered=numVal('wr-delivered');
+    payload.avgRevisions=numVal('wr-revisions');payload.avgTurnaround=numVal('wr-turnaround');
+    payload.brandsWorked=val('wr-brands-worked');payload.notes=val('wr-notes');
+  } else if(WR_REPORT_TYPE==='ceo'){
+    payload.callsBooked=numVal('wr-calls');payload.proposalsSent=numVal('wr-proposals');
+    payload.communitySize=numVal('wr-community');payload.personalVideos=numVal('wr-personal-videos');
+    payload.notes=val('wr-notes');
+  }
+  fetch('/api/weekly-reports/submit',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+  .then(function(r){return r.json();}).then(function(d){
     if(d.ok){document.getElementById('wr-err').style.display='none';loadReportHistory();toast('✅ Report submitted!');}
     else{var e=document.getElementById('wr-err');e.textContent=d.error||'Failed';e.style.display='block';}
   }).catch(function(e){var el=document.getElementById('wr-err');el.textContent=''+e;el.style.display='block';});
@@ -1677,7 +1738,8 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
       } else {
         brands = BRAND_MANAGERS[email] || [];
       }
-      res.json({ brands, isAdmin });
+      const reportType = REPORT_TYPES[email] || 'brand_manager';
+      res.json({ brands, isAdmin, reportType });
     } catch (e) {
       res.status(500).json({ error: e.message });
     }
