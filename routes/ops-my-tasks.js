@@ -442,7 +442,7 @@ function renderFormForType(type,brands){
     h+=sectionLabel('Growth');
     h+='<div class="fr">'+numFg('wr-community','Community Size (affiliates w/ phone in CRM)')+numFg('wr-personal-videos','Personal Account Videos Posted')+'</div>';
     h+=sectionLabel('Strategic Notes');
-    h+='<div class="fr full"><div class="fg"><label>Wins, priorities &amp; blockers this week</label><textarea id="wr-notes" style="min-height:90px" placeholder="What moved the needle? What\'s stuck? What needs a decision?"></textarea></div></div>';
+    h+='<div class="fr full"><div class="fg"><label>Wins, priorities &amp; blockers this week</label><textarea id="wr-notes" style="min-height:90px" placeholder="What moved the needle? What\\'s stuck? What needs a decision?"></textarea></div></div>';
   }
   document.getElementById('wr-form-body').innerHTML=h;
 }
