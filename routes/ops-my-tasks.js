@@ -36,6 +36,15 @@
 
 const LARK_BASE = 'https://open.larksuite.com';
 const OPS_APP_TOKEN = 'EsfBbIqfkauKozsxMHMuilDztod';
+
+// Weekly Reports Lark base
+const WR_LARK_APP = 'ACkBbUDWhaXYRrsLpvquuTKPtwb';
+const WR_TABLES = {
+  brand_manager: 'tblirCIMRjvDEldZ',
+  operations:    'tbleCKQBNgOw8p9l',
+  video_editor:  'tblJIS8iHBEhgE0g',
+  ceo:           'tblU0f6BPVDqCqCY',
+};
 const TASKS_TABLE = 'tbl7XaSc37mtcBKg';
 const CLIENTS_TABLE = 'tblgM1L7myeAfYQm';
 const TEAM_TABLE = 'tblswNG7LAFaOJOn';
@@ -1745,15 +1754,73 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
     }
   });
 
+  // ---------- HELPER: saveReportToLark ----------
+  async function saveReportToLark(reportType, data) {
+    const tableId = WR_TABLES[reportType];
+    if (!tableId) return;
+    const weekMs = data.week ? new Date(data.week).getTime() : null;
+    const submittedAtMs = data.submittedAt || Date.now();
+    const fields = { 'Submitted By': data.submittedBy || '', 'Submitted At': submittedAtMs };
+    if (weekMs) fields['Week'] = weekMs;
+    if (reportType === 'brand_manager') {
+      if (data.brand) fields['Brand'] = data.brand;
+      fields['GMV ($)'] = Number(data.gmv) || 0;
+      fields['Videos Posted'] = Number(data.videosPosted) || 0;
+      fields['Samples Sent'] = Number(data.samplesCount) || 0;
+      fields['Retainer Budget ($)'] = Number(data.retainerBudget) || 0;
+      fields['CTR (%)'] = Number(data.ctr) || 0;
+      fields['CTOR (%)'] = Number(data.ctor) || 0;
+      fields['SPS Overall (/5)'] = Number(data.spsOverall) || 0;
+      fields['Product Satisfaction (/5)'] = Number(data.productSatisfaction) || 0;
+      fields['Fulfillment & Logistics (/5)'] = Number(data.fulfillmentScore) || 0;
+      fields['Customer Service (/5)'] = Number(data.customerServiceScore) || 0;
+      fields['Promotion Running'] = !!data.promotionRunning;
+      fields['Growth Opps Enrolled'] = !!data.growthOppsEnrolled;
+      if (data.notes) fields['Notes'] = data.notes;
+    } else if (reportType === 'operations') {
+      fields['Automations Built'] = Number(data.automationsBuilt) || 0;
+      fields['Templates Created'] = Number(data.templatesCreated) || 0;
+      fields['Blockers Removed'] = Number(data.blockersRemoved) || 0;
+      fields['Capacity Issues Resolved'] = Number(data.capacityResolved) || 0;
+      if (data.improvements) fields['Process Improvements'] = data.improvements;
+      if (data.notes) fields['Notes'] = data.notes;
+    } else if (reportType === 'video_editor') {
+      fields['Videos Edited'] = Number(data.videosEdited) || 0;
+      fields['Videos Delivered'] = Number(data.videosDelivered) || 0;
+      fields['Avg Revision Rounds'] = Number(data.avgRevisions) || 0;
+      fields['Avg Turnaround (Days)'] = Number(data.avgTurnaround) || 0;
+      if (data.brandsWorked) fields['Brands Worked On'] = data.brandsWorked;
+      if (data.notes) fields['Notes'] = data.notes;
+    } else if (reportType === 'ceo') {
+      fields['Sales Calls Booked'] = Number(data.callsBooked) || 0;
+      fields['Proposals Sent'] = Number(data.proposalsSent) || 0;
+      fields['Community Size'] = Number(data.communitySize) || 0;
+      fields['Personal Videos Posted'] = Number(data.personalVideos) || 0;
+      if (data.notes) fields['Notes'] = data.notes;
+    }
+    const token = await getTenantToken();
+    await axios.post(
+      `${LARK_BASE}/open-apis/bitable/v1/apps/${WR_LARK_APP}/tables/${tableId}/records`,
+      { fields },
+      { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, timeout: 15000 }
+    );
+  }
+
   // ---------- ROUTE: POST /api/weekly-reports/submit ----------
   app.post('/api/weekly-reports/submit', requireAuth, jsonBody, async (req, res) => {
     try {
       const email = (req.userEmail || (req.session && req.session.userEmail) || '').toLowerCase();
-      const { brand, week, ...rest } = req.body || {};
-      if (!brand || !week) return res.status(400).json({ error: 'brand and week are required' });
+      const body = req.body || {};
+      const { week, reportType = 'brand_manager' } = body;
+      if (!week) return res.status(400).json({ error: 'week is required' });
+      if (reportType === 'brand_manager' && !body.brand) return res.status(400).json({ error: 'brand is required' });
+      const record = { id: genId(), submittedBy: email, submittedAt: Date.now(), ...body };
       const reports = readJsonFile(WR_FILE, []);
-      reports.unshift({ id: genId(), submittedBy: email, submittedAt: Date.now(), brand, week, ...rest });
+      reports.unshift(record);
       writeJsonFile(WR_FILE, reports);
+      // Fire-and-forget to Lark — JSON file is source of truth if Lark fails
+      saveReportToLark(reportType, record)
+        .catch(e => console.error('[weekly-report] Lark write failed:', e.message));
       res.json({ ok: true });
     } catch (e) {
       res.status(500).json({ error: e.message });
