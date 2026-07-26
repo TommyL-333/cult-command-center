@@ -155,6 +155,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .slider:before{content:'';position:absolute;width:16px;height:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.2s}
   .toggle input:checked+.slider{background:var(--cyan)}
   .toggle input:checked+.slider:before{transform:translateX(18px)}
+  .wr-section-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin:12px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--border)}
   .wr-hist h3{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:0 0 12px}
   .wr-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px}
   .wr-head{display:flex;justify-content:space-between;margin-bottom:10px;font-size:13px}
@@ -179,8 +180,8 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   </header>
   <div class="sub" id="sub">Loading…</div>
   <div class="tabs">
-    <button class="tab active" onclick="switchTab(\\'tasks\\')">My Tasks</button>
-    <button class="tab" onclick="switchTab(\\'report\\')">Weekly Report</button>
+    <button class="tab active" onclick="switchTab(0)">My Tasks</button>
+    <button class="tab" onclick="switchTab(1)">Weekly Report</button>
   </div>
 
   <div id="tab-tasks">
@@ -191,37 +192,44 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
 
   <div id="tab-report" style="display:none">
     <div class="wr-form">
-      <h2>Submit Weekly Report</h2>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h2 style="margin:0">Weekly Report</h2>
+        <div style="font-size:12px;color:var(--muted)" id="wr-sub-label"></div>
+      </div>
       <div class="fr">
-        <div class="fg"><label>Brand</label><select id="wr-brand"><option value="">Loading…</option></select></div>
+        <div class="fg"><label>Brand / Client</label><select id="wr-brand"><option value="">Loading…</option></select></div>
         <div class="fg"><label>Week of (Monday)</label><input type="date" id="wr-week"/></div>
       </div>
+      <div class="wr-section-label">Content & Pipeline</div>
       <div class="fr">
-        <div class="fg"><label>Samples Sent</label><input type="number" id="wr-samples" min="0" placeholder="0"/></div>
         <div class="fg"><label>Videos Posted</label><input type="number" id="wr-videos" min="0" placeholder="0"/></div>
+        <div class="fg"><label>Samples Sent</label><input type="number" id="wr-samples" min="0" placeholder="0"/></div>
       </div>
+      <div class="wr-section-label">Revenue</div>
       <div class="fr">
-        <div class="fg"><label>Retainer Budget Allocated ($)</label><input type="number" id="wr-retainer" min="0" step="0.01" placeholder="0.00"/></div>
         <div class="fg"><label>Affiliate GMV ($)</label><input type="number" id="wr-gmv" min="0" step="0.01" placeholder="0.00"/></div>
+        <div class="fg"><label>Retainer Budget ($)</label><input type="number" id="wr-retainer" min="0" step="0.01" placeholder="0.00"/></div>
       </div>
-      <div class="fr">
-        <div class="fg"><label>SPS Overall (out of 5)</label><input type="number" id="wr-sps" min="0" max="5" step="0.1" placeholder="0.0"/></div>
-        <div class="fg"><label>Product Satisfaction Score (out of 5)</label><input type="number" id="wr-pss" min="0" max="5" step="0.1" placeholder="0.0"/></div>
-      </div>
-      <div class="fr">
-        <div class="fg"><label>Fulfillment &amp; Logistics Score (out of 5)</label><input type="number" id="wr-fls" min="0" max="5" step="0.1" placeholder="0.0"/></div>
-        <div class="fg"><label>Customer Service Score (out of 5)</label><input type="number" id="wr-css" min="0" max="5" step="0.1" placeholder="0.0"/></div>
-      </div>
+      <div class="wr-section-label">Content Performance</div>
       <div class="fr">
         <div class="fg"><label>CTR (%)</label><input type="number" id="wr-ctr" min="0" max="100" step="0.01" placeholder="0.00"/></div>
         <div class="fg"><label>CTOR (%)</label><input type="number" id="wr-ctor" min="0" max="100" step="0.01" placeholder="0.00"/></div>
       </div>
+      <div class="wr-section-label">Client Health Scores <span style="font-weight:400;font-size:11px">(each /5)</span></div>
+      <div class="fr" style="grid-template-columns:repeat(2,1fr)">
+        <div class="fg"><label>SPS Overall</label><input type="number" id="wr-sps" min="0" max="5" step="0.1" placeholder="0.0"/></div>
+        <div class="fg"><label>Product Satisfaction</label><input type="number" id="wr-pss" min="0" max="5" step="0.1" placeholder="0.0"/></div>
+      </div>
+      <div class="fr" style="grid-template-columns:repeat(2,1fr)">
+        <div class="fg"><label>Fulfillment &amp; Logistics</label><input type="number" id="wr-fls" min="0" max="5" step="0.1" placeholder="0.0"/></div>
+        <div class="fg"><label>Customer Service</label><input type="number" id="wr-css" min="0" max="5" step="0.1" placeholder="0.0"/></div>
+      </div>
       <div class="fr" style="margin-top:4px">
         <div class="trow"><label>Promotion / Campaign Running?</label><label class="toggle"><input type="checkbox" id="wr-promo"/><span class="slider"></span></label></div>
-        <div class="trow"><label>Growth Opportunities All Enrolled?</label><label class="toggle"><input type="checkbox" id="wr-growth"/><span class="slider"></span></label></div>
+        <div class="trow"><label>Growth Opps All Enrolled?</label><label class="toggle"><input type="checkbox" id="wr-growth"/><span class="slider"></span></label></div>
       </div>
       <div class="fr full" style="margin-top:10px">
-        <div class="fg"><label>Notes (optional)</label><textarea id="wr-notes" style="min-height:60px" placeholder="Any additional context…"></textarea></div>
+        <div class="fg"><label>Notes / Wins / Blockers</label><textarea id="wr-notes" style="min-height:70px" placeholder="Any highlights, risks, or context for Tommy…"></textarea></div>
       </div>
       <div class="err" id="wr-err" style="margin-top:8px"></div>
       <div style="display:flex;justify-content:flex-end;margin-top:14px">
@@ -229,7 +237,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
       </div>
     </div>
     <div class="wr-hist">
-      <h3>Recent Reports</h3>
+      <h3 id="wr-hist-title">Recent Reports</h3>
       <div id="wr-list"><div style="color:var(--muted);font-size:13px">Loading…</div></div>
     </div>
   </div>
@@ -301,11 +309,11 @@ var PRIO=[
 function prioBucket(p){var s=(p||'').toLowerCase().trim();for(var i=0;i<PRIO.length;i++){if(PRIO[i].match.indexOf(s)>=0)return PRIO[i];}return PRIO[2];}
 function esc(s){return(s||'').replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 
-function switchTab(t){
-  document.querySelectorAll('.tab').forEach(function(el,i){el.classList.toggle('active',i===(t==='tasks'?0:1));});
-  document.getElementById('tab-tasks').style.display=t==='tasks'?'':'none';
-  document.getElementById('tab-report').style.display=t==='report'?'':'none';
-  if(t==='report')loadReportTab();
+function switchTab(idx){
+  document.querySelectorAll('.tab').forEach(function(el,i){el.classList.toggle('active',i===idx);});
+  document.getElementById('tab-tasks').style.display=idx===0?'':'none';
+  document.getElementById('tab-report').style.display=idx===1?'':'none';
+  if(idx===1)loadReportTab();
 }
 
 function load(){
@@ -413,6 +421,10 @@ function loadReportTab(){
     var b=d.brands||[],sel=document.getElementById('wr-brand');
     sel.innerHTML='<option value="">Select brand…</option>'+b.map(function(x){return'<option value="'+esc(x)+'">'+esc(x)+'</option>';}).join('');
     if(b.length===1)sel.value=b[0];
+    if(d.isAdmin){
+      document.getElementById('wr-sub-label').textContent='Admin — filling in as yourself';
+      document.getElementById('wr-hist-title').textContent='All Team Reports';
+    }
   }).catch(function(){document.getElementById('wr-brand').innerHTML='<option value="">Error</option>';});
   loadReportHistory();
 }
@@ -421,16 +433,30 @@ function loadReportHistory(){
     var el=document.getElementById('wr-list'),rpts=d.reports||[];
     if(!rpts.length){el.innerHTML='<div style="color:var(--muted);font-size:13px">No reports yet.</div>';return;}
     var html='';
-    rpts.slice(0,8).forEach(function(r){
-      html+='<div class="wr-card"><div class="wr-head"><span class="wr-brand">'+esc(r.brand)+'</span><span class="wr-week">Week of '+esc(r.week)+'</span></div>';
+    rpts.slice(0,20).forEach(function(r){
+      var health=0,hCount=0;
+      if(r.spsOverall){health+=parseFloat(r.spsOverall);hCount++;}
+      if(r.productSatisfaction){health+=parseFloat(r.productSatisfaction);hCount++;}
+      if(r.fulfillmentScore){health+=parseFloat(r.fulfillmentScore);hCount++;}
+      if(r.customerServiceScore){health+=parseFloat(r.customerServiceScore);hCount++;}
+      var healthAvg=hCount?Math.round((health/hCount)*10)/10:null;
+      var healthColor=healthAvg===null?'var(--muted)':healthAvg>=4?'#6be86b':healthAvg>=3?'#ffcf8a':'var(--red)';
+      var gmvPerVideo=(r.videosPosted&&r.gmv)?'$'+Math.round(r.gmv/r.videosPosted).toLocaleString():'—';
+      html+='<div class="wr-card">';
+      html+='<div class="wr-head">';
+      html+='<div><span class="wr-brand">'+esc(r.brand)+'</span>'+(r.submittedBy?'<span style="font-size:11px;color:var(--muted);margin-left:8px">'+esc(r.submittedBy.split('@')[0])+'</span>':'')+'</div>';
+      html+='<span class="wr-week">Wk '+esc(r.week)+'</span>';
+      html+='</div>';
       html+='<div class="wr-grid">';
-      html+='<div class="wr-stat"><div class="n">'+r.samplesCount+'</div><div class="l">Samples</div></div>';
-      html+='<div class="wr-stat"><div class="n">'+r.videosPosted+'</div><div class="l">Videos</div></div>';
-      html+='<div class="wr-stat"><div class="n">$'+Number(r.gmv||0).toLocaleString()+'</div><div class="l">GMV</div></div>';
-      html+='<div class="wr-stat"><div class="n">'+(r.spsOverall||'—')+'/5</div><div class="l">SPS</div></div>';
+      html+='<div class="wr-stat"><div class="n">'+Number(r.gmv||0).toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:0})+'</div><div class="l">GMV</div></div>';
+      html+='<div class="wr-stat"><div class="n">'+(r.videosPosted||0)+'</div><div class="l">Videos</div></div>';
+      html+='<div class="wr-stat"><div class="n">'+(r.samplesCount||0)+'</div><div class="l">Samples</div></div>';
+      html+='<div class="wr-stat"><div class="n" style="color:'+healthColor+'">'+(healthAvg!==null?healthAvg+'/5':'—')+'</div><div class="l">Health</div></div>';
       html+='<div class="wr-stat"><div class="n">'+(r.ctr||'—')+'%</div><div class="l">CTR</div></div>';
-      html+='<div class="wr-stat"><div class="n">'+(r.promotionRunning?'Yes':'No')+'</div><div class="l">Promo</div></div>';
-      html+='</div></div>';
+      html+='<div class="wr-stat"><div class="n">'+gmvPerVideo+'</div><div class="l">GMV/Video</div></div>';
+      html+='</div>';
+      if(r.notes)html+='<div style="font-size:12px;color:var(--muted);margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">'+esc(r.notes)+'</div>';
+      html+='</div>';
     });
     el.innerHTML=html;
   }).catch(function(){document.getElementById('wr-list').innerHTML='<div style="color:var(--muted);font-size:13px">Failed to load.</div>';});
@@ -616,7 +642,29 @@ const TASK_MANAGEMENT_HTML = `<!DOCTYPE html>
   .err{color:var(--red);font-size:12.5px;margin-top:6px;display:none}
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--panel2);border:1px solid var(--cyan);color:var(--txt);padding:11px 18px;border-radius:10px;font-size:13.5px;display:none;z-index:60}
   .empty{text-align:center;color:var(--muted);padding:40px;font-size:14px}
-  @media(max-width:768px){.stats{grid-template-columns:repeat(2,1fr)}}
+  .tabs{display:flex;gap:0;margin-bottom:22px;border-bottom:1px solid var(--border)}
+  .tab{background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);padding:10px 18px;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:-1px;transition:.15s;font-family:inherit}
+  .tab:hover{color:var(--txt)}
+  .tab.active{color:var(--cyan);border-bottom-color:var(--cyan)}
+  /* weekly reports tab */
+  .wr-kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
+  .wr-kpi-c{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px;text-align:center}
+  .wr-kpi-c .n{font-size:26px;font-weight:700}
+  .wr-kpi-c .l{font-size:11px;color:var(--muted);text-transform:uppercase;margin-top:3px}
+  .wr-tbl{overflow-x:auto;border-radius:12px;border:1px solid var(--border);margin-bottom:24px}
+  .wr-section{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin:24px 0 10px}
+  .spark-row{display:flex;gap:2px;align-items:flex-end;height:28px}
+  .spark-bar{background:var(--cyan);border-radius:2px 2px 0 0;opacity:.7;min-width:6px}
+  .brand-trend{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:16px}
+  .bt-brand{font-weight:600;font-size:13px;min-width:160px}
+  .bt-gmv{font-size:20px;font-weight:700;min-width:90px}
+  .bt-delta{font-size:12px;padding:2px 8px;border-radius:12px;font-weight:700}
+  .delta-up{background:rgba(107,232,107,.15);color:#6be86b}
+  .delta-dn{background:rgba(255,0,80,.15);color:var(--red)}
+  .delta-flat{background:rgba(154,160,181,.15);color:var(--muted)}
+  .wr-fb{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
+  .wr-fb select{background:var(--panel2);border:1px solid var(--border);border-radius:8px;color:var(--txt);padding:7px 11px;font-size:13px;font-family:inherit}
+  @media(max-width:768px){.stats{grid-template-columns:repeat(2,1fr)}.wr-kpi{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
@@ -629,36 +677,74 @@ const TASK_MANAGEMENT_HTML = `<!DOCTYPE html>
     </div>
   </div>
   <div class="sub" id="sub">Loading all tasks…</div>
-  <div class="stats">
-    <div class="sc"><div class="n" id="s-total">—</div><div class="l">Total Active</div></div>
-    <div class="sc"><div class="n" id="s-blocked" style="color:var(--red)">—</div><div class="l">Blocked</div></div>
-    <div class="sc"><div class="n" id="s-inp" style="color:var(--cyan)">—</div><div class="l">In Progress</div></div>
-    <div class="sc"><div class="n" id="s-avg">—</div><div class="l">Avg Days to Complete</div></div>
+  <div class="tabs">
+    <button class="tab active" onclick="adminSwitchTab(0)">Tasks</button>
+    <button class="tab" onclick="adminSwitchTab(1)">Weekly Reports</button>
   </div>
-  <div class="fb">
-    <select id="f-owner" onchange="applyFilters()"><option value="">All Team Members</option></select>
-    <select id="f-client" onchange="applyFilters()"><option value="">All Clients</option></select>
-    <select id="f-status" onchange="applyFilters()">
-      <option value="">All Statuses</option>
-      <option value="To Do">To Do</option>
-      <option value="In Progress">In Progress</option>
-      <option value="Blocked">Blocked</option>
-    </select>
-    <select id="f-type" onchange="applyFilters()">
-      <option value="">Tasks + Subtasks</option>
-      <option value="task">Tasks only</option>
-      <option value="subtask">Subtasks only</option>
-    </select>
-    <input id="f-search" placeholder="Search tasks…" oninput="applyFilters()" style="min-width:180px"/>
+
+  <div id="admin-tab-tasks">
+    <div class="stats">
+      <div class="sc"><div class="n" id="s-total">—</div><div class="l">Total Active</div></div>
+      <div class="sc"><div class="n" id="s-blocked" style="color:var(--red)">—</div><div class="l">Blocked</div></div>
+      <div class="sc"><div class="n" id="s-inp" style="color:var(--cyan)">—</div><div class="l">In Progress</div></div>
+      <div class="sc"><div class="n" id="s-avg">—</div><div class="l">Avg Days to Complete</div></div>
+    </div>
+    <div class="fb">
+      <select id="f-owner" onchange="applyFilters()"><option value="">All Team Members</option></select>
+      <select id="f-client" onchange="applyFilters()"><option value="">All Clients</option></select>
+      <select id="f-status" onchange="applyFilters()">
+        <option value="">All Statuses</option>
+        <option value="To Do">To Do</option>
+        <option value="In Progress">In Progress</option>
+        <option value="Blocked">Blocked</option>
+      </select>
+      <select id="f-type" onchange="applyFilters()">
+        <option value="">Tasks + Subtasks</option>
+        <option value="task">Tasks only</option>
+        <option value="subtask">Subtasks only</option>
+      </select>
+      <input id="f-search" placeholder="Search tasks…" oninput="applyFilters()" style="min-width:180px"/>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th>Task</th><th>Client</th><th>Owner</th><th>Status</th><th>Due</th><th>Days Open</th><th>Action</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div class="empty" id="empty" style="display:none">No tasks match filters.</div>
+    </div>
   </div>
-  <div class="tbl-wrap">
-    <table>
-      <thead><tr>
-        <th>Task</th><th>Client</th><th>Owner</th><th>Status</th><th>Due</th><th>Days Open</th><th>Action</th>
-      </tr></thead>
-      <tbody id="tbody"></tbody>
-    </table>
-    <div class="empty" id="empty" style="display:none">No tasks match filters.</div>
+
+  <div id="admin-tab-reports" style="display:none">
+    <div class="wr-kpi">
+      <div class="wr-kpi-c"><div class="n" id="wr-k-total">—</div><div class="l">Total Submissions</div></div>
+      <div class="wr-kpi-c"><div class="n" id="wr-k-gmv" style="color:var(--cyan)">—</div><div class="l">Total GMV Reported</div></div>
+      <div class="wr-kpi-c"><div class="n" id="wr-k-videos">—</div><div class="l">Videos Posted</div></div>
+      <div class="wr-kpi-c"><div class="n" id="wr-k-health">—</div><div class="l">Avg Client Health</div></div>
+    </div>
+    <div class="wr-fb">
+      <select id="wr-f-person" onchange="renderAdminReports()"><option value="">All Team Members</option></select>
+      <select id="wr-f-brand" onchange="renderAdminReports()"><option value="">All Brands</option></select>
+      <select id="wr-f-weeks" onchange="renderAdminReports()">
+        <option value="8">Last 8 weeks</option>
+        <option value="4">Last 4 weeks</option>
+        <option value="12">Last 12 weeks</option>
+        <option value="0">All time</option>
+      </select>
+    </div>
+    <div class="wr-section">Brand Trends — GMV &amp; Content</div>
+    <div id="wr-trends"></div>
+    <div class="wr-section">All Submissions</div>
+    <div class="wr-tbl">
+      <table>
+        <thead><tr>
+          <th>Week</th><th>Brand</th><th>Submitted By</th><th>GMV</th><th>Videos</th><th>Samples</th><th>Health</th><th>CTR</th><th>Notes</th>
+        </tr></thead>
+        <tbody id="wr-tbody"></tbody>
+      </table>
+      <div class="empty" id="wr-empty" style="display:none">No reports found.</div>
+    </div>
   </div>
 </div>
 <div class="overlay" id="nudge-overlay">
@@ -687,8 +773,140 @@ const TASK_MANAGEMENT_HTML = `<!DOCTYPE html>
 </div>
 <div class="toast" id="toast"></div>
 <script>
-var ALL=[],FILTERED=[],NT=null,ADEL_ID=null;
+var ALL=[],FILTERED=[],NT=null,ADEL_ID=null,WR_ALL=[];
 function esc(s){return(s||'').replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+
+function adminSwitchTab(idx){
+  document.querySelectorAll('.tab').forEach(function(el,i){el.classList.toggle('active',i===idx);});
+  document.getElementById('admin-tab-tasks').style.display=idx===0?'':'none';
+  document.getElementById('admin-tab-reports').style.display=idx===1?'':'none';
+  if(idx===1)loadAdminReports();
+}
+
+function loadAdminReports(){
+  document.getElementById('wr-trends').innerHTML='<div style="color:var(--muted);font-size:13px;padding:20px 0">Loading reports…</div>';
+  fetch('/api/admin/weekly-reports',{credentials:'include'}).then(function(r){return r.json();}).then(function(d){
+    WR_ALL=d.reports||[];
+    buildWrFilters();
+    renderAdminReports();
+  }).catch(function(e){document.getElementById('wr-trends').innerHTML='<div style="color:var(--red);font-size:13px">Failed: '+e+'</div>';});
+}
+
+function buildWrFilters(){
+  var people={},brands={};
+  WR_ALL.forEach(function(r){
+    if(r.submittedBy)people[r.submittedBy]=1;
+    if(r.brand)brands[r.brand]=1;
+  });
+  var ps=document.getElementById('wr-f-person');
+  ps.innerHTML='<option value="">All Team Members</option>'+Object.keys(people).sort().map(function(p){return'<option value="'+esc(p)+'">'+esc(p.split('@')[0])+'</option>';}).join('');
+  var bs=document.getElementById('wr-f-brand');
+  bs.innerHTML='<option value="">All Brands</option>'+Object.keys(brands).sort().map(function(b){return'<option value="'+esc(b)+'">'+esc(b)+'</option>';}).join('');
+}
+
+function renderAdminReports(){
+  var person=document.getElementById('wr-f-person').value;
+  var brand=document.getElementById('wr-f-brand').value;
+  var weeks=parseInt(document.getElementById('wr-f-weeks').value)||0;
+  var cutoff=0;
+  if(weeks>0){var d=new Date();d.setDate(d.getDate()-weeks*7);cutoff=d.getTime();}
+  var rpts=WR_ALL.filter(function(r){
+    if(person&&r.submittedBy!==person)return false;
+    if(brand&&r.brand!==brand)return false;
+    if(cutoff&&r.submittedAt&&r.submittedAt<cutoff)return false;
+    return true;
+  });
+
+  /* KPI summary */
+  var totalGmv=0,totalVideos=0,healthSum=0,healthCnt=0;
+  rpts.forEach(function(r){
+    totalGmv+=parseFloat(r.gmv||0);
+    totalVideos+=parseFloat(r.videosPosted||0);
+    var h=healthAvg(r);if(h!==null){healthSum+=h;healthCnt++;}
+  });
+  document.getElementById('wr-k-total').textContent=rpts.length;
+  document.getElementById('wr-k-gmv').textContent='$'+Math.round(totalGmv).toLocaleString();
+  document.getElementById('wr-k-videos').textContent=totalVideos;
+  var avgH=healthCnt?Math.round(healthSum/healthCnt*10)/10:null;
+  var hEl=document.getElementById('wr-k-health');
+  hEl.textContent=avgH!==null?avgH+'/5':'—';
+  hEl.style.color=avgH===null?'var(--txt)':avgH>=4?'#6be86b':avgH>=3?'#ffcf8a':'var(--red)';
+
+  /* Brand trends */
+  var byBrand={};
+  rpts.forEach(function(r){
+    if(!r.brand)return;
+    if(!byBrand[r.brand])byBrand[r.brand]=[];
+    byBrand[r.brand].push(r);
+  });
+  var brandNames=Object.keys(byBrand).sort(function(a,b){
+    var ag=byBrand[a].reduce(function(s,r){return s+parseFloat(r.gmv||0);},0);
+    var bg=byBrand[b].reduce(function(s,r){return s+parseFloat(r.gmv||0);},0);
+    return bg-ag;
+  });
+  var trendsHtml='';
+  brandNames.forEach(function(bn){
+    var entries=byBrand[bn].sort(function(a,b){return(a.week||'').localeCompare(b.week||'');});
+    var gmvs=entries.map(function(r){return parseFloat(r.gmv||0);});
+    var latestGmv=gmvs[gmvs.length-1]||0;
+    var prevGmv=gmvs.length>1?gmvs[gmvs.length-2]:null;
+    var delta=prevGmv!==null?((latestGmv-prevGmv)/Math.max(prevGmv,1)*100):null;
+    var deltaHtml='';
+    if(delta!==null){
+      var cls=delta>5?'delta-up':delta<-5?'delta-dn':'delta-flat';
+      deltaHtml='<span class="bt-delta '+cls+'">'+(delta>0?'+':'')+Math.round(delta)+'%</span>';
+    }
+    var maxGmv=Math.max.apply(null,gmvs.concat([1]));
+    var sparkHtml='<div class="spark-row">';
+    gmvs.slice(-8).forEach(function(g){
+      var h=Math.max(3,Math.round(g/maxGmv*28));
+      sparkHtml+='<div class="spark-bar" style="height:'+h+'px"></div>';
+    });
+    sparkHtml+='</div>';
+    var latestWeek=entries[entries.length-1]?entries[entries.length-1].week:'';
+    var latestVideos=entries[entries.length-1]?parseInt(entries[entries.length-1].videosPosted||0):0;
+    trendsHtml+='<div class="brand-trend">';
+    trendsHtml+='<div class="bt-brand">'+esc(bn)+'</div>';
+    trendsHtml+='<div class="bt-gmv">$'+Math.round(latestGmv).toLocaleString()+'</div>';
+    trendsHtml+=deltaHtml;
+    trendsHtml+='<div style="flex:1">'+sparkHtml+'</div>';
+    trendsHtml+='<div style="font-size:12px;color:var(--muted);text-align:right"><div>'+latestVideos+' videos</div><div>Wk '+esc(latestWeek)+'</div></div>';
+    trendsHtml+='</div>';
+  });
+  document.getElementById('wr-trends').innerHTML=trendsHtml||'<div style="color:var(--muted);font-size:13px;padding:12px 0">No data yet.</div>';
+
+  /* Submissions table */
+  var tbody=document.getElementById('wr-tbody');
+  var empty=document.getElementById('wr-empty');
+  if(!rpts.length){tbody.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  var sorted=rpts.slice().sort(function(a,b){return(b.week||'').localeCompare(a.week||'')||(b.submittedAt||0)-(a.submittedAt||0);});
+  tbody.innerHTML=sorted.map(function(r){
+    var h=healthAvg(r);
+    var hColor=h===null?'var(--muted)':h>=4?'#6be86b':h>=3?'#ffcf8a':'var(--red)';
+    return'<tr>'+
+      '<td>'+esc(r.week||'—')+'</td>'+
+      '<td style="font-weight:600;color:var(--cyan)">'+esc(r.brand||'—')+'</td>'+
+      '<td>'+esc((r.submittedBy||'—').split('@')[0])+'</td>'+
+      '<td>$'+Math.round(parseFloat(r.gmv||0)).toLocaleString()+'</td>'+
+      '<td>'+parseInt(r.videosPosted||0)+'</td>'+
+      '<td>'+parseInt(r.samplesCount||0)+'</td>'+
+      '<td style="color:'+hColor+'">'+(h!==null?h+'/5':'—')+'</td>'+
+      '<td>'+(r.ctr||'—')+'%</td>'+
+      '<td style="font-size:12px;color:var(--muted);max-width:200px">'+esc((r.notes||'').slice(0,80))+'</td>'+
+      '</tr>';
+  }).join('');
+}
+
+function healthAvg(r){
+  var s=0,c=0;
+  if(r.spsOverall){s+=parseFloat(r.spsOverall);c++;}
+  if(r.productSatisfaction){s+=parseFloat(r.productSatisfaction);c++;}
+  if(r.fulfillmentScore){s+=parseFloat(r.fulfillmentScore);c++;}
+  if(r.customerServiceScore){s+=parseFloat(r.customerServiceScore);c++;}
+  return c?Math.round(s/c*10)/10:null;
+}
+
 function loadAll(){
   document.getElementById('sub').textContent='Loading…';
   Promise.all([
@@ -1459,7 +1677,7 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
       } else {
         brands = BRAND_MANAGERS[email] || [];
       }
-      res.json({ brands });
+      res.json({ brands, isAdmin });
     } catch (e) {
       res.status(500).json({ error: e.message });
     }
@@ -1491,6 +1709,19 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
         ? all.filter((r) => brands.has(r.brand))
         : all;
       res.json({ reports: reports.slice(0, 50) });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // ---------- ROUTE: GET /api/admin/weekly-reports ----------
+  app.get('/api/admin/weekly-reports', requireAuth, async (req, res) => {
+    try {
+      const email = (req.userEmail || (req.session && req.session.userEmail) || '').toLowerCase();
+      const isAdmin = !!(req.session && req.session.isPortalAdmin) || ADMIN_EMAILS.has(email);
+      if (!isAdmin) return res.status(403).json({ error: 'Forbidden' });
+      const all = readJsonFile(WR_FILE, []);
+      res.json({ reports: all });
     } catch (e) {
       res.status(500).json({ error: e.message });
     }
