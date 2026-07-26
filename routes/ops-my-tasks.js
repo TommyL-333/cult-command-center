@@ -769,6 +769,7 @@ const TASK_MANAGEMENT_HTML = `<!DOCTYPE html>
         <option value="To Do">To Do</option>
         <option value="In Progress">In Progress</option>
         <option value="Blocked">Blocked</option>
+        <option value="Completed">Completed</option>
       </select>
       <select id="f-type" onchange="applyFilters()">
         <option value="">Tasks + Subtasks</option>
@@ -851,7 +852,7 @@ const TASK_MANAGEMENT_HTML = `<!DOCTYPE html>
 </div>
 <div class="toast" id="toast"></div>
 <script>
-var ALL=[],FILTERED=[],COMPLETED=[],NT=null,ADEL_ID=null,WR_ALL=[];
+var ALL=[],FILTERED=[],NT=null,ADEL_ID=null,WR_ALL=[];
 function esc(s){return(s||'').replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 
 function adminSwitchTab(idx){
@@ -1009,10 +1010,10 @@ function loadAll(){
   ]).then(function(rs){
     var d=rs[0],teamData=rs[1];
     if(d.error){document.getElementById('sub').textContent='Error: '+d.error;return;}
-    ALL=d.tasks||[];COMPLETED=d.completedTasks||[];buildOpts(teamData.team||[]);applyFilters();
+    ALL=d.tasks||[];buildOpts(teamData.team||[]);applyFilters();
     document.getElementById('s-avg').textContent=d.avgDays?d.avgDays+'d':'—';
-    var active=FILTERED.filter(function(t){return t.status!=='Completed';});
-    document.getElementById('sub').textContent=active.length+' active tasks across all team members.'+(d.avgDays?' Avg '+d.avgDays+' days to complete.':'');
+    var activeTotal=ALL.filter(function(t){return t.status!=='Completed';}).length;
+    document.getElementById('sub').textContent=activeTotal+' active tasks across all team members.'+(d.avgDays?' Avg '+d.avgDays+' days to complete.':'');
   }).catch(function(e){document.getElementById('sub').textContent='Failed: '+e;});
 }
 function buildOpts(roster){
@@ -1078,7 +1079,7 @@ function updateStats(ownerFilter,clientFilter,dateFrom,dateTo){
     var fromMs=dateFrom?new Date(dateFrom).getTime():Date.now()-30*86400000;
     var toMs=dateTo?new Date(dateTo).getTime()+86400000:Date.now();
     var rangeLabel=dateFrom||dateTo?Math.round((toMs-fromMs)/86400000)+'d range':'30d';
-    var cnt=COMPLETED.filter(function(t){return t.ownerOpenId===ownerFilter&&t.completedOn&&t.completedOn>=fromMs&&t.completedOn<=toMs;}).length;
+    var cnt=ALL.filter(function(t){return t.status==='Completed'&&t.ownerOpenId===ownerFilter&&t.completedOn&&t.completedOn>=fromMs&&t.completedOn<=toMs;}).length;
     document.getElementById('s-completed').textContent=cnt;
     document.getElementById('s-completed-l').textContent='Completed ('+rangeLabel+')';
   } else {
@@ -1978,27 +1979,16 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
 
       const [records, clientsMap] = await Promise.all([listAllTaskRecords(), getClientsMap().catch(() => ({}))]);
       const tasks = [];
-      const completedTasks = [];
       let totalMs = 0, completedCount = 0;
       for (const rec of records) {
         const f = rec.fields || {};
         const status = textVal(f.Status);
         const shaped = shapeTask(rec, clientsMap);
         shaped.isSubtask = false;
-        if (status !== 'Completed') {
-          tasks.push(shaped);
-        } else {
-          completedTasks.push({
-            ownerOpenId: shaped.ownerOpenId,
-            ownerName: shaped.ownerName,
-            client: shaped.client,
-            completedOn: shaped.completedOn,
-            createdOn: shaped.createdOn,
-          });
-          if (shaped.createdOn && shaped.completedOn) {
-            totalMs += (shaped.completedOn - shaped.createdOn);
-            completedCount++;
-          }
+        tasks.push(shaped);
+        if (status === 'Completed' && shaped.createdOn && shaped.completedOn) {
+          totalMs += (shaped.completedOn - shaped.createdOn);
+          completedCount++;
         }
       }
       const subtaskRecords = readJsonFile(ST_FILE, []);
@@ -2007,7 +1997,7 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
         tasks.push({ record_id: st.id, task: st.title, client: '', status: 'To Do', isSubtask: true, ownerOpenId: '', ownerName: '', createdOn: st.createdAt, dueDate: null });
       }
       const avgDays = completedCount > 0 ? Math.round(totalMs / completedCount / 86400000) : null;
-      res.json({ tasks, completedTasks, avgDays });
+      res.json({ tasks, avgDays });
     } catch (e) {
       console.error('[ops-my-tasks] admin/tasks error:', e.message);
       res.status(500).json({ error: e.message });
