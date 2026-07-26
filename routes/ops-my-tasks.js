@@ -677,10 +677,11 @@ const TASK_MANAGEMENT_HTML = `<!DOCTYPE html>
   .wrap{max-width:1200px;margin:0 auto;padding:28px 18px 80px}
   h1{font-size:24px;margin:0 0 4px;font-weight:700;background:linear-gradient(90deg,var(--cyan),var(--red));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
   .sub{color:var(--muted);font-size:13px;margin:0 0 22px}
-  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
-  .sc{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px;transition:grid-template-columns .2s}
+  .sc{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;text-align:center;transition:background .2s,border-color .2s}
   .sc .n{font-size:30px;font-weight:700}
   .sc .l{font-size:11px;color:var(--muted);text-transform:uppercase;margin-top:4px}
+  .sc.highlight-blocked{background:rgba(255,0,80,.1)!important;border-color:var(--red)!important}
   .fb{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;align-items:center}
   .fb select,.fb input{background:var(--panel2);border:1px solid var(--border);border-radius:8px;color:var(--txt);padding:8px 12px;font-size:13px;font-family:inherit}
   .fb select:focus,.fb input:focus{outline:none;border-color:var(--cyan)}
@@ -753,11 +754,12 @@ const TASK_MANAGEMENT_HTML = `<!DOCTYPE html>
   </div>
 
   <div id="admin-tab-tasks">
-    <div class="stats">
+    <div class="stats" id="stats-row">
       <div class="sc"><div class="n" id="s-total">—</div><div class="l">Total Active</div></div>
-      <div class="sc"><div class="n" id="s-blocked" style="color:var(--red)">—</div><div class="l">Blocked</div></div>
+      <div class="sc" id="sc-blocked"><div class="n" id="s-blocked" style="color:var(--red)">—</div><div class="l">Blocked</div></div>
       <div class="sc"><div class="n" id="s-inp" style="color:var(--cyan)">—</div><div class="l">In Progress</div></div>
-      <div class="sc"><div class="n" id="s-avg">—</div><div class="l">Avg Days to Complete</div></div>
+      <div class="sc"><div class="n" id="s-avg">—</div><div class="l" id="s-avg-l">Avg Days to Complete</div></div>
+      <div class="sc" id="sc-completed" style="display:none"><div class="n" id="s-completed" style="color:#6be86b">—</div><div class="l" id="s-completed-l">Completed (30d)</div></div>
     </div>
     <div class="fb">
       <select id="f-owner" onchange="applyFilters()"><option value="">All Team Members</option></select>
@@ -774,6 +776,9 @@ const TASK_MANAGEMENT_HTML = `<!DOCTYPE html>
         <option value="subtask">Subtasks only</option>
       </select>
       <input id="f-search" placeholder="Search tasks…" oninput="applyFilters()" style="min-width:180px"/>
+      <input type="date" id="f-date-from" onchange="applyFilters()" title="Created from" style="min-width:130px"/>
+      <input type="date" id="f-date-to" onchange="applyFilters()" title="Created to" style="min-width:130px"/>
+      <button class="chip" onclick="clearDates()" id="clear-dates-btn" style="display:none">✕ Clear dates</button>
     </div>
     <div class="tbl-wrap">
       <table>
@@ -796,12 +801,15 @@ const TASK_MANAGEMENT_HTML = `<!DOCTYPE html>
     <div class="wr-fb">
       <select id="wr-f-person" onchange="renderAdminReports()"><option value="">All Team Members</option></select>
       <select id="wr-f-brand" onchange="renderAdminReports()"><option value="">All Brands</option></select>
-      <select id="wr-f-weeks" onchange="renderAdminReports()">
+      <select id="wr-f-weeks" onchange="wrQuickRange()">
         <option value="8">Last 8 weeks</option>
         <option value="4">Last 4 weeks</option>
         <option value="12">Last 12 weeks</option>
         <option value="0">All time</option>
+        <option value="custom">Custom range…</option>
       </select>
+      <input type="date" id="wr-f-from" onchange="renderAdminReports()" style="display:none"/>
+      <input type="date" id="wr-f-to" onchange="renderAdminReports()" style="display:none"/>
     </div>
     <div class="wr-section">Brand Trends — GMV &amp; Content</div>
     <div id="wr-trends"></div>
@@ -843,7 +851,7 @@ const TASK_MANAGEMENT_HTML = `<!DOCTYPE html>
 </div>
 <div class="toast" id="toast"></div>
 <script>
-var ALL=[],FILTERED=[],NT=null,ADEL_ID=null,WR_ALL=[];
+var ALL=[],FILTERED=[],COMPLETED=[],NT=null,ADEL_ID=null,WR_ALL=[];
 function esc(s){return(s||'').replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 
 function adminSwitchTab(idx){
@@ -874,16 +882,32 @@ function buildWrFilters(){
   bs.innerHTML='<option value="">All Brands</option>'+Object.keys(brands).sort().map(function(b){return'<option value="'+esc(b)+'">'+esc(b)+'</option>';}).join('');
 }
 
+function wrQuickRange(){
+  var v=document.getElementById('wr-f-weeks').value;
+  var fromEl=document.getElementById('wr-f-from'),toEl=document.getElementById('wr-f-to');
+  if(v==='custom'){fromEl.style.display='';toEl.style.display='';}
+  else{fromEl.style.display='none';toEl.style.display='none';}
+  renderAdminReports();
+}
 function renderAdminReports(){
   var person=document.getElementById('wr-f-person').value;
   var brand=document.getElementById('wr-f-brand').value;
-  var weeks=parseInt(document.getElementById('wr-f-weeks').value)||0;
-  var cutoff=0;
-  if(weeks>0){var d=new Date();d.setDate(d.getDate()-weeks*7);cutoff=d.getTime();}
+  var weeks=document.getElementById('wr-f-weeks').value;
+  var cutoff=0,cutoffEnd=0;
+  if(weeks==='custom'){
+    var fromVal=document.getElementById('wr-f-from').value;
+    var toVal=document.getElementById('wr-f-to').value;
+    cutoff=fromVal?new Date(fromVal).getTime():0;
+    cutoffEnd=toVal?new Date(toVal).getTime()+86400000:0;
+  } else {
+    var w=parseInt(weeks)||0;
+    if(w>0){var d=new Date();d.setDate(d.getDate()-w*7);cutoff=d.getTime();}
+  }
   var rpts=WR_ALL.filter(function(r){
     if(person&&r.submittedBy!==person)return false;
     if(brand&&r.brand!==brand)return false;
     if(cutoff&&r.submittedAt&&r.submittedAt<cutoff)return false;
+    if(cutoffEnd&&r.submittedAt&&r.submittedAt>cutoffEnd)return false;
     return true;
   });
 
@@ -985,12 +1009,9 @@ function loadAll(){
   ]).then(function(rs){
     var d=rs[0],teamData=rs[1];
     if(d.error){document.getElementById('sub').textContent='Error: '+d.error;return;}
-    ALL=d.tasks||[];buildOpts(teamData.team||[]);applyFilters();
-    var active=ALL.filter(function(t){return t.status!=='Completed';});
-    document.getElementById('s-total').textContent=active.length;
-    document.getElementById('s-blocked').textContent=active.filter(function(t){return t.status==='Blocked';}).length;
-    document.getElementById('s-inp').textContent=active.filter(function(t){return t.status==='In Progress';}).length;
+    ALL=d.tasks||[];COMPLETED=d.completedTasks||[];buildOpts(teamData.team||[]);applyFilters();
     document.getElementById('s-avg').textContent=d.avgDays?d.avgDays+'d':'—';
+    var active=FILTERED.filter(function(t){return t.status!=='Completed';});
     document.getElementById('sub').textContent=active.length+' active tasks across all team members.'+(d.avgDays?' Avg '+d.avgDays+' days to complete.':'');
   }).catch(function(e){document.getElementById('sub').textContent='Failed: '+e;});
 }
@@ -1013,6 +1034,11 @@ function applyFilters(){
   var ow=document.getElementById('f-owner').value,cl=document.getElementById('f-client').value;
   var st=document.getElementById('f-status').value,ty=document.getElementById('f-type').value;
   var q=(document.getElementById('f-search').value||'').toLowerCase();
+  var dateFrom=document.getElementById('f-date-from').value;
+  var dateTo=document.getElementById('f-date-to').value;
+  var fromMs=dateFrom?new Date(dateFrom).getTime():0;
+  var toMs=dateTo?new Date(dateTo).getTime()+86400000:0;
+  document.getElementById('clear-dates-btn').style.display=(dateFrom||dateTo)?'':'none';
   FILTERED=ALL.filter(function(t){
     if(ow&&t.ownerOpenId!==ow)return false;
     if(cl&&t.client!==cl)return false;
@@ -1020,9 +1046,45 @@ function applyFilters(){
     if(ty==='task'&&t.isSubtask)return false;
     if(ty==='subtask'&&!t.isSubtask)return false;
     if(q&&!(t.task||'').toLowerCase().includes(q)&&!(t.client||'').toLowerCase().includes(q))return false;
+    if(fromMs&&t.createdOn&&t.createdOn<fromMs)return false;
+    if(toMs&&t.createdOn&&t.createdOn>toMs)return false;
     return true;
   });
+  updateStats(ow,cl,dateFrom,dateTo);
   renderTbl();
+}
+function clearDates(){
+  document.getElementById('f-date-from').value='';
+  document.getElementById('f-date-to').value='';
+  applyFilters();
+}
+function updateStats(ownerFilter,clientFilter,dateFrom,dateTo){
+  var active=FILTERED.filter(function(t){return t.status!=='Completed';});
+  var blocked=active.filter(function(t){return t.status==='Blocked';});
+  var inProg=active.filter(function(t){return t.status==='In Progress';});
+  document.getElementById('s-total').textContent=active.length;
+  document.getElementById('s-blocked').textContent=blocked.length;
+  document.getElementById('s-inp').textContent=inProg.length;
+  /* highlight blocked card when a client is selected and there are blocks */
+  var scBlock=document.getElementById('sc-blocked');
+  if(clientFilter&&blocked.length>0){scBlock.classList.add('highlight-blocked');}
+  else{scBlock.classList.remove('highlight-blocked');}
+  /* 5th card: completed-in-timeframe — show only when owner is selected */
+  var scComp=document.getElementById('sc-completed');
+  var statsRow=document.getElementById('stats-row');
+  if(ownerFilter){
+    scComp.style.display='';
+    statsRow.style.gridTemplateColumns='repeat(5,1fr)';
+    var fromMs=dateFrom?new Date(dateFrom).getTime():Date.now()-30*86400000;
+    var toMs=dateTo?new Date(dateTo).getTime()+86400000:Date.now();
+    var rangeLabel=dateFrom||dateTo?Math.round((toMs-fromMs)/86400000)+'d range':'30d';
+    var cnt=COMPLETED.filter(function(t){return t.ownerOpenId===ownerFilter&&t.completedOn&&t.completedOn>=fromMs&&t.completedOn<=toMs;}).length;
+    document.getElementById('s-completed').textContent=cnt;
+    document.getElementById('s-completed-l').textContent='Completed ('+rangeLabel+')';
+  } else {
+    scComp.style.display='none';
+    statsRow.style.gridTemplateColumns='repeat(4,1fr)';
+  }
 }
 function daysOpen(t){if(!t.createdOn)return'—';var d=Math.floor((Date.now()-t.createdOn)/86400000);return d>0?d+'d':'<1d';}
 function sbadge(s){var m={'To Do':'badge todo','In Progress':'badge inprogress','Blocked':'badge blocked','Completed':'badge completed'};return'<span class="'+(m[s]||'badge todo')+'">'+esc(s||'—')+'</span>';}
@@ -1916,16 +1978,27 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
 
       const [records, clientsMap] = await Promise.all([listAllTaskRecords(), getClientsMap().catch(() => ({}))]);
       const tasks = [];
+      const completedTasks = [];
       let totalMs = 0, completedCount = 0;
       for (const rec of records) {
         const f = rec.fields || {};
         const status = textVal(f.Status);
         const shaped = shapeTask(rec, clientsMap);
         shaped.isSubtask = false;
-        if (status !== 'Completed') tasks.push(shaped);
-        if (status === 'Completed' && shaped.createdOn && shaped.completedOn) {
-          totalMs += (shaped.completedOn - shaped.createdOn);
-          completedCount++;
+        if (status !== 'Completed') {
+          tasks.push(shaped);
+        } else {
+          completedTasks.push({
+            ownerOpenId: shaped.ownerOpenId,
+            ownerName: shaped.ownerName,
+            client: shaped.client,
+            completedOn: shaped.completedOn,
+            createdOn: shaped.createdOn,
+          });
+          if (shaped.createdOn && shaped.completedOn) {
+            totalMs += (shaped.completedOn - shaped.createdOn);
+            completedCount++;
+          }
         }
       }
       const subtaskRecords = readJsonFile(ST_FILE, []);
@@ -1934,7 +2007,7 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
         tasks.push({ record_id: st.id, task: st.title, client: '', status: 'To Do', isSubtask: true, ownerOpenId: '', ownerName: '', createdOn: st.createdAt, dueDate: null });
       }
       const avgDays = completedCount > 0 ? Math.round(totalMs / completedCount / 86400000) : null;
-      res.json({ tasks, avgDays });
+      res.json({ tasks, completedTasks, avgDays });
     } catch (e) {
       console.error('[ops-my-tasks] admin/tasks error:', e.message);
       res.status(500).json({ error: e.message });
