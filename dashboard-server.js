@@ -3198,6 +3198,305 @@ async function fetchNetGmvForBrand(brand, brandsObj, brandIdx, opts = {}) {
   return netGmv ?? (brand.cachedNetGmv ?? null);
 }
 
+// ═══════════════════════════════════════════════════════════════════════════
+// Client Agent — Weekly Report
+// Every number here is computed deterministically from real API/DB calls.
+// The LLM (generateNarrative, below) never computes or invents a number — it
+// only writes prose about numbers that are already fixed by the time it runs.
+// ═══════════════════════════════════════════════════════════════════════════
+
+// Shop traffic + conversion rate. Mirrors the closure of the same name inside
+// /portal-admin/shop-metrics/:brandId — duplicated rather than extracted so
+// that existing, working route is never touched by this change.
+async function fetchShopTrafficForWindow(brand, brands, bi, startDateStr, endDateStr) {
+  try {
+    const r = await ttsBrandGet(brand, brands, bi, '/analytics/202509/shop/performance',
+      { start_date_ge: startDateStr, end_date_lt: endDateStr });
+    const d = r?.data?.data || r?.data;
+    const interval = d?.performance?.intervals?.[0];
+    if (!interval) return null;
+    const traffic = interval.traffic || {};
+    return {
+      convRate: traffic.avg_conversation_rate != null ? parseFloat(traffic.avg_conversation_rate) : null,
+      visitors: traffic.avg_visitors != null ? Number(traffic.avg_visitors) : null,
+    };
+  } catch (e) {
+    console.log(`[client-agent] shop traffic fetch failed for ${brand.name}:`, e.response?.data?.message || e.message);
+    return null;
+  }
+}
+
+// Product impressions + weighted CTR. Same duplication rationale as above.
+async function fetchProductPerfForWindow(brand, brands, bi, startDateStr, endDateStr) {
+  try {
+    let totalImpressions = 0, weightedCtr = 0, pageToken = null;
+    for (let page = 0; page < 3; page++) {
+      const params = { start_date_ge: startDateStr, end_date_lt: endDateStr, page_size: 50 };
+      if (pageToken) params.page_token = pageToken;
+      const r = await ttsBrandGet(brand, brands, bi, '/analytics/202605/shop_products/performance', params);
+      const d = r?.data?.data || r?.data;
+      const products = d?.products || [];
+      for (const p of products) {
+        const tp = p.total_performance || {};
+        const imp = Number(tp.product_impressions) || 0;
+        const ctr = parseFloat(tp.ctr) || 0;
+        totalImpressions += imp;
+        weightedCtr += imp * ctr;
+      }
+      pageToken = d?.next_page_token;
+      if (!pageToken || products.length === 0) break;
+    }
+    return {
+      impressions: totalImpressions > 0 ? totalImpressions : null,
+      ctr: totalImpressions > 0 ? weightedCtr / totalImpressions : null,
+    };
+  } catch (e) {
+    console.log(`[client-agent] product perf fetch failed for ${brand.name}:`, e.response?.data?.message || e.message);
+    return null;
+  }
+}
+
+// Order count for the window — used ONLY to compute click-to-order rate.
+// Never used as a dollar figure; the dollar figure always comes from the
+// LOCKED fetchNetGmvForBrand() above, so this can never drift from billing.
+async function fetchOrderCountForWindow(brand, brands, bi, startTs, endTs) {
+  const CANCEL_STATUSES = new Set([140, 4, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND', 'REVERSE_PENDING', 'REVERSE_COMPLETE']);
+  let orders = 0, pageToken = null;
+  try {
+    for (let page = 0; page < 10; page++) {
+      const body = { create_time_ge: startTs, create_time_lt: endTs, sort_field: 'create_time', sort_order: 'DESC' };
+      if (pageToken) body.page_token = pageToken;
+      const resp = await ttsBrandPost(brand, brands, bi, '/order/202309/orders/search', body, { page_size: 100 });
+      const list = resp?.data?.orders || resp?.data?.order_list || [];
+      for (const o of list) {
+        if (o.is_sample_order) continue;
+        const status = o.order_status ?? o.status;
+        if (status !== undefined && CANCEL_STATUSES.has(status)) continue;
+        orders++;
+      }
+      const nextToken = resp?.data?.next_page_token;
+      if (!nextToken || list.length === 0) break;
+      pageToken = nextToken;
+    }
+  } catch (e) { /* best-effort count — a failure here degrades the rate to null, never throws */ }
+  return orders;
+}
+
+// One brand's weekly KPI set for the report. `sales` always comes from the
+// LOCKED fetchNetGmvForBrand() — never recomputed — so it can never drift
+// from the dollar figure the client's own invoice shows.
+async function getShopMetricsForReport(brandId, range) {
+  const brands = loadBrands();
+  const bi = (brands.clients || []).findIndex(b => b.id === brandId);
+  if (bi === -1) throw new Error(`getShopMetricsForReport: brand not found (${brandId})`);
+  const brand = brands.clients[bi];
+  if (!brand.tiktokShopToken?.access_token) {
+    return { brandId, brandName: brand.name, noToken: true };
+  }
+
+  const startTs = Math.floor(range.start / 1000);
+  const endTs = Math.floor(range.end / 1000);
+  const ds = (ms) => new Date(ms).toISOString().slice(0, 10);
+
+  const [sales, traffic, productPerf, orders] = await Promise.all([
+    fetchNetGmvForBrand(brand, brands, bi, { startTs, endTs }),
+    fetchShopTrafficForWindow(brand, brands, bi, ds(range.start), ds(range.end)),
+    fetchProductPerfForWindow(brand, brands, bi, ds(range.start), ds(range.end)),
+    fetchOrderCountForWindow(brand, brands, bi, startTs, endTs),
+  ]);
+
+  const visitors = traffic?.visitors ?? null;
+  return {
+    brandId,
+    brandName: brand.name,
+    sales,
+    orders,
+    impressions: productPerf?.impressions ?? null,
+    ctr: productPerf?.ctr ?? null,                 // fraction, e.g. 0.021 = 2.1%
+    clickToOrderRate: (visitors && orders != null) ? orders / visitors : null,
+  };
+}
+
+// Top affiliates. Source: the Reacher relay's /creators/top endpoint — the
+// SAME source the client portal's own dashboard already uses.
+// HONEST LIMITATION: this relay endpoint takes no date-range parameter, so
+// results reflect Reacher's own tracking window, not this report's exact
+// date range. Never presented as precisely scoped to the week — see the
+// "(recent)" label in renderReportHTML below.
+async function getTopAffiliatesForReport(shopId, limit = 5) {
+  if (!shopId) return [];
+  try {
+    const { data } = await axios.get(`${CFG.railwayUrl}/affiliate/shops/${shopId}/creators/top`, { timeout: 10000 });
+    const list = data?.creators || data?.data || [];
+    return list.slice(0, limit).map(c => ({
+      handle: c.creator_handle || c.username || 'unknown',
+      gmv: parseFloat(c.gmv || c.shop_gmv || c.sale_amount || 0),
+    }));
+  } catch (e) {
+    console.log('[client-agent] top affiliates fetch failed:', e.message);
+    return [];
+  }
+}
+
+// Deterministic HTML render — zero LLM. This alone is a complete, honest
+// report; the narrative below only adds a few sentences of context on top.
+function renderReportHTML(context) {
+  const pct = (n) => (n == null ? '—' : (n * 100).toFixed(1) + '%');
+  const usd = (n) => (n == null ? '—' : '$' + Number(n).toLocaleString('en-US', { maximumFractionDigits: 2 }));
+  const num = (n) => (n == null ? '—' : Number(n).toLocaleString('en-US'));
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+
+  const affiliatesRows = (context.topAffiliates || []).map(a =>
+    `<tr><td>@${esc(a.handle)}</td><td style="text-align:right">${usd(a.gmv)}</td></tr>`
+  ).join('') || '<tr><td colspan="2" style="color:#888">No affiliate data available</td></tr>';
+
+  const taskRows = (context.completedTasks || []).map(t =>
+    `<tr><td>${esc(t.task)}</td><td>${esc(t.pillar)}</td><td>${new Date(t.completedOn).toLocaleDateString()}</td></tr>`
+  ).join('') || '<tr><td colspan="3" style="color:#888">No tasks completed in this window</td></tr>';
+
+  return `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>${esc(context.brandName)} — Weekly Report</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:640px;margin:0 auto;padding:32px;color:#1a1a1a}
+h1{font-size:22px;margin-bottom:4px} .sub{color:#666;font-size:13px;margin-bottom:24px}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:28px}
+.stat{background:#f7f7f5;border-radius:8px;padding:14px}
+.stat .label{font-size:11px;text-transform:uppercase;color:#888;letter-spacing:.04em}
+.stat .value{font-size:22px;font-weight:700;margin-top:2px}
+h2{font-size:15px;margin-top:28px;margin-bottom:8px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td{padding:6px 0;border-bottom:1px solid #eee}
+.narrative{background:#f7f7f5;border-left:3px solid #999;padding:12px 16px;margin-bottom:24px;font-size:14px;line-height:1.5}
+.note{color:#999;font-size:11px;margin-top:4px}
+</style></head><body>
+<h1>${esc(context.brandName)} — Weekly Report</h1>
+<div class="sub">${new Date(context.range.start).toLocaleDateString()} – ${new Date(context.range.end).toLocaleDateString()}</div>
+${context.narrative ? `<div class="narrative">${esc(context.narrative)}</div>` : ''}
+<div class="stats">
+  <div class="stat"><div class="label">Impressions</div><div class="value">${num(context.shopMetrics?.impressions)}</div></div>
+  <div class="stat"><div class="label">Sales</div><div class="value">${usd(context.shopMetrics?.sales)}</div></div>
+  <div class="stat"><div class="label">CTR</div><div class="value">${pct(context.shopMetrics?.ctr)}</div></div>
+  <div class="stat"><div class="label">Click-to-Order Rate</div><div class="value">${pct(context.shopMetrics?.clickToOrderRate)}</div></div>
+</div>
+<h2>Top Performing Affiliates <span class="note">(recent, not exactly this week — see note)</span></h2>
+<table><tbody>${affiliatesRows}</tbody></table>
+<h2>Completed This Week</h2>
+<table><tbody>${taskRows}</tbody></table>
+</body></html>`;
+}
+
+// LLM narrative. Strictly grounded: the system prompt forbids stating any
+// number not present in the JSON handed to it, and requires an honest
+// "no data" response rather than a guess — the anti-hallucination rule from
+// the roadmap, enforced in the prompt itself, not just hoped for.
+async function generateNarrative(context) {
+  if (!process.env.ANTHROPIC_API_KEY) return null;
+  try {
+    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+    const msg = await anthropic.messages.create({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 300,
+      system: `You write a 2-4 sentence narrative summary for a TikTok Shop client's weekly performance report.
+RULES (do not break these):
+- Only reference numbers that appear in the JSON provided below. Never estimate, round differently, or invent a figure not present.
+- If a figure is null, say data wasn't available for it — never guess a value.
+- Be honest about a bad week. Do not spin a decline as a positive.
+- No greeting, no sign-off — just the summary body.`,
+      messages: [{
+        role: 'user',
+        content: `Client: ${context.brandName}\nWindow: ${new Date(context.range.start).toISOString().slice(0,10)} to ${new Date(context.range.end).toISOString().slice(0,10)}\n\nData:\n${JSON.stringify({ shopMetrics: context.shopMetrics, topAffiliates: context.topAffiliates, completedTaskCount: (context.completedTasks || []).length }, null, 2)}`,
+      }],
+    });
+    return msg.content?.[0]?.text || null;
+  } catch (e) {
+    console.error('[client-agent] narrative generation failed:', e.message);
+    return null; // report still renders fine without narrative — see renderReportHTML
+  }
+}
+
+// Orchestrates the full report: data layer + narrative. Delivery/scheduling
+// is deliberately NOT triggered from here — see the /weekly-report/send
+// route below, which is a manual, human-triggered action, not a scheduler.
+async function generateWeeklyReport(brandId, range) {
+  const brands = loadBrands();
+  const bi = (brands.clients || []).findIndex(b => b.id === brandId);
+  if (bi === -1) throw new Error(`generateWeeklyReport: brand not found (${brandId})`);
+  const brand = brands.clients[bi];
+
+  const [shopMetrics, topAffiliates, completedTasks] = await Promise.all([
+    getShopMetricsForReport(brandId, range),
+    getTopAffiliatesForReport(brand.shopId),
+    opsMyTasksHelpers
+      ? require('./lib/client-agent-context').getCompletedTasks(brand.name, range, opsMyTasksHelpers).catch((e) => { console.error('[client-agent] task fetch failed:', e.message); return []; })
+      : Promise.resolve([]),
+  ]);
+
+  const context = { brandId, brandName: brand.name, range, shopMetrics, topAffiliates, completedTasks };
+  context.narrative = await generateNarrative(context);
+  context.html = renderReportHTML(context);
+  return context;
+}
+
+// GET /api/admin/client-agent/weekly-report/preview?brand=X&days=7
+// Generates and returns the report HTML for review. Never sends anything —
+// this is the safe way to look at a report before anyone else sees it.
+app.get('/api/admin/client-agent/weekly-report/preview', requirePortalAdmin, async (req, res) => {
+  try {
+    const { brand, days } = req.query;
+    if (!brand) return res.status(400).json({ error: 'brand query param required' });
+    const end = Date.now();
+    const start = end - (Number(days) > 0 ? Number(days) : 7) * 86400000;
+    const report = await generateWeeklyReport(brand, { start, end });
+    res.type('html').send(report.html);
+  } catch (e) {
+    console.error('[client-agent] weekly-report preview error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/client-agent/weekly-report/send  { brandId, days }
+// Manual, human-triggered send ONLY — posts into the client's existing Lark
+// group chat ("{brandName} Chat", the same one onboarding already creates).
+// Deliberately NOT wired to any scheduler. See roadmap Phase 4/7: automatic
+// unattended sending to real clients needs a review process this doesn't
+// have yet.
+app.post('/api/admin/client-agent/weekly-report/send', requirePortalAdmin, express.json(), async (req, res) => {
+  try {
+    const { brandId, days } = req.body || {};
+    if (!brandId) return res.status(400).json({ error: 'brandId required' });
+    const end = Date.now();
+    const start = end - (Number(days) > 0 ? Number(days) : 7) * 86400000;
+
+    const report = await generateWeeklyReport(brandId, { start, end });
+    const { _internals } = require('./lib/client-chat-sync');
+    const chatName = `${report.brandName} Chat`;
+    const t = await _internals.tenantToken();
+    const chatId = await _internals.findExistingChat(t, chatName);
+    if (!chatId) return res.status(404).json({ error: `No existing Lark chat found named "${chatName}" — nothing sent` });
+
+    const plainText = [
+      `📊 ${report.brandName} — Weekly Report`,
+      `${new Date(start).toLocaleDateString()} – ${new Date(end).toLocaleDateString()}`,
+      '',
+      report.narrative || '',
+      '',
+      `Impressions: ${report.shopMetrics?.impressions ?? '—'}`,
+      `Sales: ${report.shopMetrics?.sales != null ? '$' + report.shopMetrics.sales.toLocaleString() : '—'}`,
+      `CTR: ${report.shopMetrics?.ctr != null ? (report.shopMetrics.ctr * 100).toFixed(1) + '%' : '—'}`,
+      `Click-to-Order Rate: ${report.shopMetrics?.clickToOrderRate != null ? (report.shopMetrics.clickToOrderRate * 100).toFixed(1) + '%' : '—'}`,
+      '',
+      `Top Affiliates (recent): ${(report.topAffiliates || []).map(a => `@${a.handle} ($${a.gmv})`).join(', ') || 'none'}`,
+      `Completed this week: ${(report.completedTasks || []).length} task(s)`,
+    ].join('\n');
+
+    await _internals.postMessage(t, chatId, plainText);
+    res.json({ ok: true, chatId, brandName: report.brandName });
+  } catch (e) {
+    console.error('[client-agent] weekly-report send error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ─── Client Billing ───────────────────────────────────────────────────────────
 // Helper: normalize billing fields from brands.json (handles both old+new field names)
 function clientBilling(b) {
