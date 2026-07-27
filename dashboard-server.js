@@ -1333,9 +1333,33 @@ try { require('./routes/inner-circle-spark-brand')(app, { express, requireClient
 // unauthenticated API hits return a clean JSON 401 (the module carries its own
 // self-contained auth guard reading req.userEmail / session). Serves
 // /api/my-tasks/list, /api/my-tasks/complete on manifest.cultcontent.cc.
+let opsMyTasksHelpers = null;
 try {
-  require('./routes/ops-my-tasks')(app, { express, requireAuth, getLarkTenantToken });
+  const registerOpsMyTasks = require('./routes/ops-my-tasks');
+  registerOpsMyTasks(app, { express, requireAuth, getLarkTenantToken });
+  opsMyTasksHelpers = registerOpsMyTasks._helpers;
 } catch (e) { console.error('[ops-my-tasks] registration failed:', e.message); }
+
+// Client Agent — Phase 1 data layer (see lib/client-agent-context.js).
+// Test route only for now: confirms getCompletedTasks() resolves real data
+// before anything is wired into scheduling or a client-facing report.
+app.get('/api/admin/client-agent/completed-tasks', requirePortalAdmin, async (req, res) => {
+  try {
+    if (!opsMyTasksHelpers) return res.status(503).json({ error: 'ops-my-tasks helpers unavailable' });
+
+    const { brand, days } = req.query;
+    if (!brand) return res.status(400).json({ error: 'brand query param required' });
+    const end = Date.now();
+    const start = end - (Number(days) > 0 ? Number(days) : 7) * 86400000;
+
+    const { getCompletedTasks } = require('./lib/client-agent-context');
+    const tasks = await getCompletedTasks(brand, { start, end }, opsMyTasksHelpers);
+    res.json({ brand, rangeDays: Number(days) > 0 ? Number(days) : 7, count: tasks.length, tasks });
+  } catch (e) {
+    console.error('[client-agent] completed-tasks error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
 
 // Creator Lead hiring page — public, no-login application at
 // portal.cultcontent.cc/apply/creator-lead. Must stay before app.use(requireAuth).
