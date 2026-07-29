@@ -33,6 +33,7 @@ const QUEUE_FILE         = path.join(DATA_DIR, 'upload-queue.json');
 const AGENTS_FILE        = path.join(DATA_DIR, 'agents.json');
 const TIKTOK_TOKENS_FILE = path.join(DATA_DIR, '.tiktok-tokens.json');
 const TASKS_FILE         = path.join(DATA_DIR, 'tasks.json');
+const REPORT_QUEUE_FILE  = path.join(DATA_DIR, 'weekly-report-queue.json');
 const UPLOAD_DIR         = path.join(DATA_DIR, 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
@@ -3340,79 +3341,10 @@ async function getTopAffiliatesForReport(shopId, limit = 5) {
 
 // Deterministic HTML render — zero LLM. This alone is a complete, honest
 // report; the narrative below only adds a few sentences of context on top.
-function renderReportHTML(context) {
-  const pct = (n) => (n == null ? '—' : (n * 100).toFixed(1) + '%');
-  const usd = (n) => (n == null ? '—' : '$' + Number(n).toLocaleString('en-US', { maximumFractionDigits: 2 }));
-  const num = (n) => (n == null ? '—' : Number(n).toLocaleString('en-US'));
-  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
-
-  const affiliatesRows = (context.topAffiliates || []).map(a =>
-    `<tr><td>@${esc(a.handle)}</td><td style="text-align:right">${usd(a.gmv)}</td></tr>`
-  ).join('') || '<tr><td colspan="2" style="color:#888">No affiliate data available</td></tr>';
-
-  const taskRows = (context.completedTasks || []).map(t =>
-    `<tr><td>${esc(t.task)}</td><td>${esc(t.pillar)}</td><td>${new Date(t.completedOn).toLocaleDateString()}</td></tr>`
-  ).join('') || '<tr><td colspan="3" style="color:#888">No tasks completed in this window</td></tr>';
-
-  return `<!DOCTYPE html>
-<html><head><meta charset="UTF-8"><title>${esc(context.brandName)} — Weekly Report</title>
-<style>
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;max-width:640px;margin:0 auto;padding:32px;color:#1a1a1a}
-h1{font-size:22px;margin-bottom:4px} .sub{color:#666;font-size:13px;margin-bottom:24px}
-.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:28px}
-.stat{background:#f7f7f5;border-radius:8px;padding:14px}
-.stat .label{font-size:11px;text-transform:uppercase;color:#888;letter-spacing:.04em}
-.stat .value{font-size:22px;font-weight:700;margin-top:2px}
-h2{font-size:15px;margin-top:28px;margin-bottom:8px}
-table{width:100%;border-collapse:collapse;font-size:13px}
-td{padding:6px 0;border-bottom:1px solid #eee}
-.narrative{background:#f7f7f5;border-left:3px solid #999;padding:12px 16px;margin-bottom:24px;font-size:14px;line-height:1.5}
-.note{color:#999;font-size:11px;margin-top:4px}
-</style></head><body>
-<h1>${esc(context.brandName)} — Weekly Report</h1>
-<div class="sub">${new Date(context.range.start).toLocaleDateString()} – ${new Date(context.range.end).toLocaleDateString()}</div>
-${context.narrative ? `<div class="narrative">${esc(context.narrative)}</div>` : ''}
-<div class="stats">
-  <div class="stat"><div class="label">Impressions</div><div class="value">${num(context.shopMetrics?.impressions)}</div></div>
-  <div class="stat"><div class="label">Sales</div><div class="value">${usd(context.shopMetrics?.sales)}</div></div>
-  <div class="stat"><div class="label">CTR</div><div class="value">${pct(context.shopMetrics?.ctr)}</div></div>
-  <div class="stat"><div class="label">Click-to-Order Rate</div><div class="value">${pct(context.shopMetrics?.clickToOrderRate)}</div></div>
-</div>
-<h2>Top Performing Affiliates <span class="note">(recent, not exactly this week — see note)</span></h2>
-<table><tbody>${affiliatesRows}</tbody></table>
-<h2>Completed This Week</h2>
-<table><tbody>${taskRows}</tbody></table>
-</body></html>`;
-}
-
-// LLM narrative. Strictly grounded: the system prompt forbids stating any
-// number not present in the JSON handed to it, and requires an honest
-// "no data" response rather than a guess — the anti-hallucination rule from
-// the roadmap, enforced in the prompt itself, not just hoped for.
-async function generateNarrative(context) {
-  if (!process.env.ANTHROPIC_API_KEY) return null;
-  try {
-    const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-    const msg = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 300,
-      system: `You write a 2-4 sentence narrative summary for a TikTok Shop client's weekly performance report.
-RULES (do not break these):
-- Only reference numbers that appear in the JSON provided below. Never estimate, round differently, or invent a figure not present.
-- If a figure is null, say data wasn't available for it — never guess a value.
-- Be honest about a bad week. Do not spin a decline as a positive.
-- No greeting, no sign-off — just the summary body.`,
-      messages: [{
-        role: 'user',
-        content: `Client: ${context.brandName}\nWindow: ${new Date(context.range.start).toISOString().slice(0,10)} to ${new Date(context.range.end).toISOString().slice(0,10)}\n\nData:\n${JSON.stringify({ shopMetrics: context.shopMetrics, topAffiliates: context.topAffiliates, completedTaskCount: (context.completedTasks || []).length }, null, 2)}`,
-      }],
-    });
-    return msg.content?.[0]?.text || null;
-  } catch (e) {
-    console.error('[client-agent] narrative generation failed:', e.message);
-    return null; // report still renders fine without narrative — see renderReportHTML
-  }
-}
+// renderReportHTML + generateNarrative now live in lib/weekly-report.js —
+// extracted so the eval harness (lib/weekly-report-narrative.eval.js) can
+// exercise generateNarrative directly, with no server boot required.
+const { renderReportHTML, generateNarrative } = require('./lib/weekly-report');
 
 // Orchestrates the full report: data layer + narrative. Delivery/scheduling
 // is deliberately NOT triggered from here — see the /weekly-report/send
@@ -3454,13 +3386,44 @@ app.get('/api/admin/client-agent/weekly-report/preview', requirePortalAdmin, asy
   }
 });
 
-// POST /api/admin/client-agent/weekly-report/send  { brandId, days }
-// Manual, human-triggered send ONLY — posts into the client's existing Lark
-// group chat ("{brandName} Chat", the same one onboarding already creates).
-// Deliberately NOT wired to any scheduler. See roadmap Phase 4/7: automatic
-// unattended sending to real clients needs a review process this doesn't
-// have yet.
-app.post('/api/admin/client-agent/weekly-report/send', requirePortalAdmin, express.json(), async (req, res) => {
+// ── Review queue ─────────────────────────────────────────────────────────────
+// A generated report is never sent directly. It's saved here as 'pending'
+// first; only an explicit /approve on that exact record id sends it — the
+// text that goes out is the text that was reviewed, never regenerated at
+// send time. See roadmap Phase 7 (human-in-the-loop before real clients see
+// AI-touched output).
+function loadReportQueue() {
+  try { if (fs.existsSync(REPORT_QUEUE_FILE)) return JSON.parse(fs.readFileSync(REPORT_QUEUE_FILE, 'utf8')); }
+  catch (e) { console.error('[client-agent] failed to read report queue:', e.message); }
+  return [];
+}
+function saveReportQueue(queue) {
+  try { fs.writeFileSync(REPORT_QUEUE_FILE, JSON.stringify(queue, null, 2)); }
+  catch (e) { console.error('[client-agent] failed to save report queue:', e.message); }
+}
+
+function buildReportPlainText(report, start, end) {
+  return [
+    `📊 ${report.brandName} — Weekly Report`,
+    `${new Date(start).toLocaleDateString()} – ${new Date(end).toLocaleDateString()}`,
+    '',
+    report.narrative || '',
+    '',
+    `Impressions: ${report.shopMetrics?.impressions ?? '—'}`,
+    `Sales: ${report.shopMetrics?.sales != null ? '$' + report.shopMetrics.sales.toLocaleString() : '—'}`,
+    `CTR: ${report.shopMetrics?.ctr != null ? (report.shopMetrics.ctr * 100).toFixed(1) + '%' : '—'}`,
+    `Click-to-Order Rate: ${report.shopMetrics?.clickToOrderRate != null ? (report.shopMetrics.clickToOrderRate * 100).toFixed(1) + '%' : '—'}`,
+    '',
+    `Top Affiliates (recent): ${(report.topAffiliates || []).map(a => `@${a.handle} ($${a.gmv})`).join(', ') || 'none'}`,
+    `Completed this week: ${(report.completedTasks || []).length} task(s)`,
+  ].join('\n');
+}
+
+// POST /api/admin/client-agent/weekly-report/generate  { brandId, days }
+// Generates a report and saves it as 'pending' in the review queue. Sends
+// nothing. Returns the full record (including html) so the caller can
+// display it immediately without a second round-trip.
+app.post('/api/admin/client-agent/weekly-report/generate', requirePortalAdmin, express.json(), async (req, res) => {
   try {
     const { brandId, days } = req.body || {};
     if (!brandId) return res.status(400).json({ error: 'brandId required' });
@@ -3468,33 +3431,261 @@ app.post('/api/admin/client-agent/weekly-report/send', requirePortalAdmin, expre
     const start = end - (Number(days) > 0 ? Number(days) : 7) * 86400000;
 
     const report = await generateWeeklyReport(brandId, { start, end });
-    const { _internals } = require('./lib/client-chat-sync');
-    const chatName = `${report.brandName} Chat`;
-    const t = await _internals.tenantToken();
-    const chatId = await _internals.findExistingChat(t, chatName);
-    if (!chatId) return res.status(404).json({ error: `No existing Lark chat found named "${chatName}" — nothing sent` });
+    const record = {
+      id: `wr_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      brandId,
+      brandName: report.brandName,
+      range: { start, end },
+      html: report.html,
+      plainText: buildReportPlainText(report, start, end),
+      narrative: report.narrative,
+      shopMetrics: report.shopMetrics,
+      topAffiliates: report.topAffiliates,
+      completedTaskCount: (report.completedTasks || []).length,
+      status: 'pending',
+      generatedAt: Date.now(),
+      generatedBy: (req.session && req.session.portalAdminEmail) || 'admin',
+      sentAt: null,
+    };
 
-    const plainText = [
-      `📊 ${report.brandName} — Weekly Report`,
-      `${new Date(start).toLocaleDateString()} – ${new Date(end).toLocaleDateString()}`,
-      '',
-      report.narrative || '',
-      '',
-      `Impressions: ${report.shopMetrics?.impressions ?? '—'}`,
-      `Sales: ${report.shopMetrics?.sales != null ? '$' + report.shopMetrics.sales.toLocaleString() : '—'}`,
-      `CTR: ${report.shopMetrics?.ctr != null ? (report.shopMetrics.ctr * 100).toFixed(1) + '%' : '—'}`,
-      `Click-to-Order Rate: ${report.shopMetrics?.clickToOrderRate != null ? (report.shopMetrics.clickToOrderRate * 100).toFixed(1) + '%' : '—'}`,
-      '',
-      `Top Affiliates (recent): ${(report.topAffiliates || []).map(a => `@${a.handle} ($${a.gmv})`).join(', ') || 'none'}`,
-      `Completed this week: ${(report.completedTasks || []).length} task(s)`,
-    ].join('\n');
+    const queue = loadReportQueue();
+    queue.unshift(record);
+    saveReportQueue(queue);
 
-    await _internals.postMessage(t, chatId, plainText);
-    res.json({ ok: true, chatId, brandName: report.brandName });
+    res.json({ ok: true, report: record });
   } catch (e) {
-    console.error('[client-agent] weekly-report send error:', e.message);
+    console.error('[client-agent] weekly-report generate error:', e.message);
     res.status(500).json({ error: e.message });
   }
+});
+
+// GET /api/admin/client-agent/weekly-report/queue?status=pending
+app.get('/api/admin/client-agent/weekly-report/queue', requirePortalAdmin, (req, res) => {
+  const { status } = req.query;
+  let queue = loadReportQueue();
+  if (status) queue = queue.filter(r => r.status === status);
+  res.json({ ok: true, count: queue.length, reports: queue });
+});
+
+// POST /api/admin/client-agent/weekly-report/approve  { id }
+// Sends the EXACT stored text for that report id — never regenerates.
+// Manual, human-triggered only. Not wired to any scheduler.
+app.post('/api/admin/client-agent/weekly-report/approve', requirePortalAdmin, express.json(), async (req, res) => {
+  try {
+    const { id } = req.body || {};
+    if (!id) return res.status(400).json({ error: 'id required' });
+    const queue = loadReportQueue();
+    const record = queue.find(r => r.id === id);
+    if (!record) return res.status(404).json({ error: `No report found with id ${id}` });
+    if (record.status !== 'pending') return res.status(409).json({ error: `Report ${id} is already "${record.status}", not pending` });
+
+    const { _internals } = require('./lib/client-chat-sync');
+    const chatName = `${record.brandName} Chat`;
+    const t = await _internals.tenantToken();
+    const chatId = await _internals.findExistingChat(t, chatName);
+    if (!chatId) return res.status(404).json({ error: `No existing Lark chat found named "${chatName}" — nothing sent, report left pending` });
+
+    await _internals.postMessage(t, chatId, record.plainText);
+
+    record.status = 'sent';
+    record.sentAt = Date.now();
+    record.chatId = chatId;
+    saveReportQueue(queue);
+
+    res.json({ ok: true, report: record });
+  } catch (e) {
+    console.error('[client-agent] weekly-report approve error:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// POST /api/admin/client-agent/weekly-report/reject  { id }
+app.post('/api/admin/client-agent/weekly-report/reject', requirePortalAdmin, express.json(), (req, res) => {
+  const { id } = req.body || {};
+  if (!id) return res.status(400).json({ error: 'id required' });
+  const queue = loadReportQueue();
+  const record = queue.find(r => r.id === id);
+  if (!record) return res.status(404).json({ error: `No report found with id ${id}` });
+  if (record.status !== 'pending') return res.status(409).json({ error: `Report ${id} is already "${record.status}", not pending` });
+  record.status = 'rejected';
+  saveReportQueue(queue);
+  res.json({ ok: true, report: record });
+});
+
+// GET /api/admin/client-agent/brands — lightweight id+name list for the
+// review page's dropdown. Deliberately NOT the heavy /portal-admin/clients
+// route, which recomputes billing GMV for every brand on every load.
+app.get('/api/admin/client-agent/brands', requirePortalAdmin, (req, res) => {
+  const brands = loadBrands();
+  res.json({ brands: (brands.clients || []).map(b => ({ id: b.id, name: b.name })) });
+});
+
+const WEEKLY_REPORT_REVIEW_HTML = `<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Weekly Reports — Review Queue</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0a0a0f;color:#e2e8f0;min-height:100vh}
+.header{background:rgba(255,255,255,.02);border-bottom:1px solid rgba(255,255,255,.07);padding:20px 24px}
+.header h1{font-size:1.3rem;font-weight:800}
+.container{max-width:900px;margin:0 auto;padding:32px 24px}
+.panel{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:12px;padding:20px;margin-bottom:24px}
+.panel h2{font-size:1rem;margin-bottom:14px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+select,input,button{background:#14141c;border:1px solid rgba(255,255,255,.12);color:#e2e8f0;border-radius:8px;padding:9px 12px;font-size:.9rem}
+button{cursor:pointer;font-weight:600;background:linear-gradient(135deg,#00f2ea,#a855f7);border:none;color:#0a0a0f}
+button.secondary{background:rgba(255,255,255,.06);color:#e2e8f0;border:1px solid rgba(255,255,255,.12)}
+button.danger{background:#3a1a1a;color:#ff8080;border:1px solid #5a2a2a}
+button:disabled{opacity:.5;cursor:not-allowed}
+.card{border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:16px;margin-bottom:12px}
+.card .top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.card .brand{font-weight:700}
+.badge{font-size:.72rem;padding:2px 8px;border-radius:20px;text-transform:uppercase;letter-spacing:.03em}
+.badge.pending{background:#3a3010;color:#f2c94c}
+.badge.sent{background:#0f3a1f;color:#4ade80}
+.badge.rejected{background:#3a1a1a;color:#ff8080}
+.meta{font-size:.78rem;color:#94a3b8;margin-bottom:10px}
+.actions{display:flex;gap:8px}
+.empty{color:#64748b;padding:20px;text-align:center}
+iframe{width:100%;height:600px;border:1px solid rgba(255,255,255,.1);border-radius:8px;background:#fff}
+.close-frame{margin-top:8px}
+</style></head><body>
+<div class="header"><h1>📊 Weekly Reports — Review Queue</h1></div>
+<div class="container">
+
+  <div class="panel">
+    <h2>Generate a report</h2>
+    <div class="row">
+      <select id="brandSelect"><option>Loading brands…</option></select>
+      <input id="daysInput" type="number" value="7" min="1" style="width:80px" title="Days back">
+      <button onclick="generateReport()" id="genBtn">Generate</button>
+    </div>
+    <div style="font-size:.78rem;color:#64748b;margin-top:8px">Generates and saves as pending — sends nothing.</div>
+  </div>
+
+  <div class="panel">
+    <h2>Pending review</h2>
+    <div id="pendingList" class="empty">Loading…</div>
+  </div>
+
+  <div class="panel">
+    <h2>Recent (sent / rejected)</h2>
+    <div id="recentList" class="empty">Loading…</div>
+  </div>
+
+</div>
+<script>
+async function loadBrandsList() {
+  const r = await fetch('/api/admin/client-agent/brands');
+  const j = await r.json();
+  const sel = document.getElementById('brandSelect');
+  sel.innerHTML = (j.brands || []).map(b => '<option value="' + b.id + '">' + b.name + '</option>').join('');
+}
+
+async function generateReport() {
+  const brandId = document.getElementById('brandSelect').value;
+  const days = document.getElementById('daysInput').value;
+  const btn = document.getElementById('genBtn');
+  btn.disabled = true; btn.textContent = 'Generating…';
+  try {
+    const r = await fetch('/api/admin/client-agent/weekly-report/generate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ brandId, days: Number(days) })
+    });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || 'Generate failed');
+    await loadQueue();
+  } catch (e) {
+    alert('Could not generate: ' + e.message);
+  } finally {
+    btn.disabled = false; btn.textContent = 'Generate';
+  }
+}
+
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function renderCard(r, showActions) {
+  const generated = new Date(r.generatedAt).toLocaleString();
+  const range = new Date(r.range.start).toLocaleDateString() + ' – ' + new Date(r.range.end).toLocaleDateString();
+  let actions = '';
+  if (showActions) {
+    actions = '<div class="actions">' +
+      '<button onclick="toggleView(\\'' + r.id + '\\')">View</button>' +
+      '<button onclick="approve(\\'' + r.id + '\\')">Approve &amp; Send</button>' +
+      '<button class="danger" onclick="reject(\\'' + r.id + '\\')">Reject</button>' +
+      '</div>';
+  } else {
+    actions = '<div class="actions"><button class="secondary" onclick="toggleView(\\'' + r.id + '\\')">View</button></div>';
+  }
+  return '<div class="card" id="card-' + r.id + '">' +
+    '<div class="top"><span class="brand">' + esc(r.brandName) + '</span><span class="badge ' + r.status + '">' + r.status + '</span></div>' +
+    '<div class="meta">' + range + ' · generated ' + generated + (r.sentAt ? ' · sent ' + new Date(r.sentAt).toLocaleString() : '') + '</div>' +
+    actions +
+    '<div id="frame-' + r.id + '" style="display:none" class="close-frame"><iframe id="iframe-' + r.id + '"></iframe></div>' +
+    '</div>';
+}
+
+function toggleView(id) {
+  const box = document.getElementById('frame-' + id);
+  const visible = box.style.display !== 'none';
+  box.style.display = visible ? 'none' : 'block';
+  if (!visible) {
+    fetch('/api/admin/client-agent/weekly-report/queue').then(r => r.json()).then(j => {
+      const rec = (j.reports || []).find(x => x.id === id);
+      if (rec) document.getElementById('iframe-' + id).srcdoc = rec.html;
+    });
+  }
+}
+
+async function approve(id) {
+  if (!confirm('Send this report to the client now? This posts into their Lark chat.')) return;
+  try {
+    const r = await fetch('/api/admin/client-agent/weekly-report/approve', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id })
+    });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || 'Approve failed');
+    await loadQueue();
+  } catch (e) { alert('Could not send: ' + e.message); }
+}
+
+async function reject(id) {
+  if (!confirm('Reject this report? It will not be sent.')) return;
+  try {
+    const r = await fetch('/api/admin/client-agent/weekly-report/reject', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id })
+    });
+    const j = await r.json();
+    if (!r.ok) throw new Error(j.error || 'Reject failed');
+    await loadQueue();
+  } catch (e) { alert('Could not reject: ' + e.message); }
+}
+
+async function loadQueue() {
+  const r = await fetch('/api/admin/client-agent/weekly-report/queue');
+  const j = await r.json();
+  const all = j.reports || [];
+  const pending = all.filter(x => x.status === 'pending');
+  const recent = all.filter(x => x.status !== 'pending').slice(0, 20);
+
+  document.getElementById('pendingList').innerHTML = pending.length
+    ? pending.map(r => renderCard(r, true)).join('')
+    : '<div class="empty">Nothing pending.</div>';
+
+  document.getElementById('recentList').innerHTML = recent.length
+    ? recent.map(r => renderCard(r, false)).join('')
+    : '<div class="empty">Nothing yet.</div>';
+}
+
+loadBrandsList();
+loadQueue();
+</script>
+</body></html>`;
+
+// GET /client-agent/reports — the review-queue admin page.
+app.get('/client-agent/reports', requirePortalAdmin, (req, res) => {
+  res.type('html').send(WEEKLY_REPORT_REVIEW_HTML);
 });
 
 // ─── Client Billing ───────────────────────────────────────────────────────────

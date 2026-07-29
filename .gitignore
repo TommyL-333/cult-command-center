@@ -7,3 +7,4 @@ uploads/
 snapshots.json
 upload-queue.json
 loop-history.json
+.local-data/
