@@ -3562,6 +3562,7 @@ iframe{width:100%;height:600px;border:1px solid rgba(255,255,255,.1);border-radi
       <button onclick="generateReport()" id="genBtn">Generate</button>
     </div>
     <div style="font-size:.78rem;color:#64748b;margin-top:8px">Generates and saves as pending — sends nothing.</div>
+    <div id="scopeNote" style="font-size:.78rem;color:#c9a84c;margin-top:6px"></div>
   </div>
 
   <div class="panel">
@@ -3576,11 +3577,27 @@ iframe{width:100%;height:600px;border:1px solid rgba(255,255,255,.1);border-radi
 
 </div>
 <script>
+const urlBrand = new URLSearchParams(window.location.search).get('brand');
+
 async function loadBrandsList() {
   const r = await fetch('/api/admin/client-agent/brands');
   const j = await r.json();
   const sel = document.getElementById('brandSelect');
   sel.innerHTML = (j.brands || []).map(b => '<option value="' + b.id + '">' + b.name + '</option>').join('');
+  if (urlBrand) {
+    sel.value = urlBrand;
+    const match = (j.brands || []).find(b => b.id === urlBrand);
+    document.getElementById('scopeNote').textContent = match
+      ? 'Showing reports for ' + match.name + ' only. '
+      : '';
+    if (match) {
+      const link = document.createElement('a');
+      link.href = '/client-agent/reports';
+      link.textContent = 'View all brands →';
+      link.style.cssText = 'color:#00f2ea;text-decoration:none;font-size:.8rem';
+      document.getElementById('scopeNote').appendChild(link);
+    }
+  }
 }
 
 async function generateReport() {
@@ -3665,7 +3682,8 @@ async function reject(id) {
 async function loadQueue() {
   const r = await fetch('/api/admin/client-agent/weekly-report/queue');
   const j = await r.json();
-  const all = j.reports || [];
+  let all = j.reports || [];
+  if (urlBrand) all = all.filter(x => x.brandId === urlBrand);
   const pending = all.filter(x => x.status === 'pending');
   const recent = all.filter(x => x.status !== 'pending').slice(0, 20);
 
