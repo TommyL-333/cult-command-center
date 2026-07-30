@@ -143,6 +143,10 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .st-item.done .st-lbl{text-decoration:line-through;color:var(--muted)}
   .add-st{background:none;border:1px dashed var(--border);color:var(--muted);padding:5px 10px;border-radius:6px;font-size:12px;cursor:pointer;margin-top:6px;width:100%;text-align:left;font-family:inherit}
   .add-st:hover{border-color:var(--cyan);color:var(--txt)}
+  .prio-sel{background:transparent;border:none;color:var(--muted);font-size:11px;font-family:inherit;cursor:pointer;padding:2px 4px;border-radius:4px;appearance:none;-webkit-appearance:none}
+  .prio-sel:hover,.prio-sel:focus{outline:none;background:var(--panel2);color:var(--txt)}
+  .sop-btn{background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11px;padding:2px 9px;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;gap:4px;transition:.1s;font-family:inherit}
+  .sop-btn:hover{border-color:var(--cyan);color:var(--cyan)}
   .btn{background:linear-gradient(90deg,var(--cyan),var(--red));color:#0c0d15;border:none;padding:8px 15px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;font-family:inherit}
   .btn:hover{opacity:.9}
   .btn.ghost{background:var(--panel2);color:var(--txt);border:1px solid var(--border)}
@@ -787,9 +791,11 @@ function render(){
       if(t.pillar)html+='<span class="tag">'+esc(t.pillar)+'</span>';
       if(t.status)html+='<span class="tag">'+esc(t.status)+'</span>';
       if(t.executionMode)html+='<span class="tag">'+esc(t.executionMode)+'</span>';
+      html+='<select class="prio-sel" title="Priority" onchange="savePriority(this,\\''+t.record_id+'\\')"><option value="🔴 Critical"'+(t.priority==='🔴 Critical'?' selected':'')+'>🔴 Critical</option><option value="🟠 High"'+(t.priority==='🟠 High'?' selected':'')+'>🟠 High</option><option value="🟡 Normal"'+(!t.priority||t.priority==='🟡 Normal'?' selected':'')+'>🟡 Normal</option><option value="⚪ Low"'+(t.priority==='⚪ Low'?' selected':'')+'>⚪ Low</option></select>';
       html+='</div>';
       if(t.promptAction)html+='<div class="prompt">'+esc(t.promptAction)+'</div>';
       if(t.status==='Blocked'&&t.blockedReason)html+='<div class="prompt" style="color:var(--red)">⛔ '+esc(t.blockedReason)+'</div>';
+      if(t.sopLink)html+='<div style="margin-top:8px"><a class="sop-btn" href="'+esc(t.sopLink)+'" target="_blank" rel="noopener">📋 SOP ↗</a></div>';
       if(subs.length){
         html+='<div class="subtasks">';
         subs.forEach(function(s){
@@ -839,6 +845,14 @@ function toggleSt(id,parentId,done){
   .then(function(r){return r.json();}).then(function(d){
     if(d.ok){var subs=SUBTASKS[parentId]||[];subs.forEach(function(s){if(s.id===id)s.done=done;});render();}
   }).catch(function(){});
+}
+
+function savePriority(sel,recordId){
+  var val=sel.value;
+  var t=ALL.filter(function(x){return x.record_id===recordId;})[0];
+  if(t)t.priority=val;
+  fetch('/api/my-tasks/priority',{method:'PATCH',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({record_id:recordId,priority:val})})
+    .catch(function(e){toast('Priority save failed');});
 }
 
 /* weekly report */
@@ -1182,6 +1196,8 @@ const TASK_MANAGEMENT_HTML = `<!DOCTYPE html>
   .prio-h{background:rgba(255,120,50,.15);color:#ff8040}
   .prio-n{background:rgba(255,207,100,.15);color:#ffcf64}
   .prio-l{background:rgba(154,160,181,.15);color:var(--muted)}
+  .admin-prio-sel{border:none;border-radius:4px;font-size:10px;font-weight:700;font-family:inherit;padding:2px 6px;cursor:pointer;appearance:none;-webkit-appearance:none}
+  .admin-prio-sel:focus{outline:none}
   .tn-editable{cursor:pointer}
   .tn-editable:hover .tn{text-decoration:underline;text-decoration-style:dotted;text-underline-offset:2px}
   .tn-input{background:var(--panel2);border:1px solid var(--cyan);border-radius:5px;color:var(--txt);padding:3px 8px;font-size:13px;font-weight:600;font-family:inherit;width:100%;min-width:180px}
@@ -1637,36 +1653,21 @@ function updateStats(ownerFilter,clientFilter,dateFrom,dateTo){
     statsRow.style.gridTemplateColumns='repeat(4,1fr)';
   }
 }
-var ADMIN_PRIOS=[
-  {val:'🔴 Critical',cls:'prio-c',label:'🔴 Critical'},
-  {val:'🟠 High',cls:'prio-h',label:'🟠 High'},
-  {val:'🟡 Normal',cls:'prio-n',label:'🟡 Normal'},
-  {val:'⚪ Low',cls:'prio-l',label:'⚪ Low'}
-];
-function prioMatch(pv){
-  pv=(pv||'').toLowerCase();
-  if(pv.includes('critical'))return 0;
-  if(pv.includes('high'))return 1;
-  if(pv.includes('low'))return 3;
-  return 2;
+var PRIO_VALS=['🔴 Critical','🟠 High','🟡 Normal','⚪ Low'];
+var PRIO_CLS={'🔴 Critical':'prio-c','🟠 High':'prio-h','🟡 Normal':'prio-n','⚪ Low':'prio-l'};
+function prioSelectHtml(t){
+  var pv=t.priority||'🟡 Normal';
+  var opts=PRIO_VALS.map(function(v){return'<option value="'+esc(v)+'"'+(v===pv?' selected':'')+'>'+esc(v)+'</option>';}).join('');
+  return'<select class="prio-sel admin-prio-sel '+(PRIO_CLS[pv]||'prio-n')+'" data-rid="'+esc(t.record_id)+'" onchange="adminChangePrio(this)">'+opts+'</select>';
 }
-function prioBadgeHtml(t){
-  var idx=prioMatch(t.priority);var p=ADMIN_PRIOS[idx];
-  return'<span class="prio-badge '+p.cls+'" data-rid="'+esc(t.record_id)+'" data-pidx="'+idx+'" onclick="cyclePrio(this)">'+p.label+'</span>';
-}
-function cyclePrio(badge){
-  badge.onclick=null;
-  var rid=badge.getAttribute('data-rid');
-  var idx=(parseInt(badge.getAttribute('data-pidx'),10)+1)%ADMIN_PRIOS.length;
-  var p=ADMIN_PRIOS[idx];
-  badge.className='prio-badge '+p.cls;
-  badge.textContent=p.label;
-  badge.setAttribute('data-pidx',''+idx);
+function adminChangePrio(sel){
+  var rid=sel.getAttribute('data-rid');
+  var val=sel.value;
+  sel.className='prio-sel admin-prio-sel '+(PRIO_CLS[val]||'prio-n');
   var t=ALL.filter(function(x){return x.record_id===rid;})[0];
-  if(t)t.priority=p.val;
-  fetch('/api/admin/tasks/'+rid,{method:'PATCH',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({priority:p.val})})
+  if(t)t.priority=val;
+  fetch('/api/admin/tasks/'+rid,{method:'PATCH',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({priority:val})})
     .catch(function(){});
-  setTimeout(function(){badge.onclick=function(){cyclePrio(badge);};},300);
 }
 function startEditTitle(td,rid){
   if(td.querySelector('.tn-input'))return;
@@ -1707,10 +1708,10 @@ function renderTbl(){
     var due=t.dueDate?new Date(t.dueDate).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'—';
     var rid=esc(t.record_id);
     return'<tr>'
-      +'<td class="tn-editable" onclick="startEditTitle(this,\\''+rid+'\\')"><div class="tn-wrap"><div class="tn">'+(t.isSubtask?'↳ ':'')+esc(t.task||'(untitled)')+'</div>'+(t.executionMode?'<div class="ts">'+esc(t.executionMode)+'</div>':'')+'</div></td>'
+      +'<td class="tn-editable" onclick="startEditTitle(this,\\''+rid+'\\')"><div class="tn-wrap"><div class="tn">'+(t.isSubtask?'↳ ':'')+esc(t.task||'(untitled)')+'</div>'+(t.executionMode?'<div class="ts">'+esc(t.executionMode)+'</div>':'')+(t.sopLink?'<div style="margin-top:4px"><a href="'+esc(t.sopLink)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:11px;color:var(--cyan);text-decoration:none">📋 SOP ↗</a></div>':'')+'</div></td>'
       +'<td>'+esc(t.client||'—')+'</td>'
       +'<td>'+esc(t.ownerName||'—')+'</td>'
-      +'<td>'+(t.isSubtask?'—':prioBadgeHtml(t))+'</td>'
+      +'<td>'+(t.isSubtask?'—':prioSelectHtml(t))+'</td>'
       +'<td>'+sbadge(t.status)+'</td>'
       +'<td>'+esc(due)+'</td>'
       +'<td>'+esc(daysOpen(t))+'</td>'
@@ -2095,7 +2096,19 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
   }
 
 
-  // ---------- ROUTE: POST /api/my-tasks/block ----------
+  // ---------- ROUTE: PATCH /api/my-tasks/priority ----------
+  app.patch('/api/my-tasks/priority', requireAuth, jsonBody, async (req, res) => {
+    try {
+      const { record_id, priority } = req.body || {};
+      if (!record_id || !priority) return res.status(400).json({ error: 'record_id and priority required' });
+      await patchRecord(record_id, { 'Priority': priority });
+      res.json({ ok: true });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+// ---------- ROUTE: POST /api/my-tasks/block ----------
   // Mark a task Blocked with a required reason. Mirrors /complete:
   // owner check -> patch (keyed by NAME) -> read-back verification.
   app.post('/api/my-tasks/block', requireAuth, jsonBody, async (req, res) => {
