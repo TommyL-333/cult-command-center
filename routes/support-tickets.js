@@ -262,11 +262,11 @@ function render() {
     if (t.submitterEmail) {
       const subject = encodeURIComponent('Re: Your ' + t.type + ' to Cult Content');
       const quoted = t.message.length > 300 ? t.message.slice(0, 300) + '…' : t.message;
-      const body = encodeURIComponent('Hi,\n\nRegarding your message:\n"' + quoted + '"\n\n');
+      const body = encodeURIComponent('Hi,\\n\\nRegarding your message:\\n"' + quoted + '"\\n\\n');
       actions.push('<a class="action-btn reply" href="mailto:' + encodeURIComponent(t.submitterEmail) + '?subject=' + subject + '&body=' + body + '">✉ Reply by Email</a>');
     }
     const who = t.submitterType === 'creator'
-      ? esc(t.creatorName || t.creatorHandle || 'Creator') + (t.creatorHandle ? ' (@' + esc(t.creatorHandle) + ')' : '')
+      ? esc(t.creatorName || t.creatorHandle || 'Creator') + (t.creatorHandle ? ' (' + esc(t.creatorHandle.replace(/^@?/, '@')) + ')' : '')
       : esc(t.brandName);
     const sourceTag = '<span class="ticket-source ticket-source-' + t.submitterType + '">' + t.submitterType + '</span>';
     return '<div class="ticket">'
