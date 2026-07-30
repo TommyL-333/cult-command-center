@@ -3267,35 +3267,19 @@ async function fetchProductPerfForWindow(brand, brands, bi, startDateStr, endDat
   }
 }
 
-// Order count for the window — used ONLY to compute click-to-order rate.
-// Never used as a dollar figure; the dollar figure always comes from the
-// LOCKED fetchNetGmvForBrand() above, so this can never drift from billing.
-async function fetchOrderCountForWindow(brand, brands, bi, startTs, endTs) {
-  const CANCEL_STATUSES = new Set([140, 4, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND', 'REVERSE_PENDING', 'REVERSE_COMPLETE']);
-  let orders = 0, pageToken = null;
-  try {
-    for (let page = 0; page < 10; page++) {
-      const body = { create_time_ge: startTs, create_time_lt: endTs, sort_field: 'create_time', sort_order: 'DESC' };
-      if (pageToken) body.page_token = pageToken;
-      const resp = await ttsBrandPost(brand, brands, bi, '/order/202309/orders/search', body, { page_size: 100 });
-      const list = resp?.data?.orders || resp?.data?.order_list || [];
-      for (const o of list) {
-        if (o.is_sample_order) continue;
-        const status = o.order_status ?? o.status;
-        if (status !== undefined && CANCEL_STATUSES.has(status)) continue;
-        orders++;
-      }
-      const nextToken = resp?.data?.next_page_token;
-      if (!nextToken || list.length === 0) break;
-      pageToken = nextToken;
-    }
-  } catch (e) { /* best-effort count — a failure here degrades the rate to null, never throws */ }
-  return orders;
-}
-
 // One brand's weekly KPI set for the report. `sales` always comes from the
 // LOCKED fetchNetGmvForBrand() — never recomputed — so it can never drift
 // from the dollar figure the client's own invoice shows.
+//
+// click-to-order rate: uses TikTok's own avg_conversation_rate directly,
+// already computed by TikTok over the exact requested date window. An
+// earlier version of this function computed its own (orders ÷ visitors) —
+// that was a units-mismatch bug: orders was a SUM across the whole date
+// range, but avg_visitors is a per-day AVERAGE, so the resulting "rate"
+// was inflated by roughly the number of days in the window. Fixed by using
+// the field TikTok already provides, same as the existing (working)
+// /portal-admin/shop-metrics/:brandId route does — it never recomputes
+// this rate manually either.
 async function getShopMetricsForReport(brandId, range) {
   const brands = loadBrands();
   const bi = (brands.clients || []).findIndex(b => b.id === brandId);
@@ -3309,22 +3293,19 @@ async function getShopMetricsForReport(brandId, range) {
   const endTs = Math.floor(range.end / 1000);
   const ds = (ms) => new Date(ms).toISOString().slice(0, 10);
 
-  const [sales, traffic, productPerf, orders] = await Promise.all([
+  const [sales, traffic, productPerf] = await Promise.all([
     fetchNetGmvForBrand(brand, brands, bi, { startTs, endTs }),
     fetchShopTrafficForWindow(brand, brands, bi, ds(range.start), ds(range.end)),
     fetchProductPerfForWindow(brand, brands, bi, ds(range.start), ds(range.end)),
-    fetchOrderCountForWindow(brand, brands, bi, startTs, endTs),
   ]);
 
-  const visitors = traffic?.visitors ?? null;
   return {
     brandId,
     brandName: brand.name,
     sales,
-    orders,
     impressions: productPerf?.impressions ?? null,
     ctr: productPerf?.ctr ?? null,                 // fraction, e.g. 0.021 = 2.1%
-    clickToOrderRate: (visitors && orders != null) ? orders / visitors : null,
+    clickToOrderRate: traffic?.convRate ?? null,   // fraction, e.g. 0.038 = 3.8% — TikTok-computed, exact window
   };
 }
 
