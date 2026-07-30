@@ -484,6 +484,7 @@
   <button class="tab-btn" onclick="switchTab('marketplace')">Creator Marketplace</button>
   <button class="tab-btn" onclick="switchTab('tasks')">Tasks</button>
   <button class="tab-btn" id="tab-btn-reports" style="display:none" onclick="switchTab('reports')">Reports</button>
+  <button class="tab-btn" onclick="switchTab('support')">Support</button>
 </nav>
 
 <div id="tab-overview">
@@ -1407,6 +1408,93 @@
 </main>
 </div><!-- end #tab-reports -->
 
+<div id="tab-support" style="display:none">
+<main style="max-width:720px;margin:0 auto;padding:36px 24px 60px">
+  <div style="margin-bottom:20px">
+    <div class="section-label">Support</div>
+    <div style="font-size:0.82rem;color:var(--muted);margin-top:4px">Questions, concerns, or suggestions — send them straight to the Cult Content team.</div>
+  </div>
+
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:28px">
+    <div style="display:flex;gap:10px;margin-bottom:10px">
+      <select id="support-type" style="background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--text);padding:9px 12px;border-radius:8px;font-size:0.85rem">
+        <option value="question">Question</option>
+        <option value="concern">Concern</option>
+        <option value="suggestion">Suggestion</option>
+      </select>
+    </div>
+    <textarea id="support-message" rows="4" placeholder="What's on your mind?" style="width:100%;background:rgba(255,255,255,.04);border:1px solid var(--border);color:var(--text);padding:10px 12px;border-radius:8px;font-size:0.88rem;font-family:inherit;resize:vertical;margin-bottom:10px"></textarea>
+    <button class="refresh-btn" id="support-submit-btn" onclick="submitSupportTicket()">Submit</button>
+  </div>
+
+  <div class="section-label" style="margin-bottom:10px">Your Tickets</div>
+  <div id="support-ticket-list"><div style="color:var(--muted);font-size:0.85rem">Loading…</div></div>
+</main>
+</div><!-- end #tab-support -->
+
+<style>
+.support-ticket-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px}
+.support-badge{font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:6px;text-transform:uppercase;letter-spacing:.03em}
+.support-badge-unopened{background:rgba(96,165,250,.12);color:#60a5fa}
+.support-badge-opened{background:rgba(45,212,191,.12);color:#2dd4bf}
+.support-badge-flagged{background:rgba(248,113,113,.14);color:#f87171}
+</style>
+<script>
+function supportEsc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+async function loadSupportTickets() {
+  window._supportLoaded = true;
+  const list = document.getElementById('support-ticket-list');
+  try {
+    const res = await fetch('/api/client/support/my-tickets');
+    if (!res.ok) throw new Error('fetch failed');
+    const data = await res.json();
+    const tickets = data.tickets || [];
+    if (!tickets.length) {
+      list.innerHTML = '<div style="color:var(--muted);font-size:0.85rem">You haven\\'t submitted anything yet.</div>';
+      return;
+    }
+    list.innerHTML = tickets.map(t => `
+      <div class="support-ticket-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+          <span style="font-size:0.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.03em">${supportEsc(t.type)}</span>
+          <span class="support-badge support-badge-${t.status}">${t.status}</span>
+        </div>
+        <div style="font-size:0.88rem;color:var(--text);margin-bottom:6px;white-space:pre-wrap">${supportEsc(t.message)}</div>
+        <div style="font-size:0.74rem;color:var(--muted)">${new Date(t.createdAt).toLocaleDateString()}</div>
+      </div>
+    `).join('');
+  } catch (e) {
+    list.innerHTML = '<div style="color:var(--muted);font-size:0.85rem">Couldn\\'t load your tickets — please refresh.</div>';
+  }
+}
+
+async function submitSupportTicket() {
+  const type = document.getElementById('support-type').value;
+  const messageEl = document.getElementById('support-message');
+  const message = messageEl.value.trim();
+  if (!message) { alert('Please enter a message.'); return; }
+  const btn = document.getElementById('support-submit-btn');
+  btn.disabled = true;
+  btn.textContent = 'Submitting…';
+  try {
+    const res = await fetch('/api/client/support/submit', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ type, message }),
+    });
+    if (!res.ok) throw new Error('submit failed');
+    messageEl.value = '';
+    await loadSupportTickets();
+  } catch (e) {
+    alert('Could not submit — please try again.');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Submit';
+  }
+}
+</script>
+
 <style>
 .task-card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:16px 18px; margin-bottom:10px; display:flex; gap:16px; align-items:flex-start; }
 .task-card-body { flex:1; min-width:0; }
@@ -2136,7 +2224,7 @@
     document.querySelectorAll('[id^="tab-"]').forEach(el => el.style.display = 'none');
     document.getElementById('tab-' + name).style.display = 'block';
     const btns = document.querySelectorAll('.tab-btn');
-    const labels = { 'overview': 'Overview', 'content-studio': 'Content Studio', 'billing': 'Billing', 'inner-circle': 'Inner Circle', 'marketplace': 'Creator Marketplace', 'tasks': 'Tasks', 'reports': 'Reports' };
+    const labels = { 'overview': 'Overview', 'content-studio': 'Content Studio', 'billing': 'Billing', 'inner-circle': 'Inner Circle', 'marketplace': 'Creator Marketplace', 'tasks': 'Tasks', 'reports': 'Reports', 'support': 'Support' };
     btns.forEach(b => { if (b.textContent.trim() === labels[name]) b.classList.add('active'); });
     if (name === 'content-studio' && !window._channelsLoaded) loadChannels();
     if (name === 'content-studio' && !window._arcadsLoaded) loadArcads();
@@ -2148,6 +2236,7 @@
     if (name === 'inner-circle' && !_icLoaded) loadInnerCircle();
     if (name === 'marketplace' && !_mktLoaded) loadMarketplace();
     if (name === 'tasks' && !window._tasksLoaded) loadClientTasks();
+    if (name === 'support' && !window._supportLoaded) loadSupportTickets();
   }
 
   // ─── Client Tasks ────────────────────────────────────────────────────────────

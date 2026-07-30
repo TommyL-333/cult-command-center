@@ -1328,6 +1328,13 @@ try {
 try {
   require('./routes/client-intercom-identity')(app, { requireClientSession, loadBrands });
 } catch (e) { console.error('[client-intercom-identity] registration failed:', e.message); }
+
+// Support Tickets: ensure schema (idempotent), then mount client + employee routes.
+try { require('./db/support-tickets'); console.log('[support-tickets] schema ensured'); }
+catch (e) { console.error('[support-tickets] schema init failed:', e.message); }
+try {
+  require('./routes/support-tickets')(app, { requireClientSession, requireAuth, loadBrands });
+} catch (e) { console.error('[support-tickets] registration failed:', e.message); }
 try { require('./routes/inner-circle-spark-brand')(app, { express, requireClientSession, loadBrands }); } catch (e) { console.error('[inner-circle-spark-brand] registration failed:', e.message); }
 
 // Ops Engine "My Tasks" per-person UI. Mounted BEFORE app.use(requireAuth) so
