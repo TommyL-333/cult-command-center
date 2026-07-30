@@ -479,10 +479,10 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
 <script>
 var ALL=[],FILTER='all',SHOW_BLOCKED=false,CURRENT=null,MODE='complete',TEAM=[],SUBTASKS={},ST_PARENT=null,IS_MANAGER=false,DEL_TARGET=null;
 var PRIO=[
-  {key:'Critical',label:'Critical',color:'var(--p1)',match:['critical','p0','urgent']},
-  {key:'High',label:'High',color:'var(--p2)',match:['high','p1']},
-  {key:'Medium',label:'Medium',color:'var(--p3)',match:['medium','normal','p2']},
-  {key:'Low',label:'Low',color:'var(--p4)',match:['low','p3','']}
+  {key:'Critical',label:'🔴 Critical',color:'var(--p1)',match:['critical','🔴 critical','p0','urgent']},
+  {key:'High',label:'🟠 High',color:'var(--p2)',match:['high','🟠 high','p1']},
+  {key:'Normal',label:'🟡 Normal',color:'var(--p3)',match:['normal','🟡 normal','medium','p2']},
+  {key:'Low',label:'⚪ Low',color:'var(--p4)',match:['low','⚪ low','p3','']}
 ];
 function prioBucket(p){var s=(p||'').toLowerCase().trim();for(var i=0;i<PRIO.length;i++){if(PRIO[i].match.indexOf(s)>=0)return PRIO[i];}return PRIO[2];}
 function esc(s){return(s||'').replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
