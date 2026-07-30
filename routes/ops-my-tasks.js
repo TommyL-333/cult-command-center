@@ -132,7 +132,10 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .dot{width:9px;height:9px;border-radius:50%}
   .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px 15px;margin-bottom:10px;display:flex;justify-content:space-between;gap:14px;align-items:flex-start}
   .card .body{flex:1;min-width:0}
-  .card .task-title{font-size:15px;font-weight:600;margin:0 0 5px;line-height:1.35}
+  .card .task-title{font-size:15px;font-weight:600;margin:0 0 5px;line-height:1.35;cursor:pointer}
+  .card .task-title:hover{text-decoration:underline;text-decoration-style:dotted;text-underline-offset:2px}
+  .card-title-input{background:var(--panel2);border:1px solid var(--cyan);border-radius:5px;color:var(--txt);padding:3px 8px;font-size:15px;font-weight:600;font-family:inherit;width:100%;margin-bottom:5px;box-sizing:border-box}
+  .card-title-input:focus{outline:none}
   .meta{display:flex;gap:7px;flex-wrap:wrap;margin-top:7px}
   .tag{font-size:11px;color:var(--muted);background:var(--panel2);border:1px solid var(--border);padding:2px 8px;border-radius:6px}
   .tag.client{color:var(--cyan);border-color:rgba(0,242,234,.3)}
@@ -785,7 +788,7 @@ function render(){
     g.forEach(function(t){
       var subs=SUBTASKS[t.record_id]||[];
       html+='<div class="card" id="card-'+t.record_id+'"><div class="body">';
-      html+='<div class="task-title">'+esc(t.task||'(untitled)')+'</div>';
+      html+='<div class="task-title" id="ttl-'+t.record_id+'" onclick="startEditCardTitle(\\''+t.record_id+'\\')">'+esc(t.task||'(untitled)')+'</div>';
       html+='<div class="meta">';
       if(t.client)html+='<span class="tag client">'+esc(t.client)+'</span>';
       if(t.pillar)html+='<span class="tag">'+esc(t.pillar)+'</span>';
@@ -853,6 +856,35 @@ function savePriority(sel,recordId){
   if(t)t.priority=val;
   fetch('/api/my-tasks/priority',{method:'PATCH',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({record_id:recordId,priority:val})})
     .catch(function(e){toast('Priority save failed');});
+}
+
+function startEditCardTitle(recordId){
+  var el=document.getElementById('ttl-'+recordId);
+  if(!el||el.parentNode.querySelector('.card-title-input'))return;
+  var t=ALL.filter(function(x){return x.record_id===recordId;})[0];if(!t)return;
+  var inp=document.createElement('input');
+  inp.className='card-title-input';inp.value=t.task||'';
+  el.style.display='none';
+  el.parentNode.insertBefore(inp,el);
+  inp.focus();inp.select();
+  var saved=false;
+  function save(){
+    if(saved)return;saved=true;
+    var v=inp.value.trim();
+    if(v&&v!==(t.task||'')){
+      t.task=v;
+      el.textContent=v;
+      fetch('/api/admin/tasks/'+recordId,{method:'PATCH',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({task:v})})
+        .then(function(r){return r.json();}).then(function(d){if(d.error)toast('Save failed: '+d.error);})
+        .catch(function(e){toast(''+e);});
+    }
+    inp.remove();el.style.display='';
+  }
+  inp.addEventListener('blur',save);
+  inp.addEventListener('keydown',function(e){
+    if(e.key==='Enter'){e.preventDefault();inp.blur();}
+    if(e.key==='Escape'){saved=true;inp.remove();el.style.display='';}
+  });
 }
 
 /* weekly report */
