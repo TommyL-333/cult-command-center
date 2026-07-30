@@ -127,6 +127,8 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   a.chip{text-decoration:none;display:inline-flex;align-items:center;gap:5px}
   .chip.sisy{background:linear-gradient(90deg,rgba(0,242,234,.22),rgba(255,0,80,.22));border-color:var(--cyan);color:var(--txt);font-weight:600}
   .chip.sisy:hover{box-shadow:0 0 12px rgba(0,242,234,.35)}
+  .chip.blocked-chip{border-color:rgba(255,0,80,.4);color:var(--red)}
+  .chip.blocked-chip.active{background:rgba(255,0,80,.15);border-color:var(--red)}
   .group{margin-bottom:26px}
   .group h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 11px;display:flex;align-items:center;gap:8px}
   .dot{width:9px;height:9px;border-radius:50%}
@@ -363,6 +365,15 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     </div>
     <label for="resultBox" id="modalLabel">Result / Output <span style="color:var(--red)">*</span> — what did you do?</label>
     <textarea id="resultBox" placeholder="Describe the outcome. Required."></textarea>
+    <div id="blockReassignWrap" style="display:none;margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--txt)">
+        <input type="checkbox" id="blockReassignChk" style="accent-color:var(--cyan);width:14px;height:14px" onchange="toggleBlockReassign()"/>
+        Reassign this task to someone else
+      </label>
+      <div id="blockReassignSel" style="display:none;margin-top:10px">
+        <select id="blockAssignSel" style="width:100%;margin-top:0;padding:10px;border-radius:8px;background:var(--panel2);color:var(--txt);border:1px solid var(--border)"><option value="">Choose teammate…</option></select>
+      </div>
+    </div>
     <div class="err" id="modalErr">A result / output note is required.</div>
     <div class="modal-actions" style="justify-content:space-between">
       <a class="chip sisy" id="sisyLink" href="https://sisyphus.cultcontent.cc" target="_blank" rel="noopener">🪨 Open in Sisyphus</a>
@@ -433,7 +444,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
 
 <div class="toast" id="toast"></div>
 <script>
-var ALL=[],FILTER='all',CURRENT=null,MODE='complete',TEAM=[],SUBTASKS={},ST_PARENT=null,IS_MANAGER=false,DEL_TARGET=null;
+var ALL=[],FILTER='all',SHOW_BLOCKED=false,CURRENT=null,MODE='complete',TEAM=[],SUBTASKS={},ST_PARENT=null,IS_MANAGER=false,DEL_TARGET=null;
 var PRIO=[
   {key:'Critical',label:'Critical',color:'var(--p1)',match:['critical','p0','urgent']},
   {key:'High',label:'High',color:'var(--p2)',match:['high','p1']},
@@ -767,19 +778,31 @@ function loadSubtasks(){
 }
 
 function renderFilters(){
-  var pillars={};ALL.forEach(function(t){if(t.pillar)pillars[t.pillar]=1;});
+  var pillars={};var blockedCount=0;
+  ALL.forEach(function(t){if(t.pillar)pillars[t.pillar]=1;if(t.status==='Blocked')blockedCount++;});
   var keys=Object.keys(pillars).sort();
   var el=document.getElementById('filters');el.style.display='flex';
   var html='<div class="chip'+(FILTER==='all'?' active':'')+'" onclick="setFilter(\\'all\\')">All Pillars</div>';
   keys.forEach(function(k){html+='<div class="chip'+(FILTER===k?' active':'')+'" onclick="setFilter(\\''+k.replace(/[^\w\s-]/g,'')+'\\')">'+esc(k)+'</div>';});
+  if(blockedCount>0){
+    html+='<div class="chip blocked-chip'+(SHOW_BLOCKED?' active':'')+'" onclick="toggleBlocked()">⛔ Blocked ('+blockedCount+')</div>';
+  }
   el.innerHTML=html;
 }
 function setFilter(f){FILTER=f;renderFilters();render();}
+function toggleBlocked(){SHOW_BLOCKED=!SHOW_BLOCKED;renderFilters();render();}
 
 function render(){
   var board=document.getElementById('board');
-  var list=ALL.filter(function(t){return FILTER==='all'||t.pillar===FILTER;});
-  if(!list.length){board.innerHTML='<div class="empty"><div class="big">✓</div>Nothing here. All caught up.</div>';return;}
+  var list=ALL.filter(function(t){
+    if(t.status==='Blocked'&&!SHOW_BLOCKED)return false;
+    return FILTER==='all'||t.pillar===FILTER;
+  });
+  if(!list.length){
+    var bHidden=!SHOW_BLOCKED?ALL.filter(function(t){return t.status==='Blocked';}).length:0;
+    board.innerHTML=bHidden?'<div class="empty"><div class="big">✓</div>All clear — <span style="color:var(--red);cursor:pointer;text-decoration:underline;text-underline-offset:2px" onclick="toggleBlocked()">'+bHidden+' blocked task'+(bHidden===1?'':'s')+'</span> hidden.</div>':'<div class="empty"><div class="big">✓</div>Nothing here. All caught up.</div>';
+    return;
+  }
   var html='';
   PRIO.forEach(function(P){
     var g=list.filter(function(t){return prioBucket(t.priority).key===P.key;});
@@ -1047,6 +1070,7 @@ function setModalMode(mode){
   document.getElementById('modalLabel').style.display='';
   document.getElementById('resultBox').style.display='';
   document.getElementById('assignWrap').style.display='none';
+  document.getElementById('blockReassignWrap').style.display='none';
   var isBlock=mode==='block';
   document.getElementById('modalTitle').textContent=isBlock?'Block task':'Complete task';
   document.getElementById('modalLabel').innerHTML=isBlock?'Reason <span style="color:var(--red)">*</span> — why is this blocked?':'Result / Output <span style="color:var(--red)">*</span> — what did you do?';
@@ -1097,15 +1121,42 @@ function openBlockModal(id){
   setModalMode('block');CURRENT=ALL.filter(function(t){return t.record_id===id;})[0];if(!CURRENT)return;
   document.getElementById('modalTask').textContent=CURRENT.task||'';
   var sl=document.getElementById('sisyLink');if(sl){var q='Help me unblock: '+(CURRENT.task||'');sl.href='https://sisyphus.cultcontent.cc/?prefill='+encodeURIComponent(q);}
-  var box=document.getElementById('resultBox');box.value='';document.getElementById('modalErr').style.display='none';document.getElementById('confirmBtn').disabled=true;document.getElementById('overlay').classList.add('show');setTimeout(function(){box.focus();},50);
+  var box=document.getElementById('resultBox');box.value='';document.getElementById('modalErr').style.display='none';document.getElementById('confirmBtn').disabled=true;
+  var brw=document.getElementById('blockReassignWrap');brw.style.display='block';
+  var chk=document.getElementById('blockReassignChk');chk.checked=false;
+  document.getElementById('blockReassignSel').style.display='none';
+  var fillTeam=function(){
+    var sel=document.getElementById('blockAssignSel');
+    sel.innerHTML='<option value="">Choose teammate…</option>'+TEAM.map(function(m){return'<option value="'+m.openId+'">'+esc(m.name)+(m.role?' — '+esc(m.role):'')+'</option>';}).join('');
+  };
+  if(TEAM.length){fillTeam();}else{fetch('/api/my-tasks/team',{credentials:'include'}).then(function(r){return r.json();}).then(function(d){TEAM=d.team||[];fillTeam();}).catch(function(){});}
+  document.getElementById('overlay').classList.add('show');setTimeout(function(){box.focus();},50);
+}
+function toggleBlockReassign(){
+  var on=document.getElementById('blockReassignChk').checked;
+  document.getElementById('blockReassignSel').style.display=on?'block':'none';
 }
 function doBlock(){
   if(!CURRENT)return;var reason=document.getElementById('resultBox').value.trim();if(!reason){document.getElementById('modalErr').style.display='block';return;}
+  var reassignTo=document.getElementById('blockReassignChk').checked?document.getElementById('blockAssignSel').value:'';
+  if(document.getElementById('blockReassignChk').checked&&!reassignTo){document.getElementById('modalErr').style.display='block';document.getElementById('modalErr').textContent='Choose a teammate to reassign to, or uncheck the option.';return;}
   var btn=document.getElementById('confirmBtn');btn.disabled=true;btn.textContent='Saving…';
   fetch('/api/my-tasks/block',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({record_id:CURRENT.record_id,reason:reason})})
   .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j};});}).then(function(x){
     btn.textContent='Mark blocked';
-    if(x.ok&&x.j.verified){var rid=CURRENT.record_id;ALL=ALL.map(function(t){if(t.record_id===rid){t.status='Blocked';t.blockedReason=x.j.reason;}return t;});closeModal();renderFilters();render();toast('⛔ Blocked');}
+    if(x.ok&&x.j.verified){
+      var rid=CURRENT.record_id;
+      ALL=ALL.map(function(t){if(t.record_id===rid){t.status='Blocked';t.blockedReason=x.j.reason;}return t;});
+      if(reassignTo){
+        fetch('/api/my-tasks/reassign',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({record_id:rid,to_open_id:reassignTo,priority:(CURRENT.priority||'🟡 Normal')})})
+        .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j};});}).then(function(rx){
+          if(rx.ok&&rx.j.verified){ALL=ALL.filter(function(t){return t.record_id!==rid;});document.getElementById('sub').textContent=ALL.length+' active task'+(ALL.length===1?'':'s')+' assigned to you.';}
+          closeModal();renderFilters();render();toast('⛔ Blocked & reassigned');
+        }).catch(function(){closeModal();renderFilters();render();toast('⛔ Blocked');});
+      } else {
+        closeModal();renderFilters();render();toast('⛔ Blocked');
+      }
+    }
     else{document.getElementById('modalErr').style.display='block';document.getElementById('modalErr').textContent=(x.j&&x.j.error)||'Failed';btn.disabled=false;}
   }).catch(function(e){document.getElementById('modalErr').style.display='block';document.getElementById('modalErr').textContent=''+e;btn.disabled=false;btn.textContent='Mark blocked';});
 }
