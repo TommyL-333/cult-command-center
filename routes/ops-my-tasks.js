@@ -202,6 +202,26 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .sp-week-nav{display:flex;align-items:center;gap:10px;margin-bottom:14px}
   .sp-week-lbl{flex:1;text-align:center;font-size:15px;font-weight:700}
   .sp-empty{color:var(--muted);font-size:12.5px;padding:6px 0 4px}
+  .sp-type{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:1px 6px;border-radius:4px;white-space:nowrap;flex-shrink:0}
+  .sp-type-suggestion{background:rgba(0,242,234,.12);color:var(--cyan)}
+  .sp-type-sop{background:rgba(107,232,107,.12);color:#6be86b}
+  .sp-type-recurring{background:rgba(255,207,100,.12);color:#ffcf64}
+  .sp-type-note{background:rgba(154,160,181,.15);color:var(--muted)}
+  .sp-item-notes{font-size:12px;color:var(--muted);line-height:1.45;padding:2px 0 6px 23px;display:none}
+  .sp-item-notes.show{display:block}
+  .sp-notes-text{cursor:pointer;min-height:14px}
+  .sp-notes-text:hover{color:var(--txt)}
+  .sp-notes-input{width:100%;background:var(--panel2);border:1px solid var(--border);border-radius:6px;color:var(--txt);padding:6px 9px;font-size:12px;font-family:inherit;resize:none;min-height:52px;display:none;margin-top:2px}
+  .sp-notes-input:focus{outline:none;border-color:var(--cyan)}
+  .sp-note-btn{background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;padding:0 2px;opacity:0;line-height:1;flex-shrink:0}
+  .sp-item:hover .sp-note-btn{opacity:.45}
+  .sp-note-btn.has-notes{opacity:.65!important;color:var(--cyan)}
+  .sp-note-btn:hover{opacity:1!important}
+  .sp-type-row{display:flex;gap:6px;margin-top:8px;align-items:center}
+  .sp-type-sel{background:var(--panel2);border:1px solid var(--border);border-radius:6px;color:var(--muted);padding:5px 8px;font-size:12px;font-family:inherit;flex:1}
+  .sp-type-sel:focus{outline:none;border-color:var(--cyan)}
+  .sp-sisy-link{font-size:11px;color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;margin-bottom:10px;transition:.1s}
+  .sp-sisy-link:hover{color:var(--cyan);border-color:var(--cyan)}
   @media(max-width:720px){.sp-board{grid-template-columns:1fr}}
   .wr-hist h3{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:0 0 12px}
   .wr-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px}
@@ -271,13 +291,22 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
       </div>
       <div class="sp-col">
         <div class="sp-col-hdr"><span>🏗️ Systems</span><span style="font-size:10px;font-weight:400;color:var(--muted)">Architecture &amp; infra</span></div>
+        <a class="sp-sisy-link" href="https://sisyphus.cultcontent.cc" target="_blank" rel="noopener">🪨 Sisyphus sprint planner ↗</a>
         <div id="sp-items-architecture"></div>
         <input class="sp-input" id="sp-new-architecture" placeholder="Add systems item… (Enter to save)" onkeydown="spAddOnEnter(event,\\'architecture\\')"/>
       </div>
       <div class="sp-col">
-        <div class="sp-col-hdr"><span>🤝 Team</span><span style="font-size:10px;font-weight:400;color:var(--muted)">SOPs &amp; suggestions</span></div>
+        <div class="sp-col-hdr"><span>🤝 Team</span><span style="font-size:10px;font-weight:400;color:var(--muted)">Notes &amp; suggestions</span></div>
         <div id="sp-items-team"></div>
-        <input class="sp-input" id="sp-new-team" placeholder="Suggest a task or SOP… (Enter to save)" onkeydown="spAddOnEnter(event,\\'team\\')"/>
+        <input class="sp-input" id="sp-new-team" placeholder="Add note, SOP idea, or suggestion… (Enter)" onkeydown="spAddOnEnter(event,\\'team\\')"/>
+        <div class="sp-type-row">
+          <select class="sp-type-sel" id="sp-type-team">
+            <option value="suggestion">💡 Suggestion</option>
+            <option value="sop">📋 SOP idea</option>
+            <option value="recurring">🔁 Recurring task</option>
+            <option value="note">📝 Note</option>
+          </select>
+        </div>
       </div>
     </div>
   </div>
@@ -390,6 +419,8 @@ function spSaveGoal(){
   fetch('/api/sprint/goal',{method:'PATCH',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({week:SP_WEEK,goal:g})});
 }
 
+var SP_TYPE_LABELS={suggestion:'💡 Suggestion',sop:'📋 SOP',recurring:'🔁 Recurring',note:'📝 Note'};
+
 function renderSprint(){
   ['product','architecture','team'].forEach(function(sec){
     var items=SP_DATA.items.filter(function(i){return i.section===sec;});
@@ -401,13 +432,23 @@ function renderSprint(){
       var author=(item.author||'').split('@')[0];
       var canDel=(item.author===SP_MY_EMAIL||SP_IS_ADMIN);
       var votes=(item.votes||[]).length,voted=(item.votes||[]).indexOf(SP_MY_EMAIL)>-1;
+      var hasNotes=!!(item.notes&&item.notes.trim());
       var html='<div class="sp-item'+(done?' sp-done':'')+'" data-id="'+esc(item.id)+'">';
       html+='<span class="sp-status" onclick="spCycleStatus(this)" title="Cycle status">'+icon+'</span>';
       html+='<div class="sp-text">'+esc(item.text)+'</div>';
+      if(sec==='team'&&item.type&&SP_TYPE_LABELS[item.type]){
+        html+='<span class="sp-type sp-type-'+esc(item.type)+'">'+SP_TYPE_LABELS[item.type]+'</span>';
+      }
       html+='<span class="sp-author">'+esc(author)+'</span>';
       if(sec==='team'){html+='<button class="sp-vote'+(voted?' voted':'')+'" onclick="spVote(this)">▲ '+votes+'</button>';}
+      html+='<button class="sp-note-btn'+(hasNotes?' has-notes':'')+'" onclick="spToggleNotes(this)" title="'+(hasNotes?'Notes':'Add note')+'">📝</button>';
       if(canDel){html+='<button class="sp-del" onclick="spDel(this)" title="Delete">✕</button>';}
-      return html+'</div>';
+      html+='</div>';
+      html+='<div class="sp-item-notes'+(hasNotes?' show':'')+'" data-notes-id="'+esc(item.id)+'">';
+      if(hasNotes){html+='<div class="sp-notes-text" onclick="spEditNotes(this)">'+esc(item.notes)+'</div>';}
+      html+='<textarea class="sp-notes-input" placeholder="Add a note…" onblur="spSaveNotes(this)">'+(hasNotes?esc(item.notes):'')+'</textarea>';
+      html+='</div>';
+      return html;
     }).join('');
   });
 }
@@ -416,10 +457,46 @@ function spAddOnEnter(e,sec){
   if(e.key!=='Enter')return;
   var inp=document.getElementById('sp-new-'+sec),text=(inp.value||'').trim();
   if(!text)return;
+  var typeSel=document.getElementById('sp-type-'+sec);
+  var itemType=typeSel?typeSel.value:null;
   inp.value='';inp.disabled=true;
-  fetch('/api/sprint/item',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({week:SP_WEEK,section:sec,text:text})})
+  var body={week:SP_WEEK,section:sec,text:text};
+  if(itemType)body.type=itemType;
+  fetch('/api/sprint/item',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
   .then(function(r){return r.json();}).then(function(d){inp.disabled=false;if(d.ok){SP_DATA.items.push(d.item);renderSprint();}})
   .catch(function(){inp.disabled=false;});
+}
+
+function spToggleNotes(btn){
+  var row=btn.closest('.sp-item'),id=row.getAttribute('data-id');
+  var notesEl=row.nextElementSibling;
+  if(!notesEl||!notesEl.classList.contains('sp-item-notes'))return;
+  var showing=notesEl.classList.contains('show');
+  notesEl.classList.toggle('show');
+  if(!showing){
+    var ta=notesEl.querySelector('.sp-notes-input');
+    if(ta){ta.style.display='block';ta.focus();}
+  }
+}
+
+function spEditNotes(textEl){
+  var notesEl=textEl.closest('.sp-item-notes');
+  var ta=notesEl.querySelector('.sp-notes-input');
+  if(ta){textEl.style.display='none';ta.style.display='block';ta.focus();}
+}
+
+function spSaveNotes(ta){
+  var notesEl=ta.closest('.sp-item-notes');
+  if(!notesEl)return;
+  var id=notesEl.getAttribute('data-notes-id');
+  var notes=ta.value.trim();
+  var item=SP_DATA.items.filter(function(i){return i.id===id;})[0];
+  if(!item)return;
+  if(notes===(item.notes||''))return;
+  item.notes=notes;
+  ta.style.display='none';
+  renderSprint();
+  fetch('/api/sprint/item/'+id,{method:'PATCH',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({week:SP_WEEK,notes:notes})});
 }
 
 function spCycleStatus(el){
@@ -2281,7 +2358,9 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
         return res.status(400).json({ error: 'week, section, and text are required' });
       const sprints = readJsonFile(SP_FILE, {});
       if (!sprints[week]) sprints[week] = { goal: '', items: [] };
+      const type = (req.body.type && ['suggestion','sop','recurring','note'].includes(req.body.type)) ? req.body.type : null;
       const item = { id: genId(), section, text: text.trim(), status: 'open', author: email, votes: [], createdAt: Date.now() };
+      if (type) item.type = type;
       sprints[week].items.push(item);
       writeJsonFile(SP_FILE, sprints);
       res.json({ ok: true, item });
@@ -2290,13 +2369,14 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
 
   app.patch('/api/sprint/item/:id', requireAuth, jsonBody, async (req, res) => {
     try {
-      const { week, status, text } = req.body || {};
+      const { week, status, text, notes } = req.body || {};
       const sprints = readJsonFile(SP_FILE, {});
       const sprint = sprints[week]; if (!sprint) return res.status(404).json({ error: 'Sprint not found' });
       const item = sprint.items.find(i => i.id === req.params.id);
       if (!item) return res.status(404).json({ error: 'Item not found' });
       if (status) item.status = status;
       if (text) item.text = text.trim();
+      if (notes !== undefined) item.notes = notes;
       writeJsonFile(SP_FILE, sprints);
       res.json({ ok: true, item });
     } catch (e) { res.status(500).json({ error: e.message }); }
