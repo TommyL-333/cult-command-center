@@ -1,14 +1,19 @@
 /**
  * routes/support-tickets.js
- * Centralized client support tickets — questions, concerns, suggestions.
+ * Centralized support tickets — questions, concerns, suggestions — for both
+ * client (brand) submitters and Inner Circle creator submitters.
  *
  * Client side (requireClientSession, portal.cultcontent.cc):
  *   POST /api/client/support/submit      { type, message } -> creates a ticket
  *   GET  /api/client/support/my-tickets  -> this client's own submitted tickets
  *
+ * Creator side (requireSqliteSession — Inner Circle bearer-token/cookie auth):
+ *   POST /api/inner-circle/support/submit      { type, message } -> creates a ticket
+ *   GET  /api/inner-circle/support/my-tickets   -> this creator's own submitted tickets
+ *
  * Employee side (requireAuth — CF Access, ANY @cultcontent.cc teammate, not
  * just portal admins, since this needs to be visible to "all employees"):
- *   GET  /api/support-tickets/list            -> every ticket, all clients
+ *   GET  /api/support-tickets/list            -> every ticket, clients AND creators
  *   POST /api/support-tickets/:id/status      { status } -> unopened|opened|flagged
  *   GET  /support-tickets                     -> HTML page for the above
  *
@@ -40,8 +45,12 @@ function nameFromEmail(email) {
 function shapeTicket(row) {
   return {
     id: row.id,
+    submitterType: row.submitter_type,
     brandId: row.brand_id,
     brandName: row.brand_name,
+    creatorId: row.creator_id,
+    creatorName: row.creator_name,
+    creatorHandle: row.creator_handle,
     type: row.type,
     message: row.message,
     status: row.status,
@@ -54,9 +63,9 @@ function shapeTicket(row) {
 }
 
 module.exports = function registerSupportTickets(app, deps = {}) {
-  const { requireClientSession, requireAuth, loadBrands } = deps;
-  if (!app || !requireClientSession || !requireAuth || !loadBrands) {
-    throw new Error('[support-tickets] missing deps: requires { requireClientSession, requireAuth, loadBrands }');
+  const { requireClientSession, requireAuth, requireSqliteSession, loadBrands } = deps;
+  if (!app || !requireClientSession || !requireAuth || !requireSqliteSession || !loadBrands) {
+    throw new Error('[support-tickets] missing deps: requires { requireClientSession, requireAuth, requireSqliteSession, loadBrands }');
   }
 
   // ── Client: submit a new ticket ─────────────────────────────────────────
@@ -72,7 +81,7 @@ module.exports = function registerSupportTickets(app, deps = {}) {
       if (!cleanMessage) return res.status(400).json({ error: 'message is required' });
       const cleanType = VALID_TYPES.has(type) ? type : 'question';
 
-      const info = queries.insertTicket.run(brandId, brand.name, cleanType, cleanMessage);
+      const info = queries.insertClientTicket.run(brandId, brand.name, cleanType, cleanMessage);
       const ticket = queries.getTicketById.get(info.lastInsertRowid);
       res.json({ ok: true, ticket: shapeTicket(ticket) });
     } catch (e) {
@@ -92,7 +101,42 @@ module.exports = function registerSupportTickets(app, deps = {}) {
     }
   });
 
-  // ── Employee: every ticket, every client ────────────────────────────────
+  // ── Creator: submit a new ticket ─────────────────────────────────────────
+  app.post('/api/inner-circle/support/submit', requireSqliteSession, (req, res) => {
+    try {
+      const creator = req.icCreator;
+      if (!creator || !creator.id) return res.status(401).json({ error: 'Not authenticated' });
+
+      const { type, message } = req.body || {};
+      const cleanMessage = String(message || '').trim();
+      if (!cleanMessage) return res.status(400).json({ error: 'message is required' });
+      const cleanType = VALID_TYPES.has(type) ? type : 'question';
+
+      const info = queries.insertCreatorTicket.run(
+        cleanType, cleanMessage, creator.id, creator.creator_name || null, creator.creator_handle || null
+      );
+      const ticket = queries.getTicketById.get(info.lastInsertRowid);
+      res.json({ ok: true, ticket: shapeTicket(ticket) });
+    } catch (e) {
+      console.error('[support-tickets] creator submit failed:', e.message);
+      res.status(500).json({ error: 'Server error' });
+    }
+  });
+
+  // ── Creator: view own ticket history + status ────────────────────────────
+  app.get('/api/inner-circle/support/my-tickets', requireSqliteSession, (req, res) => {
+    try {
+      const creator = req.icCreator;
+      if (!creator || !creator.id) return res.status(401).json({ error: 'Not authenticated' });
+      const rows = queries.getTicketsForCreator.all(creator.id);
+      res.json({ ok: true, tickets: rows.map(shapeTicket) });
+    } catch (e) {
+      console.error('[support-tickets] creator my-tickets failed:', e.message);
+      res.status(500).json({ error: 'Server error' });
+    }
+  });
+
+  // ── Employee: every ticket, clients AND creators ────────────────────────
   app.get('/api/support-tickets/list', requireAuth, (req, res) => {
     try {
       const rows = queries.getAllTickets.all();
@@ -153,6 +197,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .ticket{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:16px 18px;margin-bottom:10px}
 .ticket-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px}
 .ticket-brand{font-weight:700;font-size:.95rem}
+.ticket-source{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 7px;border-radius:5px;margin-right:8px}
+.ticket-source-client{background:rgba(168,85,247,.14);color:#c084fc}
+.ticket-source-creator{background:rgba(0,242,234,.12);color:#00f2ea}
 .ticket-type{font-size:.72rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;margin-left:8px}
 .badge{font-size:.72rem;font-weight:700;padding:3px 9px;border-radius:6px;white-space:nowrap}
 .badge-unopened{background:rgba(96,165,250,.12);color:#60a5fa}
@@ -209,9 +256,13 @@ function render() {
     if (t.status !== 'opened') actions.push('<button class="action-btn primary" onclick="setStatus(' + t.id + ',\\'opened\\')">Open</button>');
     if (t.status !== 'flagged') actions.push('<button class="action-btn" onclick="setStatus(' + t.id + ',\\'flagged\\')">Flag</button>');
     if (t.status !== 'unopened') actions.push('<button class="action-btn" onclick="setStatus(' + t.id + ',\\'unopened\\')">Reset</button>');
+    const who = t.submitterType === 'creator'
+      ? esc(t.creatorName || t.creatorHandle || 'Creator') + (t.creatorHandle ? ' (@' + esc(t.creatorHandle) + ')' : '')
+      : esc(t.brandName);
+    const sourceTag = '<span class="ticket-source ticket-source-' + t.submitterType + '">' + t.submitterType + '</span>';
     return '<div class="ticket">'
       + '<div class="ticket-top">'
-      + '<div><span class="ticket-brand">' + esc(t.brandName) + '</span><span class="ticket-type">' + esc(t.type) + '</span></div>'
+      + '<div>' + sourceTag + '<span class="ticket-brand">' + who + '</span><span class="ticket-type">' + esc(t.type) + '</span></div>'
       + '<span class="badge badge-' + t.status + '">' + t.status + '</span>'
       + '</div>'
       + '<div class="ticket-msg">' + esc(t.message) + '</div>'

@@ -1333,7 +1333,10 @@ try {
 try { require('./db/support-tickets'); console.log('[support-tickets] schema ensured'); }
 catch (e) { console.error('[support-tickets] schema init failed:', e.message); }
 try {
-  require('./routes/support-tickets')(app, { requireClientSession, requireAuth, loadBrands });
+  require('./routes/support-tickets')(app, {
+    requireClientSession, requireAuth, loadBrands,
+    requireSqliteSession: (icSqlite && icSqlite.requireSqliteSession) || requireCreatorSession,
+  });
 } catch (e) { console.error('[support-tickets] registration failed:', e.message); }
 try { require('./routes/inner-circle-spark-brand')(app, { express, requireClientSession, loadBrands }); } catch (e) { console.error('[inner-circle-spark-brand] registration failed:', e.message); }
 

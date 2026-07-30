@@ -4,9 +4,15 @@
  * (same handle pattern as db/inner-circle.js and db/content-studio.js — no
  * separate service / volume needed).
  *
- * One ticket = one question/concern/suggestion a client submitted from the
- * client portal. Status is exactly one of: unopened | opened | flagged.
- * Moving a ticket to "opened" records which teammate opened it.
+ * One ticket = one question/concern/suggestion, submitted either by a client
+ * (brand_id/brand_name set, submitter_type='client') or a creator
+ * (creator_id/creator_name/creator_handle set, submitter_type='creator').
+ * A creator isn't tied to one brand, so brand_id/brand_name are left as
+ * empty string on creator tickets rather than relaxing the NOT NULL
+ * constraint on an already-deployed column.
+ *
+ * Status is exactly one of: unopened | opened | flagged. Moving a ticket to
+ * "opened" records which teammate opened it.
  */
 
 const Database = require('better-sqlite3');
@@ -40,13 +46,34 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_support_tickets_status ON support_tickets(status);
 `);
 
+// Idempotent column additions for creator support — safe to run on every
+// boot against a table that may already exist (and may already have rows)
+// from before creators were added. SQLite has no "ADD COLUMN IF NOT EXISTS",
+// so each is wrapped and the "duplicate column name" error is swallowed.
+function addColumnIfMissing(def) {
+  try { db.exec(`ALTER TABLE support_tickets ADD COLUMN ${def}`); }
+  catch (e) { if (!/duplicate column name/i.test(e.message)) throw e; }
+}
+addColumnIfMissing(`submitter_type TEXT NOT NULL DEFAULT 'client'`); // client | creator
+addColumnIfMissing(`creator_id INTEGER`);
+addColumnIfMissing(`creator_name TEXT`);
+addColumnIfMissing(`creator_handle TEXT`);
+db.exec(`CREATE INDEX IF NOT EXISTS idx_support_tickets_creator ON support_tickets(creator_id)`);
+
 const queries = {
-  insertTicket: db.prepare(`
-    INSERT INTO support_tickets (brand_id, brand_name, type, message)
-    VALUES (?, ?, ?, ?)`),
+  insertClientTicket: db.prepare(`
+    INSERT INTO support_tickets (brand_id, brand_name, type, message, submitter_type)
+    VALUES (?, ?, ?, ?, 'client')`),
+
+  insertCreatorTicket: db.prepare(`
+    INSERT INTO support_tickets (brand_id, brand_name, type, message, submitter_type, creator_id, creator_name, creator_handle)
+    VALUES ('', NULL, ?, ?, 'creator', ?, ?, ?)`),
 
   getTicketsForBrand: db.prepare(`
-    SELECT * FROM support_tickets WHERE brand_id = ? ORDER BY created_at DESC`),
+    SELECT * FROM support_tickets WHERE brand_id = ? AND submitter_type = 'client' ORDER BY created_at DESC`),
+
+  getTicketsForCreator: db.prepare(`
+    SELECT * FROM support_tickets WHERE creator_id = ? AND submitter_type = 'creator' ORDER BY created_at DESC`),
 
   getTicketById: db.prepare(`SELECT * FROM support_tickets WHERE id = ?`),
 
