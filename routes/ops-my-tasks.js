@@ -208,14 +208,17 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .sp-goal-input{width:100%;background:rgba(0,242,234,.05);border:1px solid rgba(0,242,234,.18);border-radius:10px;color:var(--txt);padding:10px 14px;font-size:13.5px;font-family:inherit}
   .sp-goal-input:focus{outline:none;border-color:var(--cyan)}
   .sp-goal-input::placeholder{color:var(--muted);font-style:italic}
-  .sp-week-nav{display:flex;align-items:center;gap:10px;margin-bottom:14px}
-  .sp-week-lbl{flex:1;text-align:center;font-size:15px;font-weight:700}
+  .sp-week-nav{display:flex;align-items:center;gap:10px;margin-top:18px;opacity:.55}
+  .sp-week-nav:hover{opacity:.85;transition:opacity .2s}
+  .sp-week-lbl{flex:1;text-align:center;font-size:13px;font-weight:600;color:var(--muted)}
   .sp-empty{color:var(--muted);font-size:12.5px;padding:6px 0 4px}
   .sp-type{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:1px 6px;border-radius:4px;white-space:nowrap;flex-shrink:0}
   .sp-type-suggestion{background:rgba(0,242,234,.12);color:var(--cyan)}
   .sp-type-sop{background:rgba(107,232,107,.12);color:#6be86b}
   .sp-type-recurring{background:rgba(255,207,100,.12);color:#ffcf64}
   .sp-type-note{background:rgba(154,160,181,.15);color:var(--muted)}
+  .sp-type-bug{background:rgba(255,0,80,.12);color:var(--red)}
+  .sp-type-feature{background:rgba(0,242,234,.12);color:var(--cyan)}
   .sp-item-notes{font-size:12px;color:var(--muted);line-height:1.45;padding:2px 0 6px 23px;display:none}
   .sp-item-notes.show{display:block}
   .sp-notes-text{cursor:pointer;min-height:14px}
@@ -245,6 +248,18 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .sp-product-detail p{font-size:12.5px;color:var(--muted);margin:10px 0 8px;line-height:1.5}
   .sp-product-detail a{font-size:12px;color:var(--cyan);text-decoration:none}
   .sp-product-detail a:hover{text-decoration:underline}
+  .sp-product-actions{display:flex;gap:8px;margin-top:12px}
+  .sp-product-act-btn{background:none;border:1px solid var(--border);border-radius:7px;color:var(--muted);font-size:12px;padding:5px 12px;cursor:pointer;font-family:inherit;transition:.1s}
+  .sp-product-act-btn:hover{border-color:var(--cyan);color:var(--txt)}
+  .sp-product-form{margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+  .sp-product-items{margin-top:10px;padding-top:8px;border-top:1px solid var(--border)}
+  .sp-product-item{display:flex;align-items:center;gap:7px;padding:5px 0;border-bottom:1px solid rgba(47,51,70,.2);font-size:12.5px}
+  .sp-product-item:last-child{border-bottom:none}
+  .sp-col-full{grid-column:1/-1}
+  .sp-placeholder{color:var(--muted);font-size:12.5px;line-height:1.6;padding:8px 0 4px}
+  .sp-submit-btn{background:var(--panel2);border:1px solid var(--border);border-radius:8px;color:var(--txt);font-size:12px;font-weight:600;font-family:inherit;padding:7px 16px;cursor:pointer;white-space:nowrap;transition:.1s}
+  .sp-submit-btn:hover{border-color:var(--cyan);color:var(--cyan)}
+  .sp-product-tag{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:1px 6px;border-radius:4px;background:rgba(154,160,181,.12);color:var(--muted);white-space:nowrap;flex-shrink:0}
   .sp-plan-cta{margin-top:16px;display:flex;align-items:center;gap:14px;padding:14px 16px;background:rgba(0,242,234,.04);border:1px dashed rgba(0,242,234,.25);border-radius:12px}
   .sp-plan-btn{font-size:13px;padding:9px 18px;white-space:nowrap;flex-shrink:0}
   .sp-plan-sub{font-size:12px;color:var(--muted);line-height:1.4}
@@ -264,7 +279,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .plan-sec-team{background:rgba(107,232,107,.12);color:#6be86b}
   .sp-push-btn{background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11px;padding:2px 8px;cursor:pointer;transition:.1s;white-space:nowrap}
   .sp-push-btn:hover{border-color:var(--cyan);color:var(--cyan)}
-  @media(max-width:720px){.sp-board{grid-template-columns:1fr}.sp-plan-cta{flex-direction:column;align-items:flex-start}}
+  @media(max-width:720px){.sp-board{grid-template-columns:1fr}.sp-col-full{grid-column:unset}.sp-plan-cta{flex-direction:column;align-items:flex-start}}
   .wr-hist h3{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:0 0 12px}
   .wr-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px}
   .wr-head{display:flex;justify-content:space-between;margin-bottom:10px;font-size:13px}
@@ -319,11 +334,6 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   </div>
 
   <div id="tab-sprint" style="display:none">
-    <div class="sp-week-nav">
-      <button class="chip" onclick="spPrev()">← Prev</button>
-      <div class="sp-week-lbl" id="sp-week-lbl">…</div>
-      <button class="chip" onclick="spNext()">Next →</button>
-    </div>
     <div class="sp-board">
       <div class="sp-col">
         <div class="sp-col-hdr"><span>🎯 Products</span><span style="font-size:10px;font-weight:400;color:var(--muted)">Click to expand</span></div>
@@ -332,7 +342,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
       <div class="sp-col">
         <div class="sp-col-hdr"><span>🤝 Team</span><span style="font-size:10px;font-weight:400;color:var(--muted)">Notes &amp; suggestions</span></div>
         <div id="sp-items-team"></div>
-        <input class="sp-input" id="sp-new-team" placeholder="Add note, SOP idea, or task update… (Enter)" onkeydown="spAddOnEnter(event,\\'team\\')"/>
+        <input class="sp-input" id="sp-new-team" placeholder="Add a note, suggestion, or SOP idea…" onkeydown="spAddOnEnter(event,\\'team\\')"/>
         <div class="sp-type-row">
           <select class="sp-type-sel" id="sp-type-team">
             <option value="suggestion">💡 Suggestion</option>
@@ -340,12 +350,33 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
             <option value="recurring">🔁 Recurring task</option>
             <option value="note">📝 Note</option>
           </select>
+          <select class="sp-type-sel" id="sp-product-team" style="flex:1.4">
+            <option value="">No product</option>
+          </select>
+          <button class="sp-submit-btn" onclick="spSubmitTeam()">Add</button>
         </div>
+      </div>
+      <div class="sp-col">
+        <div class="sp-col-hdr"><span>👥 Affiliates</span><span style="font-size:10px;font-weight:400;color:var(--muted)">Coming soon</span></div>
+        <div class="sp-placeholder">Feedback and requests from the affiliate creator network will surface here — direct into the sprint board.</div>
+      </div>
+      <div class="sp-col">
+        <div class="sp-col-hdr"><span>🧑‍💼 Consultants</span><span style="font-size:10px;font-weight:400;color:var(--muted)">Coming soon</span></div>
+        <div class="sp-placeholder">Consultant onboarding feedback, blockers, and suggestions will route here from the contract management portal.</div>
+      </div>
+      <div class="sp-col sp-col-full">
+        <div class="sp-col-hdr"><span>🏷️ Clients &amp; Brands</span><span style="font-size:10px;font-weight:400;color:var(--muted)">Coming soon</span></div>
+        <div class="sp-placeholder">Brand requests, campaign feedback, and client asks will land here — linked directly to their client dashboard entries.</div>
       </div>
     </div>
     <div class="sp-plan-cta">
       <button class="btn sp-plan-btn" onclick="openSprintPlanner()">✨ Plan the next sprint</button>
       <span class="sp-plan-sub">AI-guided sprint scoping — answers 6 questions and generates a sprint spec split across product, systems, and team</span>
+    </div>
+    <div class="sp-week-nav">
+      <button class="chip" onclick="spPrev()">← Prev</button>
+      <div class="sp-week-lbl" id="sp-week-lbl">…</div>
+      <button class="chip" onclick="spNext()">Next →</button>
     </div>
   </div>
 </div>
@@ -487,23 +518,75 @@ var SPINE_QS=[
   'Any locked files that need Claude Code? (index.js, chat.js, chat.html, dashboard-server.js, or none)'
 ];
 
+var SP_PRODUCT_ACTION_TYPE={};
 function renderProducts(){
   var el=document.getElementById('sp-products');
   if(!el)return;
   el.innerHTML=SP_PRODUCTS.map(function(p){
-    return '<div class="sp-product-card" onclick="spToggleProduct(this)">'
+    var pItems=(SP_DATA.items||[]).filter(function(i){return i.productId===p.id;});
+    var itemsHtml='';
+    if(pItems.length){
+      itemsHtml='<div class="sp-product-items">'
+        +pItems.map(function(item){
+          var done=item.status==='done';
+          var icon=item.type==='bug'?'🐛':'✨';
+          return'<div class="sp-product-item'+(done?' sp-done':'')+'">'+icon+' <span style="flex:1'+(done?';text-decoration:line-through;opacity:.45':'')+'">'+esc(item.text)+'</span><span style="font-size:10px;color:var(--muted)">'+(item.author||'').split('@')[0]+'</span></div>';
+        }).join('')
+      +'</div>';
+    }
+    return '<div class="sp-product-card" id="sppc-'+p.id+'" onclick="spToggleProduct(this)">'
       +'<div class="sp-product-hdr">'
         +'<span class="sp-product-emoji">'+p.emoji+'</span>'
         +'<span class="sp-product-name">'+esc(p.name)+'</span>'
+        +(pItems.length?'<span style="font-size:10px;color:var(--muted);font-weight:400">'+pItems.length+' item'+(pItems.length===1?'':'s')+'</span>':'')
         +'<span class="'+(p.status==='live'?'sp-ps-live':'sp-ps-building')+'">'+esc(p.status==='live'?'Live':'Building')+'</span>'
         +'<span class="sp-product-chevron">›</span>'
       +'</div>'
-      +'<div class="sp-product-detail">'
+      +'<div class="sp-product-detail" onclick="event.stopPropagation()">'
         +'<p>'+esc(p.desc)+'</p>'
         +'<a href="'+esc(p.url)+'" target="_blank" rel="noopener">'+esc(p.url)+' ↗</a>'
+        +itemsHtml
+        +'<div class="sp-product-actions">'
+          +'<button class="sp-product-act-btn" onclick="spShowProductForm(event,\\''+p.id+'\\',\\'bug\\')">🐛 Report Bug</button>'
+          +'<button class="sp-product-act-btn" onclick="spShowProductForm(event,\\''+p.id+'\\',\\'feature\\')">✨ Add Feature</button>'
+        +'</div>'
+        +'<div class="sp-product-form" id="spf-'+p.id+'" style="display:none">'
+          +'<textarea class="sp-input" id="spf-txt-'+p.id+'" placeholder="Describe it…" style="min-height:60px;resize:none;margin-top:0"></textarea>'
+          +'<div style="display:flex;justify-content:flex-end;gap:8px;margin-top:7px">'
+            +'<button class="btn ghost" style="font-size:12px;padding:5px 12px" onclick="spHideProductForm(event,\\''+p.id+'\\')">Cancel</button>'
+            +'<button class="btn" style="font-size:12px;padding:5px 12px" id="spf-btn-'+p.id+'" onclick="spSubmitProductAction(event,\\''+p.id+'\\')">Submit</button>'
+          +'</div>'
+        +'</div>'
       +'</div>'
     +'</div>';
   }).join('');
+}
+
+function spShowProductForm(e,pid,type){
+  e.stopPropagation();
+  SP_PRODUCT_ACTION_TYPE[pid]=type;
+  var form=document.getElementById('spf-'+pid);form.style.display='block';
+  var txt=document.getElementById('spf-txt-'+pid);
+  txt.placeholder=type==='bug'?'Describe the bug — what happened and what did you expect?':'Describe the feature — what should it do?';
+  txt.value='';txt.focus();
+}
+function spHideProductForm(e,pid){
+  e.stopPropagation();
+  document.getElementById('spf-'+pid).style.display='none';
+  document.getElementById('spf-txt-'+pid).value='';
+}
+function spSubmitProductAction(e,pid){
+  e.stopPropagation();
+  var type=SP_PRODUCT_ACTION_TYPE[pid]||'feature';
+  var txt=document.getElementById('spf-txt-'+pid);var text=txt.value.trim();if(!text)return;
+  var p=SP_PRODUCTS.filter(function(x){return x.id===pid;})[0];if(!p)return;
+  var btn=document.getElementById('spf-btn-'+pid);btn.disabled=true;btn.textContent='Saving…';
+  fetch('/api/sprint/item',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({week:SP_WEEK,section:'product',text:text,type:type,productId:pid,productName:p.name})})
+  .then(function(r){return r.json();}).then(function(d){
+    btn.disabled=false;btn.textContent='Submit';
+    if(d.ok){SP_DATA.items.push(d.item);spHideProductForm(e,pid);renderProducts();}
+    else{toast('Submit failed');}
+  }).catch(function(){btn.disabled=false;btn.textContent='Submit';toast('Network error');});
 }
 
 function spToggleProduct(card){
@@ -524,13 +607,20 @@ function spWeekLabel(w){
 function spPrev(){SP_OFFSET--;loadSprint();}
 function spNext(){SP_OFFSET++;loadSprint();}
 
+function renderTeamProductSel(){
+  var sel=document.getElementById('sp-product-team');if(!sel)return;
+  sel.innerHTML='<option value="">No product</option>'+SP_PRODUCTS.map(function(p){
+    return'<option value="'+p.id+'">'+p.emoji+' '+esc(p.name)+'</option>';
+  }).join('');
+}
+
 function loadSprint(){
   SP_WEEK=spMondayStr(SP_OFFSET);
   document.getElementById('sp-week-lbl').textContent=spWeekLabel(SP_WEEK);
-  renderProducts();
+  renderProducts();renderTeamProductSel();
   fetch('/api/sprint?week='+SP_WEEK,{credentials:'include'}).then(function(r){return r.json();}).then(function(d){
     SP_DATA=d;SP_MY_EMAIL=d.myEmail||'';SP_IS_ADMIN=!!d.isAdmin;SP_LOADED=true;
-    renderSprint();
+    renderProducts();renderSprint();
   }).catch(function(e){console.error('sprint load',e);});
 }
 
@@ -541,53 +631,57 @@ function spSaveGoal(){
   fetch('/api/sprint/goal',{method:'PATCH',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({week:SP_WEEK,goal:g})});
 }
 
-var SP_TYPE_LABELS={suggestion:'💡 Suggestion',sop:'📋 SOP',recurring:'🔁 Recurring',note:'📝 Note'};
+var SP_TYPE_LABELS={suggestion:'💡 Suggestion',sop:'📋 SOP',recurring:'🔁 Recurring',note:'📝 Note',bug:'🐛 Bug',feature:'✨ Feature'};
 
 function renderSprint(){
-  ['product','architecture','team'].forEach(function(sec){
-    var items=SP_DATA.items.filter(function(i){return i.section===sec;});
-    var el=document.getElementById('sp-items-'+sec);
-    if(!items.length){el.innerHTML='<div class="sp-empty">Nothing here yet.</div>';return;}
-    el.innerHTML=items.map(function(item){
-      var done=item.status==='done',inp=item.status==='inprogress';
-      var icon=done?'\\u2705':inp?'\\u{1F504}':'\\u2B1C';
-      var author=(item.author||'').split('@')[0];
-      var canDel=(item.author===SP_MY_EMAIL||SP_IS_ADMIN);
-      var votes=(item.votes||[]).length,voted=(item.votes||[]).indexOf(SP_MY_EMAIL)>-1;
-      var hasNotes=!!(item.notes&&item.notes.trim());
-      var html='<div class="sp-item'+(done?' sp-done':'')+'" data-id="'+esc(item.id)+'">';
-      html+='<span class="sp-status" onclick="spCycleStatus(this)" title="Cycle status">'+icon+'</span>';
-      html+='<div class="sp-text">'+esc(item.text)+'</div>';
-      if(sec==='team'&&item.type&&SP_TYPE_LABELS[item.type]){
-        html+='<span class="sp-type sp-type-'+esc(item.type)+'">'+SP_TYPE_LABELS[item.type]+'</span>';
-      }
-      html+='<span class="sp-author">'+esc(author)+'</span>';
-      if(sec==='team'){html+='<button class="sp-vote'+(voted?' voted':'')+'" onclick="spVote(this)">▲ '+votes+'</button>';}
-      html+='<button class="sp-note-btn'+(hasNotes?' has-notes':'')+'" onclick="spToggleNotes(this)" title="'+(hasNotes?'Notes':'Add note')+'">📝</button>';
-      if(canDel){html+='<button class="sp-del" onclick="spDel(this)" title="Delete">✕</button>';}
-      html+='</div>';
-      html+='<div class="sp-item-notes'+(hasNotes?' show':'')+'" data-notes-id="'+esc(item.id)+'">';
-      if(hasNotes){html+='<div class="sp-notes-text" onclick="spEditNotes(this)">'+esc(item.notes)+'</div>';}
-      html+='<textarea class="sp-notes-input" placeholder="Add a note…" onblur="spSaveNotes(this)">'+(hasNotes?esc(item.notes):'')+'</textarea>';
-      html+='</div>';
-      return html;
-    }).join('');
-  });
+  var el=document.getElementById('sp-items-team');if(!el)return;
+  var items=SP_DATA.items.filter(function(i){return i.section==='team';});
+  if(!items.length){el.innerHTML='<div class="sp-empty">Nothing here yet.</div>';return;}
+  el.innerHTML=items.map(function(item){
+    var done=item.status==='done',inp=item.status==='inprogress';
+    var icon=done?'\\u2705':inp?'\\u{1F504}':'\\u2B1C';
+    var author=(item.author||'').split('@')[0];
+    var canDel=(item.author===SP_MY_EMAIL||SP_IS_ADMIN);
+    var votes=(item.votes||[]).length,voted=(item.votes||[]).indexOf(SP_MY_EMAIL)>-1;
+    var hasNotes=!!(item.notes&&item.notes.trim());
+    var html='<div class="sp-item'+(done?' sp-done':'')+'" data-id="'+esc(item.id)+'">';
+    html+='<span class="sp-status" onclick="spCycleStatus(this)" title="Cycle status">'+icon+'</span>';
+    html+='<div class="sp-text">'+esc(item.text)+'</div>';
+    if(item.type&&SP_TYPE_LABELS[item.type]){
+      html+='<span class="sp-type sp-type-'+esc(item.type)+'">'+SP_TYPE_LABELS[item.type]+'</span>';
+    }
+    if(item.productName){
+      var pp=SP_PRODUCTS.filter(function(x){return x.id===item.productId;})[0];
+      html+='<span class="sp-product-tag">'+(pp?pp.emoji+' ':'')+esc(item.productName)+'</span>';
+    }
+    html+='<span class="sp-author">'+esc(author)+'</span>';
+    html+='<button class="sp-vote'+(voted?' voted':'')+'" onclick="spVote(this)">▲ '+votes+'</button>';
+    html+='<button class="sp-note-btn'+(hasNotes?' has-notes':'')+'" onclick="spToggleNotes(this)" title="'+(hasNotes?'Notes':'Add note')+'">📝</button>';
+    if(canDel){html+='<button class="sp-del" onclick="spDel(this)" title="Delete">✕</button>';}
+    html+='</div>';
+    html+='<div class="sp-item-notes'+(hasNotes?' show':'')+'" data-notes-id="'+esc(item.id)+'">';
+    if(hasNotes){html+='<div class="sp-notes-text" onclick="spEditNotes(this)">'+esc(item.notes)+'</div>';}
+    html+='<textarea class="sp-notes-input" placeholder="Add a note…" onblur="spSaveNotes(this)">'+(hasNotes?esc(item.notes):'')+'</textarea>';
+    html+='</div>';
+    return html;
+  }).join('');
 }
 
-function spAddOnEnter(e,sec){
-  if(e.key!=='Enter')return;
-  var inp=document.getElementById('sp-new-'+sec),text=(inp.value||'').trim();
-  if(!text)return;
-  var typeSel=document.getElementById('sp-type-'+sec);
-  var itemType=typeSel?typeSel.value:null;
+function spSubmitItem(sec){
+  var inp=document.getElementById('sp-new-'+sec);var text=(inp.value||'').trim();if(!text)return;
+  var typeSel=document.getElementById('sp-type-'+sec);var itemType=typeSel?typeSel.value:null;
+  var productSel=document.getElementById('sp-product-'+sec);var productId=productSel?productSel.value:'';
+  var p=productId?SP_PRODUCTS.filter(function(x){return x.id===productId;})[0]:null;
   inp.value='';inp.disabled=true;
   var body={week:SP_WEEK,section:sec,text:text};
   if(itemType)body.type=itemType;
+  if(productId&&p){body.productId=productId;body.productName=p.name;}
   fetch('/api/sprint/item',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
   .then(function(r){return r.json();}).then(function(d){inp.disabled=false;if(d.ok){SP_DATA.items.push(d.item);renderSprint();}})
   .catch(function(){inp.disabled=false;});
 }
+function spAddOnEnter(e,sec){if(e.key!=='Enter')return;spSubmitItem(sec);}
+function spSubmitTeam(){spSubmitItem('team');}
 
 function spToggleNotes(btn){
   var row=btn.closest('.sp-item'),id=row.getAttribute('data-id');
@@ -2860,9 +2954,11 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
         return res.status(400).json({ error: 'week, section, and text are required' });
       const sprints = readJsonFile(SP_FILE, {});
       if (!sprints[week]) sprints[week] = { goal: '', items: [] };
-      const type = (req.body.type && ['suggestion','sop','recurring','note'].includes(req.body.type)) ? req.body.type : null;
+      const type = (req.body.type && ['suggestion','sop','recurring','note','bug','feature'].includes(req.body.type)) ? req.body.type : null;
       const item = { id: genId(), section, text: text.trim(), status: 'open', author: email, votes: [], createdAt: Date.now() };
       if (type) item.type = type;
+      if (req.body.productId) item.productId = String(req.body.productId).slice(0, 64);
+      if (req.body.productName) item.productName = String(req.body.productName).slice(0, 128);
       sprints[week].items.push(item);
       writeJsonFile(SP_FILE, sprints);
       res.json({ ok: true, item });
