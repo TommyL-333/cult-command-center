@@ -1176,6 +1176,16 @@ const TASK_MANAGEMENT_HTML = `<!DOCTYPE html>
   .wr-fb{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
   .wr-fb select{background:var(--panel2);border:1px solid var(--border);border-radius:8px;color:var(--txt);padding:7px 11px;font-size:13px;font-family:inherit}
   @media(max-width:768px){.stats{grid-template-columns:repeat(2,1fr)}.wr-kpi{grid-template-columns:repeat(2,1fr)}}
+  .prio-badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:4px;font-weight:700;cursor:pointer;user-select:none;transition:.12s;white-space:nowrap}
+  .prio-badge:hover{filter:brightness(1.2)}
+  .prio-c{background:rgba(255,0,80,.15);color:var(--red)}
+  .prio-h{background:rgba(255,120,50,.15);color:#ff8040}
+  .prio-n{background:rgba(255,207,100,.15);color:#ffcf64}
+  .prio-l{background:rgba(154,160,181,.15);color:var(--muted)}
+  .tn-editable{cursor:pointer}
+  .tn-editable:hover .tn{text-decoration:underline;text-decoration-style:dotted;text-underline-offset:2px}
+  .tn-input{background:var(--panel2);border:1px solid var(--cyan);border-radius:5px;color:var(--txt);padding:3px 8px;font-size:13px;font-weight:600;font-family:inherit;width:100%;min-width:180px}
+  .tn-input:focus{outline:none}
 </style>
 </head>
 <body>
@@ -1225,7 +1235,7 @@ const TASK_MANAGEMENT_HTML = `<!DOCTYPE html>
     <div class="tbl-wrap">
       <table>
         <thead><tr>
-          <th>Task</th><th>Client</th><th>Owner</th><th>Status</th><th>Due</th><th>Days Open</th><th>Action</th>
+          <th>Task</th><th>Client</th><th>Owner</th><th>Priority</th><th>Status</th><th>Due</th><th>Days Open</th><th>Action</th>
         </tr></thead>
         <tbody id="tbody"></tbody>
       </table>
@@ -1627,6 +1637,66 @@ function updateStats(ownerFilter,clientFilter,dateFrom,dateTo){
     statsRow.style.gridTemplateColumns='repeat(4,1fr)';
   }
 }
+var ADMIN_PRIOS=[
+  {val:'🔴 Critical',cls:'prio-c',label:'🔴 Critical'},
+  {val:'🟠 High',cls:'prio-h',label:'🟠 High'},
+  {val:'🟡 Normal',cls:'prio-n',label:'🟡 Normal'},
+  {val:'⚪ Low',cls:'prio-l',label:'⚪ Low'}
+];
+function prioMatch(pv){
+  pv=(pv||'').toLowerCase();
+  if(pv.includes('critical'))return 0;
+  if(pv.includes('high'))return 1;
+  if(pv.includes('low'))return 3;
+  return 2;
+}
+function prioBadgeHtml(t){
+  var idx=prioMatch(t.priority);var p=ADMIN_PRIOS[idx];
+  return'<span class="prio-badge '+p.cls+'" data-rid="'+esc(t.record_id)+'" data-pidx="'+idx+'" onclick="cyclePrio(this)">'+p.label+'</span>';
+}
+function cyclePrio(badge){
+  badge.onclick=null;
+  var rid=badge.getAttribute('data-rid');
+  var idx=(parseInt(badge.getAttribute('data-pidx'),10)+1)%ADMIN_PRIOS.length;
+  var p=ADMIN_PRIOS[idx];
+  badge.className='prio-badge '+p.cls;
+  badge.textContent=p.label;
+  badge.setAttribute('data-pidx',''+idx);
+  var t=ALL.filter(function(x){return x.record_id===rid;})[0];
+  if(t)t.priority=p.val;
+  fetch('/api/admin/tasks/'+rid,{method:'PATCH',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({priority:p.val})})
+    .catch(function(){});
+  setTimeout(function(){badge.onclick=function(){cyclePrio(badge);};},300);
+}
+function startEditTitle(td,rid){
+  if(td.querySelector('.tn-input'))return;
+  var t=ALL.filter(function(x){return x.record_id===rid;})[0];if(!t||t.isSubtask)return;
+  var wrap=td.querySelector('.tn-wrap');if(!wrap)return;
+  var inp=document.createElement('input');
+  inp.className='tn-input';inp.value=t.task||'';
+  wrap.style.display='none';
+  td.insertBefore(inp,wrap);
+  inp.focus();inp.select();
+  var saved=false;
+  function save(){
+    if(saved)return;saved=true;
+    var v=inp.value.trim();
+    if(v&&v!==(t.task||'')){
+      t.task=v;
+      wrap.querySelector('.tn').firstChild.textContent=(t.isSubtask?'↳ ':'')+v;
+      fetch('/api/admin/tasks/'+rid,{method:'PATCH',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({task:v,isSubtask:!!t.isSubtask})})
+        .then(function(r){return r.json();}).then(function(d){if(d.error)toast('Save failed: '+d.error);})
+        .catch(function(e){toast(''+e);});
+    }
+    inp.remove();wrap.style.display='';
+  }
+  inp.addEventListener('blur',save);
+  inp.addEventListener('keydown',function(e){
+    if(e.key==='Enter'){e.preventDefault();inp.blur();}
+    if(e.key==='Escape'){saved=true;inp.remove();wrap.style.display='';}
+  });
+}
+
 function daysOpen(t){if(!t.createdOn)return'—';var d=Math.floor((Date.now()-t.createdOn)/86400000);return d>0?d+'d':'<1d';}
 function sbadge(s){var m={'To Do':'badge todo','In Progress':'badge inprogress','Blocked':'badge blocked','Completed':'badge completed'};return'<span class="'+(m[s]||'badge todo')+'">'+esc(s||'—')+'</span>';}
 function renderTbl(){
@@ -1635,16 +1705,18 @@ function renderTbl(){
   em.style.display='none';
   tb.innerHTML=FILTERED.map(function(t){
     var due=t.dueDate?new Date(t.dueDate).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'—';
+    var rid=esc(t.record_id);
     return'<tr>'
-      +'<td><div class="tn">'+(t.isSubtask?'↳ ':'')+esc(t.task||'(untitled)')+'</div>'+(t.executionMode?'<div class="ts">'+esc(t.executionMode)+'</div>':'')+'</td>'
+      +'<td class="tn-editable" onclick="startEditTitle(this,\\''+rid+'\\')"><div class="tn-wrap"><div class="tn">'+(t.isSubtask?'↳ ':'')+esc(t.task||'(untitled)')+'</div>'+(t.executionMode?'<div class="ts">'+esc(t.executionMode)+'</div>':'')+'</div></td>'
       +'<td>'+esc(t.client||'—')+'</td>'
       +'<td>'+esc(t.ownerName||'—')+'</td>'
+      +'<td>'+(t.isSubtask?'—':prioBadgeHtml(t))+'</td>'
       +'<td>'+sbadge(t.status)+'</td>'
       +'<td>'+esc(due)+'</td>'
       +'<td>'+esc(daysOpen(t))+'</td>'
       +'<td style="white-space:nowrap">'
       +(t.ownerOpenId?'<button class="btn ghost" style="margin-right:6px" onclick="openNudge(\\''+t.ownerOpenId+'\\',\\''+esc(t.ownerName||'').replace(/'/g,'')+'\\',\\''+esc((t.task||'').replace(/[\\x27\\x22]/g,'')).slice(0,60)+'\\')">Nudge</button>':'')
-      +'<button class="btn ghost" style="color:var(--red);border-color:rgba(255,0,80,.4)" onclick="openAdminDel(\\''+esc(t.record_id)+'\\',\\''+esc((t.task||'').replace(/[\\x27\\x22]/g,'')).slice(0,70)+'\\')">Delete</button>'
+      +'<button class="btn ghost" style="color:var(--red);border-color:rgba(255,0,80,.4)" onclick="openAdminDel(\\''+rid+'\\',\\''+esc((t.task||'').replace(/[\\x27\\x22]/g,'')).slice(0,70)+'\\')">Delete</button>'
       +'</td>'
       +'</tr>';
   }).join('');
@@ -2795,6 +2867,29 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
         parsed = JSON.parse(start >= 0 ? clean.slice(start) : clean);
       } catch { return res.status(500).json({ error: 'Failed to parse model response', raw: text.slice(0,300) }); }
       res.json(parsed);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.patch('/api/admin/tasks/:recordId', requireAuth, jsonBody, async (req, res) => {
+    try {
+      const email = (req.userEmail || (req.session && req.session.userEmail) || '').toLowerCase();
+      const isAdmin = !!(req.session && req.session.isPortalAdmin) || ADMIN_EMAILS.has(email);
+      if (!isAdmin) return res.status(403).json({ error: 'Admin access required' });
+      const { task, priority, isSubtask } = req.body || {};
+      if (!task && !priority) return res.status(400).json({ error: 'task or priority required' });
+      if (isSubtask) {
+        const sts = readJsonFile(ST_FILE, []);
+        const st = sts.find(s => s.id === req.params.recordId);
+        if (!st) return res.status(404).json({ error: 'Subtask not found' });
+        if (task) st.title = task.trim();
+        writeJsonFile(ST_FILE, sts);
+        return res.json({ ok: true });
+      }
+      const fields = {};
+      if (task) fields['Task'] = task.trim();
+      if (priority) fields['Priority'] = priority;
+      await patchRecord(req.params.recordId, fields);
+      res.json({ ok: true });
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
