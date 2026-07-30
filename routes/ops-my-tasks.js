@@ -179,6 +179,30 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .toggle input:checked+.slider{background:var(--cyan)}
   .toggle input:checked+.slider:before{transform:translateX(18px)}
   .wr-section-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin:12px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+  /* Sprint planner */
+  .sp-board{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}
+  .sp-col{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;flex-direction:column}
+  .sp-col-hdr{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+  .sp-item{display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid rgba(47,51,70,.35);font-size:13px}
+  .sp-item:last-child{border-bottom:none}
+  .sp-status{cursor:pointer;font-size:15px;line-height:1.2;flex-shrink:0;user-select:none}
+  .sp-text{flex:1;line-height:1.45}
+  .sp-done .sp-text{text-decoration:line-through;opacity:.45}
+  .sp-author{font-size:10.5px;color:var(--muted);white-space:nowrap;flex-shrink:0}
+  .sp-del{background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:0 2px;opacity:0;line-height:1;flex-shrink:0}
+  .sp-item:hover .sp-del{opacity:.5}
+  .sp-del:hover{opacity:1!important;color:var(--red)}
+  .sp-vote{background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11px;padding:1px 7px;cursor:pointer;flex-shrink:0;transition:.1s}
+  .sp-vote:hover,.sp-vote.voted{border-color:var(--cyan);color:var(--cyan)}
+  .sp-input{width:100%;background:var(--panel2);border:1px solid var(--border);border-radius:8px;color:var(--txt);padding:8px 10px;font-size:13px;font-family:inherit;margin-top:10px}
+  .sp-input:focus{outline:none;border-color:var(--cyan)}
+  .sp-goal-input{width:100%;background:rgba(0,242,234,.05);border:1px solid rgba(0,242,234,.18);border-radius:10px;color:var(--txt);padding:10px 14px;font-size:13.5px;font-family:inherit}
+  .sp-goal-input:focus{outline:none;border-color:var(--cyan)}
+  .sp-goal-input::placeholder{color:var(--muted);font-style:italic}
+  .sp-week-nav{display:flex;align-items:center;gap:10px;margin-bottom:14px}
+  .sp-week-lbl{flex:1;text-align:center;font-size:15px;font-weight:700}
+  .sp-empty{color:var(--muted);font-size:12.5px;padding:6px 0 4px}
+  @media(max-width:720px){.sp-board{grid-template-columns:1fr}}
   .wr-hist h3{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:0 0 12px}
   .wr-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px}
   .wr-head{display:flex;justify-content:space-between;margin-bottom:10px;font-size:13px}
@@ -205,6 +229,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   <div class="tabs">
     <button class="tab active" onclick="switchTab(0)">My Tasks</button>
     <button class="tab" onclick="switchTab(1)">Weekly Report</button>
+    <button class="tab" onclick="switchTab(2)">Sprint</button>
   </div>
 
   <div id="tab-tasks">
@@ -228,6 +253,32 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     <div class="wr-hist">
       <h3 id="wr-hist-title">Recent Reports</h3>
       <div id="wr-list"><div style="color:var(--muted);font-size:13px">Loading…</div></div>
+    </div>
+  </div>
+
+  <div id="tab-sprint" style="display:none">
+    <div class="sp-week-nav">
+      <button class="chip" onclick="spPrev()">← Prev</button>
+      <div class="sp-week-lbl" id="sp-week-lbl">…</div>
+      <button class="chip" onclick="spNext()">Next →</button>
+    </div>
+    <input class="sp-goal-input" id="sp-goal" placeholder="🎯 Sprint goal / theme for this week…" onblur="spSaveGoal()"/>
+    <div class="sp-board">
+      <div class="sp-col">
+        <div class="sp-col-hdr"><span>🎯 Product</span><span style="font-size:10px;font-weight:400;color:var(--muted)">Vision &amp; roadmap</span></div>
+        <div id="sp-items-product"></div>
+        <input class="sp-input" id="sp-new-product" placeholder="Add product item… (Enter to save)" onkeydown="spAddOnEnter(event,\\'product\\')"/>
+      </div>
+      <div class="sp-col">
+        <div class="sp-col-hdr"><span>🏗️ Systems</span><span style="font-size:10px;font-weight:400;color:var(--muted)">Architecture &amp; infra</span></div>
+        <div id="sp-items-architecture"></div>
+        <input class="sp-input" id="sp-new-architecture" placeholder="Add systems item… (Enter to save)" onkeydown="spAddOnEnter(event,\\'architecture\\')"/>
+      </div>
+      <div class="sp-col">
+        <div class="sp-col-hdr"><span>🤝 Team</span><span style="font-size:10px;font-weight:400;color:var(--muted)">SOPs &amp; suggestions</span></div>
+        <div id="sp-items-team"></div>
+        <input class="sp-input" id="sp-new-team" placeholder="Suggest a task or SOP… (Enter to save)" onkeydown="spAddOnEnter(event,\\'team\\')"/>
+      </div>
     </div>
   </div>
 </div>
@@ -302,7 +353,96 @@ function switchTab(idx){
   document.querySelectorAll('.tab').forEach(function(el,i){el.classList.toggle('active',i===idx);});
   document.getElementById('tab-tasks').style.display=idx===0?'':'none';
   document.getElementById('tab-report').style.display=idx===1?'':'none';
+  document.getElementById('tab-sprint').style.display=idx===2?'':'none';
   if(idx===1)loadReportTab();
+  if(idx===2)loadSprint();
+}
+
+/* ── Sprint planner ──────────────────────────────────── */
+var SP_WEEK='',SP_DATA={goal:'',items:[]},SP_MY_EMAIL='',SP_IS_ADMIN=false,SP_OFFSET=0,SP_LOADED=false;
+
+function spMondayStr(offset){
+  var d=new Date(),day=d.getDay(),diff=d.getDate()-day+(day===0?-6:1);
+  d.setDate(diff+(offset||0)*7);return d.toISOString().slice(0,10);
+}
+function spWeekLabel(w){
+  var d=new Date(w+'T12:00:00Z'),end=new Date(d);end.setUTCDate(d.getUTCDate()+6);
+  var mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return'Week of '+mo[d.getUTCMonth()]+' '+d.getUTCDate()+' – '+mo[end.getUTCMonth()]+' '+end.getUTCDate()+', '+end.getUTCFullYear();
+}
+function spPrev(){SP_OFFSET--;loadSprint();}
+function spNext(){SP_OFFSET++;loadSprint();}
+
+function loadSprint(){
+  SP_WEEK=spMondayStr(SP_OFFSET);
+  document.getElementById('sp-week-lbl').textContent=spWeekLabel(SP_WEEK);
+  fetch('/api/sprint?week='+SP_WEEK,{credentials:'include'}).then(function(r){return r.json();}).then(function(d){
+    SP_DATA=d;SP_MY_EMAIL=d.myEmail||'';SP_IS_ADMIN=!!d.isAdmin;SP_LOADED=true;
+    document.getElementById('sp-goal').value=d.goal||'';
+    renderSprint();
+  }).catch(function(e){console.error('sprint load',e);});
+}
+
+function spSaveGoal(){
+  var g=document.getElementById('sp-goal').value.trim();
+  if(g===(SP_DATA.goal||''))return;
+  SP_DATA.goal=g;
+  fetch('/api/sprint/goal',{method:'PATCH',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({week:SP_WEEK,goal:g})});
+}
+
+function renderSprint(){
+  ['product','architecture','team'].forEach(function(sec){
+    var items=SP_DATA.items.filter(function(i){return i.section===sec;});
+    var el=document.getElementById('sp-items-'+sec);
+    if(!items.length){el.innerHTML='<div class="sp-empty">Nothing here yet.</div>';return;}
+    el.innerHTML=items.map(function(item){
+      var done=item.status==='done',inp=item.status==='inprogress';
+      var icon=done?'\\u2705':inp?'\\u{1F504}':'\\u2B1C';
+      var author=(item.author||'').split('@')[0];
+      var canDel=(item.author===SP_MY_EMAIL||SP_IS_ADMIN);
+      var votes=(item.votes||[]).length,voted=(item.votes||[]).indexOf(SP_MY_EMAIL)>-1;
+      var html='<div class="sp-item'+(done?' sp-done':'')+'" data-id="'+esc(item.id)+'">';
+      html+='<span class="sp-status" onclick="spCycleStatus(this)" title="Cycle status">'+icon+'</span>';
+      html+='<div class="sp-text">'+esc(item.text)+'</div>';
+      html+='<span class="sp-author">'+esc(author)+'</span>';
+      if(sec==='team'){html+='<button class="sp-vote'+(voted?' voted':'')+'" onclick="spVote(this)">▲ '+votes+'</button>';}
+      if(canDel){html+='<button class="sp-del" onclick="spDel(this)" title="Delete">✕</button>';}
+      return html+'</div>';
+    }).join('');
+  });
+}
+
+function spAddOnEnter(e,sec){
+  if(e.key!=='Enter')return;
+  var inp=document.getElementById('sp-new-'+sec),text=(inp.value||'').trim();
+  if(!text)return;
+  inp.value='';inp.disabled=true;
+  fetch('/api/sprint/item',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({week:SP_WEEK,section:sec,text:text})})
+  .then(function(r){return r.json();}).then(function(d){inp.disabled=false;if(d.ok){SP_DATA.items.push(d.item);renderSprint();}})
+  .catch(function(){inp.disabled=false;});
+}
+
+function spCycleStatus(el){
+  var row=el.closest('.sp-item'),id=row.getAttribute('data-id');
+  var item=SP_DATA.items.filter(function(i){return i.id===id;})[0];if(!item)return;
+  var next={open:'inprogress',inprogress:'done',done:'open'}[item.status]||'open';
+  item.status=next;renderSprint();
+  fetch('/api/sprint/item/'+id,{method:'PATCH',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({week:SP_WEEK,status:next})});
+}
+
+function spVote(btn){
+  var id=btn.closest('.sp-item').getAttribute('data-id');
+  fetch('/api/sprint/item/'+id+'/vote',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({week:SP_WEEK})})
+  .then(function(r){return r.json();}).then(function(d){
+    var item=SP_DATA.items.filter(function(i){return i.id===id;})[0];
+    if(item&&d.votes)item.votes=d.votes;renderSprint();
+  });
+}
+
+function spDel(btn){
+  var id=btn.closest('.sp-item').getAttribute('data-id');
+  SP_DATA.items=SP_DATA.items.filter(function(i){return i.id!==id;});renderSprint();
+  fetch('/api/sprint/item/'+id,{method:'DELETE',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({week:SP_WEEK})});
 }
 
 function load(){
@@ -2111,6 +2251,100 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
       console.error('[ops-my-tasks] delete error:', e.message);
       res.status(500).json({ error: 'Failed to delete task', detail: e.message });
     }
+  });
+
+  // ---------- SPRINT PLANNER ROUTES ----------
+  const SP_FILE = nodePath.join(DATA_DIR, 'sprints.json');
+
+  function mondayOf(d) {
+    const day = d.getDay(), diff = d.getDate() - day + (day === 0 ? -6 : 1);
+    const mon = new Date(d); mon.setDate(diff);
+    return mon.toISOString().slice(0, 10);
+  }
+
+  app.get('/api/sprint', requireAuth, async (req, res) => {
+    try {
+      const email = (req.userEmail || (req.session && req.session.userEmail) || '').toLowerCase();
+      const isAdmin = !!(req.session && req.session.isPortalAdmin) || ADMIN_EMAILS.has(email);
+      const week = req.query.week || mondayOf(new Date());
+      const sprints = readJsonFile(SP_FILE, {});
+      const sprint = sprints[week] || { goal: '', items: [] };
+      res.json({ week, goal: sprint.goal || '', items: sprint.items || [], myEmail: email, isAdmin });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.post('/api/sprint/item', requireAuth, jsonBody, async (req, res) => {
+    try {
+      const email = (req.userEmail || (req.session && req.session.userEmail) || '').toLowerCase();
+      const { week, section, text } = req.body || {};
+      if (!week || !['product','architecture','team'].includes(section) || !(text||'').trim())
+        return res.status(400).json({ error: 'week, section, and text are required' });
+      const sprints = readJsonFile(SP_FILE, {});
+      if (!sprints[week]) sprints[week] = { goal: '', items: [] };
+      const item = { id: genId(), section, text: text.trim(), status: 'open', author: email, votes: [], createdAt: Date.now() };
+      sprints[week].items.push(item);
+      writeJsonFile(SP_FILE, sprints);
+      res.json({ ok: true, item });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.patch('/api/sprint/item/:id', requireAuth, jsonBody, async (req, res) => {
+    try {
+      const { week, status, text } = req.body || {};
+      const sprints = readJsonFile(SP_FILE, {});
+      const sprint = sprints[week]; if (!sprint) return res.status(404).json({ error: 'Sprint not found' });
+      const item = sprint.items.find(i => i.id === req.params.id);
+      if (!item) return res.status(404).json({ error: 'Item not found' });
+      if (status) item.status = status;
+      if (text) item.text = text.trim();
+      writeJsonFile(SP_FILE, sprints);
+      res.json({ ok: true, item });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.delete('/api/sprint/item/:id', requireAuth, jsonBody, async (req, res) => {
+    try {
+      const email = (req.userEmail || (req.session && req.session.userEmail) || '').toLowerCase();
+      const isAdmin = !!(req.session && req.session.isPortalAdmin) || ADMIN_EMAILS.has(email);
+      const { week } = req.body || {};
+      const sprints = readJsonFile(SP_FILE, {});
+      const sprint = sprints[week]; if (!sprint) return res.status(404).json({ error: 'Sprint not found' });
+      const idx = sprint.items.findIndex(i => i.id === req.params.id);
+      if (idx === -1) return res.status(404).json({ error: 'Item not found' });
+      if (!isAdmin && sprint.items[idx].author !== email)
+        return res.status(403).json({ error: 'Not your item' });
+      sprint.items.splice(idx, 1);
+      writeJsonFile(SP_FILE, sprints);
+      res.json({ ok: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.post('/api/sprint/item/:id/vote', requireAuth, jsonBody, async (req, res) => {
+    try {
+      const email = (req.userEmail || (req.session && req.session.userEmail) || '').toLowerCase();
+      const { week } = req.body || {};
+      const sprints = readJsonFile(SP_FILE, {});
+      const sprint = sprints[week]; if (!sprint) return res.status(404).json({ error: 'Sprint not found' });
+      const item = sprint.items.find(i => i.id === req.params.id);
+      if (!item) return res.status(404).json({ error: 'Item not found' });
+      item.votes = item.votes || [];
+      const idx = item.votes.indexOf(email);
+      if (idx === -1) item.votes.push(email); else item.votes.splice(idx, 1);
+      writeJsonFile(SP_FILE, sprints);
+      res.json({ ok: true, votes: item.votes });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.patch('/api/sprint/goal', requireAuth, jsonBody, async (req, res) => {
+    try {
+      const { week, goal } = req.body || {};
+      if (!week) return res.status(400).json({ error: 'week required' });
+      const sprints = readJsonFile(SP_FILE, {});
+      if (!sprints[week]) sprints[week] = { goal: '', items: [] };
+      sprints[week].goal = goal || '';
+      writeJsonFile(SP_FILE, sprints);
+      res.json({ ok: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
   // ---------- ROUTE: GET /task-management (admin HTML) ----------
