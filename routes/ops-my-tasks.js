@@ -1791,6 +1791,7 @@ function applyFilters(){
   var fromMs=dateFrom?new Date(dateFrom).getTime():0;
   var toMs=dateTo?new Date(dateTo).getTime()+86400000:0;
   document.getElementById('clear-dates-btn').style.display=(dateFrom||dateTo)?'':'none';
+  var ADMIN_PRIO_ORDER={'🔴 Critical':0,'🟠 High':1,'🟡 Normal':2,'⚪ Low':3};
   FILTERED=ALL.filter(function(t){
     if(ow&&t.ownerOpenId!==ow)return false;
     if(cl&&t.client!==cl)return false;
@@ -1801,6 +1802,11 @@ function applyFilters(){
     if(fromMs&&t.createdOn&&t.createdOn<fromMs)return false;
     if(toMs&&t.createdOn&&t.createdOn>toMs)return false;
     return true;
+  }).sort(function(a,b){
+    var pa=(ADMIN_PRIO_ORDER[a.priority]!=null?ADMIN_PRIO_ORDER[a.priority]:2);
+    var pb=(ADMIN_PRIO_ORDER[b.priority]!=null?ADMIN_PRIO_ORDER[b.priority]:2);
+    if(pa!==pb)return pa-pb;
+    return(a.dueDate||9999999999999)-(b.dueDate||9999999999999);
   });
   updateStats(ow,cl,dateFrom,dateTo);
   renderTbl();
