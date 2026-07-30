@@ -58,16 +58,17 @@ addColumnIfMissing(`submitter_type TEXT NOT NULL DEFAULT 'client'`); // client |
 addColumnIfMissing(`creator_id INTEGER`);
 addColumnIfMissing(`creator_name TEXT`);
 addColumnIfMissing(`creator_handle TEXT`);
+addColumnIfMissing(`submitter_email TEXT`); // snapshot at submission time, not looked up live
 db.exec(`CREATE INDEX IF NOT EXISTS idx_support_tickets_creator ON support_tickets(creator_id)`);
 
 const queries = {
   insertClientTicket: db.prepare(`
-    INSERT INTO support_tickets (brand_id, brand_name, type, message, submitter_type)
-    VALUES (?, ?, ?, ?, 'client')`),
+    INSERT INTO support_tickets (brand_id, brand_name, type, message, submitter_type, submitter_email)
+    VALUES (?, ?, ?, ?, 'client', ?)`),
 
   insertCreatorTicket: db.prepare(`
-    INSERT INTO support_tickets (brand_id, brand_name, type, message, submitter_type, creator_id, creator_name, creator_handle)
-    VALUES ('', NULL, ?, ?, 'creator', ?, ?, ?)`),
+    INSERT INTO support_tickets (brand_id, brand_name, type, message, submitter_type, creator_id, creator_name, creator_handle, submitter_email)
+    VALUES ('', NULL, ?, ?, 'creator', ?, ?, ?, ?)`),
 
   getTicketsForBrand: db.prepare(`
     SELECT * FROM support_tickets WHERE brand_id = ? AND submitter_type = 'client' ORDER BY created_at DESC`),

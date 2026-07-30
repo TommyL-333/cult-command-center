@@ -51,6 +51,7 @@ function shapeTicket(row) {
     creatorId: row.creator_id,
     creatorName: row.creator_name,
     creatorHandle: row.creator_handle,
+    submitterEmail: row.submitter_email,
     type: row.type,
     message: row.message,
     status: row.status,
@@ -81,7 +82,8 @@ module.exports = function registerSupportTickets(app, deps = {}) {
       if (!cleanMessage) return res.status(400).json({ error: 'message is required' });
       const cleanType = VALID_TYPES.has(type) ? type : 'question';
 
-      const info = queries.insertClientTicket.run(brandId, brand.name, cleanType, cleanMessage);
+      const submitterEmail = brand.loginEmail || brand.email || null;
+      const info = queries.insertClientTicket.run(brandId, brand.name, cleanType, cleanMessage, submitterEmail);
       const ticket = queries.getTicketById.get(info.lastInsertRowid);
       res.json({ ok: true, ticket: shapeTicket(ticket) });
     } catch (e) {
@@ -113,7 +115,7 @@ module.exports = function registerSupportTickets(app, deps = {}) {
       const cleanType = VALID_TYPES.has(type) ? type : 'question';
 
       const info = queries.insertCreatorTicket.run(
-        cleanType, cleanMessage, creator.id, creator.creator_name || null, creator.creator_handle || null
+        cleanType, cleanMessage, creator.id, creator.creator_name || null, creator.creator_handle || null, creator.email || null
       );
       const ticket = queries.getTicketById.get(info.lastInsertRowid);
       res.json({ ok: true, ticket: shapeTicket(ticket) });
@@ -211,6 +213,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .action-btn{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);color:#e2e8f0;padding:6px 12px;border-radius:6px;font-size:.78rem;font-weight:600;cursor:pointer}
 .action-btn:hover{background:rgba(255,255,255,.09)}
 .action-btn.primary{background:linear-gradient(135deg,#00f2ea,#a855f7);border:none;color:#0a0a0f}
+.action-btn.reply{background:rgba(45,212,191,.1);border-color:rgba(45,212,191,.3);color:#2dd4bf;text-decoration:none;display:inline-flex;align-items:center}
 .empty{text-align:center;padding:60px 20px;color:#64748b}
 </style></head>
 <body>
@@ -256,6 +259,12 @@ function render() {
     if (t.status !== 'opened') actions.push('<button class="action-btn primary" onclick="setStatus(' + t.id + ',\\'opened\\')">Open</button>');
     if (t.status !== 'flagged') actions.push('<button class="action-btn" onclick="setStatus(' + t.id + ',\\'flagged\\')">Flag</button>');
     if (t.status !== 'unopened') actions.push('<button class="action-btn" onclick="setStatus(' + t.id + ',\\'unopened\\')">Reset</button>');
+    if (t.submitterEmail) {
+      const subject = encodeURIComponent('Re: Your ' + t.type + ' to Cult Content');
+      const quoted = t.message.length > 300 ? t.message.slice(0, 300) + '…' : t.message;
+      const body = encodeURIComponent('Hi,\n\nRegarding your message:\n"' + quoted + '"\n\n');
+      actions.push('<a class="action-btn reply" href="mailto:' + encodeURIComponent(t.submitterEmail) + '?subject=' + subject + '&body=' + body + '">✉ Reply by Email</a>');
+    }
     const who = t.submitterType === 'creator'
       ? esc(t.creatorName || t.creatorHandle || 'Creator') + (t.creatorHandle ? ' (@' + esc(t.creatorHandle) + ')' : '')
       : esc(t.brandName);
