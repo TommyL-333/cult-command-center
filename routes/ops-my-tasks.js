@@ -456,7 +456,8 @@ var SP_PRODUCTS=[
   {id:'manifest',name:'Team Manifest',emoji:'⚙️',desc:'Internal ops engine. Task management, sprint planning, weekly reports, and team coordination for the Cult Content team.',url:'https://manifest.cultcontent.cc',status:'live'},
   {id:'website',name:'Website',emoji:'🌐',desc:'Marketing site, service pages, brand voice, and lead generation for the agency.',url:'https://cultcontent.cc',status:'live'},
   {id:'sisyphus',name:'Sisyphus',emoji:'🪨',desc:'AI operator — autonomous task execution, Nymph agents, sprint planning, Lark integration, and the intelligence layer across all products.',url:'https://sisyphus.cultcontent.cc',status:'live'},
-  {id:'contracts',name:'Contract Management',emoji:'📋',desc:'Consultant onboarding, contract signing, and affiliate management portal for the Cult Content consultant network.',url:'https://consultants.cultcontent.cc',status:'building'}
+  {id:'contracts',name:'Contract Management',emoji:'📋',desc:'Consultant onboarding, contract signing, and affiliate management portal for the Cult Content consultant network.',url:'https://consultants.cultcontent.cc',status:'building'},
+  {id:'carnival-marketplace',name:'Carnival Marketplace',emoji:'🎪',desc:'Creator matchmaking tool for the Culture Commerce Carnival — connecting brands with creators at the event.',url:'https://ccc.cultcontent.cc/market',status:'building'}
 ];
 
 var SPINE_QS=[
@@ -1183,6 +1184,7 @@ const TASK_MANAGEMENT_HTML = `<!DOCTYPE html>
     <h1>Task Management</h1>
     <div style="display:flex;gap:8px">
       <a href="/my-tasks" class="chip">← My Tasks</a>
+      <button class="btn" onclick="openAddTask()" style="font-size:13px;padding:7px 14px">+ Add Task</button>
       <button class="chip" onclick="loadAll()">↻ Refresh</button>
     </div>
   </div>
@@ -1289,9 +1291,64 @@ const TASK_MANAGEMENT_HTML = `<!DOCTYPE html>
     </div>
   </div>
 </div>
+
+<div class="overlay" id="add-task-overlay">
+  <div class="modal" style="max-width:520px">
+    <h3>+ Add Task</h3>
+    <p class="mt">Create a new task in the Ops Engine Lark table.</p>
+    <label for="at-task">Task title <span style="color:var(--red)">*</span></label>
+    <input type="text" id="at-task" placeholder="What needs to happen?" style="width:100%;background:var(--panel2);border:1px solid var(--border);border-radius:8px;color:var(--txt);padding:9px 12px;font-size:14px;font-family:inherit;margin-top:6px;margin-bottom:12px"/>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div>
+        <label for="at-owner">Assign to</label>
+        <select id="at-owner" style="width:100%;margin-top:6px;padding:9px 10px;border-radius:8px;background:var(--panel2);color:var(--txt);border:1px solid var(--border);font-family:inherit;font-size:13px">
+          <option value="">Unassigned</option>
+        </select>
+      </div>
+      <div>
+        <label for="at-client">Client</label>
+        <select id="at-client" style="width:100%;margin-top:6px;padding:9px 10px;border-radius:8px;background:var(--panel2);color:var(--txt);border:1px solid var(--border);font-family:inherit;font-size:13px">
+          <option value="">No client</option>
+        </select>
+      </div>
+      <div>
+        <label for="at-status">Status</label>
+        <select id="at-status" style="width:100%;margin-top:6px;padding:9px 10px;border-radius:8px;background:var(--panel2);color:var(--txt);border:1px solid var(--border);font-family:inherit;font-size:13px">
+          <option value="To Do">To Do</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Blocked">Blocked</option>
+        </select>
+      </div>
+      <div>
+        <label for="at-priority">Priority</label>
+        <select id="at-priority" style="width:100%;margin-top:6px;padding:9px 10px;border-radius:8px;background:var(--panel2);color:var(--txt);border:1px solid var(--border);font-family:inherit;font-size:13px">
+          <option value="🟡 Normal">🟡 Normal</option>
+          <option value="🔴 Critical">🔴 Critical</option>
+          <option value="🟠 High">🟠 High</option>
+          <option value="⚪ Low">⚪ Low</option>
+        </select>
+      </div>
+      <div>
+        <label for="at-pillar">Pillar</label>
+        <input type="text" id="at-pillar" placeholder="e.g. Affiliate Management" style="width:100%;margin-top:6px;padding:9px 10px;border-radius:8px;background:var(--panel2);color:var(--txt);border:1px solid var(--border);font-family:inherit;font-size:13px"/>
+      </div>
+      <div>
+        <label for="at-due">Due date</label>
+        <input type="date" id="at-due" style="width:100%;margin-top:6px;padding:9px 10px;border-radius:8px;background:var(--panel2);color:var(--txt);border:1px solid var(--border);font-family:inherit;font-size:13px"/>
+      </div>
+    </div>
+    <label for="at-prompt">Prompt / Action notes</label>
+    <textarea id="at-prompt" placeholder="Specific instructions, context, or SOP reference…" style="width:100%;min-height:72px;margin-top:6px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;color:var(--txt);padding:10px;font-size:13px;font-family:inherit;resize:vertical"></textarea>
+    <div class="err" id="at-err" style="display:none"></div>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="closeAddTask()">Cancel</button>
+      <button class="btn" id="at-submit" onclick="doAddTask()">Create Task</button>
+    </div>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 <script>
-var ALL=[],FILTERED=[],NT=null,ADEL_ID=null,WR_ALL=[];
+var ALL=[],FILTERED=[],NT=null,ADEL_ID=null,WR_ALL=[],CLIENTS_LIST=[],OWNER_MAP={};
 function esc(s){return(s||'').replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 
 function adminSwitchTab(idx){
@@ -1449,24 +1506,68 @@ function loadAll(){
   ]).then(function(rs){
     var d=rs[0],teamData=rs[1];
     if(d.error){document.getElementById('sub').textContent='Error: '+d.error;return;}
-    ALL=d.tasks||[];buildOpts(teamData.team||[]);applyFilters();
+    ALL=d.tasks||[];CLIENTS_LIST=d.clientsList||[];buildOpts(teamData.team||[]);applyFilters();
     document.getElementById('s-avg').textContent=d.avgDays?d.avgDays+'d':'—';
     var activeTotal=ALL.filter(function(t){return t.status!=='Completed';}).length;
     document.getElementById('sub').textContent=activeTotal+' active tasks across all team members.'+(d.avgDays?' Avg '+d.avgDays+' days to complete.':'');
   }).catch(function(e){document.getElementById('sub').textContent='Failed: '+e;});
 }
+
+function openAddTask(){
+  document.getElementById('at-task').value='';
+  document.getElementById('at-prompt').value='';
+  document.getElementById('at-pillar').value='';
+  document.getElementById('at-due').value='';
+  document.getElementById('at-status').value='To Do';
+  document.getElementById('at-priority').value='🟡 Normal';
+  document.getElementById('at-err').style.display='none';
+  document.getElementById('at-submit').disabled=false;
+  document.getElementById('at-submit').textContent='Create Task';
+  var ownerSel=document.getElementById('at-owner');
+  var ownerOpts=Object.keys(OWNER_MAP).sort(function(a,b){return OWNER_MAP[a].localeCompare(OWNER_MAP[b]);});
+  ownerSel.innerHTML='<option value="">Unassigned</option>'+ownerOpts.map(function(id){return'<option value="'+esc(id)+'">'+esc(OWNER_MAP[id])+'</option>';}).join('');
+  var clientSel=document.getElementById('at-client');
+  clientSel.innerHTML='<option value="">No client</option>'+(CLIENTS_LIST||[]).map(function(c){return'<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>';}).join('');
+  document.getElementById('add-task-overlay').classList.add('show');
+  setTimeout(function(){document.getElementById('at-task').focus();},50);
+}
+function closeAddTask(){document.getElementById('add-task-overlay').classList.remove('show');}
+function doAddTask(){
+  var title=document.getElementById('at-task').value.trim();
+  if(!title){
+    var e=document.getElementById('at-err');e.textContent='Task title is required.';e.style.display='block';return;
+  }
+  var btn=document.getElementById('at-submit');btn.disabled=true;btn.textContent='Creating…';
+  var body={
+    task:title,
+    status:document.getElementById('at-status').value,
+    priority:document.getElementById('at-priority').value,
+    ownerOpenId:document.getElementById('at-owner').value,
+    clientRecordId:document.getElementById('at-client').value,
+    pillar:document.getElementById('at-pillar').value.trim(),
+    promptAction:document.getElementById('at-prompt').value.trim(),
+    dueDate:document.getElementById('at-due').value
+  };
+  fetch('/api/admin/tasks/create',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+  .then(function(r){return r.json();}).then(function(d){
+    if(d.error){var e=document.getElementById('at-err');e.textContent=d.error;e.style.display='block';btn.disabled=false;btn.textContent='Create Task';return;}
+    closeAddTask();
+    toast('Task created!');
+    loadAll();
+  }).catch(function(e){var el=document.getElementById('at-err');el.textContent=''+e;el.style.display='block';btn.disabled=false;btn.textContent='Create Task';});
+}
+
 function buildOpts(roster){
   var byId={},clients={};
-  // Seed from team roster (short names) — keyed by open_id to prevent duplicates
   (roster||[]).forEach(function(m){if(m.openId&&m.name)byId[m.openId]=m.name;});
-  // Task-derived names override (come from actual Lark user profiles, usually fuller)
   ALL.forEach(function(t){
     if(t.ownerOpenId&&t.ownerName)byId[t.ownerOpenId]=t.ownerName;
     if(t.client)clients[t.client]=1;
   });
-  var os=document.getElementById('f-owner');
+  OWNER_MAP=byId;
   var ownerOpts=Object.keys(byId).sort(function(a,b){return byId[a].localeCompare(byId[b]);});
-  os.innerHTML='<option value="">All Team Members</option>'+ownerOpts.map(function(id){return'<option value="'+esc(id)+'">'+esc(byId[id])+'</option>';}).join('');
+  var ownerHtml='<option value="">All Team Members</option>'+ownerOpts.map(function(id){return'<option value="'+esc(id)+'">'+esc(byId[id])+'</option>';}).join('');
+  document.getElementById('f-owner').innerHTML=ownerHtml;
   var cs=document.getElementById('f-client');
   cs.innerHTML='<option value="">All Clients</option>'+Object.keys(clients).sort().map(function(c){return'<option value="'+esc(c)+'">'+esc(c)+'</option>';}).join('');
 }
@@ -1703,6 +1804,14 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
     const token = await getTenantToken();
     const r = await axios.delete(`${LARK_BASE}${path}`, {
       headers: { Authorization: `Bearer ${token}` },
+      timeout: 20000,
+    });
+    return r.data;
+  }
+  async function larkPost(path, body) {
+    const token = await getTenantToken();
+    const r = await axios.post(`${LARK_BASE}${path}`, body, {
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       timeout: 20000,
     });
     return r.data;
@@ -2438,7 +2547,8 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
         tasks.push({ record_id: st.id, task: st.title, client: '', status: 'To Do', isSubtask: true, ownerOpenId: '', ownerName: '', createdOn: st.createdAt, dueDate: null });
       }
       const avgDays = completedCount > 0 ? Math.round(totalMs / completedCount / 86400000) : null;
-      res.json({ tasks, avgDays });
+      const clientsList = Object.entries(clientsMap).map(([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+      res.json({ tasks, avgDays, clientsList });
     } catch (e) {
       console.error('[ops-my-tasks] admin/tasks error:', e.message);
       res.status(500).json({ error: e.message });
@@ -2685,6 +2795,29 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
         parsed = JSON.parse(start >= 0 ? clean.slice(start) : clean);
       } catch { return res.status(500).json({ error: 'Failed to parse model response', raw: text.slice(0,300) }); }
       res.json(parsed);
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.post('/api/admin/tasks/create', requireAuth, jsonBody, async (req, res) => {
+    try {
+      const email = (req.userEmail || (req.session && req.session.userEmail) || '').toLowerCase();
+      const isAdmin = !!(req.session && req.session.isPortalAdmin) || ADMIN_EMAILS.has(email);
+      if (!isAdmin) return res.status(403).json({ error: 'Admin access required' });
+      const { task, status, priority, ownerOpenId, pillar, promptAction, dueDate, clientRecordId } = req.body || {};
+      if (!(task || '').trim()) return res.status(400).json({ error: 'task is required' });
+      const fields = { 'Task': task.trim(), 'Status': status || 'To Do' };
+      if (priority) fields['Priority'] = priority;
+      if (ownerOpenId) fields['Owner'] = [{ id: ownerOpenId }];
+      if (pillar) fields['Pillar'] = pillar;
+      if (promptAction) fields['Prompt / Action'] = promptAction;
+      if (dueDate) fields['Due Date'] = new Date(dueDate).getTime();
+      if (clientRecordId) fields['Client'] = [{ record_id: clientRecordId }];
+      const data = await larkPost(
+        `/open-apis/bitable/v1/apps/${OPS_APP_TOKEN}/tables/${TASKS_TABLE}/records`,
+        { fields }
+      );
+      if (data.code !== 0) return res.status(500).json({ error: `Lark error ${data.code}: ${data.msg}` });
+      res.json({ ok: true, record: data.data && data.data.record });
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
