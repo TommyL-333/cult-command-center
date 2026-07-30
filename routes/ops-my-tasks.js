@@ -180,7 +180,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .toggle input:checked+.slider:before{transform:translateX(18px)}
   .wr-section-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin:12px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--border)}
   /* Sprint planner */
-  .sp-board{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}
+  .sp-board{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:18px}
   .sp-col{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;flex-direction:column}
   .sp-col-hdr{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
   .sp-item{display:flex;align-items:flex-start;gap:8px;padding:7px 0;border-bottom:1px solid rgba(47,51,70,.35);font-size:13px}
@@ -222,7 +222,40 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .sp-type-sel:focus{outline:none;border-color:var(--cyan)}
   .sp-sisy-link{font-size:11px;color:var(--muted);text-decoration:none;display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border:1px solid var(--border);border-radius:6px;margin-bottom:10px;transition:.1s}
   .sp-sisy-link:hover{color:var(--cyan);border-color:var(--cyan)}
-  @media(max-width:720px){.sp-board{grid-template-columns:1fr}}
+  .sp-product-card{border:1px solid var(--border);border-radius:10px;margin-bottom:8px;overflow:hidden;cursor:pointer;transition:border-color .15s}
+  .sp-product-card:hover,.sp-product-card.open{border-color:var(--cyan)}
+  .sp-product-hdr{display:flex;align-items:center;gap:8px;padding:10px 12px}
+  .sp-product-emoji{font-size:18px;line-height:1;flex-shrink:0}
+  .sp-product-name{flex:1;font-size:13px;font-weight:600}
+  .sp-product-chevron{color:var(--muted);font-size:16px;transition:transform .15s;flex-shrink:0}
+  .sp-product-card.open .sp-product-chevron{transform:rotate(90deg)}
+  .sp-ps-live{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:1px 6px;border-radius:4px;background:rgba(107,232,107,.12);color:#6be86b;flex-shrink:0}
+  .sp-ps-building{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:1px 6px;border-radius:4px;background:rgba(255,207,100,.12);color:#ffcf64;flex-shrink:0}
+  .sp-product-detail{padding:0 12px 12px;border-top:1px solid var(--border);display:none}
+  .sp-product-card.open .sp-product-detail{display:block}
+  .sp-product-detail p{font-size:12.5px;color:var(--muted);margin:10px 0 8px;line-height:1.5}
+  .sp-product-detail a{font-size:12px;color:var(--cyan);text-decoration:none}
+  .sp-product-detail a:hover{text-decoration:underline}
+  .sp-plan-cta{margin-top:16px;display:flex;align-items:center;gap:14px;padding:14px 16px;background:rgba(0,242,234,.04);border:1px dashed rgba(0,242,234,.25);border-radius:12px}
+  .sp-plan-btn{font-size:13px;padding:9px 18px;white-space:nowrap;flex-shrink:0}
+  .sp-plan-sub{font-size:12px;color:var(--muted);line-height:1.4}
+  .plan-progress{display:flex;gap:6px;margin-bottom:18px;align-items:center}
+  .plan-dot{width:8px;height:8px;border-radius:50%;background:var(--border);flex-shrink:0}
+  .plan-dot.done{background:var(--cyan);opacity:.5}
+  .plan-dot.active{background:var(--cyan)}
+  .plan-q-num{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px}
+  .plan-q{font-size:15px;font-weight:600;line-height:1.45;margin-bottom:12px}
+  .plan-ans{width:100%;min-height:80px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;color:var(--txt);padding:10px;font-size:14px;font-family:inherit;resize:none}
+  .plan-ans:focus{outline:none;border-color:var(--cyan)}
+  .plan-task-row{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px;align-items:flex-start}
+  .plan-task-num{color:var(--muted);min-width:20px;flex-shrink:0}
+  .plan-task-sec{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;padding:1px 6px;border-radius:4px;margin-top:2px}
+  .plan-sec-product{background:rgba(0,242,234,.12);color:var(--cyan)}
+  .plan-sec-architecture{background:rgba(154,120,255,.15);color:#b07fff}
+  .plan-sec-team{background:rgba(107,232,107,.12);color:#6be86b}
+  .sp-push-btn{background:none;border:1px solid var(--border);border-radius:6px;color:var(--muted);font-size:11px;padding:2px 8px;cursor:pointer;transition:.1s;white-space:nowrap}
+  .sp-push-btn:hover{border-color:var(--cyan);color:var(--cyan)}
+  @media(max-width:720px){.sp-board{grid-template-columns:1fr}.sp-plan-cta{flex-direction:column;align-items:flex-start}}
   .wr-hist h3{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:0 0 12px}
   .wr-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px}
   .wr-head{display:flex;justify-content:space-between;margin-bottom:10px;font-size:13px}
@@ -282,23 +315,15 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
       <div class="sp-week-lbl" id="sp-week-lbl">…</div>
       <button class="chip" onclick="spNext()">Next →</button>
     </div>
-    <input class="sp-goal-input" id="sp-goal" placeholder="🎯 Sprint goal / theme for this week…" onblur="spSaveGoal()"/>
     <div class="sp-board">
       <div class="sp-col">
-        <div class="sp-col-hdr"><span>🎯 Product</span><span style="font-size:10px;font-weight:400;color:var(--muted)">Vision &amp; roadmap</span></div>
-        <div id="sp-items-product"></div>
-        <input class="sp-input" id="sp-new-product" placeholder="Add product item… (Enter to save)" onkeydown="spAddOnEnter(event,\\'product\\')"/>
-      </div>
-      <div class="sp-col">
-        <div class="sp-col-hdr"><span>🏗️ Systems</span><span style="font-size:10px;font-weight:400;color:var(--muted)">Architecture &amp; infra</span></div>
-        <a class="sp-sisy-link" href="https://sisyphus.cultcontent.cc" target="_blank" rel="noopener">🪨 Sisyphus sprint planner ↗</a>
-        <div id="sp-items-architecture"></div>
-        <input class="sp-input" id="sp-new-architecture" placeholder="Add systems item… (Enter to save)" onkeydown="spAddOnEnter(event,\\'architecture\\')"/>
+        <div class="sp-col-hdr"><span>🎯 Products</span><span style="font-size:10px;font-weight:400;color:var(--muted)">Click to expand</span></div>
+        <div id="sp-products"></div>
       </div>
       <div class="sp-col">
         <div class="sp-col-hdr"><span>🤝 Team</span><span style="font-size:10px;font-weight:400;color:var(--muted)">Notes &amp; suggestions</span></div>
         <div id="sp-items-team"></div>
-        <input class="sp-input" id="sp-new-team" placeholder="Add note, SOP idea, or suggestion… (Enter)" onkeydown="spAddOnEnter(event,\\'team\\')"/>
+        <input class="sp-input" id="sp-new-team" placeholder="Add note, SOP idea, or task update… (Enter)" onkeydown="spAddOnEnter(event,\\'team\\')"/>
         <div class="sp-type-row">
           <select class="sp-type-sel" id="sp-type-team">
             <option value="suggestion">💡 Suggestion</option>
@@ -308,6 +333,10 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
           </select>
         </div>
       </div>
+    </div>
+    <div class="sp-plan-cta">
+      <button class="btn sp-plan-btn" onclick="openSprintPlanner()">✨ Plan the next sprint</button>
+      <span class="sp-plan-sub">AI-guided sprint scoping — answers 6 questions and generates a sprint spec split across product, systems, and team</span>
     </div>
   </div>
 </div>
@@ -366,6 +395,35 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     </div>
   </div>
 </div>
+<!-- push task to sprint modal -->
+<div class="overlay" id="pushOverlay">
+  <div class="modal" style="max-width:460px">
+    <h3>→ Send to Sprint</h3>
+    <p class="mt" id="push-task-title" style="font-size:14px;font-weight:600;margin-bottom:4px"></p>
+    <p id="push-task-meta" style="font-size:12px;color:var(--muted);margin:0 0 14px"></p>
+    <label for="push-note">Note for the sprint <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+    <textarea id="push-note" placeholder="What's the update, blocker, or context?" style="width:100%;min-height:70px;margin-top:6px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;color:var(--txt);padding:10px;font-size:13px;font-family:inherit;resize:none"></textarea>
+    <div class="err" id="push-err" style="display:none"></div>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="closePushOverlay()">Cancel</button>
+      <button class="btn" onclick="doPushToSprint()">Add to sprint →</button>
+    </div>
+  </div>
+</div>
+
+<!-- sprint planner modal -->
+<div class="overlay" id="planOverlay">
+  <div class="modal" style="max-width:580px">
+    <h3>✨ Plan the next sprint</h3>
+    <div class="plan-progress" id="plan-progress"></div>
+    <div id="plan-body"></div>
+    <div class="modal-actions" id="plan-actions">
+      <button class="btn ghost" onclick="closePlanOverlay()">Cancel</button>
+      <button class="btn" id="plan-next-btn" onclick="planNext()">Next →</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 <script>
 var ALL=[],FILTER='all',CURRENT=null,MODE='complete',TEAM=[],SUBTASKS={},ST_PARENT=null,IS_MANAGER=false,DEL_TARGET=null;
@@ -389,6 +447,51 @@ function switchTab(idx){
 
 /* ── Sprint planner ──────────────────────────────────── */
 var SP_WEEK='',SP_DATA={goal:'',items:[]},SP_MY_EMAIL='',SP_IS_ADMIN=false,SP_OFFSET=0,SP_LOADED=false;
+var SP_PUSH_TASK=null;
+var SP_PLAN_STEP=0,SP_PLAN_ANSWERS=[],SP_PLAN_RESULT=null;
+
+var SP_PRODUCTS=[
+  {id:'inner-circle',name:'Inner Circle',emoji:'🌟',desc:'Exclusive affiliate creator portal. Growing membership community for top creators to access resources, events, and Cult Content support.',url:'https://portal.cultcontent.cc/inner-circle',status:'building'},
+  {id:'client',name:'Client Dashboard',emoji:'📊',desc:'Analytics, tasks, campaign tracking, and reporting for brand clients. The client-facing window into their TikTok Shop performance.',url:'https://portal.cultcontent.cc/client',status:'live'},
+  {id:'manifest',name:'Team Manifest',emoji:'⚙️',desc:'Internal ops engine. Task management, sprint planning, weekly reports, and team coordination for the Cult Content team.',url:'https://manifest.cultcontent.cc',status:'live'},
+  {id:'website',name:'Website',emoji:'🌐',desc:'Marketing site, service pages, brand voice, and lead generation for the agency.',url:'https://cultcontent.cc',status:'live'},
+  {id:'sisyphus',name:'Sisyphus',emoji:'🪨',desc:'AI operator — autonomous task execution, Nymph agents, sprint planning, Lark integration, and the intelligence layer across all products.',url:'https://sisyphus.cultcontent.cc',status:'live'},
+  {id:'contracts',name:'Contract Management',emoji:'📋',desc:'Consultant onboarding, contract signing, and affiliate management portal for the Cult Content consultant network.',url:'https://consultants.cultcontent.cc',status:'building'}
+];
+
+var SPINE_QS=[
+  'What is the feature or goal of this sprint?',
+  'What does "done" look like — concrete success criteria?',
+  'Which product or surface does this touch? (Inner Circle, Client Dashboard, Manifest, Website, Sisyphus, Contract Mgmt, or something new)',
+  'Any external APIs or integrations needed? (TikTok API, Reacher, Meta, Stripe, GHL, Lark, none)',
+  'Priority and rough timebox — how many days should this take?',
+  'Any locked files that need Claude Code? (index.js, chat.js, chat.html, dashboard-server.js, or none)'
+];
+
+function renderProducts(){
+  var el=document.getElementById('sp-products');
+  if(!el)return;
+  el.innerHTML=SP_PRODUCTS.map(function(p){
+    return '<div class="sp-product-card" onclick="spToggleProduct(this)">'
+      +'<div class="sp-product-hdr">'
+        +'<span class="sp-product-emoji">'+p.emoji+'</span>'
+        +'<span class="sp-product-name">'+esc(p.name)+'</span>'
+        +'<span class="'+(p.status==='live'?'sp-ps-live':'sp-ps-building')+'">'+esc(p.status==='live'?'Live':'Building')+'</span>'
+        +'<span class="sp-product-chevron">›</span>'
+      +'</div>'
+      +'<div class="sp-product-detail">'
+        +'<p>'+esc(p.desc)+'</p>'
+        +'<a href="'+esc(p.url)+'" target="_blank" rel="noopener">'+esc(p.url)+' ↗</a>'
+      +'</div>'
+    +'</div>';
+  }).join('');
+}
+
+function spToggleProduct(card){
+  var wasOpen=card.classList.contains('open');
+  document.querySelectorAll('.sp-product-card').forEach(function(c){c.classList.remove('open');});
+  if(!wasOpen)card.classList.add('open');
+}
 
 function spMondayStr(offset){
   var d=new Date(),day=d.getDay(),diff=d.getDate()-day+(day===0?-6:1);
@@ -405,9 +508,9 @@ function spNext(){SP_OFFSET++;loadSprint();}
 function loadSprint(){
   SP_WEEK=spMondayStr(SP_OFFSET);
   document.getElementById('sp-week-lbl').textContent=spWeekLabel(SP_WEEK);
+  renderProducts();
   fetch('/api/sprint?week='+SP_WEEK,{credentials:'include'}).then(function(r){return r.json();}).then(function(d){
     SP_DATA=d;SP_MY_EMAIL=d.myEmail||'';SP_IS_ADMIN=!!d.isAdmin;SP_LOADED=true;
-    document.getElementById('sp-goal').value=d.goal||'';
     renderSprint();
   }).catch(function(e){console.error('sprint load',e);});
 }
@@ -522,6 +625,124 @@ function spDel(btn){
   fetch('/api/sprint/item/'+id,{method:'DELETE',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({week:SP_WEEK})});
 }
 
+/* ── Push task to sprint ──────────────────────────────── */
+function openPushOverlay(recordId){
+  var t=ALL.filter(function(x){return x.record_id===recordId;})[0];if(!t)return;
+  SP_PUSH_TASK=t;
+  document.getElementById('push-task-title').textContent=t.task||'(untitled)';
+  var meta=[];
+  if(t.client)meta.push(t.client);
+  if(t.status)meta.push(t.status);
+  if(t.status==='Blocked'&&t.blockedReason)meta.push('⛔ '+t.blockedReason);
+  document.getElementById('push-task-meta').textContent=meta.join(' · ');
+  document.getElementById('push-note').value='';
+  document.getElementById('push-err').style.display='none';
+  document.getElementById('pushOverlay').classList.add('show');
+  setTimeout(function(){document.getElementById('push-note').focus();},50);
+}
+function closePushOverlay(){document.getElementById('pushOverlay').classList.remove('show');SP_PUSH_TASK=null;}
+function doPushToSprint(){
+  if(!SP_PUSH_TASK)return;
+  var note=document.getElementById('push-note').value.trim();
+  var t=SP_PUSH_TASK;
+  var parts=[t.task||'(untitled)'];
+  if(t.client)parts.push('('+t.client+')');
+  var text=parts.join(' ');
+  var body={week:SP_WEEK,section:'team',text:text,type:'note'};
+  if(note)body.notes=note;
+  else if(t.status==='Blocked'&&t.blockedReason)body.notes='⛔ '+t.blockedReason;
+  fetch('/api/sprint/item',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+  .then(function(r){return r.json();}).then(function(d){
+    if(d.ok&&d.item)SP_DATA.items.push(d.item);
+    closePushOverlay();
+    if(!SP_LOADED){loadSprint();}else{renderSprint();}
+    toast('Added to sprint →');
+  }).catch(function(e){
+    document.getElementById('push-err').textContent=''+e;document.getElementById('push-err').style.display='block';
+  });
+}
+
+/* ── Sprint planner (SPINE interview) ────────────────── */
+function openSprintPlanner(){
+  SP_PLAN_STEP=0;SP_PLAN_ANSWERS=[];SP_PLAN_RESULT=null;
+  document.getElementById('planOverlay').classList.add('show');
+  renderPlanStep();
+}
+function closePlanOverlay(){document.getElementById('planOverlay').classList.remove('show');}
+function renderPlanStep(){
+  var prog=document.getElementById('plan-progress');
+  var body=document.getElementById('plan-body');
+  var btn=document.getElementById('plan-next-btn');
+  if(SP_PLAN_RESULT){renderPlanResult();return;}
+  prog.innerHTML=SPINE_QS.map(function(_,i){
+    return '<span class="plan-dot'+(i<SP_PLAN_STEP?' done':i===SP_PLAN_STEP?' active':'')+'">';
+  }).join('');
+  body.innerHTML='<div class="plan-q-num">Question '+(SP_PLAN_STEP+1)+' of '+SPINE_QS.length+'</div>'
+    +'<div class="plan-q">'+esc(SPINE_QS[SP_PLAN_STEP])+'</div>'
+    +'<textarea class="plan-ans" id="plan-ans" placeholder="Your answer…"></textarea>';
+  btn.textContent=SP_PLAN_STEP===SPINE_QS.length-1?'Generate sprint →':'Next →';
+  btn.disabled=false;
+  setTimeout(function(){var el=document.getElementById('plan-ans');if(el)el.focus();},50);
+}
+function planNext(){
+  if(SP_PLAN_RESULT){approveSprintPlan();return;}
+  var ans=(document.getElementById('plan-ans')||{}).value||'';
+  SP_PLAN_ANSWERS.push({q:SPINE_QS[SP_PLAN_STEP],a:ans.trim()});
+  SP_PLAN_STEP++;
+  if(SP_PLAN_STEP>=SPINE_QS.length){
+    var btn=document.getElementById('plan-next-btn');
+    btn.textContent='Generating…';btn.disabled=true;
+    document.getElementById('plan-body').innerHTML='<div style="color:var(--muted);font-size:13px;padding:20px 0 10px;text-align:center">🤖 Generating sprint spec…</div>';
+    document.getElementById('plan-progress').innerHTML='';
+    generateSprintSpec();
+  } else {
+    renderPlanStep();
+  }
+}
+function generateSprintSpec(){
+  fetch('/api/sprint/plan/generate',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({week:SP_WEEK,answers:SP_PLAN_ANSWERS})})
+  .then(function(r){return r.json();})
+  .then(function(d){
+    if(d.error){document.getElementById('plan-body').innerHTML='<div style="color:var(--red)">Error: '+esc(d.error)+'</div>';document.getElementById('plan-next-btn').textContent='Retry';document.getElementById('plan-next-btn').disabled=false;return;}
+    SP_PLAN_RESULT=d;renderPlanResult();
+  })
+  .catch(function(e){document.getElementById('plan-body').innerHTML='<div style="color:var(--red)">'+esc(''+e)+'</div>';});
+}
+function renderPlanResult(){
+  var r=SP_PLAN_RESULT;if(!r)return;
+  var secMeta={product:{label:'Product',cls:'plan-sec-product'},architecture:{label:'Systems',cls:'plan-sec-architecture'},team:{label:'Team',cls:'plan-sec-team'}};
+  var body=document.getElementById('plan-body');
+  var html='<div style="margin-bottom:16px"><div style="font-size:16px;font-weight:700;margin-bottom:6px">'+esc(r.title||'Sprint')+'</div>';
+  if(r.goal)html+='<p style="font-size:13px;color:var(--muted);margin:0">'+esc(r.goal)+'</p></div>';
+  if(r.tasks&&r.tasks.length){
+    html+='<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">'+r.tasks.length+' tasks to add</div>';
+    r.tasks.forEach(function(t,i){
+      var sm=secMeta[t.section]||secMeta.team;
+      html+='<div class="plan-task-row"><span class="plan-task-num">'+(i+1)+'.</span>'
+        +'<div style="flex:1"><div>'+esc(t.text||t.title||'')+'</div>'
+        +'<span class="plan-task-sec '+sm.cls+'">'+sm.label+'</span></div></div>';
+    });
+  }
+  html+='</div>';
+  body.innerHTML=html;
+  var btn=document.getElementById('plan-next-btn');
+  btn.textContent='Add '+(r.tasks||[]).length+' items to sprint →';
+  btn.disabled=false;
+  document.getElementById('plan-progress').innerHTML='';
+}
+function approveSprintPlan(){
+  if(!SP_PLAN_RESULT||!SP_PLAN_RESULT.tasks)return;
+  var btn=document.getElementById('plan-next-btn');btn.disabled=true;btn.textContent='Adding…';
+  var proms=SP_PLAN_RESULT.tasks.map(function(t){
+    return fetch('/api/sprint/item',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({week:SP_WEEK,section:t.section||'architecture',text:t.text||t.title})})
+      .then(function(r){return r.json();});
+  });
+  Promise.all(proms).then(function(results){
+    results.forEach(function(d){if(d.ok&&d.item)SP_DATA.items.push(d.item);});
+    renderSprint();closePlanOverlay();toast('Sprint items added!');
+  }).catch(function(){btn.disabled=false;btn.textContent='Retry';});
+}
+
 function load(){
   document.getElementById('sub').textContent='Loading your Ops Engine tasks…';
   fetch('/api/my-tasks/list',{credentials:'include'}).then(function(r){return r.json();}).then(function(d){
@@ -583,6 +804,7 @@ function render(){
       html+='<button class="btn" onclick="openModal(\\''+t.record_id+'\\')">Complete</button>';
       html+='<button class="btn ghost" onclick="openBlockModal(\\''+t.record_id+'\\')">Block</button>';
       html+='<button class="btn ghost" onclick="openAssignModal(\\''+t.record_id+'\\')">Reassign</button>';
+      html+='<button class="sp-push-btn" onclick="openPushOverlay(\\''+t.record_id+'\\')">→ Sprint</button>';
       html+='<button class="btn ghost" style="color:var(--red);border-color:rgba(255,0,80,.4)" onclick="openDelModal(\\''+t.record_id+'\\')">Delete</button>';
       html+='</div></div>';
     });
@@ -1378,6 +1600,8 @@ loadAll();
 module.exports = function registerOpsMyTasks(app, deps = {}) {
   const axios = deps.axios || require('axios');
   const express = deps.express || require('express');
+  const Anthropic = require('@anthropic-ai/sdk');
+  const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   // Auth gate. Prefer the host app's requireAuth (CF Access / team session).
   // When none is provided (e.g. standalone/dynamic mount before the auth wall),
   // fall back to a self-contained guard that returns a CLEAN JSON 401 when the
@@ -2424,6 +2648,43 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
       sprints[week].goal = goal || '';
       writeJsonFile(SP_FILE, sprints);
       res.json({ ok: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.post('/api/sprint/plan/generate', requireAuth, jsonBody, async (req, res) => {
+    try {
+      const { answers } = req.body || {};
+      if (!answers || !answers.length) return res.status(400).json({ error: 'answers required' });
+      const transcriptText = answers.map((a, i) => `Q${i + 1}: ${a.q}\nA${i + 1}: ${a.a || '(no answer)'}`).join('\n\n');
+      const response = await anthropic.messages.create({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1500,
+        system: `You are a sprint planning assistant for Cult Content, a TikTok Shop agency. Convert a planning interview into a structured sprint spec.
+
+Respond ONLY with valid JSON (no markdown fence):
+{
+  "title": "short sprint title (5-10 words)",
+  "goal": "one paragraph sprint goal",
+  "tasks": [
+    { "text": "short actionable task title (under 80 chars)", "section": "product|architecture|team" }
+  ]
+}
+
+"product" = vision, UX, strategy, roadmap decisions (Tommy's work)
+"architecture" = technical implementation, systems, APIs (Daniel's work)
+"team" = SOPs, processes, documentation, recurring workflows
+
+Produce 4-8 tasks split across relevant sections. Keep task titles short and actionable.`,
+        messages: [{ role: 'user', content: `Sprint planning interview:\n\n${transcriptText}\n\nGenerate sprint spec as JSON.` }]
+      });
+      const text = (response.content || []).filter(b => b.type === 'text').map(b => b.text).join('').trim();
+      let parsed;
+      try {
+        const clean = text.replace(/^```(?:json)?\n?/,'').replace(/\n?```$/,'');
+        const start = clean.search(/[{[]/);
+        parsed = JSON.parse(start >= 0 ? clean.slice(start) : clean);
+      } catch { return res.status(500).json({ error: 'Failed to parse model response', raw: text.slice(0,300) }); }
+      res.json(parsed);
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
