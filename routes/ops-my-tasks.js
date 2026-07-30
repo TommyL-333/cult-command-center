@@ -450,6 +450,8 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     <h3>→ Send to Sprint</h3>
     <p class="mt" id="push-task-title" style="font-size:14px;font-weight:600;margin-bottom:4px"></p>
     <p id="push-task-meta" style="font-size:12px;color:var(--muted);margin:0 0 14px"></p>
+    <label style="display:block;margin-bottom:6px">Product <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+    <select id="push-product" style="width:100%;padding:10px;border-radius:8px;background:var(--panel2);color:var(--txt);border:1px solid var(--border);font-family:inherit;font-size:13px;margin-bottom:14px"><option value="">No product</option></select>
     <label for="push-note">Note for the sprint <span style="color:var(--muted);font-weight:400">(optional)</span></label>
     <textarea id="push-note" placeholder="What's the update, blocker, or context?" style="width:100%;min-height:70px;margin-top:6px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;color:var(--txt);padding:10px;font-size:13px;font-family:inherit;resize:none"></textarea>
     <div class="err" id="push-err" style="display:none"></div>
@@ -750,6 +752,9 @@ function openPushOverlay(recordId){
   document.getElementById('push-task-meta').textContent=meta.join(' · ');
   document.getElementById('push-note').value='';
   document.getElementById('push-err').style.display='none';
+  var psel=document.getElementById('push-product');
+  psel.innerHTML='<option value="">No product</option>'+SP_PRODUCTS.map(function(p){return'<option value="'+p.id+'">'+p.emoji+' '+esc(p.name)+'</option>';}).join('');
+  psel.value='';
   document.getElementById('pushOverlay').classList.add('show');
   setTimeout(function(){document.getElementById('push-note').focus();},50);
 }
@@ -757,6 +762,8 @@ function closePushOverlay(){document.getElementById('pushOverlay').classList.rem
 function doPushToSprint(){
   if(!SP_PUSH_TASK)return;
   var note=document.getElementById('push-note').value.trim();
+  var productId=document.getElementById('push-product').value;
+  var p=productId?SP_PRODUCTS.filter(function(x){return x.id===productId;})[0]:null;
   var t=SP_PUSH_TASK;
   var parts=[t.task||'(untitled)'];
   if(t.client)parts.push('('+t.client+')');
@@ -764,6 +771,7 @@ function doPushToSprint(){
   var body={week:SP_WEEK,section:'team',text:text,type:'note'};
   if(note)body.notes=note;
   else if(t.status==='Blocked'&&t.blockedReason)body.notes='⛔ '+t.blockedReason;
+  if(productId&&p){body.productId=productId;body.productName=p.name;}
   fetch('/api/sprint/item',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
   .then(function(r){return r.json();}).then(function(d){
     if(d.ok&&d.item)SP_DATA.items.push(d.item);
@@ -2359,6 +2367,13 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
 
   // ---------- ROUTE: GET /api/my-tasks/team ----------
   // Active Team roster for the reassign dropdown: [{name, openId, role}]
+  app.get('/api/my-tasks/team/debug', requireAuth, async (req, res) => {
+    const email = (req.userEmail || (req.session && req.session.userEmail) || '').toLowerCase();
+    if (!ADMIN_EMAILS.has(email)) return res.status(403).json({ error: 'admin only' });
+    const data = await larkGet(`/open-apis/bitable/v1/apps/${OPS_APP_TOKEN}/tables/${TEAM_TABLE}/records`, { page_size: 100 });
+    res.json(data);
+  });
+
   app.get('/api/my-tasks/team', requireAuth, async (req, res) => {
     try {
       const data = await larkGet(
@@ -2371,14 +2386,17 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
       for (const it of items) {
         const f = it.fields || {};
         if (f.Active === false) continue;
-        const openId = textVal(f['Open ID']) ||
-          (Array.isArray(f.Person) && f.Person[0] && f.Person[0].id) || '';
+        // Try every known field shape Lark might use for a user ID
+        const openId = textVal(f['Open ID']) || textVal(f['open_id']) || textVal(f['OpenID']) ||
+          (Array.isArray(f.Person) && f.Person[0] && f.Person[0].id) ||
+          (Array.isArray(f['Lark User']) && f['Lark User'][0] && f['Lark User'][0].id) || '';
         if (!openId) continue;
         team.push({
-          name: textVal(f.Name) ||
-            (Array.isArray(f.Person) && f.Person[0] && (f.Person[0].name || f.Person[0].en_name)) || openId,
+          name: textVal(f.Name) || textVal(f.name) ||
+            (Array.isArray(f.Person) && f.Person[0] && (f.Person[0].name || f.Person[0].en_name)) ||
+            (Array.isArray(f['Lark User']) && f['Lark User'][0] && (f['Lark User'][0].name || f['Lark User'][0].en_name)) || openId,
           openId,
-          role: textVal(f.Role) || '',
+          role: textVal(f.Role) || textVal(f.role) || '',
         });
       }
       res.json({ team });
