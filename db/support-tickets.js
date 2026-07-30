@@ -27,6 +27,22 @@ const db = new Database(DB_PATH);
 
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
+db.pragma('busy_timeout = 5000'); // explicit (matches better-sqlite3's own default) — fail fast on real lock contention rather than relying on an implicit default
+
+// This file (inner_circle.db) is shared by three separate connections
+// (inner-circle.js, content-studio.js, this one). If something prevents
+// SQLite's automatic WAL checkpoint from ever running, the write-ahead log
+// can grow very large — reads then become genuinely, unboundedly slow
+// (not "locked", just real I/O work), which looks like a hang with no
+// error, since busy_timeout only catches lock contention, not this.
+// TRUNCATE checkpoints on every boot as a defensive compaction; logged so
+// a huge `log` page count here is direct evidence of exactly that.
+try {
+  const [{ busy, log, checkpointed }] = db.pragma('wal_checkpoint(TRUNCATE)');
+  console.log(`[support-tickets] WAL checkpoint — busy=${busy} log=${log} checkpointed=${checkpointed}`);
+} catch (e) {
+  console.error('[support-tickets] WAL checkpoint failed:', e.message);
+}
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS support_tickets (
