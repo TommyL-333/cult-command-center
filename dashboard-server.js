@@ -15320,6 +15320,192 @@ app.listen(CFG.port, () => {
     }
   } catch(e) { console.error('[startup] Roots by GA link/copy fix error:', e.message); }
 
+  // Roots by GA — full creator page + Peptide Longevity Stack brief
+  try {
+    const bd = loadBrands();
+    const roots = (bd.clients || []).find(b => (b.name || '').toLowerCase().trim() === 'roots by ga');
+    if (roots && !roots.creatorPage?.brief) {
+      const existingCp = roots.creatorPage || {};
+      roots.creatorPage = {
+        ...existingCp,
+        slug:            existingCp.slug || 'roots-by-ga',
+        active:          true,
+        listed:          true,
+        accentColor:     '#C8975A',
+        headline:        'Earn Commission + Up to $2,600 in Bonuses',
+        subheadline:     'Join the Roots by GA TikTok Shop Creator Program',
+        tcCommission:    20,
+        earnPotential:   existingCp.earnPotential || 2600,
+        welcomeMessage:  'You\'re officially in the Roots by GA Creator Program. Your sample ships soon — explore the brief below to understand the two-step system and start planning your content.',
+        welcomeSteps: [
+          'Apply for the campaigns below to unlock your cash bonuses',
+          'Look out for your free sample — Peptide Longevity Stack (shampoo + serum)',
+          'Read the brief: the GHK-Cu skincare crossover is your strongest hook',
+          'Post your first video and start earning 20% on every sale',
+          'Track shedding and density on camera — 8–12 week progress content converts',
+        ],
+        incentives: {
+          cashback:    { enabled: false, amount: 0 },
+          volumeBonus: { enabled: true, bonus: 500, videoCount: 10 },
+          leaderboard: { enabled: false },
+        },
+        campaigns: {
+          quantityVideoUrl: existingCp.campaigns?.quantityVideoUrl || '',
+          reimbursementUrl: existingCp.campaigns?.reimbursementUrl || '',
+        },
+        products: [
+          {
+            name:        'Peptide Longevity Stack',
+            description: 'Two-step hair growth system: Conditioning Shampoo with Copper Peptides (wash days) + Multi-Peptide Hair Serum (daily). GHK-Cu in both products — follicle repair on wash day and every day.',
+            minPrice:    125,
+            url:         existingCp.products?.[0]?.url || 'https://rootsbyga.shop/products/peptide-shampoo-and-serum-stack',
+          },
+          {
+            name:        'Multi-Peptide Hair Serum',
+            description: '28+ clinically active ingredients: 5 peptide complexes, 7 growth factors (EGF, KGF-2, VEGF), longevity molecules NMN, PDRN, ergothioneine. Daily treatment.',
+            minPrice:    76,
+            url:         existingCp.products?.[1]?.url || 'https://rootsbyga.shop/products/peptide-shampoo-and-serum-stack',
+          },
+          {
+            name:        'Conditioning Shampoo with Copper Peptides',
+            description: 'Treatment-first shampoo: GHK-Cu, saw palmetto, red clover, rosemary oil, biotin, Panthenol. Non-stripping, sulfate-free. Signature blue tint from the copper peptides.',
+            minPrice:    49,
+            url:         existingCp.products?.[2]?.url || 'https://rootsbyga.shop/products/peptide-shampoo-and-serum-stack',
+          },
+        ],
+        usps: [
+          'GHK-Cu in both products — the skincare-famous copper peptide, now formulated for your scalp',
+          'Two-step system: shampoo preps on wash days, serum treats every day',
+          '5 peptide complexes + 7 medical-grade growth factors in the serum',
+          'Longevity molecules NMN, PDRN, ergothioneine — targeting follicle signaling and cellular energy',
+          '46% improvement in anagen-to-telogen ratio in ingredient-level clinical study*',
+          'Sulfate-free, paraben-free, silicone-free — safe alongside Rx topicals, microneedling, PRP',
+          'Signature blue tint = visible proof of the copper peptide (great on camera)',
+        ],
+        talkingPoints: 'GHK-Cu is one of the most talked-about peptides in premium anti-aging skincare — and your scalp is skin\nDHT, inflammation, and nutrient deprivation are the three compounding threats to follicles — one product can\'t cover all three\nThe shampoo isn\'t just a cleanse — it\'s follicle support: GHK-Cu signals repair, saw palmetto + red clover defend DHT-vulnerable follicles\nA serum can\'t do its job on a stripped, inflamed scalp — wash-day prep is the missing step\n28+ clinically active ingredients in the serum: peptide complexes, growth factors, longevity molecules\nNMN and PDRN in the serum are the same longevity molecules people take for aging — formulated for follicles\nThe blue tint in the shampoo is actual copper peptides — not dye (great on-camera proof point)\nExpect visible improvement in 8–12 weeks of consistency — set that expectation honestly',
+        brief: {
+          niche:          'Hair Growth & Scalp Health',
+          targetAudience: 'Women and men 25–45 experiencing thinning, postpartum shedding, stress-related hair loss, or androgenetic alopecia. Skincare-educated consumers who already know peptides and are ready to apply that knowledge to their scalp.',
+          mainProblem:    'Follicles don\'t stop producing hair overnight — they miniaturize slowly under DHT, inflammation, and nutrient deprivation. One product can\'t address all three. The Stack works as a system: shampoo defends and preps on wash days, serum rebuilds and reactivates every day.',
+          hooks: [
+            { text: 'You\'ve heard of GHK-Cu for your face. Your scalp is skin too — it\'s been aging the same way', type: 'curiosity' },
+            { text: 'I used a growth serum for months before I found out what I was doing wrong on wash day', type: 'pain-point' },
+            { text: 'The peptide your esthetician charges $300 for in a facial? It belongs on your scalp too', type: 'myth-bust' },
+            { text: 'This is longevity science for your scalp — the same molecules people take for aging, formulated for your follicles', type: 'curiosity' },
+            { text: 'Most shampoos stop at clean. This one is a treatment. Here\'s the difference', type: 'myth-bust' },
+            { text: 'The blue tint? That\'s actual copper peptides — not dye. Let me explain what that means for your hair', type: 'curiosity' },
+            { text: 'Skincare taught us peptides rebuild collagen. Your follicles sit in collagen. Connect the dots', type: 'curiosity' },
+            { text: 'POV: you finally found a two-step hair routine that\'s actually doing something', type: 'transformation' },
+          ],
+          frameworks: [
+            {
+              name:    'The Skincare Crossover',
+              why:     'Most of your audience already trusts peptides from skincare — especially GHK-Cu from facial serums and microneedling. The bridge ("your scalp is skin too") is the most credible, highest-converting angle for this product because it transfers existing trust to a new application.',
+              outline: [
+                'Hook: "You already know GHK-Cu from your skincare routine — collagen, elastin, repair, anti-aging." (Show a face serum or mention an esthetician treatment)',
+                'Bridge: "Your scalp is skin. It\'s an extension of your face. Same biology, same collagen, same follicle scaffolding that thins over time."',
+                'Product reveal: "Roots by GA put GHK-Cu in both the shampoo AND the serum — so you\'re getting that repair signal on wash day AND every day."',
+                'Blue tint moment: "And see this? That blue tint in the shampoo is the copper peptide. Not dye — the actual ingredient."',
+                'CTA: "Link in bio — the Stack comes with both so you\'re not leaving either step out."',
+              ],
+            },
+            {
+              name:    'The Missing Step',
+              why:     'Creators who\'ve already tried growth serums are a huge segment. The "missing step" angle validates their existing behavior while adding the shampoo as the gap they never knew about — makes the purchase feel like completion, not replacement.',
+              outline: [
+                'Hook: "I was using a hair growth serum every day for months. But I was doing it wrong."',
+                'The problem: "My scalp was stripped and inflamed on wash days — the serum was trying to treat a compromised surface."',
+                'The solution: "The shampoo preps your scalp — GHK-Cu, saw palmetto, rosemary oil. Non-stripping so your scalp is actually ready for treatment."',
+                'The system: "Wash day: shampoo. Every day: serum. Two steps, two products, one system. They\'re designed to work together."',
+                'CTA: "Link in bio — $125 for both or grab them separately."',
+              ],
+            },
+            {
+              name:    'Two-Step Routine Demo',
+              why:     'Visual routine content converts for haircare. Show the actual textures — blue-tinted lather + dropper serum — the "how to use" beats drive the purchase decision more than any product claim.',
+              outline: [
+                'Wash day: massage shampoo into scalp 1–2 min — "leave it on another 1–2 minutes before rinsing — this is when the copper peptides actually absorb"',
+                'Show the blue lather: "See the blue? That\'s the GHK-Cu. Not a dye."',
+                'Serum step: "Every morning or night — 1–2 dropperfuls, massage into thinning areas."',
+                'Name the ingredients briefly: "GHK-Cu for repair, Biotinoyl for anchoring, Acetyl Tetrapeptides for thickness, Zinc Thymulin to wake follicles back up."',
+                'CTA: "8–12 weeks of consistency — I\'m tracking mine. Link in bio."',
+              ],
+            },
+            {
+              name:    'Science Explainer: Peptide Breakdown',
+              why:     'Educational content performs strongly on TikTok for haircare — viewers bookmark ingredient explainers. Breaking down each peptide as a different "message to the follicle" makes complex science feel actionable and memorable.',
+              outline: [
+                'Setup: "The serum has 5 different peptide complexes. Each one is a different message to the follicle."',
+                'GHK-Cu: "Repair signal — same one from skincare, supports collagen around the follicle and blood flow to the root."',
+                'Biotinoyl Tripeptide-1: "Hold on signal — strengthens the anchor at the root so hair sheds less."',
+                'Acetyl Tetrapeptides: "Grow thicker signal — supports follicle density and shaft thickness."',
+                'Zinc Thymulin: "Wake up signal — helps reactivate follicles sitting in the resting phase."',
+                'CTA: "That\'s the Stack — shampoo preps, serum delivers all four messages. Link in bio."',
+              ],
+            },
+          ],
+          sampleScripts: [
+            {
+              framework: 'Skincare Crossover',
+              title:     'The GHK-Cu Bridge',
+              duration:  '~40 seconds',
+              script:    '[HOOK] You\'ve probably seen GHK-Cu on every premium face serum and anti-aging cream for the last few years. It\'s the peptide that signals collagen production, wound healing, tissue repair. Estheticians use it. Microneedling serums are full of it.\n\n[BRIDGE] But here\'s what nobody told you — your scalp is skin. It\'s literally an extension of your face. Same collagen. Same repair biology. Same scaffolding that thins as you age and your GHK-Cu levels drop.\n\n[PRODUCT] Roots by GA put copper peptides in both the shampoo AND the serum. So you\'re getting that repair signal every wash day when the shampoo sits on your scalp for two minutes — you can literally see the blue tint, that\'s the copper peptide, not dye — and then again every single day with the serum.\n\n[CTA] It\'s a two-step system, $125 for the Stack. Link in bio. If you already believe in peptides for your face, it\'s time to give your scalp the same treatment.',
+            },
+            {
+              framework: 'PAS',
+              title:     'The Missing Step',
+              duration:  '~35 seconds',
+              script:    '[HOOK] I used a hair growth serum every single day for three months and barely saw a difference. Turns out I was missing the most important step.\n\n[PROBLEM] On wash days I was stripping my scalp with a regular sulfate shampoo — drying it out, inflaming it, then immediately trying to treat it with an active serum. That doesn\'t work. A serum can\'t do its job on a compromised scalp.\n\n[SOLUTION] The Roots by GA shampoo has GHK-Cu, saw palmetto, rosemary oil — it defends and preps on wash days so your scalp is actually ready to absorb treatment. Then the serum every day: 5 peptide complexes, 7 growth factors, longevity molecules NMN and PDRN. Two steps, designed to work together.\n\n[CTA] This is the two-step system I wish I had from the start. Link in bio — $125 for the Stack or grab them separately.',
+            },
+          ],
+          talkingPoints: {
+            benefits: [
+              'GHK-Cu in both products — the repair signal on wash day AND daily, not just once',
+              'Two-step system addresses all three follicle threats: DHT defense (shampoo), inflammation reduction, nutrient delivery (serum)',
+              '5 peptide complexes in the serum: repair, anchor, thickness, growth-phase activation',
+              '7 medical-grade growth factors: EGF, IGF-2, VEGF, bFGF, KGF-2, aFGF, SCF',
+              'Longevity molecules NMN (NAD+ support), PDRN (microcirculation), ergothioneine (follicle stem cell protection)',
+              'Ingredient study: 46% improvement in anagen-to-telogen ratio and ~29% reduction in telogen hair vs placebo*',
+              'Sulfate-free shampoo primes the scalp — not strips it — so the serum can actually absorb',
+              'Safe alongside prescription topicals, microneedling, PRP — won\'t interfere with what you\'re already using',
+            ],
+            powerPhrases: [
+              '"Your scalp is an extension of your face — start treating it like it"',
+              '"GHK-Cu on wash day and every day"',
+              '"Shampoo preps. Serum treats. That\'s the system."',
+              '"The blue tint is the copper peptide — not dye"',
+              '"This is longevity science for your scalp"',
+            ],
+          },
+          doAndDont: {
+            dos: [
+              'Lead with GHK-Cu — if your audience is skincare-literate, this is your fastest trust bridge',
+              'Show the blue tint in the shampoo on camera — it\'s the most memorable visual proof point',
+              'Demonstrate the massage-and-wait technique (1–2 min leave-on) — this is how the copper peptides absorb',
+              'Use supportive language: "supports," "helps," "improves the appearance of density," "designed to"',
+              'Disclose the partnership (#ad or paid-partnership label) on every post — FTC requirement',
+              'Attribute the clinical stat to the ingredient study, not to the product or your own results',
+              'Set an honest timeline: visible improvement in 8–12 weeks of consistency',
+            ],
+            donts: [
+              'Don\'t claim the products cure or reverse hair loss, guarantee regrowth, or replace prescription treatment',
+              'Don\'t use the "+17% hair density" or "78% more hairs" stats — these can\'t be sourced and are removed from creator use',
+              'Don\'t attach a growth percentage to sunflower sprout extract — pending supplier documentation',
+              'Don\'t skip the shampoo story — it\'s not just a cleanse, and treating it like one misses the whole system angle',
+            ],
+          },
+          benchmarks: {
+            hookRate: '>30%',
+            holdRate: '>10%',
+            ctr:      '>1%',
+          },
+        },
+      };
+      saveBrands(bd);
+      console.log('[startup] Roots by GA — full creator page + Peptide Longevity Stack brief configured');
+    }
+  } catch(e) { console.error('[startup] Roots by GA creator page error:', e.message); }
+
   // Add Yuglo if not yet in brands.json
   try {
     const bd = loadBrands();
