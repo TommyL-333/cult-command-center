@@ -3047,7 +3047,8 @@ async function fetchNetProductSalesForWindow(brand, brandsObj, brandIdx, win) {
   const ttl = win.isCurrent ? 5 * 60 * 1000 : Infinity;
   if (cached && (Date.now() - cached.at) < ttl) return cached.value;
 
-  const CANCELLED = new Set(['CANCELLED', 'CANCEL', 140, 4]);
+  // Same cancel set as fetchNetGmvForBrand — 121 (In Transit) is NOT cancelled
+  const CANCELLED = new Set([140, 4, 'CANCELLED', 'CANCEL', 'REFUNDED', 'REFUND', 'REVERSE_PENDING', 'REVERSE_COMPLETE']);
   let total = 0;
   try {
     let pageToken = null;
@@ -3061,19 +3062,30 @@ async function fetchNetProductSalesForWindow(brand, brandsObj, brandIdx, win) {
         if (o.is_sample_order === true) continue;
         const status = o.order_status ?? o.status;
         if (status !== undefined && CANCELLED.has(status)) continue;
-        const items = o.line_items || o.item_list || o.items || [];
-        for (const it of items) {
-          const orig = parseFloat(it.original_price ?? it.price ?? 0) || 0;
-          const sellerDisc = parseFloat(it.seller_discount ?? 0) || 0;
-          total += (orig - sellerDisc);
+        // Use payment.sub_total (actual amount paid by customer) — avoids inflating with
+        // list-price original_price which ignores platform-funded coupons/discounts
+        const pi = o.payment || o.payment_info;
+        let amt = 0;
+        if (pi) {
+          const candidates = [pi.sub_total, pi.paid_amount, pi.total_amount, pi.original_total_product_price, pi.product_total_amount];
+          for (const c of candidates) { const v = parseFloat(c); if (!isNaN(v) && v > 0) { amt = v; break; } }
         }
+        if (amt === 0) {
+          // fallback: sum line items
+          const items = o.line_items || o.item_list || o.items || [];
+          for (const it of items) {
+            const sale = parseFloat(it.sale_price ?? it.sku_sale_price ?? it.original_price ?? it.price ?? 0) || 0;
+            amt += sale;
+          }
+        }
+        total += amt;
       }
       pageToken = resp?.data?.next_page_token || null;
       if (!pageToken || orders.length === 0) break;
     }
   } catch (err) {
     console.error(`[nps] ${brand.name} ${win.key} order-search failed:`, err.message);
-    return cached ? cached.value : null; // fall back to any stale cache, else null (honest)
+    return cached ? cached.value : null;
   }
   const rounded = Math.round(total * 100) / 100;
   NPS_CACHE.set(cacheKey, { value: rounded, at: Date.now() });
