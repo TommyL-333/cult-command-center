@@ -5557,6 +5557,37 @@ app.delete('/api/client/storista/queue/:jobId', requireClientSession, (req, res)
   res.json({ ok: true });
 });
 
+// GET /api/admin/billing-summary — billing preview for all active clients (admin-secret gated, no CF Access needed)
+app.get('/api/admin/billing-summary', async (req, res) => {
+  const secret = process.env.ADMIN_BATCH_SECRET || 'cult-batch-2026';
+  if (req.headers['x-admin-secret'] !== secret) return res.status(401).json({ error: 'Unauthorized' });
+  const INTERNAL_IDS = new Set(['orgsocsmarketing001', 'tctestbrand001']);
+  const win = monthWindow(req.query.month);
+  const allBrands = loadBrands();
+  const active = (allBrands.clients || []).filter(b =>
+    (!b.pipelineStage || b.pipelineStage === 'Contract Signed') &&
+    !INTERNAL_IDS.has(b.id) && b.source !== 'internal'
+  );
+  const gmvResults = await Promise.allSettled(active.map((b) => {
+    const idx = (allBrands.clients || []).findIndex(c => c.id === b.id);
+    return fetchNetProductSalesForWindow(allBrands.clients[idx] || b, allBrands, idx, win);
+  }));
+  const freshBrands = loadBrands();
+  const freshActive = (freshBrands.clients || []).filter(b =>
+    (!b.pipelineStage || b.pipelineStage === 'Contract Signed') &&
+    !INTERNAL_IDS.has(b.id) && b.source !== 'internal'
+  );
+  const previews = freshActive.map((b, i) => {
+    const liveGmv = gmvResults[i]?.status === 'fulfilled' ? gmvResults[i].value : null;
+    const bill = clientBilling(b);
+    const gmv = bill.commRate === 0 ? 0 : (liveGmv ?? 0);
+    const revShare = parseFloat((gmv * bill.commRate).toFixed(2));
+    const total = parseFloat((bill.retainer + revShare).toFixed(2));
+    return { id: b.id, name: b.name, billingEmail: bill.billingEmail, retainer: bill.retainer, commRate: bill.commRate, gmv, revShare, total, stripeCustomerId: b.stripeCustomerId || null };
+  });
+  res.json({ ok: true, period: win.label, previews });
+});
+
 // GET /api/admin/brands-list — list brand IDs + names + connection status
 app.get('/api/admin/brands-list', (req, res) => {
   const secret = process.env.ADMIN_BATCH_SECRET || 'cult-batch-2026';
