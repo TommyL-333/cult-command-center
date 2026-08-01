@@ -5582,7 +5582,7 @@ app.get('/api/admin/billing-summary', async (req, res) => {
   );
   const gmvResults = await Promise.allSettled(active.map((b) => {
     const idx = (allBrands.clients || []).findIndex(c => c.id === b.id);
-    return fetchNetProductSalesForWindow(allBrands.clients[idx] || b, allBrands, idx, win);
+    return fetchNetGmvForBrand(allBrands.clients[idx] || b, allBrands, idx);
   }));
   const freshBrands = loadBrands();
   const freshActive = (freshBrands.clients || []).filter(b =>
@@ -5590,7 +5590,7 @@ app.get('/api/admin/billing-summary', async (req, res) => {
     !INTERNAL_IDS.has(b.id) && b.source !== 'internal'
   );
   const previews = freshActive.map((b, i) => {
-    const liveGmv = gmvResults[i]?.status === 'fulfilled' ? gmvResults[i].value : null;
+    const liveGmv = gmvResults[i]?.status === 'fulfilled' ? gmvResults[i].value : (b.cachedNetGmv ?? null);
     const bill = clientBilling(b);
     const gmv = bill.commRate === 0 ? 0 : (liveGmv ?? 0);
     const revShare = parseFloat((gmv * bill.commRate).toFixed(2));
