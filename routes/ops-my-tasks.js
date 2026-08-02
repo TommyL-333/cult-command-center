@@ -1387,6 +1387,20 @@ const TASK_MANAGEMENT_HTML = `<!DOCTYPE html>
   .tn-editable:hover .tn{text-decoration:underline;text-decoration-style:dotted;text-underline-offset:2px}
   .tn-input{background:var(--panel2);border:1px solid var(--cyan);border-radius:5px;color:var(--txt);padding:3px 8px;font-size:13px;font-weight:600;font-family:inherit;width:100%;min-width:180px}
   .tn-input:focus{outline:none}
+  /* bulk selection */
+  .chk-col{width:36px;padding-left:12px!important;padding-right:4px!important}
+  tr.row-sel td{background:rgba(0,242,234,.05)!important}
+  .bulk-bar{background:linear-gradient(90deg,rgba(0,242,234,.06),rgba(255,0,80,.04));border:1px solid rgba(0,242,234,.3);border-radius:10px;padding:10px 16px;margin-bottom:12px;display:none;align-items:center;gap:10px;flex-wrap:wrap}
+  .bulk-bar.show{display:flex}
+  .bulk-count{font-size:13px;font-weight:700;color:var(--cyan);min-width:80px;white-space:nowrap}
+  .bulk-sep{width:1px;height:22px;background:var(--border);flex-shrink:0}
+  .bulk-group{display:flex;align-items:center;gap:6px}
+  .bulk-sel{background:var(--panel);border:1px solid var(--border);border-radius:6px;color:var(--txt);padding:5px 9px;font-size:12px;font-family:inherit;cursor:pointer}
+  .bulk-sel:focus{outline:none;border-color:var(--cyan)}
+  .bulk-btn{background:var(--panel2);border:1px solid var(--border);color:var(--txt);padding:5px 11px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;white-space:nowrap}
+  .bulk-btn:hover{border-color:var(--cyan);color:var(--cyan)}
+  .bulk-btn.danger{color:var(--red);border-color:rgba(255,0,80,.35)}
+  .bulk-btn.danger:hover{background:rgba(255,0,80,.08)}
 </style>
 </head>
 <body>
@@ -1433,9 +1447,36 @@ const TASK_MANAGEMENT_HTML = `<!DOCTYPE html>
       <input type="date" id="f-date-to" onchange="applyFilters()" title="Created to" style="min-width:130px"/>
       <button class="chip" onclick="clearDates()" id="clear-dates-btn" style="display:none">✕ Clear dates</button>
     </div>
+    <div class="bulk-bar" id="bulk-bar">
+      <span class="bulk-count" id="bulk-count">0 selected</span>
+      <button class="bulk-btn" onclick="SELECTED.clear();updateBulkBar();renderTbl()">✕ Clear</button>
+      <div class="bulk-sep"></div>
+      <div class="bulk-group">
+        <select class="bulk-sel" id="bulk-status">
+          <option value="">Set Status…</option>
+          <option value="To Do">To Do</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Blocked">Blocked</option>
+          <option value="Completed">Completed</option>
+        </select>
+        <button class="bulk-btn" onclick="doBulkStatus()">Apply</button>
+      </div>
+      <div class="bulk-group">
+        <select class="bulk-sel" id="bulk-owner"><option value="">Set Owner…</option></select>
+        <button class="bulk-btn" onclick="doBulkOwner()">Apply</button>
+      </div>
+      <div class="bulk-group">
+        <select class="bulk-sel" id="bulk-client"><option value="">Set Client…</option></select>
+        <button class="bulk-btn" onclick="doBulkClient()">Apply</button>
+      </div>
+      <div class="bulk-sep"></div>
+      <button class="bulk-btn" onclick="doBulkDuplicate()">⧉ Duplicate</button>
+      <button class="bulk-btn danger" onclick="doBulkDelete()">🗑 Delete Selected</button>
+    </div>
     <div class="tbl-wrap">
       <table>
         <thead><tr>
+          <th class="chk-col"><input type="checkbox" id="sel-all" onclick="toggleSelectAll(this)" style="accent-color:var(--cyan);cursor:pointer;width:14px;height:14px"/></th>
           <th>Task</th><th>Client</th><th>Owner</th><th>Priority</th><th>Status</th><th>Due</th><th>Days Open</th><th>Action</th>
         </tr></thead>
         <tbody id="tbody"></tbody>
@@ -1559,7 +1600,7 @@ const TASK_MANAGEMENT_HTML = `<!DOCTYPE html>
 </div>
 <div class="toast" id="toast"></div>
 <script>
-var ALL=[],FILTERED=[],NT=null,ADEL_ID=null,WR_ALL=[],CLIENTS_LIST=[],OWNER_MAP={};
+var ALL=[],FILTERED=[],NT=null,ADEL_ID=null,WR_ALL=[],CLIENTS_LIST=[],OWNER_MAP={},SELECTED=new Set();
 function esc(s){return(s||'').replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 
 function adminSwitchTab(idx){
@@ -1898,7 +1939,9 @@ function renderTbl(){
   tb.innerHTML=FILTERED.map(function(t){
     var due=t.dueDate?new Date(t.dueDate).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'—';
     var rid=esc(t.record_id);
-    return'<tr>'
+    var sel=SELECTED.has(t.record_id);
+    return'<tr class="'+(sel?'row-sel':'')+'">'
+      +'<td class="chk-col" onclick="event.stopPropagation()"><input type="checkbox"'+(sel?' checked':'')+' onchange="toggleSelect(\\''+rid+'\\',this)" style="accent-color:var(--cyan);width:14px;height:14px;cursor:pointer"/></td>'
       +'<td class="tn-editable" onclick="startEditTitle(this,\\''+rid+'\\')"><div class="tn-wrap"><div class="tn">'+(t.isSubtask?'↳ ':'')+esc(t.task||'(untitled)')+'</div>'+(t.executionMode?'<div class="ts">'+esc(t.executionMode)+'</div>':'')+(t.sopLink?'<div style="margin-top:4px"><a href="'+esc(t.sopLink)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-size:11px;color:var(--cyan);text-decoration:none">📋 SOP ↗</a></div>':'')+'</div></td>'
       +'<td>'+esc(t.client||'—')+'</td>'
       +'<td>'+esc(t.ownerName||'—')+'</td>'
@@ -1949,6 +1992,7 @@ function doAdminDelete(){
     btn.textContent='Delete Task';
     if(x.ok&&x.j.ok){
       ALL=ALL.filter(function(t){return t.record_id!==ADEL_ID;});
+      SELECTED.delete(ADEL_ID);
       closeAdminDel();applyFilters();toast('🗑 Task deleted');
     }else{
       var e=document.getElementById('adel-err');e.textContent=(x.j&&x.j.error)||'Failed';e.style.display='block';btn.disabled=false;
@@ -1957,6 +2001,91 @@ function doAdminDelete(){
     var el=document.getElementById('adel-err');el.textContent=''+e;el.style.display='block';btn.disabled=false;btn.textContent='Delete Task';
   });
 }
+
+/* ── Bulk selection ─────────────────────────────────────────────────── */
+function toggleSelect(rid,chk){
+  if(chk.checked)SELECTED.add(rid);else SELECTED.delete(rid);
+  updateBulkBar();
+  var sa=document.getElementById('sel-all');
+  if(sa){
+    var allChk=FILTERED.length>0&&FILTERED.every(function(t){return SELECTED.has(t.record_id);});
+    sa.checked=allChk;
+    sa.indeterminate=SELECTED.size>0&&!allChk;
+  }
+}
+function toggleSelectAll(chk){
+  if(chk.checked)FILTERED.forEach(function(t){SELECTED.add(t.record_id);});
+  else SELECTED.clear();
+  updateBulkBar();renderTbl();
+}
+function updateBulkBar(){
+  var n=SELECTED.size;
+  document.getElementById('bulk-count').textContent=n+' selected';
+  document.getElementById('bulk-bar').classList.toggle('show',n>0);
+  if(n>0){
+    var ownerOpts=Object.keys(OWNER_MAP).sort(function(a,b){return OWNER_MAP[a].localeCompare(OWNER_MAP[b]);});
+    document.getElementById('bulk-owner').innerHTML='<option value="">Set Owner…</option>'+ownerOpts.map(function(id){return'<option value="'+esc(id)+'">'+esc(OWNER_MAP[id])+'</option>';}).join('');
+    document.getElementById('bulk-client').innerHTML='<option value="">Set Client…</option>'+(CLIENTS_LIST||[]).map(function(c){return'<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>';}).join('');
+  }
+}
+function _bulkPatch(ids,body,label){
+  var done=0,total=ids.length;
+  ids.forEach(function(rid){
+    fetch('/api/admin/tasks/'+encodeURIComponent(rid),{method:'PATCH',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+    .then(function(){if(++done===total){toast('✅ '+label+' for '+total+' task'+(total>1?'s':''));SELECTED.clear();applyFilters();}})
+    .catch(function(){if(++done===total){toast('⚠ Some updates may have failed');SELECTED.clear();applyFilters();}});
+  });
+}
+function doBulkStatus(){
+  var val=document.getElementById('bulk-status').value;
+  if(!val)return toast('Pick a status first');
+  var ids=Array.from(SELECTED);if(!ids.length)return;
+  ids.forEach(function(rid){var t=ALL.find(function(x){return x.record_id===rid;});if(t)t.status=val;});
+  _bulkPatch(ids,{status:val},'Status updated');
+}
+function doBulkOwner(){
+  var val=document.getElementById('bulk-owner').value;
+  if(!val)return toast('Pick an owner first');
+  var name=OWNER_MAP[val]||val;
+  var ids=Array.from(SELECTED);if(!ids.length)return;
+  ids.forEach(function(rid){var t=ALL.find(function(x){return x.record_id===rid;});if(t){t.ownerOpenId=val;t.ownerName=name;}});
+  _bulkPatch(ids,{ownerOpenId:val},'Owner updated');
+}
+function doBulkClient(){
+  var val=document.getElementById('bulk-client').value;
+  if(!val)return toast('Pick a client first');
+  var cl=CLIENTS_LIST.find(function(c){return c.id===val;});
+  var ids=Array.from(SELECTED);if(!ids.length)return;
+  ids.forEach(function(rid){var t=ALL.find(function(x){return x.record_id===rid;});if(t&&cl){t.client=cl.name;t.clientRecordId=cl.id;}});
+  _bulkPatch(ids,{clientRecordId:val},'Client updated');
+}
+function doBulkDuplicate(){
+  var ids=Array.from(SELECTED);if(!ids.length)return;
+  if(!confirm('Duplicate '+ids.length+' task'+(ids.length>1?'s':'')+' as new "To Do" tasks?'))return;
+  var done=0,total=ids.length;
+  ids.forEach(function(rid){
+    var t=ALL.find(function(x){return x.record_id===rid;});
+    if(!t){if(++done===total){toast('Done');loadAll();}return;}
+    var body={task:'Copy: '+(t.task||'Untitled'),status:'To Do',priority:t.priority||'🟡 Normal',ownerOpenId:t.ownerOpenId||'',clientRecordId:t.clientRecordId||'',pillar:t.pillar||''};
+    fetch('/api/admin/tasks/create',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+    .then(function(){if(++done===total){toast('✅ Duplicated '+total+' task'+(total>1?'s':''));SELECTED.clear();loadAll();}})
+    .catch(function(){if(++done===total){toast('⚠ Some duplicates may have failed');SELECTED.clear();loadAll();}});
+  });
+}
+function doBulkDelete(){
+  var ids=Array.from(SELECTED);if(!ids.length)return;
+  if(!confirm('Delete '+ids.length+' task'+(ids.length>1?'s':'')+' permanently? This cannot be undone.'))return;
+  var done=0,total=ids.length;
+  ids.forEach(function(rid){
+    fetch('/api/my-tasks/delete',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({record_id:rid})})
+    .then(function(){
+      ALL=ALL.filter(function(t){return t.record_id!==rid;});
+      if(++done===total){toast('🗑 Deleted '+total+' task'+(total>1?'s':''));SELECTED.clear();applyFilters();}
+    })
+    .catch(function(){if(++done===total){toast('⚠ Some deletes may have failed');SELECTED.clear();applyFilters();}});
+  });
+}
+
 loadAll();
 </script>
 </body>
@@ -2251,10 +2380,10 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
 
   function shapeTask(rec, clientsMap) {
     const f = rec.fields || {};
+    const clientIds = clientRecordIds(f);
     let client = textVal(f.Client);
     if (!client) {
-      const ids = clientRecordIds(f);
-      client = ids.map((id) => clientsMap[id]).filter(Boolean).join(', ');
+      client = clientIds.map((id) => clientsMap[id]).filter(Boolean).join(', ');
     }
     const ownerArr = Array.isArray(f.Owner) ? f.Owner : [];
     const firstOwner = ownerArr[0] || {};
@@ -2262,6 +2391,7 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
       record_id: rec.record_id,
       task: textVal(f.Task),
       client,
+      clientRecordId: clientIds[0] || '',
       status: textVal(f.Status),
       pillar: textVal(f.Pillar),
       priority: textVal(f.Priority),
@@ -3091,8 +3221,9 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       const email = (req.userEmail || (req.session && req.session.userEmail) || '').toLowerCase();
       const isAdmin = !!(req.session && req.session.isPortalAdmin) || ADMIN_EMAILS.has(email);
       if (!isAdmin) return res.status(403).json({ error: 'Admin access required' });
-      const { task, priority, isSubtask } = req.body || {};
-      if (!task && !priority) return res.status(400).json({ error: 'task or priority required' });
+      const { task, priority, isSubtask, status, ownerOpenId, clientRecordId } = req.body || {};
+      const hasChange = task || priority || status || ownerOpenId || clientRecordId !== undefined;
+      if (!hasChange) return res.status(400).json({ error: 'at least one field required' });
       if (isSubtask) {
         const sts = readJsonFile(ST_FILE, []);
         const st = sts.find(s => s.id === req.params.recordId);
@@ -3104,6 +3235,9 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       const fields = {};
       if (task) fields['Task'] = task.trim();
       if (priority) fields['Priority'] = priority;
+      if (status) fields['Status'] = status;
+      if (ownerOpenId) fields['Owner'] = [{ id: ownerOpenId }];
+      if (clientRecordId) fields['Client'] = [{ record_id: clientRecordId }];
       await patchRecord(req.params.recordId, fields);
       res.json({ ok: true });
     } catch (e) { res.status(500).json({ error: e.message }); }
