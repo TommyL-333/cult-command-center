@@ -93,6 +93,7 @@ const REPORT_TYPES = {
 const ADMIN_EMAILS = new Set([
   'tommy@cultcontent.cc',
   'tommy@organicsocialmarketing.com',
+  'daniel@cultcontent.cc',
 ]);
 
 // Manager emails: the only people who can delete tasks.
@@ -1930,14 +1931,20 @@ function startEditTitle(td,rid){
   });
 }
 
-function daysOpen(t){if(!t.createdOn)return'—';var d=Math.floor((Date.now()-t.createdOn)/86400000);return d>0?d+'d':'<1d';}
+function daysOpen(t){
+  if(!t.createdOn)return'—';
+  var end=(t.status==='Completed'&&t.completedOn)?t.completedOn:Date.now();
+  var d=Math.floor((end-t.createdOn)/86400000);
+  return d>0?d+'d':'<1d';
+}
 function sbadge(s){var m={'To Do':'badge todo','In Progress':'badge inprogress','Blocked':'badge blocked','Completed':'badge completed'};return'<span class="'+(m[s]||'badge todo')+'">'+esc(s||'—')+'</span>';}
 function renderTbl(){
   var tb=document.getElementById('tbody'),em=document.getElementById('empty');
   if(!FILTERED.length){tb.innerHTML='';em.style.display='block';return;}
   em.style.display='none';
   tb.innerHTML=FILTERED.map(function(t){
-    var due=t.dueDate?new Date(t.dueDate).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'—';
+    var due=t.dueDate?new Date(t.dueDate).toLocaleDateString('en-US',{month:'short',day:'numeric',timeZone:'UTC'}):'—';
+    var isOverdue=t.dueDate&&t.status!=='Completed'&&t.dueDate<Date.now();
     var rid=esc(t.record_id);
     var sel=SELECTED.has(t.record_id);
     return'<tr class="'+(sel?'row-sel':'')+'">'
@@ -1947,7 +1954,7 @@ function renderTbl(){
       +'<td>'+esc(t.ownerName||'—')+'</td>'
       +'<td>'+(t.isSubtask?'—':prioSelectHtml(t))+'</td>'
       +'<td>'+sbadge(t.status)+'</td>'
-      +'<td>'+esc(due)+'</td>'
+      +'<td>'+(isOverdue?'<span style="color:var(--red)">⚠ '+esc(due)+'</span>':esc(due))+'</td>'
       +'<td>'+esc(daysOpen(t))+'</td>'
       +'<td style="white-space:nowrap">'
       +(t.ownerOpenId?'<button class="btn ghost" style="margin-right:6px" onclick="openNudge(\\''+t.ownerOpenId+'\\',\\''+esc(t.ownerName||'').replace(/'/g,'')+'\\',\\''+esc((t.task||'').replace(/[\\x27\\x22]/g,'')).slice(0,60)+'\\')">Nudge</button>':'')
@@ -3250,12 +3257,13 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       if (!isAdmin) return res.status(403).json({ error: 'Admin access required' });
       const { task, status, priority, ownerOpenId, pillar, promptAction, dueDate, clientRecordId } = req.body || {};
       if (!(task || '').trim()) return res.status(400).json({ error: 'task is required' });
-      const fields = { 'Task': task.trim(), 'Status': status || 'To Do' };
+      const fields = { 'Task': task.trim(), 'Status': status || 'To Do', 'Created On': Date.now() };
       if (priority) fields['Priority'] = priority;
       if (ownerOpenId) fields['Owner'] = [{ id: ownerOpenId }];
       if (pillar) fields['Pillar'] = pillar;
       if (promptAction) fields['Prompt / Action'] = promptAction;
-      if (dueDate) fields['Due Date'] = new Date(dueDate).getTime();
+      // Store at noon UTC so local-timezone display never drifts to the wrong day
+      if (dueDate) fields['Due Date'] = new Date(dueDate + 'T12:00:00.000Z').getTime();
       if (clientRecordId) fields['Client'] = [{ record_id: clientRecordId }];
       const data = await larkPost(
         `/open-apis/bitable/v1/apps/${OPS_APP_TOKEN}/tables/${TASKS_TABLE}/records`,
