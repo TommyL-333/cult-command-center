@@ -1042,9 +1042,11 @@ app.post('/api/creator-pages/submit', express.json(), async (req, res) => {
       const larkLine = larkGroupUrl ? `\n→ Lark community: ${larkGroupUrl}` : '';
       // Brand-aware signup details
       const cpForSms = brand.creatorPage || {};
-      const commPct = cpForSms.tcCommission || (brand.commissionRate ? Math.round(brand.commissionRate * 100) : null);
-      const commLine = commPct ? `\n→ You'll earn ${commPct}% commission on every ${brand.name} sale you drive` : '';
-      const brandPageUrl = cpForSms.slug ? `${CREATOR_BASE_URL}/creators/${cpForSms.slug}` : `${CREATOR_BASE_URL}/creators`;
+      const rawComm = cpForSms.tcCommission || (brand.commissionRate ? Math.round(brand.commissionRate * 100) : null);
+      const commPct = rawComm ? Math.max(0, rawComm - 2) : null; // subtract 2% Cult Content cut
+      const commLine = commPct ? `\n→ You'll earn ${commPct}% commission on every sale you drive` : '';
+      const tapLink  = cpForSms.tapLink || null;
+      const tapLine  = tapLink ? `\n→ Request your free sample now (no invite needed): ${tapLink}` : '';
       axios.post('https://services.leadconnectorhq.com/conversations/', {
         locationId: process.env.GHL_LOCATION_ID || process.env.GHL_LOC_ID,
         contactId,
@@ -1055,7 +1057,7 @@ app.post('/api/creator-pages/submit', express.json(), async (req, res) => {
           type: 'SMS',
           conversationId,
           contactId,
-          message: `You're in for ${brand.name} 👁️‼️ Welcome, ${firstName}!\n\nHere's how to start earning with ${brand.name}:\n→ Your ${brand.name} page (product + content brief): ${brandPageUrl}${commLine}\n\nAnd your community:\n→ Discord: ${discordLink}\n→ Skool: https://www.skool.com/cult-content${larkLine}\n\nText this number anytime if you need us.`,
+          message: `You're in for ${brand.name} 👁️‼️ Welcome, ${firstName}!\n\nHere's how to start earning with ${brand.name}:${commLine}${tapLine}\n\nJoin the community:\n→ Discord: ${discordLink}${larkLine}\n\nText this number anytime if you need us.`,
         }, { headers: ghlH });
       })
       .catch(e => console.error('[creator-pages] SMS error:', e.response?.data || e.message));
