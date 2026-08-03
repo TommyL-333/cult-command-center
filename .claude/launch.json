@@ -5,7 +5,8 @@
       "name": "dashboard",
       "runtimeExecutable": "node",
       "runtimeArgs": ["dashboard-server.js"],
-      "port": 3457
+      "port": 3457,
+      "autoPort": true
     }
   ]
 }

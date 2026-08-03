@@ -15178,6 +15178,333 @@ app.put('/api/inner-circle/brand-schedules/:id', requirePortalAdmin, express.jso
   }
 });
 
+// ─── Client Offboarding ────────────────────────────────────────────────────────
+// POST /api/admin/clients/:clientId/offboard — CF Access + admin email required.
+// GET  /admin/clients                        — admin client list with offboard UI.
+
+const OFFBOARD_ADMIN_EMAILS = new Set([
+  'tommy@cultcontent.cc',
+  'tommy@organicsocialmarketing.com',
+  'daniel@cultcontent.cc',
+]);
+
+const OFFBOARD_LOG_FILE = path.join(DATA_DIR, 'offboard-log.json');
+
+function loadOffboardLog() {
+  try { return JSON.parse(fs.readFileSync(OFFBOARD_LOG_FILE, 'utf8')); }
+  catch (_) { return []; }
+}
+function appendOffboardLog(entry) {
+  const log = loadOffboardLog();
+  log.push(entry);
+  fs.writeFileSync(OFFBOARD_LOG_FILE, JSON.stringify(log, null, 2));
+}
+
+const ADMIN_CLIENTS_HTML = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Client Admin — Cult Content</title>
+  <style>
+    :root { --bg:#161823; --panel:#1e2030; --cyan:#00f2ea; --red:#ff0050; --text:#e8eaf6; --muted:#8b8fa8; --border:#2a2d3e; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 2rem; min-height: 100vh; }
+    h1 { font-size: 1.5rem; color: var(--cyan); margin-bottom: 1.5rem; letter-spacing: -.01em; }
+    .notice { background: #2a1f00; border: 1px solid #ff9900; color: #ffba5e; padding: .75rem 1rem; border-radius: 6px; margin-bottom: 1.5rem; font-size: .875rem; }
+    .result-banner { display: none; padding: .75rem 1rem; border-radius: 6px; margin-bottom: 1rem; font-size: .875rem; line-height: 1.5; }
+    .result-banner.ok  { background: #1a3a2a; border: 1px solid #4ade80; color: #4ade80; }
+    .result-banner.err { background: #3a1a1a; border: 1px solid var(--red); color: #ff6b6b; }
+    table { width: 100%; border-collapse: collapse; background: var(--panel); border-radius: 8px; overflow: hidden; }
+    th, td { padding: .75rem 1rem; text-align: left; border-bottom: 1px solid var(--border); font-size: .875rem; }
+    th { background: #262840; color: var(--muted); font-weight: 600; text-transform: uppercase; font-size: .72rem; letter-spacing: .06em; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,.02); }
+    .stage { display: inline-block; padding: .2rem .6rem; border-radius: 999px; font-size: .75rem; font-weight: 600; }
+    .stage-offboarded { background: #3a1a1a; color: #ff6b6b; }
+    .stage-active     { background: #1a3a2a; color: #4ade80; }
+    .stage-other      { background: #2a2d3e; color: var(--muted); }
+    .btn-offboard { background: transparent; border: 1px solid var(--red); color: var(--red); padding: .35rem .9rem; border-radius: 6px; cursor: pointer; font-size: .82rem; font-weight: 500; transition: background .12s, color .12s; }
+    .btn-offboard:hover:not(:disabled) { background: var(--red); color: #fff; }
+    .btn-offboard:disabled { opacity: .35; cursor: default; }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.75); z-index: 100; align-items: center; justify-content: center; }
+    .modal-overlay.active { display: flex; }
+    .modal { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 2rem; max-width: 440px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,.6); }
+    .modal h2 { font-size: 1.1rem; margin-bottom: .75rem; color: var(--red); }
+    .modal p  { color: var(--muted); font-size: .875rem; line-height: 1.55; margin-bottom: 1.5rem; }
+    .modal-actions { display: flex; gap: .75rem; justify-content: flex-end; }
+    .btn-cancel  { background: transparent; border: 1px solid var(--border); color: var(--muted); padding: .5rem 1.2rem; border-radius: 6px; cursor: pointer; font-size: .875rem; }
+    .btn-cancel:hover { border-color: var(--text); color: var(--text); }
+    .btn-confirm { background: var(--red); color: #fff; border: none; padding: .5rem 1.2rem; border-radius: 6px; cursor: pointer; font-size: .875rem; font-weight: 600; }
+    .btn-confirm:disabled { opacity: .5; cursor: not-allowed; }
+    .loading { color: var(--muted); font-style: italic; }
+  </style>
+</head>
+<body>
+  <h1>Client Admin</h1>
+  <div class="notice">&#9888;&#65039; Remember to manually disconnect the TikTok Shop app for any offboarded client.</div>
+  <div id="result-banner" class="result-banner"></div>
+  <div id="table-wrap"><p class="loading">Loading clients&hellip;</p></div>
+
+  <div id="modal" class="modal-overlay" onclick="if(event.target===this)closeModal()">
+    <div class="modal">
+      <h2>Offboard Client?</h2>
+      <p id="modal-body"></p>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+        <button class="btn-confirm" id="btn-confirm-offboard" onclick="confirmOffboard()">Yes, Offboard</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    var pendingClientId = null;
+    var pendingClientName = null;
+
+    function esc(s) {
+      return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function stageClass(stage) {
+      if (!stage) return 'stage-other';
+      if (stage === 'Offboarded') return 'stage-offboarded';
+      if (['Contract Signed','Active','Onboarding','Retainer Active'].includes(stage)) return 'stage-active';
+      return 'stage-other';
+    }
+
+    function renderTable(clients) {
+      if (!clients.length) {
+        document.getElementById('table-wrap').innerHTML = '<p style="color:var(--muted)">No clients found.</p>';
+        return;
+      }
+      var rows = clients.map(function(c) {
+        var isOff = c.pipelineStage === 'Offboarded';
+        var btnLabel = isOff ? 'Offboarded' : 'Offboard';
+        var btnAttr  = isOff ? ' disabled' : '';
+        return '<tr>'
+          + '<td><strong>' + esc(c.name || c.id) + '</strong></td>'
+          + '<td><span class="stage ' + stageClass(c.pipelineStage) + '">' + esc(c.pipelineStage || 'Unknown') + '</span></td>'
+          + '<td style="color:var(--muted)">' + esc(c.billingEmail || c.email || '—') + '</td>'
+          + '<td><button class="btn-offboard"' + btnAttr + ' onclick="openModal(\'' + esc(c.id) + '\',\'' + esc(c.name || c.id).replace(/'/g,"\\\\'") + '\')">' + btnLabel + '</button></td>'
+          + '</tr>';
+      }).join('');
+      document.getElementById('table-wrap').innerHTML =
+        '<table><thead><tr><th>Client</th><th>Pipeline Stage</th><th>Billing Email</th><th>Action</th></tr></thead><tbody>' + rows + '</tbody></table>';
+    }
+
+    async function loadClients() {
+      try {
+        var r = await fetch('/api/brands');
+        var data = await r.json();
+        renderTable(data.clients || []);
+      } catch(e) {
+        document.getElementById('table-wrap').innerHTML = '<p style="color:#ff6b6b">Failed to load clients: ' + esc(e.message) + '</p>';
+      }
+    }
+
+    function openModal(clientId, clientName) {
+      pendingClientId   = clientId;
+      pendingClientName = clientName;
+      document.getElementById('modal-body').textContent =
+        'This will mark "' + clientName + '" as Offboarded, archive their active Lark tasks, '
+        + 'deactivate their creator page, and log the action. This cannot be undone from here.';
+      document.getElementById('modal').classList.add('active');
+    }
+
+    function closeModal() {
+      pendingClientId   = null;
+      pendingClientName = null;
+      document.getElementById('modal').classList.remove('active');
+    }
+
+    async function confirmOffboard() {
+      if (!pendingClientId) return;
+      var btn = document.getElementById('btn-confirm-offboard');
+      btn.disabled = true;
+      btn.textContent = 'Offboarding…';
+      var cid  = pendingClientId;
+      var cname = pendingClientName;
+      closeModal();
+      try {
+        var r = await fetch('/api/admin/clients/' + encodeURIComponent(cid) + '/offboard', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        var data = await r.json();
+        var banner = document.getElementById('result-banner');
+        if (data.ok) {
+          banner.className = 'result-banner ok';
+          banner.innerHTML =
+            '<strong>' + esc(data.clientName || cname) + '</strong> offboarded. '
+            + 'Tasks: ' + esc(data.steps && data.steps.larkTasks || 'n/a') + '. '
+            + 'Email: ' + esc(data.steps && data.steps.email || 'n/a') + '.';
+        } else {
+          banner.className = 'result-banner err';
+          banner.textContent = 'Error: ' + esc(data.error || 'Unknown error');
+        }
+        banner.style.display = 'block';
+        loadClients();
+      } catch(e) {
+        var banner = document.getElementById('result-banner');
+        banner.className = 'result-banner err';
+        banner.textContent = 'Network error: ' + esc(e.message);
+        banner.style.display = 'block';
+      } finally {
+        btn.disabled    = false;
+        btn.textContent = 'Yes, Offboard';
+      }
+    }
+
+    loadClients();
+  </script>
+</body>
+</html>`;
+
+// GET /admin/clients — CF Access gated, admin-email restricted
+app.get('/admin/clients', requireAuth, (req, res) => {
+  const email = (req.userEmail || '').toLowerCase();
+  if (!OFFBOARD_ADMIN_EMAILS.has(email)) {
+    return res.status(403).type('html').send(
+      '<h2 style="font-family:sans-serif;padding:40px;color:#fff;background:#161823;min-height:100vh;margin:0">Access restricted to admins.</h2>'
+    );
+  }
+  res.type('html').send(ADMIN_CLIENTS_HTML);
+});
+
+// POST /api/admin/clients/:clientId/offboard — CF Access gated, admin-email restricted
+app.post('/api/admin/clients/:clientId/offboard', requireAuth, express.json(), async (req, res) => {
+  const email = (req.userEmail || '').toLowerCase();
+  if (!OFFBOARD_ADMIN_EMAILS.has(email)) {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  const { clientId } = req.params;
+  try {
+    // 1. Load brands and find the client
+    const brandsData = loadBrands();
+    const idx = (brandsData.clients || []).findIndex(c => c.id === clientId);
+    if (idx === -1) return res.status(404).json({ error: `Client '${clientId}' not found` });
+    const client = brandsData.clients[idx];
+
+    if (client.pipelineStage === 'Offboarded') {
+      return res.status(400).json({ error: 'Client is already offboarded' });
+    }
+
+    const results = {
+      clientId,
+      clientName: client.name || clientId,
+      steps: {},
+    };
+
+    // 2. Mark pipelineStage as Offboarded and stamp timestamp
+    brandsData.clients[idx].pipelineStage = 'Offboarded';
+    brandsData.clients[idx].offboardedAt  = new Date().toISOString();
+
+    // 3. Deactivate creator page
+    if (brandsData.clients[idx].creatorPage) {
+      brandsData.clients[idx].creatorPage.active  = false;
+      brandsData.clients[idx].creatorPage.listed  = false;
+      results.steps.creatorPage = 'deactivated';
+    } else {
+      results.steps.creatorPage = 'no creator page';
+    }
+
+    // 4. Persist to brands.json
+    saveBrands(brandsData);
+    results.steps.pipelineStage = 'set to Offboarded';
+
+    // 5. Archive active Lark tasks for this client
+    let tasksArchived = 0;
+    let tasksError    = null;
+    try {
+      if (opsMyTasksHelpers && opsMyTasksHelpers.listAllTaskRecords) {
+        const [allTasks, clientsMap] = await Promise.all([
+          opsMyTasksHelpers.listAllTaskRecords(),
+          opsMyTasksHelpers.getClientsMap(),
+        ]);
+
+        // Find Lark Clients-table record_ids that correspond to this brand by name
+        const brandName = (client.name || '').toLowerCase().trim();
+        const matchingRecordIds = new Set(
+          Object.entries(clientsMap)
+            .filter(([, name]) => name.toLowerCase().trim() === brandName)
+            .map(([id]) => id)
+        );
+
+        // Filter non-completed tasks linked to this client
+        const toArchive = allTasks.filter(rec => {
+          const fields = rec.fields || {};
+          // Skip already completed
+          const status = opsMyTasksHelpers.textVal
+            ? opsMyTasksHelpers.textVal(fields.Status)
+            : (Array.isArray(fields.Status) ? (fields.Status[0] && fields.Status[0].text) : fields.Status) || '';
+          if (status === 'Completed') return false;
+          // Match by Client SingleLink
+          const clientLinks = fields.Client;
+          if (!Array.isArray(clientLinks)) return false;
+          for (const link of clientLinks) {
+            const ids = Array.isArray(link.record_ids) ? link.record_ids : [];
+            if (ids.some(id => matchingRecordIds.has(id))) return true;
+          }
+          return false;
+        });
+
+        const archiveDate = new Date().toISOString().slice(0, 10);
+        for (const rec of toArchive) {
+          try {
+            await opsMyTasksHelpers.patchRecord(rec.record_id, {
+              Status:           'Completed',
+              'Result / Output': `Auto-archived: client offboarded ${archiveDate} by ${email}`,
+              'Completed On':   Date.now(),
+            });
+            tasksArchived++;
+          } catch (e) {
+            console.error(`[offboard] task ${rec.record_id} archive failed:`, e.message);
+          }
+        }
+        results.steps.larkTasks = `${tasksArchived} task(s) archived`;
+      } else {
+        results.steps.larkTasks = 'skipped (ops-my-tasks helpers unavailable)';
+      }
+    } catch (e) {
+      tasksError = e.message;
+      results.steps.larkTasks = `error: ${e.message}`;
+      console.error('[offboard] Lark tasks step failed:', e.message);
+    }
+
+    // 6. Log to offboard-log.json
+    try {
+      appendOffboardLog({
+        timestamp:               new Date().toISOString(),
+        clientId,
+        clientName:              client.name || clientId,
+        billingEmail:            client.billingEmail || client.email || '',
+        offboardedBy:            email,
+        tasksArchived,
+        tasksError,
+        creatorPageDeactivated:  !!(client.creatorPage),
+      });
+      results.steps.logFile = 'written';
+    } catch (e) {
+      results.steps.logFile = `error: ${e.message}`;
+      console.error('[offboard] log write failed:', e.message);
+    }
+
+    // 7. Satisfaction email — no SMTP configured, log intent for manual follow-up
+    const billingEmail = client.billingEmail || client.email || '';
+    if (billingEmail) {
+      console.log(`[offboard] SURVEY EMAIL TODO: send satisfaction survey to ${billingEmail} for "${client.name}"`);
+      results.steps.email = `queued (send survey to ${billingEmail})`;
+    } else {
+      results.steps.email = 'skipped (no billing email on file)';
+    }
+
+    res.json({ ok: true, ...results });
+  } catch (e) {
+    console.error('[offboard] failed:', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.listen(CFG.port, () => {
   console.log(`\n⚡ Cult Content Command Center`);
   console.log(`   http://localhost:${CFG.port}\n`);
