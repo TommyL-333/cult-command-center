@@ -1402,6 +1402,24 @@ const TASK_MANAGEMENT_HTML = `<!DOCTYPE html>
   .bulk-btn:hover{border-color:var(--cyan);color:var(--cyan)}
   .bulk-btn.danger{color:var(--red);border-color:rgba(255,0,80,.35)}
   .bulk-btn.danger:hover{background:rgba(255,0,80,.08)}
+  /* clickable stat cards */
+  .sc.clickable{cursor:pointer}
+  .sc.clickable:hover{border-color:var(--cyan);background:rgba(0,242,234,.06)}
+  .sc.card-active{border-color:var(--cyan)!important;background:rgba(0,242,234,.1)!important}
+  /* breakdown panel */
+  #breakdown-panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:16px;display:none}
+  #breakdown-panel.show{display:block}
+  .breakdown-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}
+  .breakdown-header h3{margin:0;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+  .breakdown-close{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px;border-radius:4px;font-family:inherit;line-height:1}
+  .breakdown-close:hover{color:var(--txt)}
+  .chart-pair{display:flex;gap:24px;flex-wrap:wrap}
+  .chart-section{flex:1;min-width:220px}
+  .chart-section-title{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;font-weight:600;margin-bottom:10px}
+  .chart-inner{display:flex;gap:14px;align-items:center}
+  .chart-legend{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:5px}
+  .chart-legend li{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--txt);white-space:nowrap}
+  .legend-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -1422,11 +1440,27 @@ const TASK_MANAGEMENT_HTML = `<!DOCTYPE html>
 
   <div id="admin-tab-tasks">
     <div class="stats" id="stats-row">
-      <div class="sc"><div class="n" id="s-total">—</div><div class="l">Total Active</div></div>
-      <div class="sc" id="sc-blocked"><div class="n" id="s-blocked" style="color:var(--red)">—</div><div class="l">Blocked</div></div>
-      <div class="sc"><div class="n" id="s-inp" style="color:var(--cyan)">—</div><div class="l">In Progress</div></div>
+      <div class="sc clickable" id="sc-total" onclick="toggleCard('total','')"><div class="n" id="s-total">—</div><div class="l">Total Active</div></div>
+      <div class="sc clickable" id="sc-blocked" onclick="toggleCard('blocked','Blocked')"><div class="n" id="s-blocked" style="color:var(--red)">—</div><div class="l">Blocked</div></div>
+      <div class="sc clickable" id="sc-inp" onclick="toggleCard('inp','In Progress')"><div class="n" id="s-inp" style="color:var(--cyan)">—</div><div class="l">In Progress</div></div>
       <div class="sc"><div class="n" id="s-avg">—</div><div class="l" id="s-avg-l">Avg Days to Complete</div></div>
       <div class="sc" id="sc-completed" style="display:none"><div class="n" id="s-completed" style="color:#6be86b">—</div><div class="l" id="s-completed-l">Completed (30d)</div></div>
+    </div>
+    <div id="breakdown-panel">
+      <div class="breakdown-header">
+        <h3 id="breakdown-title">Breakdown</h3>
+        <button class="breakdown-close" onclick="closeBreakdown()" title="Close">&#x2715;</button>
+      </div>
+      <div class="chart-pair">
+        <div class="chart-section">
+          <div class="chart-section-title">By Owner</div>
+          <div class="chart-inner" id="chart-owner"></div>
+        </div>
+        <div class="chart-section">
+          <div class="chart-section-title">By Client</div>
+          <div class="chart-inner" id="chart-client"></div>
+        </div>
+      </div>
     </div>
     <div class="fb">
       <select id="f-owner" onchange="applyFilters()"><option value="">All Team Members</option></select>
@@ -1602,6 +1636,7 @@ const TASK_MANAGEMENT_HTML = `<!DOCTYPE html>
 <div class="toast" id="toast"></div>
 <script>
 var ALL=[],FILTERED=[],NT=null,ADEL_ID=null,WR_ALL=[],CLIENTS_LIST=[],OWNER_MAP={},SELECTED=new Set();
+var ACTIVE_CARD=null;
 function esc(s){return(s||'').replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 
 function adminSwitchTab(idx){
@@ -1852,6 +1887,11 @@ function applyFilters(){
   });
   updateStats(ow,cl,dateFrom,dateTo);
   renderTbl();
+  if(ACTIVE_CARD){
+    var _brkStatus=ACTIVE_CARD.status;
+    var _brkData=FILTERED.filter(function(t){return _brkStatus===''?t.status!=='Completed':t.status===_brkStatus;});
+    renderCharts(_brkStatus,_brkData);
+  }
 }
 function clearDates(){
   document.getElementById('f-date-from').value='';
@@ -1885,6 +1925,85 @@ function updateStats(ownerFilter,clientFilter,dateFrom,dateTo){
     scComp.style.display='none';
     statsRow.style.gridTemplateColumns='repeat(4,1fr)';
   }
+}
+/* ---- breakdown panel ---- */
+var CHART_PALETTE=['#00f2ea','#ff7b29','#a78bfa','#34d399','#f472b6','#fbbf24'];
+function toggleCard(cardId,statusFilter){
+  if(ACTIVE_CARD&&ACTIVE_CARD.id===cardId){closeBreakdown();return;}
+  ACTIVE_CARD={id:cardId,status:statusFilter};
+  ['sc-total','sc-blocked','sc-inp'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el)el.classList.remove('card-active');
+  });
+  var activeEl=document.getElementById('sc-'+cardId);
+  if(activeEl)activeEl.classList.add('card-active');
+  var panel=document.getElementById('breakdown-panel');
+  var titleEl=document.getElementById('breakdown-title');
+  var labels={'total':'All Active Tasks','blocked':'Blocked Tasks','inp':'In Progress Tasks'};
+  titleEl.textContent=(labels[cardId]||'Breakdown')+' — Breakdown';
+  var data=FILTERED.filter(function(t){
+    if(statusFilter==='')return t.status!=='Completed';
+    return t.status===statusFilter;
+  });
+  renderCharts(statusFilter,data);
+  panel.classList.add('show');
+}
+function closeBreakdown(){
+  ACTIVE_CARD=null;
+  document.getElementById('breakdown-panel').classList.remove('show');
+  ['sc-total','sc-blocked','sc-inp'].forEach(function(id){
+    var el=document.getElementById(id);
+    if(el)el.classList.remove('card-active');
+  });
+}
+function renderCharts(statusFilter,data){
+  var ownerCounts={},clientCounts={};
+  data.forEach(function(t){
+    var o=t.ownerName||'Unassigned';
+    ownerCounts[o]=(ownerCounts[o]||0)+1;
+    var c=t.client||'No Client';
+    clientCounts[c]=(clientCounts[c]||0)+1;
+  });
+  document.getElementById('chart-owner').innerHTML=buildDonut(ownerCounts,data.length);
+  document.getElementById('chart-client').innerHTML=buildDonut(clientCounts,data.length);
+}
+function buildDonut(countsObj,total){
+  var entries=Object.keys(countsObj).map(function(k){return{name:k,count:countsObj[k]};});
+  entries.sort(function(a,b){return b.count-a.count;});
+  var MAX_SEG=8;
+  var shown=entries.slice(0,MAX_SEG);
+  var otherCount=entries.slice(MAX_SEG).reduce(function(s,e){return s+e.count;},0);
+  if(otherCount>0)shown.push({name:'Other',count:otherCount});
+  if(!shown.length||!total)return '<span style="color:var(--muted);font-size:12px">No data</span>';
+  var SIZE=160,R=55,r=32,CX=80,CY=80;
+  var arcs='';
+  var angle=-Math.PI/2;
+  shown.forEach(function(seg,i){
+    var frac=seg.count/total;
+    var sweep=frac*2*Math.PI;
+    var x1=CX+R*Math.cos(angle),y1=CY+R*Math.sin(angle);
+    var x2=CX+R*Math.cos(angle+sweep),y2=CY+R*Math.sin(angle+sweep);
+    var xi1=CX+r*Math.cos(angle),yi1=CY+r*Math.sin(angle);
+    var xi2=CX+r*Math.cos(angle+sweep),yi2=CY+r*Math.sin(angle+sweep);
+    var lg=sweep>Math.PI?1:0;
+    var col=CHART_PALETTE[i%CHART_PALETTE.length];
+    arcs+='<path d="M '+xi1+' '+yi1+' L '+x1+' '+y1+' A '+R+' '+R+' 0 '+lg+' 1 '+x2+' '+y2+' L '+xi2+' '+yi2+' A '+r+' '+r+' 0 '+lg+' 0 '+xi1+' '+yi1+' Z" fill="'+col+'" opacity="0.9"/>';
+    angle+=sweep;
+  });
+  var svg='<svg width="'+SIZE+'" height="'+SIZE+'" viewBox="0 0 '+SIZE+' '+SIZE+'" style="flex-shrink:0">'
+    +arcs
+    +'<text x="'+CX+'" y="'+(CY-7)+'" text-anchor="middle" fill="#e8eaf2" font-size="20" font-weight="700" font-family="inherit">'+total+'</text>'
+    +'<text x="'+CX+'" y="'+(CY+11)+'" text-anchor="middle" fill="#9aa0b5" font-size="10" font-family="inherit">total</text>'
+    +'</svg>';
+  var legend='<ul class="chart-legend">';
+  shown.forEach(function(seg,i){
+    var col=CHART_PALETTE[i%CHART_PALETTE.length];
+    var pct=total>0?Math.round(seg.count/total*100):0;
+    legend+='<li><span class="legend-dot" style="background:'+col+'"></span>'
+      +'<span>'+esc(seg.name)+' <span style="color:#9aa0b5">('+seg.count+')</span></span></li>';
+  });
+  legend+='</ul>';
+  return svg+legend;
 }
 var PRIO_VALS=['🔴 Critical','🟠 High','🟡 Normal','⚪ Low'];
 var PRIO_CLS={'🔴 Critical':'prio-c','🟠 High':'prio-h','🟡 Normal':'prio-n','⚪ Low':'prio-l'};
