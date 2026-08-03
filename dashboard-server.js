@@ -14122,6 +14122,7 @@ function renderWelcomePage(brand, cp, creatorHandle = '') {
   if (campaigns.sprintUrl)        campaignBtns.push({ label: 'Freedom Sprint Challenge', sub: 'Hit your GMV target and earn a cash bonus',   url: campaigns.sprintUrl });
   if (campaigns.leaderboardUrl)   campaignBtns.push({ label: 'Leaderboard Challenge',    sub: 'Compete for top GMV and win monthly prizes',  url: campaigns.leaderboardUrl });
   if (campaigns.reimbursementUrl) campaignBtns.push({ label: 'Sample Reimbursement Form', sub: 'Bought your own sample? Submit your order for a full refund.', url: campaigns.reimbursementUrl });
+  if (campaigns.challengeUrl)     campaignBtns.push({ label: campaigns.challengeLabel || 'Videos Posted Challenge', sub: campaigns.challengeSub || 'Post videos and earn based on your performance tier — higher performance, higher rewards', url: campaigns.challengeUrl });
 
   const btnsHtml = campaignBtns.map(c => `
     <a href="${c.url}" target="_blank" rel="noopener" class="camp-btn">
@@ -14401,6 +14402,21 @@ footer a{color:${accent};text-decoration:none}
 .blitz-tier{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:rgba(${ar},.06);border:1px solid rgba(${ar},.15);border-radius:10px;font-size:13px}
 .blitz-tier-gmv{font-weight:700;color:rgba(255,255,255,.7)}
 .blitz-tier-bonus{font-weight:900;color:${accent}}
+/* challenge tiers */
+.challenge-tiers-wrap{margin-top:14px}
+.challenge-tiers-desc{font-size:12px;color:rgba(255,255,255,.4);line-height:1.5;margin-bottom:12px}
+.challenge-tiers{display:flex;gap:10px;flex-wrap:wrap}
+.challenge-tier{flex:1;min-width:88px;border-radius:14px;padding:14px 10px;text-align:center;display:flex;flex-direction:column;gap:5px;border:1.5px solid}
+.challenge-tier.tier-silver{background:rgba(192,192,192,.05);border-color:rgba(192,192,192,.25)}
+.challenge-tier.tier-gold{background:rgba(255,195,0,.05);border-color:rgba(255,195,0,.3)}
+.challenge-tier.tier-platinum{background:rgba(${ar},.07);border-color:rgba(${ar},.35)}
+.tier-rank{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:rgba(255,255,255,.28);margin-bottom:2px}
+.tier-name{font-size:13px;font-weight:900;letter-spacing:.02em}
+.challenge-tier.tier-silver .tier-name{color:#c8c8c8}
+.challenge-tier.tier-gold .tier-name{color:#ffc300}
+.challenge-tier.tier-platinum .tier-name{color:${accent}}
+.tier-bonus{font-size:20px;font-weight:900;color:#fff;line-height:1.1;margin:2px 0}
+.tier-threshold{font-size:11px;color:rgba(255,255,255,.38);line-height:1.4}
 </style>
 </head>
 <body>
@@ -14432,6 +14448,22 @@ footer a{color:${accent};text-decoration:none}
         <span class="blitz-tier-gmv">$${Number(t.gmv).toLocaleString()}+ GMV</span>
         <span class="blitz-tier-bonus">+$${Number(t.bonus).toLocaleString()} cash</span>
       </div>`).join('')}
+    </div>
+  </div>` : ''}
+  ${(cp.challengeTiers || []).length ? `
+  <div class="challenge-tiers-wrap">
+    <div style="font-size:11px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:6px">Challenge Tiers</div>
+    <div class="challenge-tiers-desc">Higher performance = higher rewards!</div>
+    <div class="challenge-tiers">${(cp.challengeTiers || []).map((t, i) => {
+      const tierClass = ['tier-silver','tier-gold','tier-platinum'][i] || 'tier-silver';
+      return `
+      <div class="challenge-tier ${tierClass}">
+        <div class="tier-rank">${i + 1}</div>
+        <div class="tier-name">${t.name}</div>
+        <div class="tier-bonus">$${Number(t.bonus).toLocaleString()}</div>
+        <div class="tier-threshold">≥ $${Number(t.minGmv).toFixed(2)}</div>
+      </div>`;
+    }).join('')}
     </div>
   </div>` : ''}
   <div class="divider"></div>` : ''}
