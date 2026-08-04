@@ -94,6 +94,7 @@ const ADMIN_EMAILS = new Set([
   'tommy@cultcontent.cc',
   'tommy@organicsocialmarketing.com',
   'daniel@cultcontent.cc',
+  'hasan@cultcontent.cc',
 ]);
 
 // Manager emails: the only people who can delete tasks.
