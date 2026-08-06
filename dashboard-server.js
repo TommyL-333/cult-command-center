@@ -1321,6 +1321,14 @@ const icSqlite = require('./routes/inner-circle-sqlite')(app, { express });
 try { require('./db/content-studio'); console.log('[content-studio] schema ensured'); }
 catch (e) { console.error('[content-studio] schema init failed:', e.message); }
 
+// Brand assignments ("My Clients") + Discord multi-server config: schema-only
+// for now — no routes consume these yet, they're groundwork for later
+// employee-portal ("My Clients") and profile (Discord auto-invite) phases.
+try { require('./db/brand-assignments'); console.log('[brand-assignments] schema ensured'); }
+catch (e) { console.error('[brand-assignments] schema init failed:', e.message); }
+try { require('./db/discord'); console.log('[discord] schema ensured'); }
+catch (e) { console.error('[discord] schema init failed:', e.message); }
+
 // Content Studio: generation + credits endpoints (reuses db/content-studio.js).
 // Registered here (before app.listen) per command-center route-ordering rule.
 try {
