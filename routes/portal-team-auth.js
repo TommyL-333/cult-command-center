@@ -50,17 +50,11 @@ function writeJson(file, data) {
 }
 
 // ── password hashing (scrypt, no deps) ───────────────────────────────────────
-function hashPassword(password, salt) {
-  salt = salt || crypto.randomBytes(16).toString('hex');
-  const hash = crypto.scryptSync(String(password), salt, 64).toString('hex');
-  return { hash, salt };
-}
-function verifyPassword(candidate, hash, salt) {
-  try {
-    const c = crypto.scryptSync(String(candidate), salt, 64).toString('hex');
-    return crypto.timingSafeEqual(Buffer.from(c, 'hex'), Buffer.from(hash, 'hex'));
-  } catch { return false; }
-}
+// Backed by middleware/password.js (Phase 3: auth unification) — same
+// algorithm, same {hash, salt} storage shape, verified byte-for-byte
+// compatible with hashes already stored by the old inline implementation
+// before consolidating (see middleware/password.js's header comment).
+const { hashPasswordSplit: hashPassword, verifyPasswordSplit: verifyPassword } = require('../middleware/password');
 
 // ── users ────────────────────────────────────────────────────────────────────
 function loadUsers() { return readJson(USERS_FILE, []); }

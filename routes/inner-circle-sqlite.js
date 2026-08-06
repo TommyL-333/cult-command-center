@@ -23,6 +23,7 @@
 
 const crypto = require('crypto');
 const { createRequireCreatorSession, getCreatorSessionToken } = require('../middleware/auth');
+const { hashPasswordCombined, verifyPasswordCombined } = require('../middleware/password');
 
 module.exports = function mountInnerCircleSqlite(app, deps = {}) {
   const express = deps.express || require('express');
@@ -443,20 +444,13 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     return Math.ceil((to.getTime() - from.getTime()) / 86400000);
   }
 
-  // Password hashing — scrypt with per-user salt, stored as "salt:hexhash"
-  function hashPassword(password) {
-    const salt = crypto.randomBytes(16).toString('hex');
-    const hash = crypto.scryptSync(String(password), salt, 64).toString('hex');
-    return salt + ':' + hash;
-  }
-  function verifyPassword(password, stored) {
-    if (!stored || !stored.includes(':')) return false;
-    const [salt, hash] = stored.split(':');
-    try {
-      const candidate = crypto.scryptSync(String(password), salt, 64).toString('hex');
-      return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(candidate, 'hex'));
-    } catch (_) { return false; }
-  }
+  // Password hashing — scrypt with per-user salt, stored as "salt:hexhash".
+  // Now backed by middleware/password.js (Phase 3: auth unification) — same
+  // algorithm, same "salt:hash" storage format, verified byte-for-byte
+  // compatible with hashes already stored by the old inline implementation
+  // before consolidating (see middleware/password.js's header comment).
+  const hashPassword = hashPasswordCombined;
+  const verifyPassword = verifyPasswordCombined;
 
   // ── POST /api/inner-circle/login ────────────────────────────────────────────
   // GET /api/ic/session-check — used by /ic-nav.js to decide whether to show the
