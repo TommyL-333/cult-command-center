@@ -9133,12 +9133,30 @@ Return JSON only:
 const BRANDS_FILE = path.join(DATA_DIR, 'brands.json');
 const MEETING_INTEL_FILE = path.join(DATA_DIR, 'meeting-intel.json');
 
+// Dual-write mirror to SQLite (db/brands.js). brands.json remains the source of
+// truth for READS during this phase — this only keeps the `brands` table caught
+// up so a later phase can verify parity and cut reads over. Sync failures are
+// logged, never thrown — must not be able to break a brands.json write.
+const { syncBrandsToSqlite } = require('./db/brands');
+
 function loadBrands() {
   try { return JSON.parse(fs.readFileSync(BRANDS_FILE, 'utf8')); }
   catch(_) { return { clients: [] }; }
 }
 function saveBrands(data) {
   fs.writeFileSync(BRANDS_FILE, JSON.stringify(data, null, 2));
+  try { syncBrandsToSqlite(data && data.clients); }
+  catch (e) { console.error('[brands] SQLite mirror sync failed:', e.message); }
+}
+
+// One-time backfill (idempotent — safe to run every boot): catches the SQLite
+// mirror up on brands that existed before this dual-write was added, and
+// self-heals it if the mirror ever drifts for any reason. Cheap at this scale.
+try {
+  syncBrandsToSqlite(loadBrands().clients);
+  console.log('[brands] SQLite mirror backfilled');
+} catch (e) {
+  console.error('[brands] SQLite mirror backfill failed:', e.message);
 }
 
 function loadMeetingIntel() {
