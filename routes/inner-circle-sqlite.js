@@ -22,6 +22,7 @@
 'use strict';
 
 const crypto = require('crypto');
+const { createRequireCreatorSession, getCreatorSessionToken } = require('../middleware/auth');
 
 module.exports = function mountInnerCircleSqlite(app, deps = {}) {
   const express = deps.express || require('express');
@@ -427,30 +428,16 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
-  function getSessionToken(req) {
-    // Manual cookie parse — this server has no cookie-parser middleware.
-    const cookieHeader = req.headers.cookie || '';
-    const m = cookieHeader.match(/(?:^|;\s*)ic_session=([^;]+)/);
-    if (m) return decodeURIComponent(m[1]);
-    const auth = req.headers.authorization || '';
-    if (auth.startsWith('Bearer ')) return auth.slice(7).trim();
-    return null;
-  }
-
-  function requireSqliteSession(req, res, next) {
-    if (dbError) return res.status(503).json({ error: 'Inner Circle data layer unavailable' });
-    const token = getSessionToken(req);
-    if (!token) return res.status(401).json({ error: 'Not authenticated' });
-    try {
-      const row = stmts.sessionByToken.get(token);
-      if (!row) return res.status(401).json({ error: 'Session expired' });
-      req.icCreator = row;
-      next();
-    } catch (e) {
-      console.error('[inner-circle-sqlite] session check failed:', e.message);
-      return res.status(500).json({ error: 'Server error' });
-    }
-  }
+  // getSessionToken/requireSqliteSession now come from middleware/auth.js
+  // (Phase 3: auth unification) — same manual cookie-parse + Bearer-header
+  // fallback, same 503/401/500 response shapes, verbatim behavior. The
+  // session lookup itself (stmts.sessionByToken, dbError) stays here since
+  // it's specific to this file's SQLite layer.
+  const getSessionToken = getCreatorSessionToken;
+  const requireSqliteSession = createRequireCreatorSession({
+    getSessionByToken: (token) => stmts.sessionByToken.get(token),
+    isUnavailable: () => dbError,
+  });
 
   function daysBetween(from, to) {
     return Math.ceil((to.getTime() - from.getTime()) / 86400000);

@@ -85,4 +85,46 @@ function requirePortalAdmin(req, res, next) {
   next();
 }
 
-module.exports = { requireAuth, requireClientSession, requirePortalAdmin, ALLOWED_DOMAINS };
+// ── requireCreatorSession — creator portal (factory, not a ready-made guard) ─
+// The real session lookup lives inside routes/inner-circle-sqlite.js's own
+// closure (its prepared statements, its DB-availability flag) — that data-
+// layer state stays where it already lives rather than being dragged in here.
+// This factory centralizes the guard's actual request/response behavior (same
+// shape as the three guards above) in one place; inner-circle-sqlite.js calls
+// it once with its own session lookup and gets back the same
+// `requireSqliteSession` it used to define inline, verbatim behavior.
+function getCreatorSessionToken(req) {
+  // Manual cookie parse — this server has no cookie-parser middleware.
+  const cookieHeader = req.headers.cookie || '';
+  const m = cookieHeader.match(/(?:^|;\s*)ic_session=([^;]+)/);
+  if (m) return decodeURIComponent(m[1]);
+  const auth = req.headers.authorization || '';
+  if (auth.startsWith('Bearer ')) return auth.slice(7).trim();
+  return null;
+}
+
+function createRequireCreatorSession({ getSessionByToken, isUnavailable }) {
+  return function requireCreatorSession(req, res, next) {
+    if (isUnavailable && isUnavailable()) return res.status(503).json({ error: 'Inner Circle data layer unavailable' });
+    const token = getCreatorSessionToken(req);
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    try {
+      const row = getSessionByToken(token);
+      if (!row) return res.status(401).json({ error: 'Session expired' });
+      req.icCreator = row;
+      next();
+    } catch (e) {
+      console.error('[auth] creator session check failed:', e.message);
+      return res.status(500).json({ error: 'Server error' });
+    }
+  };
+}
+
+module.exports = {
+  requireAuth,
+  requireClientSession,
+  requirePortalAdmin,
+  createRequireCreatorSession,
+  getCreatorSessionToken,
+  ALLOWED_DOMAINS,
+};
