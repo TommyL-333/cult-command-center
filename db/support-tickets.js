@@ -15,34 +15,12 @@
  * "opened" records which teammate opened it.
  */
 
-const Database = require('better-sqlite3');
-const path = require('path');
-const fs = require('fs');
-
-const DATA_DIR = process.env.DATA_DIR || '/data';
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-
-const DB_PATH = path.join(DATA_DIR, 'inner_circle.db');
-const db = new Database(DB_PATH);
-
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
-db.pragma('busy_timeout = 5000'); // explicit (matches better-sqlite3's own default) — fail fast on real lock contention rather than relying on an implicit default
-
-// This file (inner_circle.db) is shared by three separate connections
-// (inner-circle.js, content-studio.js, this one). If something prevents
-// SQLite's automatic WAL checkpoint from ever running, the write-ahead log
-// can grow very large — reads then become genuinely, unboundedly slow
-// (not "locked", just real I/O work), which looks like a hang with no
-// error, since busy_timeout only catches lock contention, not this.
-// TRUNCATE checkpoints on every boot as a defensive compaction; logged so
-// a huge `log` page count here is direct evidence of exactly that.
-try {
-  const [{ busy, log, checkpointed }] = db.pragma('wal_checkpoint(TRUNCATE)');
-  console.log(`[support-tickets] WAL checkpoint — busy=${busy} log=${log} checkpointed=${checkpointed}`);
-} catch (e) {
-  console.error('[support-tickets] WAL checkpoint failed:', e.message);
-}
+// Connection (WAL mode, foreign keys, busy_timeout, boot-time checkpoint) is
+// owned by db/connection.js and shared across every db/*.js schema file. The
+// WAL-checkpoint-on-boot defensive compaction that used to live here (this was
+// the last of the three modules to load, so it did the checkpoint) now lives
+// in db/connection.js instead, since that's the single connection owner.
+const { db } = require('./connection');
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS support_tickets (
