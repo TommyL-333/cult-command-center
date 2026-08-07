@@ -1289,6 +1289,48 @@ function formatDuration(seconds) {
 // above app.use(requireAuth): creators have no Cloudflare Access session.
 const icSqlite = require('./routes/inner-circle-sqlite')(app, { express });
 
+// GET /api/me — normalized identity across all four auth mechanisms
+// ({ type: 'creator'|'brand'|'staff', id, email } or { type: null } / 401).
+// Phase 3 groundwork: no current frontend consumes this yet, but the future
+// single-page app needs one endpoint to ask "who is this request, and which
+// of the three portals should it land in" regardless of which of the four
+// session mechanisms authenticated it. Checked in this order: creator
+// session (ic_session cookie/Bearer) -> brand session -> staff portal-admin
+// session -> bare CF-Access header (staff, no portal-admin session yet).
+// Non-throwing throughout — this never invokes the hard-401 guards.
+app.get('/api/me', (req, res) => {
+  const creator = icSqlite && icSqlite.getCreatorFromRequest && icSqlite.getCreatorFromRequest(req);
+  if (creator) {
+    return res.json({ type: 'creator', id: creator.id, email: creator.email || null, name: creator.creator_name || null });
+  }
+
+  if (req.session?.clientBrandId) {
+    const brand = (loadBrands().clients || []).find((b) => b.id === req.session.clientBrandId);
+    return res.json({
+      type: 'brand',
+      id: req.session.clientBrandId,
+      email: brand ? (brand.loginEmail || brand.email || null) : null,
+      name: brand ? brand.name || null : null,
+    });
+  }
+
+  if (req.session?.isPortalAdmin) {
+    return res.json({
+      type: 'staff',
+      id: req.session.portalUserId || null,
+      email: req.headers['cf-access-authenticated-user-email'] || null,
+      name: req.session.portalUserName || null,
+    });
+  }
+
+  const cfEmail = req.headers['cf-access-authenticated-user-email'];
+  if (cfEmail) {
+    return res.json({ type: 'staff', id: null, email: cfEmail, name: null });
+  }
+
+  return res.status(401).json({ type: null });
+});
+
 // Content Studio: ensure schema exists (content_credits, content_references,
 // content_generations, client_integrations). Idempotent CREATE TABLE IF NOT EXISTS;
 // runs the migration against /data/inner_circle.db on boot. Must be before app.listen().

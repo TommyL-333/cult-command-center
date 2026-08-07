@@ -440,6 +440,21 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     isUnavailable: () => dbError,
   });
 
+  // Non-throwing variant for GET /api/me (dashboard-server.js) — same lookup
+  // as requireSqliteSession but returns null instead of sending a 401/503,
+  // so a caller can check "is this request a creator?" without assuming it
+  // must be one.
+  function getCreatorFromRequest(req) {
+    if (dbError) return null;
+    const token = getSessionToken(req);
+    if (!token) return null;
+    try {
+      return stmts.sessionByToken.get(token) || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   function daysBetween(from, to) {
     return Math.ceil((to.getTime() - from.getTime()) / 86400000);
   }
@@ -3084,5 +3099,5 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
 
 
   // Expose the working session middleware so other routes can adopt it later.
-  return { requireSqliteSession, getIcFunnel };
+  return { requireSqliteSession, getIcFunnel, getCreatorFromRequest };
 };
