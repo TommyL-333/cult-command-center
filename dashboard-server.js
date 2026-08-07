@@ -555,6 +555,21 @@ app.get('/', (req, res, next) => {
 // Serve dashboard static assets (CSS/JS) before auth wall so portal.cultcontent.cc can load them
 app.use(express.static(path.join(__dirname, 'dashboard')));
 
+// New React frontend (frontend/, Phase 4 of the platform rebuild) — served at
+// /app/*, built by `npm run build` (frontend/dist, see nixpacks.toml). Mounted
+// pre-auth-wall like the legacy dashboard static assets above: the SPA itself
+// is not auth-gated at the Express layer — it calls GET /api/me and renders a
+// "not signed in" state itself, same as visiting any other public page here.
+// If frontend/dist doesn't exist yet (build hasn't run), this just 404s
+// through to the catch-all below rather than crashing the server.
+const FRONTEND_DIST = path.join(__dirname, 'frontend', 'dist');
+app.use('/app', express.static(FRONTEND_DIST));
+app.get('/app/*', (req, res, next) => {
+  const indexPath = path.join(FRONTEND_DIST, 'index.html');
+  if (!fs.existsSync(indexPath)) return next();
+  res.sendFile(indexPath);
+});
+
 // Public proposals — shareable HTML files, no auth required
 const PROPOSALS_DIR = path.join(__dirname, 'proposals');
 app.get('/proposals/:slug', (req, res) => {
