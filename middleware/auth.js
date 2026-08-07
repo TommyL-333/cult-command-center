@@ -120,11 +120,66 @@ function createRequireCreatorSession({ getSessionByToken, isUnavailable }) {
   };
 }
 
+// ── resolveIdentity / requireAnyIdentity — messaging/proposals (Phase 5) ────
+// Messaging and the proposal/contract system span all three audiences (a
+// creator and a brand negotiate in the same thread; staff can be participants
+// too) — none of the four audience-specific guards above fit alone.
+// resolveIdentity() is the one place this "who is this request" logic lives
+// (creator session -> brand session -> staff portal-admin session -> bare
+// CF-Access header); it backs both GET /api/me (soft — returns { type: null }
+// rather than failing) and createRequireAnyIdentity (hard — 401s and attaches
+// req.identity on success). Factory for the same reason
+// createRequireCreatorSession is: the creator lookup lives in
+// routes/inner-circle-sqlite.js's closure, not here.
+function resolveIdentity(req, { getCreatorFromRequest, loadBrands }) {
+  const creator = getCreatorFromRequest && getCreatorFromRequest(req);
+  if (creator) {
+    return { type: 'creator', id: creator.id, email: creator.email || null, name: creator.creator_name || null };
+  }
+
+  if (req.session?.clientBrandId) {
+    const brand = (loadBrands().clients || []).find((b) => b.id === req.session.clientBrandId);
+    return {
+      type: 'brand',
+      id: req.session.clientBrandId,
+      email: brand ? (brand.loginEmail || brand.email || null) : null,
+      name: brand ? brand.name || null : null,
+    };
+  }
+
+  if (req.session?.isPortalAdmin) {
+    return {
+      type: 'staff',
+      id: req.session.portalUserId || null,
+      email: req.headers['cf-access-authenticated-user-email'] || null,
+      name: req.session.portalUserName || null,
+    };
+  }
+
+  const cfEmail = req.headers['cf-access-authenticated-user-email'];
+  if (cfEmail) {
+    return { type: 'staff', id: null, email: cfEmail, name: null };
+  }
+
+  return { type: null };
+}
+
+function createRequireAnyIdentity(deps) {
+  return function requireAnyIdentity(req, res, next) {
+    const identity = resolveIdentity(req, deps);
+    if (!identity.type) return res.status(401).json({ error: 'Not authenticated' });
+    req.identity = identity;
+    next();
+  };
+}
+
 module.exports = {
   requireAuth,
   requireClientSession,
   requirePortalAdmin,
   createRequireCreatorSession,
   getCreatorSessionToken,
+  resolveIdentity,
+  createRequireAnyIdentity,
   ALLOWED_DOMAINS,
 };

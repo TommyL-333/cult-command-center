@@ -88,7 +88,7 @@ app.use(session({
 // moved verbatim (Phase 3: auth unification), not rewritten. Every call site
 // below and every routes/*.js file that receives these as injected deps
 // keeps working unchanged, since they all reference these same identifiers.
-const { requireAuth, requireClientSession, requirePortalAdmin } = require('./middleware/auth');
+const { requireAuth, requireClientSession, requirePortalAdmin, resolveIdentity, createRequireAnyIdentity } = require('./middleware/auth');
 
 // ─── Lark API helpers ─────────────────────────────────────────────────────────
 let _larkTenantToken = null;
@@ -1304,47 +1304,38 @@ function formatDuration(seconds) {
 // above app.use(requireAuth): creators have no Cloudflare Access session.
 const icSqlite = require('./routes/inner-circle-sqlite')(app, { express });
 
+// resolveIdentity's data deps — bound once here since both GET /api/me and
+// requireAnyIdentity (Phase 5: messaging/proposals) need the same two
+// lookups (creator-session check, brand-session-to-record lookup).
+const identityDeps = {
+  getCreatorFromRequest: (req) => icSqlite && icSqlite.getCreatorFromRequest && icSqlite.getCreatorFromRequest(req),
+  loadBrands,
+};
+const requireAnyIdentity = createRequireAnyIdentity(identityDeps);
+
 // GET /api/me — normalized identity across all four auth mechanisms
 // ({ type: 'creator'|'brand'|'staff', id, email } or { type: null } / 401).
-// Phase 3 groundwork: no current frontend consumes this yet, but the future
-// single-page app needs one endpoint to ask "who is this request, and which
-// of the three portals should it land in" regardless of which of the four
-// session mechanisms authenticated it. Checked in this order: creator
-// session (ic_session cookie/Bearer) -> brand session -> staff portal-admin
-// session -> bare CF-Access header (staff, no portal-admin session yet).
-// Non-throwing throughout — this never invokes the hard-401 guards.
+// Backed by middleware/auth.js's resolveIdentity() — see that file for the
+// checking order (creator session -> brand session -> staff portal-admin
+// session -> bare CF-Access header). Non-throwing: never invokes the
+// hard-401 guards, unlike requireAnyIdentity above.
 app.get('/api/me', (req, res) => {
-  const creator = icSqlite && icSqlite.getCreatorFromRequest && icSqlite.getCreatorFromRequest(req);
-  if (creator) {
-    return res.json({ type: 'creator', id: creator.id, email: creator.email || null, name: creator.creator_name || null });
-  }
-
-  if (req.session?.clientBrandId) {
-    const brand = (loadBrands().clients || []).find((b) => b.id === req.session.clientBrandId);
-    return res.json({
-      type: 'brand',
-      id: req.session.clientBrandId,
-      email: brand ? (brand.loginEmail || brand.email || null) : null,
-      name: brand ? brand.name || null : null,
-    });
-  }
-
-  if (req.session?.isPortalAdmin) {
-    return res.json({
-      type: 'staff',
-      id: req.session.portalUserId || null,
-      email: req.headers['cf-access-authenticated-user-email'] || null,
-      name: req.session.portalUserName || null,
-    });
-  }
-
-  const cfEmail = req.headers['cf-access-authenticated-user-email'];
-  if (cfEmail) {
-    return res.json({ type: 'staff', id: null, email: cfEmail, name: null });
-  }
-
-  return res.status(401).json({ type: null });
+  const identity = resolveIdentity(req, identityDeps);
+  if (!identity.type) return res.status(401).json({ type: null });
+  res.json(identity);
 });
+
+// Messaging + contract-proposal system (Phase 5). Ensure schema first (both
+// idempotent CREATE TABLE IF NOT EXISTS), then mount the two route modules.
+// Pre-auth-wall: creators/brands have no CF Access session.
+try { require('./db/messaging'); console.log('[messaging] schema ensured'); }
+catch (e) { console.error('[messaging] schema init failed:', e.message); }
+try { require('./db/proposals'); console.log('[proposals] schema ensured'); }
+catch (e) { console.error('[proposals] schema init failed:', e.message); }
+try {
+  require('./routes/messaging')(app, { requireAnyIdentity });
+  require('./routes/proposals')(app, { requireAnyIdentity, loadBrands });
+} catch (e) { console.error('[messaging/proposals] registration failed:', e.message); }
 
 // Content Studio: ensure schema exists (content_credits, content_references,
 // content_generations, client_integrations). Idempotent CREATE TABLE IF NOT EXISTS;
