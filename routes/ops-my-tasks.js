@@ -190,6 +190,16 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .toggle input:checked+.slider{background:var(--cyan)}
   .toggle input:checked+.slider:before{transform:translateX(18px)}
   .wr-section-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin:12px 0 6px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+  /* client report cards */
+  .wr-week-bar{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .cr-card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:16px}
+  .cr-card-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;gap:10px;flex-wrap:wrap}
+  .cr-brand{font-size:17px;font-weight:700}
+  .cr-week-lbl{font-size:12px;color:var(--muted);margin-top:3px}
+  .cr-status{font-size:11px;padding:3px 10px;border-radius:10px;font-weight:600;white-space:nowrap}
+  .cr-status.submitted{background:rgba(107,232,107,.15);color:#6be86b}
+  .cr-status.pending{background:rgba(154,160,181,.12);color:var(--muted)}
+  .cr-auto-tag{font-size:10px;background:rgba(0,242,234,.15);color:var(--cyan);padding:1px 6px;border-radius:4px;margin-left:5px;vertical-align:middle}
   /* Sprint planner */
   .sp-board{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:18px}
   .sp-col{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;flex-direction:column}
@@ -307,7 +317,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   <div class="sub" id="sub">Loading…</div>
   <div class="tabs">
     <button class="tab active" onclick="switchTab(0)">My Tasks</button>
-    <button class="tab" onclick="switchTab(1)">Weekly Report</button>
+    <button class="tab" onclick="switchTab(1)">Client Reports</button>
     <button class="tab" onclick="switchTab(2)">Sprint</button>
   </div>
 
@@ -318,15 +328,27 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   </div>
 
   <div id="tab-report" style="display:none">
-    <div class="wr-form">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
-        <h2 style="margin:0">Weekly Report</h2>
-        <div style="font-size:12px;color:var(--muted)" id="wr-sub-label"></div>
+    <div class="wr-week-bar">
+      <div>
+        <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:3px">Reporting Week</div>
+        <div style="font-size:15px;font-weight:700" id="wr-week-display">Loading…</div>
       </div>
-      <div id="wr-form-body"><div style="color:var(--muted);font-size:13px">Loading…</div></div>
-      <div class="err" id="wr-err" style="margin-top:8px"></div>
-      <div style="display:flex;justify-content:flex-end;margin-top:14px">
-        <button class="btn" onclick="submitReport()">Submit Report</button>
+      <div style="display:flex;gap:10px;align-items:center">
+        <div id="wr-sub-label" style="font-size:12px;color:var(--muted)"></div>
+        <button class="btn ghost" style="font-size:12px;padding:5px 12px" onclick="wrChangeWeek()">Change</button>
+      </div>
+    </div>
+    <div id="wr-client-container" style="display:none">
+      <div id="wr-client-cards"></div>
+    </div>
+    <div id="wr-form-container" style="display:none">
+      <div class="wr-form">
+        <h2 style="margin:0 0 16px">Weekly Report</h2>
+        <div id="wr-form-body"><div style="color:var(--muted);font-size:13px">Loading…</div></div>
+        <div class="err" id="wr-err" style="margin-top:8px"></div>
+        <div style="display:flex;justify-content:flex-end;margin-top:14px">
+          <button class="btn" onclick="submitReport()">Submit Report</button>
+        </div>
       </div>
     </div>
     <div class="wr-hist">
@@ -474,6 +496,31 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
       <button class="btn ghost" onclick="closePlanOverlay()">Cancel</button>
       <button class="btn" id="plan-next-btn" onclick="planNext()">Next →</button>
     </div>
+  </div>
+</div>
+
+<div class="overlay" id="msg-overlay" onclick="if(event.target===this)closeMsgModal()">
+  <div class="modal" style="max-width:560px">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+      <div>
+        <h3 style="margin:0">Client Report Message</h3>
+        <p class="mt" id="msg-modal-for" style="margin:4px 0 0">Ready to send</p>
+      </div>
+      <button class="btn ghost" style="padding:5px 12px" onclick="closeMsgModal()">&times;</button>
+    </div>
+    <div class="fg" style="margin-bottom:14px">
+      <label>Message &mdash; edit before sending</label>
+      <textarea id="msg-text" style="min-height:280px;font-size:12.5px;line-height:1.6"></textarea>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:space-between;align-items:center">
+      <div style="display:flex;gap:8px">
+        <button class="btn ghost" onclick="copyMsgText()">&#128203; Copy</button>
+        <button class="btn ghost" onclick="emailMsgClient()">&#9993; Email</button>
+        <button class="btn ghost" onclick="larkMsgClient()">&#128172; Lark DM</button>
+      </div>
+      <button class="btn ghost" onclick="closeMsgModal()">Close</button>
+    </div>
+    <div class="err" id="msg-err" style="margin-top:8px"></div>
   </div>
 </div>
 
@@ -1014,8 +1061,153 @@ function startEditCardTitle(recordId){
   });
 }
 
-/* weekly report */
+/* client reports */
 var WR_REPORT_TYPE='brand_manager';
+var WR_BRANDS=[],WR_WEEK_START='',WR_WEEK_END='',MSG_EMAIL='',MSG_BRAND_NAME='';
+
+function wrPrevWeekRange(){
+  var d=new Date(),day=d.getDay();
+  var dss=(day===6)?0:(day+1);
+  var sat=new Date(d);sat.setDate(d.getDate()-dss);
+  var sun=new Date(sat);sun.setDate(sat.getDate()-6);
+  function fmt(dt){return dt.toISOString().slice(0,10);}
+  return{start:fmt(sun),end:fmt(sat)};
+}
+function wrFmtRange(s,e){
+  var sd=new Date(s+'T12:00:00Z'),ed=new Date(e+'T12:00:00Z');
+  var mo=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return'Sun '+mo[sd.getUTCMonth()]+' '+sd.getUTCDate()+' – Sat '+mo[ed.getUTCMonth()]+' '+ed.getUTCDate()+', '+ed.getUTCFullYear();
+}
+function wrSlug(name){return name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');}
+
+function renderClientCards(brands){
+  var c=document.getElementById('wr-client-cards');
+  if(!brands.length){c.innerHTML='<div style="color:var(--muted);font-size:13px;padding:20px 0">No clients assigned.</div>';return;}
+  var html='';
+  brands.forEach(function(b){
+    var sl=wrSlug(b);
+    function eid(n){return'cr-'+n+'-'+sl;}
+    html+='<div class="cr-card" id="cr-card-'+sl+'">'
+      +'<div class="cr-card-hdr">'
+        +'<div><div class="cr-brand">'+esc(b)+'</div><div class="cr-week-lbl" id="'+eid('wlbl')+'">'+wrFmtRange(WR_WEEK_START,WR_WEEK_END)+'</div></div>'
+        +'<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">'
+          +'<span class="cr-status pending" id="'+eid('status')+'">Not submitted</span>'
+          +'<button class="btn ghost" style="font-size:12px;padding:5px 10px" data-brand="'+esc(b)+'" data-sl="'+sl+'" onclick="fetchReacherStats(this.dataset.brand,this.dataset.sl)">↻ Reacher</button>'
+        +'</div>'
+      +'</div>'
+      +'<div class="fr">'
+        +'<div class="fg"><label>GMV ($) <span class="cr-auto-tag" id="'+eid('gmvsrc')+'" style="display:none">auto</span></label>'
+          +'<input type="number" id="'+eid('gmv')+'" step="0.01" placeholder="0.00" style="font-size:15px"/></div>'
+        +'<div class="fg"><label>Videos Posted</label><input type="number" id="'+eid('videos')+'" placeholder="0"/></div>'
+      +'</div>'
+      +'<div class="fr">'
+        +'<div class="fg"><label>Samples Sent</label><input type="number" id="'+eid('samples')+'" placeholder="0"/></div>'
+        +'<div class="fg"><label>CTR (%)</label><input type="number" id="'+eid('ctr')+'" step="0.01" placeholder="0.00"/></div>'
+      +'</div>'
+      +'<div class="fr">'
+        +'<div class="fg"><label>GMV Conversion Rate (%)</label><input type="number" id="'+eid('conv')+'" step="0.01" placeholder="0.00"/></div>'
+        +'<div class="fg"><label>Shop Perf Score (/5)</label><input type="number" id="'+eid('sps')+'" step="0.1" max="5" placeholder="0.0"/></div>'
+      +'</div>'
+      +'<div class="fr full"><div class="fg"><label>Notes for client</label>'
+        +'<textarea id="'+eid('notes')+'" style="min-height:60px" placeholder="Wins, next steps, context…"></textarea>'
+      +'</div></div>'
+      +'<div class="err" id="'+eid('err')+'" style="margin-top:6px"></div>'
+      +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">'
+        +'<button class="btn ghost" data-brand="'+esc(b)+'" data-sl="'+sl+'" onclick="generateClientMsg(this.dataset.brand,this.dataset.sl)">📝 Generate Message</button>'
+        +'<button class="btn" data-brand="'+esc(b)+'" data-sl="'+sl+'" onclick="submitClientReport(this.dataset.brand,this.dataset.sl)">Submit Report</button>'
+      +'</div>'
+    +'</div>';
+  });
+  c.innerHTML=html;
+}
+
+function fetchReacherStats(brand,sl){
+  var btn=document.querySelector('#cr-card-'+sl+' [data-sl="'+sl+'"].btn.ghost');
+  if(btn){btn.textContent='Loading…';btn.disabled=true;}
+  fetch('/api/weekly-reports/reacher-stats?brand='+encodeURIComponent(brand)+'&weekStart='+WR_WEEK_START+'&weekEnd='+WR_WEEK_END,{credentials:'include'})
+  .then(function(r){return r.json();}).then(function(d){
+    if(btn){btn.textContent='↻ Reacher';btn.disabled=false;}
+    if(d.gmv!=null){
+      var el=document.getElementById('cr-gmv-'+sl);if(el)el.value=d.gmv.toFixed(2);
+      var src=document.getElementById('cr-gmvsrc-'+sl);if(src)src.style.display='';
+    }
+    if(d.videos_posted!=null){var v=document.getElementById('cr-videos-'+sl);if(v&&!v.value)v.value=d.videos_posted;}
+    if(d.samples_sent!=null){var s=document.getElementById('cr-samples-'+sl);if(s&&!s.value)s.value=d.samples_sent;}
+    if(d.ctr!=null){var ct=document.getElementById('cr-ctr-'+sl);if(ct&&!ct.value)ct.value=d.ctr;}
+    toast('✓ Reacher data loaded for '+brand);
+  }).catch(function(){
+    if(btn){btn.textContent='↻ Reacher';btn.disabled=false;}
+    toast('⚠ Could not load Reacher data');
+  });
+}
+
+function crNum(id){var el=document.getElementById(id);return el?parseFloat(el.value)||0:0;}
+function crVal(id){var el=document.getElementById(id);return el?el.value.trim():'';}
+
+function submitClientReport(brand,sl){
+  var errEl=document.getElementById('cr-err-'+sl);errEl.style.display='none';
+  var payload={week:WR_WEEK_START,weekEnd:WR_WEEK_END,reportType:'brand_manager',brand:brand,
+    gmv:crNum('cr-gmv-'+sl),videosPosted:crNum('cr-videos-'+sl),samplesCount:crNum('cr-samples-'+sl),
+    ctr:crNum('cr-ctr-'+sl),ctor:crNum('cr-conv-'+sl),spsOverall:crNum('cr-sps-'+sl),
+    promotionRunning:false,growthOppsEnrolled:false,notes:crVal('cr-notes-'+sl)};
+  fetch('/api/weekly-reports/submit',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+  .then(function(r){return r.json();}).then(function(d){
+    if(d.ok){
+      var s=document.getElementById('cr-status-'+sl);
+      if(s){s.textContent='Submitted ✓';s.className='cr-status submitted';}
+      loadReportHistory();toast('✅ Report submitted for '+brand+'!');
+    } else {errEl.textContent=d.error||'Failed';errEl.style.display='block';}
+  }).catch(function(e){errEl.textContent=''+e;errEl.style.display='block';});
+}
+
+function generateClientMsg(brand,sl){
+  var gmv=crNum('cr-gmv-'+sl),videos=crNum('cr-videos-'+sl),samples=crNum('cr-samples-'+sl);
+  var ctr=crNum('cr-ctr-'+sl),conv=crNum('cr-conv-'+sl),sps=crNum('cr-sps-'+sl);
+  var notes=crVal('cr-notes-'+sl),range=wrFmtRange(WR_WEEK_START,WR_WEEK_END);
+  var fmtGmv='$'+gmv.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  var msg='Hi '+brand+' team 👋\n\n'
+    +'Here’s your TikTok Shop performance update for '+range+':\n\n'
+    +'📊 This Week’s Metrics\n'
+    +'• GMV: '+fmtGmv+'\n'
+    +'• Videos Posted: '+videos+'\n'
+    +'• Samples Sent: '+samples+'\n'
+    +(ctr?'• Click-Through Rate: '+ctr+'%\n':'')
+    +(conv?'• GMV Conversion Rate: '+conv+'%\n':'')
+    +(sps?'\n⭐ Shop Performance Score: '+sps+' / 5\n':'');
+  if(notes)msg+='\n'+notes+'\n';
+  msg+='\nLet us know if you have any questions!\n\nBest,\nCult Content';
+  MSG_BRAND_NAME=brand;MSG_EMAIL='';
+  document.getElementById('msg-modal-for').textContent='For: '+brand;
+  document.getElementById('msg-text').value=msg;
+  document.getElementById('msg-err').style.display='none';
+  fetch('/api/weekly-reports/client-email?brand='+encodeURIComponent(brand),{credentials:'include'})
+  .then(function(r){return r.json();}).then(function(d){MSG_EMAIL=d.email||'';}).catch(function(){});
+  document.getElementById('msg-overlay').classList.add('show');
+}
+
+function closeMsgModal(){document.getElementById('msg-overlay').classList.remove('show');}
+function copyMsgText(){
+  var t=document.getElementById('msg-text').value;
+  if(navigator.clipboard){navigator.clipboard.writeText(t).then(function(){toast('✅ Copied!');});}
+  else{var ta=document.getElementById('msg-text');ta.select();document.execCommand('copy');toast('✅ Copied!');}
+}
+function emailMsgClient(){
+  var t=document.getElementById('msg-text').value;
+  var subj='TikTok Shop Weekly Update — '+MSG_BRAND_NAME;
+  window.open('mailto:'+encodeURIComponent(MSG_EMAIL||'')+'?subject='+encodeURIComponent(subj)+'&body='+encodeURIComponent(t));
+}
+function larkMsgClient(){
+  var t=document.getElementById('msg-text').value;
+  var errEl=document.getElementById('msg-err');errEl.style.display='none';
+  fetch('/api/weekly-reports/send-lark',{method:'POST',credentials:'include',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify({brand:MSG_BRAND_NAME,message:t})})
+  .then(function(r){return r.json();}).then(function(d){
+    if(d.ok)toast('✅ Sent to your Lark!');
+    else{errEl.textContent=d.error||'Failed to send';errEl.style.display='block';}
+  }).catch(function(e){errEl.textContent=''+e;errEl.style.display='block';});
+}
+
+/* old form helpers for non-brand-manager roles */
 function mondayStr(){var d=new Date(),day=d.getDay(),diff=d.getDate()-day+(day===0?-6:1);d.setDate(diff);return d.toISOString().slice(0,10);}
 function weekRow(){return'<div class="fr"><div class="fg"><label>Week of (Monday)</label><input type="date" id="wr-week" value="'+mondayStr()+'"/></div><div class="fg"></div></div>';}
 function numFg(id,label,opts){opts=opts||{};return'<div class="fg"><label>'+label+'</label><input type="number" id="'+id+'" min="0"'+(opts.step?' step="'+opts.step+'"':'')+(opts.max?' max="'+opts.max+'"':'')+' placeholder="'+(opts.placeholder||'0')+'"/></div>';}
@@ -1070,15 +1262,39 @@ function renderFormForType(type,brands){
 }
 
 function loadReportTab(){
+  var rng=wrPrevWeekRange();
+  WR_WEEK_START=rng.start;WR_WEEK_END=rng.end;
+  document.getElementById('wr-week-display').textContent=wrFmtRange(rng.start,rng.end);
   fetch('/api/weekly-reports/brands',{credentials:'include'}).then(function(r){return r.json();}).then(function(d){
     WR_REPORT_TYPE=d.reportType||'brand_manager';
-    renderFormForType(WR_REPORT_TYPE,d.brands||[]);
+    WR_BRANDS=d.brands||[];
+    if(WR_REPORT_TYPE==='brand_manager'){
+      document.getElementById('wr-client-container').style.display='';
+      document.getElementById('wr-form-container').style.display='none';
+      renderClientCards(WR_BRANDS);
+    } else {
+      document.getElementById('wr-client-container').style.display='none';
+      document.getElementById('wr-form-container').style.display='';
+      renderFormForType(WR_REPORT_TYPE,WR_BRANDS);
+    }
     if(d.isAdmin){
-      document.getElementById('wr-sub-label').textContent='Admin view';
+      document.getElementById('wr-sub-label').textContent='Admin';
       document.getElementById('wr-hist-title').textContent='All Team Reports';
     }
-  }).catch(function(){document.getElementById('wr-form-body').innerHTML='<div style="color:var(--red);font-size:13px">Failed to load report config.</div>';});
+  }).catch(function(){document.getElementById('wr-week-display').textContent='Failed to load';});
   loadReportHistory();
+}
+function wrChangeWeek(){
+  var ns=prompt('Enter week start date (Sunday, YYYY-MM-DD):',WR_WEEK_START);
+  if(!ns)return;
+  var d=new Date(ns+'T12:00:00Z');
+  if(isNaN(d.getTime())){toast('⚠ Invalid date');return;}
+  var ne=new Date(d);ne.setUTCDate(d.getUTCDate()+6);
+  WR_WEEK_START=ns;WR_WEEK_END=ne.toISOString().slice(0,10);
+  document.getElementById('wr-week-display').textContent=wrFmtRange(WR_WEEK_START,WR_WEEK_END);
+  if(WR_REPORT_TYPE==='brand_manager'){
+    renderClientCards(WR_BRANDS);
+  }
 }
 function loadReportHistory(){
   fetch('/api/weekly-reports/history',{credentials:'include'}).then(function(r){return r.json();}).then(function(d){
@@ -2243,6 +2459,11 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
   const fs = require('fs');
   const nodePath = require('path');
   const DATA_DIR = process.env.DATA_DIR || (fs.existsSync('/data') ? '/data' : nodePath.join(__dirname, '..', 'data'));
+  const BRANDS_FILE_PATH = nodePath.join(DATA_DIR, 'brands.json');
+  function loadBrands() {
+    try { return JSON.parse(fs.readFileSync(BRANDS_FILE_PATH, 'utf8')); }
+    catch (_) { return { clients: [] }; }
+  }
   const WR_FILE = nodePath.join(DATA_DIR, 'weekly-reports.json');
   const ST_FILE = nodePath.join(DATA_DIR, 'subtasks.json');
 
@@ -2996,6 +3217,73 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
       res.json({ reports: reports.slice(0, 50) });
     } catch (e) {
       res.status(500).json({ error: e.message });
+    }
+  });
+
+  // ---------- ROUTE: GET /api/weekly-reports/reacher-stats ----------
+  app.get('/api/weekly-reports/reacher-stats', requireAuth, async (req, res) => {
+    const { brand } = req.query;
+    if (!brand) return res.status(400).json({ error: 'brand required' });
+    try {
+      const RAILWAY_URL = process.env.RAILWAY_URL || 'https://cultcontent-server-production.up.railway.app';
+      const brands = loadBrands();
+      const b = (brands.clients || []).find(c => (c.name || '').toLowerCase() === brand.toLowerCase());
+      if (!b || !b.shopId) return res.json({ gmv: null, videos_posted: null, samples_sent: null, ctr: null, note: 'No shopId configured for this brand' });
+      let gmv = null;
+      try {
+        const r = await axios.get(`${RAILWAY_URL}/affiliate/shops/${b.shopId}/summary`, { timeout: 8000 });
+        const g = parseFloat(r.data?.total_gmv);
+        if (!isNaN(g)) gmv = g;
+      } catch (_) {}
+      res.json({ gmv, videos_posted: null, samples_sent: null, ctr: null });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // ---------- ROUTE: GET /api/weekly-reports/client-email ----------
+  app.get('/api/weekly-reports/client-email', requireAuth, async (req, res) => {
+    const { brand } = req.query;
+    if (!brand) return res.json({ email: '' });
+    try {
+      const brands = loadBrands();
+      const b = (brands.clients || []).find(c => (c.name || '').toLowerCase() === brand.toLowerCase());
+      const email = (b && (b.billingEmail || b.loginEmail)) || '';
+      res.json({ email });
+    } catch (_) { res.json({ email: '' }); }
+  });
+
+  // ---------- ROUTE: POST /api/weekly-reports/send-lark ----------
+  // Sends the generated client message to the submitter's own Lark DM so they
+  // can review and forward it to the client's Lark group.
+  app.post('/api/weekly-reports/send-lark', requireAuth, jsonBody, async (req, res) => {
+    const { brand, message } = req.body || {};
+    if (!message) return res.status(400).json({ error: 'message required' });
+    try {
+      const email = (req.userEmail || (req.session && req.session.userEmail) || '').toLowerCase();
+      const openId = SEED_EMAIL_OPENID[email];
+
+      // Check if brand has a dedicated Lark chat ID
+      const brands = loadBrands();
+      const b = brand ? (brands.clients || []).find(c => (c.name || '').toLowerCase() === brand.toLowerCase()) : null;
+      const chatId = b && b.larkChatId;
+
+      const token = await getTenantToken();
+      if (chatId) {
+        await axios.post(
+          `${LARK_BASE}/open-apis/im/v1/messages?receive_id_type=chat_id`,
+          { receive_id: chatId, msg_type: 'text', content: JSON.stringify({ text: message }) },
+          { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, timeout: 15000 }
+        );
+      } else if (openId) {
+        const wrapped = `[Report ready to send — ${brand || 'client'}]\n\n${message}\n\n---\nCopy and paste this into your Lark conversation with the client.`;
+        await sendLarkMessage(openId, wrapped);
+      } else {
+        return res.json({ ok: false, error: 'No Lark target found — ask Tommy to set larkChatId on this brand' });
+      }
+      res.json({ ok: true });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
     }
   });
 
