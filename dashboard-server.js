@@ -552,6 +552,18 @@ app.get('/', (req, res, next) => {
 </html>`);
 });
 
+// segments.html (CRM/GHL sales-pipeline tooling) is the one page in dashboard/
+// with no explicit route of its own — every other .html file there either has
+// its own requireAuth-gated handler or is genuinely public (index/login pages).
+// Without this, the static mount below serves it to anyone, unauthenticated,
+// since Express matches routes in registration order and nothing intercepted
+// it first. Registered here, ahead of the static mount, so this wins the
+// match. (Full React port of this tooling is planned for a later Phase 8
+// pass — this is the immediate fix for the live exposure.)
+app.get('/segments.html', requireAuth, (req, res) => {
+  res.sendFile(path.join(__dirname, 'dashboard', 'segments.html'));
+});
+
 // Serve dashboard static assets (CSS/JS) before auth wall so portal.cultcontent.cc can load them
 app.use(express.static(path.join(__dirname, 'dashboard')));
 
