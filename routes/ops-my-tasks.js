@@ -2873,12 +2873,31 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
         });
       }
 
+      // Optional point award (Phase 8: point-based task management) — a NEW
+      // local ledger (db/staff-points.js), layered on top of this already-
+      // verified Lark completion, not a change to the Lark schema itself.
+      // Only recorded if the client supplied a positive `points` value;
+      // never blocks or fails the completion response above it.
+      let pointsAwarded = null;
+      const rawPoints = req.body && req.body.points;
+      if (rawPoints != null && Number(rawPoints) > 0 && req.userEmail) {
+        try {
+          const { awardPoints } = require('../db/staff-points');
+          const taskTitle = textVal(afterFields.Task) || null;
+          awardPoints({ staffEmail: req.userEmail, taskRecordId: record_id, taskTitle, points: rawPoints });
+          pointsAwarded = Math.round(Number(rawPoints));
+        } catch (e) {
+          console.error('[ops-my-tasks] points award failed (non-fatal):', e.message);
+        }
+      }
+
       return res.json({
         ok: true,
         verified: true,
         record_id,
         status: afterStatus,
         result: afterResult,
+        pointsAwarded,
       });
     } catch (e) {
       console.error('[ops-my-tasks] complete error:', e.message);

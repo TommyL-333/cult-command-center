@@ -2383,7 +2383,27 @@ app.post('/portal-admin/login', express.json(), (req, res) => {
   res.json({ ok: true });
 });
 
-try { require('./routes/portal-team-auth')(app, { express }); } catch (e) { console.error('[portal-team-auth] registration failed:', e.message); }
+let portalTeamAuth = null;
+try { portalTeamAuth = require('./routes/portal-team-auth')(app, { express }); } catch (e) { console.error('[portal-team-auth] registration failed:', e.message); }
+
+// Employee/Ops portal (Phase 8, first pass): My Clients, teammate roster,
+// points leaderboard. Depends on portal-team-auth's user-lookup helpers, so
+// mounted right after it. Support Inbox and CRM/sales tooling reuse existing
+// routes as-is (see routes/staff-portal.js header) rather than being
+// duplicated here.
+if (portalTeamAuth) {
+  try {
+    require('./routes/staff-portal')(app, {
+      requireAuth,
+      loadBrands,
+      findById: portalTeamAuth.findById,
+      findByUsername: portalTeamAuth.findByUsername,
+      loadUsers: portalTeamAuth.loadUsers,
+    });
+  } catch (e) { console.error('[staff-portal] registration failed:', e.message); }
+} else {
+  console.error('[staff-portal] skipped — portal-team-auth did not register successfully');
+}
 
 // GET /portal-admin/clients — returns client list as JSON (admin only)
 app.get('/portal-admin/clients', requirePortalAdmin, async (req, res) => {

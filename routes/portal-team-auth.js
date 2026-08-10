@@ -197,5 +197,8 @@ module.exports = function mountPortalTeamAuth(app, deps = {}) {
   });
 
   console.log('[portal-team-auth] mounted: /portal-admin/team-login, /me, /users');
-  return { findByUsername, findById, createUser, updateUser, authenticate };
+  // loadUsers/publicUser exposed for routes/staff-portal.js's teammate
+  // roster (Phase 8) — name+id only, permissions/role stripped by publicUser
+  // just like every other consumer of this list, no new exposure surface.
+  return { findByUsername, findById, createUser, updateUser, authenticate, loadUsers, publicUser };
 };
