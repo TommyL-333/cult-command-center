@@ -234,6 +234,9 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
            JOIN inner_circle_creators c ON c.id = s.creator_id
           WHERE s.token = ? AND s.expires_at > datetime('now') AND c.status = 'active'`
       ),
+      deleteSession: db.prepare(
+        `DELETE FROM inner_circle_sessions WHERE token = ?`
+      ),
       videosThisMonth: db.prepare(
         `SELECT COUNT(*) AS n FROM inner_circle_videos
           WHERE creator_id = ? AND strftime('%Y-%m', posted_at) = strftime('%Y-%m', 'now')`
@@ -535,6 +538,22 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     } catch (e) {
       console.error('[inner-circle-sqlite] login failed:', e.message);
       return res.status(500).json({ error: 'Server error' });
+    }
+  });
+
+  // POST /api/inner-circle/logout — deletes the session row server-side (not
+  // just clearing the cookie client-side, which wouldn't be possible anyway
+  // since ic_session is httpOnly) and clears the cookie. Never existed before
+  // this — the creator portal had no logout path at all.
+  app.post('/api/inner-circle/logout', (req, res) => {
+    try {
+      const token = getSessionToken(req);
+      if (token && !dbError) {
+        try { stmts.deleteSession.run(token); } catch (_) {}
+      }
+    } finally {
+      res.clearCookie('ic_session', { httpOnly: true, secure: true, sameSite: 'lax' });
+      res.json({ ok: true });
     }
   });
 

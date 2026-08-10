@@ -80,3 +80,5 @@ export const submitSupportTicket = (type: string, message: string) =>
   req('/api/inner-circle/support/submit', { method: 'POST', body: JSON.stringify({ type, message }) });
 
 export const getMyTickets = () => req<{ tickets: SupportTicket[] }>('/api/inner-circle/support/my-tickets');
+
+export const logoutCreator = () => req('/api/inner-circle/logout', { method: 'POST' });
