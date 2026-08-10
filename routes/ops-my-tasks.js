@@ -1211,8 +1211,8 @@ function generateClientMsg(brand,sl){
   var notes=crVal(‘cr-notes-’+sl),range=wrFmtRange(WR_WEEK_START,WR_WEEK_END);
   var fmtGmv=’$’+gmv.toLocaleString(‘en-US’,{minimumFractionDigits:2,maximumFractionDigits:2});
   var msg=’Hi ‘+brand+’ team 👋\n\n’
-    +’Here\’s your TikTok Shop performance update for ‘+range+’:\n\n’
-    +’📊 This Week\’s Metrics\n’
+    +’Here\\’s your TikTok Shop performance update for ‘+range+’:\n\n’
+    +’📊 This Week\\’s Metrics\n’
     +’• GMV: ‘+fmtGmv+’\n’
     +’• Videos Posted: ‘+videos+’\n’
     +’• Samples Sent: ‘+samples+’\n’
