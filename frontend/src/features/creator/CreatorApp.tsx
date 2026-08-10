@@ -9,7 +9,7 @@ import { StatsRow } from './StatsRow';
 import { SupportWidget } from './SupportWidget';
 import { UserMenu } from './UserMenu';
 import { BrandCard } from './BrandCard';
-import { EmptyState } from './EmptyState';
+import { EmptyState } from '@/features/shared/EmptyState';
 import { FinancialTab } from './FinancialTab';
 import { ProfileCard } from './ProfileCard';
 

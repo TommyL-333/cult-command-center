@@ -1350,6 +1350,21 @@ try {
   });
 } catch (e) { console.error('[creator-portal] registration failed:', e.message); }
 
+// Brand portal (Phase 7): profile, three-tab creator marketplace. Content
+// Generation / Buffer posting / Billing reuse the existing routes/content-
+// studio-gen.js and /api/client/billing*, /api/client/buffer/*,
+// /api/client/products endpoints directly — no new backend for those.
+try {
+  const { getActiveServers: getActiveDiscordServersForBrand, recordInvite: recordDiscordInviteForBrand } = require('./db/discord');
+  require('./routes/brand-portal')(app, {
+    requireClientSession,
+    loadBrands,
+    saveBrands,
+    getActiveDiscordServers: getActiveDiscordServersForBrand,
+    recordDiscordInvite: recordDiscordInviteForBrand,
+  });
+} catch (e) { console.error('[brand-portal] registration failed:', e.message); }
+
 // Content Studio: ensure schema exists (content_credits, content_references,
 // content_generations, client_integrations). Idempotent CREATE TABLE IF NOT EXISTS;
 // runs the migration against /data/inner_circle.db on boot. Must be before app.listen().

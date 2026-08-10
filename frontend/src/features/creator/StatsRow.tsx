@@ -1,5 +1,5 @@
 import { Handshake, Video, Inbox, Archive } from 'lucide-react';
-import { GlowingBorderCard } from './GlowingBorderCard';
+import { GlowingBorderCard } from '@/features/shared/GlowingBorderCard';
 import type { CreatorBrands, FinancialSummary } from '@/lib/creatorApi';
 
 function StatIcon({ icon: Icon, colorClass }: { icon: typeof Handshake; colorClass: string }) {
