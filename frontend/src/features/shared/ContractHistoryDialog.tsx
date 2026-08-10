@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { getContractHistory, type Contract } from '@/lib/creatorApi';
+import { getContractHistory, type Contract } from '@/lib/proposalsApi';
 
 function formatTerms(termsJson: string) {
   try {
@@ -20,9 +20,14 @@ function formatTerms(termsJson: string) {
  * different entry points.
  */
 export function ContractHistoryDialog({
-  creatorId, brandId, brandName, trigger, title,
+  creatorId, brandId, counterpartyName, trigger, title,
 }: {
-  creatorId: string | number; brandId: string; brandName: string | null; trigger: React.ReactNode; title: string;
+  // creatorId/brandId match GET /api/contracts/pair's params exactly — a
+  // contract pair is always (creator, brand), not two symmetric parties.
+  // counterpartyName is display-only: pass the creator's name when calling
+  // from the brand portal, the brand's name when calling from the creator
+  // portal — whichever side ISN'T the viewer.
+  creatorId: string | number; brandId: string; counterpartyName: string | null; trigger: React.ReactNode; title: string;
 }) {
   const [open, setOpen] = useState(false);
   const [contracts, setContracts] = useState<Contract[] | null>(null);
@@ -43,7 +48,7 @@ export function ContractHistoryDialog({
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{title} — {brandName || brandId}</DialogTitle>
+          <DialogTitle>{title} — {counterpartyName || brandId}</DialogTitle>
         </DialogHeader>
         {error && <p className="text-sm text-destructive">{error}</p>}
         {!contracts && !error && <p className="text-sm text-muted-foreground">Loading…</p>}

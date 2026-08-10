@@ -3,9 +3,10 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { StatusIndicator } from '@/components/ui/status-indicator';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { ProposalDialog } from './ProposalDialog';
-import { ContractHistoryDialog } from './ContractHistoryDialog';
-import type { BrandSummary, Contract } from '@/lib/creatorApi';
+import { ProposalDialog } from '@/features/shared/ProposalDialog';
+import { ContractHistoryDialog } from '@/features/shared/ContractHistoryDialog';
+import type { Contract } from '@/lib/proposalsApi';
+import type { BrandSummary } from '@/lib/creatorApi';
 
 function BrandAvatar({ name }: { name: string | null }) {
   return (
@@ -66,7 +67,7 @@ export function BrandCard({
             </Tooltip>
             {contract && (
               <ContractHistoryDialog
-                creatorId={creatorId} brandId={brand.id} brandName={brand.name} title="Contract"
+                creatorId={creatorId} brandId={brand.id} counterpartyName={brand.name} title="Contract"
                 trigger={<Button variant="outline" size="sm"><FileText />View Contract</Button>}
               />
             )}
@@ -76,15 +77,15 @@ export function BrandCard({
         {variant === 'new' && (
           <>
             <VisitWebsiteButton website={brand.website} />
-            <ProposalDialog brandId={brand.id} brandName={brand.name} trigger={<Button size="sm"><Send />Make a Proposal</Button>} />
+            <ProposalDialog counterpartyId={brand.id} counterpartyName={brand.name} trigger={<Button size="sm"><Send />Make a Proposal</Button>} />
           </>
         )}
         {variant === 'previous' && (
           <>
-            <ProposalDialog brandId={brand.id} brandName={brand.name} trigger={<Button size="sm"><Send />Make a Proposal</Button>} />
+            <ProposalDialog counterpartyId={brand.id} counterpartyName={brand.name} trigger={<Button size="sm"><Send />Make a Proposal</Button>} />
             <VisitWebsiteButton website={brand.website} />
             <ContractHistoryDialog
-              creatorId={creatorId} brandId={brand.id} brandName={brand.name} title="Previous Contracts"
+              creatorId={creatorId} brandId={brand.id} counterpartyName={brand.name} title="Previous Contracts"
               trigger={<Button variant="outline" size="sm"><History />Previous Contracts{contractCount ? ` (${contractCount})` : ''}</Button>}
             />
           </>

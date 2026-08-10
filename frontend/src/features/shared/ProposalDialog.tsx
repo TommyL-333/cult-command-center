@@ -4,16 +4,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogT
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { sendProposal } from '@/lib/creatorApi';
+import { sendProposal } from '@/lib/proposalsApi';
 
 /**
- * Make a Proposal — the spec calls for the creator picking "from criteria"
- * that auto-generates a proposal. The full criteria-builder is a later,
- * dedicated design pass; this ships the real, working backend call (Phase 5)
- * behind a minimal form (commission % + a message) so the button genuinely
- * works end-to-end now rather than being a non-functional placeholder.
+ * Make/Send a Proposal — shared between the creator and brand portals
+ * (POST /api/proposals doesn't care which side is calling; req.identity.type
+ * determines everything server-side). The spec calls for picking "from
+ * criteria" that auto-generates a proposal; the full criteria-builder is a
+ * later, dedicated design pass — this ships the real, working backend call
+ * (Phase 5) behind a minimal form (commission % + a message) so the button
+ * genuinely works end-to-end now rather than being a non-functional stub.
  */
-export function ProposalDialog({ brandId, brandName, trigger }: { brandId: string; brandName: string | null; trigger: React.ReactNode }) {
+export function ProposalDialog({ counterpartyId, counterpartyName, trigger }: { counterpartyId: string; counterpartyName: string | null; trigger: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const [commissionPct, setCommissionPct] = useState('15');
   const [message, setMessage] = useState('');
@@ -24,7 +26,7 @@ export function ProposalDialog({ brandId, brandName, trigger }: { brandId: strin
     setStatus('sending');
     setError('');
     try {
-      await sendProposal(brandId, { commissionPct: Number(commissionPct) || 0 }, message.trim() || undefined);
+      await sendProposal(counterpartyId, { commissionPct: Number(commissionPct) || 0 }, message.trim() || undefined);
       setStatus('sent');
     } catch (e) {
       setStatus('error');
@@ -37,7 +39,7 @@ export function ProposalDialog({ brandId, brandName, trigger }: { brandId: strin
       <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Send a proposal to {brandName || brandId}</DialogTitle>
+          <DialogTitle>Send a proposal to {counterpartyName || counterpartyId}</DialogTitle>
         </DialogHeader>
         {status === 'sent' ? (
           <p className="text-sm text-muted-foreground">Proposal sent. You'll see their response in Messages.</p>
