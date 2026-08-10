@@ -165,6 +165,27 @@ module.exports = function mountProposals(app, deps = {}) {
     }
   });
 
+  // POST /api/contracts/:id/end — end an active contract with NO replacement
+  // proposal (relationship simply ends — expiry, mutual agreement to stop,
+  // etc.). Either party to the contract may end it. Without this route,
+  // "Previous Contracts"/"Previous Affiliates" could only ever populate via
+  // a brand-new accepted proposal for the same pair, which doesn't match how
+  // relationships actually end in practice.
+  app.post('/api/contracts/:id/end', requireAnyIdentity, requireCreatorOrBrand, (req, res) => {
+    try {
+      const contract = prop.getContract(Number(req.params.id));
+      if (!contract) return res.status(404).json({ ok: false, error: 'Contract not found' });
+      const ownField = req.identity.type === 'creator' ? contract.creator_id : contract.brand_id;
+      if (String(ownField) !== String(req.identity.id)) {
+        return res.status(403).json({ ok: false, error: 'Not a party to this contract' });
+      }
+      const updated = prop.endContract(contract.id);
+      res.json({ ok: true, contract: updated });
+    } catch (e) {
+      res.status(400).json({ ok: false, error: e.message });
+    }
+  });
+
   // GET /api/contracts — this identity's contracts (active + past — "My Brands"/
   // "Current Affiliates" vs "Previous Contracts"/"Previous Affiliates" data source)
   app.get('/api/contracts', requireAnyIdentity, requireCreatorOrBrand, (req, res) => {

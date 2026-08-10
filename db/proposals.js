@@ -97,6 +97,8 @@ const contractsForPairStmt = db.prepare(`
 `);
 const contractsForCreatorStmt = db.prepare(`SELECT * FROM contracts WHERE creator_id = ? ORDER BY started_at DESC`);
 const contractsForBrandStmt = db.prepare(`SELECT * FROM contracts WHERE brand_id = ? ORDER BY started_at DESC`);
+const getContractStmt = db.prepare(`SELECT * FROM contracts WHERE id = ?`);
+const endContractStmt = db.prepare(`UPDATE contracts SET ended_at = CURRENT_TIMESTAMP WHERE id = ?`);
 
 function assertNotTerminal(proposal) {
   if (!proposal) throw new Error('proposal not found');
@@ -165,6 +167,28 @@ function withdrawProposal(proposalId) {
   return getProposal(proposalId);
 }
 
+/**
+ * endContract(contractId) — closes an active contract WITHOUT a replacement
+ * being accepted. Needed alongside acceptProposal's "close the prior active
+ * one" behavior: a real creator<->brand relationship can end on its own
+ * (expiry, mutual agreement to stop) with no immediately-following
+ * renegotiation. Without this, a brand could only ever move from "My
+ * Brands"/"Current Affiliates" to "Previous Contracts"/"Previous Affiliates"
+ * by way of a brand-new accepted proposal for the same pair — which doesn't
+ * match reality and would leave "Previous Contracts" effectively unreachable.
+ */
+function endContract(contractId) {
+  const contract = getContractStmt.get(contractId);
+  if (!contract) throw new Error('contract not found');
+  if (contract.ended_at) throw new Error('contract is already ended');
+  endContractStmt.run(contractId);
+  return getContractStmt.get(contractId);
+}
+
+function getContract(contractId) {
+  return getContractStmt.get(contractId) || null;
+}
+
 function getProposal(proposalId) {
   const proposal = getProposalStmt.get(proposalId);
   if (!proposal) return null;
@@ -207,5 +231,7 @@ module.exports = {
   getActiveContract,
   getContractsForPair,
   getContractsForParty,
+  getContract,
+  endContract,
   TERMINAL_STATUSES,
 };

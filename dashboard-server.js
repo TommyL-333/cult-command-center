@@ -1337,6 +1337,19 @@ try {
   require('./routes/proposals')(app, { requireAnyIdentity, loadBrands });
 } catch (e) { console.error('[messaging/proposals] registration failed:', e.message); }
 
+// Creator portal (Phase 6): profile, three-tab brands, financial summary.
+// requireSqliteSession comes from icSqlite (same pattern routes/inner-circle-
+// covenant.js already uses); Discord helpers from db/discord.js (Phase 2).
+try {
+  const { getActiveServers: getActiveDiscordServers, recordInvite: recordDiscordInvite } = require('./db/discord');
+  require('./routes/creator-portal')(app, {
+    requireSqliteSession: icSqlite && icSqlite.requireSqliteSession,
+    loadBrands,
+    getActiveDiscordServers,
+    recordDiscordInvite,
+  });
+} catch (e) { console.error('[creator-portal] registration failed:', e.message); }
+
 // Content Studio: ensure schema exists (content_credits, content_references,
 // content_generations, client_integrations). Idempotent CREATE TABLE IF NOT EXISTS;
 // runs the migration against /data/inner_circle.db on boot. Must be before app.listen().
