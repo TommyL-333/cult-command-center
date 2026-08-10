@@ -1206,37 +1206,37 @@ function submitClientReport(brand,sl){
 }
 
 function generateClientMsg(brand,sl){
-  var gmv=crNum(‘cr-gmv-’+sl),videos=crNum(‘cr-videos-’+sl),samples=crNum(‘cr-samples-’+sl);
-  var ctr=crNum(‘cr-ctr-’+sl),conv=crNum(‘cr-conv-’+sl),sps=crNum(‘cr-sps-’+sl);
-  var notes=crVal(‘cr-notes-’+sl),range=wrFmtRange(WR_WEEK_START,WR_WEEK_END);
-  var fmtGmv=’$’+gmv.toLocaleString(‘en-US’,{minimumFractionDigits:2,maximumFractionDigits:2});
-  var msg=’Hi ‘+brand+’ team 👋\n\n’
-    +’Here\\’s your TikTok Shop performance update for ‘+range+’:\n\n’
-    +’📊 This Week\\’s Metrics\n’
-    +’• GMV: ‘+fmtGmv+’\n’
-    +’• Videos Posted: ‘+videos+’\n’
-    +’• Samples Sent: ‘+samples+’\n’
-    +(ctr?’• Click-Through Rate: ‘+ctr+’%\n’:’’)
-    +(conv?’• GMV Conversion Rate: ‘+conv+’%\n’:’’)
-    +(sps?’\n⭐ Shop Performance Score: ‘+sps+’ / 5\n’:’’);
+  var gmv=crNum('cr-gmv-'+sl),videos=crNum('cr-videos-'+sl),samples=crNum('cr-samples-'+sl);
+  var ctr=crNum('cr-ctr-'+sl),conv=crNum('cr-conv-'+sl),sps=crNum('cr-sps-'+sl);
+  var notes=crVal('cr-notes-'+sl),range=wrFmtRange(WR_WEEK_START,WR_WEEK_END);
+  var fmtGmv='$'+gmv.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
+  var msg='Hi '+brand+' team 👋\\n\\n'
+    +'Here\\'s your TikTok Shop performance update for '+range+':\\n\\n'
+    +'📊 This Week\\'s Metrics\\n'
+    +'• GMV: '+fmtGmv+'\\n'
+    +'• Videos Posted: '+videos+'\\n'
+    +'• Samples Sent: '+samples+'\\n'
+    +(ctr?'• Click-Through Rate: '+ctr+'%\\n':'')
+    +(conv?'• GMV Conversion Rate: '+conv+'%\\n':'')
+    +(sps?'\\n⭐ Shop Performance Score: '+sps+' / 5\\n':'');
 
   // tasks section
   var td=CR_TASKS[sl]||{};
   if(td.completed&&td.completed.length){
-    msg+=’\n✅ Completed This Week\n’;
+    msg+='\\n✅ Completed This Week\\n';
     td.completed.forEach(function(t){
-      msg+=’• ‘+t.task+(t.result?’ — ‘+t.result:’’)+’\n’;
+      msg+='• '+t.task+(t.result?' — '+t.result:'')+'\\n';
     });
   }
   if(td.pending&&td.pending.length){
-    msg+=’\n🔄 In Progress\n’;
+    msg+='\\n🔄 In Progress\\n';
     td.pending.forEach(function(t){
-      msg+=’• ‘+t.task+(t.status&&t.status!==’To Do’?’ (‘+t.status+’)’:’’)+’\n’;
+      msg+='• '+t.task+(t.status&&t.status!=='To Do'?' ('+t.status+')':'')+'\\n';
     });
   }
 
-  if(notes)msg+=’\n’+notes+’\n’;
-  msg+=’\nLet us know if you have any questions!\n\nBest,\nCult Content’;
+  if(notes)msg+='\\n'+notes+'\\n';
+  msg+='\\nLet us know if you have any questions!\\n\\nBest,\\nCult Content';
   MSG_BRAND_NAME=brand;MSG_EMAIL='';
   document.getElementById('msg-modal-for').textContent='For: '+brand;
   document.getElementById('msg-text').value=msg;
