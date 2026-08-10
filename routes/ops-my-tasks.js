@@ -200,6 +200,11 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .cr-status.submitted{background:rgba(107,232,107,.15);color:#6be86b}
   .cr-status.pending{background:rgba(154,160,181,.12);color:var(--muted)}
   .cr-auto-tag{font-size:10px;background:rgba(0,242,234,.15);color:var(--cyan);padding:1px 6px;border-radius:4px;margin-left:5px;vertical-align:middle}
+  .cr-tasks{margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
+  .cr-tasks-hdr{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+  .cr-task-item{font-size:12.5px;padding:5px 0;border-bottom:1px solid rgba(47,51,70,.4);display:flex;align-items:flex-start;gap:7px;line-height:1.4}
+  .cr-task-item:last-child{border-bottom:none}
+  .cr-task-result{font-size:11.5px;color:var(--muted);margin-top:2px}
   /* Sprint planner */
   .sp-board{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:18px}
   .sp-col{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px;display:flex;flex-direction:column}
@@ -1111,6 +1116,9 @@ function renderClientCards(brands){
       +'<div class="fr full"><div class="fg"><label>Notes for client</label>'
         +'<textarea id="'+eid('notes')+'" style="min-height:60px" placeholder="Wins, next steps, context…"></textarea>'
       +'</div></div>'
+      +'<div class="cr-tasks" id="'+eid('tasks')+'">'
+        +'<div style="color:var(--muted);font-size:12px">Loading tasks…</div>'
+      +'</div>'
       +'<div class="err" id="'+eid('err')+'" style="margin-top:6px"></div>'
       +'<div style="display:flex;gap:8px;justify-content:flex-end;margin-top:14px">'
         +'<button class="btn ghost" data-brand="'+esc(b)+'" data-sl="'+sl+'" onclick="generateClientMsg(this.dataset.brand,this.dataset.sl)">📝 Generate Message</button>'
@@ -1119,6 +1127,43 @@ function renderClientCards(brands){
     +'</div>';
   });
   c.innerHTML=html;
+  // auto-load tasks for every card
+  brands.forEach(function(b){loadClientTasks(b,wrSlug(b));});
+}
+
+var CR_TASKS={};
+function loadClientTasks(brand,sl){
+  fetch('/api/weekly-reports/client-tasks?brand='+encodeURIComponent(brand)+'&weekStart='+WR_WEEK_START+'&weekEnd='+WR_WEEK_END,{credentials:'include'})
+  .then(function(r){return r.json();}).then(function(d){
+    CR_TASKS[sl]=d;
+    var el=document.getElementById('cr-tasks-'+sl);if(!el)return;
+    var html='';
+    if(d.completed&&d.completed.length){
+      html+='<div class="cr-tasks-hdr">✅ Completed this week <span style="background:rgba(107,232,107,.15);color:#6be86b;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700">'+d.completed.length+'</span></div>';
+      d.completed.forEach(function(t){
+        html+='<div class="cr-task-item"><span style="color:#6be86b;flex-shrink:0">✓</span><div>'
+          +'<div>'+esc(t.task)+(t.owner?'<span style="color:var(--muted);font-size:11px"> · '+esc(t.owner)+'</span>':'')+'</div>'
+          +(t.result?'<div class="cr-task-result">'+esc(t.result)+'</div>':'')
+        +'</div></div>';
+      });
+    }
+    if(d.pending&&d.pending.length){
+      if(html)html+='<div style="margin-top:10px"></div>';
+      html+='<div class="cr-tasks-hdr">🔄 In progress / pending <span style="background:rgba(154,160,181,.15);color:var(--muted);padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700">'+d.pending.length+'</span></div>';
+      d.pending.forEach(function(t){
+        var sc=t.status==='Blocked'?'var(--red)':t.status==='In Progress'?'var(--cyan)':'var(--muted)';
+        html+='<div class="cr-task-item"><span style="color:'+sc+';flex-shrink:0;font-size:11px">●</span><div>'
+          +'<div>'+esc(t.task)+(t.owner?'<span style="color:var(--muted);font-size:11px"> · '+esc(t.owner)+'</span>':'')+'</div>'
+          +'<div class="cr-task-result" style="color:'+sc+'">'+esc(t.status||'')+(t.priority?' · '+esc(t.priority):'')+'</div>'
+        +'</div></div>';
+      });
+    }
+    if(!html)html='<div style="color:var(--muted);font-size:12px">No tasks found for this client in Lark.</div>';
+    el.innerHTML=html;
+  }).catch(function(){
+    var el=document.getElementById('cr-tasks-'+sl);
+    if(el)el.innerHTML='<div style="color:var(--muted);font-size:12px">Could not load tasks.</div>';
+  });
 }
 
 function fetchReacherStats(brand,sl){
@@ -1161,21 +1206,37 @@ function submitClientReport(brand,sl){
 }
 
 function generateClientMsg(brand,sl){
-  var gmv=crNum('cr-gmv-'+sl),videos=crNum('cr-videos-'+sl),samples=crNum('cr-samples-'+sl);
-  var ctr=crNum('cr-ctr-'+sl),conv=crNum('cr-conv-'+sl),sps=crNum('cr-sps-'+sl);
-  var notes=crVal('cr-notes-'+sl),range=wrFmtRange(WR_WEEK_START,WR_WEEK_END);
-  var fmtGmv='$'+gmv.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2});
-  var msg='Hi '+brand+' team 👋\n\n'
-    +'Here’s your TikTok Shop performance update for '+range+':\n\n'
-    +'📊 This Week’s Metrics\n'
-    +'• GMV: '+fmtGmv+'\n'
-    +'• Videos Posted: '+videos+'\n'
-    +'• Samples Sent: '+samples+'\n'
-    +(ctr?'• Click-Through Rate: '+ctr+'%\n':'')
-    +(conv?'• GMV Conversion Rate: '+conv+'%\n':'')
-    +(sps?'\n⭐ Shop Performance Score: '+sps+' / 5\n':'');
-  if(notes)msg+='\n'+notes+'\n';
-  msg+='\nLet us know if you have any questions!\n\nBest,\nCult Content';
+  var gmv=crNum(‘cr-gmv-’+sl),videos=crNum(‘cr-videos-’+sl),samples=crNum(‘cr-samples-’+sl);
+  var ctr=crNum(‘cr-ctr-’+sl),conv=crNum(‘cr-conv-’+sl),sps=crNum(‘cr-sps-’+sl);
+  var notes=crVal(‘cr-notes-’+sl),range=wrFmtRange(WR_WEEK_START,WR_WEEK_END);
+  var fmtGmv=’$’+gmv.toLocaleString(‘en-US’,{minimumFractionDigits:2,maximumFractionDigits:2});
+  var msg=’Hi ‘+brand+’ team 👋\n\n’
+    +’Here\’s your TikTok Shop performance update for ‘+range+’:\n\n’
+    +’📊 This Week\’s Metrics\n’
+    +’• GMV: ‘+fmtGmv+’\n’
+    +’• Videos Posted: ‘+videos+’\n’
+    +’• Samples Sent: ‘+samples+’\n’
+    +(ctr?’• Click-Through Rate: ‘+ctr+’%\n’:’’)
+    +(conv?’• GMV Conversion Rate: ‘+conv+’%\n’:’’)
+    +(sps?’\n⭐ Shop Performance Score: ‘+sps+’ / 5\n’:’’);
+
+  // tasks section
+  var td=CR_TASKS[sl]||{};
+  if(td.completed&&td.completed.length){
+    msg+=’\n✅ Completed This Week\n’;
+    td.completed.forEach(function(t){
+      msg+=’• ‘+t.task+(t.result?’ — ‘+t.result:’’)+’\n’;
+    });
+  }
+  if(td.pending&&td.pending.length){
+    msg+=’\n🔄 In Progress\n’;
+    td.pending.forEach(function(t){
+      msg+=’• ‘+t.task+(t.status&&t.status!==’To Do’?’ (‘+t.status+’)’:’’)+’\n’;
+    });
+  }
+
+  if(notes)msg+=’\n’+notes+’\n’;
+  msg+=’\nLet us know if you have any questions!\n\nBest,\nCult Content’;
   MSG_BRAND_NAME=brand;MSG_EMAIL='';
   document.getElementById('msg-modal-for').textContent='For: '+brand;
   document.getElementById('msg-text').value=msg;
@@ -3215,6 +3276,51 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
         ? all.filter((r) => brands.has(r.brand))
         : all;
       res.json({ reports: reports.slice(0, 50) });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // ---------- ROUTE: GET /api/weekly-reports/client-tasks ----------
+  // Returns tasks for a client split into completed-this-week vs pending.
+  // Uses a short cache so multiple cards loading simultaneously don't hammer Lark.
+  let _allTasksCache = { records: null, clientsMap: null, exp: 0 };
+  app.get('/api/weekly-reports/client-tasks', requireAuth, async (req, res) => {
+    const { brand, weekStart, weekEnd } = req.query;
+    if (!brand) return res.status(400).json({ error: 'brand required' });
+    try {
+      const now = Date.now();
+      let records, clientsMap;
+      if (_allTasksCache.records && now < _allTasksCache.exp) {
+        ({ records, clientsMap } = _allTasksCache);
+      } else {
+        [records, clientsMap] = await Promise.all([
+          listAllTaskRecords(),
+          getClientsMap().catch(() => ({})),
+        ]);
+        _allTasksCache = { records, clientsMap, exp: now + 5 * 60 * 1000 };
+      }
+
+      const weekStartMs = weekStart ? new Date(weekStart + 'T00:00:00.000Z').getTime() : 0;
+      const weekEndMs   = weekEnd   ? new Date(weekEnd   + 'T23:59:59.999Z').getTime() : Infinity;
+      const brandLower  = brand.toLowerCase().trim();
+
+      const completed = [], pending = [];
+      for (const rec of records) {
+        const t = shapeTask(rec, clientsMap);
+        if (!t.client) continue;
+        if (t.client.toLowerCase().trim() !== brandLower) continue;
+        if (t.status === 'Completed') {
+          const co = t.completedOn;
+          if (co && co >= weekStartMs && co <= weekEndMs) {
+            completed.push({ task: t.task, owner: t.ownerName, result: textVal((rec.fields || {})['Result / Output']) });
+          }
+        } else {
+          pending.push({ task: t.task, status: t.status, priority: t.priority, owner: t.ownerName });
+        }
+      }
+
+      res.json({ completed, pending });
     } catch (e) {
       res.status(500).json({ error: e.message });
     }
