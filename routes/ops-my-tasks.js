@@ -316,6 +316,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     <div style="display:flex;gap:8px;align-items:center">
       <a class="chip sisy" href="https://sisyphus.cultcontent.cc" target="_blank" rel="noopener">🪨 Sisyphus</a>
       <a class="chip" href="/task-management">⚙ Admin</a>
+      <button class="chip" onclick="openMtAdd()">+ Add Task</button>
       <button class="chip" onclick="load()" title="Refresh">↻</button>
     </div>
   </header>
@@ -529,9 +530,94 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   </div>
 </div>
 
+<!-- add task modal (user) -->
+<div class="overlay" id="mt-add-overlay" onclick="if(event.target===this)closeMtAdd()">
+  <div class="modal" style="max-width:480px">
+    <h3>+ Add Task</h3>
+    <p class="mt">This task will be assigned to you.</p>
+    <label for="mt-add-title">Task <span style="color:var(--red)">*</span></label>
+    <input type="text" id="mt-add-title" placeholder="What needs to get done?"/>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+      <div>
+        <label for="mt-add-prio">Priority</label>
+        <select id="mt-add-prio" style="width:100%;padding:10px;border-radius:8px;background:var(--panel2);color:var(--txt);border:1px solid var(--border);font-family:inherit;font-size:13px">
+          <option value="">Normal</option>
+          <option value="Critical">🔴 Critical</option>
+          <option value="High">🟠 High</option>
+          <option value="Normal">🟡 Normal</option>
+          <option value="Low">⚪ Low</option>
+        </select>
+      </div>
+      <div>
+        <label for="mt-add-due">Due Date</label>
+        <input type="date" id="mt-add-due" style="width:100%;padding:10px;border-radius:8px;background:var(--panel2);color:var(--txt);border:1px solid var(--border);font-family:inherit;font-size:13px"/>
+      </div>
+    </div>
+    <div style="margin-top:12px">
+      <label for="mt-add-client">Client <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+      <select id="mt-add-client" style="width:100%;padding:10px;border-radius:8px;background:var(--panel2);color:var(--txt);border:1px solid var(--border);font-family:inherit;font-size:13px">
+        <option value="">No client</option>
+      </select>
+    </div>
+    <div style="margin-top:12px">
+      <label for="mt-add-notes">Notes / Prompt <span style="color:var(--muted);font-weight:400">(optional)</span></label>
+      <textarea id="mt-add-notes" placeholder="Any context, links, or instructions…" style="min-height:80px"></textarea>
+    </div>
+    <div class="err" id="mt-add-err" style="display:none"></div>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="closeMtAdd()">Cancel</button>
+      <button class="btn" id="mt-add-btn" onclick="doMtAdd()">Add Task</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 <script>
 var ALL=[],FILTER='all',SHOW_BLOCKED=false,CURRENT=null,MODE='complete',TEAM=[],SUBTASKS={},ST_PARENT=null,IS_MANAGER=false,DEL_TARGET=null;
+var MT_ADD_CLIENTS=[];
+function openMtAdd(){
+  document.getElementById('mt-add-title').value='';
+  document.getElementById('mt-add-prio').value='';
+  document.getElementById('mt-add-due').value='';
+  document.getElementById('mt-add-notes').value='';
+  var err=document.getElementById('mt-add-err');
+  err.style.display='none';err.textContent='';
+  document.getElementById('mt-add-btn').disabled=false;
+  var cs=document.getElementById('mt-add-client');
+  if(MT_ADD_CLIENTS.length){
+    cs.innerHTML='<option value="">No client</option>'+MT_ADD_CLIENTS.map(function(c){return'<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>';}).join('');
+  } else {
+    cs.innerHTML='<option value="">Loading…</option>';
+    fetch('/api/my-tasks/clients',{credentials:'include'}).then(function(r){return r.json();}).then(function(d){
+      MT_ADD_CLIENTS=d.clients||[];
+      cs.innerHTML='<option value="">No client</option>'+MT_ADD_CLIENTS.map(function(c){return'<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>';}).join('');
+    }).catch(function(){cs.innerHTML='<option value="">No client</option>';});
+  }
+  document.getElementById('mt-add-overlay').classList.add('show');
+  setTimeout(function(){document.getElementById('mt-add-title').focus();},60);
+}
+function closeMtAdd(){
+  document.getElementById('mt-add-overlay').classList.remove('show');
+}
+function doMtAdd(){
+  var task=document.getElementById('mt-add-title').value.trim();
+  var err=document.getElementById('mt-add-err');
+  if(!task){err.textContent='Task title is required.';err.style.display='';return;}
+  var btn=document.getElementById('mt-add-btn');
+  btn.disabled=true;
+  var body={
+    task:task,
+    priority:document.getElementById('mt-add-prio').value||'',
+    dueDate:document.getElementById('mt-add-due').value||'',
+    promptAction:document.getElementById('mt-add-notes').value.trim(),
+    clientRecordId:document.getElementById('mt-add-client').value||''
+  };
+  fetch('/api/my-tasks/create',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+  .then(function(r){return r.json();}).then(function(d){
+    if(d.ok){closeMtAdd();load();toast('Task created');}
+    else{err.textContent=d.error||'Failed to create task';err.style.display='';btn.disabled=false;}
+  }).catch(function(e){err.textContent='Error: '+e.message;err.style.display='';btn.disabled=false;});
+}
 var PRIO=[
   {key:'Critical',label:'🔴 Critical',color:'var(--p1)',match:['critical','🔴 critical','p0','urgent']},
   {key:'High',label:'🟠 High',color:'var(--p2)',match:['high','🟠 high','p1']},
@@ -3778,6 +3864,39 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       if (promptAction) fields['Prompt / Action'] = promptAction;
       // Store at noon UTC so local-timezone display never drifts to the wrong day
       if (dueDate) fields['Due Date'] = new Date(dueDate + 'T12:00:00.000Z').getTime();
+      if (clientRecordId) fields['Client'] = [{ record_id: clientRecordId }];
+      const data = await larkPost(
+        `/open-apis/bitable/v1/apps/${OPS_APP_TOKEN}/tables/${TASKS_TABLE}/records`,
+        { fields }
+      );
+      if (data.code !== 0) return res.status(500).json({ error: `Lark error ${data.code}: ${data.msg}` });
+      res.json({ ok: true, record: data.data && data.data.record });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  // ---------- ROUTE: GET /api/my-tasks/clients ----------
+  app.get('/api/my-tasks/clients', requireAuth, async (req, res) => {
+    try {
+      const clientsMap = await getClientsMap();
+      const clients = Object.entries(clientsMap)
+        .map(([id, name]) => ({ id, name }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+      res.json({ clients });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  // ---------- ROUTE: POST /api/my-tasks/create ----------
+  app.post('/api/my-tasks/create', requireAuth, jsonBody, async (req, res) => {
+    try {
+      const { openId } = await resolveCaller(req);
+      if (!openId) return res.status(403).json({ error: 'Could not resolve your Lark user. Make sure your account is linked.' });
+      const { task, priority, dueDate, promptAction, clientRecordId } = req.body || {};
+      if (!(task || '').trim()) return res.status(400).json({ error: 'task is required' });
+      const fields = { 'Task': task.trim(), 'Status': 'To Do', 'Created On': Date.now() };
+      fields['Owner'] = [{ id: openId }];
+      if (priority) fields['Priority'] = priority;
+      if (dueDate) fields['Due Date'] = new Date(dueDate + 'T12:00:00.000Z').getTime();
+      if (promptAction) fields['Prompt / Action'] = promptAction;
       if (clientRecordId) fields['Client'] = [{ record_id: clientRecordId }];
       const data = await larkPost(
         `/open-apis/bitable/v1/apps/${OPS_APP_TOKEN}/tables/${TASKS_TABLE}/records`,
