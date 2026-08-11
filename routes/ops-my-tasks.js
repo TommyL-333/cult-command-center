@@ -72,7 +72,7 @@ const SEED_EMAIL_OPENID = {
 // Add gourab@cultcontent.cc once they're added to the Lark Team table.
 const BRAND_MANAGERS = {
   'shayan@cultcontent.cc': ['Approved Science', 'The Perfect Haircare', 'Dissolvd', 'B NOOR'],
-  'gourab@cultcontent.cc': ['Lode WTR', 'Roots by Genetic Art', 'YUGLO Skin'],
+  'gourab@cultcontent.cc': ['Lode WTR', 'Roots by Genetic Art', 'YUGLO Skin', 'Trip Visuals', 'Made Right'],
 };
 
 // Weekly report form type per team member.
