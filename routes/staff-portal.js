@@ -32,7 +32,7 @@
 const express = require('express');
 
 module.exports = function mountStaffPortal(app, deps = {}) {
-  const { requireAuth, loadBrands, findById, findByUsername, loadUsers } = deps;
+  const { requireAuth, loadBrands, findById, findByUsername, loadUsers, stripe, getCreatorById } = deps;
   if (!requireAuth) throw new Error('[staff-portal] requireAuth dep is required');
   if (!loadBrands) throw new Error('[staff-portal] loadBrands dep is required');
   if (!findById || !findByUsername || !loadUsers) {
@@ -53,6 +53,12 @@ module.exports = function mountStaffPortal(app, deps = {}) {
   } catch (e) {
     console.error('[staff-portal] failed to load db/staff-points:', e.message);
   }
+  let stripeConnect;
+  try {
+    stripeConnect = require('../db/stripe-connect');
+  } catch (e) {
+    console.error('[staff-portal] failed to load db/stripe-connect:', e.message);
+  }
 
   function currentStaffUser(req) {
     if (req.session?.portalUserId) {
@@ -70,6 +76,18 @@ module.exports = function mountStaffPortal(app, deps = {}) {
   function requireStaffUserAdmin(req, res, next) {
     const u = currentStaffUser(req);
     if (!isUserAdmin(u)) return res.status(403).json({ error: 'user_admin permission required' });
+    req.staffUser = u;
+    next();
+  }
+
+  // 'billing' is an existing permission (routes/portal-team-auth.js's
+  // ALL_PERMISSIONS, described there as "financials / invoicing") — reused
+  // here for creator-payout initiation rather than inventing a new one.
+  function requireStaffBilling(req, res, next) {
+    const u = currentStaffUser(req);
+    if (!(u && Array.isArray(u.permissions) && u.permissions.includes('billing'))) {
+      return res.status(403).json({ error: 'billing permission required' });
+    }
     req.staffUser = u;
     next();
   }
@@ -182,5 +200,66 @@ module.exports = function mountStaffPortal(app, deps = {}) {
     }
   });
 
-  console.log('[staff-portal] mounted: /api/staff/profile, /roster, /my-clients, /assignments, /clients/assign|unassign, /points/leaderboard|mine');
+  // ── Creator payouts (Phase 9) — staff-side INITIATION only. The creator-
+  // facing status/onboard/history endpoints live in routes/creator-payouts.js
+  // (this file already has the staff identity + permission-check
+  // infrastructure that would otherwise be duplicated there). Gated on the
+  // 'billing' permission, same as brand billing conceptually belongs to
+  // whoever holds that permission today.
+  app.get('/api/staff/payouts', requireAuth, requireStaffBilling, (req, res) => {
+    if (!stripeConnect) return res.status(503).json({ error: 'Payouts storage unavailable' });
+    try {
+      const { creatorId } = req.query;
+      const payouts = creatorId ? stripeConnect.getPayoutsForCreator(creatorId) : stripeConnect.getAllPayouts();
+      res.json({ ok: true, payouts });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // POST /api/staff/payouts/create — body { creatorId, amountCents, description? }
+  // Creates a real Stripe Transfer to the creator's connected account. See
+  // db/stripe-connect.js's header comment: this confirms the transfer moved
+  // funds into their CONNECTED ACCOUNT BALANCE, not that it has reached
+  // their bank yet — the response and stored status reflect that honestly.
+  app.post('/api/staff/payouts/create', requireAuth, requireStaffBilling, express.json(), async (req, res) => {
+    if (!stripe) return res.status(503).json({ error: 'Stripe not configured — set STRIPE_SECRET_KEY' });
+    if (!stripeConnect) return res.status(503).json({ error: 'Payouts storage unavailable' });
+    if (!getCreatorById) return res.status(503).json({ error: 'Creator lookup unavailable' });
+    try {
+      const { creatorId, amountCents, description = null } = req.body || {};
+      if (!creatorId || !Number.isFinite(Number(amountCents)) || Number(amountCents) <= 0) {
+        return res.status(400).json({ error: 'creatorId and a positive amountCents are required' });
+      }
+      const creator = getCreatorById(creatorId);
+      if (!creator) return res.status(404).json({ error: 'Creator not found' });
+      const account = stripeConnect.getAccount(creatorId);
+      if (!account || !account.stripe_account_id) {
+        return res.status(409).json({ error: 'This creator has not started Stripe Connect onboarding yet.' });
+      }
+      if (!account.payouts_enabled) {
+        return res.status(409).json({ error: 'This creator\'s Connect account is not yet enabled for payouts (onboarding incomplete).' });
+      }
+
+      const transfer = await stripe.transfers.create({
+        amount: Math.round(Number(amountCents)),
+        currency: 'usd',
+        destination: account.stripe_account_id,
+        description: description || undefined,
+        metadata: { creatorId: String(creatorId), initiatedBy: req.staffUser.email || req.staffUser.id },
+      });
+
+      stripeConnect.createPayout({
+        creatorId, stripeTransferId: transfer.id, amountCents, description,
+        status: 'paid', createdByEmail: req.staffUser.email || null,
+      });
+
+      res.json({ ok: true, transferId: transfer.id });
+    } catch (e) {
+      console.error('[staff-portal] payout create failed:', e.message);
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  console.log('[staff-portal] mounted: /api/staff/profile, /roster, /my-clients, /assignments, /clients/assign|unassign, /points/leaderboard|mine, /payouts');
 };

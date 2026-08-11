@@ -226,7 +226,7 @@ async function fetchLarkMinutesMeta(minuteToken) {
 
 // Capture raw body for HMAC verification on webhook routes, parse JSON for everything else
 app.use((req, res, next) => {
-  if (req.path === '/api/webhooks/lark-meeting' || req.path === '/api/webhooks/fireflies-meeting') {
+  if (req.path === '/api/webhooks/lark-meeting' || req.path === '/api/webhooks/fireflies-meeting' || req.path === '/api/webhooks/stripe-connect') {
     let raw = '';
     req.setEncoding('utf8');
     req.on('data', chunk => { raw += chunk; });
@@ -1316,6 +1316,13 @@ function formatDuration(seconds) {
 // above app.use(requireAuth): creators have no Cloudflare Access session.
 const icSqlite = require('./routes/inner-circle-sqlite')(app, { express });
 
+// Small shared lookup used by both routes/creator-payouts.js (creator-facing)
+// and routes/staff-portal.js (staff-initiated payouts) -- db/inner-circle.js
+// doesn't export a getById already, and this is cheap/local enough not to
+// warrant adding one to its shared query set.
+const getCreatorByIdStmt = require('./db/inner-circle').db.prepare(`SELECT * FROM inner_circle_creators WHERE id = ?`);
+const getCreatorById = (id) => getCreatorByIdStmt.get(id);
+
 // resolveIdentity's data deps — bound once here since both GET /api/me and
 // requireAnyIdentity (Phase 5: messaging/proposals) need the same two
 // lookups (creator-session check, brand-session-to-record lookup).
@@ -1361,6 +1368,16 @@ try {
     recordDiscordInvite,
   });
 } catch (e) { console.error('[creator-portal] registration failed:', e.message); }
+
+// Creator payouts (Phase 9): Stripe Connect onboarding + payout ledger.
+try {
+  require('./routes/creator-payouts')(app, {
+    requireSqliteSession: icSqlite && icSqlite.requireSqliteSession,
+    stripe,
+    getCreatorById,
+    publicBaseUrl: CREATOR_BASE_URL,
+  });
+} catch (e) { console.error('[creator-payouts] registration failed:', e.message); }
 
 // Brand portal (Phase 7): profile, three-tab creator marketplace. Content
 // Generation / Buffer posting / Billing reuse the existing routes/content-
@@ -2399,6 +2416,8 @@ if (portalTeamAuth) {
       findById: portalTeamAuth.findById,
       findByUsername: portalTeamAuth.findByUsername,
       loadUsers: portalTeamAuth.loadUsers,
+      stripe,
+      getCreatorById,
     });
   } catch (e) { console.error('[staff-portal] registration failed:', e.message); }
 } else {
