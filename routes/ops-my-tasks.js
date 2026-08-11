@@ -3904,7 +3904,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       );
       if (data.code !== 0) return res.status(500).json({ error: `Lark error ${data.code}: ${data.msg}` });
       res.json({ ok: true, record: data.data && data.data.record });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) { console.error('[my-tasks/create]', e.message, e.response && e.response.data); res.status(500).json({ error: e.message }); }
   });
 
   // ---------- ROUTE: GET /task-management (admin HTML) ----------
