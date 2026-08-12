@@ -1,6 +1,7 @@
 /**
  * Cult Content — Command Center Dashboard Server
  * Serves the dashboard UI and proxies API calls to GHL, Railway, and stubs.
+ * Build: 2026-08-12
  */
 
 require('dotenv').config({ override: true });
