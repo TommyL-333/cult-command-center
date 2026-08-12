@@ -1997,10 +1997,59 @@ const TASK_MANAGEMENT_HTML = `<!DOCTYPE html>
     </div>
   </div>
 </div>
+<!-- edit task modal (admin) -->
+<div class="overlay" id="edit-task-overlay" onclick="if(event.target===this)closeEditTask()">
+  <div class="modal" style="max-width:520px">
+    <h3>Edit Task</h3>
+    <div style="margin-bottom:12px">
+      <label for="et-task">Task <span style="color:var(--red)">*</span></label>
+      <input type="text" id="et-task" placeholder="What needs to get done?" style="width:100%;margin-top:6px;padding:9px 10px;border-radius:8px;background:var(--panel2);color:var(--txt);border:1px solid var(--border);font-family:inherit;font-size:13px"/>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div>
+        <label for="et-owner">Assign to</label>
+        <select id="et-owner" style="width:100%;margin-top:6px;padding:9px 10px;border-radius:8px;background:var(--panel2);color:var(--txt);border:1px solid var(--border);font-family:inherit;font-size:13px"></select>
+      </div>
+      <div>
+        <label for="et-client">Client</label>
+        <select id="et-client" style="width:100%;margin-top:6px;padding:9px 10px;border-radius:8px;background:var(--panel2);color:var(--txt);border:1px solid var(--border);font-family:inherit;font-size:13px"></select>
+      </div>
+      <div>
+        <label for="et-status">Status</label>
+        <select id="et-status" style="width:100%;margin-top:6px;padding:9px 10px;border-radius:8px;background:var(--panel2);color:var(--txt);border:1px solid var(--border);font-family:inherit;font-size:13px">
+          <option value="To Do">To Do</option>
+          <option value="In Progress">In Progress</option>
+          <option value="Blocked">Blocked</option>
+          <option value="Completed">Completed</option>
+        </select>
+      </div>
+      <div>
+        <label for="et-priority">Priority</label>
+        <select id="et-priority" style="width:100%;margin-top:6px;padding:9px 10px;border-radius:8px;background:var(--panel2);color:var(--txt);border:1px solid var(--border);font-family:inherit;font-size:13px">
+          <option value="🔴 Critical">🔴 Critical</option>
+          <option value="🟠 High">🟠 High</option>
+          <option value="🟡 Normal">🟡 Normal</option>
+          <option value="⚪ Low">⚪ Low</option>
+        </select>
+      </div>
+      <div>
+        <label for="et-due">Due date</label>
+        <input type="date" id="et-due" style="width:100%;margin-top:6px;padding:9px 10px;border-radius:8px;background:var(--panel2);color:var(--txt);border:1px solid var(--border);font-family:inherit;font-size:13px"/>
+      </div>
+    </div>
+    <div class="err" id="et-err" style="display:none"></div>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="closeEditTask()">Cancel</button>
+      <button class="btn" id="et-submit" onclick="doEditTask()">Update Task</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 <script>
 var ALL=[],FILTERED=[],NT=null,ADEL_ID=null,WR_ALL=[],CLIENTS_LIST=[],OWNER_MAP={},SELECTED=new Set();
 var ACTIVE_CARD=null;
+var EDIT_RID=null;
 function esc(s){return(s||'').replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 
 function adminSwitchTab(idx){
@@ -2207,6 +2256,58 @@ function doAddTask(){
     toast('Task created!');
     loadAll();
   }).catch(function(e){var el=document.getElementById('at-err');el.textContent=''+e;el.style.display='block';btn.disabled=false;btn.textContent='Create Task';});
+}
+
+function openEditTask(rid){
+  var t=ALL.find(function(x){return x.record_id===rid;});
+  if(!t)return;
+  EDIT_RID=rid;
+  document.getElementById('et-task').value=t.task||'';
+  document.getElementById('et-status').value=t.status||'To Do';
+  document.getElementById('et-priority').value=t.priority||'🟡 Normal';
+  var dueDt=t.dueDate?new Date(t.dueDate).toISOString().slice(0,10):'';
+  document.getElementById('et-due').value=dueDt;
+  var err=document.getElementById('et-err');err.style.display='none';err.textContent='';
+  var btn=document.getElementById('et-submit');btn.disabled=false;btn.textContent='Update Task';
+  var ownerOpts=Object.keys(OWNER_MAP).sort(function(a,b){return OWNER_MAP[a].localeCompare(OWNER_MAP[b]);});
+  var ownerSel=document.getElementById('et-owner');
+  ownerSel.innerHTML='<option value="">Unassigned</option>'+ownerOpts.map(function(id){return'<option value="'+esc(id)+'">'+esc(OWNER_MAP[id])+'</option>';}).join('');
+  ownerSel.value=t.ownerOpenId||'';
+  var clientSel=document.getElementById('et-client');
+  clientSel.innerHTML='<option value="">No client</option>'+(CLIENTS_LIST||[]).map(function(c){return'<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>';}).join('');
+  clientSel.value=t.clientRecordId||'';
+  document.getElementById('edit-task-overlay').classList.add('show');
+  setTimeout(function(){document.getElementById('et-task').focus();},50);
+}
+function closeEditTask(){
+  document.getElementById('edit-task-overlay').classList.remove('show');
+  EDIT_RID=null;
+}
+function doEditTask(){
+  if(!EDIT_RID)return;
+  var task=document.getElementById('et-task').value.trim();
+  var err=document.getElementById('et-err');
+  if(!task){err.textContent='Task title is required.';err.style.display='';return;}
+  var btn=document.getElementById('et-submit');
+  btn.disabled=true;btn.textContent='Saving...';
+  var ownerVal=document.getElementById('et-owner').value;
+  var clientVal=document.getElementById('et-client').value;
+  var dueVal=document.getElementById('et-due').value;
+  var body={task:task,status:document.getElementById('et-status').value,priority:document.getElementById('et-priority').value,ownerOpenId:ownerVal,clientRecordId:clientVal};
+  if(dueVal)body.dueDate=dueVal;
+  fetch('/api/admin/tasks/'+encodeURIComponent(EDIT_RID),{method:'PATCH',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+  .then(function(r){return r.json();}).then(function(d){
+    if(d.error){err.textContent=d.error;err.style.display='';btn.disabled=false;btn.textContent='Update Task';return;}
+    var t=ALL.find(function(x){return x.record_id===EDIT_RID;});
+    if(t){
+      t.task=body.task;t.status=body.status;t.priority=body.priority;
+      t.ownerOpenId=ownerVal;t.ownerName=ownerVal?OWNER_MAP[ownerVal]||ownerVal:'';
+      if(clientVal){var cl=CLIENTS_LIST.find(function(c){return c.id===clientVal;});if(cl){t.client=cl.name;t.clientRecordId=cl.id;}}
+      else{t.client='';t.clientRecordId='';}
+      if(dueVal)t.dueDate=new Date(dueVal+'T12:00:00.000Z').getTime();
+    }
+    closeEditTask();applyFilters();toast('Task updated');
+  }).catch(function(e){err.textContent=''+e;err.style.display='';btn.disabled=false;btn.textContent='Update Task';});
 }
 
 function buildOpts(roster){
@@ -2440,6 +2541,7 @@ function renderTbl(){
       +'<td>'+(isOverdue?'<span style="color:var(--red)">⚠ '+esc(due)+'</span>':esc(due))+'</td>'
       +'<td>'+esc(daysOpen(t))+'</td>'
       +'<td style="white-space:nowrap">'
+      +'<button class="btn ghost" style="margin-right:6px" onclick="openEditTask(\\''+rid+'\\')">Edit</button>'
       +(t.ownerOpenId?'<button class="btn ghost" style="margin-right:6px" onclick="openNudge(\\''+t.ownerOpenId+'\\',\\''+esc(t.ownerName||'').replace(/'/g,'')+'\\',\\''+esc((t.task||'').replace(/[\\x27\\x22]/g,'')).slice(0,60)+'\\')">Nudge</button>':'')
       +'<button class="btn ghost" style="color:var(--red);border-color:rgba(255,0,80,.4)" onclick="openAdminDel(\\''+rid+'\\',\\''+esc((t.task||'').replace(/[\\x27\\x22]/g,'')).slice(0,70)+'\\')">Delete</button>'
       +'</td>'
@@ -3828,8 +3930,8 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       const email = (req.userEmail || (req.session && req.session.userEmail) || '').toLowerCase();
       const isAdmin = !!(req.session && req.session.isPortalAdmin) || ADMIN_EMAILS.has(email);
       if (!isAdmin) return res.status(403).json({ error: 'Admin access required' });
-      const { task, priority, isSubtask, status, ownerOpenId, clientRecordId } = req.body || {};
-      const hasChange = task || priority || status || ownerOpenId || clientRecordId !== undefined;
+      const { task, priority, isSubtask, status, ownerOpenId, clientRecordId, dueDate } = req.body || {};
+      const hasChange = task || priority || status || ownerOpenId !== undefined || clientRecordId !== undefined || dueDate;
       if (!hasChange) return res.status(400).json({ error: 'at least one field required' });
       if (isSubtask) {
         const sts = readJsonFile(ST_FILE, []);
@@ -3843,8 +3945,9 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       if (task) fields['Task'] = task.trim();
       if (priority) fields['Priority'] = priority;
       if (status) fields['Status'] = status;
-      if (ownerOpenId) fields['Owner'] = [{ id: ownerOpenId }];
-      if (clientRecordId) fields['Client'] = [{ record_id: clientRecordId }];
+      if (ownerOpenId !== undefined) fields['Owner'] = ownerOpenId ? [{ id: ownerOpenId }] : [];
+      if (clientRecordId !== undefined) fields['Client'] = clientRecordId ? [{ record_id: clientRecordId }] : [];
+      if (dueDate) fields['Due Date'] = new Date(dueDate + 'T12:00:00.000Z').getTime();
       await patchRecord(req.params.recordId, fields);
       res.json({ ok: true });
     } catch (e) { res.status(500).json({ error: e.message }); }
