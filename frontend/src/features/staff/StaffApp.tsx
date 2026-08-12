@@ -10,6 +10,7 @@ import { MyClientsTab } from './MyClientsTab';
 import { SupportInboxTab } from './SupportInboxTab';
 import { PointsTab } from './PointsTab';
 import { TeamAssignmentsTab } from './TeamAssignmentsTab';
+import { CRMTab } from './crm/CRMTab';
 import { EmptyState } from '@/features/shared/EmptyState';
 
 function AppHeader({ children }: { children: React.ReactNode }) {
@@ -43,13 +44,15 @@ function DashboardSkeleton() {
 }
 
 /**
- * Employee/Ops portal, Phase 8 first pass: My Clients, Support Inbox, Points
- * — the three sub-systems scoped for this increment. Task management itself
- * and the full CRM/segments.html rebuild stay on their existing pages for
- * now (linked from nowhere new yet — a later pass); this shell exists so
- * those three genuinely new/newly-surfaced capabilities have a real home.
- * Team Assignments only renders for staff with the 'user_admin' permission
- * (server-side enforcement is the real gate — see routes/staff-portal.js).
+ * Employee/Ops portal. Phase 8 first pass covered My Clients, Support
+ * Inbox, and Points. CRM/Sales (Growth Partners pipeline + Signal Engine)
+ * is the first increment of the segments.html React port — the AI
+ * proposal/contract/invoice wizard is a separate, larger follow-up not
+ * included yet; segments.html itself stays up (now auth-gated) as the
+ * fallback for that workflow until it lands. Task management itself still
+ * lives on its existing page for now. Team Assignments only renders for
+ * staff with the 'user_admin' permission (server-side enforcement is the
+ * real gate — see routes/staff-portal.js).
  */
 export function StaffApp({ identity }: { identity: Extract<Identity, { type: 'staff' }> }) {
   const profileQuery = useQuery({ queryKey: ['staff', 'profile'], queryFn: getStaffProfile });
@@ -85,6 +88,7 @@ export function StaffApp({ identity }: { identity: Extract<Identity, { type: 'st
             <TabsTrigger value="my-clients">My Clients</TabsTrigger>
             <TabsTrigger value="support">Support Inbox</TabsTrigger>
             <TabsTrigger value="points">Points</TabsTrigger>
+            <TabsTrigger value="crm">CRM / Sales</TabsTrigger>
             {isAdmin && <TabsTrigger value="team">Team Assignments</TabsTrigger>}
           </TabsList>
 
@@ -98,6 +102,10 @@ export function StaffApp({ identity }: { identity: Extract<Identity, { type: 'st
 
           <TabsContent value="points" className="pt-2">
             <PointsTab />
+          </TabsContent>
+
+          <TabsContent value="crm" className="pt-2">
+            <CRMTab />
           </TabsContent>
 
           {isAdmin && (
