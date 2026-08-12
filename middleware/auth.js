@@ -148,17 +148,27 @@ function resolveIdentity(req, { getCreatorFromRequest, loadBrands }) {
   }
 
   if (req.session?.isPortalAdmin) {
+    // portalUserId is the strongest id (per-user team-login), but the
+    // legacy shared-password /portal-admin/login path never sets it — for
+    // that path, fall back to the CF-Access email as the id rather than
+    // null. Two different staff members must never resolve to the same
+    // `id` here: createRequireAnyIdentity below (used by messaging/
+    // proposals) keys participants by String(id), and String(null) is the
+    // same literal "null" for everyone, which would let unrelated staff
+    // read/post in each other's threads. See routes/staff-portal.js's
+    // currentStaffUser for the same portalUserId-then-email precedence.
+    const cfEmail = req.headers['cf-access-authenticated-user-email'] || null;
     return {
       type: 'staff',
-      id: req.session.portalUserId || null,
-      email: req.headers['cf-access-authenticated-user-email'] || null,
+      id: req.session.portalUserId || cfEmail || null,
+      email: cfEmail,
       name: req.session.portalUserName || null,
     };
   }
 
   const cfEmail = req.headers['cf-access-authenticated-user-email'];
   if (cfEmail) {
-    return { type: 'staff', id: null, email: cfEmail, name: null };
+    return { type: 'staff', id: cfEmail, email: cfEmail, name: null };
   }
 
   return { type: null };
@@ -168,6 +178,13 @@ function createRequireAnyIdentity(deps) {
   return function requireAnyIdentity(req, res, next) {
     const identity = resolveIdentity(req, deps);
     if (!identity.type) return res.status(401).json({ error: 'Not authenticated' });
+    // Belt-and-suspenders: routes gated by this (messaging/proposals) key
+    // participants by identity.id, so a resolved-but-anonymous identity
+    // (type set, id still null — only possible today for a shared-password
+    // portal-admin session with no CF-Access header at all, e.g. local dev
+    // without Cloudflare Access in front) must not be let through to share
+    // a "null" identity with every other such session.
+    if (identity.id == null) return res.status(401).json({ error: 'Not authenticated — identity could not be resolved to a specific person' });
     req.identity = identity;
     next();
   };

@@ -69,28 +69,46 @@ module.exports = function mountStaffPortal(app, deps = {}) {
     return null;
   }
 
-  function isUserAdmin(u) {
-    return !!(u && Array.isArray(u.permissions) && u.permissions.includes('user_admin'));
+  // Generic permission gate. Mirrors routes/portal-team-auth.js's
+  // requireUserAdmin EXACTLY (same isPortalAdmin/portalUserId branching,
+  // same "legacy shared-password admin = full owner" fallback for a
+  // session with isPortalAdmin=true but no portalUserId) rather than
+  // reimplementing a lookalike that drops that fallback — a prior version
+  // of this function did exactly that and wrongly 403'd legacy admins on
+  // every write below, contradicting its own header comment's claim of
+  // parity. req.staffUser is set to the resolved record, or null for that
+  // legacy-admin case; every handler using it below treats null there as
+  // "the legacy admin" (no distinguishable identity to record), not
+  // "nobody" — see assign/unassign and the payout handlers.
+  //
+  // A bare CF-Access session (no portal-admin login at all) is NOT given
+  // the same blanket fallback: requireUserAdmin's original design never
+  // covered that case, so an unprovisioned teammate must have a real
+  // portal-users.json record with the permission, same as any other path.
+  function requireStaffPermission(permission) {
+    return function (req, res, next) {
+      if (req.session?.isPortalAdmin) {
+        const u = req.session.portalUserId ? findById(req.session.portalUserId) : null;
+        if (u && !(Array.isArray(u.permissions) && u.permissions.includes(permission))) {
+          return res.status(403).json({ error: `${permission} permission required` });
+        }
+        req.staffUser = u;
+        return next();
+      }
+      const u = req.userEmail ? findByUsername(req.userEmail) : null;
+      if (!(u && Array.isArray(u.permissions) && u.permissions.includes(permission))) {
+        return res.status(403).json({ error: `${permission} permission required` });
+      }
+      req.staffUser = u;
+      next();
+    };
   }
 
-  function requireStaffUserAdmin(req, res, next) {
-    const u = currentStaffUser(req);
-    if (!isUserAdmin(u)) return res.status(403).json({ error: 'user_admin permission required' });
-    req.staffUser = u;
-    next();
-  }
-
+  const requireStaffUserAdmin = requireStaffPermission('user_admin');
   // 'billing' is an existing permission (routes/portal-team-auth.js's
   // ALL_PERMISSIONS, described there as "financials / invoicing") — reused
   // here for creator-payout initiation rather than inventing a new one.
-  function requireStaffBilling(req, res, next) {
-    const u = currentStaffUser(req);
-    if (!(u && Array.isArray(u.permissions) && u.permissions.includes('billing'))) {
-      return res.status(403).json({ error: 'billing permission required' });
-    }
-    req.staffUser = u;
-    next();
-  }
+  const requireStaffBilling = requireStaffPermission('billing');
 
   function brandSummary(brand) {
     if (!brand) return null;
@@ -161,7 +179,10 @@ module.exports = function mountStaffPortal(app, deps = {}) {
       const brands = loadBrands();
       if (!(brands.clients || []).some((b) => b.id === brandId)) return res.status(404).json({ error: 'Brand not found' });
       if (!findById(staffId)) return res.status(404).json({ error: 'Staff member not found' });
-      brandAssignments.assignBrand(brandId, staffId, role, req.staffUser.id);
+      // req.staffUser is null for the legacy shared-password admin (no
+      // distinguishable per-person identity to record — see
+      // requireStaffPermission above); assignBrand accepts a null assignedBy.
+      brandAssignments.assignBrand(brandId, staffId, role, req.staffUser?.id ?? null);
       res.json({ ok: true });
     } catch (e) {
       res.status(400).json({ error: e.message });
@@ -246,12 +267,12 @@ module.exports = function mountStaffPortal(app, deps = {}) {
         currency: 'usd',
         destination: account.stripe_account_id,
         description: description || undefined,
-        metadata: { creatorId: String(creatorId), initiatedBy: req.staffUser.email || req.staffUser.id },
+        metadata: { creatorId: String(creatorId), initiatedBy: req.staffUser?.email || 'legacy-shared-password-admin' },
       });
 
       stripeConnect.createPayout({
         creatorId, stripeTransferId: transfer.id, amountCents, description,
-        status: 'paid', createdByEmail: req.staffUser.email || null,
+        status: 'paid', createdByEmail: req.staffUser?.email || null,
       });
 
       res.json({ ok: true, transferId: transfer.id });
