@@ -3,16 +3,16 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PipelineBoard } from './PipelineBoard';
 import { SignalEngineTab } from './SignalEngineTab';
 import { ProfitabilityCalculator } from './ProfitabilityCalculator';
+import { ProposalWizard } from './ProposalWizard';
+import { ContractInvoicing } from './ContractInvoicing';
 
 /**
  * CRM / Sales — React port of dashboard/segments.html. Growth Partners tab
- * currently covers the pipeline board + the standalone TikTok Profitability
- * Calculator (same relative position as the original page — the calculator
- * sits above the pipeline). Still-deferred, larger follow-up: the AI
- * proposal/contract/invoice wizard (Fireflies -> AI extraction ->
- * economics -> GHL send) and the Shopify Prospector. segments.html itself
- * stays up (now auth-gated, see the earlier security fix) as the fallback
- * for those workflows until they land.
+ * order matches the original page: Proposal Generator, Contract +
+ * Invoicing, Profitability Calculator, then the Pipeline board. Still
+ * deferred: the Shopify Prospector. segments.html itself stays up (now
+ * auth-gated, see the earlier security fix) as the fallback for that until
+ * it lands.
  */
 export function CRMTab() {
   const [seg, setSeg] = useState('growth-partners');
@@ -23,6 +23,8 @@ export function CRMTab() {
         <TabsTrigger value="signal-engine">⚡ Signal Engine</TabsTrigger>
       </TabsList>
       <TabsContent value="growth-partners" className="space-y-4 pt-2">
+        <ProposalWizard />
+        <ContractInvoicing />
         <ProfitabilityCalculator />
         <PipelineBoard />
       </TabsContent>
