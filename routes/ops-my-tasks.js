@@ -2621,11 +2621,19 @@ function updateBulkBar(){
   }
 }
 function _bulkPatch(ids,body,label){
-  var done=0,total=ids.length;
+  var done=0,total=ids.length,errs=[];
   ids.forEach(function(rid){
     fetch('/api/admin/tasks/'+encodeURIComponent(rid),{method:'PATCH',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
-    .then(function(){if(++done===total){toast('✅ '+label+' for '+total+' task'+(total>1?'s':''));SELECTED.clear();applyFilters();}})
-    .catch(function(){if(++done===total){toast('⚠ Some updates may have failed');SELECTED.clear();applyFilters();}});
+    .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j};});})
+    .then(function(x){
+      if(!x.ok)errs.push((x.j&&x.j.error)||'unknown error');
+      if(++done===total){
+        if(errs.length)toast('⚠ Failed: '+errs[0]);
+        else toast('✅ '+label+' for '+total+' task'+(total>1?'s':''));
+        SELECTED.clear();applyFilters();
+      }
+    })
+    .catch(function(e){errs.push(e.message);if(++done===total){toast('⚠ '+errs[0]);SELECTED.clear();applyFilters();}});
   });
 }
 function doBulkStatus(){
@@ -3950,7 +3958,10 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       if (dueDate) fields['Due Date'] = new Date(dueDate + 'T12:00:00.000Z').getTime();
       await patchRecord(req.params.recordId, fields);
       res.json({ ok: true });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) {
+      console.error('[admin/tasks PATCH]', req.params.recordId, e.message, e.response && JSON.stringify(e.response.data));
+      res.status(500).json({ error: e.message });
+    }
   });
 
   app.post('/api/admin/tasks/create', requireAuth, jsonBody, async (req, res) => {
