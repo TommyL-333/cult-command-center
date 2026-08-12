@@ -14266,8 +14266,10 @@ function renderWelcomePage(brand, cp, creatorHandle = '') {
 
   const productsHtml = products.map(p => `
     <div class="product-card">
+      ${p.imageUrl ? `<img src="${p.imageUrl}" alt="${p.name}" class="product-img" loading="lazy">` : ''}
       <div class="product-name">${p.name}</div>
-      ${p.minPrice ? `<div class="product-price">From $${Number(p.minPrice).toFixed(2)}</div>` : ''}
+      ${p.tagline ? `<div class="product-tagline">${p.tagline}</div>` : ''}
+      ${p.minPrice ? `<div class="product-price">$${Number(p.minPrice).toFixed(0)}</div>` : ''}
       ${p.url ? `<a href="${p.url}" target="_blank" rel="noopener" class="product-link">View on TikTok Shop</a>` : ''}
     </div>`).join('');
 
@@ -14323,9 +14325,11 @@ h1{font-size:clamp(22px,4vw,30px);font-weight:900;letter-spacing:-.02em;margin-b
 .section-sub{font-size:13px;color:rgba(255,255,255,.4);line-height:1.6;margin-bottom:28px}
 .page-divider{border:none;border-top:1px solid rgba(255,255,255,.06);margin:0}
 .products-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
-.product-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:20px}
-.product-name{font-size:15px;font-weight:700;margin-bottom:6px}
-.product-price{font-size:13px;color:${accent};font-weight:700;margin-bottom:10px}
+.product-card{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:20px;display:flex;flex-direction:column;align-items:center;text-align:center}
+.product-img{width:100%;max-width:140px;height:140px;object-fit:contain;border-radius:10px;margin-bottom:12px;background:rgba(255,255,255,.04)}
+.product-name{font-size:15px;font-weight:700;margin-bottom:4px}
+.product-tagline{font-size:11px;color:rgba(255,255,255,.4);margin-bottom:8px;letter-spacing:.02em}
+.product-price{font-size:16px;color:${accent};font-weight:800;margin-bottom:10px}
 .product-link{font-size:12px;color:${accent};text-decoration:none;font-weight:600}
 /* usps */
 .usp-list{list-style:none;display:flex;flex-direction:column;gap:12px}
