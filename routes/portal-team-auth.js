@@ -68,7 +68,7 @@ function findByUsername(username) {
 }
 function findById(id) { return loadUsers().find(u => u.id === id) || null; }
 
-function createUser({ username, email, name, password, role = 'member', permissions, createdBy }) {
+function createUser({ username, email, name, password, role = 'member', permissions, createdBy, mustChangePassword = false }) {
   const users = loadUsers();
   const uname = String(username || email || '').trim().toLowerCase();
   if (!uname) throw new Error('username or email required');
@@ -90,6 +90,9 @@ function createUser({ username, email, name, password, role = 'member', permissi
     active: true,
     createdAt: Date.now(),
     createdBy: createdBy || 'system',
+    // Forces a one-time-password/admin-set password to be replaced before
+    // the account can do anything else -- see POST /portal-admin/change-password.
+    mustChangePassword: !!mustChangePassword,
   };
   users.push(user);
   saveUsers(users);
@@ -107,6 +110,7 @@ function updateUser(id, patch) {
   if (patch.permissions !== undefined) u.permissions = patch.permissions === 'full' ? ALL_PERMISSIONS.slice() : patch.permissions;
   if (patch.active !== undefined) u.active = !!patch.active;
   if (patch.password) { const { hash, salt } = hashPassword(patch.password); u.passwordHash = hash; u.salt = salt; }
+  if (patch.mustChangePassword !== undefined) u.mustChangePassword = !!patch.mustChangePassword;
   users[idx] = u;
   saveUsers(users);
   return publicUser(u);
@@ -165,6 +169,37 @@ module.exports = function mountPortalTeamAuth(app, deps = {}) {
     req.session.portalUserId = u.id;
     req.session.portalUserName = u.name;
     res.json({ ok: true, user: publicUser(u) });
+  });
+
+  // POST /portal-admin/change-password — self-service, for the LOGGED-IN
+  // user to replace their own password (the mandatory first-login flow
+  // after a one-time seeded password, or any later voluntary change).
+  // Only applies to per-user team-login sessions (req.session.portalUserId)
+  // -- the legacy shared-password login has no individual account/password
+  // to change.
+  app.post('/portal-admin/change-password', jsonMw, (req, res) => {
+    if (!req.session?.isPortalAdmin) return res.status(401).json({ error: 'Not authenticated' });
+    if (!req.session.portalUserId) {
+      return res.status(400).json({ error: 'The shared admin login has no individual password to change.' });
+    }
+    const { currentPassword, newPassword } = req.body || {};
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'currentPassword and newPassword are required' });
+    }
+    if (newPassword.length < 6) return res.status(400).json({ error: 'newPassword must be at least 6 characters' });
+    if (newPassword === currentPassword) return res.status(400).json({ error: 'New password must be different from the current one' });
+
+    const u = findById(req.session.portalUserId);
+    if (!u) return res.status(404).json({ error: 'Account not found' });
+    if (!verifyPassword(currentPassword, u.passwordHash, u.salt)) {
+      return res.status(401).json({ error: 'Current password is incorrect' });
+    }
+    try {
+      const updated = updateUser(u.id, { password: newPassword, mustChangePassword: false });
+      res.json({ ok: true, user: updated });
+    } catch (e) {
+      res.status(400).json({ error: e.message });
+    }
   });
 
   // GET /portal-admin/me — who am I

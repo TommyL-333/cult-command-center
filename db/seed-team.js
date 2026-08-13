@@ -72,11 +72,15 @@ function seedTeamAccounts({ createUser, findByUsername }) {
         role: person.role,
         permissions: person.permissions,
         createdBy: 'seed-team',
+        // Forces the login page to require setting a real password before
+        // this account can do anything else -- see routes/portal-team-
+        // auth.js's POST /portal-admin/change-password.
+        mustChangePassword: true,
       });
       // One-time display, matching PORTAL_ADMIN_PASSWORD's existing "shared
       // secret lives in the environment/logs, not in source" convention --
       // this is the ONLY place this value is ever written down.
-      console.log(`[seed-team] created account "${person.username}" (${person.email}, ${person.permissions === 'full' ? 'full permissions' : 'baseline permissions'}) -- one-time password: ${password}`);
+      console.log(`[seed-team] created account "${person.username}" (${person.email}, ${person.permissions === 'full' ? 'full permissions' : 'baseline permissions'}) -- one-time password: ${password} (must be changed on first login)`);
     } catch (e) {
       console.error(`[seed-team] failed to create ${person.email}:`, e.message);
     }

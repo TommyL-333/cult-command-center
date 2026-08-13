@@ -122,14 +122,33 @@
       <input type="password" id="password" name="password" autocomplete="current-password" required placeholder="••••••••">
       <button type="submit" class="btn" id="submitBtn">Sign In</button>
     </form>
+
+    <!-- Shown instead of redirecting, when the account just logged in with a
+         one-time (or admin-reset) password that must be replaced first. -->
+    <form id="changePwForm" style="display:none">
+      <p class="subtitle" style="margin-bottom:20px">This is a one-time password — set a real one to continue.</p>
+      <label for="newPassword">New Password</label>
+      <input type="password" id="newPassword" autocomplete="new-password" required placeholder="At least 6 characters">
+      <label for="confirmPassword" style="margin-top:14px;display:block">Confirm New Password</label>
+      <input type="password" id="confirmPassword" autocomplete="new-password" required placeholder="••••••••">
+      <button type="submit" class="btn" id="changePwBtn">Set Password &amp; Continue</button>
+    </form>
   </div>
 
   <script>
-    const form = document.getElementById('loginForm');
+    const loginForm = document.getElementById('loginForm');
+    const changePwForm = document.getElementById('changePwForm');
     const errMsg = document.getElementById('errMsg');
     const submitBtn = document.getElementById('submitBtn');
+    const changePwBtn = document.getElementById('changePwBtn');
+    let pendingCurrentPassword = null; // the one-time password just used to log in
 
-    form.addEventListener('submit', async (e) => {
+    function showError(msg) {
+      errMsg.textContent = msg;
+      errMsg.style.display = 'block';
+    }
+
+    loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       errMsg.style.display = 'none';
       submitBtn.disabled = true;
@@ -147,18 +166,53 @@
         });
         const data = await res.json();
         if (data.ok) {
-          window.location.href = '/portal-admin/clients';
+          if (data.user && data.user.mustChangePassword) {
+            pendingCurrentPassword = pw;
+            loginForm.style.display = 'none';
+            changePwForm.style.display = 'block';
+          } else {
+            window.location.href = '/portal-admin/clients';
+          }
         } else {
-          errMsg.textContent = data.error || 'Incorrect password.';
-          errMsg.style.display = 'block';
+          showError(data.error || 'Incorrect password.');
           submitBtn.disabled = false;
           submitBtn.textContent = 'Sign In';
         }
       } catch (err) {
-        errMsg.textContent = 'Network error — please try again.';
-        errMsg.style.display = 'block';
+        showError('Network error — please try again.');
         submitBtn.disabled = false;
         submitBtn.textContent = 'Sign In';
+      }
+    });
+
+    changePwForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      errMsg.style.display = 'none';
+      const newPw = document.getElementById('newPassword').value;
+      const confirmPw = document.getElementById('confirmPassword').value;
+      if (newPw.length < 6) { showError('New password must be at least 6 characters.'); return; }
+      if (newPw !== confirmPw) { showError('Passwords do not match.'); return; }
+
+      changePwBtn.disabled = true;
+      changePwBtn.textContent = 'Saving…';
+      try {
+        const res = await fetch('/portal-admin/change-password', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ currentPassword: pendingCurrentPassword, newPassword: newPw }),
+        });
+        const data = await res.json();
+        if (data.ok) {
+          window.location.href = '/portal-admin/clients';
+        } else {
+          showError(data.error || 'Could not set new password.');
+          changePwBtn.disabled = false;
+          changePwBtn.textContent = 'Set Password & Continue';
+        }
+      } catch (err) {
+        showError('Network error — please try again.');
+        changePwBtn.disabled = false;
+        changePwBtn.textContent = 'Set Password & Continue';
       }
     });
   </script>
