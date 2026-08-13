@@ -2615,9 +2615,14 @@ function updateBulkBar(){
   document.getElementById('bulk-count').textContent=n+' selected';
   document.getElementById('bulk-bar').classList.toggle('show',n>0);
   if(n>0){
+    var ownerSel=document.getElementById('bulk-owner');
+    var clientSel=document.getElementById('bulk-client');
+    var prevOwner=ownerSel.value,prevClient=clientSel.value;
     var ownerOpts=Object.keys(OWNER_MAP).sort(function(a,b){return OWNER_MAP[a].localeCompare(OWNER_MAP[b]);});
-    document.getElementById('bulk-owner').innerHTML='<option value="">Set Owner…</option>'+ownerOpts.map(function(id){return'<option value="'+esc(id)+'">'+esc(OWNER_MAP[id])+'</option>';}).join('');
-    document.getElementById('bulk-client').innerHTML='<option value="">Set Client…</option>'+(CLIENTS_LIST||[]).map(function(c){return'<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>';}).join('');
+    ownerSel.innerHTML='<option value="">Set Owner…</option>'+ownerOpts.map(function(id){return'<option value="'+esc(id)+'">'+esc(OWNER_MAP[id])+'</option>';}).join('');
+    clientSel.innerHTML='<option value="">Set Client…</option>'+(CLIENTS_LIST||[]).map(function(c){return'<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>';}).join('');
+    if(prevOwner)ownerSel.value=prevOwner;
+    if(prevClient)clientSel.value=prevClient;
   }
 }
 function _bulkPatch(ids,body,label){
@@ -4006,7 +4011,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       if (priority) fields['Priority'] = priority;
       if (status) fields['Status'] = status;
       if (ownerOpenId !== undefined) fields['Owner'] = ownerOpenId ? [{ id: ownerOpenId }] : [];
-      if (clientRecordId !== undefined) fields['Client'] = clientRecordId ? [{ record_id: clientRecordId }] : [];
+      if (clientRecordId !== undefined) fields['Client'] = clientRecordId ? [{ record_id: clientRecordId, table_id: CLIENTS_TABLE }] : [];
       if (dueDate) fields['Due Date'] = new Date(dueDate + 'T12:00:00.000Z').getTime();
       await patchRecord(req.params.recordId, fields);
       res.json({ ok: true });
@@ -4030,14 +4035,20 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       if (promptAction) fields['Prompt / Action'] = promptAction;
       // Store at noon UTC so local-timezone display never drifts to the wrong day
       if (dueDate) fields['Due Date'] = new Date(dueDate + 'T12:00:00.000Z').getTime();
-      if (clientRecordId) fields['Client'] = [{ record_id: clientRecordId }];
+      if (clientRecordId) fields['Client'] = [{ record_id: clientRecordId, table_id: CLIENTS_TABLE }];
       const data = await larkPost(
         `/open-apis/bitable/v1/apps/${OPS_APP_TOKEN}/tables/${TASKS_TABLE}/records`,
         { fields }
       );
-      if (data.code !== 0) return res.status(500).json({ error: `Lark error ${data.code}: ${data.msg}` });
+      if (data.code !== 0) {
+        console.error('[admin/tasks/create] Lark error', data.code, data.msg, 'fields:', JSON.stringify(fields));
+        return res.status(500).json({ error: `Lark error ${data.code}: ${data.msg}` });
+      }
       res.json({ ok: true, record: data.data && data.data.record });
-    } catch (e) { res.status(500).json({ error: e.message }); }
+    } catch (e) {
+      console.error('[admin/tasks/create]', e.message, e.response && JSON.stringify(e.response.data));
+      res.status(500).json({ error: e.message });
+    }
   });
 
   // ---------- ROUTE: GET /api/my-tasks/clients ----------
@@ -4063,7 +4074,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       if (priority) fields['Priority'] = priority;
       if (dueDate) fields['Due Date'] = new Date(dueDate + 'T12:00:00.000Z').getTime();
       if (promptAction) fields['Prompt / Action'] = promptAction;
-      if (clientRecordId) fields['Client'] = [{ record_id: clientRecordId }];
+      if (clientRecordId) fields['Client'] = [{ record_id: clientRecordId, table_id: CLIENTS_TABLE }];
       const data = await larkPost(
         `/open-apis/bitable/v1/apps/${OPS_APP_TOKEN}/tables/${TASKS_TABLE}/records`,
         { fields }
