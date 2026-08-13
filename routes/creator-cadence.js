@@ -396,6 +396,7 @@ function pageHtml() {
 '.empty{color:#6b6b7a;font-size:13px;padding:18px;border:1px dashed #2a2c3a;border-radius:10px;text-align:center}',
 '.ro-note{font-size:11px;color:#6b6b7a;margin-top:8px}',
 '</style></head><body>',
+'<a href="/portal-admin" style="display:inline-block;margin-bottom:14px;font-size:13px;color:#00f2ea;text-decoration:none">&larr; Dashboard</a>',
 '<h1>SMS Communication</h1>',
 '<div class="sub">Read-only review &amp; approval. Every text below is shown exactly as it will send. Scheduled and weekly messages, plus automatic triggers, all surface here. Nothing goes out until you press <b>Approve &amp; Send</b>. Automatic triggers are reference-only.</div>',
 '<div class="topbar"><label style="font-size:13px;color:#8b8b9a">Brand</label><select id="brand" onchange="setBrand(this.value)"><option value="">All brands</option></select></div>',

@@ -513,6 +513,7 @@ function pageHtml() {
 '.empty{text-align:center;color:#6b6f85;padding:48px 0}',
 '.warn{background:rgba(255,180,0,.08);border:1px solid rgba(255,180,0,.3);color:#ffcf6b;border-radius:8px;padding:6px 12px;font-size:12px;display:inline-block;margin-top:8px}',
 '</style></head><body><div class="wrap">',
+'<a href="/portal-admin" style="display:inline-block;margin-bottom:14px;font-size:13px;color:#00f2ea;text-decoration:none">&larr; Dashboard</a>',
 '<h1>Open Collab Outreach</h1>',
 '<div class="sub">Creators who couldn\'t receive a Target Collab because they\'ve never interacted with the shop. A TikTok DM via Reacher is the only way to reach them — invite them to join Open Collaboration, then the TC auto-retry fires once they\'re in.</div>',
 '<div class="bar"><span class="pill">Queue: <b id="count">…</b></span><span class="pill">Sent: <b id="sentct">0</b></span><button class="save" onclick="load()">↻ Refresh</button><button class="send" id="sendall" onclick="sendAll()">⚡ Send All</button></div>',
