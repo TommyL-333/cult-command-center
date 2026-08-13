@@ -4109,6 +4109,12 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
     textVal,
     STATUS,
   };
+  // Real, already-maintained staff-to-brand knowledge (see the "Trip Visuals
+  // and Made Right" commit for evidence this list is actively kept current) —
+  // exposed the same way _helpers already is, so db/seed-team.js can seed
+  // brand_assignments from the single source of truth instead of duplicating
+  // this list somewhere that could drift out of sync with it.
+  registerOpsMyTasks.BRAND_MANAGERS = BRAND_MANAGERS;
 
   return app;
 };

@@ -2425,6 +2425,17 @@ if (portalTeamAuth) {
   console.error('[staff-portal] skipped — portal-team-auth did not register successfully');
 }
 
+// One-time (idempotent, safe on every boot) bootstrap for the new staff
+// portal: creates portal-users.json accounts for the real teammates the
+// app already knows about (ADMIN_EMAILS/BRAND_MANAGERS in routes/ops-my-
+// tasks.js) but never had login records for, then seeds brand_assignments
+// from the same already-maintained BRAND_MANAGERS mapping. See db/seed-team.js.
+if (portalTeamAuth) {
+  try {
+    require('./db/seed-team').seedTeamAndAssignments({ portalTeamAuth, loadBrands });
+  } catch (e) { console.error('[seed-team] failed:', e.message); }
+}
+
 // GET /portal-admin/clients — returns client list as JSON (admin only)
 app.get('/portal-admin/clients', requirePortalAdmin, async (req, res) => {
   // If Accept is text/html, serve the admin page
