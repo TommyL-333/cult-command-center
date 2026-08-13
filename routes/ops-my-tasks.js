@@ -2615,9 +2615,14 @@ function updateBulkBar(){
   document.getElementById('bulk-count').textContent=n+' selected';
   document.getElementById('bulk-bar').classList.toggle('show',n>0);
   if(n>0){
+    var ownerSel=document.getElementById('bulk-owner');
+    var clientSel=document.getElementById('bulk-client');
+    var prevOwner=ownerSel.value,prevClient=clientSel.value;
     var ownerOpts=Object.keys(OWNER_MAP).sort(function(a,b){return OWNER_MAP[a].localeCompare(OWNER_MAP[b]);});
-    document.getElementById('bulk-owner').innerHTML='<option value="">Set Owner…</option>'+ownerOpts.map(function(id){return'<option value="'+esc(id)+'">'+esc(OWNER_MAP[id])+'</option>';}).join('');
-    document.getElementById('bulk-client').innerHTML='<option value="">Set Client…</option>'+(CLIENTS_LIST||[]).map(function(c){return'<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>';}).join('');
+    ownerSel.innerHTML='<option value="">Set Owner…</option>'+ownerOpts.map(function(id){return'<option value="'+esc(id)+'">'+esc(OWNER_MAP[id])+'</option>';}).join('');
+    clientSel.innerHTML='<option value="">Set Client…</option>'+(CLIENTS_LIST||[]).map(function(c){return'<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>';}).join('');
+    if(prevOwner)ownerSel.value=prevOwner;
+    if(prevClient)clientSel.value=prevClient;
   }
 }
 function _bulkPatch(ids,body,label){
