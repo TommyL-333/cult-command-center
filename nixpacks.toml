@@ -1,2 +1,8 @@
 [phases.setup]
 nixPkgs = ["ffmpeg"]
+
+# Builds the new React frontend (frontend/) into frontend/dist, which
+# dashboard-server.js serves at /app/*. Explicit build phase since the
+# frontend lives in a subdirectory nixpacks wouldn't auto-detect on its own.
+[phases.build]
+cmds = ["npm --prefix frontend ci", "npm --prefix frontend run build"]

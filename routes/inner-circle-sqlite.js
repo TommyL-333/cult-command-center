@@ -22,6 +22,8 @@
 'use strict';
 
 const crypto = require('crypto');
+const { createRequireCreatorSession, getCreatorSessionToken } = require('../middleware/auth');
+const { hashPasswordCombined, verifyPasswordCombined } = require('../middleware/password');
 
 module.exports = function mountInnerCircleSqlite(app, deps = {}) {
   const express = deps.express || require('express');
@@ -232,6 +234,9 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
            JOIN inner_circle_creators c ON c.id = s.creator_id
           WHERE s.token = ? AND s.expires_at > datetime('now') AND c.status = 'active'`
       ),
+      deleteSession: db.prepare(
+        `DELETE FROM inner_circle_sessions WHERE token = ?`
+      ),
       videosThisMonth: db.prepare(
         `SELECT COUNT(*) AS n FROM inner_circle_videos
           WHERE creator_id = ? AND strftime('%Y-%m', posted_at) = strftime('%Y-%m', 'now')`
@@ -427,28 +432,29 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
   }
 
   // ── Helpers ─────────────────────────────────────────────────────────────────
-  function getSessionToken(req) {
-    // Manual cookie parse — this server has no cookie-parser middleware.
-    const cookieHeader = req.headers.cookie || '';
-    const m = cookieHeader.match(/(?:^|;\s*)ic_session=([^;]+)/);
-    if (m) return decodeURIComponent(m[1]);
-    const auth = req.headers.authorization || '';
-    if (auth.startsWith('Bearer ')) return auth.slice(7).trim();
-    return null;
-  }
+  // getSessionToken/requireSqliteSession now come from middleware/auth.js
+  // (Phase 3: auth unification) — same manual cookie-parse + Bearer-header
+  // fallback, same 503/401/500 response shapes, verbatim behavior. The
+  // session lookup itself (stmts.sessionByToken, dbError) stays here since
+  // it's specific to this file's SQLite layer.
+  const getSessionToken = getCreatorSessionToken;
+  const requireSqliteSession = createRequireCreatorSession({
+    getSessionByToken: (token) => stmts.sessionByToken.get(token),
+    isUnavailable: () => dbError,
+  });
 
-  function requireSqliteSession(req, res, next) {
-    if (dbError) return res.status(503).json({ error: 'Inner Circle data layer unavailable' });
+  // Non-throwing variant for GET /api/me (dashboard-server.js) — same lookup
+  // as requireSqliteSession but returns null instead of sending a 401/503,
+  // so a caller can check "is this request a creator?" without assuming it
+  // must be one.
+  function getCreatorFromRequest(req) {
+    if (dbError) return null;
     const token = getSessionToken(req);
-    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+    if (!token) return null;
     try {
-      const row = stmts.sessionByToken.get(token);
-      if (!row) return res.status(401).json({ error: 'Session expired' });
-      req.icCreator = row;
-      next();
-    } catch (e) {
-      console.error('[inner-circle-sqlite] session check failed:', e.message);
-      return res.status(500).json({ error: 'Server error' });
+      return stmts.sessionByToken.get(token) || null;
+    } catch (_) {
+      return null;
     }
   }
 
@@ -456,20 +462,13 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     return Math.ceil((to.getTime() - from.getTime()) / 86400000);
   }
 
-  // Password hashing — scrypt with per-user salt, stored as "salt:hexhash"
-  function hashPassword(password) {
-    const salt = crypto.randomBytes(16).toString('hex');
-    const hash = crypto.scryptSync(String(password), salt, 64).toString('hex');
-    return salt + ':' + hash;
-  }
-  function verifyPassword(password, stored) {
-    if (!stored || !stored.includes(':')) return false;
-    const [salt, hash] = stored.split(':');
-    try {
-      const candidate = crypto.scryptSync(String(password), salt, 64).toString('hex');
-      return crypto.timingSafeEqual(Buffer.from(hash, 'hex'), Buffer.from(candidate, 'hex'));
-    } catch (_) { return false; }
-  }
+  // Password hashing — scrypt with per-user salt, stored as "salt:hexhash".
+  // Now backed by middleware/password.js (Phase 3: auth unification) — same
+  // algorithm, same "salt:hash" storage format, verified byte-for-byte
+  // compatible with hashes already stored by the old inline implementation
+  // before consolidating (see middleware/password.js's header comment).
+  const hashPassword = hashPasswordCombined;
+  const verifyPassword = verifyPasswordCombined;
 
   // ── POST /api/inner-circle/login ────────────────────────────────────────────
   // GET /api/ic/session-check — used by /ic-nav.js to decide whether to show the
@@ -539,6 +538,22 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
     } catch (e) {
       console.error('[inner-circle-sqlite] login failed:', e.message);
       return res.status(500).json({ error: 'Server error' });
+    }
+  });
+
+  // POST /api/inner-circle/logout — deletes the session row server-side (not
+  // just clearing the cookie client-side, which wouldn't be possible anyway
+  // since ic_session is httpOnly) and clears the cookie. Never existed before
+  // this — the creator portal had no logout path at all.
+  app.post('/api/inner-circle/logout', (req, res) => {
+    try {
+      const token = getSessionToken(req);
+      if (token && !dbError) {
+        try { stmts.deleteSession.run(token); } catch (_) {}
+      }
+    } finally {
+      res.clearCookie('ic_session', { httpOnly: true, secure: true, sameSite: 'lax' });
+      res.json({ ok: true });
     }
   });
 
@@ -3103,5 +3118,5 @@ module.exports = function mountInnerCircleSqlite(app, deps = {}) {
 
 
   // Expose the working session middleware so other routes can adopt it later.
-  return { requireSqliteSession, getIcFunnel };
+  return { requireSqliteSession, getIcFunnel, getCreatorFromRequest };
 };

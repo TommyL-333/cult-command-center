@@ -3280,12 +3280,21 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
     }
   });
 
+  // Ceiling for the optional per-completion point award (Phase 8) — this is
+  // a lightweight internal incentive/leaderboard, not a free-form score, so
+  // a client can't hand itself an arbitrary total. Chosen conservatively;
+  // raise it if a real priority-to-points mapping is ever introduced.
+  const MAX_POINTS_PER_COMPLETION = 10;
+
   // ---------- ROUTE: POST /api/my-tasks/complete ----------
-  // Body: { record_id, result }
+  // Body: { record_id, result, points? }
   //  - 400 if result missing/empty/whitespace (server-side guard, cannot be
   //    bypassed by the client).
+  //  - 400 if points is supplied but not a positive number <= MAX_POINTS_PER_COMPLETION.
   //  - 403 if the caller's open_id is not in the task's Owner field
   //    (you cannot complete someone else's task).
+  //  - 409 if the task is already Completed (also closes the points-farming
+  //    path — a task can only ever award points once).
   //  - Writes Status='Completed', 'Result / Output'=result, 'Completed On'=now,
   //    then reads the record back and confirms BOTH before returning
   //    { ok:true, verified:true }.
@@ -3303,6 +3312,22 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
         return res
           .status(400)
           .json({ error: 'A result / output note is required to complete a task.' });
+      }
+
+      // Validate points up front (before any Lark I/O) rather than silently
+      // swallowing a bad value at award-time — a client sending an invalid
+      // points value is worth a clear error, not a completion that quietly
+      // doesn't award what was expected.
+      const rawPoints = req.body && req.body.points;
+      let requestedPoints = null;
+      if (rawPoints != null) {
+        requestedPoints = Number(rawPoints);
+        if (!(requestedPoints > 0)) {
+          return res.status(400).json({ error: 'points must be a positive number.' });
+        }
+        if (requestedPoints > MAX_POINTS_PER_COMPLETION) {
+          return res.status(400).json({ error: `points cannot exceed ${MAX_POINTS_PER_COMPLETION} per task.` });
+        }
       }
 
       // Resolve caller identity.
@@ -3326,6 +3351,13 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
         return res
           .status(403)
           .json({ error: "You can't complete a task you don't own." });
+      }
+      // A task can only be completed (and points-awarded) once. Without
+      // this, re-sending the same completion request re-patches Status
+      // (Lark write is idempotent either way) and re-awards points every
+      // time, since nothing else here checks prior state.
+      if (textVal(existingFields.Status) === STATUS.COMPLETED) {
+        return res.status(409).json({ error: 'This task is already completed.' });
       }
 
       // Write: Status + Result/Output (keyed by NAME) + Completed On (epoch ms).
@@ -3351,12 +3383,32 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
         });
       }
 
+      // Optional point award (Phase 8: point-based task management) — a NEW
+      // local ledger (db/staff-points.js), layered on top of this already-
+      // verified Lark completion, not a change to the Lark schema itself.
+      // requestedPoints was already validated (positive, <= the cap) before
+      // any Lark I/O above; a ledger-insert failure here is still non-fatal
+      // to the completion response (the task IS completed either way), but
+      // an invalid points value was already rejected with 400 up front.
+      let pointsAwarded = null;
+      if (requestedPoints != null && req.userEmail) {
+        try {
+          const { awardPoints } = require('../db/staff-points');
+          const taskTitle = textVal(afterFields.Task) || null;
+          awardPoints({ staffEmail: req.userEmail, taskRecordId: record_id, taskTitle, points: requestedPoints });
+          pointsAwarded = Math.round(requestedPoints);
+        } catch (e) {
+          console.error('[ops-my-tasks] points award failed (non-fatal):', e.message);
+        }
+      }
+
       return res.json({
         ok: true,
         verified: true,
         record_id,
         status: afterStatus,
         result: afterResult,
+        pointsAwarded,
       });
     } catch (e) {
       console.error('[ops-my-tasks] complete error:', e.message);

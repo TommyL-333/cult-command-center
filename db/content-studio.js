@@ -13,20 +13,9 @@
  * require on every boot — matching dashboard-server.js's existing migration style.
  */
 
-const Database = require('better-sqlite3');
-const path = require('path');
-const fs = require('fs');
-
-const DATA_DIR = process.env.DATA_DIR || '/data';
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-
-const DB_PATH = path.join(DATA_DIR, 'inner_circle.db');
-const db = new Database(DB_PATH);
-
-// WAL + FK enforcement (mirrors db/inner-circle.js; pragmas are connection-scoped,
-// so we set them here too in case this module opens its own handle first).
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
+// Connection (WAL mode, foreign keys, busy_timeout, boot-time checkpoint) is
+// owned by db/connection.js and shared across every db/*.js schema file.
+const { db } = require('./connection');
 
 // ── Schema ──────────────────────────────────────────────────────────────────
 db.exec(`
