@@ -2882,7 +2882,10 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
       `/open-apis/bitable/v1/apps/${OPS_APP_TOKEN}/tables/${TASKS_TABLE}/records/${recordId}`,
       { fields: fieldsByName }
     );
-    if (data.code !== 0) throw new Error('patchRecord: ' + data.code + ' ' + data.msg);
+    if (data.code !== 0) {
+      console.error('[patchRecord]', recordId, 'code:', data.code, 'msg:', data.msg, 'fields:', JSON.stringify(fieldsByName));
+      throw new Error('patchRecord: ' + data.code + ' ' + data.msg);
+    }
     return data.data && data.data.record;
   }
 
@@ -4006,6 +4009,9 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
         writeJsonFile(ST_FILE, sts);
         return res.json({ ok: true });
       }
+      if (ownerOpenId && !/^ou_[a-f0-9]+$/i.test(ownerOpenId)) {
+        return res.status(400).json({ error: `Invalid owner ID format: "${ownerOpenId}" — expected ou_... Lark open_id` });
+      }
       const fields = {};
       if (task) fields['Task'] = task.trim();
       if (priority) fields['Priority'] = priority;
@@ -4013,6 +4019,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       if (ownerOpenId !== undefined) fields['Owner'] = ownerOpenId ? [{ id: ownerOpenId }] : [];
       if (clientRecordId !== undefined) fields['Client'] = clientRecordId ? [{ record_id: clientRecordId, table_id: CLIENTS_TABLE }] : [];
       if (dueDate) fields['Due Date'] = new Date(dueDate + 'T12:00:00.000Z').getTime();
+      console.log('[admin/tasks PATCH]', req.params.recordId, 'fields:', JSON.stringify(fields));
       await patchRecord(req.params.recordId, fields);
       res.json({ ok: true });
     } catch (e) {
