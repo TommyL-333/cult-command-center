@@ -11,6 +11,7 @@ import { SupportInboxTab } from './SupportInboxTab';
 import { PointsTab } from './PointsTab';
 import { TeamAssignmentsTab } from './TeamAssignmentsTab';
 import { CRMTab } from './crm/CRMTab';
+import { TikTokShopsTab } from './TikTokShopsTab';
 import { EmptyState } from '@/features/shared/EmptyState';
 
 function AppHeader({ children }: { children: React.ReactNode }) {
@@ -89,6 +90,7 @@ export function StaffApp({ identity }: { identity: Extract<Identity, { type: 'st
             <TabsTrigger value="support">Support Inbox</TabsTrigger>
             <TabsTrigger value="points">Points</TabsTrigger>
             <TabsTrigger value="crm">CRM / Sales</TabsTrigger>
+            <TabsTrigger value="tiktok-shops">TikTok Shops</TabsTrigger>
             {isAdmin && <TabsTrigger value="team">Team Assignments</TabsTrigger>}
           </TabsList>
 
@@ -106,6 +108,10 @@ export function StaffApp({ identity }: { identity: Extract<Identity, { type: 'st
 
           <TabsContent value="crm" className="pt-2">
             <CRMTab />
+          </TabsContent>
+
+          <TabsContent value="tiktok-shops" className="pt-2">
+            <TikTokShopsTab />
           </TabsContent>
 
           {isAdmin && (

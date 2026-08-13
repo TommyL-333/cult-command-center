@@ -9836,13 +9836,53 @@ app.get('/api/tiktokshop/auth', (req, res) => {
   res.redirect(authUrl);
 });
 
-// GET /api/tiktokshop/shops — list authorized shops
+// GET /api/tiktokshop/shops — every shop authorized under Cult Content's
+// TikTok Shop Partner Center account, cross-referenced against our own
+// brand records (brand.shopId) so staff can see any shop that's authorized
+// but has no matching brand here yet -- previously built but never called
+// from anywhere in the app. Requires the PRIMARY/Partner-Center-level shop
+// connection (tokens.shop in .tiktok-tokens.json), which is separate from
+// any individual brand's own TikTok Shop OAuth connection and, as of this
+// change, has never actually been completed -- degrades honestly (ok:true,
+// configured:false) instead of throwing a raw API error when it's missing,
+// matching this app's existing HONESTY convention (see e.g. routes/
+// content-studio-gen.js) rather than pretending the reconciliation ran.
 app.get('/api/tiktokshop/shops', async (req, res) => {
+  const shopTok = loadTikTokTokens().shop || {};
+  if (!shopTok.access_token) {
+    return res.json({
+      ok: true,
+      configured: false,
+      message: 'The Partner Center shop connection has not been authorized yet.',
+      authUrl: '/api/tiktokshop/auth',
+    });
+  }
   try {
     const data = await cached('tts_shops', 3_600_000, () =>
       ttsGet('/authorization/202309/shops', {}, { withShopCipher: false })
     );
-    res.json(data);
+    const rawShops = data?.data?.shops || data?.shops || [];
+    const brands = loadBrands();
+    const brandByShopId = new Map(
+      (brands.clients || []).filter((b) => b.shopId).map((b) => [String(b.shopId), b])
+    );
+    const shops = rawShops.map((s) => {
+      const shopId = s.id || s.shop_id || s.code || null;
+      const brand = shopId != null ? brandByShopId.get(String(shopId)) : null;
+      return {
+        shopId,
+        name: s.name || s.code || null,
+        region: s.region || null,
+        matchedBrandId: brand ? brand.id : null,
+        matchedBrandName: brand ? brand.name : null,
+      };
+    });
+    res.json({
+      ok: true,
+      configured: true,
+      shops,
+      unmatchedCount: shops.filter((s) => !s.matchedBrandId).length,
+    });
   } catch (e) {
     res.status(500).json({ error: e.response?.data || e.message });
   }
