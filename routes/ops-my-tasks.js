@@ -2312,9 +2312,9 @@ function doEditTask(){
 
 function buildOpts(roster){
   var byId={},clients={};
-  (roster||[]).forEach(function(m){if(m.openId&&m.name)byId[m.openId]=m.name;});
+  (roster||[]).forEach(function(m){if(m.openId&&m.name&&/^ou_[a-f0-9]+$/i.test(m.openId))byId[m.openId]=m.name;});
   ALL.forEach(function(t){
-    if(t.ownerOpenId&&t.ownerName)byId[t.ownerOpenId]=t.ownerName;
+    if(t.ownerOpenId&&t.ownerName&&/^ou_[a-f0-9]+$/i.test(t.ownerOpenId))byId[t.ownerOpenId]=t.ownerName;
     if(t.client)clients[t.client]=1;
   });
   OWNER_MAP=byId;
