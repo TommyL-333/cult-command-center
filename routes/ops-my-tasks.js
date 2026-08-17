@@ -3621,12 +3621,19 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
       let gmv = null, videos_posted = null, samples_sent = null, ctr = null;
       try {
         const r = await axios.get(`${RAILWAY_URL}/affiliate/shops/${shopId}/summary`, { params, timeout: 10000 });
-        const m = r.data || {};
-        if (m.gmv != null) gmv = parseFloat(m.gmv) || 0;
-        if (m.videos_posted != null) videos_posted = parseInt(m.videos_posted, 10) || 0;
-        if (m.sample_requests != null) samples_sent = parseInt(m.sample_requests, 10) || 0;
-        if (m.ctr != null) ctr = parseFloat(m.ctr) || null;
-        console.log('[reacher-stats]', brand, 'shopId:', shopId, 'raw:', JSON.stringify(m));
+        // Reacher may wrap the body in a `data` envelope or return fields at the top level
+        const body = r.data || {};
+        const m = (body.data && typeof body.data === 'object') ? body.data : body;
+        console.log('[reacher-stats]', brand, 'shopId:', shopId, 'keys:', Object.keys(m), 'raw:', JSON.stringify(m));
+        // Try both naming conventions (total_gmv is the confirmed field from live data)
+        const rawGmv = m.total_gmv ?? m.gmv;
+        const rawVideos = m.total_videos_posted ?? m.videos_posted ?? m.total_videos;
+        const rawSamples = m.total_samples ?? m.sample_requests ?? m.total_sample_requests;
+        const rawCtr = m.ctr ?? m.total_ctr;
+        if (rawGmv != null) gmv = parseFloat(rawGmv) || 0;
+        if (rawVideos != null) videos_posted = parseInt(rawVideos, 10) || 0;
+        if (rawSamples != null) samples_sent = parseInt(rawSamples, 10) || 0;
+        if (rawCtr != null) ctr = parseFloat(rawCtr) || null;
       } catch (e) {
         console.error('[reacher-stats] summary error:', brand, shopId, e.message);
       }
