@@ -3584,20 +3584,54 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
 
   // ---------- ROUTE: GET /api/weekly-reports/reacher-stats ----------
   app.get('/api/weekly-reports/reacher-stats', requireAuth, async (req, res) => {
-    const { brand } = req.query;
+    const { brand, weekStart, weekEnd } = req.query;
     if (!brand) return res.status(400).json({ error: 'brand required' });
     try {
       const RAILWAY_URL = process.env.RAILWAY_URL || 'https://cultcontent-server-production.up.railway.app';
+
+      // Try brands.json first, fall back to Reacher shop list by name
       const brands = loadBrands();
       const b = (brands.clients || []).find(c => (c.name || '').toLowerCase() === brand.toLowerCase());
-      if (!b || !b.shopId) return res.json({ gmv: null, videos_posted: null, samples_sent: null, ctr: null, note: 'No shopId configured for this brand' });
-      let gmv = null;
+      let shopId = b && b.shopId;
+
+      if (!shopId) {
+        try {
+          const shopsRes = await axios.get(`${RAILWAY_URL}/affiliate/shops`, { timeout: 8000 });
+          const shops = shopsRes.data?.data || shopsRes.data || [];
+          const bl = brand.toLowerCase();
+          const match = shops.find(s => {
+            const sn = (s.shop_name || '').toLowerCase();
+            return sn === bl || sn.includes(bl) || bl.includes(sn);
+          });
+          if (match) shopId = match.shop_id;
+        } catch (e) {
+          console.error('[reacher-stats] shop list error:', e.message);
+        }
+      }
+
+      if (!shopId) {
+        return res.json({ gmv: null, videos_posted: null, samples_sent: null, ctr: null, note: 'No matching Reacher shop found for "' + brand + '"' });
+      }
+
+      // Fetch summary metrics with date range
+      const params = {};
+      if (weekStart) params.start_date = weekStart;
+      if (weekEnd) params.end_date = weekEnd;
+
+      let gmv = null, videos_posted = null, samples_sent = null, ctr = null;
       try {
-        const r = await axios.get(`${RAILWAY_URL}/affiliate/shops/${b.shopId}/summary`, { timeout: 8000 });
-        const g = parseFloat(r.data?.total_gmv);
-        if (!isNaN(g)) gmv = g;
-      } catch (_) {}
-      res.json({ gmv, videos_posted: null, samples_sent: null, ctr: null });
+        const r = await axios.get(`${RAILWAY_URL}/affiliate/shops/${shopId}/summary`, { params, timeout: 10000 });
+        const m = r.data || {};
+        if (m.gmv != null) gmv = parseFloat(m.gmv) || 0;
+        if (m.videos_posted != null) videos_posted = parseInt(m.videos_posted, 10) || 0;
+        if (m.sample_requests != null) samples_sent = parseInt(m.sample_requests, 10) || 0;
+        if (m.ctr != null) ctr = parseFloat(m.ctr) || null;
+        console.log('[reacher-stats]', brand, 'shopId:', shopId, 'raw:', JSON.stringify(m));
+      } catch (e) {
+        console.error('[reacher-stats] summary error:', brand, shopId, e.message);
+      }
+
+      res.json({ gmv, videos_posted, samples_sent, ctr });
     } catch (e) {
       res.status(500).json({ error: e.message });
     }
