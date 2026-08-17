@@ -71,8 +71,8 @@ const SEED_EMAIL_OPENID = {
 // Used for Weekly Report brand selector and admin brand-context display.
 // Add gourab@cultcontent.cc once they're added to the Lark Team table.
 const BRAND_MANAGERS = {
-  'shayan@cultcontent.cc': ['Approved Science', 'The Perfect Haircare', 'Dissolvd', 'B NOOR'],
-  'gourab@cultcontent.cc': ['Lode WTR', 'Roots by Genetic Art', 'YUGLO Skin', 'Trip Visuals', 'Made Right'],
+  'shayan@cultcontent.cc': ['B NOOR', 'Elasco Skincare', 'Starlit Scribbles'],
+  'gourab@cultcontent.cc': ['Lode WTR', 'Roots by Genetic Art', 'Trip Visuals', 'Made Right'],
 };
 
 // Weekly report form type per team member.
