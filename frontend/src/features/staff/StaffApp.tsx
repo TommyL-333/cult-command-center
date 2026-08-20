@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Sparkles } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContents, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getStaffProfile } from '@/lib/staffApi';
 import type { Identity } from '@/lib/api';
@@ -94,31 +94,33 @@ export function StaffApp({ identity }: { identity: Extract<Identity, { type: 'st
             {isAdmin && <TabsTrigger value="team">Team Assignments</TabsTrigger>}
           </TabsList>
 
-          <TabsContent value="my-clients" className="pt-2">
-            <MyClientsTab />
-          </TabsContent>
-
-          <TabsContent value="support" className="pt-2">
-            <SupportInboxTab />
-          </TabsContent>
-
-          <TabsContent value="points" className="pt-2">
-            <PointsTab />
-          </TabsContent>
-
-          <TabsContent value="crm" className="pt-2">
-            <CRMTab />
-          </TabsContent>
-
-          <TabsContent value="tiktok-shops" className="pt-2">
-            <TikTokShopsTab />
-          </TabsContent>
-
-          {isAdmin && (
-            <TabsContent value="team" className="pt-2">
-              <TeamAssignmentsTab />
+          <TabsContents>
+            <TabsContent value="my-clients" className="pt-2">
+              <MyClientsTab />
             </TabsContent>
-          )}
+
+            <TabsContent value="support" className="pt-2">
+              <SupportInboxTab />
+            </TabsContent>
+
+            <TabsContent value="points" className="pt-2">
+              <PointsTab />
+            </TabsContent>
+
+            <TabsContent value="crm" className="pt-2">
+              <CRMTab />
+            </TabsContent>
+
+            <TabsContent value="tiktok-shops" className="pt-2">
+              <TikTokShopsTab />
+            </TabsContent>
+
+            {isAdmin && (
+              <TabsContent value="team" className="pt-2">
+                <TeamAssignmentsTab />
+              </TabsContent>
+            )}
+          </TabsContents>
         </Tabs>
       </main>
     </div>

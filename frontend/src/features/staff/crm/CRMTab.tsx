@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContents, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PipelineBoard } from './PipelineBoard';
 import { SignalEngineTab } from './SignalEngineTab';
 import { ProfitabilityCalculator } from './ProfitabilityCalculator';
@@ -22,15 +22,17 @@ export function CRMTab() {
         <TabsTrigger value="growth-partners">🚀 Growth Partners</TabsTrigger>
         <TabsTrigger value="signal-engine">⚡ Signal Engine</TabsTrigger>
       </TabsList>
-      <TabsContent value="growth-partners" className="space-y-4 pt-2">
-        <ProposalWizard />
-        <ContractInvoicing />
-        <ProfitabilityCalculator />
-        <PipelineBoard />
-      </TabsContent>
-      <TabsContent value="signal-engine" className="pt-2">
-        <SignalEngineTab />
-      </TabsContent>
+      <TabsContents>
+        <TabsContent value="growth-partners" className="space-y-4 pt-2">
+          <ProposalWizard />
+          <ContractInvoicing />
+          <ProfitabilityCalculator />
+          <PipelineBoard />
+        </TabsContent>
+        <TabsContent value="signal-engine" className="pt-2">
+          <SignalEngineTab />
+        </TabsContent>
+      </TabsContents>
     </Tabs>
   );
 }

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Sparkles } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContents, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getBrandCreators, getBrandProfile, getBilling } from '@/lib/brandApi';
 import type { Identity } from '@/lib/api';
@@ -103,41 +103,43 @@ export function BrandApp({ identity }: { identity: Extract<Identity, { type: 'br
             <TabsTrigger value="content">Content Generation</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="current-affiliates" className="grid gap-4 pt-2 sm:grid-cols-2">
-            {creators.currentAffiliates.length === 0 ? (
-              <EmptyState title="No active affiliates yet" description="Send a proposal from Explore Creators to get started." className="sm:col-span-2" />
-            ) : creators.currentAffiliates.map(({ creator, contract }) => (
-              <CreatorCard key={creator.id} variant="current" creator={creator} contract={contract} brandId={brandId} />
-            ))}
-          </TabsContent>
+          <TabsContents>
+            <TabsContent value="current-affiliates" className="grid gap-4 pt-2 sm:grid-cols-2">
+              {creators.currentAffiliates.length === 0 ? (
+                <EmptyState title="No active affiliates yet" description="Send a proposal from Explore Creators to get started." className="sm:col-span-2" />
+              ) : creators.currentAffiliates.map(({ creator, contract }) => (
+                <CreatorCard key={creator.id} variant="current" creator={creator} contract={contract} brandId={brandId} />
+              ))}
+            </TabsContent>
 
-          <TabsContent value="explore" className="grid gap-4 pt-2 sm:grid-cols-2">
-            {creators.exploreCreators.length === 0 ? (
-              <EmptyState title="No creators to discover right now" className="sm:col-span-2" />
-            ) : creators.exploreCreators.map(({ creator }) => (
-              <CreatorCard key={creator.id} variant="explore" creator={creator} brandId={brandId} />
-            ))}
-          </TabsContent>
+            <TabsContent value="explore" className="grid gap-4 pt-2 sm:grid-cols-2">
+              {creators.exploreCreators.length === 0 ? (
+                <EmptyState title="No creators to discover right now" className="sm:col-span-2" />
+              ) : creators.exploreCreators.map(({ creator }) => (
+                <CreatorCard key={creator.id} variant="explore" creator={creator} brandId={brandId} />
+              ))}
+            </TabsContent>
 
-          <TabsContent value="previous" className="grid gap-4 pt-2 sm:grid-cols-2">
-            {creators.previousCreators.length === 0 ? (
-              <EmptyState title="No past affiliates yet" className="sm:col-span-2" />
-            ) : creators.previousCreators.map(({ creator, contractCount }) => (
-              <CreatorCard key={creator.id} variant="previous" creator={creator} contractCount={contractCount} brandId={brandId} />
-            ))}
-          </TabsContent>
+            <TabsContent value="previous" className="grid gap-4 pt-2 sm:grid-cols-2">
+              {creators.previousCreators.length === 0 ? (
+                <EmptyState title="No past affiliates yet" className="sm:col-span-2" />
+              ) : creators.previousCreators.map(({ creator, contractCount }) => (
+                <CreatorCard key={creator.id} variant="previous" creator={creator} contractCount={contractCount} brandId={brandId} />
+              ))}
+            </TabsContent>
 
-          <TabsContent value="content" className="pt-2">
-            <ContentGenerationTab />
-          </TabsContent>
+            <TabsContent value="content" className="pt-2">
+              <ContentGenerationTab />
+            </TabsContent>
 
-          <TabsContent value="billing" className="pt-2">
-            <BillingTab data={billing} />
-          </TabsContent>
+            <TabsContent value="billing" className="pt-2">
+              <BillingTab data={billing} />
+            </TabsContent>
 
-          <TabsContent value="profile" className="pt-2">
-            <ProfileCard profile={profile} onUpdated={() => queryClient.invalidateQueries({ queryKey: ['brand', 'profile'] })} />
-          </TabsContent>
+            <TabsContent value="profile" className="pt-2">
+              <ProfileCard profile={profile} onUpdated={() => queryClient.invalidateQueries({ queryKey: ['brand', 'profile'] })} />
+            </TabsContent>
+          </TabsContents>
         </Tabs>
       </main>
     </div>

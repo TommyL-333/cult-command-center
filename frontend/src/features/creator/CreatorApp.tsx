@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Sparkles } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContents, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getCreatorBrands, getFinancialSummary, getProfile } from '@/lib/creatorApi';
 import type { Identity } from '@/lib/api';
@@ -93,37 +93,39 @@ export function CreatorApp({ identity }: { identity: Extract<Identity, { type: '
             <TabsTrigger value="previous">Previous Contracts</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="my-brands" className="grid gap-4 pt-2 sm:grid-cols-2">
-            {brands.myBrands.length === 0 ? (
-              <EmptyState title="No active brands yet" description="Send a proposal from New Brands to get started." className="sm:col-span-2" />
-            ) : brands.myBrands.map(({ brand, contract }) => (
-              <BrandCard key={brand.id} variant="my" brand={brand} contract={contract} creatorId={identity.id!} />
-            ))}
-          </TabsContent>
+          <TabsContents>
+            <TabsContent value="my-brands" className="grid gap-4 pt-2 sm:grid-cols-2">
+              {brands.myBrands.length === 0 ? (
+                <EmptyState title="No active brands yet" description="Send a proposal from New Brands to get started." className="sm:col-span-2" />
+              ) : brands.myBrands.map(({ brand, contract }) => (
+                <BrandCard key={brand.id} variant="my" brand={brand} contract={contract} creatorId={identity.id!} />
+              ))}
+            </TabsContent>
 
-          <TabsContent value="new-brands" className="grid gap-4 pt-2 sm:grid-cols-2">
-            {brands.newBrands.length === 0 ? (
-              <EmptyState title="No brands to discover right now" className="sm:col-span-2" />
-            ) : brands.newBrands.map(({ brand }) => (
-              <BrandCard key={brand.id} variant="new" brand={brand} creatorId={identity.id!} />
-            ))}
-          </TabsContent>
+            <TabsContent value="new-brands" className="grid gap-4 pt-2 sm:grid-cols-2">
+              {brands.newBrands.length === 0 ? (
+                <EmptyState title="No brands to discover right now" className="sm:col-span-2" />
+              ) : brands.newBrands.map(({ brand }) => (
+                <BrandCard key={brand.id} variant="new" brand={brand} creatorId={identity.id!} />
+              ))}
+            </TabsContent>
 
-          <TabsContent value="previous" className="grid gap-4 pt-2 sm:grid-cols-2">
-            {brands.previousBrands.length === 0 ? (
-              <EmptyState title="No past contracts yet" className="sm:col-span-2" />
-            ) : brands.previousBrands.map(({ brand, contractCount }) => (
-              <BrandCard key={brand.id} variant="previous" brand={brand} contractCount={contractCount} creatorId={identity.id!} />
-            ))}
-          </TabsContent>
+            <TabsContent value="previous" className="grid gap-4 pt-2 sm:grid-cols-2">
+              {brands.previousBrands.length === 0 ? (
+                <EmptyState title="No past contracts yet" className="sm:col-span-2" />
+              ) : brands.previousBrands.map(({ brand, contractCount }) => (
+                <BrandCard key={brand.id} variant="previous" brand={brand} contractCount={contractCount} creatorId={identity.id!} />
+              ))}
+            </TabsContent>
 
-          <TabsContent value="financials" className="pt-2">
-            <FinancialTab data={financial} />
-          </TabsContent>
+            <TabsContent value="financials" className="pt-2">
+              <FinancialTab data={financial} />
+            </TabsContent>
 
-          <TabsContent value="profile" className="pt-2">
-            <ProfileCard profile={profile} onUpdated={() => queryClient.invalidateQueries({ queryKey: ['creator', 'profile'] })} />
-          </TabsContent>
+            <TabsContent value="profile" className="pt-2">
+              <ProfileCard profile={profile} onUpdated={() => queryClient.invalidateQueries({ queryKey: ['creator', 'profile'] })} />
+            </TabsContent>
+          </TabsContents>
         </Tabs>
       </main>
     </div>
