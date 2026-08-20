@@ -71,8 +71,8 @@ const SEED_EMAIL_OPENID = {
 // Used for Weekly Report brand selector and admin brand-context display.
 // Add gourab@cultcontent.cc once they're added to the Lark Team table.
 const BRAND_MANAGERS = {
-  'shayan@cultcontent.cc': ['Approved Science', 'The Perfect Haircare', 'Dissolvd', 'B NOOR'],
-  'gourab@cultcontent.cc': ['Lode WTR', 'Roots by Genetic Art', 'YUGLO Skin', 'Trip Visuals', 'Made Right'],
+  'shayan@cultcontent.cc': ['B NOOR', 'Elasco Skincare', 'Starlit Scribbles'],
+  'gourab@cultcontent.cc': ['Lode WTR', 'Roots by Genetic Art', 'Trip Visuals', 'Made Right'],
 };
 
 // Weekly report form type per team member.
@@ -2312,9 +2312,9 @@ function doEditTask(){
 
 function buildOpts(roster){
   var byId={},clients={};
-  (roster||[]).forEach(function(m){if(m.openId&&m.name)byId[m.openId]=m.name;});
+  (roster||[]).forEach(function(m){if(m.openId&&m.name&&/^ou_[a-f0-9]+$/i.test(m.openId))byId[m.openId]=m.name;});
   ALL.forEach(function(t){
-    if(t.ownerOpenId&&t.ownerName)byId[t.ownerOpenId]=t.ownerName;
+    if(t.ownerOpenId&&t.ownerName&&/^ou_[a-f0-9]+$/i.test(t.ownerOpenId))byId[t.ownerOpenId]=t.ownerName;
     if(t.client)clients[t.client]=1;
   });
   OWNER_MAP=byId;
@@ -2882,7 +2882,10 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
       `/open-apis/bitable/v1/apps/${OPS_APP_TOKEN}/tables/${TASKS_TABLE}/records/${recordId}`,
       { fields: fieldsByName }
     );
-    if (data.code !== 0) throw new Error('patchRecord: ' + data.code + ' ' + data.msg);
+    if (data.code !== 0) {
+      console.error('[patchRecord]', recordId, 'code:', data.code, 'msg:', data.msg, 'fields:', JSON.stringify(fieldsByName));
+      throw new Error('patchRecord: ' + data.code + ' ' + data.msg);
+    }
     return data.data && data.data.record;
   }
 
@@ -3581,20 +3584,61 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
 
   // ---------- ROUTE: GET /api/weekly-reports/reacher-stats ----------
   app.get('/api/weekly-reports/reacher-stats', requireAuth, async (req, res) => {
-    const { brand } = req.query;
+    const { brand, weekStart, weekEnd } = req.query;
     if (!brand) return res.status(400).json({ error: 'brand required' });
     try {
       const RAILWAY_URL = process.env.RAILWAY_URL || 'https://cultcontent-server-production.up.railway.app';
+
+      // Try brands.json first, fall back to Reacher shop list by name
       const brands = loadBrands();
       const b = (brands.clients || []).find(c => (c.name || '').toLowerCase() === brand.toLowerCase());
-      if (!b || !b.shopId) return res.json({ gmv: null, videos_posted: null, samples_sent: null, ctr: null, note: 'No shopId configured for this brand' });
-      let gmv = null;
+      let shopId = b && b.shopId;
+
+      if (!shopId) {
+        try {
+          const shopsRes = await axios.get(`${RAILWAY_URL}/affiliate/shops`, { timeout: 8000 });
+          const shops = shopsRes.data?.data || shopsRes.data || [];
+          const bl = brand.toLowerCase();
+          const match = shops.find(s => {
+            const sn = (s.shop_name || '').toLowerCase();
+            return sn === bl || sn.includes(bl) || bl.includes(sn);
+          });
+          if (match) shopId = match.shop_id;
+        } catch (e) {
+          console.error('[reacher-stats] shop list error:', e.message);
+        }
+      }
+
+      if (!shopId) {
+        return res.json({ gmv: null, videos_posted: null, samples_sent: null, ctr: null, note: 'No matching Reacher shop found for "' + brand + '"' });
+      }
+
+      // Fetch summary metrics with date range
+      const params = {};
+      if (weekStart) params.start_date = weekStart;
+      if (weekEnd) params.end_date = weekEnd;
+
+      let gmv = null, videos_posted = null, samples_sent = null, ctr = null;
       try {
-        const r = await axios.get(`${RAILWAY_URL}/affiliate/shops/${b.shopId}/summary`, { timeout: 8000 });
-        const g = parseFloat(r.data?.total_gmv);
-        if (!isNaN(g)) gmv = g;
-      } catch (_) {}
-      res.json({ gmv, videos_posted: null, samples_sent: null, ctr: null });
+        const r = await axios.get(`${RAILWAY_URL}/affiliate/shops/${shopId}/summary`, { params, timeout: 10000 });
+        // Reacher may wrap the body in a `data` envelope or return fields at the top level
+        const body = r.data || {};
+        const m = (body.data && typeof body.data === 'object') ? body.data : body;
+        console.log('[reacher-stats]', brand, 'shopId:', shopId, 'keys:', Object.keys(m), 'raw:', JSON.stringify(m));
+        // Try both naming conventions (total_gmv is the confirmed field from live data)
+        const rawGmv = m.total_gmv ?? m.gmv;
+        const rawVideos = m.total_videos_posted ?? m.videos_posted ?? m.total_videos;
+        const rawSamples = m.total_samples ?? m.sample_requests ?? m.total_sample_requests;
+        const rawCtr = m.ctr ?? m.total_ctr;
+        if (rawGmv != null) gmv = parseFloat(rawGmv) || 0;
+        if (rawVideos != null) videos_posted = parseInt(rawVideos, 10) || 0;
+        if (rawSamples != null) samples_sent = parseInt(rawSamples, 10) || 0;
+        if (rawCtr != null) ctr = parseFloat(rawCtr) || null;
+      } catch (e) {
+        console.error('[reacher-stats] summary error:', brand, shopId, e.message);
+      }
+
+      res.json({ gmv, videos_posted, samples_sent, ctr });
     } catch (e) {
       res.status(500).json({ error: e.message });
     }
@@ -4006,13 +4050,17 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
         writeJsonFile(ST_FILE, sts);
         return res.json({ ok: true });
       }
+      if (ownerOpenId && !/^ou_[a-f0-9]+$/i.test(ownerOpenId)) {
+        return res.status(400).json({ error: `Invalid owner ID format: "${ownerOpenId}" — expected ou_... Lark open_id` });
+      }
       const fields = {};
       if (task) fields['Task'] = task.trim();
       if (priority) fields['Priority'] = priority;
       if (status) fields['Status'] = status;
       if (ownerOpenId !== undefined) fields['Owner'] = ownerOpenId ? [{ id: ownerOpenId }] : [];
-      if (clientRecordId !== undefined) fields['Client'] = clientRecordId ? [{ record_id: clientRecordId, table_id: CLIENTS_TABLE }] : [];
+      if (clientRecordId !== undefined) fields['Client'] = clientRecordId ? [clientRecordId] : [];
       if (dueDate) fields['Due Date'] = new Date(dueDate + 'T12:00:00.000Z').getTime();
+      console.log('[admin/tasks PATCH]', req.params.recordId, 'fields:', JSON.stringify(fields));
       await patchRecord(req.params.recordId, fields);
       res.json({ ok: true });
     } catch (e) {
@@ -4035,7 +4083,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       if (promptAction) fields['Prompt / Action'] = promptAction;
       // Store at noon UTC so local-timezone display never drifts to the wrong day
       if (dueDate) fields['Due Date'] = new Date(dueDate + 'T12:00:00.000Z').getTime();
-      if (clientRecordId) fields['Client'] = [{ record_id: clientRecordId, table_id: CLIENTS_TABLE }];
+      if (clientRecordId) fields['Client'] = [clientRecordId];
       const data = await larkPost(
         `/open-apis/bitable/v1/apps/${OPS_APP_TOKEN}/tables/${TASKS_TABLE}/records`,
         { fields }
@@ -4074,7 +4122,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       if (priority) fields['Priority'] = priority;
       if (dueDate) fields['Due Date'] = new Date(dueDate + 'T12:00:00.000Z').getTime();
       if (promptAction) fields['Prompt / Action'] = promptAction;
-      if (clientRecordId) fields['Client'] = [{ record_id: clientRecordId, table_id: CLIENTS_TABLE }];
+      if (clientRecordId) fields['Client'] = [clientRecordId];
       const data = await larkPost(
         `/open-apis/bitable/v1/apps/${OPS_APP_TOKEN}/tables/${TASKS_TABLE}/records`,
         { fields }
