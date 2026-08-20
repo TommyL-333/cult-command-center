@@ -2419,6 +2419,7 @@ if (portalTeamAuth) {
       loadUsers: portalTeamAuth.loadUsers,
       stripe,
       getCreatorById,
+      ALL_PERMISSIONS: portalTeamAuth.ALL_PERMISSIONS,
     });
   } catch (e) { console.error('[staff-portal] registration failed:', e.message); }
 } else {

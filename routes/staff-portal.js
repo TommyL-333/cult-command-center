@@ -32,7 +32,7 @@
 const express = require('express');
 
 module.exports = function mountStaffPortal(app, deps = {}) {
-  const { requireAuth, loadBrands, findById, findByUsername, loadUsers, stripe, getCreatorById } = deps;
+  const { requireAuth, loadBrands, findById, findByUsername, loadUsers, stripe, getCreatorById, ALL_PERMISSIONS } = deps;
   if (!requireAuth) throw new Error('[staff-portal] requireAuth dep is required');
   if (!loadBrands) throw new Error('[staff-portal] loadBrands dep is required');
   if (!findById || !findByUsername || !loadUsers) {
@@ -60,12 +60,29 @@ module.exports = function mountStaffPortal(app, deps = {}) {
     console.error('[staff-portal] failed to load db/stripe-connect:', e.message);
   }
 
+  // The one real, synthetic exception: a session with isPortalAdmin=true but
+  // no portalUserId (the legacy shared-password /portal-admin/login) has no
+  // portal-users.json record to return -- but requireStaffPermission below
+  // already treats that exact session as a full owner for WRITE actions.
+  // Without this, GET /api/staff/profile disagreed with that: it reported
+  // empty permissions, so the Team Assignments tab never rendered for a
+  // shared-password admin even though they could already perform the write
+  // via a direct API call. id stays null (there's no real per-person
+  // identity behind the shared password -- see the messaging-identity fix
+  // elsewhere in this app for why that distinction matters); callers that
+  // need a real staff_id (e.g. my-clients) must check for that explicitly.
+  const LEGACY_ADMIN = { id: null, username: null, email: null, name: 'Admin (shared login)', role: 'owner', permissions: ALL_PERMISSIONS || [] };
+
   function currentStaffUser(req) {
     if (req.session?.portalUserId) {
       const u = findById(req.session.portalUserId);
       if (u) return u;
     }
-    if (req.userEmail) return findByUsername(req.userEmail);
+    if (req.userEmail) {
+      const u = findByUsername(req.userEmail);
+      if (u) return u;
+    }
+    if (req.session?.isPortalAdmin) return LEGACY_ADMIN;
     return null;
   }
 
@@ -140,7 +157,10 @@ module.exports = function mountStaffPortal(app, deps = {}) {
   app.get('/api/staff/my-clients', requireAuth, (req, res) => {
     try {
       const u = currentStaffUser(req);
-      if (!u) return res.json({ ok: true, clients: [] });
+      // No real per-person identity (unprovisioned CF-Access teammate, or
+      // the shared-password login) -- no real staff_id to look assignments
+      // up by, so there's genuinely nothing to return, not an error.
+      if (!u || u.id == null) return res.json({ ok: true, clients: [] });
       const brands = loadBrands();
       const byId = new Map((brands.clients || []).map((b) => [b.id, b]));
       const assignments = brandAssignments.getBrandsForStaff(u.id);

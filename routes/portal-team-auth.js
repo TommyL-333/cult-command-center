@@ -235,5 +235,10 @@ module.exports = function mountPortalTeamAuth(app, deps = {}) {
   // loadUsers/publicUser exposed for routes/staff-portal.js's teammate
   // roster (Phase 8) — name+id only, permissions/role stripped by publicUser
   // just like every other consumer of this list, no new exposure surface.
-  return { findByUsername, findById, createUser, updateUser, authenticate, loadUsers, publicUser };
+  // ALL_PERMISSIONS exposed so routes/staff-portal.js can synthesize the
+  // same "legacy shared-password admin = full owner" fallback its write
+  // endpoints already grant (requireStaffPermission), for GET /api/staff/
+  // profile too -- otherwise a shared-password admin can perform an action
+  // via direct API call but the UI never shows them the button for it.
+  return { findByUsername, findById, createUser, updateUser, authenticate, loadUsers, publicUser, ALL_PERMISSIONS };
 };
