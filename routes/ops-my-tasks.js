@@ -4058,7 +4058,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       if (priority) fields['Priority'] = priority;
       if (status) fields['Status'] = status;
       if (ownerOpenId !== undefined) fields['Owner'] = ownerOpenId ? [{ id: ownerOpenId }] : [];
-      if (clientRecordId !== undefined) fields['Client'] = clientRecordId ? [{ record_id: clientRecordId, table_id: CLIENTS_TABLE }] : [];
+      if (clientRecordId !== undefined) fields['Client'] = clientRecordId ? [clientRecordId] : [];
       if (dueDate) fields['Due Date'] = new Date(dueDate + 'T12:00:00.000Z').getTime();
       console.log('[admin/tasks PATCH]', req.params.recordId, 'fields:', JSON.stringify(fields));
       await patchRecord(req.params.recordId, fields);
@@ -4083,7 +4083,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       if (promptAction) fields['Prompt / Action'] = promptAction;
       // Store at noon UTC so local-timezone display never drifts to the wrong day
       if (dueDate) fields['Due Date'] = new Date(dueDate + 'T12:00:00.000Z').getTime();
-      if (clientRecordId) fields['Client'] = [{ record_id: clientRecordId, table_id: CLIENTS_TABLE }];
+      if (clientRecordId) fields['Client'] = [clientRecordId];
       const data = await larkPost(
         `/open-apis/bitable/v1/apps/${OPS_APP_TOKEN}/tables/${TASKS_TABLE}/records`,
         { fields }
@@ -4122,7 +4122,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       if (priority) fields['Priority'] = priority;
       if (dueDate) fields['Due Date'] = new Date(dueDate + 'T12:00:00.000Z').getTime();
       if (promptAction) fields['Prompt / Action'] = promptAction;
-      if (clientRecordId) fields['Client'] = [{ record_id: clientRecordId, table_id: CLIENTS_TABLE }];
+      if (clientRecordId) fields['Client'] = [clientRecordId];
       const data = await larkPost(
         `/open-apis/bitable/v1/apps/${OPS_APP_TOKEN}/tables/${TASKS_TABLE}/records`,
         { fields }
