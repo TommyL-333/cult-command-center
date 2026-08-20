@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Momentix × Cult Content — Creator Partnership Proposal</title>
+<style>
+:root{
+  --bg:#07070d;--surface:#0e0e18;--card:#141420;--border:#1e1e30;
+  --accent:#20d5c4;--green:#10b981;--yellow:#f59e0b;--red:#ef4444;
+  --blue:#6366f1;--purple:#a855f7;
+  --text:#e2e8f0;--muted:#64748b;--light:#94a3b8;--radius:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Inter",sans-serif;font-size:14px;line-height:1.65;}
+
+.topbar{position:sticky;top:0;z-index:100;background:rgba(7,7,13,.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:10px 48px;display:flex;align-items:center;justify-content:space-between;}
+.topbar-logo img{height:32px;width:auto;}
+.topbar-links{display:flex;gap:24px;}
+.topbar-links a{color:var(--muted);font-size:.72rem;font-weight:600;text-decoration:none;letter-spacing:.05em;text-transform:uppercase;transition:color .15s;}
+.topbar-links a:hover{color:var(--accent);}
+
+.hero{padding:64px 48px 52px;background:linear-gradient(155deg,rgba(32,213,196,.05) 0%,transparent 55%);border-bottom:1px solid var(--border);max-width:940px;margin:0 auto;}
+.eyebrow{display:inline-flex;align-items:center;gap:7px;background:rgba(32,213,196,.1);border:1px solid rgba(32,213,196,.22);color:var(--accent);font-size:.67rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;padding:5px 12px;border-radius:20px;margin-bottom:22px;}
+.dot{width:6px;height:6px;background:var(--accent);border-radius:50%;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+h1{font-size:2.7rem;font-weight:900;line-height:1.06;letter-spacing:-.025em;margin-bottom:16px;}
+h1 span{color:var(--accent);}
+.hero-sub{font-size:.9rem;color:var(--light);max-width:560px;margin-bottom:32px;line-height:1.72;}
+.hero-meta{display:flex;gap:36px;flex-wrap:wrap;}
+.meta-item{display:flex;flex-direction:column;gap:3px;}
+.meta-label{font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;font-weight:600;}
+.meta-val{font-size:.87rem;font-weight:700;}
+
+.kpi-strip{max-width:940px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:1px;border:1px solid var(--border);border-top:none;background:var(--border);}
+.kpi{background:var(--surface);padding:22px 20px;}
+.kpi-val{font-size:1.85rem;font-weight:900;color:var(--accent);line-height:1;}
+.kpi-label{font-size:.66rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-top:4px;}
+
+.main{max-width:940px;margin:0 auto;padding:56px 48px;}
+.section{margin-bottom:64px;}
+.sec-label{display:flex;align-items:center;gap:10px;font-size:.62rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:10px;}
+.sec-label::after{content:"";flex:1;height:1px;background:var(--border);}
+.sec-title{font-size:1.45rem;font-weight:900;letter-spacing:-.01em;margin-bottom:8px;}
+.sec-sub{font-size:.85rem;color:var(--light);line-height:1.72;margin-bottom:24px;max-width:650px;}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:22px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+.card-title{font-size:.71rem;font-weight:800;color:var(--text);text-transform:uppercase;letter-spacing:.05em;margin-bottom:11px;}
+.card.tl{border-left:3px solid var(--accent);}
+.card.gl{border-left:3px solid var(--green);}
+.card.yl{border-left:3px solid var(--yellow);}
+.card.pl{border-left:3px solid var(--purple);}
+
+.cklist{list-style:none;display:flex;flex-direction:column;gap:7px;}
+.cklist li{display:flex;align-items:flex-start;gap:8px;font-size:.8rem;color:var(--light);}
+.cklist li::before{content:"✓";color:var(--accent);font-weight:800;flex-shrink:0;margin-top:1px;}
+.blist{list-style:none;display:flex;flex-direction:column;gap:6px;}
+.blist li{display:flex;align-items:flex-start;gap:8px;font-size:.8rem;color:var(--light);}
+.blist li::before{content:"→";color:var(--accent);font-weight:700;flex-shrink:0;}
+
+.callout{display:flex;align-items:flex-start;gap:12px;background:rgba(32,213,196,.06);border:1px solid rgba(32,213,196,.18);border-radius:10px;padding:15px 17px;margin:14px 0;}
+.callout.warn{background:rgba(245,158,11,.06);border-color:rgba(245,158,11,.2);}
+.callout.green{background:rgba(16,185,129,.06);border-color:rgba(16,185,129,.2);}
+.callout.purple{background:rgba(168,85,247,.06);border-color:rgba(168,85,247,.2);}
+.ci{font-size:1.05rem;flex-shrink:0;margin-top:1px;}
+.cb{font-size:.8rem;color:var(--light);line-height:1.65;}
+.cb strong{color:var(--text);}
+
+/* Creator grid */
+.creator-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:16px;}
+.creator-slot{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 12px;text-align:center;}
+.cs-num{font-size:1.3rem;font-weight:900;color:var(--accent);line-height:1;margin-bottom:4px;}
+.cs-label{font-size:.64rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;line-height:1.35;}
+
+/* Invest table */
+.invest-wrap{background:var(--card);border:1px solid rgba(32,213,196,.22);border-radius:var(--radius);overflow:hidden;}
+.invest-row{display:flex;justify-content:space-between;align-items:center;padding:13px 20px;border-bottom:1px solid var(--border);font-size:.82rem;}
+.invest-row:last-child{border-bottom:none;}
+.invest-row.head{background:#090912;padding:8px 20px;}
+.invest-row.head .il{font-size:.62rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;}
+.invest-row.total{background:rgba(32,213,196,.06);padding:16px 20px;}
+.invest-row.total .il{font-size:.88rem;font-weight:800;color:var(--text);}
+.invest-row.total .iv{font-size:1.1rem;font-weight:900;color:var(--accent);}
+.invest-row.addon{background:rgba(168,85,247,.04);border-top:1px dashed rgba(168,85,247,.2);}
+.il{color:var(--light);}
+.il strong{color:var(--text);}
+.il em{color:var(--muted);font-style:normal;font-size:.75rem;margin-left:6px;}
+.iv{font-weight:700;font-variant-numeric:tabular-nums;}
+.iv.accent{color:var(--accent);}
+.iv.green{color:var(--green);}
+.iv.purple{color:var(--purple);}
+
+/* Live package breakdown */
+.live-breakdown{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px;}
+.lb-item{display:flex;align-items:flex-start;gap:12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 16px;}
+.lb-icon{font-size:1.2rem;flex-shrink:0;margin-top:1px;}
+.lb-title{font-size:.76rem;font-weight:800;color:var(--text);margin-bottom:4px;}
+.lb-desc{font-size:.75rem;color:var(--muted);line-height:1.55;}
+
+/* Roadmap */
+.roadmap{display:flex;flex-direction:column;}
+.rm-row{display:grid;grid-template-columns:110px 1fr;position:relative;}
+.rm-row:not(:last-child)::before{content:"";position:absolute;left:52px;top:50px;bottom:-10px;width:1px;background:linear-gradient(to bottom,rgba(32,213,196,.35),transparent);}
+.rm-phase{padding:20px 14px 20px 0;display:flex;align-items:flex-start;justify-content:flex-end;}
+.rm-tag{background:var(--accent);color:#000;font-size:.62rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;padding:4px 9px;border-radius:20px;white-space:nowrap;}
+.rm-tag.t2{background:rgba(32,213,196,.22);color:var(--accent);}
+.rm-tag.t3{background:transparent;color:var(--accent);border:1px solid rgba(32,213,196,.3);}
+.rm-body{padding:18px 0 18px 24px;border-left:1px solid var(--border);}
+.rm-title{font-size:.87rem;font-weight:800;color:var(--text);margin-bottom:8px;}
+
+.footer{border-top:1px solid var(--border);padding:40px 48px;max-width:940px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px;}
+.footer-left p{font-size:.8rem;color:var(--muted);line-height:1.6;}
+.footer-left a{color:var(--accent);text-decoration:none;font-weight:700;}
+.footer-logo img{height:28px;opacity:.5;}
+
+@media(max-width:720px){
+  .topbar{padding:10px 20px;}
+  .topbar-links{display:none;}
+  .hero{padding:40px 24px 36px;}
+  .main{padding:40px 24px;}
+  .kpi-strip{grid-template-columns:1fr 1fr;}
+  .grid2,.grid3,.live-breakdown{grid-template-columns:1fr;}
+  .creator-grid{grid-template-columns:repeat(2,1fr);}
+  .footer{padding:32px 24px;}
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="topbar">
+  <div class="topbar-logo">
+    <img src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png" alt="Cult Content"/>
+  </div>
+  <div class="topbar-links">
+    <a href="#overview">Overview</a>
+    <a href="#creators">Creators</a>
+    <a href="#live">Live Strategy</a>
+    <a href="#investment">Investment</a>
+    <a href="#next">Next Steps</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> Creator Partnership Proposal</div>
+  <h1>Momentix <span>×</span> Cult Content</h1>
+  <p class="hero-sub">A one-month creator engagement program designed for multi-brand agencies — covering creator retainers, content volume, and a full live strategy package. Applicable to any one brand in your portfolio.</p>
+  <div class="hero-meta">
+    <div class="meta-item">
+      <span class="meta-label">Prepared for</span>
+      <span class="meta-val">Momentix</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Prepared by</span>
+      <span class="meta-val">Cult Content</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Engagement length</span>
+      <span class="meta-val">1 Month</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Date</span>
+      <span class="meta-val">August 2026</span>
+    </div>
+  </div>
+</div>
+
+<!-- KPI STRIP -->
+<div class="kpi-strip">
+  <div class="kpi">
+    <div class="kpi-val">$15k</div>
+    <div class="kpi-label">Fixed investment</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-val">200</div>
+    <div class="kpi-label">Creator videos</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-val">10</div>
+    <div class="kpi-label">Retainer creators</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-val">4%</div>
+    <div class="kpi-label">GMV share on community sales</div>
+  </div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div class="main">
+
+  <!-- 01 OVERVIEW -->
+  <div class="section" id="overview">
+    <div class="sec-label">01 · Overview</div>
+    <h2 class="sec-title">One Program. Any Brand in Your Portfolio.</h2>
+    <p class="sec-sub">Momentix manages multiple brands — and finding quality creators at scale is the hard part. This engagement gives you a fully managed creator program for one brand of your choosing: screened talent, guaranteed content output, and a live strategy built around converting product.</p>
+
+    <div class="grid2">
+      <div class="card tl">
+        <div class="card-title">What's included</div>
+        <ul class="cklist">
+          <li>10 screened retainer creators — 20 videos each</li>
+          <li>Full live strategy consultation &amp; creator training</li>
+          <li>Product audit to identify your best-performing SKU for live</li>
+          <li>Flash sale setup and live promotional calendar</li>
+          <li>Reacher-managed sample &amp; campaign pipeline</li>
+          <li>Ongoing GMV tracking and performance reporting</li>
+        </ul>
+      </div>
+      <div class="card gl">
+        <div class="card-title">How brand selection works</div>
+        <ul class="cklist">
+          <li>You choose which brand in your portfolio this runs on</li>
+          <li>We onboard that brand's shop, catalog, and offer structure</li>
+          <li>Creators are selected and briefed specifically for that product</li>
+          <li>At the end of month one, we'll assess performance and discuss continuation or a different brand</li>
+        </ul>
+        <div class="callout green" style="margin-top:14px;">
+          <span class="ci">💡</span>
+          <div class="cb"><strong>Built for agencies:</strong> This structure is designed to be repeatable. Once we validate the playbook on one brand, rolling it to the next is straightforward.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 02 CREATOR PROGRAM -->
+  <div class="section" id="creators">
+    <div class="sec-label">02 · Creator Program</div>
+    <h2 class="sec-title">10 Creators. 20 Videos Each. 200 Total.</h2>
+    <p class="sec-sub">We source and screen creators from our community — every retainer creator is vetted for content quality before a single dollar goes out. Each creator commits to 20 videos for $500, giving you 200 pieces of content for the month.</p>
+
+    <div class="callout" style="margin-bottom:18px;">
+      <span class="ci">🎯</span>
+      <div class="cb"><strong>Screened before funded:</strong> We only pay retainers to creators who produce quality content. Lower-quality or newer creators can still access your product as floaters — free samples, community access, but no guaranteed payment and no guaranteed output.</div>
+    </div>
+
+    <div class="creator-grid">
+      <div class="creator-slot">
+        <div class="cs-num">10</div>
+        <div class="cs-label">Retainer creators</div>
+      </div>
+      <div class="creator-slot">
+        <div class="cs-num">20</div>
+        <div class="cs-label">Videos per creator</div>
+      </div>
+      <div class="creator-slot">
+        <div class="cs-num">$500</div>
+        <div class="cs-label">Per creator retainer</div>
+      </div>
+      <div class="creator-slot">
+        <div class="cs-num">200</div>
+        <div class="cs-label">Total videos</div>
+      </div>
+      <div class="creator-slot">
+        <div class="cs-num">4%</div>
+        <div class="cs-label">GMV on all community sales</div>
+      </div>
+    </div>
+
+    <div class="grid2" style="margin-top:16px;">
+      <div class="card yl">
+        <div class="card-title">What retainer creators receive</div>
+        <ul class="cklist">
+          <li>$500/mo guaranteed for 20 videos</li>
+          <li>Free product samples from your brand</li>
+          <li>Higher commission rates than open affiliate links</li>
+          <li>Weekly content training calls — hooks, lighting, format</li>
+          <li>Access to brand-specific performance data to guide content</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title">What floaters receive</div>
+        <ul class="blist">
+          <li>Free samples to create organic content</li>
+          <li>Higher commission links through the community</li>
+          <li>Access to content training and community calls</li>
+          <li>Eligible to earn retainer status if content quality improves</li>
+        </ul>
+        <div class="callout warn" style="margin-top:12px;">
+          <span class="ci">⚡</span>
+          <div class="cb">Floater content is <strong>not guaranteed</strong> — but it's free reach. Some floaters outperform retainer creators.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 03 LIVE STRATEGY -->
+  <div class="section" id="live">
+    <div class="sec-label">03 · Live Strategy</div>
+    <h2 class="sec-title">A Full Live Program — Not Just Going Live.</h2>
+    <p class="sec-sub">Most brands treat TikTok LIVE as an afterthought. The $5,000 live management package builds a real program around your best product: a product audit, a full live strategy, trained creators, and coordinated flash sales designed to generate order velocity.</p>
+
+    <div class="callout purple" style="margin-bottom:20px;">
+      <span class="ci">🎬</span>
+      <div class="cb"><strong>Led by Becca Bryan.</strong> Becca brings her own creator network to the table — live-experienced talent who know how to structure sessions, handle flash promos, and keep viewer engagement high. This isn't outsourced production; it's a built-in strategic advantage.</div>
+    </div>
+
+    <div class="live-breakdown">
+      <div class="lb-item">
+        <span class="lb-icon">🔍</span>
+        <div>
+          <div class="lb-title">Product Audit</div>
+          <div class="lb-desc">We review your brand's catalog and identify which product has the best live potential — strongest margin, most visual appeal, easiest to demonstrate and convert on camera.</div>
+        </div>
+      </div>
+      <div class="lb-item">
+        <span class="lb-icon">📋</span>
+        <div>
+          <div class="lb-title">Full Live Strategy</div>
+          <div class="lb-desc">We build the live playbook: session structure, talking points, product framing, offer timing, and what makes viewers convert. Delivered as a repeatable format your creators can run.</div>
+        </div>
+      </div>
+      <div class="lb-item">
+        <span class="lb-icon">⚡</span>
+        <div>
+          <div class="lb-title">Flash Sale Setup</div>
+          <div class="lb-desc">We design and schedule flash sales timed to live sessions — limited-time pricing, giveaway mechanics, and bundle offers that drive urgency and order velocity during each broadcast.</div>
+        </div>
+      </div>
+      <div class="lb-item">
+        <span class="lb-icon">🎓</span>
+        <div>
+          <div class="lb-title">Creator Live Training</div>
+          <div class="lb-desc">Becca runs live training sessions with your creators — teaching scripts, session flow, how to handle the chat, and how to convert viewers into buyers. Creators come ready, not improvising.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout green" style="margin-top:20px;">
+      <span class="ci">➕</span>
+      <div class="cb"><strong>Optional add-on:</strong> Need guaranteed live creative management beyond the package? Additional sessions are available at <strong>$40/hour</strong> — billed against actual session time, managed by Becca's network.</div>
+    </div>
+  </div>
+
+  <!-- 04 INVESTMENT -->
+  <div class="section" id="investment">
+    <div class="sec-label">04 · Investment</div>
+    <h2 class="sec-title">Clear Numbers. One Month.</h2>
+    <p class="sec-sub">Fixed fees are due at the start of the engagement. The 4% GMV share applies to all transactions generated by the Cult Content community and is calculated on gross TikTok Shop revenue.</p>
+
+    <div class="invest-wrap">
+      <div class="invest-row head">
+        <span class="il">Line item</span>
+        <span class="il">Amount</span>
+      </div>
+      <div class="invest-row">
+        <span class="il"><strong>Service Fee</strong><em>Cult Content program setup &amp; management</em></span>
+        <span class="iv accent">$5,000</span>
+      </div>
+      <div class="invest-row">
+        <span class="il"><strong>Creator Retainers</strong><em>10 creators × $500 — 20 videos each</em></span>
+        <span class="iv accent">$5,000</span>
+      </div>
+      <div class="invest-row">
+        <span class="il"><strong>Live Strategy Package</strong><em>Product audit, live strategy, flash sales, creator training</em></span>
+        <span class="iv accent">$5,000</span>
+      </div>
+      <div class="invest-row">
+        <span class="il"><strong>GMV Share</strong><em>Applied to all community-generated transactions</em></span>
+        <span class="iv green">4% of GMV</span>
+      </div>
+      <div class="invest-row total">
+        <span class="il">Total Fixed (Month 1)</span>
+        <span class="iv">$15,000 + 4% GMV</span>
+      </div>
+      <div class="invest-row addon">
+        <span class="il" style="color:var(--muted);"><strong style="color:var(--light);">Optional — Additional Live Sessions</strong><em>Beyond the included package</em></span>
+        <span class="iv purple">$40 / hour</span>
+      </div>
+    </div>
+
+    <div class="callout warn" style="margin-top:18px;">
+      <span class="ci">📌</span>
+      <div class="cb"><strong>One-month engagement.</strong> This proposal covers a single month. At the end of the engagement we'll review GMV, content performance, and creator quality together — and decide whether to continue, expand to another brand, or adjust the structure.</div>
+    </div>
+  </div>
+
+  <!-- 05 NEXT STEPS -->
+  <div class="section" id="next">
+    <div class="sec-label">05 · Next Steps</div>
+    <h2 class="sec-title">How We Get Started.</h2>
+    <p class="sec-sub">Once you confirm, we move fast. The goal is to have creators sampling and content in production within the first two weeks.</p>
+
+    <div class="roadmap">
+      <div class="rm-row">
+        <div class="rm-phase"><span class="rm-tag">Step 1</span></div>
+        <div class="rm-body">
+          <div class="rm-title">Confirm your brand &amp; sign off</div>
+          <ul class="blist">
+            <li>Tell us which brand in the Momentix portfolio this runs on</li>
+            <li>Share the product catalog and any existing TikTok Shop data</li>
+            <li>Confirm the start date and approve the investment</li>
+          </ul>
+        </div>
+      </div>
+      <div class="rm-row">
+        <div class="rm-phase"><span class="rm-tag t2">Step 2</span></div>
+        <div class="rm-body">
+          <div class="rm-title">Product audit &amp; creator sourcing</div>
+          <ul class="blist">
+            <li>Becca runs the product audit — identifies the best SKU for live</li>
+            <li>We identify and screen the 10 retainer creator candidates</li>
+            <li>Samples shipped to all retainer and floater creators via Reacher</li>
+          </ul>
+        </div>
+      </div>
+      <div class="rm-row">
+        <div class="rm-phase"><span class="rm-tag t3">Step 3</span></div>
+        <div class="rm-body">
+          <div class="rm-title">Creator onboarding &amp; live training</div>
+          <ul class="blist">
+            <li>Retainer creators briefed on the brand, the product, and content expectations</li>
+            <li>Becca runs live training — scripts, flash sale structure, session format</li>
+            <li>Flash sale calendar set up and synced with creator posting schedule</li>
+          </ul>
+        </div>
+      </div>
+      <div class="rm-row">
+        <div class="rm-phase"><span class="rm-tag t3">Step 4</span></div>
+        <div class="rm-body">
+          <div class="rm-title">Content live — month in motion</div>
+          <ul class="blist">
+            <li>200 videos rolling throughout the month across retainer creators</li>
+            <li>Live sessions running with flash promos coordinated around them</li>
+            <li>GMV and content performance tracked weekly</li>
+            <li>End-of-month review call to assess results and next steps</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout" style="margin-top:28px;">
+      <span class="ci">✉️</span>
+      <div class="cb">Ready to move forward or have questions? Reach out directly: <strong><a href="mailto:tommy@cultcontent.cc" style="color:var(--accent);text-decoration:none;">tommy@cultcontent.cc</a></strong></div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<!-- FOOTER -->
+<div class="footer">
+  <div class="footer-left">
+    <p>Prepared by Tommy Lynch, Cult Content<br>
+    <a href="mailto:tommy@cultcontent.cc">tommy@cultcontent.cc</a> · <a href="https://cultcontent.cc" target="_blank">cultcontent.cc</a></p>
+  </div>
+  <div class="footer-logo">
+    <img src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png" alt="Cult Content"/>
+  </div>
+</div>
+
+</body>
+</html>
