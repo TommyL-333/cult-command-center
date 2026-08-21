@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Flitz × Cult Content — TikTok Shop Launch Proposal</title>
+<style>
+:root{
+  --bg:#07070d;--surface:#0e0e18;--card:#141420;--border:#1e1e30;
+  --accent:#20d5c4;--green:#10b981;--yellow:#f59e0b;--red:#ef4444;
+  --blue:#6366f1;--purple:#a855f7;--orange:#fb923c;
+  --text:#e2e8f0;--muted:#64748b;--light:#94a3b8;--radius:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Inter",sans-serif;font-size:14px;line-height:1.65;}
+
+.topbar{position:sticky;top:0;z-index:100;background:rgba(7,7,13,.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:10px 48px;display:flex;align-items:center;justify-content:space-between;}
+.topbar-logo{font-size:.78rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);}
+.topbar-links{display:flex;gap:24px;}
+.topbar-links a{color:var(--muted);font-size:.72rem;font-weight:600;text-decoration:none;letter-spacing:.05em;text-transform:uppercase;transition:color .15s;}
+.topbar-links a:hover{color:var(--accent);}
+
+.hero{padding:64px 48px 52px;background:linear-gradient(155deg,rgba(32,213,196,.05) 0%,transparent 55%);border-bottom:1px solid var(--border);max-width:940px;margin:0 auto;}
+.eyebrow{display:inline-flex;align-items:center;gap:7px;background:rgba(32,213,196,.1);border:1px solid rgba(32,213,196,.22);color:var(--accent);font-size:.67rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;padding:5px 12px;border-radius:20px;margin-bottom:22px;}
+.dot{width:6px;height:6px;background:var(--accent);border-radius:50%;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+h1{font-size:2.7rem;font-weight:900;line-height:1.06;letter-spacing:-.025em;margin-bottom:16px;}
+h1 span{color:var(--accent);}
+.hero-sub{font-size:.9rem;color:var(--light);max-width:580px;margin-bottom:32px;line-height:1.72;}
+.hero-meta{display:flex;gap:36px;flex-wrap:wrap;}
+.meta-item{display:flex;flex-direction:column;gap:3px;}
+.meta-label{font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;font-weight:600;}
+.meta-val{font-size:.87rem;font-weight:700;}
+
+.kpi-strip{max-width:940px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:1px;border:1px solid var(--border);border-top:none;background:var(--border);}
+.kpi{background:var(--surface);padding:22px 20px;}
+.kpi-val{font-size:1.85rem;font-weight:900;color:var(--accent);line-height:1;}
+.kpi-label{font-size:.66rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-top:4px;}
+
+.main{max-width:940px;margin:0 auto;padding:56px 48px;}
+.section{margin-bottom:64px;}
+.sec-label{display:flex;align-items:center;gap:10px;font-size:.62rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:10px;}
+.sec-label::after{content:"";flex:1;height:1px;background:var(--border);}
+.sec-title{font-size:1.45rem;font-weight:900;letter-spacing:-.01em;margin-bottom:8px;}
+.sec-sub{font-size:.85rem;color:var(--light);line-height:1.72;margin-bottom:24px;max-width:650px;}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:22px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+.card-title{font-size:.71rem;font-weight:800;color:var(--text);text-transform:uppercase;letter-spacing:.05em;margin-bottom:11px;}
+.card.tl{border-left:3px solid var(--accent);}
+.card.gl{border-left:3px solid var(--green);}
+.card.yl{border-left:3px solid var(--yellow);}
+.card.pl{border-left:3px solid var(--purple);}
+.card.ol{border-left:3px solid var(--orange);}
+
+.cklist{list-style:none;display:flex;flex-direction:column;gap:7px;}
+.cklist li{display:flex;align-items:flex-start;gap:8px;font-size:.8rem;color:var(--light);}
+.cklist li::before{content:"✓";color:var(--accent);font-weight:800;flex-shrink:0;margin-top:1px;}
+.blist{list-style:none;display:flex;flex-direction:column;gap:6px;}
+.blist li{display:flex;align-items:flex-start;gap:8px;font-size:.8rem;color:var(--light);}
+.blist li::before{content:"→";color:var(--accent);font-weight:700;flex-shrink:0;}
+
+.callout{display:flex;align-items:flex-start;gap:12px;background:rgba(32,213,196,.06);border:1px solid rgba(32,213,196,.18);border-radius:10px;padding:15px 17px;margin:14px 0;}
+.callout.warn{background:rgba(245,158,11,.06);border-color:rgba(245,158,11,.2);}
+.callout.green{background:rgba(16,185,129,.06);border-color:rgba(16,185,129,.2);}
+.callout.purple{background:rgba(168,85,247,.06);border-color:rgba(168,85,247,.2);}
+.callout.orange{background:rgba(251,146,60,.06);border-color:rgba(251,146,60,.25);}
+.ci{font-size:1.05rem;flex-shrink:0;margin-top:1px;}
+.cb{font-size:.8rem;color:var(--light);line-height:1.65;}
+.cb strong{color:var(--text);}
+
+/* Phase timeline */
+.phase-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;}
+.phase-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;}
+.phase-badge{display:inline-block;font-size:.6rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;border-radius:20px;margin-bottom:12px;}
+.phase-badge.now{background:rgba(32,213,196,.15);color:var(--accent);border:1px solid rgba(32,213,196,.3);}
+.phase-badge.jan{background:rgba(16,185,129,.15);color:var(--green);border:1px solid rgba(16,185,129,.3);}
+.phase-card h3{font-size:.95rem;font-weight:800;margin-bottom:8px;}
+.phase-card p{font-size:.8rem;color:var(--light);line-height:1.65;}
+
+/* Creator tiers */
+.creator-tier{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;margin-bottom:14px;}
+.tier-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.tier-badge{font-size:.62rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:20px;}
+.tier-badge.retainer{background:rgba(32,213,196,.15);color:var(--accent);border:1px solid rgba(32,213,196,.25);}
+.tier-badge.community{background:rgba(168,85,247,.15);color:var(--purple);border:1px solid rgba(168,85,247,.25);}
+.tier-badge.joinbrands{background:rgba(245,158,11,.15);color:var(--yellow);border:1px solid rgba(245,158,11,.25);}
+.tier-title{font-size:.88rem;font-weight:800;}
+
+/* P&L table */
+.pl-wrap{background:var(--card);border:1px solid rgba(32,213,196,.22);border-radius:var(--radius);overflow:hidden;}
+.pl-row{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;border-bottom:1px solid var(--border);font-size:.82rem;}
+.pl-row:last-child{border-bottom:none;}
+.pl-row.head{background:#090912;padding:8px 20px;}
+.pl-row.head span{font-size:.6rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;}
+.pl-row.subtotal{background:rgba(32,213,196,.04);}
+.pl-row.total{background:rgba(32,213,196,.08);padding:16px 20px;}
+.pl-label{color:var(--light);}
+.pl-label strong{color:var(--text);}
+.pl-label em{color:var(--muted);font-style:normal;font-size:.74rem;margin-left:6px;}
+.pl-val{font-weight:700;font-variant-numeric:tabular-nums;}
+.pl-val.pos{color:var(--green);}
+.pl-val.neg{color:var(--red);}
+.pl-val.accent{color:var(--accent);}
+.pl-val.big{font-size:1.05rem;font-weight:900;color:var(--accent);}
+
+/* Invest table */
+.invest-wrap{background:var(--card);border:1px solid rgba(32,213,196,.22);border-radius:var(--radius);overflow:hidden;}
+.invest-row{display:flex;justify-content:space-between;align-items:center;padding:13px 20px;border-bottom:1px solid var(--border);font-size:.82rem;}
+.invest-row:last-child{border-bottom:none;}
+.invest-row.head{background:#090912;padding:8px 20px;}
+.invest-row.head .il{font-size:.62rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;}
+.invest-row.total{background:rgba(32,213,196,.06);padding:16px 20px;}
+.invest-row.total .il{font-size:.88rem;font-weight:800;color:var(--text);}
+.invest-row.total .iv{font-size:1.1rem;font-weight:900;color:var(--accent);}
+.invest-row.addon{background:rgba(251,146,60,.04);border-top:1px dashed rgba(251,146,60,.25);}
+.il{color:var(--light);}
+.il strong{color:var(--text);}
+.il em{color:var(--muted);font-style:normal;font-size:.75rem;margin-left:6px;}
+.iv{font-weight:700;font-variant-numeric:tabular-nums;}
+.iv.accent{color:var(--accent);}
+.iv.green{color:var(--green);}
+.iv.orange{color:var(--orange);}
+
+/* Outreach tiers */
+.outreach-steps{display:flex;flex-direction:column;gap:10px;margin-top:16px;}
+.os-item{display:flex;align-items:center;gap:14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;}
+.os-num{font-size:1.4rem;font-weight:900;color:var(--accent);width:40px;flex-shrink:0;line-height:1;}
+.os-body{flex:1;}
+.os-title{font-size:.8rem;font-weight:800;color:var(--text);margin-bottom:2px;}
+.os-desc{font-size:.75rem;color:var(--muted);}
+.os-badge{font-size:.6rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;padding:2px 8px;border-radius:20px;background:rgba(32,213,196,.12);color:var(--accent);white-space:nowrap;}
+
+/* Roadmap */
+.roadmap{display:flex;flex-direction:column;}
+.rm-row{display:grid;grid-template-columns:110px 1fr;position:relative;}
+.rm-row:not(:last-child)::before{content:"";position:absolute;left:52px;top:50px;bottom:-10px;width:1px;background:linear-gradient(to bottom,rgba(32,213,196,.35),transparent);}
+.rm-phase{padding:20px 14px 20px 0;display:flex;align-items:flex-start;justify-content:flex-end;}
+.rm-tag{background:var(--accent);color:#000;font-size:.62rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;padding:4px 9px;border-radius:20px;white-space:nowrap;}
+.rm-tag.t2{background:rgba(32,213,196,.22);color:var(--accent);}
+.rm-tag.t3{background:transparent;color:var(--accent);border:1px solid rgba(32,213,196,.3);}
+.rm-tag.t4{background:rgba(16,185,129,.22);color:var(--green);}
+.rm-body{padding:18px 0 18px 24px;border-left:1px solid var(--border);}
+.rm-title{font-size:.87rem;font-weight:800;color:var(--text);margin-bottom:8px;}
+
+/* Carnival callout */
+.carnival-card{background:linear-gradient(135deg,rgba(251,146,60,.08) 0%,rgba(245,158,11,.06) 100%);border:1px solid rgba(251,146,60,.25);border-radius:var(--radius);padding:24px;margin-bottom:24px;}
+.carnival-title{font-size:1.05rem;font-weight:900;margin-bottom:8px;}
+.carnival-title span{color:var(--orange);}
+.carnival-sub{font-size:.82rem;color:var(--light);line-height:1.65;margin-bottom:16px;}
+.carnival-detail{display:flex;gap:24px;flex-wrap:wrap;}
+.cd-item{display:flex;flex-direction:column;gap:2px;}
+.cd-label{font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600;}
+.cd-val{font-size:.82rem;font-weight:700;}
+
+.footer{border-top:1px solid var(--border);padding:40px 48px;max-width:940px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px;}
+.footer-left p{font-size:.8rem;color:var(--muted);line-height:1.6;}
+.footer-left a{color:var(--accent);text-decoration:none;font-weight:700;}
+
+@media(max-width:720px){
+  .topbar{padding:10px 20px;}
+  .hero{padding:40px 20px 36px;}
+  .main{padding:40px 20px;}
+  .kpi-strip{grid-template-columns:repeat(2,1fr);}
+  .grid2,.phase-grid{grid-template-columns:1fr;}
+  .grid3{grid-template-columns:1fr 1fr;}
+  h1{font-size:2rem;}
+  .footer{padding:28px 20px;}
+}
+</style>
+</head>
+<body>
+
+<nav class="topbar">
+  <div class="topbar-logo">Cult Content</div>
+  <div class="topbar-links">
+    <a href="#strategy">Strategy</a>
+    <a href="#creators">Creators</a>
+    <a href="#economics">Economics</a>
+    <a href="#investment">Investment</a>
+    <a href="#next-steps">Next Steps</a>
+  </div>
+</nav>
+
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span> Prepared for Flitz International</div>
+  <h1>Your <span>TikTok Shop</span><br>Launch Blueprint</h1>
+  <p class="hero-sub">A phased launch strategy built around your hero SKU — the Instant Brass & Copper Tarnish Remover — designed to build momentum now and go full-throttle in January when creators are hungry.</p>
+  <div class="hero-meta">
+    <div class="meta-item">
+      <span class="meta-label">Hero SKU</span>
+      <span class="meta-val">Instant Brass &amp; Copper Tarnish Remover</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Launch Phase</span>
+      <span class="meta-val">Aug – Sept (Soft) → Jan (Full)</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Fulfillment</span>
+      <span class="meta-val">Amazon MCF (35% discount)</span>
+    </div>
+    <div class="meta-item">
+      <span class="meta-label">Prepared by</span>
+      <span class="meta-val">Tommy Lynch, Cult Content</span>
+    </div>
+  </div>
+</div>
+
+<div class="kpi-strip">
+  <div class="kpi">
+    <div class="kpi-val">700+</div>
+    <div class="kpi-label">Creator Network</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-val">300</div>
+    <div class="kpi-label">Join Brands Launch</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-val">~48%</div>
+    <div class="kpi-label">Contribution Margin</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-val">Jan '27</div>
+    <div class="kpi-label">Full Activation</div>
+  </div>
+</div>
+
+<div class="main">
+
+  <!-- SECTION 01: STRATEGY -->
+  <div class="section" id="strategy">
+    <div class="sec-label">01 — Strategy</div>
+    <div class="sec-title">Two-Phase Launch Plan</div>
+    <p class="sec-sub">Since Christmas isn't your peak season, we don't want to throw ad dollars at the wall during Q4. Instead we use the next few months to lay the groundwork — so when January hits and creators are starving for a new deal, Flitz is already dialed in.</p>
+
+    <div class="phase-grid">
+      <div class="phase-card">
+        <div class="phase-badge now">Phase 1 — Now</div>
+        <h3>Soft Launch &amp; Data Gathering</h3>
+        <p>Get TikTok Shop live. List hero SKU. Run a small Join Brands campaign. Bring Crystal and a handful of early affiliates into the creator community. Begin collecting conversion rates, click-through rates, and video performance data so we go into January armed with real metrics — not guesses.</p>
+      </div>
+      <div class="phase-card">
+        <div class="phase-badge jan">Phase 2 — January 2027</div>
+        <h3>Full Activation</h3>
+        <p>Scale creator outreach to thousands per week. Run bonuses and incentives (post 10 videos → $100, 5 sales → $300 bonus). Activate the full Cult Members community. Push promotional calendar and flash sales. This is where the TikTok Machine goes to work — and your inventory forecasting has a real baseline to plan around.</p>
+      </div>
+    </div>
+
+    <div class="callout">
+      <div class="ci">📈</div>
+      <div class="cb"><strong>Why this timing works:</strong> After the holidays, creators are actively looking for new brand deals. Your product has a built-in "wow moment" that performs exceptionally well in short-form video — the goal is to have your creator community, conversion data, and shop performance score established before we turn up the volume.</div>
+    </div>
+
+    <div class="callout green">
+      <div class="ci">🧲</div>
+      <div class="cb"><strong>Crystal opportunity:</strong> The creator who drove your 12M-view Instagram viral moment has already expressed interest in becoming an affiliate. We'll bring her into the community immediately, get her set up on TikTok Shop, and use her story — $50,000 in sales from one video — to inspire and recruit other creators on our weekly calls.</div>
+    </div>
+  </div>
+
+  <!-- SECTION 02: CREATORS -->
+  <div class="section" id="creators">
+    <div class="sec-label">02 — Creator Program</div>
+    <div class="sec-title">Three Tiers Working Together</div>
+    <p class="sec-sub">The brands that win on TikTok Shop don't rely on random viral spikes — they build creator community. When a video goes viral, we want 100 creators replicating it, not waiting to see if it happens again.</p>
+
+    <div class="creator-tier">
+      <div class="tier-header">
+        <div class="tier-title">Join Brands Campaign</div>
+        <div class="tier-badge joinbrands">Launch Mechanism</div>
+      </div>
+      <ul class="cklist">
+        <li>300 creators receive free product + small upfront fee to create their first video</li>
+        <li>Each creator places an order — generating initial GMV to unlock higher outreach tiers</li>
+        <li>Produces immediate creator-generated content you can repurpose for Meta ads</li>
+        <li>One-time activation, not an ongoing monthly spend</li>
+      </ul>
+    </div>
+
+    <div class="creator-tier">
+      <div class="tier-header">
+        <div class="tier-title">Retainer Creators</div>
+        <div class="tier-badge retainer">Paid, Guaranteed Content</div>
+      </div>
+      <ul class="cklist">
+        <li>Screened through our network — selected for product fit and engagement quality</li>
+        <li>Paid $500/creator for a guaranteed 20 videos per month</li>
+        <li>Dedicated to Flitz; produce consistent, on-brand content each month</li>
+        <li>First priority for product testing and new SKU launches</li>
+      </ul>
+    </div>
+
+    <div class="creator-tier">
+      <div class="tier-header">
+        <div class="tier-title">Cult Members</div>
+        <div class="tier-badge community">Community — 700+ Network</div>
+      </div>
+      <ul class="cklist">
+        <li>Free product samples in exchange for the opportunity to earn commission on sales</li>
+        <li>Boosted affiliate commission links — higher earning potential than standard program</li>
+        <li>Brand-specific training: what's working, what angles drive conversions, viral replications</li>
+        <li>No guaranteed content output — they post because it works for them</li>
+        <li>Some Cult Members outperform retainer creators; we watch the data and reward the top performers</li>
+      </ul>
+    </div>
+
+    <div class="callout purple">
+      <div class="ci">📞</div>
+      <div class="cb"><strong>Weekly Creator Call:</strong> Every week, we host a live call with Flitz's full creator community. Brands jump on. Creators share what's working. We review viral content and coordinate replications. We surface the top performers on a leaderboard and spotlight wins (like Crystal's $50k moment) to keep the community bought in. This community infrastructure is what separates brands that get one spike from brands that get a hundred of them.</div>
+    </div>
+  </div>
+
+  <!-- SECTION 03: OUTREACH TIERS -->
+  <div class="section">
+    <div class="sec-label">03 — Outreach System</div>
+    <div class="sec-title">TikTok Outreach Unlocks as You Grow</div>
+    <p class="sec-sub">TikTok limits how many creators you can reach out to — but those limits scale with your GMV. Here's how the unlock ladder works and how we manage it.</p>
+
+    <div class="outreach-steps">
+      <div class="os-item">
+        <div class="os-num">1K</div>
+        <div class="os-body">
+          <div class="os-title">Launch — 1,000 messages/week</div>
+          <div class="os-desc">Day one limit. We place a manual seeding order to get GMV moving immediately.</div>
+        </div>
+        <div class="os-badge">Day 1</div>
+      </div>
+      <div class="os-item">
+        <div class="os-num">2K</div>
+        <div class="os-body">
+          <div class="os-title">Early Traction — 2,000/week</div>
+          <div class="os-desc">Unlocks after first affiliate order. Join Brands campaign accelerates this immediately.</div>
+        </div>
+        <div class="os-badge">$1 GMV</div>
+      </div>
+      <div class="os-item">
+        <div class="os-num">7K</div>
+        <div class="os-body">
+          <div class="os-title">Momentum — 7,000/week</div>
+          <div class="os-desc">Unlocks once you hit $2,000 in GMV within a rolling 28-day window. Full launch territory.</div>
+        </div>
+        <div class="os-badge">$2K GMV / 28 days</div>
+      </div>
+      <div class="os-item">
+        <div class="os-num">∞</div>
+        <div class="os-body">
+          <div class="os-title">Uncapped Outreach</div>
+          <div class="os-desc">Unlocks past $20K GMV. Typically 10–20K messages per week. The machine is fully running.</div>
+        </div>
+        <div class="os-badge">$20K GMV / 28 days</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 04: UNIT ECONOMICS -->
+  <div class="section" id="economics">
+    <div class="sec-label">04 — Unit Economics</div>
+    <div class="sec-title">Brass &amp; Copper Tarnish Remover — P&amp;L Per Unit</div>
+    <p class="sec-sub">Based on your numbers: $22 retail, $3 COGS. This model uses Amazon MCF fulfillment with the new 35% TikTok seller discount. Affiliate commission set at 15% — a competitive rate for this category.</p>
+
+    <div class="pl-wrap">
+      <div class="pl-row head"><span>Revenue</span><span></span></div>
+      <div class="pl-row">
+        <div class="pl-label"><strong>Retail Selling Price</strong></div>
+        <div class="pl-val pos">$22.00</div>
+      </div>
+
+      <div class="pl-row head"><span>TikTok Platform Fees</span><span></span></div>
+      <div class="pl-row">
+        <div class="pl-label">TikTok Referral Fee <em>~7% of sale price</em></div>
+        <div class="pl-val neg">–$1.54</div>
+      </div>
+      <div class="pl-row">
+        <div class="pl-label">Processing / Smart Promo Fee <em>~3% variable</em></div>
+        <div class="pl-val neg">–$0.66</div>
+      </div>
+
+      <div class="pl-row head"><span>Fulfillment (Amazon MCF, 35% TikTok Discount)</span><span></span></div>
+      <div class="pl-row">
+        <div class="pl-label">Standard MCF rate <em>est. for 16oz bottle</em></div>
+        <div class="pl-val neg">–$4.60</div>
+      </div>
+      <div class="pl-row">
+        <div class="pl-label">Amazon TikTok MCF Discount <em>35% off fulfillment</em></div>
+        <div class="pl-val pos">+$1.61</div>
+      </div>
+
+      <div class="pl-row head"><span>Creator Costs</span><span></span></div>
+      <div class="pl-row">
+        <div class="pl-label">Affiliate Commission <em>15% of sale</em></div>
+        <div class="pl-val neg">–$3.30</div>
+      </div>
+
+      <div class="pl-row head"><span>Cost of Goods</span><span></span></div>
+      <div class="pl-row">
+        <div class="pl-label">Product Cost</div>
+        <div class="pl-val neg">–$3.00</div>
+      </div>
+
+      <div class="pl-row total">
+        <div class="pl-label"><strong>Net Contribution Per Unit</strong></div>
+        <div class="pl-val big">$10.51 (~48%)</div>
+      </div>
+    </div>
+
+    <div class="callout warn" style="margin-top:18px;">
+      <div class="ci">⚠️</div>
+      <div class="cb"><strong>Variable costs to plan for:</strong> Promotional discounts (flash sales, coupons), free shipping offers, creator bonus campaigns, and sampling for Cult Members will reduce per-unit margin during activation periods. We factor these in at the campaign level, not the unit level — and TikTok's smart promotions will sometimes cover a portion of these costs on your behalf.</div>
+    </div>
+
+    <div class="callout green" style="margin-top:0;">
+      <div class="ci">📊</div>
+      <div class="cb"><strong>TikTok as top-of-funnel:</strong> Even at break-even on TikTok, the halo effect is real. Your 12M-view Instagram viral drove $50K on Amazon, eBay, and Walmart. TikTok is the same engine — and it comes with creator-generated content you can repurpose for Meta ads at zero incremental cost.</div>
+    </div>
+
+    <div style="margin-top:20px;">
+      <p class="sec-sub" style="margin-bottom:12px;">Settlement timing note (TikTok pays slower at first):</p>
+      <ul class="blist">
+        <li>First 30 days: TikTok settlement period is ~30 days</li>
+        <li>As your shop performance score builds, settlement shortens to a few days</li>
+        <li>MCF charges come separately through Amazon Seller Central — Colin's team can handle reconciliation alongside existing FBA inventory</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- SECTION 05: WHAT WE MANAGE -->
+  <div class="section">
+    <div class="sec-label">05 — What Cult Content Manages</div>
+    <div class="sec-title">Your Dedicated Account Manager + Full Tech Stack</div>
+    <p class="sec-sub">You focus on manufacturing and inventory. We handle everything that touches TikTok.</p>
+
+    <div class="grid2">
+      <div class="card tl">
+        <div class="card-title">Creator &amp; Affiliate Management</div>
+        <ul class="cklist">
+          <li>Creator outreach via TikTok affiliate program (thousands/week)</li>
+          <li>Incentive campaigns (video bonuses, GMV bonuses)</li>
+          <li>Manage sampling for Cult Members and retainer creators</li>
+          <li>Weekly creator community calls with brand participation</li>
+          <li>Leaderboard tracking and top-performer spotlights</li>
+          <li>Reacher dashboard — you get full access to your metrics</li>
+        </ul>
+      </div>
+      <div class="card tl">
+        <div class="card-title">TikTok Shop Operations</div>
+        <ul class="cklist">
+          <li>TikTok Shop account setup and optimization</li>
+          <li>Product listing management (hero SKU + catalog expansion)</li>
+          <li>Promotional calendar — flash sales, coupons, free shipping events</li>
+          <li>Shop performance score monitoring and maintenance</li>
+          <li>TikTok account manager relationship (for violations, review removal)</li>
+          <li>Weekly email reports — GMV, video count, creator activity</li>
+        </ul>
+      </div>
+      <div class="card gl">
+        <div class="card-title">Software &amp; Tech (Included)</div>
+        <ul class="cklist">
+          <li>Reacher — affiliate management and creator outreach</li>
+          <li>FastMOS — competitor video intelligence</li>
+          <li>Lark group chat — real-time communication with your team</li>
+          <li>Mamba — TikTok P&amp;L tracker with all fee breakdowns</li>
+          <li>All software costs covered by Cult Content</li>
+        </ul>
+      </div>
+      <div class="card gl">
+        <div class="card-title">Not Included (Your Side)</div>
+        <ul class="cklist">
+          <li>Inventory planning and fulfillment execution (Colin/Cyprian handle MCF coordination)</li>
+          <li>Join Brands campaign budget (separate, at your discretion)</li>
+          <li>Creator bonus campaign budget (we advise, you approve spend)</li>
+          <li>Product samples for creator seeding</li>
+          <li>TikTok Shop listing photos/assets</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 06: INVESTMENT -->
+  <div class="section" id="investment">
+    <div class="sec-label">06 — Investment</div>
+    <div class="sec-title">Transparent Pricing</div>
+    <p class="sec-sub">One management fee. One performance commission. No hidden platform markups — the software is on us.</p>
+
+    <div class="invest-wrap">
+      <div class="invest-row head">
+        <div class="il">Service</div>
+        <div class="iv">Monthly</div>
+      </div>
+      <div class="invest-row">
+        <div class="il">
+          <strong>Account Management</strong>
+          <em>Dedicated account manager; full TikTok Shop ops; creator outreach; weekly calls &amp; reports</em>
+        </div>
+        <div class="iv accent">$4,500/mo</div>
+      </div>
+      <div class="invest-row">
+        <div class="il">
+          <strong>Performance Commission</strong>
+          <em>4% of GMV generated through the Cult Content affiliate program</em>
+        </div>
+        <div class="iv accent">4% GMV</div>
+      </div>
+      <div class="invest-row">
+        <div class="il">
+          <strong>Software &amp; Tools</strong>
+          <em>Reacher, FastMOS, Mamba, Lark — all included</em>
+        </div>
+        <div class="iv green">Included</div>
+      </div>
+      <div class="invest-row total">
+        <div class="il">Monthly Commitment</div>
+        <div class="iv">$4,500 + 4% GMV</div>
+      </div>
+      <div class="invest-row addon">
+        <div class="il">
+          <strong>Join Brands Campaign</strong>
+          <em>300 creators, upfront fee + product purchase credits — recommended for launch; budget at your discretion</em>
+        </div>
+        <div class="iv orange">Optional Add-On</div>
+      </div>
+      <div class="invest-row addon">
+        <div class="il">
+          <strong>Creator Bonus Budget</strong>
+          <em>Video count bonuses, GMV bonuses — we design; you approve each campaign before spend</em>
+        </div>
+        <div class="iv orange">Optional Add-On</div>
+      </div>
+    </div>
+
+    <div class="callout" style="margin-top:18px;">
+      <div class="ci">💡</div>
+      <div class="cb"><strong>How to think about the first 90 days:</strong> Realistic expectation is break-even or modest loss while we gather data, build creator relationships, and build shop performance score. Brands that stick with it past the 90-day mark are the ones that find their stride. We'll give you the metrics to see exactly what's happening — no black boxes.</div>
+    </div>
+  </div>
+
+  <!-- SECTION 07: CREATOR CARNIVAL -->
+  <div class="section">
+    <div class="sec-label">07 — Bonus Opportunity</div>
+    <div class="sec-title">Creator Carnival — September 12</div>
+
+    <div class="carnival-card">
+      <div class="carnival-title">Meet 1,000+ Creators In Person at the <span>Creator Carnival</span></div>
+      <div class="carnival-sub">Cult Content is hosting a live Creator Carnival at National Harbor, Maryland — right in your backyard. Over a thousand creators will be on-site, sampling products, meeting brands, and signing up for affiliate partnerships. For a brand with a visual "wow moment" product like yours, this is a direct opportunity to get your product into creator hands and kick off relationships in person.</div>
+      <div class="carnival-detail">
+        <div class="cd-item">
+          <span class="cd-label">Date</span>
+          <span class="cd-val">Saturday, September 12, 2026</span>
+        </div>
+        <div class="cd-item">
+          <span class="cd-label">Location</span>
+          <span class="cd-val">National Harbor, MD (near Gaylord)</span>
+        </div>
+        <div class="cd-item">
+          <span class="cd-label">Format</span>
+          <span class="cd-val">Covered booth + street booth space</span>
+        </div>
+        <div class="cd-item">
+          <span class="cd-label">Booth Credit</span>
+          <span class="cd-val">$500 applied to management fee</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 08: NEXT STEPS -->
+  <div class="section" id="next-steps">
+    <div class="sec-label">08 — Next Steps</div>
+    <div class="sec-title">How We Get Started</div>
+
+    <div class="roadmap">
+      <div class="rm-row">
+        <div class="rm-phase"><span class="rm-tag">Step 1</span></div>
+        <div class="rm-body">
+          <div class="rm-title">Kick Off &amp; Account Setup</div>
+          <ul class="blist">
+            <li>Sign agreement and onboard to Lark group chat</li>
+            <li>TikTok Shop account verification and hero SKU listing (Instant Brass &amp; Copper)</li>
+            <li>MCF connection established with Colin/Cyprian for fulfillment coordination</li>
+            <li>You get access to Reacher dashboard</li>
+          </ul>
+        </div>
+      </div>
+      <div class="rm-row">
+        <div class="rm-phase"><span class="rm-tag t2">Step 2</span></div>
+        <div class="rm-body">
+          <div class="rm-title">Creator Seeding &amp; Join Brands</div>
+          <ul class="blist">
+            <li>Launch Join Brands campaign (300 creators, your budget)</li>
+            <li>Bring Crystal and early organic affiliates into the creator community</li>
+            <li>Invite Cult Members community to apply for Flitz samples</li>
+            <li>Begin weekly creator calls — introduce the brand, share the viral story</li>
+          </ul>
+        </div>
+      </div>
+      <div class="rm-row">
+        <div class="rm-phase"><span class="rm-tag t3">Step 3</span></div>
+        <div class="rm-body">
+          <div class="rm-title">Data Gathering (Oct – Dec)</div>
+          <ul class="blist">
+            <li>Weekly reports: GMV, conversion rate, click-through rate, top videos</li>
+            <li>Identify best-performing content angles to replicate in January</li>
+            <li>Build shop performance score organically — no aggressive spend needed</li>
+            <li>Creator Carnival Sept 12 — in-person creator relationships if attending</li>
+          </ul>
+        </div>
+      </div>
+      <div class="rm-row">
+        <div class="rm-phase"><span class="rm-tag t4">Step 4</span></div>
+        <div class="rm-body">
+          <div class="rm-title">January Full Activation</div>
+          <ul class="blist">
+            <li>Scale outreach to thousands of creators per week using unlocked tiers</li>
+            <li>Launch creator bonus campaigns based on Q4 data</li>
+            <li>Promotional calendar: flash sales, coupons, live creator events</li>
+            <li>Expand to second SKU (Jewelry Care Kit) once brass cleaner baseline is established</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <div class="footer-left">
+    <p>Prepared by Tommy Lynch · <a href="mailto:tommy@cultcontent.cc">tommy@cultcontent.cc</a></p>
+    <p style="margin-top:4px;">Questions? Reply to this email or reach out directly on Lark.</p>
+  </div>
+  <div style="font-size:.72rem;color:var(--muted);text-align:right;">Flitz × Cult Content<br>Confidential</div>
+</div>
+
+</body>
+</html>
