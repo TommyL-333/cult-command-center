@@ -3109,6 +3109,10 @@ async function getTopAffiliatesForReport(shopId, limit = 5) {
 // extracted so the eval harness (lib/weekly-report-narrative.eval.js) can
 // exercise generateNarrative directly, with no server boot required.
 const { renderReportHTML, generateNarrative } = require('./lib/weekly-report');
+const cccNet     = require('./lib/ccc-network');
+const cccNetMail = require('./lib/ccc-network-mail');
+const cccNetMsg  = require('./lib/ccc-network-messages');
+const CCC_NETWORK_APP_DIST = path.join(__dirname, 'ccc-network-app', 'dist');
 
 // Orchestrates the full report: data layer + narrative. Delivery/scheduling
 // is deliberately NOT triggered from here — see the /weekly-report/send
@@ -6361,6 +6365,161 @@ const openCollabQueue = require('./routes/open-collab-queue');
 openCollabQueue.mount(app, { DATA_DIR, requirePortalAdmin });
 const linkTracker = require('./routes/link-tracker');
 linkTracker.mount(app, { DATA_DIR });
+
+// ── Creator Carnival Networking Hub — PUBLIC (portal.cultcontent.cc/ccc-network/) ──
+function requireNetworkSession(req, res, next) {
+  const person = req.session?.networkPersonId ? cccNet.getPerson(req.session.networkPersonId) : null;
+  if (!person || person.status !== 'approved') {
+    if (req.path.startsWith('/api/')) return res.status(401).json({ ok: false, error: 'Not authenticated' });
+    return res.redirect('/ccc-network/login');
+  }
+  req.networkPerson = person;
+  next();
+}
+
+app.post('/ccc-network/signup', express.json(), (req, res) => {
+  const result = cccNet.signup(req.body || {});
+  res.status(result.ok ? 200 : 400).json(result);
+  if (!result.ok) return;
+  const verifyLink = cccNet.createVerifyLink(result.uuid);
+  if (verifyLink) cccNetMail.sendVerifyEmail(verifyLink.person, verifyLink.token).catch(e => console.error('[ccc-network] verify email error:', e.message));
+  const CCC_BASE = 'R6vxbuk23aN0MHsSS8KuPv3UtQd';
+  const VENDOR_TABLE = 'tblzlhu9pL4YmEEm';
+  const p = req.body || {};
+  larkApi('post', `/bitable/v1/apps/${CCC_BASE}/tables/${VENDOR_TABLE}/records`, {
+    fields: {
+      'Submission Time': new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }),
+      'First Name': p.first_name || '', 'Last Name': p.last_name || '', 'Email': p.email || '',
+      'Brand': p.role === 'brand' ? p.brand_name : (p.handle || ''),
+      'Product Type': `[Networking Roster — ${p.role}] ${p.category || ''}`,
+      'Status': 'New signup (self-serve, pending email confirmation)',
+    },
+  }).catch(e => console.warn('[CCC-NETWORK] Lark notify failed:', e.message));
+});
+
+app.post('/ccc-network/login', express.json(), async (req, res) => {
+  const link = cccNet.createMagicLink(req.body?.email || '');
+  res.json({ ok: true });
+  if (link) cccNetMail.sendMagicLinkEmail(link.person, link.token).catch(e => console.error('[ccc-network] magic link send error:', e.message));
+});
+
+app.get('/ccc-network/auth/:token', (req, res) => {
+  const result = cccNet.consumeMagicLink(req.params.token);
+  if (!result.ok) return res.status(400).send(`<p style="font-family:sans-serif;text-align:center;padding:80px 20px;">Link ${result.error === 'expired' ? 'expired' : 'invalid'} — <a href="/ccc-network/login">request a new one</a>.</p>`);
+  let person = result.person;
+  if (person.status === 'pending') {
+    person = cccNet.setStatus(person.uuid, { status: 'approved' }).person;
+  }
+  req.session.networkPersonId = person.id;
+  const incomplete = !person.bio && !person.looking_for;
+  res.redirect(incomplete ? '/ccc-network/settings' : '/ccc-network/home');
+});
+
+app.get('/ccc-network/logout', (req, res) => {
+  delete req.session.networkPersonId;
+  res.redirect('/ccc-network/login');
+});
+
+app.get('/api/ccc-network/me', requireNetworkSession, (req, res) => res.json({ ok: true, person: req.networkPerson }));
+
+app.post('/ccc-network/profile', requireNetworkSession, express.json(), (req, res) => {
+  res.json({ ok: true, person: cccNet.updateProfile(req.networkPerson.id, req.body || {}) });
+});
+
+app.get('/api/ccc-network/directory.json', requireNetworkSession, (req, res) => {
+  res.json(cccNet.listDirectory(req.networkPerson));
+});
+
+app.post('/ccc-network/connect/:uuid', requireNetworkSession, (req, res) => {
+  const result = cccNet.connect(req.networkPerson.id, req.params.uuid);
+  res.status(result.ok ? 200 : 400).json(result);
+  if (result.ok && result.status === 'pending' && result.otherPerson) {
+    cccNetMail.sendConnectionRequestEmail(result.otherPerson, req.networkPerson).catch(e => console.error('[ccc-network] connect-request email error:', e.message));
+  }
+});
+
+app.post('/ccc-network/connections/:uuid/accept', requireNetworkSession, (req, res) => {
+  const result = cccNet.respondToConnection(req.networkPerson.id, req.params.uuid, true);
+  res.status(result.ok ? 200 : 400).json(result);
+  if (result.ok) cccNetMail.sendConnectionAcceptedEmail(result.otherPerson, req.networkPerson).catch(e => console.error('[ccc-network] connect-accepted email error:', e.message));
+});
+
+app.post('/ccc-network/connections/:uuid/decline', requireNetworkSession, (req, res) => {
+  const result = cccNet.respondToConnection(req.networkPerson.id, req.params.uuid, false);
+  res.status(result.ok ? 200 : 400).json(result);
+});
+
+app.get('/api/ccc-network/connections', requireNetworkSession, (req, res) => {
+  res.json({ ok: true, ...cccNet.listConnections(req.networkPerson.id) });
+});
+
+app.get('/api/ccc-network/people/:uuid', requireNetworkSession, (req, res) => {
+  const profile = cccNet.getPersonProfile(req.networkPerson.id, req.params.uuid);
+  if (!profile) return res.status(404).json({ ok: false, error: 'not_found' });
+  res.json({ ok: true, person: profile });
+});
+
+app.get('/api/ccc-network/inbox', requireNetworkSession, (req, res) => {
+  res.json({ ok: true, conversations: cccNetMsg.listInbox(req.networkPerson.id), unread: cccNetMsg.unreadCount(req.networkPerson.id) });
+});
+
+app.get('/api/ccc-network/messages/:uuid', requireNetworkSession, (req, res) => {
+  const result = cccNetMsg.listThread(req.networkPerson.id, req.params.uuid);
+  res.status(result.ok ? 200 : 400).json(result);
+});
+
+app.post('/ccc-network/messages/:uuid', requireNetworkSession, express.json(), (req, res) => {
+  const result = cccNetMsg.sendMessage(req.networkPerson.id, req.params.uuid, req.body?.body);
+  res.status(result.ok ? 200 : 400).json(result);
+  if (result.ok) cccNetMail.sendNewMessageEmail(result.otherPerson, req.networkPerson).catch(e => console.error('[ccc-network] new-message email error:', e.message));
+});
+
+app.post('/ccc-network/settings/notifications', requireNetworkSession, express.json(), (req, res) => {
+  res.json({ ok: true, person: cccNet.setNotificationPrefs(req.networkPerson.id, req.body || {}) });
+});
+
+app.post('/ccc-network/settings/tier', requireNetworkSession, express.json(), (req, res) => {
+  if (req.networkPerson.role !== 'brand') return res.status(400).json({ ok: false, error: 'creators do not have a tier' });
+  const result = cccNet.setTierRequest(req.networkPerson.id, req.body?.tier);
+  res.status(result.ok ? 200 : 400).json(result);
+});
+
+app.post('/ccc-network/settings/deactivate', requireNetworkSession, (req, res) => {
+  cccNet.deactivate(req.networkPerson.id);
+  delete req.session.networkPersonId;
+  res.json({ ok: true });
+});
+
+app.post('/ccc-network/settings/email', requireNetworkSession, express.json(), (req, res) => {
+  const result = cccNet.requestEmailChange(req.networkPerson.id, req.body?.email);
+  if (!result.ok) return res.status(400).json(result);
+  res.json({ ok: true });
+  cccNetMail.sendEmailChangeVerification(req.networkPerson, result.newEmail, result.token).catch(e => console.error('[ccc-network] email-change verification error:', e.message));
+});
+
+app.get('/ccc-network/settings/email/confirm/:token', (req, res) => {
+  const result = cccNet.confirmEmailChange(req.params.token);
+  if (!result.ok) return res.status(400).send(`<p style="font-family:sans-serif;text-align:center;padding:80px 20px;">Link ${result.error === 'expired' ? 'expired' : 'invalid'}.</p>`);
+  res.redirect('/ccc-network/settings');
+});
+
+app.get('/ccc-network/contacts.csv', requireNetworkSession, (req, res) => {
+  if (req.networkPerson.role !== 'brand' || !cccNet.PRIORITY_TIERS.includes(req.networkPerson.tier)) {
+    return res.status(403).send('Contact list export is available to Marketplace and Carnival sponsors.');
+  }
+  const rows = cccNet.listApprovedCreatorsForExport();
+  const cols = ['first_name','last_name','email','phone','handle','category','bio'];
+  const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+  const csv = [cols.join(','), ...rows.map(r => cols.map(c => esc(r[c])).join(','))].join('\n');
+  res.set('Content-Type', 'text/csv').set('Content-Disposition', 'attachment; filename="creator-carnival-contacts.csv"').send(csv);
+});
+
+app.use('/ccc-network', express.static(CCC_NETWORK_APP_DIST));
+app.get(['/ccc-network', '/ccc-network/*'], (req, res) => {
+  const indexFile = path.join(CCC_NETWORK_APP_DIST, 'index.html');
+  if (!fs.existsSync(indexFile)) return res.status(503).send('Networking Hub UI not built yet.');
+  res.sendFile(indexFile);
+});
 
 app.use(requireAuth); // all other routes require auth in production
 
