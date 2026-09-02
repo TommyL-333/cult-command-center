@@ -16,7 +16,7 @@ html{scroll-behavior:smooth;}
 body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Inter",sans-serif;font-size:14px;line-height:1.65;}
 
 .topbar{position:sticky;top:0;z-index:100;background:rgba(7,7,13,.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:10px 48px;display:flex;align-items:center;justify-content:space-between;}
-.topbar-logo{font-size:.78rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--accent);}
+.topbar-logo img{height:28px;width:auto;opacity:.9;}
 .topbar-links{display:flex;gap:24px;}
 .topbar-links a{color:var(--muted);font-size:.72rem;font-weight:600;text-decoration:none;letter-spacing:.05em;text-transform:uppercase;transition:color .15s;}
 .topbar-links a:hover{color:var(--accent);}
@@ -36,8 +36,6 @@ h1 span{color:var(--accent);}
 .kpi-strip{max-width:940px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:1px;border:1px solid var(--border);border-top:none;background:var(--border);}
 .kpi{background:var(--surface);padding:22px 20px;}
 .kpi-val{font-size:1.85rem;font-weight:900;color:var(--accent);line-height:1;}
-.kpi-val.green{color:var(--green);}
-.kpi-val.purple{color:var(--purple);}
 .kpi-label{font-size:.66rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-top:4px;}
 
 .main{max-width:940px;margin:0 auto;padding:56px 48px;}
@@ -49,11 +47,8 @@ h1 span{color:var(--accent);}
 
 .card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:22px;}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
-.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
 .card-title{font-size:.71rem;font-weight:800;color:var(--text);text-transform:uppercase;letter-spacing:.05em;margin-bottom:11px;}
 .card.tl{border-left:3px solid var(--accent);}
-.card.gl{border-left:3px solid var(--green);}
-.card.yl{border-left:3px solid var(--yellow);}
 .card.pl{border-left:3px solid var(--purple);}
 
 .cklist{list-style:none;display:flex;flex-direction:column;gap:7px;}
@@ -65,14 +60,13 @@ h1 span{color:var(--accent);}
 
 .callout{display:flex;align-items:flex-start;gap:12px;background:rgba(32,213,196,.06);border:1px solid rgba(32,213,196,.18);border-radius:10px;padding:15px 17px;margin:14px 0;}
 .callout.warn{background:rgba(245,158,11,.06);border-color:rgba(245,158,11,.2);}
-.callout.green{background:rgba(16,185,129,.06);border-color:rgba(16,185,129,.2);}
+.callout.red{background:rgba(239,68,68,.07);border-color:rgba(239,68,68,.22);}
 .callout.purple{background:rgba(168,85,247,.06);border-color:rgba(168,85,247,.2);}
-.callout.red{background:rgba(239,68,68,.06);border-color:rgba(239,68,68,.2);}
 .ci{font-size:1.05rem;flex-shrink:0;margin-top:1px;}
 .cb{font-size:.8rem;color:var(--light);line-height:1.65;}
 .cb strong{color:var(--text);}
 
-/* Unfair advantage cards */
+/* Advantage */
 .adv-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:24px;}
 .adv-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;position:relative;overflow:hidden;}
 .adv-card::before{content:"";position:absolute;top:0;left:0;right:0;height:2px;}
@@ -84,17 +78,21 @@ h1 span{color:var(--accent);}
 .adv-title{font-size:.82rem;font-weight:800;margin-bottom:6px;}
 .adv-desc{font-size:.78rem;color:var(--light);line-height:1.6;}
 
-/* Team cards */
+/* Proof */
+.proof-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:24px;}
+.proof-img{width:100%;border-radius:8px;border:1px solid var(--border);object-fit:cover;height:140px;}
+
+/* Team */
 .team-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
 .team-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:20px;}
-.team-avatar{width:44px;height:44px;border-radius:50%;background:rgba(32,213,196,.15);border:2px solid rgba(32,213,196,.3);display:flex;align-items:center;justify-content:center;font-size:1.2rem;margin-bottom:12px;}
+.team-avatar{width:52px;height:52px;border-radius:50%;border:2px solid rgba(32,213,196,.3);display:flex;align-items:center;justify-content:center;font-size:1.4rem;margin-bottom:12px;overflow:hidden;background:rgba(32,213,196,.1);}
+.team-avatar img{width:100%;height:100%;object-fit:cover;}
 .team-name{font-size:.88rem;font-weight:800;margin-bottom:2px;}
 .team-role{font-size:.67rem;color:var(--accent);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px;}
 .team-card.mystery{border:1px dashed rgba(168,85,247,.4);background:rgba(168,85,247,.03);}
-.team-card.mystery .team-avatar{background:rgba(168,85,247,.12);border-color:rgba(168,85,247,.3);}
 .team-card.mystery .team-role{color:var(--purple);}
 
-/* Month 1 rebate box */
+/* Rebate */
 .rebate-card{background:linear-gradient(135deg,rgba(239,68,68,.07) 0%,rgba(245,158,11,.05) 100%);border:1px solid rgba(239,68,68,.2);border-radius:var(--radius);padding:24px;margin-bottom:24px;}
 .rebate-title{font-size:1rem;font-weight:900;margin-bottom:8px;}
 .rebate-title span{color:var(--red);}
@@ -104,14 +102,14 @@ h1 span{color:var(--accent);}
 .rs-num{font-size:.6rem;font-weight:800;color:var(--red);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px;}
 .rs-text{font-size:.76rem;color:var(--light);line-height:1.5;}
 
-/* P&L table */
+/* P&L */
 .pl-wrap{background:var(--card);border:1px solid rgba(32,213,196,.22);border-radius:var(--radius);overflow:hidden;}
 .pl-row{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;border-bottom:1px solid var(--border);font-size:.82rem;}
 .pl-row:last-child{border-bottom:none;}
 .pl-row.head{background:#090912;padding:8px 20px;}
 .pl-row.head span{font-size:.6rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;}
 .pl-row.total{background:rgba(32,213,196,.08);padding:16px 20px;}
-.pl-row.neg-total{background:rgba(239,68,68,.06);padding:16px 20px;}
+.pl-row.neg-total{background:rgba(239,68,68,.07);padding:16px 20px;}
 .pl-label{color:var(--light);}
 .pl-label strong{color:var(--text);}
 .pl-label em{color:var(--muted);font-style:normal;font-size:.74rem;margin-left:6px;}
@@ -119,25 +117,23 @@ h1 span{color:var(--accent);}
 .pl-val.pos{color:var(--green);}
 .pl-val.neg{color:var(--red);}
 .pl-val.accent{color:var(--accent);}
-.pl-val.big{font-size:1.05rem;font-weight:900;color:var(--accent);}
 .pl-val.big-neg{font-size:1.05rem;font-weight:900;color:var(--red);}
+.pl-val.big-pos{font-size:1.05rem;font-weight:900;color:var(--green);}
 
 /* Projection table */
-.proj-table{width:100%;border-collapse:collapse;font-size:.8rem;margin-top:20px;}
-.proj-table th{background:#090912;color:var(--muted);font-size:.6rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;padding:9px 14px;text-align:left;border-bottom:1px solid var(--border);}
-.proj-table td{padding:11px 14px;border-bottom:1px solid var(--border);color:var(--light);}
+.proj-table{width:100%;border-collapse:collapse;font-size:.79rem;margin-top:20px;}
+.proj-table th{background:#090912;color:var(--muted);font-size:.59rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;padding:9px 12px;text-align:left;border-bottom:1px solid var(--border);}
+.proj-table td{padding:11px 12px;border-bottom:1px solid var(--border);color:var(--light);}
 .proj-table td strong{color:var(--text);}
 .proj-table td.accent{color:var(--accent);font-weight:700;}
-.proj-table td.green{color:var(--green);font-weight:700;}
+.proj-table td.green-val{color:var(--green);font-weight:700;}
 .proj-table td.red-val{color:var(--red);font-weight:700;}
-.proj-table tr.phase-inv{background:rgba(239,68,68,.04);}
-.proj-table tr.phase-early{background:rgba(32,213,196,.04);}
-.proj-table tr.phase-scale{background:rgba(16,185,129,.04);}
+.proj-table td.yellow-val{color:var(--yellow);font-weight:700;}
 .proj-table tr:last-child td{border-bottom:none;}
-.status-pill{display:inline-block;font-size:.58rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:2px 7px;border-radius:10px;margin-left:7px;vertical-align:middle;}
-.sp-inv{background:rgba(239,68,68,.18);color:var(--red);}
-.sp-early{background:rgba(32,213,196,.15);color:var(--accent);}
-.sp-scale{background:rgba(16,185,129,.15);color:var(--green);}
+.status-pill{display:inline-block;font-size:.57rem;font-weight:800;letter-spacing:.05em;text-transform:uppercase;padding:2px 7px;border-radius:10px;margin-left:5px;vertical-align:middle;}
+.sp-loss{background:rgba(239,68,68,.18);color:var(--red);}
+.sp-near{background:rgba(245,158,11,.18);color:var(--yellow);}
+.sp-pos{background:rgba(16,185,129,.15);color:var(--green);}
 
 /* Bar chart */
 .bar-chart{margin-top:20px;display:flex;flex-direction:column;gap:8px;}
@@ -145,28 +141,36 @@ h1 span{color:var(--accent);}
 .bar-month{font-size:.7rem;color:var(--muted);font-weight:700;width:60px;flex-shrink:0;}
 .bar-track{flex:1;height:26px;background:var(--surface);border-radius:6px;overflow:hidden;}
 .bar-fill{height:100%;border-radius:6px;display:flex;align-items:center;padding-left:10px;font-size:.7rem;font-weight:800;}
-.bar-fill.inv{background:rgba(239,68,68,.3);color:var(--red);}
-.bar-fill.early{background:linear-gradient(90deg,rgba(32,213,196,.6),rgba(32,213,196,.4));color:#000;}
+.bar-fill.loss{background:rgba(239,68,68,.3);color:var(--red);}
+.bar-fill.ramp{background:linear-gradient(90deg,rgba(32,213,196,.6),rgba(32,213,196,.4));color:#000;}
 .bar-fill.scale{background:linear-gradient(90deg,var(--green),rgba(16,185,129,.8));color:#000;}
 .bar-gmv{font-size:.72rem;font-weight:700;color:var(--accent);width:52px;text-align:right;flex-shrink:0;}
+
+/* Fee slider */
+.fee-slider{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:22px;margin-bottom:16px;}
+.fee-options{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px;}
+.fee-option{border:1px solid var(--border);border-radius:8px;padding:14px;}
+.fee-option.selected{border-color:rgba(32,213,196,.4);background:rgba(32,213,196,.06);}
+.fo-label{font-size:.6rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;}
+.fo-rate{font-size:1.05rem;font-weight:900;color:var(--accent);margin-bottom:4px;}
+.fo-desc{font-size:.74rem;color:var(--light);}
 
 /* Invest table */
 .invest-wrap{background:var(--card);border:1px solid rgba(32,213,196,.22);border-radius:var(--radius);overflow:hidden;}
 .invest-row{display:flex;justify-content:space-between;align-items:center;padding:13px 20px;border-bottom:1px solid var(--border);font-size:.82rem;}
 .invest-row:last-child{border-bottom:none;}
 .invest-row.head{background:#090912;padding:8px 20px;}
-.invest-row.head .il{font-size:.62rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;}
+.invest-row.head .il{font-size:.6rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;}
 .invest-row.total{background:rgba(32,213,196,.06);padding:16px 20px;}
 .invest-row.total .il{font-size:.88rem;font-weight:800;color:var(--text);}
-.invest-row.total .iv{font-size:1.1rem;font-weight:900;color:var(--accent);}
+.invest-row.total .iv{font-size:1.05rem;font-weight:900;color:var(--accent);}
 .il{color:var(--light);}
 .il strong{color:var(--text);}
 .il em{color:var(--muted);font-style:normal;font-size:.75rem;margin-left:6px;}
 .iv{font-weight:700;font-variant-numeric:tabular-nums;}
 .iv.accent{color:var(--accent);}
-.iv.green{color:var(--green);}
 .iv.red{color:var(--red);}
-.iv.purple{color:var(--purple);}
+.iv.yellow{color:var(--yellow);}
 
 /* Roadmap */
 .roadmap{display:flex;flex-direction:column;}
@@ -184,21 +188,20 @@ h1 span{color:var(--accent);}
 .footer-left a{color:var(--accent);text-decoration:none;font-weight:700;}
 
 @media(max-width:720px){
-  .topbar{padding:10px 20px;}
-  .hero{padding:40px 20px 36px;}
-  .main{padding:40px 20px;}
+  .topbar{padding:10px 20px;}.hero{padding:40px 20px 36px;}.main{padding:40px 20px;}
   .kpi-strip{grid-template-columns:repeat(2,1fr);}
-  .grid2,.adv-grid,.team-grid{grid-template-columns:1fr;}
-  .grid3,.rebate-steps{grid-template-columns:1fr;}
-  h1{font-size:2rem;}
-  .footer{padding:28px 20px;}
+  .grid2,.adv-grid,.team-grid,.fee-options{grid-template-columns:1fr;}
+  .rebate-steps,.proof-row{grid-template-columns:1fr;}
+  h1{font-size:2rem;}.footer{padding:28px 20px;}
 }
 </style>
 </head>
 <body>
 
 <nav class="topbar">
-  <div class="topbar-logo">Cult Content</div>
+  <div class="topbar-logo">
+    <img src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png" alt="Cult Content"/>
+  </div>
   <div class="topbar-links">
     <a href="#advantage">Advantage</a>
     <a href="#team">Team</a>
@@ -210,8 +213,8 @@ h1 span{color:var(--accent);}
 
 <div class="hero">
   <div class="eyebrow"><span class="dot"></span> Scale Partnership — Riize</div>
-  <h1>The Fastest Path<br>to <span>$50K/mo</span><br>on TikTok Shop</h1>
-  <p class="hero-sub">Riize Energy Strips have a built-in demo moment — sublingual absorption in seconds, visible reaction, zero ceremony. We've already run this playbook for a competitor brand. Our creators know exactly how to film it, and Becca has made content for Love Wellness Dissolvd. We're not starting from scratch. You are.</p>
+  <h1>The Fastest Path<br>to <span>$55K/mo</span><br>on TikTok Shop</h1>
+  <p class="hero-sub">Riize Energy Strips have a built-in demo moment — sublingual absorption in seconds, visible on camera, no explanation needed. Our creator network has spent two months running a similar product. Becca has personally made content for Love Wellness' dissolvable energy strip line. When your creators get their first brief, they already know what works in this category.</p>
   <div class="hero-meta">
     <div class="meta-item">
       <span class="meta-label">Product</span>
@@ -233,57 +236,51 @@ h1 span{color:var(--accent);}
 </div>
 
 <div class="kpi-strip">
-  <div class="kpi">
-    <div class="kpi-val">700+</div>
-    <div class="kpi-label">Creator Network</div>
-  </div>
-  <div class="kpi">
-    <div class="kpi-val">20</div>
-    <div class="kpi-label">Retainer Creators</div>
-  </div>
-  <div class="kpi green">
-    <div class="kpi-val green">$50K</div>
-    <div class="kpi-label">Month 5 GMV Target</div>
-  </div>
-  <div class="kpi">
-    <div class="kpi-val purple">$30M+</div>
-    <div class="kpi-label">Team's Proven GMV</div>
-  </div>
+  <div class="kpi"><div class="kpi-val">700+</div><div class="kpi-label">Creator Network</div></div>
+  <div class="kpi"><div class="kpi-val">20</div><div class="kpi-label">Retainer Creators</div></div>
+  <div class="kpi"><div class="kpi-val" style="color:var(--green);">$55K</div><div class="kpi-label">Month 6 GMV Target</div></div>
+  <div class="kpi"><div class="kpi-val" style="color:var(--purple);">$30M+</div><div class="kpi-label">Team's Proven GMV</div></div>
 </div>
 
 <div class="main">
 
-  <!-- SECTION 01: UNFAIR ADVANTAGE -->
+  <!-- 01 -->
   <div class="section" id="advantage">
     <div class="sec-label">01 — Why We Win This</div>
     <div class="sec-title">We've Already Run This Playbook</div>
-    <p class="sec-sub">Most agencies would be figuring out how to position an energy strip on TikTok. We're not. We've spent two months running a similar sublingual strip brand through our network — our creators are already trained on the demo format, the talking points, the hook angles that convert in this category.</p>
+    <p class="sec-sub">Most agencies would be figuring out how to position an energy strip on TikTok. We already know the demo format, the hook angles that convert, and the talking points that get people to click. Our creator network spent two months with a similar sublingual strip brand — they know how to film it. Becca personally made content for Love Wellness' competing dissolvable strip product. That institutional knowledge now works for Riize.</p>
 
     <div class="adv-grid">
       <div class="adv-card a1">
         <div class="adv-icon">🎬</div>
-        <div class="adv-title">Becca Made Content for Love Wellness</div>
-        <div class="adv-desc">Love Wellness Dissolvd strips is your most direct competitor in the TikTok wellness strip category. Becca has personally created content for them — she knows the content format, what hooks land, what the audience responds to, and how to position a strip brand against the category. That institutional knowledge is now yours.</div>
+        <div class="adv-title">Becca Made Content for Love Wellness' Dissolvable Strips</div>
+        <div class="adv-desc">Love Wellness makes a competing dissolvable strip product in the wellness space. Becca has personally created content for that line — she knows what hooks land, how the audience responds to a strip demo on camera, and how to position Riize's energy angle to stand out against what's already on the market.</div>
       </div>
       <div class="adv-card a2">
         <div class="adv-icon">🧠</div>
         <div class="adv-title">700+ Creators Already Know How Strips Work</div>
-        <div class="adv-desc">Our creator community ran a strip brand for two months. They've already learned the demo, found their best angles, and know what questions the audience asks. Onboarding them to Riize means briefing them on your brand — not teaching them a new product category from scratch.</div>
+        <div class="adv-desc">Our creator community ran a strip brand for two months. They've learned the demo, found their best angles, and know the audience questions. Onboarding to Riize means briefing them on your brand — not teaching a new product format from scratch. That shortens the ramp to performing content significantly.</div>
       </div>
       <div class="adv-card a3">
         <div class="adv-icon">⚡</div>
-        <div class="adv-title">Instant Visible Reaction = Built-In Hook</div>
-        <div class="adv-desc">Under-the-tongue strips dissolve in seconds. The on-camera moment — placing the strip, the instant reaction, the "I can already feel it" — is one of the strongest native TikTok hooks in the supplement space. No gimmicks needed. The product does the work. We know how to frame it.</div>
+        <div class="adv-title">Instant Visible Reaction — The Best Hook in Supplements</div>
+        <div class="adv-desc">Under-the-tongue strips dissolve in seconds. The on-camera moment — placing the strip, the instant hit, "I can already feel it" — is one of the strongest native TikTok hooks in the supplement space. The product creates the content. We know exactly how to frame it for maximum watch time and conversion.</div>
       </div>
       <div class="adv-card a4">
         <div class="adv-icon">📊</div>
         <div class="adv-title">$30M+ in Proven TikTok Shop GMV</div>
-        <div class="adv-desc">The team behind this proposal was part of the infrastructure that drove $30M+ in TikTok Shop GMV in a single year — one account, one platform, twelve months. We've taken four brands from zero to consistent five-figure months. This isn't a new playbook. It's a proven one.</div>
+        <div class="adv-desc">The team behind this proposal was part of the infrastructure that drove over $30 million in TikTok Shop GMV in a single year — one account, one platform, twelve months. We've taken four brands from zero to consistent five-figure months on TikTok Shop. The playbook is proven. The network is built.</div>
       </div>
+    </div>
+
+    <div class="proof-row">
+      <img class="proof-img" src="https://storage.googleapis.com/msgsndr/c216j58Vx9XxYa7WYMiA/media/697a455a1927c80d0545f08e.png" alt="GMV proof"/>
+      <img class="proof-img" src="https://storage.googleapis.com/msgsndr/c216j58Vx9XxYa7WYMiA/media/697a455a3f6f183dfc7dc526.png" alt="GMV proof"/>
+      <img class="proof-img" src="https://storage.googleapis.com/msgsndr/c216j58Vx9XxYa7WYMiA/media/697a455a1927c8718745f08d.jpeg" alt="GMV proof"/>
     </div>
   </div>
 
-  <!-- SECTION 02: THE TEAM -->
+  <!-- 02 -->
   <div class="section" id="team">
     <div class="sec-label">02 — Your Dedicated Team</div>
     <div class="sec-title">Four People. All In on Riize.</div>
@@ -291,7 +288,7 @@ h1 span{color:var(--accent);}
 
     <div class="team-grid">
       <div class="team-card">
-        <div class="team-avatar">🧠</div>
+        <div class="team-avatar"><img src="https://storage.googleapis.com/msgsndr/c216j58Vx9XxYa7WYMiA/media/695ee42e356160516e585bc9.jpg" alt="Tommy Lynch"/></div>
         <div class="team-name">Tommy Lynch</div>
         <div class="team-role">Strategy & Economics</div>
         <ul class="cklist">
@@ -307,9 +304,9 @@ h1 span{color:var(--accent);}
         <div class="team-role">Content & Creator Lead</div>
         <ul class="cklist">
           <li>300M+ views of experience in TikTok content strategy</li>
-          <li>Manages all 20 retainer creator relationships</li>
-          <li>Weekly creator community calls — briefings, leaderboards, viral replications</li>
-          <li>Identifies best-performing angles and scales them across the creator roster</li>
+          <li>Manages all 20 retainer creator relationships directly</li>
+          <li>Weekly creator calls — briefings, leaderboards, viral replications</li>
+          <li>Identifies best-performing angles and scales them across the roster</li>
         </ul>
       </div>
       <div class="team-card">
@@ -317,70 +314,70 @@ h1 span{color:var(--accent);}
         <div class="team-name">Becca</div>
         <div class="team-role">Content Strategist</div>
         <ul class="cklist">
-          <li>Created content for Love Wellness (the Dissolvd strips competitor)</li>
-          <li>Writes creator briefs, hooks, and scripts specifically for strip-format products</li>
-          <li>Runs brand-specific creator training sessions for the Riize roster</li>
-          <li>Identifies angles competitors are missing and builds Riize's content moat</li>
+          <li>Created content for Love Wellness' dissolvable strip product line</li>
+          <li>Writes creator briefs, hooks, and scripts specific to strip-format products</li>
+          <li>Runs brand-specific creator training for the Riize roster</li>
+          <li>Identifies angles competitors are leaving on the table</li>
         </ul>
       </div>
       <div class="team-card mystery">
-        <div class="team-avatar" style="font-size:1.5rem;">?</div>
+        <div class="team-avatar" style="background:rgba(168,85,247,.12);border-color:rgba(168,85,247,.3);font-size:1.5rem;">?</div>
         <div class="team-name">Brand Concierge</div>
         <div class="team-role">Dedicated Brand POC</div>
         <ul class="cklist">
           <li>On Cult Content's payroll — lives inside your brand full-time</li>
-          <li>Single point of contact for all brand communication</li>
-          <li>Handles day-to-day creator calls, sample logistics, and scheduling</li>
+          <li>Single point of contact for all day-to-day Riize communication</li>
+          <li>Handles creator calls, sample logistics, and weekly scheduling</li>
           <li>Recruited from the creator community — knows TikTok Shop from the inside</li>
         </ul>
       </div>
     </div>
   </div>
 
-  <!-- SECTION 03: CREATOR PROGRAM -->
+  <!-- 03 -->
   <div class="section">
     <div class="sec-label">03 — Creator Program</div>
     <div class="sec-title">Short Video. All In.</div>
-    <p class="sec-sub">No live. Every dollar and every creator focused on short-form content — the format where strips perform best, and where your category is winning right now.</p>
+    <p class="sec-sub">No live. Every dollar and every creator focused on short-form content — the format where energy strips perform best, and where your category is winning on TikTok right now.</p>
 
     <div class="grid2">
       <div class="card tl">
         <div class="card-title">20 Retainer Creators</div>
         <ul class="cklist">
           <li>$500/creator/mo guaranteed retainer — 20 videos each per month</li>
-          <li>Every creator screened by Jina and Becca for product fit before earning a spot</li>
-          <li>Many already have strip content experience from our previous brand partnership</li>
-          <li>First priority for new hooks, trend briefs, and viral replications</li>
-          <li>Weekly call with brand on leaderboard, best-performing content, next-week plan</li>
+          <li>Every creator screened by Jina and Becca for product fit before earning a slot</li>
+          <li>Many already familiar with strip-format demos from our prior brand partnership</li>
+          <li>Priority access to new hooks, trend briefs, and viral replications</li>
+          <li>Top performers upgraded to anchor creator status as results come in</li>
         </ul>
       </div>
       <div class="card pl">
-        <div class="card-title">700+ Cult Members Community</div>
+        <div class="card-title">700+ Cult Member Community</div>
         <ul class="cklist">
-          <li>Free samples in exchange for content opportunity — no guaranteed output</li>
-          <li>Higher affiliate commission links via TAP — more incentive to post</li>
-          <li>Brand-specific training from Becca on strip demo hooks and angles</li>
-          <li>Some Cult Members outperform retainer creators — top performers get retainer offers</li>
-          <li>Sourced from across wellness, fitness, health, and lifestyle verticals</li>
+          <li>300 free samples per month in exchange for content opportunity</li>
+          <li>Higher affiliate commission via TAP — stronger incentive to post</li>
+          <li>Brand-specific training from Becca on Riize hook angles and scripts</li>
+          <li>Top Cult Members offered retainer slots as they prove performance</li>
+          <li>Sourced across wellness, fitness, health, and lifestyle verticals</li>
         </ul>
       </div>
     </div>
 
-    <div class="callout purple" style="margin-top:16px;">
+    <div class="callout" style="margin-top:14px;">
       <div class="ci">📞</div>
-      <div class="cb"><strong>Weekly creator calls with brand:</strong> Every week, the Riize team joins a creator call. Jina and the Brand Concierge run it — 30 minutes, leaderboard review, best-performing video breakdown, hook replication brief for next week, top performer spotlight. When a video pops off, every creator hears about it within 48 hours and gets a brief to replicate it.</div>
+      <div class="cb"><strong>Weekly brand calls:</strong> Every week the Riize team joins a creator call. Jina and the Brand Concierge run it — 30 minutes covering the leaderboard, the week's best-performing video, a replication brief for next week, and top performer spotlight. When a video pops off, every creator in the network hears about it within 48 hours.</div>
     </div>
   </div>
 
-  <!-- SECTION 04: MONTH 1 STRATEGY -->
+  <!-- 04 -->
   <div class="section" id="strategy">
     <div class="sec-label">04 — Month 1 Strategy</div>
     <div class="sec-title">Investment Month — Build the Foundation</div>
-    <p class="sec-sub">Month 1 is designed to go negative. That's not a bug — it's the strategy. We front-load the algorithm signal, the creator relationships, and the social proof, so that Month 2 and beyond convert at a completely different rate.</p>
+    <p class="sec-sub">Month 1 is designed to run at a loss. That's the plan — not a warning. We front-load the algorithm signal, creator relationships, and social proof so that every subsequent month converts at a fundamentally different rate.</p>
 
     <div class="rebate-card">
-      <div class="rebate-title">The <span>Rebate Campaign</span> — Month 1</div>
-      <div class="rebate-sub">We run a rebate campaign in the first month to generate real order volume immediately. This feeds the TikTok algorithm a strong sales signal before organic content fully kicks in — and seeds reviews that make every subsequent video convert better. This is not a shortcut. It's how you build a shop that creators actually want to post about.</div>
+      <div class="rebate-title">The <span>Rebate Campaign</span> — Month 1 Only</div>
+      <div class="rebate-sub">We run a rebate campaign in the first month to generate real order volume immediately. This feeds the TikTok algorithm a strong sales signal before organic content ramps up — and seeds verified reviews that make every subsequent video convert better. The rebate budget is a one-time cost in Month 1 and does not recur in future months.</div>
       <div class="rebate-steps">
         <div class="rs-item">
           <div class="rs-num">Step 1</div>
@@ -392,286 +389,217 @@ h1 span{color:var(--accent);}
         </div>
         <div class="rs-item">
           <div class="rs-num">Step 3</div>
-          <div class="rs-text">Algorithm registers sales velocity → creator outreach tiers unlock faster → organic flywheel starts</div>
+          <div class="rs-text">Algorithm registers sales velocity → outreach tiers unlock → organic content flywheel starts</div>
         </div>
       </div>
     </div>
 
-    <div class="callout warn">
-      <div class="ci">⚠️</div>
-      <div class="cb"><strong>Month 1 will show a net loss.</strong> The rebate campaign costs money upfront. Combined with the management fee, creator retainers, and sampling budget, total spend will exceed GMV in month one. This is expected, planned, and necessary. Brands that skip this step spend months waiting for organic traction that the rebate campaign delivers in weeks.</div>
-    </div>
-
-    <div style="margin-top:20px;">
-      <p style="font-size:.82rem;font-weight:800;color:var(--text);margin-bottom:12px;">Month 1 Parallel Tracks:</p>
-      <div class="grid2">
-        <ul class="blist">
-          <li>TikTok Shop account launch + listing optimization</li>
-          <li>Rebate campaign activated (300+ sample pipeline running)</li>
-          <li>20 retainer creators briefed and producing content</li>
-          <li>Creator community seeded — Cult Members sampling begins</li>
-        </ul>
-        <ul class="blist">
-          <li>Becca writes master hook brief and video scripts for strips</li>
-          <li>First weekly creator call — introduce brand, share brief</li>
-          <li>Affiliate outreach via Reacher — 1,000-2,000 messages/week</li>
-          <li>Promotional strategy set — coupons, flash sales, timing</li>
-        </ul>
-      </div>
+    <div class="callout red">
+      <div class="ci">📉</div>
+      <div class="cb"><strong>Month 1 will be the largest loss — by design.</strong> Combined spend including management fee, creator retainers, 300-unit sampling budget, promotional spend, and the rebate campaign will run approximately <strong>$25,000–$27,000</strong> against roughly $8,000 in GMV. Months 2 through 4 continue at a loss but shrink each month as GMV scales. The target is break-even by Month 5–6. All of this is factored into the projections below.</div>
     </div>
   </div>
 
-  <!-- SECTION 05: UNIT ECONOMICS -->
+  <!-- 05 -->
   <div class="section">
     <div class="sec-label">05 — Unit Economics</div>
     <div class="sec-title">Riize Energy Strips — P&amp;L Per Unit</div>
-    <p class="sec-sub">Based on 30-count pack at $30.99 retail. Affiliate commission at 15%. Fulfillment estimated at $4.50 for a lightweight strip product via standard TikTok Shop fulfillment.</p>
+    <p class="sec-sub">Based on 30-count pack at $30.99 retail. The ~44% gross margin per unit is what the brand keeps after platform fees, fulfillment, affiliate commissions, and COGS. Monthly fixed costs (management fee, retainers, sampling, promo) sit on top — shown in the waterfall below.</p>
 
     <div class="pl-wrap">
       <div class="pl-row head"><span>Revenue</span><span></span></div>
-      <div class="pl-row">
-        <div class="pl-label"><strong>Retail Selling Price</strong><em>30-count pack</em></div>
-        <div class="pl-val pos">$30.99</div>
-      </div>
+      <div class="pl-row"><div class="pl-label"><strong>Retail Selling Price</strong><em>30-count pack</em></div><div class="pl-val pos">$30.99</div></div>
       <div class="pl-row head"><span>TikTok Platform Fees</span><span></span></div>
-      <div class="pl-row">
-        <div class="pl-label">TikTok Referral Fee <em>~7%</em></div>
-        <div class="pl-val neg">–$2.17</div>
-      </div>
-      <div class="pl-row">
-        <div class="pl-label">Processing / Smart Promo Fee <em>~3% variable</em></div>
-        <div class="pl-val neg">–$0.93</div>
-      </div>
+      <div class="pl-row"><div class="pl-label">Referral Fee<em>~7%</em></div><div class="pl-val neg">–$2.17</div></div>
+      <div class="pl-row"><div class="pl-label">Processing / Smart Promo Fee<em>~3% variable</em></div><div class="pl-val neg">–$0.93</div></div>
       <div class="pl-row head"><span>Fulfillment</span><span></span></div>
-      <div class="pl-row">
-        <div class="pl-label">Shipping &amp; Fulfillment <em>lightweight product, est.</em></div>
-        <div class="pl-val neg">–$4.50</div>
-      </div>
-      <div class="pl-row head"><span>Creator Costs</span><span></span></div>
-      <div class="pl-row">
-        <div class="pl-label">Affiliate Commission <em>15% of sale</em></div>
-        <div class="pl-val neg">–$4.65</div>
-      </div>
+      <div class="pl-row"><div class="pl-label">Shipping &amp; Fulfillment<em>lightweight product, est.</em></div><div class="pl-val neg">–$4.50</div></div>
+      <div class="pl-row head"><span>Creator Affiliate Commission</span><span></span></div>
+      <div class="pl-row"><div class="pl-label">Affiliate Commission<em>15% of sale</em></div><div class="pl-val neg">–$4.65</div></div>
       <div class="pl-row head"><span>Cost of Goods</span><span></span></div>
-      <div class="pl-row">
-        <div class="pl-label">Product COGS <em>est. for strip product</em></div>
-        <div class="pl-val neg">–$5.00</div>
-      </div>
-      <div class="pl-row total">
-        <div class="pl-label"><strong>Net Contribution Per Unit</strong></div>
-        <div class="pl-val big">$13.74 (~44%)</div>
-      </div>
-    </div>
-
-    <div class="callout" style="margin-top:16px;">
-      <div class="ci">💡</div>
-      <div class="cb"><strong>Note:</strong> Creator retainer budget ($10k/mo) and management fee are monthly fixed costs billed separately — not embedded in the per-unit margin. The waterfall below shows the full all-in picture at each GMV milestone.</div>
+      <div class="pl-row"><div class="pl-label">Product COGS<em>est. for strip product</em></div><div class="pl-val neg">–$5.00</div></div>
+      <div class="pl-row total"><div class="pl-label"><strong>Net Contribution Per Unit</strong></div><div class="pl-val accent">$13.74 (~44%)</div></div>
     </div>
   </div>
 
-  <!-- SECTION 06: PROJECTIONS -->
+  <!-- 06 -->
   <div class="section" id="projections">
     <div class="sec-label">06 — Projections</div>
-    <div class="sec-title">3 &amp; 6 Month GMV Model</div>
-    <p class="sec-sub">Projections based on 20 retainer creators producing 20 videos/mo each (400 videos/mo total), 700+ Cult Member seeding, and the rebate campaign front-loading Month 1 signal. Month 1 is an investment month — the system pays off from Month 2 forward.</p>
+    <div class="sec-title">6-Month GMV &amp; Investment Model</div>
+    <p class="sec-sub">Months 1–4 run at a loss — the biggest in Month 1, shrinking each month as GMV scales. Month 5 reaches near break-even. Month 6 turns positive. Videos scale up as creator momentum compounds. Every number in this table is calculated from the same waterfall math below — nothing is double-counted.</p>
 
     <table class="proj-table">
       <thead>
         <tr>
           <th>Month</th>
           <th>Est. GMV</th>
-          <th>Videos Posted</th>
-          <th>Fixed Spend</th>
-          <th>Net Status</th>
+          <th>Videos/Mo</th>
+          <th>Total Brand Spend</th>
+          <th>Net Monthly</th>
         </tr>
       </thead>
       <tbody>
-        <tr class="phase-inv">
-          <td><strong>Month 1</strong> <span class="status-pill sp-inv">Investment</span></td>
+        <tr>
+          <td><strong>Month 1</strong><span class="status-pill sp-loss">Biggest Loss</span></td>
           <td class="red-val">~$8k</td>
-          <td>400+ (retainer + Cult Members)</td>
-          <td>$15k + rebate budget</td>
-          <td class="red-val">In the red</td>
+          <td>~200</td>
+          <td class="red-val">~$26k (incl. rebate)</td>
+          <td class="red-val">–$22,440</td>
         </tr>
-        <tr class="phase-early">
-          <td><strong>Month 2</strong> <span class="status-pill sp-early">Gaining</span></td>
+        <tr>
+          <td><strong>Month 2</strong><span class="status-pill sp-loss">Loss</span></td>
           <td class="accent">~$15k</td>
-          <td>400+ per month</td>
-          <td>$15k fixed</td>
-          <td class="accent">Near break-even</td>
+          <td>~400</td>
+          <td style="color:var(--light);">~$20k</td>
+          <td class="red-val">–$13,850</td>
         </tr>
-        <tr class="phase-early">
-          <td><strong>Month 3</strong> <span class="status-pill sp-early">Scaling</span></td>
+        <tr>
+          <td><strong>Month 3</strong><span class="status-pill sp-loss">Loss</span></td>
           <td class="accent">~$30k</td>
-          <td>400+ per month</td>
-          <td>$15k fixed</td>
-          <td class="accent">Profitable</td>
+          <td>~500</td>
+          <td style="color:var(--light);">~$21k</td>
+          <td class="red-val">–$8,300</td>
         </tr>
-        <tr class="phase-scale">
-          <td><strong>Month 4</strong> <span class="status-pill sp-scale">Scaling</span></td>
-          <td class="green">~$40k</td>
-          <td>400+ per month</td>
-          <td>$15k fixed</td>
-          <td class="green">Strong margin</td>
+        <tr>
+          <td><strong>Month 4</strong><span class="status-pill sp-loss">Loss</span></td>
+          <td class="accent">~$40k</td>
+          <td>~600</td>
+          <td style="color:var(--light);">~$21k</td>
+          <td class="red-val">–$4,600</td>
         </tr>
-        <tr class="phase-scale">
-          <td><strong>Month 5</strong> <span class="status-pill sp-scale">Scaling</span></td>
-          <td class="green">~$50k</td>
-          <td>400+ per month</td>
-          <td>$15k fixed</td>
-          <td class="green">Strong margin</td>
+        <tr>
+          <td><strong>Month 5</strong><span class="status-pill sp-near">Near Break-Even</span></td>
+          <td class="yellow-val">~$50k</td>
+          <td>~700</td>
+          <td style="color:var(--light);">~$22k</td>
+          <td class="yellow-val">–$900</td>
         </tr>
-        <tr class="phase-scale">
-          <td><strong>Month 6</strong> <span class="status-pill sp-scale">Scaling</span></td>
-          <td class="green">~$55k</td>
-          <td>400+ per month</td>
-          <td>$15k fixed</td>
-          <td class="green">Strong margin</td>
+        <tr>
+          <td><strong>Month 6</strong><span class="status-pill sp-pos">Break-Even</span></td>
+          <td style="color:var(--green);font-weight:700;">~$55k</td>
+          <td>~800</td>
+          <td style="color:var(--light);">~$22k</td>
+          <td style="color:var(--green);font-weight:700;">+$950</td>
         </tr>
       </tbody>
     </table>
 
     <div class="bar-chart" style="margin-top:28px;">
       <div style="font-size:.65rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px;">Monthly GMV Ramp</div>
-      <div class="bar-row">
-        <div class="bar-month">Month 1</div>
-        <div class="bar-track"><div class="bar-fill inv" style="width:15%;">$8k</div></div>
-        <div class="bar-gmv" style="color:var(--red);">$8k</div>
-      </div>
-      <div class="bar-row">
-        <div class="bar-month">Month 2</div>
-        <div class="bar-track"><div class="bar-fill early" style="width:27%;">$15k</div></div>
-        <div class="bar-gmv">$15k</div>
-      </div>
-      <div class="bar-row">
-        <div class="bar-month">Month 3</div>
-        <div class="bar-track"><div class="bar-fill early" style="width:55%;">$30k</div></div>
-        <div class="bar-gmv">$30k</div>
-      </div>
-      <div class="bar-row">
-        <div class="bar-month">Month 4</div>
-        <div class="bar-track"><div class="bar-fill scale" style="width:73%;">$40k</div></div>
-        <div class="bar-gmv" style="color:var(--green);">$40k</div>
-      </div>
-      <div class="bar-row">
-        <div class="bar-month">Month 5</div>
-        <div class="bar-track"><div class="bar-fill scale" style="width:91%;">$50k</div></div>
-        <div class="bar-gmv" style="color:var(--green);">$50k</div>
-      </div>
-      <div class="bar-row">
-        <div class="bar-month">Month 6</div>
-        <div class="bar-track"><div class="bar-fill scale" style="width:100%;">$55k</div></div>
-        <div class="bar-gmv" style="color:var(--green);">$55k</div>
-      </div>
+      <div class="bar-row"><div class="bar-month">Month 1</div><div class="bar-track"><div class="bar-fill loss" style="width:15%;">$8k</div></div><div class="bar-gmv" style="color:var(--red);">$8k</div></div>
+      <div class="bar-row"><div class="bar-month">Month 2</div><div class="bar-track"><div class="bar-fill ramp" style="width:27%;">$15k</div></div><div class="bar-gmv">$15k</div></div>
+      <div class="bar-row"><div class="bar-month">Month 3</div><div class="bar-track"><div class="bar-fill ramp" style="width:55%;">$30k</div></div><div class="bar-gmv">$30k</div></div>
+      <div class="bar-row"><div class="bar-month">Month 4</div><div class="bar-track"><div class="bar-fill ramp" style="width:73%;">$40k</div></div><div class="bar-gmv">$40k</div></div>
+      <div class="bar-row"><div class="bar-month">Month 5</div><div class="bar-track"><div class="bar-fill scale" style="width:91%;">$50k</div></div><div class="bar-gmv" style="color:var(--green);">$50k</div></div>
+      <div class="bar-row"><div class="bar-month">Month 6</div><div class="bar-track"><div class="bar-fill scale" style="width:100%;">$55k</div></div><div class="bar-gmv" style="color:var(--green);">$55k</div></div>
     </div>
 
-    <!-- Waterfall at Month 3 and Month 6 -->
+    <!-- Dual waterfalls -->
     <div style="margin-top:36px;display:grid;grid-template-columns:1fr 1fr;gap:16px;">
       <div>
-        <p style="font-size:.82rem;font-weight:800;color:var(--text);margin-bottom:12px;">All-In Cost Waterfall — Month 3 (~$30k GMV)</p>
+        <p style="font-size:.82rem;font-weight:800;color:var(--text);margin-bottom:12px;">All-In Waterfall — Month 1 (~$8k GMV)</p>
         <div class="pl-wrap">
-          <div class="pl-row"><div class="pl-label"><strong>Gross Revenue (GMV)</strong></div><div class="pl-val pos">$30,000</div></div>
-          <div class="pl-row"><div class="pl-label">Gross Profit (44%)</div><div class="pl-val pos">$13,200</div></div>
-          <div class="pl-row"><div class="pl-label">− Management Fee</div><div class="pl-val neg">($5,000)</div></div>
-          <div class="pl-row"><div class="pl-label">− GMV Commission (4%)</div><div class="pl-val neg">($1,200)</div></div>
-          <div class="pl-row"><div class="pl-label">− Creator Retainers</div><div class="pl-val neg">($10,000)</div></div>
-          <div class="pl-row"><div class="pl-label">− Returns &amp; Refunds (2%)</div><div class="pl-val neg">($600)</div></div>
-          <div class="pl-row total"><div class="pl-label"><strong>Net Monthly</strong></div><div class="pl-val accent">–$3,600</div></div>
+          <div class="pl-row"><div class="pl-label"><strong>Gross Revenue (GMV)</strong></div><div class="pl-val pos">$8,000</div></div>
+          <div class="pl-row"><div class="pl-label">Gross Profit (44%)</div><div class="pl-val pos">$3,520</div></div>
+          <div class="pl-row"><div class="pl-label">− Management Fee</div><div class="pl-val neg">($3,000)</div></div>
+          <div class="pl-row"><div class="pl-label">− GMV Commission (5%)</div><div class="pl-val neg">($400)</div></div>
+          <div class="pl-row"><div class="pl-label">− Creator Retainers (20)</div><div class="pl-val neg">($10,000)</div></div>
+          <div class="pl-row"><div class="pl-label">− Sampling (300 units)</div><div class="pl-val neg">($2,400)</div></div>
+          <div class="pl-row"><div class="pl-label">− Promotional Budget</div><div class="pl-val neg">($4,000)</div></div>
+          <div class="pl-row"><div class="pl-label">− Rebate Campaign<em>M1 only</em></div><div class="pl-val neg">($6,000)</div></div>
+          <div class="pl-row"><div class="pl-label">− Returns &amp; Refunds (2%)</div><div class="pl-val neg">($160)</div></div>
+          <div class="pl-row neg-total"><div class="pl-label"><strong>Net Monthly</strong></div><div class="pl-val big-neg">–$22,440</div></div>
         </div>
-        <p style="font-size:.72rem;color:var(--muted);margin-top:8px;">Near break-even — not counting Amazon/D2C halo lift from TikTok exposure.</p>
       </div>
       <div>
-        <p style="font-size:.82rem;font-weight:800;color:var(--text);margin-bottom:12px;">All-In Cost Waterfall — Month 6 (~$55k GMV)</p>
+        <p style="font-size:.82rem;font-weight:800;color:var(--text);margin-bottom:12px;">All-In Waterfall — Month 6 (~$55k GMV)</p>
         <div class="pl-wrap">
           <div class="pl-row"><div class="pl-label"><strong>Gross Revenue (GMV)</strong></div><div class="pl-val pos">$55,000</div></div>
           <div class="pl-row"><div class="pl-label">Gross Profit (44%)</div><div class="pl-val pos">$24,200</div></div>
-          <div class="pl-row"><div class="pl-label">− Management Fee</div><div class="pl-val neg">($5,000)</div></div>
-          <div class="pl-row"><div class="pl-label">− GMV Commission (4%)</div><div class="pl-val neg">($2,200)</div></div>
-          <div class="pl-row"><div class="pl-label">− Creator Retainers</div><div class="pl-val neg">($10,000)</div></div>
+          <div class="pl-row"><div class="pl-label">− Management Fee</div><div class="pl-val neg">($3,000)</div></div>
+          <div class="pl-row"><div class="pl-label">− GMV Commission (5%)</div><div class="pl-val neg">($2,750)</div></div>
+          <div class="pl-row"><div class="pl-label">− Creator Retainers (20)</div><div class="pl-val neg">($10,000)</div></div>
+          <div class="pl-row"><div class="pl-label">− Sampling (300 units)</div><div class="pl-val neg">($2,400)</div></div>
+          <div class="pl-row"><div class="pl-label">− Promotional Budget</div><div class="pl-val neg">($4,000)</div></div>
           <div class="pl-row"><div class="pl-label">− Returns &amp; Refunds (2%)</div><div class="pl-val neg">($1,100)</div></div>
-          <div class="pl-row total"><div class="pl-label"><strong>Net Monthly</strong></div><div class="pl-val big">$5,900 (10.7%)</div></div>
+          <div class="pl-row total"><div class="pl-label"><strong>Net Monthly</strong></div><div class="pl-val big-pos">+$950</div></div>
         </div>
-        <p style="font-size:.72rem;color:var(--muted);margin-top:8px;">Plus measurable lift on Amazon, D2C, and retail from 400+ videos/month of awareness.</p>
       </div>
     </div>
 
-    <div class="callout green" style="margin-top:16px;">
+    <div class="callout warn" style="margin-top:16px;">
       <div class="ci">📈</div>
-      <div class="cb"><strong>TikTok as top-of-funnel:</strong> At $55k/mo GMV on TikTok Shop, you're also generating millions of impressions per month in the energy/wellness space — from creators who've already validated your product on camera. That awareness drives Amazon, D2C, and retail lift that doesn't show up in the TikTok P&amp;L. Brands in your category consistently see 1.5–3x TikTok GMV in spillover revenue across other channels.</div>
+      <div class="cb"><strong>TikTok as top-of-funnel:</strong> The P&amp;L above is TikTok Shop only. At $55k/mo GMV, you're generating millions of impressions per month in the energy/wellness space from creators who have publicly validated your product. That drives lift on Amazon, D2C, and retail that doesn't appear in these numbers. Brands in adjacent supplement categories consistently see 1.5–3× their TikTok GMV in spillover revenue across other channels.</div>
     </div>
   </div>
 
-  <!-- SECTION 07: INVESTMENT -->
+  <!-- 07 -->
   <div class="section" id="investment">
     <div class="sec-label">07 — Investment</div>
-    <div class="sec-title">What the Scale Package Costs</div>
-    <p class="sec-sub">Two fixed monthly lines plus a performance share. The creator retainer budget goes directly to creators — not to us. We screen every creator before they earn a retainer slot.</p>
+    <div class="sec-title">What You're Committing To</div>
+    <p class="sec-sub">Between the management fee, creator retainers, sampling, and promotional spend, total monthly brand investment runs <strong style="color:var(--text);">$20,000–$27,000 per month</strong> over the first six months. Month 1 is the highest, including the one-time rebate campaign. Months 2–6 stabilize around $21,000–$22,000 per month as the GMV commission scales with sales. This is a serious commitment to building a real TikTok Shop revenue channel.</p>
+
+    <div class="fee-slider">
+      <div class="card-title">Management Fee — Two Options</div>
+      <p style="font-size:.78rem;color:var(--light);margin-top:4px;">Same dedicated team, same work. Choose the structure that fits your GMV trajectory. All projections in this proposal use the Standard rate.</p>
+      <div class="fee-options">
+        <div class="fee-option selected">
+          <div class="fo-label">Standard — used in projections above</div>
+          <div class="fo-rate">$3,000/mo + 5% GMV</div>
+          <div class="fo-desc">Lower base, higher commission share. Better value below $100K/mo GMV — covers the entire 6-month projected range in this proposal.</div>
+        </div>
+        <div class="fee-option">
+          <div class="fo-label">Performance</div>
+          <div class="fo-rate">$5,000/mo + 3% GMV</div>
+          <div class="fo-desc">Higher base, lower commission share. Better value at $100K+/mo GMV — recommended once you scale past the 6-month targets in this proposal.</div>
+        </div>
+      </div>
+    </div>
 
     <div class="invest-wrap">
-      <div class="invest-row head">
-        <div class="il">Monthly Fixed</div>
-        <div class="iv" style="font-size:.6rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;">Amount</div>
+      <div class="invest-row head"><div class="il">Monthly Brand Investment (Standard Rate)</div><div class="iv" style="font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;">Amount</div></div>
+      <div class="invest-row">
+        <div class="il"><strong>Scale Management Fee</strong><em>Tommy, Jina, Becca, Brand Concierge — weekly calls, Reacher, weekly reports</em></div>
+        <div class="iv accent">$3,000/mo</div>
       </div>
       <div class="invest-row">
-        <div class="il">
-          <strong>Scale Management Fee</strong>
-          <em>Tommy, Jina, Becca, Brand Concierge — dedicated to Riize; weekly calls, Reacher access, weekly reports</em>
-        </div>
-        <div class="iv accent">$5,000/mo</div>
-      </div>
-      <div class="invest-row">
-        <div class="il">
-          <strong>Creator Retainer Budget</strong>
-          <em>20 screened retainer creators × $500/mo; paid directly to creators — not to Cult Content</em>
-        </div>
+        <div class="il"><strong>Creator Retainer Budget</strong><em>20 screened creators × $500/mo — paid directly to creators, not to Cult Content</em></div>
         <div class="iv accent">$10,000/mo</div>
       </div>
       <div class="invest-row">
-        <div class="il">
-          <strong>Software &amp; Tools</strong>
-          <em>Reacher, FastMOS, Lark — all included in the management fee</em>
-        </div>
-        <div class="iv green">Included</div>
-      </div>
-      <div class="invest-row head">
-        <div class="il">Performance</div>
-        <div class="iv" style="font-size:.6rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;">Rate</div>
+        <div class="il"><strong>Sampling — 300 Units/Mo</strong><em>For Cult Members and new creator onboarding — supplied by Riize at COGS (~$8/unit)</em></div>
+        <div class="iv yellow">~$2,400/mo</div>
       </div>
       <div class="invest-row">
-        <div class="il">
-          <strong>GMV Commission</strong>
-          <em>Applied to affiliate-driven TikTok Shop GMV only</em>
-        </div>
-        <div class="iv accent">4% GMV</div>
+        <div class="il"><strong>Promotional Budget</strong><em>TikTok Shop coupons, flash sales, and paid promotion — required to maintain sales velocity</em></div>
+        <div class="iv yellow">~$4,000/mo</div>
+      </div>
+      <div class="invest-row">
+        <div class="il"><strong>GMV Commission</strong><em>5% of affiliate-driven TikTok Shop GMV — scales with your sales volume</em></div>
+        <div class="iv accent">5% GMV</div>
       </div>
       <div class="invest-row total">
-        <div class="il">Total Monthly Fixed</div>
-        <div class="iv">$15,000/mo + 4% GMV</div>
+        <div class="il">Ongoing Monthly Fixed (Months 2–6)</div>
+        <div class="iv">~$19,400/mo + 5% GMV</div>
       </div>
-      <div class="invest-row" style="background:rgba(239,68,68,.04);border-top:1px dashed rgba(239,68,68,.2);">
-        <div class="il">
-          <strong>Rebate Campaign Budget</strong>
-          <em>Month 1 only — paid by brand, managed by Cult Content; amount TBD based on product price and volume target</em>
-        </div>
-        <div class="iv red">Month 1 Only</div>
+      <div class="invest-row" style="background:rgba(239,68,68,.05);border-top:1px dashed rgba(239,68,68,.2);">
+        <div class="il"><strong>Rebate Campaign</strong><em>Month 1 only — one-time investment to seed orders, reviews, and algorithm signal</em></div>
+        <div class="iv red">~$6,000 (M1 only)</div>
       </div>
-      <div class="invest-row" style="background:rgba(168,85,247,.04);border-top:1px dashed rgba(168,85,247,.2);">
-        <div class="il">
-          <strong>Product Samples</strong>
-          <em>300+ units/month for Cult Members and new creator onboarding — supplied by Riize</em>
-        </div>
-        <div class="iv purple">Brand Supplies</div>
+      <div class="invest-row" style="background:rgba(239,68,68,.05);">
+        <div class="il"><strong>Month 1 All-In</strong><em>Largest single-month investment; the foundation everything else is built on</em></div>
+        <div class="iv red">~$25,000–$27,000</div>
       </div>
     </div>
 
-    <div class="callout" style="margin-top:18px;">
-      <div class="ci">💡</div>
-      <div class="cb"><strong>No lock-in after Month 3.</strong> Month 1 is the investment month — plan for it to be negative. Month 2 targets break-even. By Month 3 ($30k GMV target), you have enough data to see exactly what's working and decide whether to stay, scale, or adjust. We'd rather earn your business every month than hold you to a contract.</div>
+    <div class="callout red" style="margin-top:16px;">
+      <div class="ci">⚠️</div>
+      <div class="cb"><strong>Know what you're signing up for.</strong> This is a 6-month commitment to build a real channel. Months 1–4 will show losses — planned, expected, and necessary. Month 5 approaches break-even. Month 6 is the first month the channel returns positive. Brands that exit before Month 4 leave the investment on the table without collecting the return. Total 6-month brand investment is approximately <strong>$120,000–$135,000</strong>. If that timeline doesn't fit the current budget, we have smaller packages worth discussing first.</div>
     </div>
   </div>
 
-  <!-- SECTION 08: NEXT STEPS -->
-  <div class="section" id="next-steps">
+  <!-- 08 -->
+  <div class="section">
     <div class="sec-label">08 — Next Steps</div>
     <div class="sec-title">How We Get Moving</div>
 
@@ -682,8 +610,8 @@ h1 span{color:var(--accent);}
           <div class="rm-title">Kick Off &amp; Creator Briefing</div>
           <ul class="blist">
             <li>Sign agreement — onboard to Lark group chat with Tommy, Jina, Becca, and Brand Concierge</li>
-            <li>Becca writes the master Riize hook brief and video scripts (draws on Love Wellness competitor knowledge)</li>
-            <li>Jina activates the 20 retainer creator slots — screens and selects from strip-familiar roster first</li>
+            <li>Becca writes the master Riize hook brief and scripts (draws directly on Love Wellness competitor knowledge)</li>
+            <li>Jina activates the 20 retainer creator slots — strip-familiar creators prioritized first</li>
             <li>TikTok Shop account launch and listing optimization</li>
           </ul>
         </div>
@@ -693,34 +621,34 @@ h1 span{color:var(--accent);}
         <div class="rm-body">
           <div class="rm-title">Month 1 — Rebate + Seeding</div>
           <ul class="blist">
-            <li>Rebate campaign activated — real orders, real reviews, algorithm signal</li>
-            <li>300+ samples to Cult Members — training call with Becca on Riize angles</li>
-            <li>Creator outreach via Reacher — 1,000+ new creators/week from week one</li>
-            <li>First weekly creator call — leaderboard introduced, brief shared</li>
+            <li>Rebate campaign activated — real orders, real reviews, algorithm signal locked in</li>
+            <li>300 samples to Cult Members — training call with Becca on Riize hook angles</li>
+            <li>Creator outreach via Reacher — 1,000+ new creators/week from day one</li>
+            <li>First weekly creator call — brief shared, leaderboard introduced</li>
           </ul>
         </div>
       </div>
       <div class="rm-row">
         <div class="rm-phase"><span class="rm-tag t2">Step 3</span></div>
         <div class="rm-body">
-          <div class="rm-title">Month 2–3 — Content Flywheel</div>
+          <div class="rm-title">Months 2–4 — Content Flywheel Builds</div>
           <ul class="blist">
-            <li>400+ videos/month posting from retainer + Cult Member creators</li>
-            <li>Identify viral hooks — Jina briefs entire creator roster to replicate within 48 hours</li>
+            <li>400–600 videos/month, scaling as Cult Member momentum builds</li>
+            <li>Best-performing hooks identified — replicated across the full roster within 48 hours</li>
             <li>Creator outreach scales to 2,000–7,000/week as GMV unlocks outreach tiers</li>
-            <li>Top Cult Members offered retainer upgrade — reinforce what's working</li>
+            <li>Top Cult Members offered retainer upgrades — reinforce what's working</li>
           </ul>
         </div>
       </div>
       <div class="rm-row">
         <div class="rm-phase"><span class="rm-tag t3">Step 4</span></div>
         <div class="rm-body">
-          <div class="rm-title">Month 4–6 — Scale</div>
+          <div class="rm-title">Months 5–6 — Break-Even</div>
           <ul class="blist">
-            <li>$40k–$55k GMV run rate — promotional calendar drives flash sale spikes</li>
-            <li>Uncapped outreach unlocked at $20k GMV threshold — 10,000+ messages/week</li>
-            <li>Weekly reporting, monthly strategy call — every number visible</li>
-            <li>Evaluate expanding to second SKU or bundle strategy based on what's converting</li>
+            <li>$50k–$55k GMV run rate — promotional calendar drives flash sale spikes</li>
+            <li>Uncapped outreach unlocked at $20k GMV — 10,000+ messages/week</li>
+            <li>Weekly reporting, monthly strategy call — every number visible and explained</li>
+            <li>Evaluate second SKU or bundle strategy based on what's converting</li>
           </ul>
         </div>
       </div>
@@ -732,7 +660,7 @@ h1 span{color:var(--accent);}
 <div class="footer">
   <div class="footer-left">
     <p>Prepared by Tommy Lynch · <a href="mailto:tommy@cultcontent.cc">tommy@cultcontent.cc</a></p>
-    <p style="margin-top:4px;">Questions? Reply to this email or reach us on Lark.</p>
+    <p style="margin-top:4px;">Questions? Reply to this email or reach out on Lark.</p>
   </div>
   <div style="font-size:.72rem;color:var(--muted);text-align:right;">Riize × Cult Content · Scale Package<br>Confidential</div>
 </div>
