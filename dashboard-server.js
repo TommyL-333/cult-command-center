@@ -2108,6 +2108,34 @@ app.post('/api/upload/video-direct', uploadDirect.single('video'), async (req, r
   res.json({ ok: true, url: publicUrl, video: meta });
 });
 
+// ─── Admin: general file upload (pre-auth, cc-admin-token protected) ─────────
+// Accepts any file type (PDFs, images, etc.) authenticated by cc-admin-2026 token.
+// Returns the public URL on the Railway volume.
+(() => {
+  const adminFileUpload = require('multer')({
+    storage: require('multer').diskStorage({
+      destination: (_, __, cb) => cb(null, UPLOAD_DIR),
+      filename: (_, file, cb) => {
+        const ext  = path.extname(file.originalname) || '';
+        const base = path.basename(file.originalname, ext).replace(/[^a-z0-9_.-]/gi, '_').slice(0, 80);
+        cb(null, `${Date.now()}_${base}${ext}`);
+      },
+    }),
+    limits: { fileSize: 100 * 1024 * 1024 },
+  }).single('file');
+  app.post('/api/admin/upload', (req, res, next) => {
+    if ((req.query.token || req.headers['x-admin-token']) !== 'cc-admin-2026') {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+    adminFileUpload(req, res, (err) => {
+      if (err) return res.status(400).json({ error: err.message });
+      if (!req.file) return res.status(400).json({ error: 'No file received' });
+      const publicUrl = `${PUBLIC_BASE_URL}/uploads/${req.file.filename}`;
+      res.json({ ok: true, url: publicUrl, filename: req.file.filename });
+    });
+  });
+})();
+
 // ─── Admin: volume disk audit (pre-auth, bearer-token protected) ──────────────
 // Registered before requireAuth so it's reachable without a CF Access session.
 app.get('/api/admin/disk-raw', (req, res) => {
