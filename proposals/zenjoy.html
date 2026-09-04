@@ -156,15 +156,17 @@ h1 span{color:var(--accent);}
 .cta-note{font-size:.71rem;color:var(--muted);margin-top:12px;}
 
 /* Roadmap */
-.roadmap{display:flex;flex-direction:column;}
-.rm-row{display:grid;grid-template-columns:110px 1fr;position:relative;}
-.rm-row:not(:last-child)::before{content:"";position:absolute;left:52px;top:48px;bottom:-10px;width:1px;background:linear-gradient(to bottom,rgba(32,213,196,.35),transparent);}
-.rm-phase{padding:18px 14px 18px 0;display:flex;align-items:flex-start;justify-content:flex-end;}
-.rm-tag{background:var(--accent);color:#000;font-size:.62rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;padding:4px 9px;border-radius:20px;white-space:nowrap;}
-.rm-tag.t2{background:rgba(32,213,196,.22);color:var(--accent);}
-.rm-tag.t3{background:rgba(16,185,129,.22);color:var(--green);}
-.rm-body{padding:16px 0 16px 24px;border-left:1px solid var(--border);}
-.rm-title{font-size:.88rem;font-weight:800;color:var(--text);margin-bottom:8px;}
+.roadmap{display:flex;flex-direction:column;gap:0;position:relative;padding-left:140px;}
+.roadmap::before{content:"";position:absolute;left:116px;top:24px;bottom:24px;width:1px;background:linear-gradient(to bottom,rgba(32,213,196,.4),rgba(16,185,129,.15));}
+.rm-row{position:relative;padding:0 0 32px 28px;border-left:none;}
+.rm-row:last-child{padding-bottom:0;}
+.rm-row::before{content:"";position:absolute;left:-5px;top:20px;width:10px;height:10px;border-radius:50%;background:var(--accent);border:2px solid var(--bg);box-shadow:0 0 0 3px rgba(32,213,196,.2);}
+.rm-phase{position:absolute;left:-140px;top:12px;display:flex;justify-content:flex-end;width:120px;}
+.rm-tag{background:var(--accent);color:#000;font-size:.6rem;font-weight:900;letter-spacing:.06em;text-transform:uppercase;padding:4px 10px;border-radius:20px;white-space:nowrap;}
+.rm-tag.t2{background:rgba(32,213,196,.15);color:var(--accent);border:1px solid rgba(32,213,196,.3);}
+.rm-tag.t3{background:rgba(16,185,129,.15);color:var(--green);border:1px solid rgba(16,185,129,.3);}
+.rm-body{padding-top:8px;}
+.rm-title{font-size:.88rem;font-weight:800;color:var(--text);margin-bottom:10px;}
 
 .footer{border-top:1px solid var(--border);padding:40px 48px;max-width:940px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px;}
 .footer-left p{font-size:.8rem;color:var(--muted);line-height:1.6;}
@@ -434,7 +436,7 @@ h1 span{color:var(--accent);}
           <tr><td class="rank-num">48</td><td><strong>Erin</strong></td><td><span class="cat-pill">Home &amp; Lifestyle</span></td><td class="muted">11,506</td><td class="accent">$390</td><td>$226,512</td></tr>
           <tr><td class="rank-num">49</td><td><strong>The Nourished Method</strong></td><td><span class="cat-pill">Personal Care</span></td><td class="muted">6,735</td><td class="accent">$262</td><td>$224,438</td></tr>
           <tr><td class="rank-num">50</td><td><strong>Kalanit Emanuelle</strong></td><td><span class="cat-pill">Beauty</span></td><td class="muted">57,545</td><td class="accent">$49,100</td><td>$222,402</td></tr>
-          <tr><td colspan="6" style="padding:10px 14px;font-size:.72rem;color:var(--muted);text-align:center;background:rgba(0,0,0,.15);">+ 50 more creators · Full list delivered to sponsors after the event</td></tr>
+          <tr><td colspan="6" style="padding:10px 14px;font-size:.72rem;color:var(--muted);text-align:center;background:rgba(0,0,0,.15);">+ 950 more creators · Full list delivered to sponsors after the event</td></tr>
         </tbody>
       </table>
     </div>
@@ -488,7 +490,7 @@ h1 span{color:var(--accent);}
     <div class="cta-block">
       <div class="cta-block-title">Ready to be in the room?</div>
       <div class="cta-block-sub">Lock in Zenjoy's sponsorship now. $2,500 cash today secures your spot — product coordination handled separately before September 12th.</div>
-      <a href="PAYMENT_LINK_HERE" class="cta-block-btn">Lock In Sponsorship — $2,500 →</a>
+      <a href="https://invoice.stripe.com/i/acct_1S4V9qAWeCeTjGDw/live_YWNjdF8xUzRWOXFBV2VDZVRqR0R3LF9WOGZrYm9UZnNLQklvUG9Uc3RvaTF5amNMQndXTjFYLDE3ODIyMDcwOQ0200PCnr7cXw?s=ap" class="cta-block-btn">Lock In Sponsorship — $2,500 →</a>
       <div class="cta-note">Questions? Reach Tommy directly: <a href="mailto:tommy@cultcontent.cc" style="color:var(--accent);">tommy@cultcontent.cc</a></div>
     </div>
 
