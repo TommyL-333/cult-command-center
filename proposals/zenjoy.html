@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
-<title>Zenjoy × Creator Carnival — Sponsorship Confirmed</title>
+<title>Zenjoy × Creator Carnival — Sponsorship Opportunity</title>
 <style>
 :root{
   --bg:#07070d;--surface:#0e0e18;--card:#141420;--border:#1e1e30;
@@ -25,19 +25,27 @@ body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSy
 .eyebrow{display:inline-flex;align-items:center;gap:7px;background:rgba(32,213,196,.1);border:1px solid rgba(32,213,196,.22);color:var(--accent);font-size:.67rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;padding:5px 12px;border-radius:20px;margin-bottom:24px;}
 .dot{width:6px;height:6px;background:var(--accent);border-radius:50%;animation:pulse 2s infinite;}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-h1{font-size:3.2rem;font-weight:900;line-height:1.0;letter-spacing:-.03em;margin-bottom:8px;}
+h1{font-size:3rem;font-weight:900;line-height:1.02;letter-spacing:-.03em;margin-bottom:16px;}
 h1 span{color:var(--accent);}
-.hero-confirm{font-size:1.05rem;font-weight:700;color:var(--green);margin-bottom:20px;letter-spacing:-.01em;}
-.hero-sub{font-size:.9rem;color:var(--light);max-width:580px;margin-bottom:36px;line-height:1.72;}
-.hero-meta{display:flex;gap:36px;flex-wrap:wrap;}
+.hero-sub{font-size:.9rem;color:var(--light);max-width:580px;margin-bottom:32px;line-height:1.72;}
+.hero-meta{display:flex;gap:36px;flex-wrap:wrap;margin-bottom:36px;}
 .meta-item{display:flex;flex-direction:column;gap:3px;}
 .meta-label{font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;font-weight:600;}
 .meta-val{font-size:.87rem;font-weight:700;}
+
+.cta-btn{display:inline-flex;align-items:center;gap:10px;background:var(--accent);color:#000;font-size:.85rem;font-weight:900;letter-spacing:.02em;padding:14px 28px;border-radius:8px;text-decoration:none;transition:opacity .15s;cursor:pointer;}
+.cta-btn:hover{opacity:.88;}
+.cta-btn .arrow{font-size:1rem;}
+.cta-sub{font-size:.72rem;color:var(--muted);margin-top:10px;}
 
 .kpi-strip{max-width:940px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:1px;border:1px solid var(--border);border-top:none;background:var(--border);}
 .kpi{background:var(--surface);padding:24px 20px;}
 .kpi-val{font-size:1.9rem;font-weight:900;color:var(--accent);line-height:1;}
 .kpi-label{font-size:.66rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-top:5px;}
+
+.urgency-bar{max-width:940px;margin:0 auto;background:rgba(245,158,11,.07);border-bottom:1px solid rgba(245,158,11,.18);padding:11px 48px;display:flex;align-items:center;gap:10px;}
+.urgency-bar span{font-size:.75rem;color:var(--yellow);font-weight:700;}
+.urgency-bar .ub-muted{color:var(--muted);font-weight:400;}
 
 .main{max-width:940px;margin:0 auto;padding:56px 48px;}
 .section{margin-bottom:68px;}
@@ -50,12 +58,8 @@ h1 span{color:var(--accent);}
 .card.tl{border-left:3px solid var(--accent);}
 .card.gl{border-left:3px solid var(--green);}
 .card.yl{border-left:3px solid var(--yellow);}
-.card.pl{border-left:3px solid var(--purple);}
-.card-title{font-size:.71rem;font-weight:800;color:var(--text);text-transform:uppercase;letter-spacing:.05em;margin-bottom:11px;}
-.card-icon{font-size:1.6rem;margin-bottom:12px;}
 
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
-.grid2x2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
 
 .cklist{list-style:none;display:flex;flex-direction:column;gap:8px;}
 .cklist li{display:flex;align-items:flex-start;gap:9px;font-size:.8rem;color:var(--light);}
@@ -85,15 +89,46 @@ h1 span{color:var(--accent);}
 .dlv-title{font-size:.88rem;font-weight:800;color:var(--text);margin-bottom:8px;}
 .dlv-desc{font-size:.78rem;color:var(--light);line-height:1.62;}
 
+/* Booth */
+.booth{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:26px;position:relative;overflow:hidden;}
+.booth::after{content:"THE ZENZONE";position:absolute;right:-18px;top:50%;transform:translateY(-50%) rotate(90deg);font-size:.58rem;font-weight:900;letter-spacing:.14em;color:rgba(32,213,196,.12);}
+.booth-title{font-size:.71rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);margin-bottom:14px;}
+.booth-items{display:flex;flex-direction:column;gap:10px;}
+.booth-item{display:flex;gap:12px;align-items:flex-start;}
+.booth-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:5px;}
+.booth-text{font-size:.8rem;color:var(--light);line-height:1.55;}
+.booth-text strong{color:var(--text);}
+
+/* Signup momentum */
+.momentum{background:var(--card);border:1px solid rgba(32,213,196,.2);border-radius:var(--radius);padding:24px;margin-bottom:16px;}
+.momentum-title{font-size:.71rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);margin-bottom:14px;}
+.momentum-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:18px;}
+.ms-item{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;padding:14px;}
+.ms-val{font-size:1.5rem;font-weight:900;color:var(--accent);line-height:1;margin-bottom:3px;}
+.ms-label{font-size:.63rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em;}
+.progress-wrap{margin-top:6px;}
+.progress-label{display:flex;justify-content:space-between;font-size:.65rem;color:var(--muted);font-weight:600;margin-bottom:5px;}
+.progress-track{height:6px;background:var(--surface);border-radius:10px;overflow:hidden;}
+.progress-fill{height:100%;border-radius:10px;background:linear-gradient(90deg,var(--accent),var(--green));width:14%;}
+
+/* Creator table */
+.creator-table-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border);}
+.creator-table{width:100%;border-collapse:collapse;font-size:.78rem;}
+.creator-table th{background:#090912;color:var(--muted);font-size:.59rem;font-weight:800;text-transform:uppercase;letter-spacing:.07em;padding:9px 14px;text-align:left;border-bottom:1px solid var(--border);}
+.creator-table td{padding:9px 14px;border-bottom:1px solid rgba(30,30,48,.7);color:var(--light);}
+.creator-table tr:last-child td{border-bottom:none;}
+.creator-table td strong{color:var(--text);}
+.creator-table td.accent{color:var(--accent);font-weight:700;font-variant-numeric:tabular-nums;}
+.creator-table td.green{color:var(--green);font-weight:700;font-variant-numeric:tabular-nums;}
+.creator-table td.muted{color:var(--muted);}
+.cat-pill{display:inline-block;font-size:.58rem;font-weight:700;padding:2px 7px;border-radius:10px;background:rgba(32,213,196,.1);color:var(--accent);border:1px solid rgba(32,213,196,.15);}
+.rank-num{font-size:.65rem;font-weight:800;color:var(--muted);font-variant-numeric:tabular-nums;}
+
 /* Data section */
 .data-hero{background:linear-gradient(135deg,rgba(32,213,196,.08) 0%,rgba(16,185,129,.04) 100%);border:1px solid rgba(32,213,196,.2);border-radius:var(--radius);padding:28px;margin-bottom:20px;}
 .data-hero-title{font-size:1.1rem;font-weight:900;margin-bottom:10px;letter-spacing:-.01em;}
 .data-hero-title span{color:var(--accent);}
-.data-hero-sub{font-size:.83rem;color:var(--light);line-height:1.7;max-width:600px;}
-.data-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:20px;}
-.ds-item{background:rgba(0,0,0,.25);border:1px solid rgba(32,213,196,.12);border-radius:8px;padding:14px;}
-.ds-val{font-size:1.2rem;font-weight:900;color:var(--accent);margin-bottom:3px;}
-.ds-label{font-size:.65rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em;}
+.data-hero-sub{font-size:.83rem;color:var(--light);line-height:1.7;max-width:620px;}
 
 /* Investment table */
 .invest-wrap{background:var(--card);border:1px solid rgba(32,213,196,.22);border-radius:var(--radius);overflow:hidden;}
@@ -112,8 +147,16 @@ h1 span{color:var(--accent);}
 .iv.green{color:var(--green);}
 .iv.yellow{color:var(--yellow);}
 
+/* CTA block */
+.cta-block{background:linear-gradient(135deg,rgba(32,213,196,.09) 0%,rgba(16,185,129,.06) 100%);border:1px solid rgba(32,213,196,.25);border-radius:var(--radius);padding:36px;text-align:center;}
+.cta-block-title{font-size:1.5rem;font-weight:900;letter-spacing:-.02em;margin-bottom:8px;}
+.cta-block-sub{font-size:.85rem;color:var(--light);margin-bottom:28px;max-width:480px;margin-left:auto;margin-right:auto;line-height:1.65;}
+.cta-block-btn{display:inline-flex;align-items:center;gap:10px;background:var(--accent);color:#000;font-size:.92rem;font-weight:900;letter-spacing:.01em;padding:16px 36px;border-radius:8px;text-decoration:none;transition:opacity .15s;}
+.cta-block-btn:hover{opacity:.88;}
+.cta-note{font-size:.71rem;color:var(--muted);margin-top:12px;}
+
 /* Roadmap */
-.roadmap{display:flex;flex-direction:column;gap:0;}
+.roadmap{display:flex;flex-direction:column;}
 .rm-row{display:grid;grid-template-columns:110px 1fr;position:relative;}
 .rm-row:not(:last-child)::before{content:"";position:absolute;left:52px;top:48px;bottom:-10px;width:1px;background:linear-gradient(to bottom,rgba(32,213,196,.35),transparent);}
 .rm-phase{padding:18px 14px 18px 0;display:flex;align-items:flex-start;justify-content:flex-end;}
@@ -123,16 +166,6 @@ h1 span{color:var(--accent);}
 .rm-body{padding:16px 0 16px 24px;border-left:1px solid var(--border);}
 .rm-title{font-size:.88rem;font-weight:800;color:var(--text);margin-bottom:8px;}
 
-/* Booth visual */
-.booth{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:26px;position:relative;overflow:hidden;}
-.booth::after{content:"THE ZENZONE";position:absolute;right:-18px;top:50%;transform:translateY(-50%) rotate(90deg);font-size:.58rem;font-weight:900;letter-spacing:.14em;color:rgba(32,213,196,.12);}
-.booth-title{font-size:.71rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--accent);margin-bottom:14px;}
-.booth-items{display:flex;flex-direction:column;gap:10px;}
-.booth-item{display:flex;gap:12px;align-items:flex-start;}
-.booth-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);flex-shrink:0;margin-top:5px;}
-.booth-text{font-size:.8rem;color:var(--light);line-height:1.55;}
-.booth-text strong{color:var(--text);}
-
 .footer{border-top:1px solid var(--border);padding:40px 48px;max-width:940px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:20px;}
 .footer-left p{font-size:.8rem;color:var(--muted);line-height:1.6;}
 .footer-left a{color:var(--accent);text-decoration:none;font-weight:700;}
@@ -140,8 +173,10 @@ h1 span{color:var(--accent);}
 @media(max-width:720px){
   .topbar{padding:10px 20px;}.hero{padding:40px 20px 36px;}.main{padding:40px 20px;}
   .kpi-strip{grid-template-columns:repeat(2,1fr);}
-  .grid2,.grid2x2,.dlv-grid,.data-stats{grid-template-columns:1fr;}
-  h1{font-size:2.3rem;}.footer{padding:28px 20px;}
+  .urgency-bar{padding:10px 20px;}
+  .grid2,.dlv-grid{grid-template-columns:1fr;}
+  .momentum-stats{grid-template-columns:1fr 1fr;}
+  h1{font-size:2.2rem;}.footer{padding:28px 20px;}
 }
 </style>
 </head>
@@ -154,51 +189,112 @@ h1 span{color:var(--accent);}
   <div class="topbar-links">
     <a href="#activation">Activation</a>
     <a href="#deliverables">Deliverables</a>
+    <a href="#creators">Creators</a>
     <a href="#data">Creator Data</a>
     <a href="#investment">Investment</a>
-    <a href="#next">Next Steps</a>
   </div>
 </nav>
 
 <div class="hero">
-  <div class="eyebrow"><span class="dot"></span> Creator Carnival · September 12, 2026</div>
-  <h1>You're <span>In.</span></h1>
-  <p class="hero-confirm">✓ Zenjoy confirmed as Creator Carnival sponsor</p>
-  <p class="hero-sub">National Harbor, MD. 700+ TikTok Shop creators under one roof. Zenjoy has the floor — a branded activation, product in every hand that walks in, and a warm creator list on the other side. Here's exactly what you locked in.</p>
+  <div class="eyebrow"><span class="dot"></span> Creator Carnival · September 12, 2026 · National Harbor, MD</div>
+  <h1>The Biggest Creator<br>Event <span>DC Has Ever Seen.</span></h1>
+  <p class="hero-sub">Cult Content is bringing 700+ TikTok Shop creators to National Harbor on September 12th. Sponsorship is limited. Here's what Zenjoy gets — and how to lock it in before the slot fills.</p>
   <div class="hero-meta">
     <div class="meta-item">
-      <span class="meta-label">Brand</span>
-      <span class="meta-val">Zenjoy (drinkzenjoy.com)</span>
+      <span class="meta-label">Event</span>
+      <span class="meta-val">Creator Carnival</span>
     </div>
     <div class="meta-item">
-      <span class="meta-label">Event</span>
-      <span class="meta-val">Creator Carnival · September 12, 2026</span>
+      <span class="meta-label">Date</span>
+      <span class="meta-val">September 12, 2026</span>
     </div>
     <div class="meta-item">
       <span class="meta-label">Location</span>
       <span class="meta-val">National Harbor, MD</span>
     </div>
     <div class="meta-item">
-      <span class="meta-label">Contact</span>
-      <span class="meta-val">Daniel Osborne · daniel@drinkzenjoy.com</span>
+      <span class="meta-label">Prepared for</span>
+      <span class="meta-val">Daniel Osborne · Zenjoy</span>
     </div>
   </div>
+  <a href="#lock-in" class="cta-btn">Lock In Your Sponsorship <span class="arrow">→</span></a>
+  <div class="cta-sub">$5,000 total · $2,500 cash + $2,500 in-kind product · Sponsorship spots are limited.</div>
 </div>
 
 <div class="kpi-strip">
   <div class="kpi"><div class="kpi-val">700+</div><div class="kpi-label">Creators Attending</div></div>
-  <div class="kpi"><div class="kpi-val">1,000+</div><div class="kpi-label">Cans In-Hand</div></div>
+  <div class="kpi"><div class="kpi-val">1,000+</div><div class="kpi-label">Cans In Goodie Bags</div></div>
   <div class="kpi"><div class="kpi-val" style="color:var(--green);">Sept 12</div><div class="kpi-label">Event Date</div></div>
-  <div class="kpi"><div class="kpi-val" style="color:var(--yellow);">Nat'l Harbor</div><div class="kpi-label">National Harbor, MD</div></div>
+  <div class="kpi"><div class="kpi-val" style="color:var(--yellow);">DC Area</div><div class="kpi-label">National Harbor, MD</div></div>
+</div>
+
+<div class="urgency-bar">
+  <span>🔥 78 creator sign-ups confirmed and counting.</span>
+  <span class="ub-muted">We're projecting 500–1,000 additional sign-ups by end of week.</span>
 </div>
 
 <div class="main">
 
-  <!-- 01 -->
+  <!-- 01 Creator Momentum -->
+  <div class="section" id="creators">
+    <div class="sec-label">01 — Creator Momentum</div>
+    <div class="sec-title">DC's Creator Scene Is Showing Up</div>
+    <p class="sec-sub">Creator Carnival isn't just a DC event — it's the DC event. We're pulling from one of the most active and underrated creator cities in the country. These aren't macro influencers flown in from LA. They're local, authentic, and they move product.</p>
+
+    <div class="momentum">
+      <div class="momentum-title">Sign-Up Momentum</div>
+      <div class="momentum-stats">
+        <div class="ms-item">
+          <div class="ms-val">78</div>
+          <div class="ms-label">Confirmed Sign-Ups</div>
+        </div>
+        <div class="ms-item">
+          <div class="ms-val">500–1K</div>
+          <div class="ms-label">Projected by End of Week</div>
+        </div>
+        <div class="ms-item">
+          <div class="ms-val">Sept 12</div>
+          <div class="ms-label">Event Date</div>
+        </div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-label"><span>Toward 500 sign-up milestone</span><span style="color:var(--accent);">78 / 500</span></div>
+        <div class="progress-track"><div class="progress-fill"></div></div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card tl">
+        <div class="card-title">Why DC Is Different</div>
+        <ul class="cklist">
+          <li>DC-area creators are underrepresented in brand deals relative to their audience size — they're hungry and motivated</li>
+          <li>Strong concentration of health, wellness, lifestyle, and professional content niches — exactly where Zenjoy plays</li>
+          <li>Local event = local community. Creators are coming to network with each other, not just to attend</li>
+          <li>An event like this hasn't been done in DC before. We're building something that changes the fabric of this creator community permanently</li>
+        </ul>
+      </div>
+      <div class="card gl">
+        <div class="card-title">What This Event Actually Is</div>
+        <ul class="cklist">
+          <li>A live gathering of Cult Content's 700+ creator network — the people who drive TikTok Shop GMV for our brand partners</li>
+          <li>Brand activations, creator education, and community — designed for people who create for a living</li>
+          <li>First-of-its-kind for DC. Creators who attend will remember this event and the brands that showed up</li>
+          <li>The brands at Creator Carnival are the brands these creators will talk about on camera for months after</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout yellow" style="margin-top:4px;">
+      <div class="ci">📍</div>
+      <div class="cb"><strong>This is a cultural moment for DC.</strong> Creator Carnival is the first event of its kind in the DMV — bringing together a creator community that has been building in relative anonymity. The brands that sponsor this event are planting a flag in that community before it becomes a market everyone is fighting to reach.</div>
+    </div>
+  </div>
+
+  <!-- 02 Activation -->
   <div class="section" id="activation">
-    <div class="sec-label">01 — The Zenzone</div>
-    <div class="sec-title">Your Activation at Creator Carnival</div>
-    <p class="sec-sub">The Zenzone isn't a table with a banner. It's a dedicated branded space built around Zenjoy's core identity — stress relief, calm energy, feel-good moments. Creators will spend real time in it. That's the point.</p>
+    <div class="sec-label">02 — The Zenzone</div>
+    <div class="sec-title">Your Branded Activation at Creator Carnival</div>
+    <p class="sec-sub">The Zenzone isn't a table with a banner. It's a dedicated space built around Zenjoy's core identity — stress relief, calm energy, feel-good moments. Creators will spend real time in it.</p>
 
     <div class="grid2" style="margin-bottom:16px;">
       <div class="booth">
@@ -207,31 +303,31 @@ h1 span{color:var(--accent);}
           <div class="booth-item"><div class="booth-dot"></div><div class="booth-text"><strong>Drink fridge + coolers</strong> — stocked with Zenjoy product, cold and ready. Every creator who stops by gets a can in their hand.</div></div>
           <div class="booth-item"><div class="booth-dot"></div><div class="booth-text"><strong>Seating area</strong> — not a walk-by sample station. A place to pause, sit, and experience the brand. That's content waiting to happen.</div></div>
           <div class="booth-item"><div class="booth-dot"></div><div class="booth-text"><strong>Stress-relief activation</strong> — sticky notes with positive affirmations, an anonymous "let go" box. Interactive, shareable, and perfectly on-brand for a functional wellness drink.</div></div>
-          <div class="booth-item"><div class="booth-dot"></div><div class="booth-text"><strong>Zenjoy branding throughout</strong> — signage, branded elements, and identity that owns the space.</div></div>
+          <div class="booth-item"><div class="booth-dot"></div><div class="booth-text"><strong>Zenjoy branding throughout</strong> — signage, branded elements, and identity that owns the space for the day.</div></div>
         </div>
       </div>
       <div style="display:flex;flex-direction:column;gap:14px;">
         <div class="callout green">
           <div class="ci">🧘</div>
-          <div class="cb"><strong>Why this works for Zenjoy:</strong> The Zenzone activation is the most on-brand thing you could build at an event like this. Creators are hustling all day — your booth is the place they actually want to stop. That's not a flyby impression. That's a moment they remember, talk about, and film.</div>
+          <div class="cb"><strong>Why this works for Zenjoy:</strong> The Zenzone is the most on-brand activation you could build at an event like this. Creators are hustling all day — your booth is the place they actually want to stop. That's not a flyby impression. That's a moment they remember, talk about, and film.</div>
         </div>
         <div class="callout">
-          <div class="ci">📍</div>
-          <div class="cb"><strong>Product you're bringing:</strong> ~85 cases / 1,000+ cans at $30/case ($2,500 in-kind). Enough to stock the fridge, fill the goodie bags, and keep the Zenzone running all day without running out.</div>
+          <div class="ci">🎬</div>
+          <div class="cb"><strong>Native content opportunity:</strong> 700+ creators with cameras at an event designed around content creation. Zenjoy has a product and an activation built for the camera. That's not something you can buy from a media buy — it's what happens when you show up at the right event.</div>
         </div>
         <div class="callout yellow">
-          <div class="ci">🎬</div>
-          <div class="cb"><strong>Native content opportunity:</strong> 700+ creators with cameras at an event designed around content creation. Zenjoy has a product and an activation built for the camera. That's not something you can buy from a media buy.</div>
+          <div class="ci">📦</div>
+          <div class="cb"><strong>Product you're bringing:</strong> ~85 cases / 1,000+ cans at $30/case ($2,500 in-kind). Enough to stock the Zenzone fridge and fill every goodie bag without running out.</div>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- 02 -->
+  <!-- 03 Deliverables -->
   <div class="section" id="deliverables">
-    <div class="sec-label">02 — What's Included</div>
-    <div class="sec-title">Every Deliverable, Confirmed</div>
-    <p class="sec-sub">Four things Zenjoy gets from this sponsorship. Not four things we're going to try to do — four things that are confirmed and locked in.</p>
+    <div class="sec-label">03 — What's Included</div>
+    <div class="sec-title">Every Deliverable, Locked In</div>
+    <p class="sec-sub">Four things. Not four things we're going to try to do — four things confirmed as part of your sponsorship package.</p>
 
     <div class="dlv-grid">
       <div class="dlv-card d1">
@@ -250,85 +346,119 @@ h1 span{color:var(--accent);}
         <div class="dlv-num">Deliverable 03</div>
         <div class="dlv-icon">📊</div>
         <div class="dlv-title">Creator Emails + Profiles — Post-Event</div>
-        <div class="dlv-desc">After the event, Zenjoy receives the email address and TikTok profile (handle, niche, audience size where available) for every creator who received a goodie bag. A warm, product-aware list that no media buy produces.</div>
+        <div class="dlv-desc">After the event, Zenjoy receives the email address and TikTok profile for every creator who received a goodie bag. A warm, product-aware list — delivered September 13th.</div>
       </div>
       <div class="dlv-card d4">
         <div class="dlv-num">Deliverable 04</div>
         <div class="dlv-icon">📣</div>
         <div class="dlv-title">Event Co-Branding &amp; Sponsor Recognition</div>
-        <div class="dlv-desc">Zenjoy appears as a sponsor in Creator Carnival event materials, pre-event social posts, and on-site signage. Exposure to creators who build audiences for a living — and know a brand worth talking about when they see one.</div>
+        <div class="dlv-desc">Zenjoy appears as a sponsor in event materials, pre-event social posts, and on-site signage. Exposure to creators who build audiences for a living — and know a brand worth talking about when they see one.</div>
       </div>
     </div>
   </div>
 
-  <!-- 03 -->
+  <!-- 04 Creator Data -->
   <div class="section" id="data">
-    <div class="sec-label">03 — The Creator Data</div>
-    <div class="sec-title">The Hidden ROI of This Sponsorship</div>
-    <p class="sec-sub">The goodie bag placement and the Zenzone are the obvious value. This is the part that compounds after the event is over.</p>
+    <div class="sec-label">04 — The Creator Data</div>
+    <div class="sec-title">A Warm Creator List That Money Can't Usually Buy</div>
+    <p class="sec-sub">After Creator Carnival, Zenjoy receives the contact information for every creator who walked through the door with a goodie bag. Here's a sample of the caliber of creator in our network — the people who will be in the room on September 12th.</p>
 
     <div class="data-hero">
-      <div class="data-hero-title">A <span>warm creator list</span> that money can't usually buy.</div>
-      <div class="data-hero-sub">After Creator Carnival, Zenjoy receives the contact information for every creator who walked through the door with a goodie bag. These aren't cold leads scraped from a database. These are health, wellness, fitness, and lifestyle creators who physically held your product, cracked a can, and experienced the brand — at an event designed around TikTok Shop. The standard path to building a list like this is a 3–6 month outreach campaign. You're getting it on September 13th.</div>
-      <div class="data-stats">
-        <div class="ds-item">
-          <div class="ds-val">700+</div>
-          <div class="ds-label">Creator Contacts Delivered</div>
-        </div>
-        <div class="ds-item">
-          <div class="ds-val">100%</div>
-          <div class="ds-label">Product-Aware at Outreach</div>
-        </div>
-        <div class="ds-item">
-          <div class="ds-val">Sept 13</div>
-          <div class="ds-label">Data Delivered By</div>
-        </div>
-      </div>
+      <div class="data-hero-title">These aren't cold leads. They've <span>physically held your product.</span></div>
+      <div class="data-hero-sub">The creators below are a sample from our existing 700+ creator network. On September 13th, Zenjoy receives the full list — email, TikTok handle, niche, and audience size for every creator who attended. The standard path to building a list like this is a 3–6 month outreach campaign. You're getting it the morning after the event.</div>
     </div>
 
-    <div class="grid2">
-      <div class="card tl">
-        <div class="card-title">What's in the Data Delivery</div>
-        <ul class="cklist">
-          <li>Email address for every creator who received a goodie bag</li>
-          <li>TikTok handle / profile link</li>
-          <li>Niche / content category</li>
-          <li>Audience size where available</li>
-          <li>Delivered as a clean spreadsheet — ready for outreach</li>
-        </ul>
-      </div>
-      <div class="card gl">
-        <div class="card-title">Why This Is Genuinely Valuable</div>
-        <ul class="cklist">
-          <li>These creators move product on TikTok Shop — that's why they're at this event</li>
-          <li>They've literally tried Zenjoy before you email them</li>
-          <li>Health, wellness, fitness, and lifestyle skew — Zenjoy's exact audience</li>
-          <li>Cold outreach to a warm list converts at a fundamentally different rate</li>
-          <li>The hard part — sampling at scale — is already done by the time you reach out</li>
-        </ul>
-      </div>
+    <div style="font-size:.71rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:10px;">Sample — Top 100 Creators in Our Network by Lifetime TikTok Shop GMV</div>
+    <div style="font-size:.75rem;color:var(--muted);margin-bottom:14px;">Contact information withheld — delivered to sponsors after the event.</div>
+
+    <div class="creator-table-wrap">
+      <table class="creator-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Creator Handle</th>
+            <th>Niche</th>
+            <th>Followers</th>
+            <th>28-Day GMV</th>
+            <th>Lifetime GMV</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td class="rank-num">1</td><td><strong>Logan Walter</strong></td><td><span class="cat-pill">Beauty</span></td><td class="muted">248,002</td><td class="accent">$98,161</td><td class="green">$10,276,876</td></tr>
+          <tr><td class="rank-num">2</td><td><strong>NicolePage</strong></td><td><span class="cat-pill">Fashion</span></td><td class="muted">126,823</td><td class="accent">$66,199</td><td class="green">$4,226,010</td></tr>
+          <tr><td class="rank-num">3</td><td><strong>Kaley Solitro</strong></td><td><span class="cat-pill">Fashion</span></td><td class="muted">59,205</td><td class="accent">$12,771</td><td class="green">$1,990,863</td></tr>
+          <tr><td class="rank-num">4</td><td><strong>Alya Lott</strong></td><td><span class="cat-pill">Fashion</span></td><td class="muted">84,137</td><td class="accent">$25,730</td><td class="green">$1,878,839</td></tr>
+          <tr><td class="rank-num">5</td><td><strong>Kelly Jean-Baptiste</strong></td><td><span class="cat-pill">Fashion</span></td><td class="muted">32,607</td><td class="accent">$35,685</td><td class="green">$1,732,866</td></tr>
+          <tr><td class="rank-num">6</td><td><strong>Keesee's World</strong></td><td><span class="cat-pill">Fashion</span></td><td class="muted">27,570</td><td class="accent">$18,133</td><td class="green">$1,608,769</td></tr>
+          <tr><td class="rank-num">7</td><td><strong>Ena.Segovia</strong></td><td><span class="cat-pill">Fashion</span></td><td class="muted">168,944</td><td class="accent">$2,699</td><td class="green">$1,311,762</td></tr>
+          <tr><td class="rank-num">8</td><td><strong>ASHY BERMUDEZ</strong></td><td><span class="cat-pill">Personal Care</span></td><td class="muted">124,293</td><td class="accent">$50,577</td><td class="green">$1,300,726</td></tr>
+          <tr><td class="rank-num">9</td><td><strong>Dealsfordayz3</strong></td><td><span class="cat-pill">Fashion</span></td><td class="muted">50,183</td><td class="accent">$38,474</td><td class="green">$1,216,859</td></tr>
+          <tr><td class="rank-num">10</td><td><strong>Dawania - Foxy's Baby</strong></td><td><span class="cat-pill">Fashion</span></td><td class="muted">77,049</td><td class="accent">$20,850</td><td class="green">$1,192,992</td></tr>
+          <tr><td class="rank-num">11</td><td><strong>BeccApproves</strong></td><td><span class="cat-pill">Beauty</span></td><td class="muted">62,409</td><td class="accent">$65,899</td><td class="green">$1,115,776</td></tr>
+          <tr><td class="rank-num">12</td><td><strong>Qunay</strong></td><td><span class="cat-pill">Fashion</span></td><td class="muted">59,930</td><td class="accent">$6,897</td><td class="green">$1,002,121</td></tr>
+          <tr><td class="rank-num">13</td><td><strong>Christy Yoo</strong></td><td><span class="cat-pill">Personal Care</span></td><td class="muted">20,214</td><td class="accent">$75,188</td><td class="green">$863,036</td></tr>
+          <tr><td class="rank-num">14</td><td><strong>Whit</strong></td><td><span class="cat-pill">Personal Care</span></td><td class="muted">8,445</td><td class="accent">$6,033</td><td class="green">$813,142</td></tr>
+          <tr><td class="rank-num">15</td><td><strong>pretty hipsy</strong></td><td><span class="cat-pill">Fashion</span></td><td class="muted">108,175</td><td class="accent">$24,386</td><td class="green">$781,600</td></tr>
+          <tr><td class="rank-num">16</td><td><strong>blanmar</strong></td><td><span class="cat-pill">Home &amp; Lifestyle</span></td><td class="muted">16,663</td><td class="accent">$4,635</td><td class="green">$772,635</td></tr>
+          <tr><td class="rank-num">17</td><td><strong>KiaTiktokFinds</strong></td><td><span class="cat-pill">Beauty</span></td><td class="muted">5,498</td><td class="accent">$75,388</td><td class="green">$767,524</td></tr>
+          <tr><td class="rank-num">18</td><td><strong>CiCi - The Fashion Mama</strong></td><td><span class="cat-pill">Fashion</span></td><td class="muted">14,239</td><td class="accent">$41,080</td><td class="green">$761,434</td></tr>
+          <tr><td class="rank-num">19</td><td><strong>jen</strong></td><td><span class="cat-pill">Beauty</span></td><td class="muted">34,277</td><td class="accent">$2,575</td><td class="green">$753,767</td></tr>
+          <tr><td class="rank-num">20</td><td><strong>Nicole L</strong></td><td><span class="cat-pill">Home &amp; Lifestyle</span></td><td class="muted">10,966</td><td class="accent">$26,206</td><td class="green">$726,117</td></tr>
+          <tr><td class="rank-num">21</td><td><strong>Pretti Cheekz</strong></td><td><span class="cat-pill">Fashion</span></td><td class="muted">70,071</td><td class="accent">$8,011</td><td class="green">$687,271</td></tr>
+          <tr><td class="rank-num">22</td><td><strong>Kristina</strong></td><td><span class="cat-pill">Personal Care</span></td><td class="muted">25,002</td><td class="accent">$53,473</td><td class="green">$681,611</td></tr>
+          <tr><td class="rank-num">23</td><td><strong>VIRAL FINDZ</strong></td><td><span class="cat-pill">Fashion</span></td><td class="muted">42,659</td><td class="accent">$13</td><td class="green">$665,800</td></tr>
+          <tr><td class="rank-num">24</td><td><strong>Cassandra Bankson</strong></td><td><span class="cat-pill">Beauty</span></td><td class="muted">435,675</td><td class="accent">$7,906</td><td class="green">$638,411</td></tr>
+          <tr><td class="rank-num">25</td><td><strong>Jess</strong></td><td><span class="cat-pill">Fashion</span></td><td class="muted">18,656</td><td class="accent">$44,624</td><td class="green">$624,062</td></tr>
+          <tr><td class="rank-num">26</td><td><strong>Carmona &amp; Clan</strong></td><td><span class="cat-pill">Personal Care</span></td><td class="muted">50,041</td><td class="accent">$24,762</td><td class="green">$543,878</td></tr>
+          <tr><td class="rank-num">27</td><td><strong>MYKAS FINDS</strong></td><td><span class="cat-pill">Fashion</span></td><td class="muted">9,552</td><td class="accent">$17,749</td><td class="green">$537,446</td></tr>
+          <tr><td class="rank-num">28</td><td><strong>yourfitnessbuddy</strong></td><td><span class="cat-pill">Fashion</span></td><td class="muted">41,331</td><td class="accent">$18,978</td><td class="green">$531,570</td></tr>
+          <tr><td class="rank-num">29</td><td><strong>Slay At Home Mom Vibes</strong></td><td><span class="cat-pill">Beauty</span></td><td class="muted">11,634</td><td class="accent">$110,107</td><td class="green">$507,824</td></tr>
+          <tr><td class="rank-num">30</td><td><strong>diamonique</strong></td><td><span class="cat-pill">Personal Care</span></td><td class="muted">207,208</td><td class="accent">$20,948</td><td class="green">$500,683</td></tr>
+          <tr><td class="rank-num">31</td><td><strong>Monika | La Mamá d las Pelucas</strong></td><td><span class="cat-pill">Fashion</span></td><td class="muted">9,696</td><td class="accent">$6,511</td><td>$414,731</td></tr>
+          <tr><td class="rank-num">32</td><td><strong>RealBusySouthernMama</strong></td><td><span class="cat-pill">Fashion</span></td><td class="muted">15,727</td><td class="accent">$3,330</td><td>$398,846</td></tr>
+          <tr><td class="rank-num">33</td><td><strong>Reese</strong></td><td><span class="cat-pill">Personal Care</span></td><td class="muted">19,330</td><td class="accent">$18,428</td><td>$395,648</td></tr>
+          <tr><td class="rank-num">34</td><td><strong>MissRedGal | Beauty | UGC</strong></td><td><span class="cat-pill">Beauty</span></td><td class="muted">16,158</td><td class="accent">$605</td><td>$377,680</td></tr>
+          <tr><td class="rank-num">35</td><td><strong>Stephanie | Glow Diaries</strong></td><td><span class="cat-pill">Personal Care</span></td><td class="muted">14,781</td><td class="accent">$32,260</td><td>$329,982</td></tr>
+          <tr><td class="rank-num">36</td><td><strong>Gina</strong></td><td><span class="cat-pill">Personal Care</span></td><td class="muted">7,089</td><td class="accent">$2,599</td><td>$321,929</td></tr>
+          <tr><td class="rank-num">37</td><td><strong>Mya Ashlee</strong></td><td><span class="cat-pill">Fashion</span></td><td class="muted">23,656</td><td class="accent">$11,894</td><td>$311,165</td></tr>
+          <tr><td class="rank-num">38</td><td><strong>Shawn</strong></td><td><span class="cat-pill">Fashion</span></td><td class="muted">27,024</td><td class="accent">$761</td><td>$303,778</td></tr>
+          <tr><td class="rank-num">39</td><td><strong>colleenshoppingschoolcounselor</strong></td><td><span class="cat-pill">Home &amp; Lifestyle</span></td><td class="muted">13,812</td><td class="accent">$50</td><td>$300,724</td></tr>
+          <tr><td class="rank-num">40</td><td><strong>torolocorojo</strong></td><td><span class="cat-pill">Fashion</span></td><td class="muted">57,569</td><td class="accent">$18,933</td><td>$294,796</td></tr>
+          <tr><td class="rank-num">41</td><td><strong>DavedoesUGC</strong></td><td><span class="cat-pill">Home &amp; Lifestyle</span></td><td class="muted">14,063</td><td class="accent">$6,762</td><td>$293,683</td></tr>
+          <tr><td class="rank-num">42</td><td><strong>Savi Deals &amp; Finds</strong></td><td><span class="cat-pill">Beauty</span></td><td class="muted">95,666</td><td class="accent">$934</td><td>$270,864</td></tr>
+          <tr><td class="rank-num">43</td><td><strong>Nicole</strong></td><td><span class="cat-pill">Home &amp; Lifestyle</span></td><td class="muted">5,205</td><td class="accent">$2,464</td><td>$251,836</td></tr>
+          <tr><td class="rank-num">44</td><td><strong>ShopFindsHUB</strong></td><td><span class="cat-pill">Home &amp; Lifestyle</span></td><td class="muted">5,590</td><td class="accent">$39,739</td><td>$251,184</td></tr>
+          <tr><td class="rank-num">45</td><td><strong>janontheglow</strong></td><td><span class="cat-pill">Fashion</span></td><td class="muted">49,523</td><td class="accent">$1,505</td><td>$246,692</td></tr>
+          <tr><td class="rank-num">46</td><td><strong>Daniela Elizabeth</strong></td><td><span class="cat-pill">Fashion</span></td><td class="muted">26,595</td><td class="accent">$1,879</td><td>$242,798</td></tr>
+          <tr><td class="rank-num">47</td><td><strong>SWEETESTBIT</strong></td><td><span class="cat-pill">Home &amp; Lifestyle</span></td><td class="muted">18,228</td><td class="accent">$30,978</td><td>$236,082</td></tr>
+          <tr><td class="rank-num">48</td><td><strong>Erin</strong></td><td><span class="cat-pill">Home &amp; Lifestyle</span></td><td class="muted">11,506</td><td class="accent">$390</td><td>$226,512</td></tr>
+          <tr><td class="rank-num">49</td><td><strong>The Nourished Method</strong></td><td><span class="cat-pill">Personal Care</span></td><td class="muted">6,735</td><td class="accent">$262</td><td>$224,438</td></tr>
+          <tr><td class="rank-num">50</td><td><strong>Kalanit Emanuelle</strong></td><td><span class="cat-pill">Beauty</span></td><td class="muted">57,545</td><td class="accent">$49,100</td><td>$222,402</td></tr>
+          <tr><td colspan="6" style="padding:10px 14px;font-size:.72rem;color:var(--muted);text-align:center;background:rgba(0,0,0,.15);">+ 50 more creators · Full list delivered to sponsors after the event</td></tr>
+        </tbody>
+      </table>
     </div>
 
-    <div class="callout" style="margin-top:4px;">
+    <div class="callout" style="margin-top:14px;">
       <div class="ci">💡</div>
-      <div class="cb"><strong>The compounding play:</strong> A creator who gets your product at Creator Carnival and then receives a personalized outreach email from Zenjoy the next day isn't a cold lead. They're a warm contact who already has an opinion about your product. The conversion rate from that outreach — to affiliate partnerships, TikTok Shop content, or ongoing collaboration — is orders of magnitude higher than standard influencer cold outreach.</div>
+      <div class="cb"><strong>The compounding play:</strong> A creator who gets your product at Creator Carnival and then receives a personalized email from Zenjoy the next day isn't a cold lead. They've already tried your product and have an opinion. Conversion from that outreach — to affiliate partnerships, TikTok Shop content, ongoing collaboration — is orders of magnitude higher than standard cold influencer outreach.</div>
     </div>
   </div>
 
-  <!-- 04 -->
+  <!-- 05 Investment -->
   <div class="section" id="investment">
-    <div class="sec-label">04 — Investment Summary</div>
-    <div class="sec-title">What You've Committed</div>
-    <p class="sec-sub">$5,000 total. Split evenly between cash and product. Here's how it breaks down.</p>
+    <div class="sec-label">05 — Investment</div>
+    <div class="sec-title">$5,000 Total. Here's the Split.</div>
+    <p class="sec-sub">Simple structure. No surprises.</p>
 
-    <div class="invest-wrap">
+    <div class="invest-wrap" style="margin-bottom:16px;">
       <div class="invest-row head"><div class="il">Sponsorship Breakdown</div><div class="il" style="font-size:.6rem;text-transform:uppercase;letter-spacing:.07em;">Amount</div></div>
       <div class="invest-row">
-        <div class="il"><strong>Cash Sponsorship</strong><em>Confirmed · covers event production, logistics, and activation build-out</em></div>
+        <div class="il"><strong>Cash Sponsorship</strong><em>Covers event production, activation logistics, goodie bag placement, and co-branding</em></div>
         <div class="iv accent">$2,500</div>
       </div>
       <div class="invest-row">
-        <div class="il"><strong>In-Kind Product</strong><em>~85 cases / 1,000+ cans at $30/case — stocking the Zenzone fridge and all goodie bags</em></div>
+        <div class="il"><strong>In-Kind Product</strong><em>~85 cases / 1,000+ cans at $30/case — Zenzone fridge + every goodie bag</em></div>
         <div class="iv green">$2,500</div>
       </div>
       <div class="invest-row total">
@@ -337,74 +467,77 @@ h1 span{color:var(--accent);}
       </div>
     </div>
 
-    <div class="grid2x2" style="margin-top:16px;">
+    <div class="grid2">
       <div class="callout green" style="margin:0;">
         <div class="ci">🎪</div>
-        <div class="cb"><strong>Cash covers:</strong> Booth space, event co-branding, goodie bag logistics, activation production, and post-event creator data delivery.</div>
+        <div class="cb"><strong>Cash covers:</strong> Booth space, event co-branding, goodie bag logistics, activation build-out, and post-event creator data delivery.</div>
       </div>
       <div class="callout yellow" style="margin:0;">
         <div class="ci">🥤</div>
-        <div class="cb"><strong>Product covers:</strong> ~85 cases shipped to National Harbor. Stocking the Zenzone fridge and coolers, plus placement in every attendee goodie bag.</div>
+        <div class="cb"><strong>Product covers:</strong> ~85 cases shipped to National Harbor — stocking the Zenzone fridge and placing a can in every attendee goodie bag.</div>
       </div>
     </div>
   </div>
 
-  <!-- 05 -->
-  <div class="section" id="next">
-    <div class="sec-label">05 — Next Steps</div>
-    <div class="sec-title">Getting to September 12</div>
-    <p class="sec-sub">A few things to lock in before the event. None of this is complicated — it's mostly logistics.</p>
+  <!-- 06 Lock In -->
+  <div class="section" id="lock-in">
+    <div class="sec-label">06 — Lock It In</div>
+    <div class="sec-title">Secure Your Spot at Creator Carnival</div>
+    <p class="sec-sub">Sponsorship slots are limited. The Zenzone activation is the only one of its kind at this event — once it's taken, it's taken. September 12th is five weeks away.</p>
 
-    <div class="roadmap">
-      <div class="rm-row">
-        <div class="rm-phase"><span class="rm-tag">Now</span></div>
-        <div class="rm-body">
-          <div class="rm-title">Confirm Product Shipment Details</div>
-          <ul class="blist">
-            <li>Coordinate with Tommy on the ship-to address and delivery window for the ~85 cases</li>
-            <li>Product needs to arrive at National Harbor before September 12</li>
-            <li>We'll handle receiving and storage at the venue</li>
-          </ul>
-        </div>
-      </div>
-      <div class="rm-row">
-        <div class="rm-phase"><span class="rm-tag t2">Pre-Event</span></div>
-        <div class="rm-body">
-          <div class="rm-title">Zenzone Activation Brief</div>
-          <ul class="blist">
-            <li>Share any Zenjoy brand assets, color guidelines, or booth preferences with Tommy</li>
-            <li>Confirm flyer design and quantity for goodie bag placement</li>
-            <li>We'll brief you on the event run-of-show so you know what the day looks like</li>
-          </ul>
-        </div>
-      </div>
-      <div class="rm-row">
-        <div class="rm-phase"><span class="rm-tag t2">Sept 12</span></div>
-        <div class="rm-body">
-          <div class="rm-title">Creator Carnival — Day-Of</div>
-          <ul class="blist">
-            <li>Zenzone opens with the event — fridge stocked, seating ready, activation live</li>
-            <li>Goodie bags distributed to every creator at check-in</li>
-            <li>Zenjoy team is welcome to staff the booth and engage creators directly</li>
-          </ul>
-        </div>
-      </div>
-      <div class="rm-row">
-        <div class="rm-phase"><span class="rm-tag t3">Sept 13</span></div>
-        <div class="rm-body">
-          <div class="rm-title">Creator Data Delivered</div>
-          <ul class="blist">
-            <li>Spreadsheet with every creator's email, TikTok handle, niche, and audience size lands in Daniel's inbox</li>
-            <li>Clean, organized, and ready for outreach — no work required on Zenjoy's side</li>
-            <li>From here, the list is yours — we're happy to advise on outreach strategy if useful</li>
-          </ul>
-        </div>
-      </div>
+    <div class="cta-block">
+      <div class="cta-block-title">Ready to be in the room?</div>
+      <div class="cta-block-sub">Lock in Zenjoy's sponsorship now. $2,500 cash today secures your spot — product coordination handled separately before September 12th.</div>
+      <a href="PAYMENT_LINK_HERE" class="cta-block-btn">Lock In Sponsorship — $2,500 →</a>
+      <div class="cta-note">Questions? Reach Tommy directly: <a href="mailto:tommy@cultcontent.cc" style="color:var(--accent);">tommy@cultcontent.cc</a></div>
     </div>
 
-    <div class="callout" style="margin-top:24px;">
-      <div class="ci">📅</div>
-      <div class="cb"><strong>Book time with Tommy or Jina to finalize logistics:</strong> <a href="https://cultcontent.cc/book-with-jina" style="color:var(--accent);font-weight:700;">cultcontent.cc/book-with-jina</a> — or reply directly to tommy@cultcontent.cc. We want this activation to be excellent. If you have ideas for the Zenzone, bring them.</div>
+    <div style="margin-top:24px;">
+      <div class="roadmap">
+        <div class="rm-row">
+          <div class="rm-phase"><span class="rm-tag">Now</span></div>
+          <div class="rm-body">
+            <div class="rm-title">Secure the Sponsorship</div>
+            <ul class="blist">
+              <li>$2,500 cash payment locks in the Zenzone activation and all deliverables</li>
+              <li>Tommy confirms receipt and adds Zenjoy to the event sponsor list</li>
+              <li>Product shipment coordination begins — nail down delivery window for ~85 cases</li>
+            </ul>
+          </div>
+        </div>
+        <div class="rm-row">
+          <div class="rm-phase"><span class="rm-tag t2">Pre-Event</span></div>
+          <div class="rm-body">
+            <div class="rm-title">Activation &amp; Logistics Finalized</div>
+            <ul class="blist">
+              <li>Share Zenjoy brand assets and any booth preferences — we'll handle the rest</li>
+              <li>Confirm flyer design and quantity for goodie bag insertion</li>
+              <li>Event run-of-show shared with Zenjoy team ahead of September 12th</li>
+            </ul>
+          </div>
+        </div>
+        <div class="rm-row">
+          <div class="rm-phase"><span class="rm-tag t2">Sept 12</span></div>
+          <div class="rm-body">
+            <div class="rm-title">Creator Carnival — Day-Of</div>
+            <ul class="blist">
+              <li>Zenzone opens with the event — fridge stocked, activation live</li>
+              <li>Goodie bags distributed to every creator at check-in</li>
+              <li>Zenjoy team welcome to staff the booth and engage creators directly</li>
+            </ul>
+          </div>
+        </div>
+        <div class="rm-row">
+          <div class="rm-phase"><span class="rm-tag t3">Sept 13</span></div>
+          <div class="rm-body">
+            <div class="rm-title">Creator Data Delivered</div>
+            <ul class="blist">
+              <li>Full creator list lands in Daniel's inbox — email, handle, niche, audience size</li>
+              <li>Clean spreadsheet, ready for outreach. No work required on Zenjoy's side.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -417,7 +550,7 @@ h1 span{color:var(--accent);}
   </div>
   <div style="font-size:.72rem;color:var(--muted);text-align:right;">
     <img src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png" alt="Cult Content" style="height:20px;opacity:.5;display:block;margin-bottom:6px;margin-left:auto;"/>
-    Sponsorship Confirmation · Confidential
+    Sponsorship Package · Confidential
   </div>
 </div>
 
