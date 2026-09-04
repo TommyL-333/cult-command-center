@@ -65,6 +65,8 @@ const SEED_EMAIL_OPENID = {
   'shayan@cultcontent.cc': 'ou_19a69dda7462358e4b3c31e2f157a238',
   'daniel@cultcontent.cc': 'ou_4332cd6e701b50b0668f7dcbd7196a40',
   'gourab@cultcontent.cc': 'ou_a391574932a4bf8a4d8d08a6297cceaa',
+  'gina@cultcontent.cc':   'ou_a9e8a99755959b46220744ffe1542d52',
+  // becca / jenna: add ou_ IDs after Lark seats are provisioned
 };
 
 // Brand managers: email -> client names they own.
@@ -78,14 +80,46 @@ const BRAND_MANAGERS = {
 // brand_manager: per-brand GMV/content/SPS
 // operations: Hasan — automations, templates, blockers removed
 // video_editor: Gilbert — videos edited/delivered
+// community_manager: Gina/Becca/Jenna — 1:1 calls, videos posted, creator signups
 // ceo: Tommy — sales calls, proposals, community growth, strategic notes
 const REPORT_TYPES = {
   'shayan@cultcontent.cc': 'brand_manager',
   'gourab@cultcontent.cc': 'brand_manager',
   'hasan@cultcontent.cc': 'operations',
   'gilbert@cultcontent.cc': 'video_editor',
+  'gina@cultcontent.cc': 'community_manager',
+  'becca@cultcontent.cc': 'community_manager',
+  'jenna@cultcontent.cc': 'community_manager',
   'tommy@cultcontent.cc': 'ceo',
   'tommy@organicsocialmarketing.com': 'ceo',
+};
+
+// Compensation model: bonus as % of monthly net sales share.
+// Tiered scoring per gate: 0 (miss) / 0.5 (floor threshold met) / 1.0 (hit threshold met)
+// bonusPct = (sum of gate scores / numGates) × hitPct
+// Gourab ratio uses ratioTiers [low,mid,high] → scores 0.5 / 0.75 / 1.0 → 4% / 6% / 8%
+const COMP_MODEL = {
+  'gina@cultcontent.cc': { base: 2750, floorPct: 0.04, hitPct: 0.08, gates: [
+    { key: 'calls',   label: '1:1 Creator Calls', floor: 5,  hit: 10 },
+    { key: 'videos',  label: 'Videos Posted',      floor: 5,  hit: 10 },
+    { key: 'signups', label: 'Creator Signups',    floor: 15, hit: 30 },
+  ]},
+  'becca@cultcontent.cc': { base: 1000, floorPct: 0.05, hitPct: 0.10, gates: [
+    { key: 'calls',   label: '1:1 Creator Calls', floor: 5,  hit: 10 },
+    { key: 'videos',  label: 'Videos Posted',      floor: 5,  hit: 10 },
+    { key: 'signups', label: 'Creator Signups',    floor: 15, hit: 30 },
+  ]},
+  'jenna@cultcontent.cc': { base: 1000, floorPct: 0.05, hitPct: 0.10, gates: [
+    { key: 'calls',   label: '1:1 Creator Calls', floor: 5,  hit: 10 },
+    { key: 'videos',  label: 'Videos Posted',      floor: 5,  hit: 10 },
+    { key: 'signups', label: 'Creator Signups',    floor: 15, hit: 30 },
+  ]},
+  'gourab@cultcontent.cc': { base: 1350, floorPct: 0.04, hitPct: 0.08, gates: [
+    { key: 'ratio',   label: 'Video/Sample Ratio', floor: 0.2, hit: 0.4 },
+  ], ratioTiers: [0.2, 0.3, 0.4] },
+  'gilbert@cultcontent.cc': { base: 1000, floorPct: 0.02, hitPct: 0.04, gates: [
+    { key: 'videos',  label: 'Videos Edited',      floor: 30, hit: 60 },
+  ]},
 };
 
 // Emails allowed to access /task-management admin view.
@@ -306,6 +340,28 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .wr-stat .n{font-size:18px;font-weight:700}
   .wr-stat .l{font-size:10px;color:var(--muted);text-transform:uppercase;margin-top:2px}
   @media(max-width:540px){.fr{grid-template-columns:1fr}.wr-grid{grid-template-columns:repeat(2,1fr)}}
+  /* compensation banner */
+  .cb{background:rgba(0,242,234,.06);border:1px solid rgba(0,242,234,.2);border-radius:14px;padding:16px 18px;margin-bottom:18px}
+  .cb-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .cb-title{font-size:12px;font-weight:700;color:var(--cyan);text-transform:uppercase;letter-spacing:.06em}
+  .cb-est{font-size:10px;background:rgba(255,159,10,.15);color:#ffcf8a;padding:1px 7px;border-radius:4px;font-weight:600}
+  .cb-body{display:grid;grid-template-columns:140px 1fr;gap:12px 20px;align-items:start}
+  .cb-payout{font-size:26px;font-weight:800;letter-spacing:-.02em}
+  .cb-payout-sub{font-size:11px;color:var(--muted);margin-top:2px}
+  .cb-pct{font-size:12px;color:var(--cyan);font-weight:600;margin-top:4px}
+  .cb-gates{display:flex;flex-direction:column;gap:7px}
+  .cb-gate-row{display:flex;flex-direction:column;gap:3px}
+  .cb-gate-meta{display:flex;justify-content:space-between;font-size:11px}
+  .cb-gate-lbl{color:var(--muted)}
+  .cb-gate-val{font-weight:600;color:var(--txt)}
+  .cb-bar-bg{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+  .cb-bar-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--cyan),rgba(0,242,234,.5));transition:width .5s}
+  .cb-bar-fill.full{background:linear-gradient(90deg,var(--cyan),var(--red))}
+  .cb-net{font-size:11px;color:var(--muted);margin-top:10px;padding-top:8px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .cb-net strong{color:var(--txt)}
+  .cb-update-btn{font-size:11px;background:none;border:1px solid var(--border);color:var(--muted);padding:2px 8px;border-radius:5px;cursor:pointer;font-family:inherit}
+  .cb-update-btn:hover{border-color:var(--cyan);color:var(--cyan)}
+  @media(max-width:540px){.cb-body{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -320,6 +376,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     </div>
   </header>
   <div class="sub" id="sub">Loading…</div>
+  <div id="comp-banner" style="display:none"></div>
   <div class="tabs">
     <button class="tab active" onclick="switchTab(0)">My Tasks</button>
     <button class="tab" onclick="switchTab(1)">Client Reports</button>
@@ -571,6 +628,18 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
 </div>
 
 <div class="toast" id="toast"></div>
+<!-- Net sales update modal (admin only) -->
+<div class="overlay" id="ns-overlay" onclick="if(event.target===this)closeNsModal()">
+  <div class="modal">
+    <h3>Update Net Sales Share</h3>
+    <p class="mt">Monthly total net sales collected across all brands. ESTIMATED — settles monthly.</p>
+    <div class="fg"><label>Net Sales This Month ($)</label><input type="text" id="ns-input" placeholder="e.g. 50000"/></div>
+    <div class="modal-actions">
+      <button class="btn ghost" onclick="closeNsModal()">Cancel</button>
+      <button class="btn" onclick="saveNetSales()">Save</button>
+    </div>
+  </div>
+</div>
 <script>
 var ALL=[],FILTER='all',SHOW_BLOCKED=false,CURRENT=null,MODE='complete',TEAM=[],SUBTASKS={},ST_PARENT=null,IS_MANAGER=false,DEL_TARGET=null;
 var MT_ADD_CLIENTS=[];
@@ -1012,6 +1081,7 @@ function load(){
     document.getElementById('sub').textContent=ALL.length+' active task'+(ALL.length===1?'':'s')+' assigned to you.';
     loadSubtasks();renderFilters();render();
   }).catch(function(e){document.getElementById('sub').textContent='Failed: '+e;});
+  loadCompBanner();
 }
 
 function loadSubtasks(){
@@ -1154,6 +1224,60 @@ function startEditCardTitle(recordId){
 /* client reports */
 var WR_REPORT_TYPE='brand_manager';
 var WR_BRANDS=[],WR_WEEK_START='',WR_WEEK_END='',MSG_EMAIL='',MSG_BRAND_NAME='';
+var COMP_DATA=null,CB_IS_ADMIN=false;
+
+function loadCompBanner(){
+  fetch('/api/comp/summary',{credentials:'include'}).then(function(r){return r.json();}).then(function(d){
+    COMP_DATA=d;renderCompBanner(d);
+  }).catch(function(){});
+}
+function renderCompBanner(d){
+  var el=document.getElementById('comp-banner');
+  if(!d||!d.hasComp){el.style.display='none';return;}
+  var bonus=Math.round(d.bonusDollars||0);
+  var pct=Math.round((d.bonusPct||0)*1000)/10;
+  var netSales=(d.netSales||0).toLocaleString();
+  var gd=d.gateDetails||[];
+  var gHtml='';
+  gd.forEach(function(g){
+    var raw=g.value||0;
+    var dispVal=g.key==='ratio'?(Math.round(raw*1000)/10)+'%':Math.round(raw);
+    var dispHit=g.key==='ratio'?(Math.round(g.hit*100))+'%':g.hit;
+    var prog=Math.min(1,g.key==='ratio'?(raw/(d.ratioTiers&&d.ratioTiers[2]||g.hit||1)):(raw/(g.hit||1)));
+    var isFull=g.score>=1.0;
+    gHtml+='<div class="cb-gate-row">';
+    gHtml+='<div class="cb-gate-meta"><span class="cb-gate-lbl">'+esc(g.label)+'</span>';
+    gHtml+='<span class="cb-gate-val">'+dispVal+' / <span style="opacity:.45">'+dispHit+'</span></span></div>';
+    gHtml+='<div class="cb-bar-bg"><div class="cb-bar-fill'+(isFull?' full':'')+'" style="width:'+Math.round(prog*100)+'%"></div></div>';
+    gHtml+='</div>';
+  });
+  var adminBtn=CB_IS_ADMIN?'<button class="cb-update-btn" onclick="openNsModal()">Set</button>':'';
+  var html='<div class="cb">';
+  html+='<div class="cb-hdr"><span class="cb-title">My Compensation</span><span class="cb-est">ESTIMATED — settles monthly</span></div>';
+  html+='<div class="cb-body">';
+  html+='<div><div class="cb-payout">$'+bonus.toLocaleString()+'</div>';
+  html+='<div class="cb-payout-sub">bonus this month</div>';
+  html+='<div class="cb-pct">'+pct+'% of net sales</div></div>';
+  html+='<div class="cb-gates">'+gHtml+'</div>';
+  html+='</div>';
+  html+='<div class="cb-net">Net sales share this month: <strong>$'+netSales+'</strong> '+adminBtn+'</div>';
+  html+='</div>';
+  el.innerHTML=html;el.style.display='';
+}
+function openNsModal(){
+  document.getElementById('ns-input').value=COMP_DATA&&COMP_DATA.netSales?COMP_DATA.netSales:'';
+  document.getElementById('ns-overlay').classList.add('show');
+}
+function closeNsModal(){document.getElementById('ns-overlay').classList.remove('show');}
+function saveNetSales(){
+  var v=parseFloat(document.getElementById('ns-input').value);
+  if(isNaN(v)||v<0){toast('Invalid amount');return;}
+  fetch('/api/admin/comp/net-sales',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({netSales:v})})
+  .then(function(r){return r.json();}).then(function(d){
+    if(d.ok){closeNsModal();loadCompBanner();toast('Net sales updated');}
+    else toast('Error: '+(d.error||'Failed'));
+  }).catch(function(e){toast(''+e);});
+}
 
 function wrPrevWeekRange(){
   var d=new Date(),day=d.getDay();
@@ -1395,6 +1519,12 @@ function renderFormForType(type,brands){
     h+=sectionLabel('Brands Worked On');
     h+='<div class="fr full"><div class="fg"><label>Which brands / clients did you edit for this week?</label><input type="text" id="wr-brands-worked" placeholder="e.g. Approved Science, Lode WTR"/></div></div>';
     h+=notesFg('Any notes, issues with footage, or requests…');
+  } else if(type==='community_manager'){
+    h+=weekRow();
+    h+=sectionLabel('Creator Relations');
+    h+='<div class="fr">'+numFg('wr-calls','1:1 Creator Calls')+numFg('wr-videos','Videos Posted (by creators)')+'</div>';
+    h+='<div class="fr">'+numFg('wr-signups','New Creator Signups')+numFg('wr-samples','Samples Facilitated')+'</div>';
+    h+=notesFg('Wins, blockers, or anything notable this week…');
   } else if(type==='ceo'){
     h+=weekRow();
     h+=sectionLabel('Sales Pipeline');
@@ -1414,6 +1544,7 @@ function loadReportTab(){
   fetch('/api/weekly-reports/brands',{credentials:'include'}).then(function(r){return r.json();}).then(function(d){
     WR_REPORT_TYPE=d.reportType||'brand_manager';
     WR_BRANDS=d.brands||[];
+    CB_IS_ADMIN=!!d.isAdmin;
     if(WR_REPORT_TYPE==='brand_manager'){
       document.getElementById('wr-client-container').style.display='';
       document.getElementById('wr-form-container').style.display='none';
@@ -1478,6 +1609,11 @@ function loadReportHistory(){
         html+='<div class="wr-stat"><div class="n">'+(r.videosDelivered||0)+'</div><div class="l">Delivered</div></div>';
         html+='<div class="wr-stat"><div class="n">'+(r.avgRevisions||'—')+'x</div><div class="l">Avg Revisions</div></div>';
         html+='<div class="wr-stat"><div class="n">'+(r.avgTurnaround||'—')+'d</div><div class="l">Turnaround</div></div>';
+      } else if(rt==='community_manager'){
+        html+='<div class="wr-stat"><div class="n">'+(r.calls||0)+'</div><div class="l">1:1 Calls</div></div>';
+        html+='<div class="wr-stat"><div class="n">'+(r.videos||0)+'</div><div class="l">Videos Posted</div></div>';
+        html+='<div class="wr-stat"><div class="n">'+(r.signups||0)+'</div><div class="l">Signups</div></div>';
+        html+='<div class="wr-stat"><div class="n">'+(r.samples||0)+'</div><div class="l">Samples</div></div>';
       } else if(rt==='ceo'){
         html+='<div class="wr-stat"><div class="n">'+(r.callsBooked||0)+'</div><div class="l">Calls Booked</div></div>';
         html+='<div class="wr-stat"><div class="n">'+(r.proposalsSent||0)+'</div><div class="l">Proposals</div></div>';
@@ -1518,6 +1654,10 @@ function submitReport(){
     payload.videosEdited=numVal('wr-edited');payload.videosDelivered=numVal('wr-delivered');
     payload.avgRevisions=numVal('wr-revisions');payload.avgTurnaround=numVal('wr-turnaround');
     payload.brandsWorked=val('wr-brands-worked');payload.notes=val('wr-notes');
+  } else if(WR_REPORT_TYPE==='community_manager'){
+    payload.calls=numVal('wr-calls');payload.videos=numVal('wr-videos');
+    payload.signups=numVal('wr-signups');payload.samples=numVal('wr-samples');
+    payload.notes=val('wr-notes');
   } else if(WR_REPORT_TYPE==='ceo'){
     payload.callsBooked=numVal('wr-calls');payload.proposalsSent=numVal('wr-proposals');
     payload.communitySize=numVal('wr-community');payload.personalVideos=numVal('wr-personal-videos');
@@ -2727,6 +2867,7 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
   }
   const WR_FILE = nodePath.join(DATA_DIR, 'weekly-reports.json');
   const ST_FILE = nodePath.join(DATA_DIR, 'subtasks.json');
+  const NET_SALES_FILE = nodePath.join(DATA_DIR, 'net-sales.json');
 
   function readJsonFile(file, def) {
     try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch (_) { return def; }
@@ -3484,6 +3625,12 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
       fields['Avg Turnaround (Days)'] = Number(data.avgTurnaround) || 0;
       if (data.brandsWorked) fields['Brands Worked On'] = data.brandsWorked;
       if (data.notes) fields['Notes'] = data.notes;
+    } else if (reportType === 'community_manager') {
+      fields['1:1 Creator Calls'] = Number(data.calls) || 0;
+      fields['Videos Posted'] = Number(data.videos) || 0;
+      fields['Creator Signups'] = Number(data.signups) || 0;
+      fields['Samples Facilitated'] = Number(data.samples) || 0;
+      if (data.notes) fields['Notes'] = data.notes;
     } else if (reportType === 'ceo') {
       fields['Sales Calls Booked'] = Number(data.callsBooked) || 0;
       fields['Proposals Sent'] = Number(data.proposalsSent) || 0;
@@ -4147,6 +4294,112 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
   app.get('/my-tasks', requireAuth, (req, res) => {
     res.type('html').send(MY_TASKS_HTML);
   });
+  // ---------- SERVER-SIDE COMP TIER HELPER ----------
+  function computeCompTierSrv(model, kpis) {
+    const { gates, hitPct, ratioTiers } = model;
+    const gateDetails = gates.map(g => {
+      let value = kpis[g.key] || 0;
+      let score = 0;
+      if (ratioTiers && g.key === 'ratio') {
+        if (value >= ratioTiers[2]) score = 1.0;
+        else if (value >= ratioTiers[1]) score = 0.75;
+        else if (value >= ratioTiers[0]) score = 0.5;
+      } else {
+        if (value >= g.hit) score = 1.0;
+        else if (value >= g.floor) score = 0.5;
+      }
+      return { key: g.key, label: g.label, floor: g.floor, hit: g.hit, value, score };
+    });
+    const totalScore = gateDetails.reduce((s, g) => s + g.score, 0);
+    const bonusPct = gates.length ? (totalScore / gates.length) * hitPct : 0;
+    return { bonusPct, gateDetails };
+  }
+
+  // ---------- ROUTE: GET /api/comp/summary ----------
+  app.get('/api/comp/summary', requireAuth, async (req, res) => {
+    try {
+      const email = (req.userEmail || '').toLowerCase();
+      const model = COMP_MODEL[email];
+      if (!model) return res.json({ hasComp: false });
+
+      const now = new Date();
+      const monthKey = now.toISOString().slice(0, 7);
+      const monthStartMs = new Date(monthKey + '-01T00:00:00.000Z').getTime();
+      const nextMonth = new Date(monthKey + '-01T00:00:00.000Z');
+      nextMonth.setUTCMonth(nextMonth.getUTCMonth() + 1);
+      const monthEndMs = nextMonth.getTime();
+
+      const netSalesData = readJsonFile(NET_SALES_FILE, {});
+      const netSales = (netSalesData[monthKey] && netSalesData[monthKey].netSales) || 0;
+
+      const all = readJsonFile(WR_FILE, []);
+      const myReports = all.filter(r =>
+        (r.submittedBy || '').toLowerCase() === email &&
+        r.submittedAt >= monthStartMs &&
+        r.submittedAt < monthEndMs
+      );
+
+      const reportType = REPORT_TYPES[email] || 'brand_manager';
+      const kpis = {};
+      if (reportType === 'community_manager') {
+        kpis.calls   = myReports.reduce((s, r) => s + (Number(r.calls)   || 0), 0);
+        kpis.videos  = myReports.reduce((s, r) => s + (Number(r.videos)  || 0), 0);
+        kpis.signups = myReports.reduce((s, r) => s + (Number(r.signups) || 0), 0);
+      } else if (reportType === 'video_editor') {
+        kpis.videos = myReports.reduce((s, r) => s + (Number(r.videosEdited) || 0), 0);
+      } else if (reportType === 'brand_manager') {
+        const totalVideos  = myReports.reduce((s, r) => s + (Number(r.videosPosted) || 0), 0);
+        const totalSamples = myReports.reduce((s, r) => s + (Number(r.samplesCount) || 0), 0);
+        kpis.ratio = totalSamples > 0 ? totalVideos / totalSamples : 0;
+      }
+
+      const { bonusPct, gateDetails } = computeCompTierSrv(model, kpis);
+      const bonusDollars = netSales * bonusPct;
+
+      res.json({
+        hasComp: true, monthKey, netSales, base: model.base,
+        bonusPct, bonusDollars, floorPct: model.floorPct, hitPct: model.hitPct,
+        kpis, gateDetails,
+        ratioTiers: model.ratioTiers || null,
+        isEstimated: true,
+      });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // ---------- ROUTE: POST /api/admin/comp/net-sales ----------
+  app.post('/api/admin/comp/net-sales', requireAuth, jsonBody, async (req, res) => {
+    try {
+      const email = (req.userEmail || '').toLowerCase();
+      const isAdmin = !!(req.session && req.session.isPortalAdmin) || ADMIN_EMAILS.has(email);
+      if (!isAdmin) return res.status(403).json({ error: 'Admin only' });
+      const { netSales } = req.body || {};
+      if (typeof netSales !== 'number' || netSales < 0) return res.status(400).json({ error: 'Invalid netSales' });
+      const now = new Date();
+      const monthKey = now.toISOString().slice(0, 7);
+      const data = readJsonFile(NET_SALES_FILE, {});
+      data[monthKey] = { netSales, updatedAt: Date.now(), updatedBy: email };
+      writeJsonFile(NET_SALES_FILE, data);
+      res.json({ ok: true, monthKey, netSales });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // ---------- ROUTE: GET /api/admin/comp/net-sales ----------
+  app.get('/api/admin/comp/net-sales', requireAuth, async (req, res) => {
+    try {
+      const email = (req.userEmail || '').toLowerCase();
+      const isAdmin = !!(req.session && req.session.isPortalAdmin) || ADMIN_EMAILS.has(email);
+      if (!isAdmin) return res.status(403).json({ error: 'Admin only' });
+      const data = readJsonFile(NET_SALES_FILE, {});
+      res.json({ data });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   // Alias: the portal-admin nav links to /ops/my-tasks — serve the same page there.
   app.get('/ops/my-tasks', requireAuth, (req, res) => {
     res.type('html').send(MY_TASKS_HTML);
