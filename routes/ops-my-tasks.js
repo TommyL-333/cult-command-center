@@ -1114,7 +1114,7 @@ function load(){
     var db=document.getElementById('dev-banner');
     if(db){
       db.style.cssText='display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:rgba(255,0,80,.1);border:1px solid rgba(255,0,80,.35);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12.5px;color:var(--red)';
-      db.innerHTML='<strong>Dev Mode</strong> — viewing as <strong>'+DEV_AS+'</strong>. Read-only.';
+      db.innerHTML='<strong>Dev Mode</strong> — viewing as <strong>'+DEV_AS+'</strong>. Read-only.<button onclick="window.close();setTimeout(function(){window.location.href=\\'/task-management\\';},200);" style="margin-left:auto;padding:4px 12px;border-radius:6px;border:1px solid rgba(255,0,80,.5);background:rgba(255,0,80,.12);color:var(--red);cursor:pointer;font-size:12px;font-weight:600">✕ Exit Dev Mode</button>';
     }
   }
   document.getElementById('sub').textContent='Loading your Ops Engine tasks…';
