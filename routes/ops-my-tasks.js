@@ -1274,6 +1274,7 @@ var COMP_DATA=null,CB_IS_ADMIN=false;
 function loadCompBanner(){
   fetch('/api/comp/summary',{credentials:'include'}).then(function(r){return r.json();}).then(function(d){
     COMP_DATA=d;
+    CB_IS_ADMIN=!!d.isAdmin;
     if(!d.hasComp&&CB_IS_ADMIN&&!DEV_AS){
       // Admin with no personal comp: show team payroll summary
       loadTeamSummaryBanner();
@@ -2992,9 +2993,7 @@ function openDevMode(){
 function closeDevMode(){document.getElementById('dev-overlay').classList.remove('show');}
 function devLoadMember(email,name){
   closeDevMode();
-  document.getElementById('dev-iframe-label').textContent='Viewing as '+name+' ('+email+')';
-  document.getElementById('dev-iframe-el').src='/my-tasks?devAs='+encodeURIComponent(email);
-  document.getElementById('dev-iframe-overlay').classList.add('show');
+  window.open('/my-tasks?devAs='+encodeURIComponent(email),'_blank');
 }
 function closeDevIframe(){
   document.getElementById('dev-iframe-overlay').classList.remove('show');
@@ -4527,9 +4526,11 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
   // ---------- ROUTE: GET /api/comp/summary ----------
   app.get('/api/comp/summary', requireAuth, async (req, res) => {
     try {
+      const callerForAdmin = (req.userEmail || (req.session && req.session.userEmail) || '').toLowerCase();
+      const isAdminCaller = !!(req.session && req.session.isPortalAdmin) || ADMIN_EMAILS.has(callerForAdmin);
       const email = effectiveEmail(req);
       const model = COMP_MODEL[email];
-      if (!model) return res.json({ hasComp: false });
+      if (!model) return res.json({ hasComp: false, isAdmin: isAdminCaller });
 
       const now = new Date();
       const monthKey = now.toISOString().slice(0, 7);
@@ -4571,6 +4572,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
         kpis, gateDetails,
         ratioTiers: model.ratioTiers || null,
         isEstimated: true,
+        isAdmin: isAdminCaller,
       });
     } catch (e) {
       res.status(500).json({ error: e.message });
