@@ -2324,6 +2324,8 @@ const TASK_MANAGEMENT_HTML = `<!DOCTYPE html>
 
 <div class="toast" id="toast"></div>
 <script>
+window.onerror=function(msg,src,line){var el=document.getElementById('sub');if(el)el.textContent='JS Error: '+msg+' (line '+line+')';return false;};
+document.getElementById('sub').textContent='Script started…';
 var ALL=[],FILTERED=[],NT=null,ADEL_ID=null,WR_ALL=[],CLIENTS_LIST=[],OWNER_MAP={},SELECTED=new Set();
 var ACTIVE_CARD=null;
 var EDIT_RID=null;
@@ -4119,7 +4121,6 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
   app.get('/api/admin/tasks', requireAuth, async (req, res) => {
     try {
       const email = (req.userEmail || (req.session && req.session.userEmail) || '').toLowerCase();
-      console.log('[admin/tasks] HIT email=' + email);
       const isAdmin = !!(req.session && req.session.isPortalAdmin) || ADMIN_EMAILS.has(email);
       if (!isAdmin) return res.status(403).json({ error: 'Admin access required' });
 
