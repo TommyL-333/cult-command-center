@@ -65,7 +65,7 @@ const SEED_EMAIL_OPENID = {
   'shayan@cultcontent.cc': 'ou_19a69dda7462358e4b3c31e2f157a238',
   'daniel@cultcontent.cc': 'ou_4332cd6e701b50b0668f7dcbd7196a40',
   'gourab@cultcontent.cc': 'ou_a391574932a4bf8a4d8d08a6297cceaa',
-  // 'gina@cultcontent.cc': 'ou_TBD',  // no Lark account yet — Tommy must provision first
+  // 'jina@cultcontent.cc': 'ou_TBD',  // no Lark account yet — Tommy must provision first
   // becca / jenna: add ou_ IDs after Lark seats are provisioned
 };
 
@@ -87,7 +87,7 @@ const REPORT_TYPES = {
   'gourab@cultcontent.cc': 'brand_manager',
   'hasan@cultcontent.cc': 'operations',
   'gilbert@cultcontent.cc': 'video_editor',
-  'gina@cultcontent.cc': 'community_manager',
+  'jina@cultcontent.cc': 'community_manager',
   'becca@cultcontent.cc': 'community_manager',
   'jenna@cultcontent.cc': 'community_manager',
   'tommy@cultcontent.cc': 'ceo',
@@ -99,7 +99,7 @@ const REPORT_TYPES = {
 // bonusPct = (sum of gate scores / numGates) × hitPct
 // Gourab ratio uses ratioTiers [low,mid,high] → scores 0.5 / 0.75 / 1.0 → 4% / 6% / 8%
 const COMP_MODEL = {
-  'gina@cultcontent.cc': { base: 2750, floorPct: 0.04, hitPct: 0.08, gates: [
+  'jina@cultcontent.cc': { base: 2750, floorPct: 0.04, hitPct: 0.08, gates: [
     { key: 'calls',   label: '1:1 Creator Calls', floor: 5,  hit: 10 },
     { key: 'videos',  label: 'Videos Posted',      floor: 5,  hit: 10 },
     { key: 'signups', label: 'Creator Signups',    floor: 15, hit: 30 },
@@ -390,6 +390,32 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .tp-net{font-size:11px;color:var(--muted);margin-top:10px;padding-top:8px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .tp-net strong{color:var(--txt)}
   @media(max-width:540px){.tp-meta{grid-template-columns:1fr 1fr}}
+  /* ── Video Queue ──────────────────────────────────────── */
+  .vq-submit{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:22px}
+  .vq-submit h3{margin:0 0 14px;font-size:15px;font-weight:700}
+  .vq-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  @media(max-width:720px){.vq-cols{grid-template-columns:1fr}}
+  .vq-col-hdr{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding-bottom:8px;border-bottom:1px solid var(--border);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
+  .vq-col-count{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:0 7px;font-size:10px;font-weight:700}
+  .vq-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;transition:.15s}
+  .vq-card:hover{border-color:rgba(0,242,234,.35)}
+  .vq-card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;gap:8px}
+  .vq-brand-chip{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;background:rgba(0,242,234,.12);color:var(--cyan);border-radius:5px;padding:2px 7px;white-space:nowrap}
+  .vq-prio-chip{font-size:10px;font-weight:700;border-radius:5px;padding:2px 7px;white-space:nowrap}
+  .vq-prio-high{background:rgba(255,59,48,.15);color:var(--red)}
+  .vq-prio-normal{background:rgba(0,242,234,.1);color:var(--cyan)}
+  .vq-prio-low{background:rgba(154,160,181,.12);color:var(--muted)}
+  .vq-title{font-size:13px;font-weight:600;margin-bottom:4px}
+  .vq-desc{font-size:12px;color:var(--muted);line-height:1.4;margin-bottom:8px}
+  .vq-meta{font-size:11px;color:var(--muted);margin-bottom:10px}
+  .vq-meta strong{color:var(--txt)}
+  .vq-actions{display:flex;gap:7px;flex-wrap:wrap}
+  .vq-btn{font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;cursor:pointer;border:1px solid var(--border);background:none;color:var(--muted);font-family:inherit;transition:.1s}
+  .vq-btn:hover{border-color:var(--cyan);color:var(--cyan)}
+  .vq-btn.vq-primary{background:var(--cyan);color:var(--dark);border-color:var(--cyan)}
+  .vq-btn.vq-done{background:rgba(107,232,107,.15);color:#6be86b;border-color:rgba(107,232,107,.3)}
+  .vq-btn.vq-drive{background:rgba(0,242,234,.1);color:var(--cyan);border-color:rgba(0,242,234,.3)}
+  .vq-empty{color:var(--muted);font-size:12px;padding:20px 0;text-align:center}
 </style>
 </head>
 <body>
@@ -410,6 +436,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     <button class="tab active" onclick="switchTab(0)">My Tasks</button>
     <button class="tab" onclick="switchTab(1)">Client Reports</button>
     <button class="tab" onclick="switchTab(2)">Sprint</button>
+    <button class="tab" onclick="switchTab(3)">Video Queue</button>
   </div>
 
   <div id="tab-tasks">
@@ -492,6 +519,59 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
       <button class="chip" onclick="spPrev()">← Prev</button>
       <div class="sp-week-lbl" id="sp-week-lbl">…</div>
       <button class="chip" onclick="spNext()">Next →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Video Queue tab -->
+<div id="tab-video-queue" style="display:none">
+  <div class="vq-submit" id="vq-submit-form">
+    <h3>Submit Video Request</h3>
+    <div class="fr">
+      <div class="fg"><label>Brand / Client</label>
+        <input type="text" id="vq-brand" list="vq-brand-list" placeholder="e.g. Lode WTR"/>
+        <datalist id="vq-brand-list"></datalist>
+      </div>
+      <div class="fg"><label>Priority</label>
+        <select id="vq-priority">
+          <option value="normal">Normal</option>
+          <option value="high">High</option>
+          <option value="low">Low</option>
+        </select>
+      </div>
+    </div>
+    <div class="fr">
+      <div class="fg"><label>Title / Short Description</label>
+        <input type="text" id="vq-title" placeholder="e.g. Product showcase edit, UGC compilation"/>
+      </div>
+      <div class="fg"><label>Due Date (optional)</label>
+        <input type="date" id="vq-due"/>
+      </div>
+    </div>
+    <div class="fr full"><div class="fg"><label>Brief / Context</label>
+      <textarea id="vq-desc" style="min-height:70px" placeholder="What needs to be edited? Hook direction, style notes, any must-includes…"></textarea>
+    </div></div>
+    <div class="fr full"><div class="fg"><label>Footage — Google Drive Folder URL</label>
+      <input type="url" id="vq-drive" placeholder="https://drive.google.com/drive/folders/…"/>
+    </div></div>
+    <div class="err" id="vq-err" style="margin-top:8px"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:14px">
+      <button class="btn" onclick="submitVideoRequest()">Submit Request</button>
+    </div>
+  </div>
+
+  <div class="vq-cols" id="vq-queue-wrap">
+    <div>
+      <div class="vq-col-hdr">Pending <span class="vq-col-count" id="vq-cnt-pending">0</span></div>
+      <div id="vq-col-pending"></div>
+    </div>
+    <div>
+      <div class="vq-col-hdr">In Progress <span class="vq-col-count" id="vq-cnt-inprogress">0</span></div>
+      <div id="vq-col-inprogress"></div>
+    </div>
+    <div>
+      <div class="vq-col-hdr">Done <span class="vq-col-count" id="vq-cnt-done">0</span></div>
+      <div id="vq-col-done"></div>
     </div>
   </div>
 </div>
@@ -742,8 +822,10 @@ function switchTab(idx){
   document.getElementById('tab-tasks').style.display=idx===0?'':'none';
   document.getElementById('tab-report').style.display=idx===1?'':'none';
   document.getElementById('tab-sprint').style.display=idx===2?'':'none';
+  document.getElementById('tab-video-queue').style.display=idx===3?'':'none';
   if(idx===1)loadReportTab();
   if(idx===2)loadSprint();
+  if(idx===3)loadVideoQueue();
 }
 
 /* ── Sprint planner ──────────────────────────────────── */
@@ -2894,6 +2976,107 @@ function doAdminDelete(){
   });
 }
 
+/* ── Video Queue ─────────────────────────────────────────────────────── */
+var VQ_DATA=[], VQ_MY_EMAIL='', VQ_IS_EDITOR=false, VQ_IS_ADMIN=false, VQ_LOADED=false;
+var VQ_BRANDS=['Lode WTR','Roots by Genetic Art','Trip Visuals','Made Right','B NOOR','Elasco Skincare','Starlit Scribbles'];
+
+function loadVideoQueue(){
+  if(!VQ_LOADED){
+    // Populate brand datalist
+    var dl=document.getElementById('vq-brand-list');
+    if(dl)VQ_BRANDS.forEach(function(b){var o=document.createElement('option');o.value=b;dl.appendChild(o);});
+  }
+  fetch('/api/video-requests',{credentials:'include'})
+  .then(function(r){return r.json();}).then(function(d){
+    VQ_DATA=d.requests||[];
+    VQ_MY_EMAIL=d.myEmail||'';
+    VQ_IS_EDITOR=!!d.isEditor;
+    VQ_IS_ADMIN=!!d.isAdmin;
+    VQ_LOADED=true;
+    renderVideoQueue();
+  }).catch(function(e){toast('Could not load video queue: '+e);});
+}
+
+function renderVideoQueue(){
+  var pending=VQ_DATA.filter(function(r){return r.status==='pending';});
+  var inprog=VQ_DATA.filter(function(r){return r.status==='in-progress';});
+  var done=VQ_DATA.filter(function(r){return r.status==='done';});
+  document.getElementById('vq-cnt-pending').textContent=pending.length;
+  document.getElementById('vq-cnt-inprogress').textContent=inprog.length;
+  document.getElementById('vq-cnt-done').textContent=done.length;
+  document.getElementById('vq-col-pending').innerHTML=pending.map(vqCardHtml).join('')||'<div class="vq-empty">No pending requests</div>';
+  document.getElementById('vq-col-inprogress').innerHTML=inprog.map(vqCardHtml).join('')||'<div class="vq-empty">Nothing in progress</div>';
+  document.getElementById('vq-col-done').innerHTML=done.map(vqCardHtml).join('')||'<div class="vq-empty">Nothing done yet</div>';
+}
+
+function vqCardHtml(r){
+  var prioClass=r.priority==='high'?'vq-prio-high':r.priority==='low'?'vq-prio-low':'vq-prio-normal';
+  var prioPretty=r.priority==='high'?'High':r.priority==='low'?'Low':'Normal';
+  var date=r.submittedAt?new Date(r.submittedAt).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
+  var due=r.dueDate?'<span> · due '+esc(r.dueDate)+'</span>':'';
+  var id=esc(r.id||'');
+  var driveBtn=r.driveUrl?'<button class="vq-btn vq-drive" onclick="vqOpenDrive(\\''+id+'\\')">📁 Footage</button>':'';
+  var startBtn='',doneBtn='',reopenBtn='';
+  if(VQ_IS_EDITOR||VQ_IS_ADMIN){
+    if(r.status==='pending') startBtn='<button class="vq-btn vq-primary" onclick="vqSetStatus(\\''+id+'\\',\\'in-progress\\')">▶ Start</button>';
+    if(r.status==='in-progress') doneBtn='<button class="vq-btn vq-done" onclick="vqSetStatus(\\''+id+'\\',\\'done\\')">✓ Done</button>';
+    if(r.status==='done') reopenBtn='<button class="vq-btn" onclick="vqSetStatus(\\''+id+'\\',\\'pending\\')">↩ Reopen</button>';
+  }
+  var deleteBtn=(VQ_IS_ADMIN||r.submittedBy===VQ_MY_EMAIL)?'<button class="vq-btn" style="margin-left:auto;color:var(--red)" onclick="vqDelete(\\''+id+'\\')">✕</button>':'';
+  return '<div class="vq-card">'
+    +'<div class="vq-card-top"><span class="vq-brand-chip">'+esc(r.brand||'—')+'</span><span class="vq-prio-chip '+prioClass+'">'+prioPretty+'</span></div>'
+    +'<div class="vq-title">'+esc(r.title||'Untitled request')+'</div>'
+    +(r.description?'<div class="vq-desc">'+esc(r.description)+'</div>':'')
+    +'<div class="vq-meta">by <strong>'+esc(r.submittedByName||r.submittedBy||'?')+'</strong> · '+date+due+'</div>'
+    +'<div class="vq-actions">'+driveBtn+startBtn+doneBtn+reopenBtn+deleteBtn+'</div>'
+    +'</div>';
+}
+
+function vqSetStatus(id,status){
+  fetch('/api/video-requests/'+id,{method:'PATCH',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:status})})
+  .then(function(r){return r.json();}).then(function(d){
+    if(d.ok){loadVideoQueue();}else toast('Error: '+(d.error||'Failed'));
+  }).catch(function(e){toast(''+e);});
+}
+
+function vqDelete(id){
+  if(!confirm('Delete this video request?'))return;
+  fetch('/api/video-requests/'+id,{method:'DELETE',credentials:'include'})
+  .then(function(r){return r.json();}).then(function(d){
+    if(d.ok){loadVideoQueue();}else toast('Error: '+(d.error||'Failed'));
+  }).catch(function(e){toast(''+e);});
+}
+
+function vqOpenDrive(id){
+  var r=VQ_DATA.find(function(x){return x.id===id;});
+  if(r&&r.driveUrl)window.open(r.driveUrl,'_blank');
+}
+
+function submitVideoRequest(){
+  var errEl=document.getElementById('vq-err');errEl.style.display='none';
+  var brand=(document.getElementById('vq-brand').value||'').trim();
+  var title=(document.getElementById('vq-title').value||'').trim();
+  var desc=(document.getElementById('vq-desc').value||'').trim();
+  var drive=(document.getElementById('vq-drive').value||'').trim();
+  var prio=document.getElementById('vq-priority').value||'normal';
+  var due=document.getElementById('vq-due').value||'';
+  if(!title){errEl.textContent='Title is required';errEl.style.display='block';return;}
+  var payload={brand:brand,title:title,description:desc,driveUrl:drive,priority:prio,dueDate:due};
+  fetch('/api/video-requests',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+  .then(function(r){return r.json();}).then(function(d){
+    if(d.ok){
+      document.getElementById('vq-brand').value='';
+      document.getElementById('vq-title').value='';
+      document.getElementById('vq-desc').value='';
+      document.getElementById('vq-drive').value='';
+      document.getElementById('vq-due').value='';
+      document.getElementById('vq-priority').value='normal';
+      toast('Video request submitted!');
+      loadVideoQueue();
+    } else {errEl.textContent=d.error||'Failed';errEl.style.display='block';}
+  }).catch(function(e){errEl.textContent=''+e;errEl.style.display='block';});
+}
+
 /* ── Bulk selection ─────────────────────────────────────────────────── */
 function toggleSelect(rid,chk){
   if(chk.checked)SELECTED.add(rid);else SELECTED.delete(rid);
@@ -2997,7 +3180,7 @@ loadAll();
 var DEV_MEMBERS=[
   {name:'Gourab',email:'gourab@cultcontent.cc',role:'Brand Manager'},
   {name:'Gilbert',email:'gilbert@cultcontent.cc',role:'Video Editor'},
-  {name:'Jina',email:'gina@cultcontent.cc',role:'Community Manager'},
+  {name:'Jina',email:'jina@cultcontent.cc',role:'Community Manager'},
   {name:'Becca',email:'becca@cultcontent.cc',role:'Community Manager'},
   {name:'Jenna',email:'jenna@cultcontent.cc',role:'Community Manager'},
   {name:'Daniel',email:'daniel@cultcontent.cc',role:'Developer'},
@@ -3081,6 +3264,7 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
   const WR_FILE = nodePath.join(DATA_DIR, 'weekly-reports.json');
   const ST_FILE = nodePath.join(DATA_DIR, 'subtasks.json');
   const NET_SALES_FILE = nodePath.join(DATA_DIR, 'net-sales.json');
+  const VR_FILE = nodePath.join(DATA_DIR, 'video-requests.json');
 
   function readJsonFile(file, def) {
     try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch (_) { return def; }
@@ -4674,7 +4858,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
   const COMP_NAMES = {
     'gourab@cultcontent.cc': 'Gourab',
     'gilbert@cultcontent.cc': 'Gilbert',
-    'gina@cultcontent.cc': 'Jina',
+    'jina@cultcontent.cc': 'Jina',
     'becca@cultcontent.cc': 'Becca',
     'jenna@cultcontent.cc': 'Jenna',
   };
@@ -4802,6 +4986,90 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
   // Alias: the portal-admin nav links to /ops/my-tasks — serve the same page there.
   app.get('/ops/my-tasks', requireAuth, (req, res) => {
     res.type('html').send(MY_TASKS_HTML);
+  });
+
+  // ---------- ROUTE: GET /api/video-requests ----------
+  // Returns all video requests. Editor/admin see all; others see own.
+  const VIDEO_EDITOR_EMAILS = new Set(['gilbert@cultcontent.cc']);
+  app.get('/api/video-requests', requireAuth, (req, res) => {
+    try {
+      const email = (req.userEmail || '').toLowerCase();
+      const isAdmin = ADMIN_EMAILS.has(email);
+      const isEditor = VIDEO_EDITOR_EMAILS.has(email);
+      const all = readJsonFile(VR_FILE, []);
+      const requests = (isAdmin || isEditor)
+        ? all
+        : all.filter(r => (r.submittedBy || '').toLowerCase() === email);
+      const names = { 'gilbert@cultcontent.cc':'Gilbert', 'jina@cultcontent.cc':'Jina',
+        'becca@cultcontent.cc':'Becca', 'jenna@cultcontent.cc':'Jenna',
+        'gourab@cultcontent.cc':'Gourab', 'tommy@cultcontent.cc':'Tommy' };
+      requests.forEach(r => { if(!r.submittedByName) r.submittedByName = names[r.submittedBy] || r.submittedBy; });
+      res.json({ requests, myEmail: email, isEditor, isAdmin });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  // ---------- ROUTE: POST /api/video-requests ----------
+  app.post('/api/video-requests', requireAuth, jsonBody, (req, res) => {
+    try {
+      const email = (req.userEmail || '').toLowerCase();
+      const names = { 'gilbert@cultcontent.cc':'Gilbert', 'jina@cultcontent.cc':'Jina',
+        'becca@cultcontent.cc':'Becca', 'jenna@cultcontent.cc':'Jenna',
+        'gourab@cultcontent.cc':'Gourab', 'tommy@cultcontent.cc':'Tommy' };
+      const { brand, title, description, driveUrl, priority, dueDate } = req.body || {};
+      if (!title || !title.trim()) return res.status(400).json({ error: 'Title is required' });
+      const all = readJsonFile(VR_FILE, []);
+      const id = 'vr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+      all.push({
+        id, submittedBy: email, submittedByName: names[email] || email,
+        submittedAt: Date.now(), brand: (brand || '').trim(),
+        title: title.trim(), description: (description || '').trim(),
+        driveUrl: (driveUrl || '').trim(), priority: priority || 'normal',
+        dueDate: dueDate || '', status: 'pending',
+      });
+      writeJsonFile(VR_FILE, all);
+      res.json({ ok: true, id });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  // ---------- ROUTE: PATCH /api/video-requests/:id ----------
+  // Editor or admin can update status; submitter can update their own.
+  app.patch('/api/video-requests/:id', requireAuth, jsonBody, (req, res) => {
+    try {
+      const email = (req.userEmail || '').toLowerCase();
+      const isAdmin = ADMIN_EMAILS.has(email);
+      const isEditor = VIDEO_EDITOR_EMAILS.has(email);
+      const { id } = req.params;
+      const all = readJsonFile(VR_FILE, []);
+      const idx = all.findIndex(r => r.id === id);
+      if (idx < 0) return res.status(404).json({ error: 'Not found' });
+      const r = all[idx];
+      if (!isAdmin && !isEditor && r.submittedBy !== email)
+        return res.status(403).json({ error: 'Not allowed' });
+      const { status, notes } = req.body || {};
+      if (status) r.status = status;
+      if (notes !== undefined) r.notes = notes;
+      r.updatedAt = Date.now();
+      all[idx] = r;
+      writeJsonFile(VR_FILE, all);
+      res.json({ ok: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  // ---------- ROUTE: DELETE /api/video-requests/:id ----------
+  app.delete('/api/video-requests/:id', requireAuth, (req, res) => {
+    try {
+      const email = (req.userEmail || '').toLowerCase();
+      const isAdmin = ADMIN_EMAILS.has(email);
+      const { id } = req.params;
+      const all = readJsonFile(VR_FILE, []);
+      const idx = all.findIndex(r => r.id === id);
+      if (idx < 0) return res.status(404).json({ error: 'Not found' });
+      if (!isAdmin && all[idx].submittedBy !== email)
+        return res.status(403).json({ error: 'Not allowed' });
+      all.splice(idx, 1);
+      writeJsonFile(VR_FILE, all);
+      res.json({ ok: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
   // Expose helpers for later steps / test harnesses.
