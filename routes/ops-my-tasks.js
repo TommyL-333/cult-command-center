@@ -2324,7 +2324,6 @@ const TASK_MANAGEMENT_HTML = `<!DOCTYPE html>
 
 <div class="toast" id="toast"></div>
 <script>
-window.onerror=function(msg,src,line){var el=document.getElementById('sub');if(el)el.textContent='JS Error: '+msg+' (line '+line+')';return false;};
 var ALL=[],FILTERED=[],NT=null,ADEL_ID=null,WR_ALL=[],CLIENTS_LIST=[],OWNER_MAP={},SELECTED=new Set();
 var ACTIVE_CARD=null;
 var EDIT_RID=null;
@@ -3152,7 +3151,10 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
   }
 
   // ---------- (b) list all task records (paginate fully) ----------
-  async function listAllTaskRecords() {
+  let _tasksCache = { records: null, exp: 0 };
+  async function listAllTaskRecords({ bustCache = false } = {}) {
+    const now = Date.now();
+    if (!bustCache && _tasksCache.records && now < _tasksCache.exp) return _tasksCache.records;
     const out = [];
     let pageToken = null;
     let guard = 0;
@@ -3169,6 +3171,7 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
       pageToken = data.data && data.data.has_more ? data.data.page_token : null;
       guard++;
     } while (pageToken && guard < 20);
+    _tasksCache = { records: out, exp: now + 60_000 };
     return out;
   }
 
@@ -4417,6 +4420,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       if (dueDate) fields['Due Date'] = new Date(dueDate + 'T12:00:00.000Z').getTime();
       console.log('[admin/tasks PATCH]', req.params.recordId, 'fields:', JSON.stringify(fields));
       await patchRecord(req.params.recordId, fields);
+      _tasksCache.exp = 0; // bust so next GET re-fetches
       res.json({ ok: true });
     } catch (e) {
       console.error('[admin/tasks PATCH]', req.params.recordId, e.message, e.response && JSON.stringify(e.response.data));
@@ -4447,6 +4451,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
         console.error('[admin/tasks/create] Lark error', data.code, data.msg, 'fields:', JSON.stringify(fields));
         return res.status(500).json({ error: `Lark error ${data.code}: ${data.msg}` });
       }
+      _tasksCache.exp = 0; // bust so next GET re-fetches
       res.json({ ok: true, record: data.data && data.data.record });
     } catch (e) {
       console.error('[admin/tasks/create]', e.message, e.response && JSON.stringify(e.response.data));
