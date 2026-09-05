@@ -65,7 +65,7 @@ const SEED_EMAIL_OPENID = {
   'shayan@cultcontent.cc': 'ou_19a69dda7462358e4b3c31e2f157a238',
   'daniel@cultcontent.cc': 'ou_4332cd6e701b50b0668f7dcbd7196a40',
   'gourab@cultcontent.cc': 'ou_a391574932a4bf8a4d8d08a6297cceaa',
-  'gina@cultcontent.cc':   'ou_a9e8a99755959b46220744ffe1542d52',
+  // 'gina@cultcontent.cc': 'ou_TBD',  // no Lark account yet — Tommy must provision first
   // becca / jenna: add ou_ IDs after Lark seats are provisioned
 };
 
@@ -376,6 +376,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     </div>
   </header>
   <div class="sub" id="sub">Loading…</div>
+  <div id="dev-banner" style="display:none;background:rgba(255,0,80,.1);border:1px solid rgba(255,0,80,.35);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12.5px;color:var(--red);display:flex;align-items:center;gap:8px;flex-wrap:wrap"></div>
   <div id="comp-banner" style="display:none"></div>
   <div class="tabs">
     <button class="tab active" onclick="switchTab(0)">My Tasks</button>
@@ -641,6 +642,19 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   </div>
 </div>
 <script>
+// Dev Mode: when an admin loads /my-tasks?devAs=email, intercept all /api/ fetches
+// to forward the devAs param so the server uses that email as the effective user.
+var DEV_AS=(new URLSearchParams(window.location.search).get('devAs')||'').toLowerCase();
+if(DEV_AS){
+  var _origFetch=window.fetch;
+  window.fetch=function(u,o){
+    if(typeof u==='string'&&u.startsWith('/api/')){
+      u+=u.includes('?')?'&devAs=':'?devAs=';
+      u+=encodeURIComponent(DEV_AS);
+    }
+    return _origFetch.call(this,u,o);
+  };
+}
 var ALL=[],FILTER='all',SHOW_BLOCKED=false,CURRENT=null,MODE='complete',TEAM=[],SUBTASKS={},ST_PARENT=null,IS_MANAGER=false,DEL_TARGET=null;
 var MT_ADD_CLIENTS=[];
 function openMtAdd(){
@@ -1073,12 +1087,17 @@ function approveSprintPlan(){
 }
 
 function load(){
+  if(DEV_AS){
+    var db=document.getElementById('dev-banner');
+    if(db){db.innerHTML='<strong>Dev Mode</strong> — viewing as <strong>'+DEV_AS+'</strong>. All data shown is read-only.';db.style.display='flex';}
+  }
   document.getElementById('sub').textContent='Loading your Ops Engine tasks…';
   fetch('/api/my-tasks/list',{credentials:'include'}).then(function(r){return r.json();}).then(function(d){
     if(d.unlinked){document.getElementById('unlinked').style.display='block';document.getElementById('unlinked').textContent=d.message||'Account not linked.';document.getElementById('sub').textContent='';return;}
     ALL=d.tasks||[];
     IS_MANAGER=!!d.isManager;
-    document.getElementById('sub').textContent=ALL.length+' active task'+(ALL.length===1?'':'s')+' assigned to you.';
+    var who=d.devAs||'you';
+    document.getElementById('sub').textContent=ALL.length+' active task'+(ALL.length===1?'':'s')+(DEV_AS?' assigned to '+who:'.'+(ALL.length?'':''));
     loadSubtasks();renderFilters();render();
   }).catch(function(e){document.getElementById('sub').textContent='Failed: '+e;});
   loadCompBanner();
@@ -1228,15 +1247,28 @@ var COMP_DATA=null,CB_IS_ADMIN=false;
 
 function loadCompBanner(){
   fetch('/api/comp/summary',{credentials:'include'}).then(function(r){return r.json();}).then(function(d){
-    COMP_DATA=d;renderCompBanner(d);
+    COMP_DATA=d;
+    // Auto-calculate net sales if none is set yet (admin only, not in dev-as mode)
+    if(d.hasComp&&CB_IS_ADMIN&&!DEV_AS&&(!d.netSales||d.netSales===0)){
+      fetch('/api/admin/comp/net-sales-auto',{credentials:'include'}).then(function(r){return r.json();}).then(function(auto){
+        if(auto.ok&&auto.netSales>0){
+          d.netSales=auto.netSales;d.autoSource=auto.source;
+          COMP_DATA=d;
+        }
+        renderCompBanner(d);
+      }).catch(function(){renderCompBanner(d);});
+    } else {
+      renderCompBanner(d);
+    }
   }).catch(function(){});
 }
 function renderCompBanner(d){
   var el=document.getElementById('comp-banner');
   if(!d||!d.hasComp){el.style.display='none';return;}
-  var bonus=Math.round(d.bonusDollars||0);
+  var bonus=Math.round((d.netSales||0)*(d.bonusPct||0));
   var pct=Math.round((d.bonusPct||0)*1000)/10;
   var netSales=(d.netSales||0).toLocaleString();
+  var sourceTag=d.autoSource?'<span style="font-size:10px;background:rgba(0,242,234,.1);color:var(--cyan);padding:1px 6px;border-radius:4px;margin-left:4px">auto</span>':'';
   var gd=d.gateDetails||[];
   var gHtml='';
   gd.forEach(function(g){
@@ -1251,7 +1283,7 @@ function renderCompBanner(d){
     gHtml+='<div class="cb-bar-bg"><div class="cb-bar-fill'+(isFull?' full':'')+'" style="width:'+Math.round(prog*100)+'%"></div></div>';
     gHtml+='</div>';
   });
-  var adminBtn=CB_IS_ADMIN?'<button class="cb-update-btn" onclick="openNsModal()">Set</button>':'';
+  var adminBtn=CB_IS_ADMIN&&!DEV_AS?'<button class="cb-update-btn" onclick="openNsModal()">Override</button>':'';
   var html='<div class="cb">';
   html+='<div class="cb-hdr"><span class="cb-title">My Compensation</span><span class="cb-est">ESTIMATED — settles monthly</span></div>';
   html+='<div class="cb-body">';
@@ -1260,7 +1292,7 @@ function renderCompBanner(d){
   html+='<div class="cb-pct">'+pct+'% of net sales</div></div>';
   html+='<div class="cb-gates">'+gHtml+'</div>';
   html+='</div>';
-  html+='<div class="cb-net">Net sales share this month: <strong>$'+netSales+'</strong> '+adminBtn+'</div>';
+  html+='<div class="cb-net">Net sales this month: <strong>$'+netSales+'</strong>'+sourceTag+' '+adminBtn+'</div>';
   html+='</div>';
   el.innerHTML=html;el.style.display='';
 }
@@ -1879,6 +1911,28 @@ const TASK_MANAGEMENT_HTML = `<!DOCTYPE html>
   .wr-fb{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
   .wr-fb select{background:var(--panel2);border:1px solid var(--border);border-radius:8px;color:var(--txt);padding:7px 11px;font-size:13px;font-family:inherit}
   @media(max-width:768px){.stats{grid-template-columns:repeat(2,1fr)}.wr-kpi{grid-template-columns:repeat(2,1fr)}}
+  /* dev mode overlay */
+  .dev-overlay{position:fixed;inset:0;background:rgba(6,7,12,.82);backdrop-filter:blur(4px);display:none;align-items:flex-start;justify-content:center;padding:24px 16px;z-index:60;overflow-y:auto}
+  .dev-overlay.show{display:flex}
+  .dev-panel{background:var(--panel);border:1px solid var(--border);border-radius:16px;width:100%;max-width:520px;overflow:hidden;flex-shrink:0}
+  .dev-panel-header{display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border)}
+  .dev-panel-header h3{margin:0;font-size:16px;font-weight:700}
+  .dev-close-btn{background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1;padding:0 2px}
+  .dev-close-btn:hover{color:var(--txt)}
+  .dev-member-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:16px 20px 20px}
+  .dev-member-card{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:12px 14px;cursor:pointer;transition:.15s}
+  .dev-member-card:hover{border-color:var(--cyan);background:rgba(0,242,234,.05)}
+  .dev-member-name{font-weight:700;font-size:14px;margin-bottom:2px}
+  .dev-member-role{font-size:11px;color:var(--muted)}
+  .dev-member-email{font-size:11px;color:var(--cyan);margin-top:4px;opacity:.7}
+  /* dev iframe modal */
+  .dev-iframe-overlay{position:fixed;inset:0;background:rgba(6,7,12,.95);display:none;flex-direction:column;z-index:70}
+  .dev-iframe-overlay.show{display:flex}
+  .dev-iframe-bar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:rgba(255,0,80,.08);border-bottom:1px solid var(--border);flex-shrink:0}
+  .dev-iframe-label{font-size:12px;color:var(--red);font-weight:700}
+  .dev-iframe-back{background:none;border:1px solid var(--border);color:var(--muted);padding:4px 12px;border-radius:5px;font-size:12px;cursor:pointer;font-family:inherit}
+  .dev-iframe-back:hover{border-color:var(--cyan);color:var(--cyan)}
+  .dev-iframe-el{flex:1;border:none;background:var(--bg)}
   .prio-badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:4px;font-weight:700;cursor:pointer;user-select:none;transition:.12s;white-space:nowrap}
   .prio-badge:hover{filter:brightness(1.2)}
   .prio-c{background:rgba(255,0,80,.15);color:var(--red)}
@@ -1931,6 +1985,7 @@ const TASK_MANAGEMENT_HTML = `<!DOCTYPE html>
     <h1>Task Management</h1>
     <div style="display:flex;gap:8px">
       <a href="/my-tasks" class="chip">← My Tasks</a>
+      <button class="chip" onclick="openDevMode()" id="dev-mode-btn" title="Preview any team member's My Tasks view">👁 Dev Mode</button>
       <button class="btn" onclick="openAddTask()" style="font-size:13px;padding:7px 14px">+ Add Task</button>
       <button class="chip" onclick="loadAll()">↻ Refresh</button>
     </div>
@@ -2831,7 +2886,61 @@ function doBulkDelete(){
 }
 
 loadAll();
+
+// ---------- DEV MODE ----------
+var DEV_MEMBERS=[
+  {name:'Gourab',email:'gourab@cultcontent.cc',role:'Brand Manager'},
+  {name:'Gilbert',email:'gilbert@cultcontent.cc',role:'Video Editor'},
+  {name:'Gina',email:'gina@cultcontent.cc',role:'Community Manager'},
+  {name:'Becca',email:'becca@cultcontent.cc',role:'Community Manager'},
+  {name:'Jenna',email:'jenna@cultcontent.cc',role:'Community Manager'},
+  {name:'Daniel',email:'daniel@cultcontent.cc',role:'Developer'},
+];
+function openDevMode(){
+  var grid=document.getElementById('dev-member-grid');
+  grid.innerHTML=DEV_MEMBERS.map(function(m){
+    return '<div class="dev-member-card" onclick="devLoadMember(\''+m.email+'\',\''+m.name+'\')">'
+      +'<div class="dev-member-name">'+m.name+'</div>'
+      +'<div class="dev-member-role">'+m.role+'</div>'
+      +'<div class="dev-member-email">'+m.email+'</div>'
+      +'</div>';
+  }).join('');
+  document.getElementById('dev-overlay').classList.add('show');
+}
+function closeDevMode(){document.getElementById('dev-overlay').classList.remove('show');}
+function devLoadMember(email,name){
+  closeDevMode();
+  document.getElementById('dev-iframe-label').textContent='Viewing as '+name+' ('+email+')';
+  document.getElementById('dev-iframe-el').src='/my-tasks?devAs='+encodeURIComponent(email);
+  document.getElementById('dev-iframe-overlay').classList.add('show');
+}
+function closeDevIframe(){
+  document.getElementById('dev-iframe-overlay').classList.remove('show');
+  document.getElementById('dev-iframe-el').src='';
+}
 </script>
+
+<!-- Dev Mode: member picker overlay -->
+<div class="dev-overlay" id="dev-overlay" onclick="if(event.target===this)closeDevMode()">
+  <div class="dev-panel">
+    <div class="dev-panel-header">
+      <h3>👁 Developer Mode</h3>
+      <button class="dev-close-btn" onclick="closeDevMode()">×</button>
+    </div>
+    <p style="margin:12px 20px 0;color:var(--muted);font-size:13px">Select a team member to preview their exact My Tasks view — comp banner, report form, and tasks.</p>
+    <div class="dev-member-grid" id="dev-member-grid"></div>
+  </div>
+</div>
+
+<!-- Dev Mode: iframe overlay -->
+<div class="dev-iframe-overlay" id="dev-iframe-overlay">
+  <div class="dev-iframe-bar">
+    <span class="dev-iframe-label" id="dev-iframe-label"></span>
+    <button class="dev-iframe-back" onclick="closeDevIframe()">✕ Exit Dev Mode</button>
+  </div>
+  <iframe class="dev-iframe-el" id="dev-iframe-el" src="" allowfullscreen></iframe>
+</div>
+
 </body>
 </html>`;
 
@@ -3353,6 +3462,16 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
     }
   });
 
+  // ---------- HELPER: effectiveEmail ----------
+  // Allows admin users to impersonate another team member via ?devAs=email query param.
+  // Used by Dev Mode to preview My Tasks as any team member — read-only routes only.
+  function effectiveEmail(req) {
+    const caller = (req.userEmail || (req.session && req.session.userEmail) || '').toLowerCase();
+    const isAdmin = !!(req.session && req.session.isPortalAdmin) || ADMIN_EMAILS.has(caller);
+    const devAs = ((req.query && req.query.devAs) || '').toLowerCase();
+    return (isAdmin && devAs) ? devAs : caller;
+  }
+
   app.get('/api/my-tasks/whoami', requireAuth, async (req, res) => {
     const email = req.userEmail || (req.session && req.session.userEmail) || null;
     let openId = null, err = null;
@@ -3381,11 +3500,12 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
   // ---------- ROUTE: GET /api/my-tasks/list ----------
   app.get('/api/my-tasks/list', requireAuth, async (req, res) => {
     try {
-      const email = req.userEmail || (req.session && req.session.userEmail) || null;
-      const isAdmin = !!(req.session && req.session.isPortalAdmin);
+      const callerEmail = req.userEmail || (req.session && req.session.userEmail) || null;
+      const isAdmin = !!(req.session && req.session.isPortalAdmin) || ADMIN_EMAILS.has((callerEmail||'').toLowerCase());
+      const email = effectiveEmail(req) || callerEmail;
 
-      // Team View hook: ?owner=all only for portal admins.
-      const wantAll = req.query.owner === 'all';
+      // Team View hook: ?owner=all only for portal admins (devAs overrides this).
+      const wantAll = req.query.owner === 'all' && !req.query.devAs;
       let openId = null;
       if (!(wantAll && isAdmin)) {
         openId = await resolveOpenId(email);
@@ -3416,11 +3536,11 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
         tasks.push(shapeTask(rec, clientsMap));
       }
 
-      const callerEmail = (email || '').toLowerCase();
       res.json({
         tasks,
         owner: wantAll && isAdmin ? 'all' : openId,
-        isManager: MANAGER_EMAILS.has(callerEmail),
+        isManager: MANAGER_EMAILS.has((callerEmail||'').toLowerCase()),
+        devAs: req.query.devAs ? email : undefined,
       });
     } catch (e) {
       console.error('[ops-my-tasks] list error:', e.message);
@@ -3568,10 +3688,12 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
   // ---------- ROUTE: GET /api/weekly-reports/brands ----------
   app.get('/api/weekly-reports/brands', requireAuth, async (req, res) => {
     try {
-      const email = (req.userEmail || (req.session && req.session.userEmail) || '').toLowerCase();
-      const isAdmin = !!(req.session && req.session.isPortalAdmin) || ADMIN_EMAILS.has(email);
+      const callerEmail = (req.userEmail || (req.session && req.session.userEmail) || '').toLowerCase();
+      const isAdmin = !!(req.session && req.session.isPortalAdmin) || ADMIN_EMAILS.has(callerEmail);
+      const email = effectiveEmail(req);
+      const isDevMode = email !== callerEmail;
       let brands;
-      if (isAdmin) {
+      if (isAdmin && !isDevMode) {
         const clientsMap = await getClientsMap().catch(() => ({}));
         const brandSet = new Set(Object.values(clientsMap).filter(Boolean));
         for (const bList of Object.values(BRAND_MANAGERS)) {
@@ -3670,13 +3792,18 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
   // ---------- ROUTE: GET /api/weekly-reports/history ----------
   app.get('/api/weekly-reports/history', requireAuth, async (req, res) => {
     try {
-      const email = (req.userEmail || (req.session && req.session.userEmail) || '').toLowerCase();
-      const isAdmin = !!(req.session && req.session.isPortalAdmin) || ADMIN_EMAILS.has(email);
+      const callerEmail = (req.userEmail || (req.session && req.session.userEmail) || '').toLowerCase();
+      const isAdmin = !!(req.session && req.session.isPortalAdmin) || ADMIN_EMAILS.has(callerEmail);
+      const email = effectiveEmail(req);
+      const isDevMode = email !== callerEmail;
       const all = readJsonFile(WR_FILE, []);
-      const brands = isAdmin ? null : new Set(BRAND_MANAGERS[email] || []);
-      const reports = brands
-        ? all.filter((r) => brands.has(r.brand))
-        : all;
+      let reports;
+      if (isAdmin && !isDevMode) {
+        reports = all;
+      } else {
+        // Show only this person's submitted reports
+        reports = all.filter((r) => (r.submittedBy || '').toLowerCase() === email);
+      }
       res.json({ reports: reports.slice(0, 50) });
     } catch (e) {
       res.status(500).json({ error: e.message });
@@ -4318,7 +4445,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
   // ---------- ROUTE: GET /api/comp/summary ----------
   app.get('/api/comp/summary', requireAuth, async (req, res) => {
     try {
-      const email = (req.userEmail || '').toLowerCase();
+      const email = effectiveEmail(req);
       const model = COMP_MODEL[email];
       if (!model) return res.json({ hasComp: false });
 
@@ -4395,6 +4522,79 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       if (!isAdmin) return res.status(403).json({ error: 'Admin only' });
       const data = readJsonFile(NET_SALES_FILE, {});
       res.json({ data });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // ---------- ROUTE: GET /api/admin/comp/net-sales-auto ----------
+  // Auto-calculates current month net sales from Stripe (calendar month charges)
+  // or falls back to summing retainerBudget from this month's brand_manager reports.
+  app.get('/api/admin/comp/net-sales-auto', requireAuth, async (req, res) => {
+    try {
+      const callerEmail = (req.userEmail || '').toLowerCase();
+      const isAdmin = !!(req.session && req.session.isPortalAdmin) || ADMIN_EMAILS.has(callerEmail);
+      if (!isAdmin) return res.status(403).json({ error: 'Admin only' });
+
+      const now = new Date();
+      const monthKey = now.toISOString().slice(0, 7);
+      const monthStartSec = Math.floor(new Date(monthKey + '-01T00:00:00.000Z').getTime() / 1000);
+
+      let netSales = 0;
+      let source = 'weekly_reports';
+
+      // 1. Try Stripe (current calendar month charges)
+      const STRIPE_KEY = process.env.STRIPE_SECRET_KEY;
+      if (STRIPE_KEY) {
+        try {
+          const sAuth = { headers: { Authorization: `Bearer ${STRIPE_KEY}` } };
+          let total = 0, has_more = true, starting_after = null, guard = 0;
+          while (has_more && guard < 10) {
+            let url = `https://api.stripe.com/v1/charges?limit=100&created[gte]=${monthStartSec}`;
+            if (starting_after) url += `&starting_after=${starting_after}`;
+            const r = await axios.get(url, sAuth);
+            const data = r.data.data || [];
+            for (const c of data) {
+              if (c.paid && c.status === 'succeeded' && !c.refunded) {
+                total += (c.amount - (c.amount_refunded || 0));
+              }
+            }
+            has_more = r.data.has_more;
+            if (data.length) starting_after = data[data.length - 1].id;
+            guard++;
+          }
+          if (total > 0) { netSales = Math.round(total / 100); source = 'stripe'; }
+        } catch (e) {
+          console.error('[auto-net-sales] Stripe error:', e.message);
+        }
+      }
+
+      // 2. Fall back to retainerBudget sum from this month's weekly reports
+      if (netSales === 0) {
+        const monthStartMs = monthStartSec * 1000;
+        const all = readJsonFile(WR_FILE, []);
+        const thisMonth = all.filter(r => r.submittedAt >= monthStartMs && r.reportType === 'brand_manager');
+        const latestPerBrand = {};
+        for (const r of thisMonth) {
+          if (!r.brand) continue;
+          if (!latestPerBrand[r.brand] || r.submittedAt > latestPerBrand[r.brand].submittedAt) {
+            latestPerBrand[r.brand] = r;
+          }
+        }
+        netSales = Math.round(Object.values(latestPerBrand).reduce((s, r) => s + (Number(r.retainerBudget) || 0), 0));
+      }
+
+      // Persist the auto-calculated value (only if not already manually overridden today)
+      if (netSales > 0) {
+        const data = readJsonFile(NET_SALES_FILE, {});
+        const existing = data[monthKey];
+        if (!existing || existing.updatedBy === 'auto') {
+          data[monthKey] = { netSales, updatedAt: Date.now(), updatedBy: 'auto', source };
+          writeJsonFile(NET_SALES_FILE, data);
+        }
+      }
+
+      res.json({ ok: true, monthKey, netSales, source });
     } catch (e) {
       res.status(500).json({ error: e.message });
     }
