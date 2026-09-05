@@ -1320,9 +1320,9 @@ function renderCompBanner(d){
     var raw=g.value||0;
     var isRatio=g.key==='ratio';
     var maxVal=isRatio?(d.ratioTiers&&d.ratioTiers[2]||g.hit||1):(g.hit||1);
-    var dispVal=isRatio?(Math.round(raw*1000)/10)+'%':Math.round(raw);
-    var dispFloor=isRatio?(Math.round(g.floor*100))+'%':g.floor;
-    var dispHit=isRatio?(Math.round(g.hit*100))+'%':g.hit;
+    var dispVal=isRatio?(Math.round(raw*10)/10)+'×':Math.round(raw);
+    var dispFloor=isRatio?g.floor+'×':g.floor;
+    var dispHit=isRatio?g.hit+'×':g.hit;
     var prog=Math.min(1,raw/maxVal);
     var floorPos=Math.round((g.floor/maxVal)*100);
     var fillPct=Math.round(prog*100);
@@ -1446,14 +1446,18 @@ function renderClientCards(brands){
       +'<div class="fr">'
         +'<div class="fg"><label>GMV ($) <span class="cr-auto-tag" id="'+eid('gmvsrc')+'" style="display:none">auto</span></label>'
           +'<input type="number" id="'+eid('gmv')+'" step="0.01" placeholder="0.00" style="font-size:15px"/></div>'
+        +'<div class="fg"><label>Net Sales — Seller Center ($)</label>'
+          +'<input type="number" id="'+eid('sellerNetSales')+'" step="0.01" placeholder="0.00" style="font-size:15px"/></div>'
+      +'</div>'
+      +'<div class="fr">'
         +'<div class="fg"><label>Videos Posted</label><input type="number" id="'+eid('videos')+'" placeholder="0"/></div>'
-      +'</div>'
-      +'<div class="fr">'
         +'<div class="fg"><label>Samples Sent</label><input type="number" id="'+eid('samples')+'" placeholder="0"/></div>'
-        +'<div class="fg"><label>CTR (%)</label><input type="number" id="'+eid('ctr')+'" step="0.01" placeholder="0.00"/></div>'
       +'</div>'
       +'<div class="fr">'
+        +'<div class="fg"><label>CTR (%)</label><input type="number" id="'+eid('ctr')+'" step="0.01" placeholder="0.00"/></div>'
         +'<div class="fg"><label>GMV Conversion Rate (%)</label><input type="number" id="'+eid('conv')+'" step="0.01" placeholder="0.00"/></div>'
+      +'</div>'
+      +'<div class="fr">'
         +'<div class="fg"><label>Shop Perf Score (/5)</label><input type="number" id="'+eid('sps')+'" step="0.1" max="5" placeholder="0.0"/></div>'
       +'</div>'
       +'<div class="fr full"><div class="fg"><label>Notes for client</label>'
@@ -1535,7 +1539,8 @@ function crVal(id){var el=document.getElementById(id);return el?el.value.trim():
 function submitClientReport(brand,sl){
   var errEl=document.getElementById('cr-err-'+sl);errEl.style.display='none';
   var payload={week:WR_WEEK_START,weekEnd:WR_WEEK_END,reportType:'brand_manager',brand:brand,
-    gmv:crNum('cr-gmv-'+sl),videosPosted:crNum('cr-videos-'+sl),samplesCount:crNum('cr-samples-'+sl),
+    gmv:crNum('cr-gmv-'+sl),sellerNetSales:crNum('cr-sellerNetSales-'+sl),
+    videosPosted:crNum('cr-videos-'+sl),samplesCount:crNum('cr-samples-'+sl),
     ctr:crNum('cr-ctr-'+sl),ctor:crNum('cr-conv-'+sl),spsOverall:crNum('cr-sps-'+sl),
     promotionRunning:false,growthOppsEnrolled:false,notes:crVal('cr-notes-'+sl)};
   fetch('/api/weekly-reports/submit',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
@@ -4582,16 +4587,44 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       } else if (reportType === 'video_editor') {
         kpis.videos = myReports.reduce((s, r) => s + (Number(r.videosEdited) || 0), 0);
       } else if (reportType === 'brand_manager') {
-        const totalVideos  = myReports.reduce((s, r) => s + (Number(r.videosPosted) || 0), 0);
-        const totalSamples = myReports.reduce((s, r) => s + (Number(r.samplesCount) || 0), 0);
-        kpis.ratio = totalSamples > 0 ? totalVideos / totalSamples : 0;
+        // Accumulate videos and samples per brand across all reports this month
+        const brandTotals = {};
+        for (const r of myReports) {
+          if (!r.brand) continue;
+          if (!brandTotals[r.brand]) brandTotals[r.brand] = { videos: 0, samples: 0 };
+          brandTotals[r.brand].videos  += Number(r.videosPosted) || 0;
+          brandTotals[r.brand].samples += Number(r.samplesCount) || 0;
+        }
+        // Per-brand ratio (skip brands with 0 samples), then average
+        const brandRatios = Object.values(brandTotals)
+          .filter(b => b.samples > 0)
+          .map(b => b.videos / b.samples);
+        kpis.ratio = brandRatios.length > 0
+          ? brandRatios.reduce((s, v) => s + v, 0) / brandRatios.length
+          : 0;
+
+        // Net sales from Gourab's Seller Center entries: sum latest per brand
+        const latestByBrand = {};
+        for (const r of myReports) {
+          if (!r.brand) continue;
+          if (!latestByBrand[r.brand] || r.submittedAt > latestByBrand[r.brand].submittedAt) {
+            latestByBrand[r.brand] = r;
+          }
+        }
+        kpis.sellerNetSales = Object.values(latestByBrand)
+          .reduce((s, r) => s + (Number(r.sellerNetSales) || 0), 0);
       }
 
+      // For brand_manager: use their own Seller Center entries as net sales if available
+      const effectiveNetSales = (reportType === 'brand_manager' && kpis.sellerNetSales > 0)
+        ? kpis.sellerNetSales
+        : netSales;
+
       const { bonusPct, gateDetails } = computeCompTierSrv(model, kpis);
-      const bonusDollars = netSales * bonusPct;
+      const bonusDollars = effectiveNetSales * bonusPct;
 
       res.json({
-        hasComp: true, monthKey, netSales, base: model.base,
+        hasComp: true, monthKey, netSales: effectiveNetSales, base: model.base,
         bonusPct, bonusDollars, floorPct: model.floorPct, hitPct: model.hitPct,
         kpis, gateDetails,
         ratioTiers: model.ratioTiers || null,
@@ -4728,44 +4761,25 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       let netSales = 0;
       let source = 'weekly_reports';
 
-      // 1. Try Stripe (current calendar month charges)
-      const STRIPE_KEY = process.env.STRIPE_SECRET_KEY;
-      if (STRIPE_KEY) {
-        try {
-          const sAuth = { headers: { Authorization: `Bearer ${STRIPE_KEY}` } };
-          let total = 0, has_more = true, starting_after = null, guard = 0;
-          while (has_more && guard < 10) {
-            let url = `https://api.stripe.com/v1/charges?limit=100&created[gte]=${monthStartSec}`;
-            if (starting_after) url += `&starting_after=${starting_after}`;
-            const r = await axios.get(url, sAuth);
-            const data = r.data.data || [];
-            for (const c of data) {
-              if (c.paid && c.status === 'succeeded' && !c.refunded) {
-                total += (c.amount - (c.amount_refunded || 0));
-              }
-            }
-            has_more = r.data.has_more;
-            if (data.length) starting_after = data[data.length - 1].id;
-            guard++;
-          }
-          if (total > 0) { netSales = Math.round(total / 100); source = 'stripe'; }
-        } catch (e) {
-          console.error('[auto-net-sales] Stripe error:', e.message);
+      // 1. Sum sellerNetSales from brand_manager weekly reports (latest entry per brand this month)
+      const monthStartMs = monthStartSec * 1000;
+      const all = readJsonFile(WR_FILE, []);
+      const thisMonth = all.filter(r => r.submittedAt >= monthStartMs && r.reportType === 'brand_manager');
+      const latestPerBrand = {};
+      for (const r of thisMonth) {
+        if (!r.brand) continue;
+        if (!latestPerBrand[r.brand] || r.submittedAt > latestPerBrand[r.brand].submittedAt) {
+          latestPerBrand[r.brand] = r;
         }
       }
+      const sellerTotal = Math.round(Object.values(latestPerBrand).reduce((s, r) => s + (Number(r.sellerNetSales) || 0), 0));
+      if (sellerTotal > 0) {
+        netSales = sellerTotal;
+        source = 'weekly_reports';
+      }
 
-      // 2. Fall back to retainerBudget sum from this month's weekly reports
+      // 2. Fall back to retainerBudget if no sellerNetSales entered yet
       if (netSales === 0) {
-        const monthStartMs = monthStartSec * 1000;
-        const all = readJsonFile(WR_FILE, []);
-        const thisMonth = all.filter(r => r.submittedAt >= monthStartMs && r.reportType === 'brand_manager');
-        const latestPerBrand = {};
-        for (const r of thisMonth) {
-          if (!r.brand) continue;
-          if (!latestPerBrand[r.brand] || r.submittedAt > latestPerBrand[r.brand].submittedAt) {
-            latestPerBrand[r.brand] = r;
-          }
-        }
         netSales = Math.round(Object.values(latestPerBrand).reduce((s, r) => s + (Number(r.retainerBudget) || 0), 0));
       }
 
