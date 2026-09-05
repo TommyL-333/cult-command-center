@@ -2323,6 +2323,7 @@ const TASK_MANAGEMENT_HTML = `<!DOCTYPE html>
 </div>
 
 <div class="toast" id="toast"></div>
+<script>document.getElementById('sub').textContent='PRE-SCRIPT OK — big script has parse error';</script>
 <script>
 window.onerror=function(msg,src,line){var el=document.getElementById('sub');if(el)el.textContent='JS Error: '+msg+' (line '+line+')';return false;};
 document.getElementById('sub').textContent='Script started…';
