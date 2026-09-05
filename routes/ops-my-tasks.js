@@ -355,7 +355,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .cb-gate-lbl{color:var(--muted)}
   .cb-gate-val{font-weight:600;color:var(--txt)}
   .cb-bar-wrap{position:relative;height:6px}
-  .cb-bar-bg{position:absolute;inset:0;border-radius:3px;overflow:hidden}
+  .cb-bar-bg{position:absolute;inset:0;border-radius:3px;overflow:hidden;background:var(--border)}
   .cb-bar-fill{height:100%;border-radius:3px;transition:width .5s}
   .cb-bar-fill.tier-none{background:rgba(120,120,150,.4)}
   .cb-bar-fill.tier-floor{background:linear-gradient(90deg,var(--cyan),rgba(0,242,234,.55))}
