@@ -362,6 +362,29 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .cb-update-btn{font-size:11px;background:none;border:1px solid var(--border);color:var(--muted);padding:2px 8px;border-radius:5px;cursor:pointer;font-family:inherit}
   .cb-update-btn:hover{border-color:var(--cyan);color:var(--cyan)}
   @media(max-width:540px){.cb-body{grid-template-columns:1fr}}
+  /* team payroll summary (CEO/admin view) */
+  .tp{background:rgba(255,0,80,.05);border:1px solid rgba(255,0,80,.22);border-radius:14px;padding:16px 18px;margin-bottom:18px}
+  .tp-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .tp-title{font-size:12px;font-weight:700;color:var(--red);text-transform:uppercase;letter-spacing:.06em}
+  .tp-est{font-size:10px;background:rgba(255,159,10,.15);color:#ffcf8a;padding:1px 7px;border-radius:4px;font-weight:600}
+  .tp-meta{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+  .tp-stat{text-align:center;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:10px}
+  .tp-stat .n{font-size:20px;font-weight:800;letter-spacing:-.02em}
+  .tp-stat .l{font-size:10px;color:var(--muted);margin-top:2px}
+  .tp-bar-wrap{margin-bottom:12px}
+  .tp-bar-label{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:4px}
+  .tp-bar-bg{height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+  .tp-bar-fill{height:100%;border-radius:3px;background:linear-gradient(90deg,var(--red),rgba(255,0,80,.4));transition:width .5s}
+  .tp-members{display:flex;flex-direction:column;gap:6px}
+  .tp-member{display:flex;align-items:center;gap:10px;padding:7px 10px;background:var(--panel);border:1px solid var(--border);border-radius:8px}
+  .tp-member-name{font-size:12px;font-weight:700;min-width:60px}
+  .tp-member-bar-bg{flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+  .tp-member-bar-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--red),rgba(255,0,80,.5));transition:width .5s}
+  .tp-member-amt{font-size:12px;font-weight:600;min-width:50px;text-align:right}
+  .tp-member-pct{font-size:10px;color:var(--muted);min-width:40px;text-align:right}
+  .tp-net{font-size:11px;color:var(--muted);margin-top:10px;padding-top:8px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .tp-net strong{color:var(--txt)}
+  @media(max-width:540px){.tp-meta{grid-template-columns:1fr 1fr}}
 </style>
 </head>
 <body>
@@ -376,7 +399,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     </div>
   </header>
   <div class="sub" id="sub">Loading…</div>
-  <div id="dev-banner" style="display:none;background:rgba(255,0,80,.1);border:1px solid rgba(255,0,80,.35);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12.5px;color:var(--red);display:flex;align-items:center;gap:8px;flex-wrap:wrap"></div>
+  <div id="dev-banner" style="display:none"></div>
   <div id="comp-banner" style="display:none"></div>
   <div class="tabs">
     <button class="tab active" onclick="switchTab(0)">My Tasks</button>
@@ -1089,7 +1112,10 @@ function approveSprintPlan(){
 function load(){
   if(DEV_AS){
     var db=document.getElementById('dev-banner');
-    if(db){db.innerHTML='<strong>Dev Mode</strong> — viewing as <strong>'+DEV_AS+'</strong>. All data shown is read-only.';db.style.display='flex';}
+    if(db){
+      db.style.cssText='display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:rgba(255,0,80,.1);border:1px solid rgba(255,0,80,.35);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12.5px;color:var(--red)';
+      db.innerHTML='<strong>Dev Mode</strong> — viewing as <strong>'+DEV_AS+'</strong>. Read-only.';
+    }
   }
   document.getElementById('sub').textContent='Loading your Ops Engine tasks…';
   fetch('/api/my-tasks/list',{credentials:'include'}).then(function(r){return r.json();}).then(function(d){
@@ -1248,19 +1274,32 @@ var COMP_DATA=null,CB_IS_ADMIN=false;
 function loadCompBanner(){
   fetch('/api/comp/summary',{credentials:'include'}).then(function(r){return r.json();}).then(function(d){
     COMP_DATA=d;
-    // Auto-calculate net sales if none is set yet (admin only, not in dev-as mode)
-    if(d.hasComp&&CB_IS_ADMIN&&!DEV_AS&&(!d.netSales||d.netSales===0)){
+    if(!d.hasComp&&CB_IS_ADMIN&&!DEV_AS){
+      // Admin with no personal comp: show team payroll summary
+      loadTeamSummaryBanner();
+    } else if(d.hasComp&&CB_IS_ADMIN&&!DEV_AS&&(!d.netSales||d.netSales===0)){
+      // Has personal comp but no net sales set: auto-calculate
       fetch('/api/admin/comp/net-sales-auto',{credentials:'include'}).then(function(r){return r.json();}).then(function(auto){
-        if(auto.ok&&auto.netSales>0){
-          d.netSales=auto.netSales;d.autoSource=auto.source;
-          COMP_DATA=d;
-        }
+        if(auto.ok&&auto.netSales>0){d.netSales=auto.netSales;d.autoSource=auto.source;COMP_DATA=d;}
         renderCompBanner(d);
       }).catch(function(){renderCompBanner(d);});
     } else {
       renderCompBanner(d);
     }
   }).catch(function(){});
+}
+function loadTeamSummaryBanner(){
+  var el=document.getElementById('comp-banner');
+  if(el)el.innerHTML='<div class="tp"><div class="tp-hdr"><span class="tp-title">Team Payroll</span><span class="tp-est">ESTIMATED — settles monthly</span></div><div style="color:var(--muted);font-size:12px">Loading…</div></div>';
+  if(el)el.style.display='';
+  fetch('/api/admin/comp/net-sales-auto',{credentials:'include'}).then(function(r){return r.json();}).catch(function(){return{};}).then(function(){
+    return fetch('/api/admin/comp/team-summary',{credentials:'include'}).then(function(r){return r.json();});
+  }).then(function(d){
+    renderTeamSummaryBanner(d);
+  }).catch(function(e){
+    var el2=document.getElementById('comp-banner');
+    if(el2)el2.innerHTML='';
+  });
 }
 function renderCompBanner(d){
   var el=document.getElementById('comp-banner');
@@ -1306,9 +1345,52 @@ function saveNetSales(){
   if(isNaN(v)||v<0){toast('Invalid amount');return;}
   fetch('/api/admin/comp/net-sales',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({netSales:v})})
   .then(function(r){return r.json();}).then(function(d){
-    if(d.ok){closeNsModal();loadCompBanner();toast('Net sales updated');}
+    if(d.ok){closeNsModal();if(CB_IS_ADMIN&&!COMP_DATA.hasComp)loadTeamSummaryBanner();else loadCompBanner();toast('Net sales updated');}
     else toast('Error: '+(d.error||'Failed'));
   }).catch(function(e){toast(''+e);});
+}
+
+function renderTeamSummaryBanner(d){
+  var el=document.getElementById('comp-banner');
+  if(!el)return;
+  if(!d||d.error){el.style.display='none';return;}
+  var ns=d.netSales||0;
+  var nsStr=ns?'$'+ns.toLocaleString():'Not set';
+  var currBonus=Math.round(d.totalCurrentBonus||0);
+  var maxBonus=Math.round(d.totalMaxBonus||0);
+  var currPct=Math.round((d.totalCurrentPct||0)*1000)/10;
+  var maxPct=Math.round((d.totalMaxPct||0)*100);
+  var cultShare=Math.round(d.cultContentShare||ns);
+  var earnedOfMax=maxBonus>0?Math.min(100,Math.round(currBonus/maxBonus*100)):0;
+  var sourceTag=d.netSalesSource==='stripe'?'<span style="font-size:10px;background:rgba(0,242,234,.1);color:var(--cyan);padding:1px 6px;border-radius:4px;margin-left:4px">stripe</span>':d.netSalesSource==='weekly_reports'?'<span style="font-size:10px;background:rgba(154,160,181,.1);color:var(--muted);padding:1px 6px;border-radius:4px;margin-left:4px">est.</span>':'';
+  var html='<div class="tp">';
+  html+='<div class="tp-hdr"><span class="tp-title">Team Payroll</span><span class="tp-est">ESTIMATED — settles monthly</span></div>';
+  html+='<div class="tp-meta">';
+  html+='<div class="tp-stat"><div class="n">$'+currBonus.toLocaleString()+'</div><div class="l">Current bonus payout</div></div>';
+  html+='<div class="tp-stat"><div class="n" style="color:var(--red)">'+maxPct+'%</div><div class="l">Max of net sales (all gates hit)</div></div>';
+  html+='<div class="tp-stat"><div class="n" style="color:var(--cyan)">$'+cultShare.toLocaleString()+'</div><div class="l">Cult Content keeps</div></div>';
+  html+='</div>';
+  html+='<div class="tp-bar-wrap">';
+  html+='<div class="tp-bar-label"><span>Earned: '+currPct+'% of net sales ('+earnedOfMax+'% of max)</span><span>Max: '+maxPct+'%</span></div>';
+  html+='<div class="tp-bar-bg"><div class="tp-bar-fill" style="width:'+earnedOfMax+'%"></div></div>';
+  html+='</div>';
+  html+='<div class="tp-members">';
+  (d.members||[]).forEach(function(m){
+    var mMax=Math.round(ns*(m.maxPct||0));
+    var mCurr=Math.round(m.bonusDollars||0);
+    var prog=mMax>0?Math.min(100,Math.round(mCurr/mMax*100)):0;
+    html+='<div class="tp-member">';
+    html+='<div class="tp-member-name">'+esc(m.name)+'</div>';
+    html+='<div class="tp-member-bar-bg"><div class="tp-member-bar-fill" style="width:'+prog+'%"></div></div>';
+    html+='<div class="tp-member-amt">$'+mCurr.toLocaleString()+'</div>';
+    html+='<div class="tp-member-pct" style="font-size:10px;color:var(--muted)">/ $'+mMax.toLocaleString()+'</div>';
+    html+='</div>';
+  });
+  html+='</div>';
+  html+='<div class="tp-net">Net sales this month: <strong>'+nsStr+'</strong>'+sourceTag;
+  html+=' &nbsp;<button class="cb-update-btn" onclick="openNsModal()">Override</button></div>';
+  html+='</div>';
+  el.innerHTML=html;el.style.display='';
 }
 
 function wrPrevWeekRange(){
@@ -4522,6 +4604,83 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       if (!isAdmin) return res.status(403).json({ error: 'Admin only' });
       const data = readJsonFile(NET_SALES_FILE, {});
       res.json({ data });
+    } catch (e) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // ---------- ROUTE: GET /api/admin/comp/team-summary ----------
+  // Returns team-wide payroll summary: current bonus per person, max possible,
+  // % of net sales committed, and what Cult Content keeps.
+  const COMP_NAMES = {
+    'gourab@cultcontent.cc': 'Gourab',
+    'gilbert@cultcontent.cc': 'Gilbert',
+    'gina@cultcontent.cc': 'Gina',
+    'becca@cultcontent.cc': 'Becca',
+    'jenna@cultcontent.cc': 'Jenna',
+  };
+  app.get('/api/admin/comp/team-summary', requireAuth, async (req, res) => {
+    try {
+      const callerEmail = (req.userEmail || '').toLowerCase();
+      const isAdmin = !!(req.session && req.session.isPortalAdmin) || ADMIN_EMAILS.has(callerEmail);
+      if (!isAdmin) return res.status(403).json({ error: 'Admin only' });
+
+      const now = new Date();
+      const monthKey = now.toISOString().slice(0, 7);
+      const monthStartMs = new Date(monthKey + '-01T00:00:00.000Z').getTime();
+      const nextMonth = new Date(monthKey + '-01T00:00:00.000Z');
+      nextMonth.setUTCMonth(nextMonth.getUTCMonth() + 1);
+      const monthEndMs = nextMonth.getTime();
+
+      const netSalesData = readJsonFile(NET_SALES_FILE, {});
+      const netSales = (netSalesData[monthKey] && netSalesData[monthKey].netSales) || 0;
+      const netSalesSource = (netSalesData[monthKey] && netSalesData[monthKey].source) || null;
+      const all = readJsonFile(WR_FILE, []);
+
+      const members = [];
+      let totalCurrentBonus = 0, totalMaxBonus = 0;
+
+      for (const [email, model] of Object.entries(COMP_MODEL)) {
+        const reportType = REPORT_TYPES[email] || 'brand_manager';
+        const myReports = all.filter(r =>
+          (r.submittedBy || '').toLowerCase() === email &&
+          r.submittedAt >= monthStartMs && r.submittedAt < monthEndMs
+        );
+        const kpis = {};
+        if (reportType === 'community_manager') {
+          kpis.calls   = myReports.reduce((s, r) => s + (Number(r.calls)   || 0), 0);
+          kpis.videos  = myReports.reduce((s, r) => s + (Number(r.videos)  || 0), 0);
+          kpis.signups = myReports.reduce((s, r) => s + (Number(r.signups) || 0), 0);
+        } else if (reportType === 'video_editor') {
+          kpis.videos = myReports.reduce((s, r) => s + (Number(r.videosEdited) || 0), 0);
+        } else if (reportType === 'brand_manager') {
+          const vids = myReports.reduce((s, r) => s + (Number(r.videosPosted) || 0), 0);
+          const samps = myReports.reduce((s, r) => s + (Number(r.samplesCount) || 0), 0);
+          kpis.ratio = samps > 0 ? vids / samps : 0;
+        }
+        const { bonusPct, gateDetails } = computeCompTierSrv(model, kpis);
+        const bonusDollars = Math.round(netSales * bonusPct);
+        const maxDollars = Math.round(netSales * model.hitPct);
+        totalCurrentBonus += bonusDollars;
+        totalMaxBonus += maxDollars;
+        members.push({
+          email, name: COMP_NAMES[email] || email.split('@')[0],
+          base: model.base, bonusPct, bonusDollars, maxPct: model.hitPct, maxDollars,
+          gateDetails, reportType, hasReports: myReports.length > 0,
+        });
+      }
+
+      const totalMaxPct = Object.values(COMP_MODEL).reduce((s, m) => s + m.hitPct, 0);
+      const totalCurrentPct = netSales > 0 ? totalCurrentBonus / netSales : 0;
+      const cultContentShare = Math.round(netSales - totalCurrentBonus);
+
+      res.json({
+        monthKey, netSales, netSalesSource,
+        members, totalCurrentBonus, totalCurrentPct,
+        totalMaxBonus, totalMaxPct,
+        cultContentShare,
+        membersOnKpi: members.length,
+      });
     } catch (e) {
       res.status(500).json({ error: e.message });
     }
