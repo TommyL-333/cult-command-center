@@ -542,7 +542,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
 
 <!-- Video Queue tab -->
 <div id="tab-video-queue" style="display:none">
-  <div class="vq-submit" id="vq-submit-form">
+  <div class="vq-submit" id="vq-submit-form" style="display:none">
     <h3>Submit Video Request</h3>
     <div class="fr">
       <div class="fg"><label>Brand / Client</label>
@@ -3022,17 +3022,19 @@ function loadVideoQueue(){
     VQ_IS_EDITOR=!!d.isEditor;
     VQ_IS_ADMIN=!!d.isAdmin;
     VQ_LOADED=true;
-    // Hide form from video editors; show list view instead of kanban
-    var isEditorOnly=VQ_IS_EDITOR&&!VQ_IS_ADMIN;
-    document.getElementById('vq-submit-form').style.display=isEditorOnly?'none':'';
-    document.getElementById('vq-queue-wrap').style.display=isEditorOnly?'none':'';
-    document.getElementById('vq-list-wrap').style.display=isEditorOnly?'':'none';
+    // Use effective email (DEV_AS takes priority over server-reported email)
+    var effEmail=(DEV_AS||VQ_MY_EMAIL).toLowerCase();
+    var VQ_EDITOR_SET=['gilbert@cultcontent.cc'];
+    var isEditorView=VQ_EDITOR_SET.indexOf(effEmail)>=0;
+    document.getElementById('vq-submit-form').style.display=isEditorView?'none':'';
+    document.getElementById('vq-queue-wrap').style.display=isEditorView?'none':'';
+    document.getElementById('vq-list-wrap').style.display=isEditorView?'':'none';
     renderVideoQueue();
   }).catch(function(e){toast('Could not load video queue: '+e);});
 }
 
 function renderVideoQueue(){
-  var isEditorOnly=VQ_IS_EDITOR&&!VQ_IS_ADMIN;
+  var isEditorOnly=['gilbert@cultcontent.cc'].indexOf((DEV_AS||VQ_MY_EMAIL).toLowerCase())>=0;
   if(isEditorOnly){
     renderVqList();
     return;
