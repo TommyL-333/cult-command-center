@@ -2324,6 +2324,7 @@ const TASK_MANAGEMENT_HTML = `<!DOCTYPE html>
 
 <div class="toast" id="toast"></div>
 <script>
+window.onerror=function(msg,src,line){var el=document.getElementById('sub');if(el)el.textContent='JS Error: '+msg+' (line '+line+')';return false;};
 var ALL=[],FILTERED=[],NT=null,ADEL_ID=null,WR_ALL=[],CLIENTS_LIST=[],OWNER_MAP={},SELECTED=new Set();
 var ACTIVE_CARD=null;
 var EDIT_RID=null;
