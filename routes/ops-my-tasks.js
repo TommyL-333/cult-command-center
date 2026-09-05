@@ -391,7 +391,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .tp-net strong{color:var(--txt)}
   @media(max-width:540px){.tp-meta{grid-template-columns:1fr 1fr}}
   /* ── Video Queue ──────────────────────────────────────── */
-  .vq-submit{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:22px}
+  .vq-submit{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:22px;max-width:640px}
   .vq-submit h3{margin:0 0 14px;font-size:15px;font-weight:700}
   .vq-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
   @media(max-width:720px){.vq-cols{grid-template-columns:1fr}}
@@ -416,6 +416,23 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .vq-btn.vq-done{background:rgba(107,232,107,.15);color:#6be86b;border-color:rgba(107,232,107,.3)}
   .vq-btn.vq-drive{background:rgba(0,242,234,.1);color:var(--cyan);border-color:rgba(0,242,234,.3)}
   .vq-empty{color:var(--muted);font-size:12px;padding:20px 0;text-align:center}
+  /* Gilbert list view */
+  .vq-list-hdr{display:grid;grid-template-columns:10px 110px 1fr 80px 80px 80px;gap:12px;align-items:center;padding:0 16px 8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:1px solid var(--border);margin-bottom:8px}
+  .vq-row{border:1px solid var(--border);border-radius:10px;margin-bottom:7px;overflow:hidden;transition:.15s}
+  .vq-row:hover{border-color:rgba(0,242,234,.4)}
+  .vq-row-summary{display:grid;grid-template-columns:10px 110px 1fr 80px 80px 80px;gap:12px;align-items:center;padding:11px 16px;cursor:pointer;min-height:44px}
+  .vq-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+  .vq-dot-pending{background:var(--muted)}
+  .vq-dot-inprogress{background:var(--cyan)}
+  .vq-dot-done{background:#6be86b}
+  .vq-row-title{font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .vq-row-sub{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .vq-row-member{font-size:12px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .vq-row-due{font-size:11px;color:var(--muted);white-space:nowrap}
+  .vq-row-detail{border-top:1px solid var(--border);padding:14px 16px;display:none;background:var(--panel)}
+  .vq-row.expanded .vq-row-detail{display:block}
+  .vq-chevron{color:var(--muted);font-size:11px;margin-left:auto;flex-shrink:0}
+  @media(max-width:700px){.vq-list-hdr,.vq-row-summary{grid-template-columns:10px 90px 1fr 70px}.vq-row-summary>:nth-child(5),.vq-row-summary>:nth-child(6),.vq-list-hdr>:nth-child(5),.vq-list-hdr>:nth-child(6){display:none}}
 </style>
 </head>
 <body>
@@ -573,6 +590,19 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
       <div class="vq-col-hdr">Done <span class="vq-col-count" id="vq-cnt-done">0</span></div>
       <div id="vq-col-done"></div>
     </div>
+  </div>
+
+  <!-- Gilbert list view (video_editor only) -->
+  <div id="vq-list-wrap" style="display:none">
+    <div class="vq-list-hdr">
+      <span></span>
+      <span>From</span>
+      <span>Request</span>
+      <span>Priority</span>
+      <span>Due</span>
+      <span>Status</span>
+    </div>
+    <div id="vq-list-rows"></div>
   </div>
 </div>
 
@@ -2982,7 +3012,6 @@ var VQ_BRANDS=['Lode WTR','Roots by Genetic Art','Trip Visuals','Made Right','B 
 
 function loadVideoQueue(){
   if(!VQ_LOADED){
-    // Populate brand datalist
     var dl=document.getElementById('vq-brand-list');
     if(dl)VQ_BRANDS.forEach(function(b){var o=document.createElement('option');o.value=b;dl.appendChild(o);});
   }
@@ -2993,11 +3022,21 @@ function loadVideoQueue(){
     VQ_IS_EDITOR=!!d.isEditor;
     VQ_IS_ADMIN=!!d.isAdmin;
     VQ_LOADED=true;
+    // Hide form from video editors; show list view instead of kanban
+    var isEditorOnly=VQ_IS_EDITOR&&!VQ_IS_ADMIN;
+    document.getElementById('vq-submit-form').style.display=isEditorOnly?'none':'';
+    document.getElementById('vq-queue-wrap').style.display=isEditorOnly?'none':'';
+    document.getElementById('vq-list-wrap').style.display=isEditorOnly?'':'none';
     renderVideoQueue();
   }).catch(function(e){toast('Could not load video queue: '+e);});
 }
 
 function renderVideoQueue(){
+  var isEditorOnly=VQ_IS_EDITOR&&!VQ_IS_ADMIN;
+  if(isEditorOnly){
+    renderVqList();
+    return;
+  }
   var pending=VQ_DATA.filter(function(r){return r.status==='pending';});
   var inprog=VQ_DATA.filter(function(r){return r.status==='in-progress';});
   var done=VQ_DATA.filter(function(r){return r.status==='done';});
@@ -3007,6 +3046,50 @@ function renderVideoQueue(){
   document.getElementById('vq-col-pending').innerHTML=pending.map(vqCardHtml).join('')||'<div class="vq-empty">No pending requests</div>';
   document.getElementById('vq-col-inprogress').innerHTML=inprog.map(vqCardHtml).join('')||'<div class="vq-empty">Nothing in progress</div>';
   document.getElementById('vq-col-done').innerHTML=done.map(vqCardHtml).join('')||'<div class="vq-empty">Nothing done yet</div>';
+}
+
+function renderVqList(){
+  // Sort: pending first, then in-progress, then done; within each by submittedAt desc
+  var order={pending:0,'in-progress':1,done:2};
+  var sorted=VQ_DATA.slice().sort(function(a,b){
+    var od=(order[a.status]||0)-(order[b.status]||0);
+    return od!==0?od:(b.submittedAt||0)-(a.submittedAt||0);
+  });
+  document.getElementById('vq-list-rows').innerHTML=
+    sorted.length?sorted.map(vqRowHtml).join(''):'<div class="vq-empty">No video requests yet.</div>';
+}
+
+function vqRowHtml(r){
+  var id=esc(r.id||'');
+  var prioClass=r.priority==='high'?'vq-prio-high':r.priority==='low'?'vq-prio-low':'vq-prio-normal';
+  var prioPretty=r.priority==='high'?'🔴 High':r.priority==='low'?'Low':'Normal';
+  var dotClass=r.status==='done'?'vq-dot-done':r.status==='in-progress'?'vq-dot-inprogress':'vq-dot-pending';
+  var statusPretty=r.status==='in-progress'?'In Progress':r.status==='done'?'Done':'Pending';
+  var due=r.dueDate||'—';
+  var driveBtn=r.driveUrl?'<button class="vq-btn vq-drive" onclick="event.stopPropagation();vqOpenDrive(\\''+id+'\\')">📁 Open Footage</button>':'<span style="color:var(--muted);font-size:12px">No footage linked</span>';
+  var actionBtn='';
+  if(r.status==='pending') actionBtn='<button class="vq-btn vq-primary" onclick="event.stopPropagation();vqSetStatus(\\''+id+'\\',\\'in-progress\\')">▶ Start</button>';
+  if(r.status==='in-progress') actionBtn='<button class="vq-btn vq-done" onclick="event.stopPropagation();vqSetStatus(\\''+id+'\\',\\'done\\')">✓ Mark Done</button>';
+  if(r.status==='done') actionBtn='<button class="vq-btn" onclick="event.stopPropagation();vqSetStatus(\\''+id+'\\',\\'pending\\')">↩ Reopen</button>';
+  return '<div class="vq-row" id="vqrow-'+id+'">'
+    +'<div class="vq-row-summary" onclick="vqToggleRow(\\''+id+'\\')">'
+    +'<div class="vq-dot '+dotClass+'"></div>'
+    +'<div class="vq-row-member">'+esc(r.submittedByName||r.submittedBy||'?')+'</div>'
+    +'<div><div class="vq-row-title">'+esc(r.title||'Untitled')+'</div><div class="vq-row-sub">'+esc(r.brand||'—')+'</div></div>'
+    +'<span class="vq-prio-chip '+prioClass+'">'+prioPretty+'</span>'
+    +'<div class="vq-row-due">'+esc(due)+'</div>'
+    +'<div style="font-size:11px;color:var(--muted)">'+esc(statusPretty)+'</div>'
+    +'</div>'
+    +'<div class="vq-row-detail">'
+    +(r.description?'<div style="font-size:13px;line-height:1.5;margin-bottom:12px">'+esc(r.description)+'</div>':'')
+    +'<div class="vq-actions">'+driveBtn+actionBtn+'</div>'
+    +'</div>'
+    +'</div>';
+}
+
+function vqToggleRow(id){
+  var el=document.getElementById('vqrow-'+id);
+  if(el)el.classList.toggle('expanded');
 }
 
 function vqCardHtml(r){
