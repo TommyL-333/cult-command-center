@@ -2323,10 +2323,7 @@ const TASK_MANAGEMENT_HTML = `<!DOCTYPE html>
 </div>
 
 <div class="toast" id="toast"></div>
-<script>document.getElementById('sub').textContent='PRE-SCRIPT OK — big script has parse error';</script>
 <script>
-window.onerror=function(msg,src,line){var el=document.getElementById('sub');if(el)el.textContent='JS Error: '+msg+' (line '+line+')';return false;};
-document.getElementById('sub').textContent='Script started…';
 var ALL=[],FILTERED=[],NT=null,ADEL_ID=null,WR_ALL=[],CLIENTS_LIST=[],OWNER_MAP={},SELECTED=new Set();
 var ACTIVE_CARD=null;
 var EDIT_RID=null;
@@ -2480,12 +2477,8 @@ function healthAvg(r){
 }
 
 function loadAll(){
-  document.getElementById('sub').textContent='Fetching tasks from Lark…';
   Promise.all([
-    fetch('/api/admin/tasks',{credentials:'include'}).then(function(r){
-      document.getElementById('sub').textContent='Got tasks (HTTP '+r.status+'), parsing…';
-      return r.json();
-    }),
+    fetch('/api/admin/tasks',{credentials:'include'}).then(function(r){return r.json();}),
     fetch('/api/my-tasks/team',{credentials:'include'}).then(function(r){return r.json();}).catch(function(){return{team:[]};})
   ]).then(function(rs){
     var d=rs[0],teamData=rs[1];
@@ -2988,7 +2981,7 @@ var DEV_MEMBERS=[
 function openDevMode(){
   var grid=document.getElementById('dev-member-grid');
   grid.innerHTML=DEV_MEMBERS.map(function(m){
-    return '<div class="dev-member-card" onclick="devLoadMember(\''+m.email+'\',\''+m.name+'\')">'
+    return '<div class="dev-member-card" onclick="devLoadMember(\\''+m.email+'\\',\\''+m.name+'\\')">'
       +'<div class="dev-member-name">'+m.name+'</div>'
       +'<div class="dev-member-role">'+m.role+'</div>'
       +'<div class="dev-member-email">'+m.email+'</div>'
