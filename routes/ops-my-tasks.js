@@ -80,7 +80,7 @@ const BRAND_MANAGERS = {
 // brand_manager: per-brand GMV/content/SPS
 // operations: Hasan — automations, templates, blockers removed
 // video_editor: Gilbert — videos edited/delivered
-// community_manager: Gina/Becca/Jenna — 1:1 calls, videos posted, creator signups
+// community_manager: Jina/Becca/Jenna — 1:1 calls, videos posted, creator signups
 // ceo: Tommy — sales calls, proposals, community growth, strategic notes
 const REPORT_TYPES = {
   'shayan@cultcontent.cc': 'brand_manager',
@@ -354,9 +354,14 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .cb-gate-meta{display:flex;justify-content:space-between;font-size:11px}
   .cb-gate-lbl{color:var(--muted)}
   .cb-gate-val{font-weight:600;color:var(--txt)}
-  .cb-bar-bg{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
-  .cb-bar-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--cyan),rgba(0,242,234,.5));transition:width .5s}
-  .cb-bar-fill.full{background:linear-gradient(90deg,var(--cyan),var(--red))}
+  .cb-bar-wrap{position:relative;height:6px}
+  .cb-bar-bg{position:absolute;inset:0;border-radius:3px;overflow:hidden}
+  .cb-bar-fill{height:100%;border-radius:3px;transition:width .5s}
+  .cb-bar-fill.tier-none{background:rgba(120,120,150,.4)}
+  .cb-bar-fill.tier-floor{background:linear-gradient(90deg,var(--cyan),rgba(0,242,234,.55))}
+  .cb-bar-fill.tier-hit{background:linear-gradient(90deg,#c9a84c,#f0d060)}
+  .cb-bar-tick{position:absolute;top:-1px;bottom:-1px;width:2px;border-radius:1px;background:var(--dark);z-index:2;transform:translateX(-50%)}
+  .cb-tier-labels{display:flex;position:relative;height:14px;font-size:9px;color:var(--muted);margin-top:1px}
   .cb-net{font-size:11px;color:var(--muted);margin-top:10px;padding-top:8px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .cb-net strong{color:var(--txt)}
   .cb-update-btn{font-size:11px;background:none;border:1px solid var(--border);color:var(--muted);padding:2px 8px;border-radius:5px;cursor:pointer;font-family:inherit}
@@ -1313,14 +1318,28 @@ function renderCompBanner(d){
   var gHtml='';
   gd.forEach(function(g){
     var raw=g.value||0;
-    var dispVal=g.key==='ratio'?(Math.round(raw*1000)/10)+'%':Math.round(raw);
-    var dispHit=g.key==='ratio'?(Math.round(g.hit*100))+'%':g.hit;
-    var prog=Math.min(1,g.key==='ratio'?(raw/(d.ratioTiers&&d.ratioTiers[2]||g.hit||1)):(raw/(g.hit||1)));
-    var isFull=g.score>=1.0;
+    var isRatio=g.key==='ratio';
+    var maxVal=isRatio?(d.ratioTiers&&d.ratioTiers[2]||g.hit||1):(g.hit||1);
+    var dispVal=isRatio?(Math.round(raw*1000)/10)+'%':Math.round(raw);
+    var dispFloor=isRatio?(Math.round(g.floor*100))+'%':g.floor;
+    var dispHit=isRatio?(Math.round(g.hit*100))+'%':g.hit;
+    var prog=Math.min(1,raw/maxVal);
+    var floorPos=Math.round((g.floor/maxVal)*100);
+    var fillPct=Math.round(prog*100);
+    var tierCls=g.score>=1.0?'tier-hit':g.score>=0.5?'tier-floor':'tier-none';
+    var tierBonusTxt=g.score>=1.0?('+'+(Math.round((d.hitPct||0)*1000)/10)+'%'):g.score>=0.5?('+'+(Math.round((d.floorPct||0)*1000)/10)+'%'):'no bonus';
     gHtml+='<div class="cb-gate-row">';
     gHtml+='<div class="cb-gate-meta"><span class="cb-gate-lbl">'+esc(g.label)+'</span>';
-    gHtml+='<span class="cb-gate-val">'+dispVal+' / <span style="opacity:.45">'+dispHit+'</span></span></div>';
-    gHtml+='<div class="cb-bar-bg"><div class="cb-bar-fill'+(isFull?' full':'')+'" style="width:'+Math.round(prog*100)+'%"></div></div>';
+    gHtml+='<span class="cb-gate-val">'+dispVal+'<span style="opacity:.35;font-size:10px;margin-left:5px">'+dispFloor+' / '+dispHit+'</span></span></div>';
+    gHtml+='<div class="cb-bar-wrap">';
+    gHtml+='<div class="cb-bar-bg"><div class="cb-bar-fill '+tierCls+'" style="width:'+fillPct+'%"></div></div>';
+    gHtml+='<div class="cb-bar-tick" style="left:'+floorPos+'%"></div>';
+    gHtml+='</div>';
+    gHtml+='<div class="cb-tier-labels">';
+    gHtml+='<span style="position:absolute;left:'+floorPos+'%;transform:translateX(-50%)">'+dispFloor+'</span>';
+    gHtml+='<span style="position:absolute;right:0">'+dispHit+'</span>';
+    gHtml+='<span style="position:absolute;right:0;top:7px;font-size:8px;opacity:.6">'+tierBonusTxt+'</span>';
+    gHtml+='</div>';
     gHtml+='</div>';
   });
   var adminBtn=CB_IS_ADMIN&&!DEV_AS?'<button class="cb-update-btn" onclick="openNsModal()">Override</button>':'';
@@ -2973,7 +2992,7 @@ loadAll();
 var DEV_MEMBERS=[
   {name:'Gourab',email:'gourab@cultcontent.cc',role:'Brand Manager'},
   {name:'Gilbert',email:'gilbert@cultcontent.cc',role:'Video Editor'},
-  {name:'Gina',email:'gina@cultcontent.cc',role:'Community Manager'},
+  {name:'Jina',email:'gina@cultcontent.cc',role:'Community Manager'},
   {name:'Becca',email:'becca@cultcontent.cc',role:'Community Manager'},
   {name:'Jenna',email:'jenna@cultcontent.cc',role:'Community Manager'},
   {name:'Daniel',email:'daniel@cultcontent.cc',role:'Developer'},
@@ -4622,7 +4641,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
   const COMP_NAMES = {
     'gourab@cultcontent.cc': 'Gourab',
     'gilbert@cultcontent.cc': 'Gilbert',
-    'gina@cultcontent.cc': 'Gina',
+    'gina@cultcontent.cc': 'Jina',
     'becca@cultcontent.cc': 'Becca',
     'jenna@cultcontent.cc': 'Jenna',
   };
