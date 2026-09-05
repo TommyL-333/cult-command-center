@@ -3022,11 +3022,13 @@ function loadVideoQueue(){
     VQ_IS_EDITOR=!!d.isEditor;
     VQ_IS_ADMIN=!!d.isAdmin;
     VQ_LOADED=true;
-    // Use effective email (DEV_AS takes priority over server-reported email)
+    // Explicit lists — DEV_AS takes priority over server-reported email
     var effEmail=(DEV_AS||VQ_MY_EMAIL).toLowerCase();
+    var VQ_SUBMITTER_SET=['tommy@cultcontent.cc','jina@cultcontent.cc','becca@cultcontent.cc','jenna@cultcontent.cc'];
     var VQ_EDITOR_SET=['gilbert@cultcontent.cc'];
+    var canSubmit=VQ_SUBMITTER_SET.indexOf(effEmail)>=0;
     var isEditorView=VQ_EDITOR_SET.indexOf(effEmail)>=0;
-    document.getElementById('vq-submit-form').style.display=isEditorView?'none':'';
+    document.getElementById('vq-submit-form').style.display=canSubmit?'':'none';
     document.getElementById('vq-queue-wrap').style.display=isEditorView?'none':'';
     document.getElementById('vq-list-wrap').style.display=isEditorView?'':'none';
     renderVideoQueue();
