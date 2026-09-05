@@ -143,6 +143,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>My Tasks · Cult Content</title>
+<script>window.__VQ_IS_EDITOR__=false;window.__VQ_IS_ADMIN__=false;</script>
 <style>
   :root{--bg:#161823;--panel:#1e2030;--panel2:#252838;--border:#2f3346;--txt:#e8eaf2;--muted:#9aa0b5;--cyan:#00f2ea;--red:#ff0050;--p1:#ff0050;--p2:#ff9f0a;--p3:#ffd60a;--p4:#5a6072;}
   *{box-sizing:border-box}
@@ -453,7 +454,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     <button class="tab active" onclick="switchTab(0)">My Tasks</button>
     <button class="tab" onclick="switchTab(1)">Client Reports</button>
     <button class="tab" onclick="switchTab(2)">Sprint</button>
-    <button class="tab" onclick="switchTab(3)">Video Queue</button>
+    <button class="tab" id="vq-tab-btn" onclick="switchTab(3)">Video Queue</button>
   </div>
 
   <div id="tab-tasks">
@@ -542,7 +543,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
 
 <!-- Video Queue tab -->
 <div id="tab-video-queue" style="display:none">
-  <div class="vq-submit" id="vq-submit-form">
+  <div class="vq-submit" id="vq-submit-form" style="display:none">
     <h3>Submit Video Request</h3>
     <div class="fr">
       <div class="fg"><label>Brand / Client</label>
@@ -855,7 +856,7 @@ function switchTab(idx){
   document.getElementById('tab-video-queue').style.display=idx===3?'':'none';
   if(idx===1)loadReportTab();
   if(idx===2)loadSprint();
-  if(idx===3)loadVideoQueue();
+  if(idx===3){applyVqRole();loadVideoQueue();}
 }
 
 /* ── Sprint planner ──────────────────────────────────── */
@@ -1227,6 +1228,7 @@ function approveSprintPlan(){
 }
 
 function load(){
+  applyVqRole();
   if(DEV_AS){
     var db=document.getElementById('dev-banner');
     if(db){
@@ -3010,6 +3012,18 @@ function doAdminDelete(){
 var VQ_DATA=[], VQ_MY_EMAIL='', VQ_IS_EDITOR=false, VQ_IS_ADMIN=false, VQ_LOADED=false;
 var VQ_BRANDS=['Lode WTR','Roots by Genetic Art','Trip Visuals','Made Right','B NOOR','Elasco Skincare','Starlit Scribbles'];
 
+function applyVqRole(){
+  var isEd=!!(window.__VQ_IS_EDITOR__);
+  var isAdm=!!(window.__VQ_IS_ADMIN__);
+  // Tab label
+  var tabBtn=document.getElementById('vq-tab-btn');
+  if(tabBtn)tabBtn.textContent=isEd?'Video Queue':'Submit Request';
+  // Panels
+  document.getElementById('vq-submit-form').style.display=isEd?'none':'';
+  document.getElementById('vq-queue-wrap').style.display=isAdm?'':'none';
+  document.getElementById('vq-list-wrap').style.display=isEd?'':'none';
+}
+
 function loadVideoQueue(){
   if(!VQ_LOADED){
     var dl=document.getElementById('vq-brand-list');
@@ -3022,22 +3036,12 @@ function loadVideoQueue(){
     VQ_IS_EDITOR=!!d.isEditor;
     VQ_IS_ADMIN=!!d.isAdmin;
     VQ_LOADED=true;
-    // DEV_AS takes priority over server-reported email
-    var effEmail=(DEV_AS||VQ_MY_EMAIL).toLowerCase();
-    var isEditorView=effEmail==='gilbert@cultcontent.cc';
-    var isAdmin=effEmail==='tommy@cultcontent.cc';
-    var canSeeKanban=isAdmin||isEditorView;
-    // Form is visible by default; hide only for the video editor
-    document.getElementById('vq-submit-form').style.display=isEditorView?'none':'';
-    document.getElementById('vq-queue-wrap').style.display=canSeeKanban&&!isEditorView?'':'none';
-    document.getElementById('vq-list-wrap').style.display=isEditorView?'':'none';
     renderVideoQueue();
   }).catch(function(e){toast('Could not load video queue: '+e);});
 }
 
 function renderVideoQueue(){
-  var isEditorOnly=['gilbert@cultcontent.cc'].indexOf((DEV_AS||VQ_MY_EMAIL).toLowerCase())>=0;
-  if(isEditorOnly){
+  if(window.__VQ_IS_EDITOR__){
     renderVqList();
     return;
   }
@@ -4800,7 +4804,13 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
   // Pillar filter, and completes tasks via a modal with a CLIENT-SIDE
   // required-result guard (submit disabled until the textarea is non-empty).
   app.get('/my-tasks', requireAuth, (req, res) => {
-    res.type('html').send(MY_TASKS_HTML);
+    const email = effectiveEmail(req).toLowerCase();
+    const isEditor = VIDEO_EDITOR_EMAILS.has(email);
+    const isAdmin = ADMIN_EMAILS.has(email);
+    const html = MY_TASKS_HTML
+      .replace('window.__VQ_IS_EDITOR__=false;', `window.__VQ_IS_EDITOR__=${isEditor};`)
+      .replace('window.__VQ_IS_ADMIN__=false;', `window.__VQ_IS_ADMIN__=${isAdmin};`);
+    res.type('html').send(html);
   });
   // ---------- SERVER-SIDE COMP TIER HELPER ----------
   function computeCompTierSrv(model, kpis) {
