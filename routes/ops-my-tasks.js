@@ -5073,11 +5073,13 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
 
   // ---------- ROUTE: GET /api/video-requests ----------
   // Returns all video requests. Editor/admin see all; others see own.
+  // Honors ?devAs= so admin dev-mode previews show the correct role flags.
   const VIDEO_EDITOR_EMAILS = new Set(['gilbert@cultcontent.cc']);
   app.get('/api/video-requests', requireAuth, (req, res) => {
     try {
-      const email = (req.userEmail || '').toLowerCase();
-      const isAdmin = ADMIN_EMAILS.has(email);
+      const callerEmail = (req.userEmail || '').toLowerCase();
+      const email = effectiveEmail(req); // respects ?devAs for admin
+      const isAdmin = ADMIN_EMAILS.has(callerEmail) && callerEmail === email; // true only when not impersonating
       const isEditor = VIDEO_EDITOR_EMAILS.has(email);
       const all = readJsonFile(VR_FILE, []);
       const requests = (isAdmin || isEditor)
