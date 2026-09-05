@@ -391,7 +391,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .tp-net strong{color:var(--txt)}
   @media(max-width:540px){.tp-meta{grid-template-columns:1fr 1fr}}
   /* ── Video Queue ──────────────────────────────────────── */
-  .vq-submit{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:22px;max-width:640px}
+  .vq-submit{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;margin:0 auto 22px;max-width:640px}
   .vq-submit h3{margin:0 0 14px;font-size:15px;font-weight:700}
   .vq-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
   @media(max-width:720px){.vq-cols{grid-template-columns:1fr}}
@@ -3025,9 +3025,11 @@ function loadVideoQueue(){
     // DEV_AS takes priority over server-reported email
     var effEmail=(DEV_AS||VQ_MY_EMAIL).toLowerCase();
     var isEditorView=effEmail==='gilbert@cultcontent.cc';
+    var isAdmin=effEmail==='tommy@cultcontent.cc';
+    var canSeeKanban=isAdmin||isEditorView;
     // Form is visible by default; hide only for the video editor
     document.getElementById('vq-submit-form').style.display=isEditorView?'none':'';
-    document.getElementById('vq-queue-wrap').style.display=isEditorView?'none':'';
+    document.getElementById('vq-queue-wrap').style.display=canSeeKanban&&!isEditorView?'':'none';
     document.getElementById('vq-list-wrap').style.display=isEditorView?'':'none';
     renderVideoQueue();
   }).catch(function(e){toast('Could not load video queue: '+e);});
