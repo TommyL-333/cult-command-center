@@ -2477,9 +2477,12 @@ function healthAvg(r){
 }
 
 function loadAll(){
-  document.getElementById('sub').textContent='Loading…';
+  document.getElementById('sub').textContent='Fetching tasks from Lark…';
   Promise.all([
-    fetch('/api/admin/tasks',{credentials:'include'}).then(function(r){return r.json();}),
+    fetch('/api/admin/tasks',{credentials:'include'}).then(function(r){
+      document.getElementById('sub').textContent='Got tasks (HTTP '+r.status+'), parsing…';
+      return r.json();
+    }),
     fetch('/api/my-tasks/team',{credentials:'include'}).then(function(r){return r.json();}).catch(function(){return{team:[]};})
   ]).then(function(rs){
     var d=rs[0],teamData=rs[1];
@@ -4116,6 +4119,7 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
   app.get('/api/admin/tasks', requireAuth, async (req, res) => {
     try {
       const email = (req.userEmail || (req.session && req.session.userEmail) || '').toLowerCase();
+      console.log('[admin/tasks] HIT email=' + email);
       const isAdmin = !!(req.session && req.session.isPortalAdmin) || ADMIN_EMAILS.has(email);
       if (!isAdmin) return res.status(403).json({ error: 'Admin access required' });
 
