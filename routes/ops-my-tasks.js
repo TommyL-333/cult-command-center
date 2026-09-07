@@ -454,7 +454,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     <button class="tab active" onclick="switchTab(0)">My Tasks</button>
     <button class="tab" onclick="switchTab(1)">Client Reports</button>
     <button class="tab" onclick="switchTab(2)">Sprint</button>
-    <button class="tab" id="vq-tab-btn" onclick="switchTab(3)">Video Queue</button>
+    <button class="tab" id="vq-tab-btn" onclick="switchTab(3)">__VQ_TAB_LABEL__</button>
   </div>
 
   <div id="tab-tasks">
@@ -1228,7 +1228,6 @@ function approveSprintPlan(){
 }
 
 function load(){
-  applyVqRole();
   if(DEV_AS){
     var db=document.getElementById('dev-banner');
     if(db){
@@ -3015,10 +3014,6 @@ var VQ_BRANDS=['Lode WTR','Roots by Genetic Art','Trip Visuals','Made Right','B 
 function applyVqRole(){
   var isEd=!!(window.__VQ_IS_EDITOR__);
   var isAdm=!!(window.__VQ_IS_ADMIN__);
-  // Tab label
-  var tabBtn=document.getElementById('vq-tab-btn');
-  if(tabBtn)tabBtn.textContent=isEd?'Video Queue':'Submit Request';
-  // Panels
   document.getElementById('vq-submit-form').style.display=isEd?'none':'';
   document.getElementById('vq-queue-wrap').style.display=isAdm?'':'none';
   document.getElementById('vq-list-wrap').style.display=isEd?'':'none';
@@ -4807,9 +4802,11 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
     const email = effectiveEmail(req).toLowerCase();
     const isEditor = VIDEO_EDITOR_EMAILS.has(email);
     const isAdmin = ADMIN_EMAILS.has(email);
+    const tabLabel = isEditor ? 'Video Queue' : 'Submit Request';
     const html = MY_TASKS_HTML
       .replace('window.__VQ_IS_EDITOR__=false;', `window.__VQ_IS_EDITOR__=${isEditor};`)
-      .replace('window.__VQ_IS_ADMIN__=false;', `window.__VQ_IS_ADMIN__=${isAdmin};`);
+      .replace('window.__VQ_IS_ADMIN__=false;', `window.__VQ_IS_ADMIN__=${isAdmin};`)
+      .replace('__VQ_TAB_LABEL__', tabLabel);
     res.type('html').send(html);
   });
   // ---------- SERVER-SIDE COMP TIER HELPER ----------
