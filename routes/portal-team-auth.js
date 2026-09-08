@@ -168,6 +168,12 @@ module.exports = function mountPortalTeamAuth(app, deps = {}) {
     req.session.isPortalAdmin = true;
     req.session.portalUserId = u.id;
     req.session.portalUserName = u.name;
+    // Lets middleware/auth.js's requireAuth (the CF Access / Google-SSO guard
+    // that gates My Tasks and the New Portal) accept this session too, using
+    // this account's own email as req.userEmail — so those staff-only routes
+    // work from portal.cultcontent.cc without a real CF Access hop. Only set
+    // when the account has an email on file; no email means no fallback.
+    if (u.email) req.session.portalUserEmail = u.email;
     res.json({ ok: true, user: publicUser(u) });
   });
 

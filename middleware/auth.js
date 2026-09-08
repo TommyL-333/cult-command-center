@@ -23,6 +23,15 @@
  * request. If CF_ACCESS_AUD is set, this is enforced — unauthenticated
  * requests get 401. No-ops in local dev (CF_ACCESS_AUD unset).
  *
+ * Fallback for staff-only routes reached via portal.cultcontent.cc (no CF
+ * Access at that hostname's edge, e.g. the "Try the New Portal" / "My Tasks"
+ * links in dashboard/portal-admin.html): a per-user portal-admin session
+ * (routes/portal-team-auth.js's team-login, which stores the account's own
+ * email on req.session.portalUserEmail) satisfies requireAuth using that
+ * email as req.userEmail. The legacy shared-password login has no individual
+ * identity to attribute tasks/data to, so it does NOT get this fallback —
+ * those sessions still need the real CF Access flow on manifest.cultcontent.cc.
+ *
  * ── requireClientSession — brand/client portal ──────────────────────────────
  * Checks req.session.clientBrandId (set on successful /client/login).
  *
@@ -42,7 +51,10 @@ function requireAuth(req, res, next) {
   if (!process.env.CF_ACCESS_AUD) return next();
   if (req.path.startsWith('/api/')) console.log(`[auth] ${req.method} ${req.path} email=${req.headers['cf-access-authenticated-user-email']||'(none)'}`);
 
-  const email = req.headers['cf-access-authenticated-user-email'];
+  let email = req.headers['cf-access-authenticated-user-email'];
+  if (!email && req.session?.isPortalAdmin && req.session?.portalUserEmail) {
+    email = req.session.portalUserEmail;
+  }
   if (!email) {
     console.log(`[auth] BLOCKED ${req.method} ${req.path} — no CF Access header`);
     if (req.path.startsWith('/api/')) {
