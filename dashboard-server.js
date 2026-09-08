@@ -12437,6 +12437,117 @@ function renderWelcomePage(brand, cp, creatorHandle = '') {
   </div>
 </div>` : '';
 
+  const safeZoneHtml = brief ? `
+<hr class="page-divider">
+<div class="section" style="background:rgba(255,255,255,.015)">
+  <div class="section-inner" style="max-width:720px">
+    <div class="section-label" style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:${accent};margin-bottom:10px">Video Reference</div>
+    <div class="section-title">TikTok safe zone</div>
+    <div class="section-sub">Keep all text overlays and product shots inside the teal box. TikTok auto-overlays the red zones with UI elements.</div>
+    <div style="overflow-x:auto;margin-top:20px">
+    <svg viewBox="0 0 540 490" xmlns="http://www.w3.org/2000/svg" style="width:100%;max-width:540px;display:block">
+      <!-- Phone canvas (540×960 at 0.45 scale = 243×432, positioned at x=14,y=36) -->
+      <rect x="14" y="36" width="243" height="432" fill="#141414" rx="6"/>
+      <!-- Top UI bar (126px * 0.45 = 57px) -->
+      <rect x="14" y="36" width="243" height="57" fill="rgba(254,44,85,.18)" rx="0"/>
+      <line x1="14" y1="93" x2="257" y2="93" stroke="rgba(254,44,85,.4)" stroke-width="1" stroke-dasharray="3,2"/>
+      <text x="135" y="68" fill="rgba(255,255,255,.35)" font-size="9.5" font-family="system-ui" text-anchor="middle">Following</text>
+      <text x="180" y="68" fill="rgba(255,255,255,.6)" font-size="9.5" font-family="system-ui" text-anchor="middle" font-weight="700">For You</text>
+      <!-- Safe zone teal box (width=189, height=231; right edge at x=203, bottom at y=324) -->
+      <rect x="14" y="93" width="189" height="231" fill="rgba(37,244,238,.1)" stroke="#25F4EE" stroke-width="1.5"/>
+      <text x="108" y="200" fill="#25F4EE" font-size="10" font-family="system-ui" text-anchor="middle" font-weight="700">SAFE ZONE</text>
+      <text x="108" y="215" fill="rgba(255,255,255,.4)" font-size="8.5" font-family="system-ui" text-anchor="middle">Products · Text overlays · Face</text>
+      <!-- Right action bar (120px * 0.45 = 54px wide) -->
+      <rect x="203" y="93" width="54" height="231" fill="rgba(254,44,85,.12)"/>
+      <line x1="203" y1="93" x2="203" y2="324" stroke="rgba(254,44,85,.4)" stroke-width="1" stroke-dasharray="3,2"/>
+      <circle cx="230" cy="125" r="14" fill="rgba(255,255,255,.08)"/>
+      <text x="230" y="130" fill="rgba(255,255,255,.35)" font-size="11" font-family="system-ui" text-anchor="middle">♡</text>
+      <text x="230" y="143" fill="rgba(255,255,255,.2)" font-size="7" font-family="system-ui" text-anchor="middle">9.8K</text>
+      <circle cx="230" cy="168" r="14" fill="rgba(255,255,255,.08)"/>
+      <text x="230" y="173" fill="rgba(255,255,255,.35)" font-size="10" font-family="system-ui" text-anchor="middle">✉</text>
+      <text x="230" y="186" fill="rgba(255,255,255,.2)" font-size="7" font-family="system-ui" text-anchor="middle">3.7K</text>
+      <circle cx="230" cy="210" r="14" fill="rgba(255,255,255,.08)"/>
+      <text x="230" y="215" fill="rgba(255,255,255,.35)" font-size="10" font-family="system-ui" text-anchor="middle">↗</text>
+      <text x="230" y="228" fill="rgba(255,255,255,.2)" font-size="7" font-family="system-ui" text-anchor="middle">3.8K</text>
+      <circle cx="230" cy="295" r="14" fill="rgba(255,255,255,.08)"/>
+      <text x="230" y="300" fill="rgba(255,255,255,.35)" font-size="10" font-family="system-ui" text-anchor="middle">♪</text>
+      <!-- Bottom ad card (320px * 0.45 = 144px) -->
+      <rect x="14" y="324" width="243" height="110" fill="rgba(254,44,85,.18)"/>
+      <line x1="14" y1="324" x2="257" y2="324" stroke="rgba(254,44,85,.4)" stroke-width="1" stroke-dasharray="3,2"/>
+      <text x="27" y="342" fill="rgba(255,255,255,.25)" font-size="7.5" font-family="system-ui">Sponsored</text>
+      <rect x="22" y="350" width="44" height="36" fill="rgba(255,255,255,.08)" rx="3"/>
+      <rect x="74" y="352" width="110" height="7" fill="rgba(255,255,255,.2)" rx="2"/>
+      <rect x="74" y="364" width="75" height="6" fill="rgba(255,255,255,.1)" rx="2"/>
+      <rect x="14" y="398" width="243" height="24" fill="rgba(254,44,85,.5)"/>
+      <text x="135" y="414" fill="rgba(255,255,255,.8)" font-size="9" font-family="system-ui" text-anchor="middle" font-weight="600">Button ›</text>
+      <!-- Bottom nav bar -->
+      <rect x="14" y="434" width="243" height="34" fill="#1a1a1a" rx="0"/>
+      <text x="45" y="455" fill="rgba(255,255,255,.3)" font-size="8" font-family="system-ui" text-anchor="middle">Home</text>
+      <text x="90" y="455" fill="rgba(255,255,255,.3)" font-size="8" font-family="system-ui" text-anchor="middle">Search</text>
+      <rect x="116" y="441" width="22" height="18" fill="rgba(255,255,255,.15)" rx="4"/>
+      <text x="127" y="454" fill="rgba(255,255,255,.6)" font-size="11" font-family="system-ui" text-anchor="middle">+</text>
+      <text x="175" y="455" fill="rgba(255,255,255,.3)" font-size="8" font-family="system-ui" text-anchor="middle">Inbox</text>
+      <text x="220" y="455" fill="rgba(255,255,255,.3)" font-size="8" font-family="system-ui" text-anchor="middle">Me</text>
+
+      <!-- Measurement annotations (right of phone) -->
+      <!-- Top unsafe bracket -->
+      <line x1="263" y1="36" x2="263" y2="93" stroke="rgba(254,44,85,.7)" stroke-width="1"/>
+      <line x1="259" y1="36" x2="267" y2="36" stroke="rgba(254,44,85,.7)" stroke-width="1"/>
+      <line x1="259" y1="93" x2="267" y2="93" stroke="rgba(254,44,85,.7)" stroke-width="1"/>
+
+      <!-- Safe zone bracket -->
+      <line x1="263" y1="93" x2="263" y2="324" stroke="rgba(37,244,238,.7)" stroke-width="1"/>
+      <line x1="259" y1="93" x2="267" y2="93" stroke="rgba(37,244,238,.7)" stroke-width="1"/>
+      <line x1="259" y1="324" x2="267" y2="324" stroke="rgba(37,244,238,.7)" stroke-width="1"/>
+
+      <!-- Bottom unsafe bracket -->
+      <line x1="263" y1="324" x2="263" y2="434" stroke="rgba(254,44,85,.7)" stroke-width="1"/>
+      <line x1="259" y1="324" x2="267" y2="324" stroke="rgba(254,44,85,.7)" stroke-width="1"/>
+      <line x1="259" y1="434" x2="267" y2="434" stroke="rgba(254,44,85,.7)" stroke-width="1"/>
+
+      <!-- Labels panel -->
+      <rect x="278" y="36" width="248" height="432" fill="rgba(255,255,255,.03)" rx="8"/>
+
+      <!-- Top zone label -->
+      <rect x="288" y="46" width="228" height="56" fill="rgba(254,44,85,.1)" rx="6" stroke="rgba(254,44,85,.25)" stroke-width="1"/>
+      <text x="302" y="64" fill="#FE2C55" font-size="9" font-family="system-ui" font-weight="700">⚠ TOP — AVOID (126 px)</text>
+      <text x="302" y="78" fill="rgba(255,255,255,.4)" font-size="8" font-family="system-ui">Following / For You nav bar</text>
+      <text x="302" y="91" fill="rgba(255,255,255,.4)" font-size="8" font-family="system-ui">Username · Caption overlay</text>
+
+      <!-- Safe zone label -->
+      <rect x="288" y="114" width="228" height="130" fill="rgba(37,244,238,.07)" rx="6" stroke="rgba(37,244,238,.3)" stroke-width="1"/>
+      <text x="302" y="132" fill="#25F4EE" font-size="9" font-family="system-ui" font-weight="700">✓ SAFE ZONE — place content here</text>
+      <text x="302" y="148" fill="rgba(255,255,255,.45)" font-size="8" font-family="system-ui">Your face / demo shot</text>
+      <text x="302" y="161" fill="rgba(255,255,255,.45)" font-size="8" font-family="system-ui">Product close-ups and hero shots</text>
+      <text x="302" y="174" fill="rgba(255,255,255,.45)" font-size="8" font-family="system-ui">Text overlays and captions</text>
+      <text x="302" y="187" fill="rgba(255,255,255,.45)" font-size="8" font-family="system-ui">Key visuals and branding</text>
+      <text x="302" y="204" fill="rgba(255,255,255,.25)" font-size="7.5" font-family="system-ui">Stay left of the action buttons →</text>
+      <text x="302" y="216" fill="rgba(255,255,255,.25)" font-size="7.5" font-family="system-ui">Approx. 360 × 514 px usable</text>
+      <text x="302" y="232" fill="rgba(255,255,255,.25)" font-size="7.5" font-family="system-ui">at 1080 × 1920 native resolution</text>
+
+      <!-- Right bar label -->
+      <rect x="288" y="256" width="228" height="52" fill="rgba(254,44,85,.07)" rx="6" stroke="rgba(254,44,85,.2)" stroke-width="1"/>
+      <text x="302" y="274" fill="rgba(254,44,85,.9)" font-size="9" font-family="system-ui" font-weight="700">⚠ RIGHT — AVOID (120 px)</text>
+      <text x="302" y="288" fill="rgba(255,255,255,.4)" font-size="8" font-family="system-ui">Like · Comment · Share buttons</text>
+      <text x="302" y="301" fill="rgba(255,255,255,.4)" font-size="8" font-family="system-ui">Avatar + follow button</text>
+
+      <!-- Bottom card label -->
+      <rect x="288" y="320" width="228" height="80" fill="rgba(254,44,85,.1)" rx="6" stroke="rgba(254,44,85,.25)" stroke-width="1"/>
+      <text x="302" y="338" fill="#FE2C55" font-size="9" font-family="system-ui" font-weight="700">⚠ BOTTOM — AVOID (320 px)</text>
+      <text x="302" y="352" fill="rgba(255,255,255,.4)" font-size="8" font-family="system-ui">TikTok auto-overlays the ad card</text>
+      <text x="302" y="365" fill="rgba(255,255,255,.4)" font-size="8" font-family="system-ui">Product title + CTA button</text>
+      <text x="302" y="378" fill="rgba(255,255,255,.4)" font-size="8" font-family="system-ui">Shop name + price</text>
+      <text x="302" y="393" fill="rgba(255,255,255,.25)" font-size="7.5" font-family="system-ui">Anything here will be hidden</text>
+
+      <!-- Aspect ratio tag -->
+      <rect x="288" y="412" width="228" height="46" fill="rgba(255,255,255,.04)" rx="6"/>
+      <text x="302" y="430" fill="rgba(255,255,255,.5)" font-size="8.5" font-family="system-ui" font-weight="700">FORMAT</text>
+      <text x="302" y="446" fill="rgba(255,255,255,.3)" font-size="8" font-family="system-ui">9:16 vertical · 1080 × 1920 px · MP4</text>
+    </svg>
+    </div>
+  </div>
+</div>` : '';
+
   const scriptsHtml = brief?.sampleScripts?.length ? `
 <hr class="page-divider">
 <div class="section">
@@ -12729,6 +12840,7 @@ footer a{color:${accent};text-decoration:none}
 
 ${hooksHtml}
 ${frameworksHtml}
+${safeZoneHtml}
 ${scriptsHtml}
 ${tpHtml}
 ${ddHtml}
