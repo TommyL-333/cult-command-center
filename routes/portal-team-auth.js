@@ -99,6 +99,15 @@ function createUser({ username, email, name, password, role = 'member', permissi
   return publicUser(user);
 }
 
+function deleteUser(id) {
+  const users = loadUsers();
+  const idx = users.findIndex(u => u.id === id);
+  if (idx === -1) throw new Error('user not found');
+  const [removed] = users.splice(idx, 1);
+  saveUsers(users);
+  return publicUser(removed);
+}
+
 function updateUser(id, patch) {
   const users = loadUsers();
   const idx = users.findIndex(u => u.id === id);
@@ -237,6 +246,30 @@ module.exports = function mountPortalTeamAuth(app, deps = {}) {
     catch (e) { res.status(400).json({ error: e.message }); }
   });
 
+  // DELETE /portal-admin/users/:id — permanently remove an account.
+  // Guarded so a user_admin can't lock the team out: can't delete your own
+  // logged-in account, and can't delete the last remaining account that
+  // holds user_admin (there'd be no one left who could manage accounts).
+  app.delete('/portal-admin/users/:id', requireUserAdmin, (req, res) => {
+    try {
+      if (req.session.portalUserId && req.session.portalUserId === req.params.id) {
+        return res.status(400).json({ error: "You can't delete the account you're logged in as." });
+      }
+      const users = loadUsers();
+      const target = users.find(u => u.id === req.params.id);
+      if (!target) return res.status(404).json({ error: 'user not found' });
+      const isTargetUserAdmin = Array.isArray(target.permissions) && target.permissions.includes('user_admin');
+      if (isTargetUserAdmin) {
+        const otherUserAdmins = users.filter(u => u.id !== target.id && Array.isArray(u.permissions) && u.permissions.includes('user_admin'));
+        if (otherUserAdmins.length === 0) {
+          return res.status(400).json({ error: 'Cannot delete the last account with user_admin permission.' });
+        }
+      }
+      const removed = deleteUser(req.params.id);
+      res.json({ ok: true, user: removed });
+    } catch (e) { res.status(400).json({ error: e.message }); }
+  });
+
   console.log('[portal-team-auth] mounted: /portal-admin/team-login, /me, /users');
   // loadUsers/publicUser exposed for routes/staff-portal.js's teammate
   // roster (Phase 8) — name+id only, permissions/role stripped by publicUser
@@ -246,5 +279,5 @@ module.exports = function mountPortalTeamAuth(app, deps = {}) {
   // endpoints already grant (requireStaffPermission), for GET /api/staff/
   // profile too -- otherwise a shared-password admin can perform an action
   // via direct API call but the UI never shows them the button for it.
-  return { findByUsername, findById, createUser, updateUser, authenticate, loadUsers, publicUser, ALL_PERMISSIONS };
+  return { findByUsername, findById, createUser, updateUser, deleteUser, authenticate, loadUsers, publicUser, ALL_PERMISSIONS };
 };

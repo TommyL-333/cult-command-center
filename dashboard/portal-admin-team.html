@@ -45,6 +45,8 @@
   button:hover { background: #34305a; }
   button.primary { background: #20d5c4; color: #0a0a0f; border: none; font-weight: 700; }
   button.primary:hover { background: #1bc0b0; }
+  button.danger { background: rgba(248,113,113,0.1); border-color: rgba(248,113,113,0.3); color: #f87171; margin-left: 6px; }
+  button.danger:hover { background: rgba(248,113,113,0.2); }
   form.create { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   form.create input, form.create select {
     background: #12101a; border: 1px solid #2a2540; border-radius: 8px;
@@ -107,11 +109,17 @@ async function loadUsers() {
         <td>${u.name || ''}<div class="muted">${u.username}${u.email ? ' · ' + u.email : ''}</div></td>
         <td>${u.role || 'member'}</td>
         <td><span class="pill ${u.active ? 'active' : 'inactive'}">${u.active ? 'Active' : 'Disabled'}</span>${u.mustChangePassword ? '<div class="muted" style="margin-top:4px">Must change password</div>' : ''}</td>
-        <td><button data-id="${u.id}" data-name="${(u.name || u.username).replace(/"/g,'&quot;')}" class="resetBtn">Reset password</button></td>
+        <td>
+          <button data-id="${u.id}" data-name="${(u.name || u.username).replace(/"/g,'&quot;')}" class="resetBtn">Reset password</button>
+          <button data-id="${u.id}" data-name="${(u.name || u.username).replace(/"/g,'&quot;')}" class="deleteBtn danger">Remove</button>
+        </td>
       </tr>`).join('');
     listArea.innerHTML = `<table><thead><tr><th>Account</th><th>Role</th><th>Status</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
     listArea.querySelectorAll('.resetBtn').forEach(btn => {
       btn.addEventListener('click', () => resetPassword(btn.dataset.id, btn.dataset.name));
+    });
+    listArea.querySelectorAll('.deleteBtn').forEach(btn => {
+      btn.addEventListener('click', () => deleteAccount(btn.dataset.id, btn.dataset.name));
     });
   } catch (e) {
     listArea.innerHTML = `<div class="error-card">Couldn't load accounts: ${e.message}${e.message.includes('user_admin') ? ' — you need the "user_admin" permission (e.g. log in as tommy) to manage accounts.' : ''}</div>`;
@@ -125,6 +133,16 @@ async function resetPassword(id, name) {
   try {
     await api(`/portal-admin/users/${id}`, { method: 'PATCH', body: JSON.stringify({ password: pw, mustChangePassword: true }) });
     alert(`Password updated for ${name}. Share it with them directly — it won't be shown again here.`);
+  } catch (e) {
+    alert('Failed: ' + e.message);
+  }
+}
+
+async function deleteAccount(id, name) {
+  if (!window.confirm(`Permanently remove "${name}"? This cannot be undone — they will need a brand new account to log back in.`)) return;
+  try {
+    await api(`/portal-admin/users/${id}`, { method: 'DELETE' });
+    loadUsers();
   } catch (e) {
     alert('Failed: ' + e.message);
   }
