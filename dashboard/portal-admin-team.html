@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Team Accounts — Cult Content</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #12101a;
+    color: #e2e8f0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, sans-serif;
+    min-height: 100vh;
+    padding: 32px 24px 80px;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; }
+  header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
+  h1 { font-size: 1.3rem; font-weight: 700; color: #fff; }
+  .back { color: #8b8aa8; text-decoration: none; font-size: 0.85rem; }
+  .back:hover { color: #e2e8f0; }
+  .card {
+    background: #1c1828;
+    border: 1px solid #2a2540;
+    border-radius: 14px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .card h2 { font-size: 0.95rem; font-weight: 700; color: #fff; margin-bottom: 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid #2a2540; }
+  th { color: #64748b; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
+  td { color: #e2e8f0; }
+  .muted { color: #64748b; font-size: 0.78rem; }
+  .pill {
+    display: inline-block; padding: 2px 8px; border-radius: 999px;
+    font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em;
+  }
+  .pill.active { background: rgba(32,213,196,0.12); color: #20d5c4; }
+  .pill.inactive { background: rgba(100,116,139,0.15); color: #64748b; }
+  button {
+    background: #2a2540; border: 1px solid #3a3458; color: #e2e8f0;
+    border-radius: 7px; padding: 6px 12px; font-size: 0.78rem; cursor: pointer;
+    font-family: inherit;
+  }
+  button:hover { background: #34305a; }
+  button.primary { background: #20d5c4; color: #0a0a0f; border: none; font-weight: 700; }
+  button.primary:hover { background: #1bc0b0; }
+  form.create { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  form.create input, form.create select {
+    background: #12101a; border: 1px solid #2a2540; border-radius: 8px;
+    color: #e2e8f0; font-size: 0.85rem; padding: 9px 10px; font-family: inherit;
+  }
+  form.create .full { grid-column: 1 / -1; }
+  .msg { font-size: 0.8rem; margin-top: 10px; min-height: 1.2em; }
+  .msg.err { color: #f87171; }
+  .msg.ok { color: #20d5c4; }
+  .error-card { color: #f87171; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Team Accounts</h1>
+    <a class="back" href="/portal-admin/clients">&larr; Back to Admin</a>
+  </header>
+
+  <div class="card">
+    <h2>Existing accounts</h2>
+    <div id="listArea" class="muted">Loading…</div>
+  </div>
+
+  <div class="card">
+    <h2>Add a new teammate account</h2>
+    <form class="create" id="createForm">
+      <input type="text" id="cUsername" placeholder="username (e.g. danny)" required>
+      <input type="email" id="cEmail" placeholder="email@cultcontent.cc">
+      <input type="text" id="cName" placeholder="Display name" required>
+      <select id="cPermissions">
+        <option value="full">Full access</option>
+        <option value="baseline">Baseline (admin_portal only)</option>
+      </select>
+      <input type="password" id="cPassword" placeholder="Temporary password (6+ chars)" required class="full">
+      <div class="full">
+        <button type="submit" class="primary">Create account</button>
+      </div>
+    </form>
+    <div class="msg" id="createMsg"></div>
+  </div>
+</div>
+
+<script>
+async function api(path, opts) {
+  const res = await fetch(path, Object.assign({ headers: { 'Content-Type': 'application/json' } }, opts));
+  let data = {};
+  try { data = await res.json(); } catch {}
+  if (!res.ok) throw new Error(data.error || ('Request failed (' + res.status + ')'));
+  return data;
+}
+
+async function loadUsers() {
+  const listArea = document.getElementById('listArea');
+  try {
+    const { users } = await api('/portal-admin/users');
+    if (!users.length) { listArea.textContent = 'No named accounts yet.'; return; }
+    const rows = users.map(u => `
+      <tr>
+        <td>${u.name || ''}<div class="muted">${u.username}${u.email ? ' · ' + u.email : ''}</div></td>
+        <td>${u.role || 'member'}</td>
+        <td><span class="pill ${u.active ? 'active' : 'inactive'}">${u.active ? 'Active' : 'Disabled'}</span>${u.mustChangePassword ? '<div class="muted" style="margin-top:4px">Must change password</div>' : ''}</td>
+        <td><button data-id="${u.id}" data-name="${(u.name || u.username).replace(/"/g,'&quot;')}" class="resetBtn">Reset password</button></td>
+      </tr>`).join('');
+    listArea.innerHTML = `<table><thead><tr><th>Account</th><th>Role</th><th>Status</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+    listArea.querySelectorAll('.resetBtn').forEach(btn => {
+      btn.addEventListener('click', () => resetPassword(btn.dataset.id, btn.dataset.name));
+    });
+  } catch (e) {
+    listArea.innerHTML = `<div class="error-card">Couldn't load accounts: ${e.message}${e.message.includes('user_admin') ? ' — you need the "user_admin" permission (e.g. log in as tommy) to manage accounts.' : ''}</div>`;
+  }
+}
+
+async function resetPassword(id, name) {
+  const pw = window.prompt(`New password for ${name} (6+ characters):`);
+  if (!pw) return;
+  if (pw.length < 6) { alert('Password must be at least 6 characters.'); return; }
+  try {
+    await api(`/portal-admin/users/${id}`, { method: 'PATCH', body: JSON.stringify({ password: pw, mustChangePassword: true }) });
+    alert(`Password updated for ${name}. Share it with them directly — it won't be shown again here.`);
+  } catch (e) {
+    alert('Failed: ' + e.message);
+  }
+}
+
+document.getElementById('createForm').addEventListener('submit', async (ev) => {
+  ev.preventDefault();
+  const msg = document.getElementById('createMsg');
+  msg.textContent = ''; msg.className = 'msg';
+  const body = {
+    username: document.getElementById('cUsername').value.trim(),
+    email: document.getElementById('cEmail').value.trim() || undefined,
+    name: document.getElementById('cName').value.trim(),
+    password: document.getElementById('cPassword').value,
+    permissions: document.getElementById('cPermissions').value === 'full' ? 'full' : ['admin_portal'],
+  };
+  try {
+    await api('/portal-admin/users', { method: 'POST', body: JSON.stringify(body) });
+    msg.textContent = `Created "${body.username}". Share the password with them directly.`;
+    msg.className = 'msg ok';
+    document.getElementById('createForm').reset();
+    loadUsers();
+  } catch (e) {
+    msg.textContent = e.message;
+    msg.className = 'msg err';
+  }
+});
+
+loadUsers();
+</script>
+</body>
+</html>

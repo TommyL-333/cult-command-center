@@ -2418,6 +2418,15 @@ app.get('/portal-admin', (req, res) => {
   res.sendFile(path.join(__dirname, 'dashboard', 'portal-admin-login.html'));
 });
 
+// GET /portal-admin/team — simple UI over routes/portal-team-auth.js's
+// /portal-admin/users API (list, create, reset password). Gated by
+// requirePortalAdmin here at the page level; the underlying API calls the
+// page makes still separately require the user_admin permission, so a
+// non-admin who reaches this page just sees "couldn't load accounts".
+app.get('/portal-admin/team', requirePortalAdmin, (req, res) => {
+  res.sendFile(path.join(__dirname, 'dashboard', 'portal-admin-team.html'));
+});
+
 // POST /portal-admin/login
 app.post('/portal-admin/login', express.json(), (req, res) => {
   const adminPw = process.env.PORTAL_ADMIN_PASSWORD;
