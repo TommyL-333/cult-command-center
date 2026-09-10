@@ -71,13 +71,18 @@ export const getMyPoints = () => req<MyPoints>('/api/staff/points/mine');
 // ── Support Inbox — routes/support-tickets.js's employee-facing pair ────────
 export interface SupportTicket {
   id: number;
-  submitterType: 'client' | 'creator';
+  submitterType: 'client' | 'creator' | 'discord';
   brandId: string | null;
   brandName: string | null;
   creatorId: number | null;
   creatorName: string | null;
   creatorHandle: string | null;
   submitterEmail: string | null;
+  // Set only when submitterType === 'discord' — see lib/discord-bot.js.
+  discordChannelName: string | null;
+  discordAuthorTag: string | null;
+  discordMessageUrl: string | null;
+  discordThreadId: string | null;
   type: string;
   message: string;
   status: 'unopened' | 'opened' | 'flagged';
@@ -88,8 +93,25 @@ export interface SupportTicket {
   updatedAt: string;
 }
 
+export interface TicketReply {
+  id: number;
+  ticketId: number;
+  authorEmail: string;
+  authorName: string;
+  body: string;
+  delivered: boolean;
+  createdAt: string;
+}
+
 export const getAllTickets = () => req<{ tickets: SupportTicket[] }>('/api/support-tickets/list');
 export const setTicketStatus = (id: number, status: SupportTicket['status']) =>
   req<{ ticket: SupportTicket }>(`/api/support-tickets/${id}/status`, { method: 'POST', body: JSON.stringify({ status }) });
+
+export const getTicketReplies = (id: number) => req<{ replies: TicketReply[] }>(`/api/support-tickets/${id}/replies`);
+export const replyToTicket = (id: number, body: string) =>
+  req<{ reply: TicketReply; deliveryError: string | null }>(`/api/support-tickets/${id}/reply`, {
+    method: 'POST',
+    body: JSON.stringify({ body }),
+  });
 
 export const logoutStaff = () => req('/portal-admin/logout', { method: 'POST' });
