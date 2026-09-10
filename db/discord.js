@@ -26,6 +26,7 @@ db.exec(`
     label            TEXT NOT NULL,
     invite_url       TEXT,
     default_role_id  TEXT,          -- role auto-assigned on join, if any
+    support_role_id  TEXT,          -- @-mentioning this role opens a support ticket (lib/discord-bot.js)
     active           INTEGER NOT NULL DEFAULT 1,
     created_at       DATETIME DEFAULT CURRENT_TIMESTAMP
   );
@@ -46,21 +47,31 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_discord_links_person ON creator_discord_links(person_id, person_type);
 `);
 
+// Idempotent column add for tables that may already exist from before
+// support_role_id was introduced — same pattern as db/support-tickets.js.
+try { db.exec(`ALTER TABLE discord_servers ADD COLUMN support_role_id TEXT`); }
+catch (e) { if (!/duplicate column name/i.test(e.message)) console.error('[db/discord] support_role_id migration failed:', e.message); }
+
 // Seed one row from the existing single-guild env vars, if configured, so
 // nothing regresses before invite logic itself moves to read from this table.
+// DISCORD_SUPPORT_ROLE_ID is the role that, when @-mentioned, opens a support
+// ticket (lib/discord-bot.js) — same seed-from-env pattern as the others,
+// real per-guild config via this table is later groundwork.
 try {
   if (process.env.DISCORD_GUILD_ID) {
     db.prepare(`
-      INSERT INTO discord_servers (guild_id, label, invite_url, default_role_id)
-      VALUES (@guildId, @label, @inviteUrl, @roleId)
+      INSERT INTO discord_servers (guild_id, label, invite_url, default_role_id, support_role_id)
+      VALUES (@guildId, @label, @inviteUrl, @roleId, @supportRoleId)
       ON CONFLICT(guild_id) DO UPDATE SET
         invite_url = excluded.invite_url,
-        default_role_id = excluded.default_role_id
+        default_role_id = excluded.default_role_id,
+        support_role_id = excluded.support_role_id
     `).run({
       guildId: process.env.DISCORD_GUILD_ID,
       label: 'Main (from env)',
       inviteUrl: process.env.DISCORD_INVITE_URL || null,
       roleId: process.env.DISCORD_CREATOR_ROLE_ID || null,
+      supportRoleId: process.env.DISCORD_SUPPORT_ROLE_ID || null,
     });
   }
 } catch (e) {
@@ -68,6 +79,7 @@ try {
 }
 
 const activeServersStmt = db.prepare(`SELECT * FROM discord_servers WHERE active = 1 ORDER BY id`);
+const serverByGuildStmt = db.prepare(`SELECT * FROM discord_servers WHERE guild_id = ? AND active = 1`);
 const linkStmt = db.prepare(`
   INSERT INTO creator_discord_links (person_id, person_type, guild_id, discord_username, invited_at)
   VALUES (@personId, @personType, @guildId, @discordUsername, CURRENT_TIMESTAMP)
@@ -90,6 +102,11 @@ function getActiveServers() {
   return activeServersStmt.all();
 }
 
+/** Config (including support_role_id) for one guild, or null if unconfigured/inactive. */
+function getServerByGuildId(guildId) {
+  return serverByGuildStmt.get(String(guildId)) || null;
+}
+
 /** Record an invite attempt for a person/guild pair (upserts the discord_username). */
 function recordInvite(personId, personType, guildId, discordUsername) {
   linkStmt.run({ personId: String(personId), personType, guildId, discordUsername: discordUsername || null });
@@ -110,6 +127,7 @@ function getLinksForPerson(personId, personType) {
 module.exports = {
   db,
   getActiveServers,
+  getServerByGuildId,
   recordInvite,
   markJoined,
   markRoleAssigned,

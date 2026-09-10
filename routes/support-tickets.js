@@ -52,6 +52,10 @@ function shapeTicket(row) {
     creatorName: row.creator_name,
     creatorHandle: row.creator_handle,
     submitterEmail: row.submitter_email,
+    discordChannelName: row.discord_channel_name,
+    discordAuthorTag: row.discord_author_tag,
+    discordMessageUrl: row.discord_message_url,
+    discordThreadId: row.discord_thread_id,
     type: row.type,
     message: row.message,
     status: row.status,
@@ -63,8 +67,20 @@ function shapeTicket(row) {
   };
 }
 
+function shapeReply(row) {
+  return {
+    id: row.id,
+    ticketId: row.ticket_id,
+    authorEmail: row.author_email,
+    authorName: row.author_name,
+    body: row.body,
+    delivered: !!row.delivered,
+    createdAt: row.created_at,
+  };
+}
+
 module.exports = function registerSupportTickets(app, deps = {}) {
-  const { requireClientSession, requireAuth, requireSqliteSession, loadBrands } = deps;
+  const { requireClientSession, requireAuth, requireSqliteSession, loadBrands, discordBot } = deps;
   if (!app || !requireClientSession || !requireAuth || !requireSqliteSession || !loadBrands) {
     throw new Error('[support-tickets] missing deps: requires { requireClientSession, requireAuth, requireSqliteSession, loadBrands }');
   }
@@ -177,6 +193,55 @@ module.exports = function registerSupportTickets(app, deps = {}) {
     }
   });
 
+  // ── Employee: view replies already sent on a ticket ─────────────────────
+  app.get('/api/support-tickets/:id/replies', requireAuth, (req, res) => {
+    try {
+      const rows = queries.getRepliesForTicket.all(req.params.id);
+      res.json({ ok: true, replies: rows.map(shapeReply) });
+    } catch (e) {
+      console.error('[support-tickets] replies list failed:', e.message);
+      res.status(500).json({ error: 'Server error' });
+    }
+  });
+
+  // ── Employee: reply to a ticket. For Discord-sourced tickets this also
+  // posts the reply back into the originating thread, @-mentioning whoever
+  // asked; for client/creator tickets it's recorded but delivery is still
+  // the existing "Reply by Email" mailto action in the UI. ───────────────
+  app.post('/api/support-tickets/:id/reply', requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const body = String((req.body || {}).body || '').trim();
+      if (!body) return res.status(400).json({ error: 'body is required' });
+
+      const ticket = queries.getTicketById.get(id);
+      if (!ticket) return res.status(404).json({ error: 'Ticket not found' });
+
+      const email = req.userEmail || 'unknown';
+      const staffName = nameFromEmail(email);
+      const info = queries.insertReply.run(id, email, staffName, body, 0);
+      let deliveryError = null;
+
+      if (ticket.submitter_type === 'discord' && discordBot) {
+        try {
+          await discordBot.sendReply(ticket, `**${staffName} (Support):** ${body}`);
+          queries.markReplyDelivered.run(info.lastInsertRowid);
+        } catch (e) {
+          console.error('[support-tickets] discord delivery failed:', e.message);
+          // Reply is still saved — surface the delivery failure so staff know
+          // to follow up some other way, but don't fail the whole request.
+          deliveryError = 'Could not deliver to Discord: ' + e.message;
+        }
+      }
+
+      const saved = queries.getRepliesForTicket.all(id).find((r) => r.id === info.lastInsertRowid);
+      res.json({ ok: true, reply: shapeReply(saved), deliveryError });
+    } catch (e) {
+      console.error('[support-tickets] reply failed:', e.message);
+      res.status(500).json({ error: 'Server error' });
+    }
+  });
+
   // ── Employee: the ticket board page itself ──────────────────────────────
   app.get('/support-tickets', requireAuth, (req, res) => {
     res.type('html').send(SUPPORT_TICKETS_HTML);
@@ -202,7 +267,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 .ticket-source{font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:2px 7px;border-radius:5px;margin-right:8px}
 .ticket-source-client{background:rgba(168,85,247,.14);color:#c084fc}
 .ticket-source-creator{background:rgba(0,242,234,.12);color:#00f2ea}
+.ticket-source-discord{background:rgba(88,101,242,.16);color:#8ea1ff}
 .ticket-type{font-size:.72rem;color:#94a3b8;text-transform:uppercase;letter-spacing:.04em;margin-left:8px}
+.reply-log{margin:10px 0;padding-left:10px;border-left:2px solid rgba(255,255,255,.08)}
+.reply-item{font-size:.82rem;color:#cbd5e1;margin-bottom:8px;white-space:pre-wrap}
+.reply-item b{color:#8ea1ff}
+.reply-item .undelivered{color:#f87171;font-size:.72rem;font-weight:600}
+.reply-box{display:flex;gap:8px;margin-top:10px}
+.reply-box textarea{flex:1;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.12);color:#e2e8f0;border-radius:7px;padding:8px 10px;font-size:.85rem;font-family:inherit;resize:vertical;min-height:38px}
 .badge{font-size:.72rem;font-weight:700;padding:3px 9px;border-radius:6px;white-space:nowrap}
 .badge-unopened{background:rgba(96,165,250,.12);color:#60a5fa}
 .badge-opened{background:rgba(45,212,191,.12);color:#2dd4bf}
@@ -230,6 +302,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <script>
 let allTickets = [];
 let currentFilter = 'all';
+const openReplyBoxes = new Set(); // ticket ids whose reply panel is expanded
+const repliesByTicket = {};       // ticket id -> array of replies, fetched on demand
 
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
@@ -265,21 +339,90 @@ function render() {
       const body = encodeURIComponent('Hi,\\n\\nRegarding your message:\\n"' + quoted + '"\\n\\n');
       actions.push('<a class="action-btn reply" href="mailto:' + encodeURIComponent(t.submitterEmail) + '?subject=' + subject + '&body=' + body + '">✉ Reply by Email</a>');
     }
-    const who = t.submitterType === 'creator'
-      ? esc(t.creatorName || t.creatorHandle || 'Creator') + (t.creatorHandle ? ' (' + esc(t.creatorHandle.replace(/^@?/, '@')) + ')' : '')
-      : esc(t.brandName);
+    if (t.submitterType === 'discord') {
+      actions.push('<button class="action-btn reply" onclick="toggleReply(' + t.id + ')">💬 Reply</button>');
+    }
+    let who, topic;
+    if (t.submitterType === 'creator') {
+      who = esc(t.creatorName || t.creatorHandle || 'Creator') + (t.creatorHandle ? ' (' + esc(t.creatorHandle.replace(/^@?/, '@')) + ')' : '');
+      topic = '';
+    } else if (t.submitterType === 'discord') {
+      // The whole point of per-channel context: lead with the channel name
+      // as the topic, not the person, so staff know what it's about at a glance.
+      who = '#' + esc(t.discordChannelName || 'unknown-channel');
+      topic = t.discordAuthorTag ? ' — @' + esc(t.discordAuthorTag) : '';
+    } else {
+      who = esc(t.brandName);
+      topic = '';
+    }
     const sourceTag = '<span class="ticket-source ticket-source-' + t.submitterType + '">' + t.submitterType + '</span>';
+    const link = t.discordMessageUrl ? ' <a href="' + esc(t.discordMessageUrl) + '" target="_blank" rel="noopener" style="color:#8ea1ff">↗ open in Discord</a>' : '';
+    const replyPanel = openReplyBoxes.has(t.id) ? renderReplyPanel(t) : '';
     return '<div class="ticket">'
       + '<div class="ticket-top">'
-      + '<div>' + sourceTag + '<span class="ticket-brand">' + who + '</span><span class="ticket-type">' + esc(t.type) + '</span></div>'
+      + '<div>' + sourceTag + '<span class="ticket-brand">' + who + topic + '</span><span class="ticket-type">' + esc(t.type) + '</span></div>'
       + '<span class="badge badge-' + t.status + '">' + t.status + '</span>'
       + '</div>'
-      + '<div class="ticket-msg">' + esc(t.message) + '</div>'
+      + '<div class="ticket-msg">' + esc(t.message) + link + '</div>'
       + opened
       + '<div class="ticket-meta">Submitted ' + new Date(t.createdAt).toLocaleString() + '</div>'
       + '<div class="ticket-actions">' + actions.join('') + '</div>'
+      + replyPanel
       + '</div>';
   }).join('');
+}
+
+function renderReplyPanel(t) {
+  const replies = repliesByTicket[t.id] || [];
+  const log = replies.map((r) => {
+    const flag = r.delivered ? '' : ' <span class="undelivered">(not delivered to Discord)</span>';
+    return '<div class="reply-item"><b>' + esc(r.authorName) + ':</b> ' + esc(r.body) + flag + '</div>';
+  }).join('');
+  return '<div class="reply-log" id="replyLog' + t.id + '">' + (log || '<div class="reply-item" style="color:#64748b">No replies yet.</div>') + '</div>'
+    + '<div class="reply-box">'
+    + '<textarea id="replyInput' + t.id + '" placeholder="Reply — this posts back into the Discord thread and pings ' + (t.discordAuthorTag ? '@' + esc(t.discordAuthorTag) : 'the asker') + '"></textarea>'
+    + '<button class="action-btn primary" onclick="sendReply(' + t.id + ')">Send</button>'
+    + '</div>';
+}
+
+async function toggleReply(id) {
+  if (openReplyBoxes.has(id)) {
+    openReplyBoxes.delete(id);
+  } else {
+    openReplyBoxes.add(id);
+    if (!repliesByTicket[id]) await loadReplies(id);
+  }
+  render();
+}
+
+async function loadReplies(id) {
+  try {
+    const res = await fetch('/api/support-tickets/' + id + '/replies');
+    const data = await res.json();
+    repliesByTicket[id] = data.replies || [];
+  } catch (e) {
+    repliesByTicket[id] = [];
+  }
+}
+
+async function sendReply(id) {
+  const input = document.getElementById('replyInput' + id);
+  const body = (input.value || '').trim();
+  if (!body) return;
+  try {
+    const res = await fetch('/api/support-tickets/' + id + '/reply', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ body }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'send failed');
+    await loadReplies(id);
+    render();
+    if (data.deliveryError) alert(data.deliveryError);
+  } catch (e) {
+    alert('Could not send reply — please try again.');
+  }
 }
 
 async function setStatus(id, status) {

@@ -1419,12 +1419,22 @@ try {
 } catch (e) { console.error('[client-intercom-identity] registration failed:', e.message); }
 
 // Support Tickets: ensure schema (idempotent), then mount client + employee routes.
+// Discord bot (lib/discord-bot.js) runs in-process here — same long-lived
+// Railway service as the HTTP server, not a separate one — so the reply
+// endpoint below can push a message straight through the live gateway
+// connection with no internal HTTP hop.
 try { require('./db/support-tickets'); console.log('[support-tickets] schema ensured'); }
 catch (e) { console.error('[support-tickets] schema init failed:', e.message); }
+let discordBot = null;
+try {
+  discordBot = require('./lib/discord-bot');
+  discordBot.init();
+} catch (e) { console.error('[discord-bot] init failed:', e.message); }
 try {
   require('./routes/support-tickets')(app, {
     requireClientSession, requireAuth, loadBrands,
     requireSqliteSession: icSqlite && icSqlite.requireSqliteSession,
+    discordBot,
   });
 } catch (e) { console.error('[support-tickets] registration failed:', e.message); }
 try { require('./routes/inner-circle-spark-brand')(app, { express, requireClientSession, loadBrands }); } catch (e) { console.error('[inner-circle-spark-brand] registration failed:', e.message); }
