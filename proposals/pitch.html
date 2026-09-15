@@ -65,9 +65,11 @@ h1,h2,h3{font-family:'Montserrat',sans-serif;font-weight:900;letter-spacing:-.02
 
 /* ── 01 Cover ── */
 #cover{background:
-  radial-gradient(ellipse 120% 45% at 50% 0%,rgba(55,28,118,.55) 0%,transparent 60%),
-  radial-gradient(ellipse 80% 30% at 50% 5%,rgba(90,50,180,.3) 0%,transparent 50%),
-  linear-gradient(180deg,#100828 0%,#0d0b1e 35%,#090614 100%);}
+  radial-gradient(ellipse 90% 60% at 50% 0%,rgba(123,47,255,.45) 0%,transparent 55%),
+  radial-gradient(ellipse 60% 40% at 20% 80%,rgba(201,168,76,.12) 0%,transparent 50%),
+  radial-gradient(ellipse 60% 40% at 80% 80%,rgba(123,47,255,.1) 0%,transparent 50%),
+  linear-gradient(180deg,#0d0520 0%,#090614 50%,#06040f 100%);}
+.cover-logo{width:100px;height:100px;object-fit:contain;margin-bottom:20px;filter:drop-shadow(0 0 28px rgba(123,47,255,.5));}
 #cover .screen-inner{position:relative;z-index:1;text-align:center;max-width:880px;}
 .cover-mark{font-size:.65rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(185,153,255,.45);margin-bottom:48px;display:flex;align-items:center;justify-content:center;gap:12px;}
 .cover-mark::before,.cover-mark::after{content:'';width:40px;height:1px;background:rgba(185,153,255,.25);}
@@ -248,8 +250,10 @@ h1,h2,h3{font-family:'Montserrat',sans-serif;font-weight:900;letter-spacing:-.02
 
 /* ── 10 Seat ── */
 #seat{background:
-  radial-gradient(ellipse 70% 60% at 50% 50%,rgba(123,47,255,.08) 0%,transparent 60%),
-  var(--dark3);}
+  radial-gradient(ellipse 100% 70% at 50% 0%,rgba(123,47,255,.5) 0%,transparent 55%),
+  radial-gradient(ellipse 60% 40% at 20% 100%,rgba(201,168,76,.14) 0%,transparent 50%),
+  radial-gradient(ellipse 60% 40% at 80% 100%,rgba(123,47,255,.12) 0%,transparent 50%),
+  linear-gradient(180deg,#0d0520 0%,#090614 50%,#06040f 100%);}
 .seat-inner{max-width:720px;text-align:center;position:relative;z-index:1;}
 .seat-one{font-family:'Montserrat',sans-serif;font-weight:900;font-size:clamp(8rem,20vw,16rem);color:transparent;-webkit-text-stroke:1px rgba(123,47,255,.2);line-height:1;margin-bottom:-20px;}
 .seat-label{font-size:.62rem;font-weight:700;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);margin-bottom:28px;}
@@ -299,9 +303,9 @@ h1,h2,h3{font-family:'Montserrat',sans-serif;font-weight:900;letter-spacing:-.02
 <section class="screen" id="cover">
   <div class="checker-floor"></div>
   <div class="screen-inner">
-    <div class="cover-mark">Cult Content &nbsp;·&nbsp; Private &nbsp;·&nbsp; 2026</div>
+    <div class="cover-mark">Private &nbsp;·&nbsp; 2026</div>
+    <img src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png" alt="Cult Content" class="cover-logo">
     <h1 class="cover-h">
-      <span class="ln1">Cult Content</span>
       <span class="ln2">Investment Opportunity</span>
     </h1>
     <p class="cover-sub">Cult Content manages brands, coordinates creator affiliates, and builds the infrastructure layer for how businesses sell in the creator economy. Seven people. $212K in revenue. One hire away from a ceiling we haven't tested yet.</p>
@@ -730,7 +734,7 @@ h1,h2,h3{font-family:'Montserrat',sans-serif;font-weight:900;letter-spacing:-.02
 <section class="screen" id="seat">
   <div class="checker-floor"></div>
   <div class="seat-inner">
-    <div class="seat-one">1</div>
+    <img src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png" alt="Cult Content" class="cover-logo" style="margin-bottom:28px;">
     <div class="seat-label">One seat. One partner.</div>
     <h2 class="seat-headline">The right partner already knows<br>where this is going.</h2>
     <p class="seat-body">This is not an investment. It is an alignment — with a social commerce home, a creator economy, and a cultural movement rooted in a city that has been waiting for exactly this.</p>
