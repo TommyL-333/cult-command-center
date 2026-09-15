@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Cult Content — Investment Opportunity</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&family=Lato:wght@300;400;700&display=swap');
+:root{
+  --bg:#07070d;--s1:#0a0a12;--s2:#0e0e18;--card:#141420;--border:#1e1e30;
+  --gold:#f59e0b;--teal:#20d5c4;--green:#10b981;--red:#ef4444;
+  --text:#e2e8f0;--muted:#64748b;--light:#94a3b8;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;scroll-snap-type:y mandatory;}
+body{background:var(--bg);color:var(--text);font-family:'Lato',sans-serif;font-size:16px;line-height:1.65;overflow-x:hidden;}
+
+/* ── Shared ── */
+.screen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:80px 48px;position:relative;scroll-snap-align:start;overflow:hidden;}
+.eyebrow{font-size:.65rem;font-weight:700;letter-spacing:.15em;text-transform:uppercase;color:var(--gold);margin-bottom:18px;}
+h1,h2,h3{font-family:'Montserrat',sans-serif;font-weight:900;letter-spacing:-.025em;line-height:1.04;}
+.serif-sub{font-family:'Lato',sans-serif;font-weight:300;font-style:italic;color:var(--light);line-height:1.75;}
+.gold{color:var(--gold);}
+.teal{color:var(--teal);}
+.green{color:var(--green);}
+.muted{color:var(--muted);}
+.rule{width:48px;height:2px;background:var(--gold);margin:28px auto;}
+.divider{width:1px;background:var(--border);align-self:stretch;}
+
+/* ── Nav dots ── */
+.nav-dots{position:fixed;right:24px;top:50%;transform:translateY(-50%);display:flex;flex-direction:column;gap:10px;z-index:100;}
+.nav-dot{width:6px;height:6px;border-radius:50%;background:var(--border);cursor:pointer;transition:all .25s;}
+.nav-dot.active{background:var(--gold);transform:scale(1.5);}
+
+/* ── 01 Cover ── */
+#cover{background:radial-gradient(ellipse 80% 60% at 50% 40%,rgba(245,158,11,.07) 0%,transparent 65%),var(--bg);}
+.cover-inner{text-align:center;max-width:860px;}
+.cover-mark{font-size:.72rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-bottom:48px;}
+.cover-headline{font-family:'Montserrat',sans-serif;font-weight:900;font-size:clamp(3rem,7vw,6.5rem);letter-spacing:-.035em;line-height:1;margin-bottom:32px;}
+.cover-headline .line1{display:block;color:var(--text);}
+.cover-headline .line2{display:block;color:var(--gold);filter:drop-shadow(0 0 40px rgba(245,158,11,.35));}
+.cover-sub{font-size:1.05rem;color:var(--light);max-width:520px;margin:0 auto 52px;line-height:1.72;}
+.cover-scroll{font-size:.65rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);display:flex;align-items:center;gap:8px;cursor:pointer;}
+.cover-scroll::after{content:"";width:32px;height:1px;background:var(--muted);}
+
+/* ── 02 The Moment ── */
+#moment{background:var(--s1);}
+.moment-inner{max-width:900px;width:100%;}
+.moment-grid{display:grid;grid-template-columns:1fr 1fr;gap:64px;align-items:center;}
+.moment-text h2{font-size:clamp(2rem,4vw,3.2rem);margin-bottom:24px;}
+.moment-text p{font-size:.95rem;color:var(--light);line-height:1.8;margin-bottom:16px;}
+.moment-stats{display:flex;flex-direction:column;gap:2px;}
+.stat-block{padding:24px 28px;border-left:2px solid var(--border);}
+.stat-block.lit{border-color:var(--gold);}
+.stat-num{font-family:'Montserrat',sans-serif;font-weight:900;font-size:2.4rem;color:var(--gold);line-height:1;}
+.stat-label{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-top:4px;}
+.exit-card{background:var(--card);border:1px solid rgba(16,185,129,.25);border-radius:12px;padding:20px 24px;margin-top:24px;}
+.exit-label{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--green);margin-bottom:8px;}
+.exit-text{font-size:.88rem;color:var(--light);line-height:1.65;}
+.exit-text strong{color:var(--text);}
+
+/* ── 03 What We're Building ── */
+#building{background:var(--s2);}
+.building-inner{max-width:960px;width:100%;text-align:center;}
+.building-inner h2{font-size:clamp(2rem,4.5vw,3.8rem);margin-bottom:16px;}
+.building-sub{font-size:1rem;color:var(--light);max-width:620px;margin:0 auto 56px;line-height:1.75;}
+.three-cols{display:grid;grid-template-columns:1fr 1fr 1fr;gap:2px;border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.col-block{padding:36px 30px;background:var(--card);text-align:left;}
+.col-block.mid{background:#111122;border-left:1px solid var(--border);border-right:1px solid var(--border);}
+.col-num{font-family:'Montserrat',sans-serif;font-weight:900;font-size:3rem;color:var(--border);line-height:1;margin-bottom:16px;}
+.col-title{font-family:'Montserrat',sans-serif;font-weight:900;font-size:1.1rem;margin-bottom:10px;color:var(--text);}
+.col-body{font-size:.83rem;color:var(--muted);line-height:1.72;}
+.oneliner{margin-top:40px;font-family:'Montserrat',sans-serif;font-weight:900;font-size:clamp(1.1rem,2.5vw,1.7rem);color:var(--gold);filter:drop-shadow(0 0 28px rgba(245,158,11,.25));}
+
+/* ── 04 Proof ── */
+#proof{background:var(--s1);}
+.proof-inner{max-width:960px;width:100%;}
+.proof-inner h2{font-size:clamp(1.8rem,4vw,3rem);margin-bottom:8px;}
+.proof-sub{font-size:.9rem;color:var(--light);margin-bottom:48px;}
+.proof-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.proof-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;}
+.proof-card.feature{grid-column:span 2;background:linear-gradient(135deg,rgba(245,158,11,.07),var(--card));border-color:rgba(245,158,11,.25);}
+.proof-icon{font-size:1.4rem;margin-bottom:12px;}
+.proof-num{font-family:'Montserrat',sans-serif;font-weight:900;font-size:2.2rem;color:var(--gold);line-height:1;margin-bottom:6px;}
+.proof-label{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);}
+.proof-desc{font-size:.8rem;color:var(--light);line-height:1.65;margin-top:10px;}
+.media-badge{display:inline-flex;align-items:center;gap:7px;background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);border-radius:20px;padding:5px 12px;font-size:.68rem;font-weight:700;color:var(--gold);text-transform:uppercase;letter-spacing:.07em;margin-top:10px;}
+
+/* ── 05 Client Story ── */
+#client{background:var(--s2);}
+.client-inner{max-width:900px;width:100%;}
+.client-grid{display:grid;grid-template-columns:1.2fr 1fr;gap:64px;align-items:center;}
+.client-text .eyebrow{text-align:left;}
+.client-text h2{font-size:clamp(1.8rem,4vw,3rem);margin-bottom:20px;}
+.client-text p{font-size:.9rem;color:var(--light);line-height:1.8;margin-bottom:16px;}
+.client-text p strong{color:var(--text);}
+.client-stats{display:flex;flex-direction:column;gap:16px;}
+.cs-item{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px 22px;}
+.cs-item.highlight{border-color:rgba(245,158,11,.3);background:linear-gradient(135deg,rgba(245,158,11,.07),var(--card));}
+.cs-val{font-family:'Montserrat',sans-serif;font-weight:900;font-size:1.8rem;color:var(--gold);line-height:1;margin-bottom:4px;}
+.cs-val.green{color:var(--green);}
+.cs-label{font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;}
+.cs-note{font-size:.78rem;color:var(--light);margin-top:6px;line-height:1.5;}
+
+/* ── 06 Model ── */
+#model{background:var(--s1);}
+.model-inner{max-width:900px;width:100%;}
+.model-inner h2{font-size:clamp(1.8rem,4vw,3rem);margin-bottom:8px;}
+.model-sub{font-size:.9rem;color:var(--light);margin-bottom:48px;}
+.model-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:32px;}
+.model-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;}
+.model-card.primary{border-color:rgba(245,158,11,.3);background:linear-gradient(160deg,rgba(245,158,11,.06),var(--card));}
+.model-card-title{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:14px;}
+.model-card-body{font-size:.85rem;color:var(--light);line-height:1.72;}
+.model-card-body strong{color:var(--text);}
+.revenue-track{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:24px;}
+.rt-title{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:20px;}
+.rt-rows{display:flex;flex-direction:column;gap:12px;}
+.rt-row{display:flex;align-items:center;gap:14px;}
+.rt-label{font-size:.78rem;color:var(--muted);width:120px;flex-shrink:0;}
+.rt-bar-wrap{flex:1;height:20px;background:rgba(255,255,255,.04);border-radius:6px;overflow:hidden;}
+.rt-bar{height:100%;border-radius:6px;display:flex;align-items:center;padding-left:10px;font-size:.68rem;font-weight:800;}
+.rt-bar.now{background:rgba(245,158,11,.35);width:18%;color:var(--gold);}
+.rt-bar.peak{background:rgba(245,158,11,.5);width:32%;color:var(--gold);}
+.rt-bar.y1{background:rgba(245,158,11,.65);width:55%;color:#000;}
+.rt-bar.y2{background:rgba(245,158,11,.8);width:80%;color:#000;}
+.rt-bar.y3{background:var(--gold);width:100%;color:#000;}
+.rt-val{font-size:.78rem;font-weight:700;color:var(--gold);width:72px;text-align:right;flex-shrink:0;}
+.bottleneck{margin-top:20px;display:flex;align-items:flex-start;gap:12px;background:rgba(245,158,11,.06);border:1px solid rgba(245,158,11,.2);border-radius:10px;padding:14px 16px;}
+.bottleneck-text{font-size:.82rem;color:var(--light);line-height:1.65;}
+.bottleneck-text strong{color:var(--text);}
+
+/* ── 07 The Ask ── */
+#ask{background:var(--s2);}
+.ask-inner{max-width:860px;width:100%;text-align:center;}
+.ask-inner h2{font-size:clamp(2rem,4.5vw,3.8rem);margin-bottom:24px;}
+.ask-amount{font-family:'Montserrat',sans-serif;font-weight:900;font-size:clamp(3.5rem,8vw,7rem);color:var(--gold);line-height:1;filter:drop-shadow(0 0 50px rgba(245,158,11,.3));margin:32px 0;}
+.ask-range{font-size:.85rem;color:var(--muted);margin-bottom:48px;}
+.ask-uses{display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:680px;margin:0 auto 40px;text-align:left;}
+.use-item{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:22px;}
+.use-item.primary{border-color:rgba(245,158,11,.3);}
+.use-num{font-family:'Montserrat',sans-serif;font-weight:900;font-size:2.5rem;color:var(--border);line-height:1;margin-bottom:10px;}
+.use-item.primary .use-num{color:rgba(245,158,11,.3);}
+.use-title{font-size:.88rem;font-weight:700;color:var(--text);margin-bottom:6px;}
+.use-body{font-size:.78rem;color:var(--muted);line-height:1.65;}
+.ask-note{font-size:.82rem;color:var(--light);max-width:520px;margin:0 auto;line-height:1.72;}
+
+/* ── 08 The Return ── */
+#return{background:var(--s1);}
+.return-inner{max-width:860px;width:100%;}
+.return-inner h2{font-size:clamp(1.8rem,4vw,3rem);margin-bottom:8px;}
+.return-sub{font-size:.9rem;color:var(--light);margin-bottom:48px;max-width:600px;}
+.return-model{background:var(--card);border:2px solid rgba(245,158,11,.3);border-radius:16px;padding:36px;margin-bottom:24px;background:linear-gradient(160deg,rgba(245,158,11,.06),var(--card));}
+.rm-title{font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--gold);margin-bottom:24px;}
+.rm-terms{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;}
+.rm-term{text-align:center;}
+.rm-val{font-family:'Montserrat',sans-serif;font-weight:900;font-size:2rem;color:var(--gold);line-height:1;margin-bottom:6px;}
+.rm-label{font-size:.68rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;}
+.rm-note{font-size:.78rem;color:var(--light);margin-top:8px;line-height:1.5;}
+.return-comp{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.rc-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;}
+.rc-card.exit{border-color:rgba(16,185,129,.25);}
+.rc-label{font-size:.6rem;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:10px;}
+.rc-title{font-size:.92rem;font-weight:700;color:var(--text);margin-bottom:6px;}
+.rc-body{font-size:.8rem;color:var(--light);line-height:1.65;}
+.rc-body strong{color:var(--text);}
+
+/* ── 09 Long Vision ── */
+#vision{background:radial-gradient(ellipse 80% 70% at 50% 50%,rgba(32,213,196,.05) 0%,transparent 65%),var(--s2);}
+.vision-inner{max-width:760px;text-align:center;}
+.vision-inner h2{font-size:clamp(2.2rem,5vw,4.2rem);margin-bottom:32px;}
+.vision-body{font-size:1.05rem;color:var(--light);line-height:1.85;margin-bottom:40px;}
+.vision-body strong{color:var(--text);}
+.vision-pillars{display:flex;flex-direction:column;gap:14px;max-width:580px;margin:0 auto 40px;text-align:left;}
+.vp-item{display:flex;align-items:flex-start;gap:14px;padding:16px 18px;background:var(--card);border:1px solid var(--border);border-radius:10px;}
+.vp-icon{font-size:1.2rem;flex-shrink:0;}
+.vp-text{font-size:.83rem;color:var(--light);line-height:1.65;}
+.vp-text strong{color:var(--text);}
+.vision-footer{font-family:'Montserrat',sans-serif;font-weight:900;font-size:clamp(1rem,2.2vw,1.5rem);color:var(--teal);filter:drop-shadow(0 0 24px rgba(32,213,196,.25));}
+
+/* ── 10 The Seat ── */
+#seat{background:radial-gradient(ellipse 70% 60% at 50% 50%,rgba(245,158,11,.06) 0%,transparent 60%),var(--bg);}
+.seat-inner{max-width:700px;text-align:center;}
+.seat-one{font-family:'Montserrat',sans-serif;font-weight:900;font-size:clamp(8rem,20vw,16rem);color:transparent;-webkit-text-stroke:1px rgba(245,158,11,.25);line-height:1;margin-bottom:-20px;filter:drop-shadow(0 0 80px rgba(245,158,11,.1));}
+.seat-label{font-size:.65rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);margin-bottom:32px;}
+.seat-headline{font-family:'Montserrat',sans-serif;font-weight:900;font-size:clamp(1.6rem,4vw,3rem);margin-bottom:24px;}
+.seat-body{font-size:.95rem;color:var(--light);line-height:1.82;margin-bottom:48px;max-width:540px;margin-left:auto;margin-right:auto;}
+.seat-contact{display:flex;flex-direction:column;gap:6px;margin-bottom:40px;}
+.seat-name{font-family:'Montserrat',sans-serif;font-weight:900;font-size:1.1rem;}
+.seat-email{font-size:.88rem;color:var(--gold);}
+.seat-footer{font-size:.7rem;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;}
+
+/* ── Responsive ── */
+@media(max-width:768px){
+  .screen{padding:60px 24px;}
+  .moment-grid,.client-grid{grid-template-columns:1fr;gap:36px;}
+  .proof-grid{grid-template-columns:1fr 1fr;}
+  .proof-card.feature{grid-column:span 2;}
+  .three-cols{grid-template-columns:1fr;}
+  .model-grid{grid-template-columns:1fr;}
+  .ask-uses{grid-template-columns:1fr;}
+  .return-comp,.rm-terms{grid-template-columns:1fr;}
+  .nav-dots{display:none;}
+}
+</style>
+</head>
+<body>
+
+<!-- Nav Dots -->
+<div class="nav-dots" id="navDots">
+  <div class="nav-dot active" data-target="cover" title="Cover"></div>
+  <div class="nav-dot" data-target="moment" title="The Moment"></div>
+  <div class="nav-dot" data-target="building" title="What We're Building"></div>
+  <div class="nav-dot" data-target="proof" title="The Proof"></div>
+  <div class="nav-dot" data-target="client" title="Client Story"></div>
+  <div class="nav-dot" data-target="model" title="The Model"></div>
+  <div class="nav-dot" data-target="ask" title="The Ask"></div>
+  <div class="nav-dot" data-target="return" title="The Return"></div>
+  <div class="nav-dot" data-target="vision" title="The Long Vision"></div>
+  <div class="nav-dot" data-target="seat" title="The Seat"></div>
+</div>
+
+<!-- 01 Cover -->
+<section class="screen" id="cover">
+  <div class="cover-inner">
+    <div class="cover-mark">Cult Content &nbsp;·&nbsp; Confidential &nbsp;·&nbsp; 2026</div>
+    <h1 class="cover-headline">
+      <span class="line1">A once-in-a-lifetime</span>
+      <span class="line2">invitation.</span>
+    </h1>
+    <p class="cover-sub">One seat. One partner. A chance to fund the social commerce movement that is already happening — and shape what it becomes.</p>
+    <div class="cover-scroll" onclick="document.getElementById('moment').scrollIntoView({behavior:'smooth'})">
+      Begin &nbsp;
+    </div>
+  </div>
+</section>
+
+<!-- 02 The Moment -->
+<section class="screen" id="moment">
+  <div class="moment-inner">
+    <div class="moment-grid">
+      <div class="moment-text">
+        <div class="eyebrow" style="text-align:left;">01 — The Moment</div>
+        <h2>The window is open.<br><span class="gold">For the next 18 months.</span></h2>
+        <p>TikTok Shop has crossed $42 billion in annual GMV. The creator economy is no longer a trend — it's the infrastructure of modern commerce. The brands, creators, and communities that establish dominance in the next 18 months will define the category for a decade.</p>
+        <p>The window to build the dominant social commerce community has opened. It will not stay open.</p>
+        <div class="exit-card">
+          <div class="exit-label">Category Exit — Proof of Market</div>
+          <div class="exit-text"><strong>Social Commerce Club</strong> — the category's leading education and community platform — just exited to <strong>Podium for $30–50 million</strong>. The acquirers are here. The category is proven. The next chapter is being written now.</div>
+        </div>
+      </div>
+      <div class="moment-stats">
+        <div class="stat-block lit">
+          <div class="stat-num">$42B</div>
+          <div class="stat-label">TikTok Shop Annual GMV</div>
+        </div>
+        <div class="stat-block lit">
+          <div class="stat-num">700+</div>
+          <div class="stat-label">Creators in Network</div>
+        </div>
+        <div class="stat-block lit">
+          <div class="stat-num">2,500+</div>
+          <div class="stat-label">Creator Carnival Attendees</div>
+        </div>
+        <div class="stat-block lit">
+          <div class="stat-num">$50M</div>
+          <div class="stat-label">Lifetime GMV Target</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 03 What We're Building -->
+<section class="screen" id="building">
+  <div class="building-inner">
+    <div class="eyebrow">02 — What We're Building</div>
+    <h2>DC's social commerce aggregator.<br><span class="gold">Three layers. One gravity.</span></h2>
+    <p class="building-sub">Cult Content is not a TikTok Shop agency. It is the social commerce home for creators and brands in the DMV — the only operation in the country with a physical community attached to a performance agency.</p>
+    <div class="three-cols">
+      <div class="col-block">
+        <div class="col-num">01</div>
+        <div class="col-title">The Agency</div>
+        <div class="col-body">Brand management at scale. Management fees + net sales share that grows with client GMV. The commercial engine that funds everything. Built for CPG brands that are ready to win on TikTok Shop.</div>
+      </div>
+      <div class="col-block mid">
+        <div class="col-num" style="color:rgba(245,158,11,.3);">02</div>
+        <div class="col-title" style="color:var(--gold);">The Community</div>
+        <div class="col-body" style="color:var(--light);">700+ creators. In-person events. Rooted in DC's Black creator community in PG County. Partnered with Creators for Mental Health. Free and open. The moat no competitor can buy or replicate.</div>
+      </div>
+      <div class="col-block">
+        <div class="col-num">03</div>
+        <div class="col-title">The IRL Layer</div>
+        <div class="col-body">Creator Carnival. Annual live event. 2,500+ attendees. Featured on 95.5 WPGC. The physical proof that this community is real — and growing. The in-person gathering that turns a network into a movement.</div>
+      </div>
+    </div>
+    <div class="oneliner">
+      "Commerce is the mechanism. Community is the mission."
+    </div>
+  </div>
+</section>
+
+<!-- 04 Proof -->
+<section class="screen" id="proof">
+  <div class="proof-inner">
+    <div class="eyebrow">03 — Traction</div>
+    <h2>It's already happening.</h2>
+    <p class="proof-sub">This is not a concept. Every element exists, operates, and has proven itself in the market.</p>
+    <div class="proof-grid">
+      <div class="proof-card feature">
+        <div class="proof-icon">🎪</div>
+        <div class="proof-num">2,500+</div>
+        <div class="proof-label">Creator Carnival — Sept 12, 2026</div>
+        <div class="proof-desc">An annual live commerce and creator culture event in DC. The Go Band as headliner. 16 branded activations. Brand sponsors including Zenjoy, Reacher, Drop TV, and Bomesi.</div>
+        <div class="media-badge">📻 Featured on 95.5 WPGC</div>
+      </div>
+      <div class="proof-card">
+        <div class="proof-icon">👥</div>
+        <div class="proof-num">700+</div>
+        <div class="proof-label">Creator Network</div>
+        <div class="proof-desc">Active affiliate creators across the DMV and beyond, ready to deploy for every new brand client.</div>
+      </div>
+      <div class="proof-card">
+        <div class="proof-icon">🤝</div>
+        <div class="proof-num">Reacher</div>
+        <div class="proof-label">Tech Partnership</div>
+        <div class="proof-desc">Deep integration with Reacher's creator outreach platform. Event sponsor. Feature development influenced by direct feedback loop.</div>
+      </div>
+      <div class="proof-card">
+        <div class="proof-icon">🌱</div>
+        <div class="proof-num">First Run CPG</div>
+        <div class="proof-label">Brand Pipeline</div>
+        <div class="proof-desc">Embedded in the DMV's brand accelerator ecosystem — incubation to funding pipeline feeding directly into Cult Content's agency.</div>
+      </div>
+      <div class="proof-card">
+        <div class="proof-icon">💚</div>
+        <div class="proof-num">Mental Health</div>
+        <div class="proof-label">Partnership</div>
+        <div class="proof-desc">Official partnership with Creators for Mental Health. The community is built around the whole person, not just the output.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 05 Client Story -->
+<section class="screen" id="client">
+  <div class="client-inner">
+    <div class="client-grid">
+      <div class="client-text">
+        <div class="eyebrow" style="text-align:left;">04 — Why We're Different</div>
+        <h2>We don't just manage affiliates.<br><span class="gold">We go the distance.</span></h2>
+        <p><strong>Trip Visuals</strong> came to us with the Brain Machine — a light entrainment device that uses precise visual frequencies to guide the brain into meditative states. A bootstrapping founder with a genuinely transformative product and a category that creators hadn't discovered yet.</p>
+        <p>We built their affiliate network. The community rallied around it. In their first strong month they hit <strong>$15K organically</strong>. Top affiliates are posting unprompted.</p>
+        <p>Then we did something most agencies don't do: <strong>we helped them get funded.</strong> We connected Trip Visuals with Big Think Capital and secured a financing deal — earning a commission for the referral. The client is funded, scaling, and loyal.</p>
+        <p style="font-size:.82rem;color:var(--muted);font-style:italic;">When a client's mission advances human wellbeing, the whole community shows up. That's not a policy. It's who we are.</p>
+      </div>
+      <div class="client-stats">
+        <div class="cs-item highlight">
+          <div class="cs-val">$15K</div>
+          <div class="cs-label">Organic Revenue Month</div>
+          <div class="cs-note">Before full campaign deployment. Community-driven, not ad-driven.</div>
+        </div>
+        <div class="cs-item">
+          <div class="cs-val green">Funded</div>
+          <div class="cs-label">Big Think Capital</div>
+          <div class="cs-note">Cult Content facilitated the capital raise. Commission earned. Client accelerated.</div>
+        </div>
+        <div class="cs-item">
+          <div class="cs-val" style="font-size:1rem;color:var(--teal);">Brain Machine</div>
+          <div class="cs-label">Light Entrainment Device</div>
+          <div class="cs-note">Meditative visual experience. Nervous system regulation. Exactly the kind of product the Cult Content community was built for.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 06 The Model -->
+<section class="screen" id="model">
+  <div class="model-inner">
+    <div class="eyebrow">05 — Business Model</div>
+    <h2>A model that compounds.</h2>
+    <p class="model-sub">Two revenue streams. One scales automatically as clients grow. The other grows as we add clients. Both are already generating revenue.</p>
+    <div class="model-grid">
+      <div class="model-card primary">
+        <div class="model-card-title">Management Fee</div>
+        <div class="model-card-body">
+          Fixed monthly retainer per brand client. Covers strategy, creator management, campaign operations, and reporting. <strong>Predictable, recurring baseline revenue</strong> that scales with the client roster.
+        </div>
+      </div>
+      <div class="model-card">
+        <div class="model-card-title">Net Sales Share</div>
+        <div class="model-card-body">
+          A percentage of net sales generated through the affiliate channel. <strong>As brand GMV grows, our revenue grows automatically</strong> — without adding headcount. This is the compounding engine.
+        </div>
+      </div>
+    </div>
+    <div class="revenue-track">
+      <div class="rt-title">Revenue Trajectory — The Sales Hire Changes Everything</div>
+      <div class="rt-rows">
+        <div class="rt-row">
+          <div class="rt-label">Today</div>
+          <div class="rt-bar-wrap"><div class="rt-bar now">~$15K</div></div>
+          <div class="rt-val">$15K/mo</div>
+        </div>
+        <div class="rt-row">
+          <div class="rt-label">Peak (Dec)</div>
+          <div class="rt-bar-wrap"><div class="rt-bar peak">$27K</div></div>
+          <div class="rt-val">$27K/mo</div>
+        </div>
+        <div class="rt-row">
+          <div class="rt-label">Yr 1 (post-hire)</div>
+          <div class="rt-bar-wrap"><div class="rt-bar y1">$40–60K</div></div>
+          <div class="rt-val">$50K/mo</div>
+        </div>
+        <div class="rt-row">
+          <div class="rt-label">Year 2</div>
+          <div class="rt-bar-wrap"><div class="rt-bar y2">$75–125K</div></div>
+          <div class="rt-val">$100K/mo</div>
+        </div>
+        <div class="rt-row">
+          <div class="rt-label">Year 3</div>
+          <div class="rt-bar-wrap"><div class="rt-bar y3">$150K+</div></div>
+          <div class="rt-val">$150K+/mo</div>
+        </div>
+      </div>
+    </div>
+    <div class="bottleneck">
+      <div style="font-size:1.2rem;flex-shrink:0;">⚡</div>
+      <div class="bottleneck-text">We have proven the model works — $27K in a single month without a dedicated sales function. <strong>Every dollar of variance between $15K and $27K is a founder-bottleneck problem, not a market problem.</strong> One hire eliminates the bottleneck permanently.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 07 The Ask -->
+<section class="screen" id="ask">
+  <div class="ask-inner">
+    <div class="eyebrow">06 — The Investment</div>
+    <h2>Precisely scoped. Immediately deployed.</h2>
+    <div class="ask-amount">$750K</div>
+    <p class="ask-range">Seeking $500K – $1M from a single partner. No syndicate. No cap table complexity. One aligned relationship.</p>
+    <div class="ask-uses">
+      <div class="use-item primary">
+        <div class="use-num">01</div>
+        <div class="use-title">Head of Sales</div>
+        <div class="use-body">The primary hire. Responsible for brand intake, proposals, partnerships, and marketing. Comp is incentive-driven — they eat what they kill. This single hire removes the founder from the sales bottleneck and opens the growth ceiling.</div>
+      </div>
+      <div class="use-item">
+        <div class="use-num">02</div>
+        <div class="use-title">Software & Infrastructure</div>
+        <div class="use-body">Continued development of the marketplace platform, affiliate management software, and AI automation stack (Sisyphus). The tech moat that makes Cult Content operate at a fraction of the headcount of a traditional agency.</div>
+      </div>
+    </div>
+    <p class="ask-note">The team stays lean and incentive-driven. This capital is not for overhead. It is for the two inputs that directly unlock revenue growth.</p>
+  </div>
+</section>
+
+<!-- 08 The Return -->
+<section class="screen" id="return">
+  <div class="return-inner">
+    <div class="eyebrow">07 — Your Return</div>
+    <h2>Revenue-backed. Not speculative.</h2>
+    <p class="return-sub">A royalty structure — not a traditional equity play. Your return is directly tied to the revenue this investment unlocks. No exit event required to get paid.</p>
+    <div class="return-model">
+      <div class="rm-title">Royalty Structure — Draft Terms</div>
+      <div class="rm-terms">
+        <div class="rm-term">
+          <div class="rm-val">X%</div>
+          <div class="rm-label">Of Gross Revenue</div>
+          <div class="rm-note">Monthly royalty payment from all revenue streams</div>
+        </div>
+        <div class="rm-term">
+          <div class="rm-val">2.5×</div>
+          <div class="rm-label">Return Target</div>
+          <div class="rm-note">Royalty continues until full return is received</div>
+        </div>
+        <div class="rm-term">
+          <div class="rm-val">~3 Yr</div>
+          <div class="rm-label">Projected Payback</div>
+          <div class="rm-note">Based on Year 1–3 revenue trajectory</div>
+        </div>
+      </div>
+    </div>
+    <div class="return-comp">
+      <div class="rc-card">
+        <div class="rc-label">Why Royalty Over Equity</div>
+        <div class="rc-title">Aligned incentives. Clean structure.</div>
+        <div class="rc-body">You get paid from real revenue, not a speculative exit. As the business grows, you get paid faster. You're not waiting on an acquisition — you're participating in the upside as it happens. Terms are negotiated between two people, not a committee.</div>
+      </div>
+      <div class="rc-card exit">
+        <div class="rc-label">Exit Upside — Optional Kicker</div>
+        <div class="rc-title">Social Commerce Club → Podium: $30–50M</div>
+        <div class="rc-body">A comparable category exit is proven. If Cult Content reaches a similar exit, <strong>an equity kicker clause</strong> can be structured to give the investor participation in that upside — on top of the royalty return already received.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 09 The Long Vision -->
+<section class="screen" id="vision">
+  <div class="vision-inner">
+    <div class="eyebrow">08 — The Long Vision</div>
+    <h2>This is bigger than<br><span class="teal">an agency.</span></h2>
+    <div class="rule"></div>
+    <p class="vision-body">We are all made to create. That is the most fundamental thing about being human — the instinct to make, to express, to build. The social commerce world is where that instinct meets economic reality right now. But what we're building points toward something much larger.</p>
+    <div class="vision-pillars">
+      <div class="vp-item">
+        <span class="vp-icon">🌿</span>
+        <div class="vp-text"><strong>A physical community home.</strong> A retreat center — land, gardens, event space — where creators come to learn, create, and reconnect. Content creation is the economic output that sustains the community. TikTok Shop is the mechanism.</div>
+      </div>
+      <div class="vp-item">
+        <span class="vp-icon">🌍</span>
+        <div class="vp-text"><strong>A global network.</strong> Connected retreat centers and creator communities across the world, sharing resources, knowledge, and economic infrastructure. The same playbook replicated in new cities and new cultures.</div>
+      </div>
+      <div class="vp-item">
+        <span class="vp-icon">✨</span>
+        <div class="vp-text"><strong>A cultural shift.</strong> Sustainable living. Spiritual enrichment. Nervous system regulation. Authentic expression. The creator economy as a vehicle for human flourishing, not just commerce.</div>
+      </div>
+    </div>
+    <div class="vision-footer">"Commerce is the mechanism. Community is the mission."</div>
+  </div>
+</section>
+
+<!-- 10 The Seat -->
+<section class="screen" id="seat">
+  <div class="seat-inner">
+    <div class="seat-one">1</div>
+    <div class="seat-label">One seat. One partner. One chance.</div>
+    <h2 class="seat-headline">You could go a million lifetimes<br>and never have this opportunity.</h2>
+    <p class="seat-body">This is not an investment. It is an invitation. We are not looking for capital — we are looking for one person who wants to be part of building something that changes the world. Someone who sees what this is becoming and wants their name on the moment it begins.</p>
+    <p class="seat-body" style="margin-top:0;font-size:.88rem;color:var(--muted);">The right person doesn't invest because of the IRR. They invest because they know — in their gut — that this is where they're supposed to be.</p>
+    <div class="seat-contact">
+      <div class="seat-name">Tommy Lynch</div>
+      <div class="seat-email">Tommy@cultcontent.cc</div>
+      <div style="font-size:.8rem;color:var(--muted);margin-top:4px;">Founder, Cult Content</div>
+    </div>
+    <div class="seat-footer">Cult Content &nbsp;·&nbsp; Washington, DC &nbsp;·&nbsp; cultcontent.cc &nbsp;·&nbsp; Confidential 2026</div>
+  </div>
+</section>
+
+<script>
+const sections = ['cover','moment','building','proof','client','model','ask','return','vision','seat'];
+const dots = document.querySelectorAll('.nav-dot');
+
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      const idx = sections.indexOf(e.target.id);
+      dots.forEach((d,i) => d.classList.toggle('active', i === idx));
+    }
+  });
+}, {threshold: 0.5});
+
+sections.forEach(id => {
+  const el = document.getElementById(id);
+  if (el) observer.observe(el);
+});
+
+dots.forEach((dot, i) => {
+  dot.addEventListener('click', () => {
+    document.getElementById(sections[i])?.scrollIntoView({behavior:'smooth'});
+  });
+});
+</script>
+</body>
+</html>
