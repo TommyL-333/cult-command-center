@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cult Content — Press & Media</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Lato:wght@300;400;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --purple:#7b2fff;
+  --lavender:#b899ff;
+  --gold:#c9a84c;
+  --dark0:#080710;
+  --dark1:#0d0b18;
+  --dark2:#100e1e;
+  --text:#e8eaf2;
+  --light:#c8cad8;
+  --muted:#64748b;
+  --border:rgba(255,255,255,.09);
+}
+html,body{background:var(--dark0);color:var(--text);font-family:'Lato',sans-serif;min-height:100vh;line-height:1.6;}
+a{color:inherit;text-decoration:none;}
+
+/* Header */
+.site-header{padding:32px 40px 0;max-width:880px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;}
+.wordmark{font-family:'Montserrat',sans-serif;font-weight:900;font-size:1.15rem;letter-spacing:.06em;color:var(--text);}
+.wordmark span{color:var(--gold);}
+.header-back{font-size:.75rem;color:var(--muted);border:1px solid var(--border);border-radius:7px;padding:6px 14px;transition:all .18s;}
+.header-back:hover{color:var(--lavender);border-color:rgba(184,153,255,.35);}
+
+/* Hero */
+.hero{max-width:880px;margin:0 auto;padding:56px 40px 40px;}
+.eyebrow{font-size:.6rem;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);margin-bottom:14px;display:flex;align-items:center;gap:10px;}
+.eyebrow::before,.eyebrow::after{content:'';width:20px;height:1px;background:var(--gold);display:block;}
+.hero h1{font-family:'Montserrat',sans-serif;font-weight:900;font-size:clamp(2rem,5vw,3.4rem);line-height:1.08;margin-bottom:18px;}
+.hero h1 span{color:var(--gold);}
+.hero p{font-size:.92rem;color:var(--light);max-width:560px;line-height:1.75;}
+
+/* Section label */
+.section-label{font-size:.6rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:22px;padding-bottom:12px;border-bottom:1px solid var(--border);}
+
+/* Press cards */
+.press-section{max-width:880px;margin:0 auto;padding:0 40px 60px;}
+.press-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.press-card{background:rgba(255,255,255,.025);border:1px solid var(--border);border-radius:14px;padding:24px 22px;display:flex;flex-direction:column;gap:10px;transition:border-color .18s;}
+.press-card:hover{border-color:rgba(201,168,76,.25);}
+.press-card.feature{grid-column:span 2;background:linear-gradient(135deg,rgba(123,47,255,.06),rgba(201,168,76,.04));border-color:rgba(201,168,76,.2);}
+.pc-type{font-size:.58rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gold);opacity:.8;}
+.pc-pub{font-size:.95rem;font-weight:700;color:var(--text);}
+.pc-title{font-size:.82rem;color:var(--light);line-height:1.5;}
+.pc-desc{font-size:.78rem;color:var(--muted);line-height:1.65;flex:1;}
+.pc-meta{font-size:.68rem;color:var(--muted);margin-top:4px;}
+.pc-link{display:inline-flex;align-items:center;gap:6px;font-size:.72rem;font-weight:700;color:var(--gold);margin-top:auto;padding-top:8px;transition:opacity .18s;}
+.pc-link:hover{opacity:.75;}
+.pc-link::after{content:'→';}
+.unverified-note{font-size:.7rem;color:rgba(100,116,139,.6);font-style:italic;}
+
+/* Unlinked (no URL) */
+.press-card.unlisted{opacity:.65;}
+.press-card.unlisted .pc-type{color:var(--muted);}
+
+/* Divider */
+.divider{max-width:880px;margin:0 auto 36px;padding:0 40px;}
+hr{border:none;border-top:1px solid var(--border);}
+
+/* Footer */
+footer{max-width:880px;margin:0 auto;padding:24px 40px 48px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border);}
+.footer-copy{font-size:.72rem;color:var(--muted);}
+.footer-links{display:flex;gap:20px;}
+.footer-links a{font-size:.72rem;color:var(--muted);transition:color .18s;}
+.footer-links a:hover{color:var(--lavender);}
+
+@media(max-width:640px){
+  .site-header,.hero,.press-section,.divider,footer{padding-left:20px;padding-right:20px;}
+  .press-grid{grid-template-columns:1fr;}
+  .press-card.feature{grid-column:span 1;}
+  footer{flex-direction:column;gap:16px;align-items:flex-start;}
+}
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wordmark">CULT<span>&nbsp;CONTENT</span></div>
+  <a href="https://cultcontent.cc" class="header-back">cultcontent.cc ↗</a>
+</header>
+
+<section class="hero">
+  <div class="eyebrow">Media &amp; Press</div>
+  <h1>Tommy Lynch<br><span>in the press.</span></h1>
+  <p>Founder and CEO of Cult Content. Featured across publications and podcasts covering social commerce, TikTok Shop strategy, creator affiliate marketing, and entrepreneurship. For press inquiries: <a href="mailto:tommy@cultcontent.cc" style="color:var(--lavender);">tommy@cultcontent.cc</a></p>
+</section>
+
+<section class="press-section">
+  <div class="section-label">Feature Articles</div>
+  <div class="press-grid" style="margin-bottom:36px;">
+    <div class="press-card feature">
+      <div class="pc-type">Print Feature</div>
+      <div class="pc-pub">Mirror Review</div>
+      <div class="pc-title">"Tommy Lynch: From Shipping Pallets to Social Commerce, a Founder's Unlikely Path"</div>
+      <div class="pc-desc">A profile of Tommy Lynch as CEO of Cult Content — covering his origin story (COVID-era school bus conversion, print-on-demand Etsy), his pivot to TikTok Shop, and his philosophy on community-building and creator partnerships. Includes stats: 50M+ views generated, 4 brands to five-figure monthly TikTok Shop sales, 2,500+ creators assisted.</div>
+      <a href="https://www.mirrorreview.com/tommy-lynch/" target="_blank" class="pc-link">Read the article</a>
+    </div>
+  </div>
+
+  <div class="section-label">Podcast Appearances</div>
+  <div class="press-grid">
+
+    <div class="press-card">
+      <div class="pc-type">Podcast · Episode 460</div>
+      <div class="pc-pub">AM/PM Podcast</div>
+      <div class="pc-title">"Affiliate Armies, Viral Videos, &amp; the TikTok Shop Playbook"</div>
+      <div class="pc-meta">Host: Kevin King</div>
+      <div class="pc-desc">Tommy walks through Cult Content's five-pillar TikTok Shop partner service model, discusses affiliate network strategy, viral content mechanics, and why social commerce success requires building audience trust before scale.</div>
+      <a href="https://www.ampmpodcast.com/460-affiliate-armies-viral-videos-the-tiktok-shop-playbook-with-tommy-lynch/" target="_blank" class="pc-link">Listen</a>
+    </div>
+
+    <div class="press-card">
+      <div class="pc-type">Podcast · Episode 76</div>
+      <div class="pc-pub">Agency Operators Podcast</div>
+      <div class="pc-title">"How to Build &amp; Scale TikTok Shop the Right Way"</div>
+      <div class="pc-meta">Host: Pasha Knish · March 4, 2026</div>
+      <div class="pc-desc">Scalable TikTok Shop operations, affiliate creator recruitment, and backend systems. Tommy discusses 100M+ views and $500K GMV generated for brands through Cult Content.</div>
+      <a href="https://www.listennotes.com/podcasts/agency-operators/how-to-build-scale-tiktok-6tuieOPySV1/" target="_blank" class="pc-link">Listen</a>
+    </div>
+
+    <div class="press-card">
+      <div class="pc-type">Podcast · Episode 87</div>
+      <div class="pc-pub">The eCom Growth Show</div>
+      <div class="pc-title">"Turning Dreams Into Reality With TikTok Shop"</div>
+      <div class="pc-meta">Host: Danan Coleman · August 31, 2026</div>
+      <div class="pc-desc">Tommy explains TikTok Shop as a top-of-funnel discovery and conversion engine, makes the case for investing in creator relationships over platform spend, and discusses halo effects flowing to Amazon and Shopify.</div>
+      <a href="https://www.listennotes.com/podcasts/the-ecom-growth-show/ep-87-turning-dreams-into-yg1EuNCODBp/" target="_blank" class="pc-link">Listen</a>
+    </div>
+
+    <div class="press-card">
+      <div class="pc-type">Podcast</div>
+      <div class="pc-pub">Design Your Life, Your Way</div>
+      <div class="pc-title">"How Turning a School Bus into a Haunted Adventure Made This Guy a TikTok Marketing Pro"</div>
+      <div class="pc-meta">Host: David Gambill · April 9, 2026</div>
+      <div class="pc-desc">Personal entrepreneurship story — Tommy's unconventional origin (school bus conversion, ghost-hunting road trip) and how resourcefulness outside traditional business paths led to building Cult Content.</div>
+      <a href="https://www.listennotes.com/podcasts/design-your-life/how-turning-a-school-bus-43d7zrM2fD6/" target="_blank" class="pc-link">Listen</a>
+    </div>
+
+    <div class="press-card">
+      <div class="pc-type">Podcast</div>
+      <div class="pc-pub">Shorty Awards Podcast</div>
+      <div class="pc-title">Social Commerce &amp; Creator Economy</div>
+      <div class="pc-meta">2026</div>
+      <div class="pc-desc">Conversation on social commerce strategy, the TikTok Shop ecosystem, and the creator economy as a career path. Full episode link pending.</div>
+      <div class="unverified-note">Public episode link not yet available</div>
+    </div>
+
+    <div class="press-card unlisted">
+      <div class="pc-type">Radio</div>
+      <div class="pc-pub">95.5 WPGC · Washington DC</div>
+      <div class="pc-title">Creator Carnival — Event Feature</div>
+      <div class="pc-meta">September 2026</div>
+      <div class="pc-desc">Featured coverage of Creator Carnival 2026, Cult Content's annual social commerce and creator culture event in Washington, DC — 2,500+ attendees, live performances, and 16 brand activations.</div>
+      <div class="unverified-note">Broadcast segment — no online archive available</div>
+    </div>
+
+  </div>
+</section>
+
+<footer>
+  <div class="footer-copy">© 2026 Cult Content &nbsp;·&nbsp; Washington, DC</div>
+  <div class="footer-links">
+    <a href="https://cultcontent.cc">Website</a>
+    <a href="https://events.cultcontent.cc">Creator Carnival</a>
+    <a href="mailto:tommy@cultcontent.cc">Press Inquiries</a>
+  </div>
+</footer>
+
+</body>
+</html>
