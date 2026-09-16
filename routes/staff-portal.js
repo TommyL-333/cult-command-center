@@ -32,7 +32,10 @@
 const express = require('express');
 
 module.exports = function mountStaffPortal(app, deps = {}) {
-  const { requireAuth, loadBrands, findById, findByUsername, loadUsers, stripe, getCreatorById, ALL_PERMISSIONS } = deps;
+  const {
+    requireAuth, loadBrands, findById, findByUsername, loadUsers, stripe, getCreatorById, ALL_PERMISSIONS,
+    createUser, updateUser, deleteUser, publicUser,
+  } = deps;
   if (!requireAuth) throw new Error('[staff-portal] requireAuth dep is required');
   if (!loadBrands) throw new Error('[staff-portal] loadBrands dep is required');
   if (!findById || !findByUsername || !loadUsers) {
@@ -302,5 +305,71 @@ module.exports = function mountStaffPortal(app, deps = {}) {
     }
   });
 
-  console.log('[staff-portal] mounted: /api/staff/profile, /roster, /my-clients, /assignments, /clients/assign|unassign, /points/leaderboard|mine, /payouts');
+  // ── Team Accounts (owner/user_admin): create/reset/remove login accounts.
+  // Same underlying storage + createUser/updateUser/deleteUser as the
+  // legacy /portal-admin/users endpoints (routes/portal-team-auth.js) — this
+  // is a second, parallel set of routes for the new React portal so the
+  // gate is requireStaffPermission (accepts a bare CF-Access identity with
+  // a portal-users.json record, not just an isPortalAdmin session — see
+  // this file's header comment), matching every other write endpoint here,
+  // rather than the old routes' isPortalAdmin-only gate. Nothing about the
+  // legacy page/endpoints changes; this just makes the same capability
+  // reachable from wherever staff actually are.
+  if (createUser && updateUser && deleteUser && publicUser) {
+    app.get('/api/staff/team-accounts', requireAuth, requireStaffUserAdmin, (req, res) => {
+      try {
+        res.json({ ok: true, users: loadUsers().map(publicUser), allPermissions: ALL_PERMISSIONS || [] });
+      } catch (e) {
+        res.status(500).json({ error: e.message });
+      }
+    });
+
+    app.post('/api/staff/team-accounts', requireAuth, requireStaffUserAdmin, express.json(), (req, res) => {
+      try {
+        const { username, email, name, password, role, permissions } = req.body || {};
+        const createdBy = req.staffUser?.email || req.userEmail || 'portal-admin';
+        const u = createUser({ username, email, name, password, role, permissions, createdBy });
+        res.json({ ok: true, user: u });
+      } catch (e) {
+        res.status(400).json({ error: e.message });
+      }
+    });
+
+    app.patch('/api/staff/team-accounts/:id', requireAuth, requireStaffUserAdmin, express.json(), (req, res) => {
+      try {
+        res.json({ ok: true, user: updateUser(req.params.id, req.body || {}) });
+      } catch (e) {
+        res.status(400).json({ error: e.message });
+      }
+    });
+
+    // Same lockout guards as the legacy DELETE /portal-admin/users/:id:
+    // can't delete your own account, can't delete the last remaining
+    // user_admin. req.staffUser is null for the legacy shared-password
+    // admin (no distinguishable identity) — that case has no "self" to
+    // collide with, so the self-delete check only applies when there's a
+    // real resolved account.
+    app.delete('/api/staff/team-accounts/:id', requireAuth, requireStaffUserAdmin, (req, res) => {
+      try {
+        if (req.staffUser?.id && req.staffUser.id === req.params.id) {
+          return res.status(400).json({ error: "You can't delete the account you're logged in as." });
+        }
+        const users = loadUsers();
+        const target = users.find((u) => u.id === req.params.id);
+        if (!target) return res.status(404).json({ error: 'user not found' });
+        const isTargetUserAdmin = Array.isArray(target.permissions) && target.permissions.includes('user_admin');
+        if (isTargetUserAdmin) {
+          const otherUserAdmins = users.filter((u) => u.id !== target.id && Array.isArray(u.permissions) && u.permissions.includes('user_admin'));
+          if (otherUserAdmins.length === 0) {
+            return res.status(400).json({ error: 'Cannot delete the last account with user_admin permission.' });
+          }
+        }
+        res.json({ ok: true, user: deleteUser(req.params.id) });
+      } catch (e) {
+        res.status(400).json({ error: e.message });
+      }
+    });
+  }
+
+  console.log('[staff-portal] mounted: /api/staff/profile, /roster, /my-clients, /assignments, /clients/assign|unassign, /points/leaderboard|mine, /payouts, /team-accounts');
 };

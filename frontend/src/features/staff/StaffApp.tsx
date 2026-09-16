@@ -10,6 +10,7 @@ import { MyClientsTab } from './MyClientsTab';
 import { SupportInboxTab } from './SupportInboxTab';
 import { PointsTab } from './PointsTab';
 import { TeamAssignmentsTab } from './TeamAssignmentsTab';
+import { TeamAccountsTab } from './TeamAccountsTab';
 import { CRMTab } from './crm/CRMTab';
 import { TikTokShopsTab } from './TikTokShopsTab';
 import { EmptyState } from '@/features/shared/EmptyState';
@@ -92,6 +93,7 @@ export function StaffApp({ identity }: { identity: Extract<Identity, { type: 'st
             <TabsTrigger value="crm">CRM / Sales</TabsTrigger>
             <TabsTrigger value="tiktok-shops">TikTok Shops</TabsTrigger>
             {isAdmin && <TabsTrigger value="team">Team Assignments</TabsTrigger>}
+            {isAdmin && <TabsTrigger value="team-accounts">Team Accounts</TabsTrigger>}
           </TabsList>
 
           <TabsContents>
@@ -118,6 +120,12 @@ export function StaffApp({ identity }: { identity: Extract<Identity, { type: 'st
             {isAdmin && (
               <TabsContent value="team" className="pt-2">
                 <TeamAssignmentsTab />
+              </TabsContent>
+            )}
+
+            {isAdmin && (
+              <TabsContent value="team-accounts" className="pt-2">
+                <TeamAccountsTab selfId={profile.id} />
               </TabsContent>
             )}
           </TabsContents>

@@ -114,4 +114,32 @@ export const replyToTicket = (id: number, body: string) =>
     body: JSON.stringify({ body }),
   });
 
+// ── Team Accounts — routes/staff-portal.js's /api/staff/team-accounts (owner/
+// user_admin only): create/reset/remove teammate login accounts. Parallel to
+// the legacy dashboard/portal-admin-team.html page's /portal-admin/users
+// endpoints, reachable from wherever staff actually are in the new portal.
+export interface TeamAccount {
+  id: string;
+  username: string;
+  email: string | null;
+  name: string;
+  role: string;
+  permissions: string[];
+  active: boolean;
+  createdAt: number;
+  createdBy: string;
+  mustChangePassword: boolean;
+}
+
+export const getTeamAccounts = () => req<{ users: TeamAccount[]; allPermissions: string[] }>('/api/staff/team-accounts');
+
+export const createTeamAccount = (input: { username: string; email?: string; name?: string; password: string; role?: string; permissions?: string[] | 'full' }) =>
+  req<{ user: TeamAccount }>('/api/staff/team-accounts', { method: 'POST', body: JSON.stringify(input) });
+
+export const updateTeamAccount = (id: string, patch: Partial<{ name: string; email: string; role: string; permissions: string[] | 'full'; active: boolean; password: string }>) =>
+  req<{ user: TeamAccount }>(`/api/staff/team-accounts/${id}`, { method: 'PATCH', body: JSON.stringify(patch) });
+
+export const deleteTeamAccount = (id: string) =>
+  req<{ user: TeamAccount }>(`/api/staff/team-accounts/${id}`, { method: 'DELETE' });
+
 export const logoutStaff = () => req('/portal-admin/logout', { method: 'POST' });
