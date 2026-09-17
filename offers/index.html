@@ -8,38 +8,90 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#080710;
-  --surface:#0f0f1a;
-  --surface2:#141428;
-  --border:#1a1a35;
-  --teal:#00f2ea;
-  --pink:#ff0050;
-  --purple:#7b2fff;
-  --lavender:#b899ff;
-  --gold:#c9a84c;
-  --text:#e8e8f0;
-  --muted:#7a7a9a;
-  --white:#fff;
-  --teal-dim:rgba(0,242,234,0.1);
-  --purple-dim:rgba(123,47,255,0.1);
+  --bg:#080710;--surface:#0f0f1a;--surface2:#141428;--border:#1a1a35;
+  --teal:#00f2ea;--pink:#ff0050;--purple:#7b2fff;--lavender:#b899ff;--gold:#c9a84c;
+  --text:#e8e8f0;--muted:#7a7a9a;--white:#fff;
+  --teal-dim:rgba(0,242,234,0.1);--purple-dim:rgba(123,47,255,0.1);
 }
-body{background:var(--bg);color:var(--text);font-family:'Lato',sans-serif;line-height:1.6;min-height:100vh}
+body{
+  background-color:var(--bg);
+  background-image:
+    radial-gradient(.5px .5px at 5% 12%,rgba(255,255,255,.6),transparent),
+    radial-gradient(.5px .5px at 14% 42%,rgba(255,255,255,.5),transparent),
+    radial-gradient(.5px .5px at 23% 7%,rgba(255,255,255,.65),transparent),
+    radial-gradient(.5px .5px at 32% 65%,rgba(255,255,255,.55),transparent),
+    radial-gradient(.5px .5px at 41% 28%,rgba(255,255,255,.6),transparent),
+    radial-gradient(.5px .5px at 52% 82%,rgba(255,255,255,.5),transparent),
+    radial-gradient(.5px .5px at 61% 18%,rgba(255,255,255,.65),transparent),
+    radial-gradient(.5px .5px at 72% 55%,rgba(255,255,255,.55),transparent),
+    radial-gradient(.5px .5px at 81% 35%,rgba(255,255,255,.6),transparent),
+    radial-gradient(.5px .5px at 90% 72%,rgba(255,255,255,.5),transparent),
+    radial-gradient(.5px .5px at 7% 88%,rgba(255,255,255,.65),transparent),
+    radial-gradient(.5px .5px at 47% 48%,rgba(255,255,255,.55),transparent),
+    radial-gradient(1px 1px at 9% 24%,rgba(255,255,255,.8),transparent),
+    radial-gradient(1px 1px at 26% 68%,rgba(220,220,255,.7),transparent),
+    radial-gradient(1px 1px at 48% 42%,rgba(255,255,255,.75),transparent),
+    radial-gradient(1px 1px at 67% 15%,rgba(200,220,255,.8),transparent),
+    radial-gradient(1px 1px at 82% 78%,rgba(255,255,255,.7),transparent),
+    radial-gradient(1px 1px at 94% 50%,rgba(230,210,255,.75),transparent),
+    radial-gradient(1.5px 1.5px at 18% 32%,rgba(255,255,255,.95),transparent),
+    radial-gradient(2px 2px at 42% 78%,rgba(200,240,255,.9),transparent),
+    radial-gradient(1.5px 1.5px at 65% 50%,rgba(255,255,255,.95),transparent),
+    radial-gradient(2px 2px at 88% 25%,rgba(230,220,255,.9),transparent);
+  background-size:
+    300px 200px,300px 200px,300px 200px,300px 200px,300px 200px,300px 200px,
+    300px 200px,300px 200px,300px 200px,300px 200px,300px 200px,300px 200px,
+    500px 350px,500px 350px,500px 350px,500px 350px,500px 350px,500px 350px,
+    900px 600px,900px 600px,900px 600px,900px 600px;
+  color:var(--text);font-family:'Lato',sans-serif;line-height:1.6;min-height:100vh
+}
 a{color:inherit;text-decoration:none}
 
 /* NAV */
-nav{display:flex;align-items:center;justify-content:space-between;padding:24px 48px;border-bottom:1px solid var(--border);position:relative;z-index:10}
+nav{display:flex;align-items:center;justify-content:space-between;padding:24px 48px;border-bottom:1px solid var(--border);position:relative;z-index:10;background:rgba(8,7,16,0.8);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
 .nav-logo{font-family:'Montserrat',sans-serif;font-weight:900;font-size:1.1rem;letter-spacing:.08em;color:var(--white);text-transform:uppercase}
 .nav-logo span{background:linear-gradient(135deg,var(--teal),var(--lavender));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .nav-cta{font-family:'Montserrat',sans-serif;font-weight:700;font-size:.82rem;letter-spacing:.08em;text-transform:uppercase;color:var(--teal);border:1px solid rgba(0,242,234,.35);padding:8px 20px;border-radius:6px;transition:all .2s}
 .nav-cta:hover{background:var(--teal-dim)}
 
-/* HERO */
-.hero-wrap{position:relative;overflow:hidden}
+/* HERO WRAP */
+.hero-wrap{position:relative;overflow:hidden;min-height:480px}
 .hero-wrap::before{content:'';position:absolute;inset:0;background:
-  radial-gradient(ellipse 80% 55% at 50% -10%, rgba(123,47,255,.28) 0%, transparent 68%),
-  radial-gradient(ellipse 50% 40% at 90% 110%, rgba(0,242,234,.12) 0%, transparent 60%);
-  pointer-events:none}
-.hero{max-width:900px;margin:0 auto;padding:96px 48px 80px;text-align:center;position:relative}
+  radial-gradient(ellipse 80% 55% at 50% -10%,rgba(123,47,255,.26) 0%,transparent 68%),
+  radial-gradient(ellipse 50% 40% at 90% 110%,rgba(0,242,234,.12) 0%,transparent 60%);
+  pointer-events:none;z-index:0}
+
+/* TRON GRID */
+.tron-floor{
+  position:absolute;bottom:-20px;left:-60%;width:220%;height:420px;
+  transform-origin:bottom center;
+  transform:perspective(450px) rotateX(68deg);
+  background-image:
+    linear-gradient(rgba(123,47,255,.14) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,242,234,.1) 1px,transparent 1px);
+  background-size:65px 65px;
+  -webkit-mask-image:radial-gradient(ellipse 75% 65% at 50% 100%,black 0%,transparent 100%);
+  mask-image:radial-gradient(ellipse 75% 65% at 50% 100%,black 0%,transparent 100%);
+  pointer-events:none;z-index:1
+}
+
+/* CLOUDS */
+.cloud{position:absolute;border-radius:50%;pointer-events:none;filter:blur(55px);animation:cloudDrift 22s ease-in-out infinite alternate;z-index:2}
+.c1{width:420px;height:180px;top:18%;left:-7%;background:rgba(255,255,255,.04)}
+.c2{width:280px;height:130px;top:50%;right:-4%;background:rgba(255,255,255,.03);animation-duration:30s;animation-direction:alternate-reverse}
+.c3{width:340px;height:150px;top:5%;left:40%;background:rgba(255,255,255,.025);animation-duration:25s}
+@keyframes cloudDrift{0%{transform:translate(0,0)}100%{transform:translate(28px,-18px)}}
+
+/* FLOATING ORBS (one per offer color) */
+.orb{position:absolute;border-radius:50%;pointer-events:none;z-index:2;animation:orbFloat 7s ease-in-out infinite alternate}
+.orb-teal{width:30px;height:30px;top:22%;left:8%;background:rgba(0,242,234,.18);box-shadow:0 0 25px rgba(0,242,234,.4),0 0 50px rgba(0,242,234,.15)}
+.orb-purple{width:22px;height:22px;top:38%;left:12%;background:rgba(123,47,255,.2);box-shadow:0 0 20px rgba(123,47,255,.45),0 0 40px rgba(123,47,255,.15);animation-delay:-2s}
+.orb-gold{width:18px;height:18px;top:55%;left:7%;background:rgba(201,168,76,.22);box-shadow:0 0 18px rgba(201,168,76,.45),0 0 36px rgba(201,168,76,.15);animation-delay:-4s}
+.orb-pink{width:25px;height:25px;top:30%;right:8%;background:rgba(255,0,80,.18);box-shadow:0 0 22px rgba(255,0,80,.4),0 0 44px rgba(255,0,80,.12);animation-delay:-1s}
+@keyframes orbFloat{0%{transform:translateY(0)}100%{transform:translateY(-15px)}}
+
+/* HERO CONTENT */
+.hero{max-width:900px;margin:0 auto;padding:96px 48px 80px;text-align:center;position:relative;z-index:5}
 .hero-eyebrow{font-size:.82rem;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--teal);margin-bottom:20px;opacity:.8}
 .hero h1{font-family:'Montserrat',sans-serif;font-weight:900;font-size:clamp(2.8rem,6vw,4.4rem);line-height:1.06;color:var(--white);margin-bottom:24px}
 .hero h1 .grad{background:linear-gradient(135deg,var(--teal) 0%,var(--lavender) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
@@ -49,53 +101,83 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:24px 4
 .offers-section{max-width:1080px;margin:0 auto;padding:80px 48px 120px}
 .offers-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:24px}
 
-.offer-card{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:40px;display:flex;flex-direction:column;transition:border-color .25s,transform .25s,box-shadow .25s;position:relative;overflow:hidden}
+.offer-card{
+  background:rgba(15,15,26,.75);border:1px solid rgba(255,255,255,.07);border-radius:18px;
+  padding:40px;display:flex;flex-direction:column;
+  transition:border-color .25s,transform .25s,box-shadow .25s;
+  position:relative;overflow:hidden;
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)
+}
 .offer-card::after{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--teal),var(--purple));transform:scaleX(0);transform-origin:left;transition:transform .3s}
-.offer-card:hover{border-color:rgba(0,242,234,.25);transform:translateY(-3px);box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.offer-card:hover{transform:translateY(-3px);box-shadow:0 24px 64px rgba(0,0,0,.4)}
 .offer-card:hover::after{transform:scaleX(1)}
 
-/* per-card accent top colors */
 .offer-card.accent-teal::after{background:linear-gradient(90deg,var(--teal),var(--lavender))}
+.offer-card.accent-teal:hover{border-color:rgba(0,242,234,.25)}
 .offer-card.accent-purple::after{background:linear-gradient(90deg,var(--purple),var(--lavender))}
+.offer-card.accent-purple:hover{border-color:rgba(123,47,255,.3)}
 .offer-card.accent-gold::after{background:linear-gradient(90deg,var(--gold),var(--lavender))}
+.offer-card.accent-gold:hover{border-color:rgba(201,168,76,.3)}
 .offer-card.accent-pink::after{background:linear-gradient(90deg,var(--pink),var(--purple))}
+.offer-card.accent-pink:hover{border-color:rgba(255,0,80,.25)}
 
 .offer-type{font-size:.72rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:16px}
 .offer-name{font-family:'Montserrat',sans-serif;font-weight:900;font-size:1.7rem;color:var(--white);margin-bottom:8px}
 .offer-tagline{font-size:.95rem;color:var(--muted);margin-bottom:24px;line-height:1.55}
 .offer-price{font-family:'Montserrat',sans-serif;font-weight:900;font-size:1.35rem;background:linear-gradient(135deg,var(--teal),var(--lavender));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:4px}
+.accent-purple .offer-price{background:linear-gradient(135deg,var(--purple),var(--lavender));-webkit-background-clip:text;background-clip:text}
+.accent-gold .offer-price{background:linear-gradient(135deg,var(--gold),var(--lavender));-webkit-background-clip:text;background-clip:text}
+.accent-pink .offer-price{background:linear-gradient(135deg,var(--pink),var(--lavender));-webkit-background-clip:text;background-clip:text}
 .offer-price-sub{font-size:.8rem;color:var(--muted);margin-bottom:28px}
 .offer-features{list-style:none;display:flex;flex-direction:column;gap:10px;flex:1;margin-bottom:32px}
 .offer-features li{display:flex;align-items:flex-start;gap:10px;font-size:.88rem;color:var(--text)}
 .offer-features li::before{content:'→';color:var(--teal);flex-shrink:0;margin-top:2px}
+.accent-purple .offer-features li::before{color:var(--lavender)}
+.accent-gold .offer-features li::before{color:var(--gold)}
+.accent-pink .offer-features li::before{color:var(--pink)}
 .offer-link{display:inline-flex;align-items:center;gap:8px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:.82rem;letter-spacing:.08em;text-transform:uppercase;color:var(--teal);transition:gap .2s}
+.accent-purple .offer-link{color:var(--lavender)}
+.accent-gold .offer-link{color:var(--gold)}
+.accent-pink .offer-link{color:var(--pink)}
 .offer-link:hover{gap:12px}
 
 /* FOUNDATION — FULL WIDTH */
 .offer-card.full-width{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center}
-.mini-deliverable{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:18px}
+.mini-deliverable{background:rgba(8,7,16,.6);border:1px solid rgba(255,255,255,.07);border-radius:10px;padding:18px}
 .mini-deliverable h4{font-family:'Montserrat',sans-serif;font-weight:700;font-size:.82rem;color:var(--white);margin-bottom:4px}
 .mini-deliverable p{font-size:.78rem;color:var(--muted)}
 .offer-card.full-width .offer-right{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 
-/* BOTTOM CTA */
-.bottom-cta{text-align:center;padding:0 48px 96px;max-width:700px;margin:0 auto}
-.bottom-cta h2{font-family:'Montserrat',sans-serif;font-weight:900;font-size:clamp(1.8rem,3vw,2.4rem);color:var(--white);margin-bottom:16px}
-.bottom-cta p{color:var(--muted);font-size:1.05rem;margin-bottom:32px}
-.btn{display:inline-block;background:linear-gradient(135deg,var(--teal) 0%,var(--purple) 100%);color:var(--white);font-family:'Montserrat',sans-serif;font-weight:900;font-size:.9rem;letter-spacing:.08em;text-transform:uppercase;padding:16px 40px;border-radius:8px;transition:opacity .2s,transform .2s}
-.btn:hover{opacity:.88;transform:translateY(-1px)}
+/* BUTTON */
+.btn{
+  display:inline-block;
+  background:linear-gradient(135deg,var(--teal) 0%,var(--purple) 100%);
+  color:var(--white);font-family:'Montserrat',sans-serif;font-weight:900;font-size:.9rem;
+  letter-spacing:.08em;text-transform:uppercase;padding:16px 40px;border-radius:8px;
+  transition:opacity .2s,transform .2s,box-shadow .2s;
+  box-shadow:0 0 28px rgba(0,242,234,.22),0 8px 20px rgba(0,0,0,.4)
+}
+.btn:hover{opacity:.9;transform:translateY(-2px);box-shadow:0 0 40px rgba(0,242,234,.38),0 12px 28px rgba(0,0,0,.5)}
 
 /* HOW WE WORK */
 .how-section{max-width:960px;margin:0 auto;padding:0 48px 80px}
 .section-label{font-size:.78rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;background:linear-gradient(135deg,var(--teal),var(--lavender));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:16px;display:inline-block}
 .section-title{font-family:'Montserrat',sans-serif;font-weight:900;font-size:clamp(1.6rem,3vw,2.2rem);color:var(--white);margin-bottom:40px}
 .how-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px}
-.how-card{padding:32px;background:var(--surface);border:1px solid var(--border);border-radius:14px}
+.how-card{
+  padding:32px;background:rgba(15,15,26,.7);border:1px solid rgba(255,255,255,.07);border-radius:14px;
+  backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)
+}
 .how-num{font-family:'Montserrat',sans-serif;font-weight:900;font-size:2.4rem;background:linear-gradient(135deg,var(--teal),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:12px}
 .how-card h3{font-family:'Montserrat',sans-serif;font-weight:700;font-size:1rem;color:var(--white);margin-bottom:8px}
 .how-card p{font-size:.88rem;color:var(--muted);line-height:1.7}
 
 .divider{border:none;border-top:1px solid var(--border);margin:0 48px 80px}
+
+/* BOTTOM CTA */
+.bottom-cta{text-align:center;padding:0 48px 96px;max-width:700px;margin:0 auto}
+.bottom-cta h2{font-family:'Montserrat',sans-serif;font-weight:900;font-size:clamp(1.8rem,3vw,2.4rem);color:var(--white);margin-bottom:16px}
+.bottom-cta p{color:var(--muted);font-size:1.05rem;margin-bottom:32px}
 
 @media(max-width:900px){
   nav{padding:20px 24px}
@@ -108,6 +190,7 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:24px 4
   .how-grid{grid-template-columns:1fr}
   .divider{margin:0 24px 56px}
   .bottom-cta{padding:0 24px 72px}
+  .orb,.tron-floor,.c1,.c2,.c3{display:none}
 }
 </style>
 </head>
@@ -119,6 +202,14 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:24px 4
 </nav>
 
 <div class="hero-wrap">
+  <div class="tron-floor"></div>
+  <div class="cloud c1"></div>
+  <div class="cloud c2"></div>
+  <div class="cloud c3"></div>
+  <div class="orb orb-teal"></div>
+  <div class="orb orb-purple"></div>
+  <div class="orb orb-gold"></div>
+  <div class="orb orb-pink"></div>
   <div class="hero">
     <div class="hero-eyebrow">Cult Content — Social Commerce</div>
     <h1>Four ways we help brands<br><span class="grad">win on TikTok Shop.</span></h1>
@@ -143,7 +234,7 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:24px 4
           <li>Category + brand qualification consultation</li>
           <li>Creator shortlist sourced through Reacher</li>
           <li>Reacher outreach automation setup</li>
-          <li>1-hour strategy session with Tommy</li>
+          <li>1-hour strategy session</li>
         </ul>
         <span class="offer-link">See full details →</span>
       </div>
@@ -153,7 +244,7 @@ nav{display:flex;align-items:center;justify-content:space-between;padding:24px 4
         <div class="mini-deliverable"><h4>Qualification</h4><p>Category + brand qualification roadmap</p></div>
         <div class="mini-deliverable"><h4>Creator List</h4><p>Curated shortlist matched to your niche</p></div>
         <div class="mini-deliverable"><h4>Reacher Setup</h4><p>Outreach automation configured</p></div>
-        <div class="mini-deliverable"><h4>Strategy Session</h4><p>1-hour live consultation with Tommy</p></div>
+        <div class="mini-deliverable"><h4>Strategy Session</h4><p>1-hour live consultation</p></div>
       </div>
     </a>
 
