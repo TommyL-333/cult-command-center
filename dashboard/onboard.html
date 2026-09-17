@@ -128,15 +128,21 @@ textarea{resize:vertical;min-height:80px;line-height:1.55}
 .check-item-text{font-size:12.5px;line-height:1.5}
 .check-item-sub{font-size:10px;color:var(--muted)}
 
-/* ── Add-ons ── */
-.addon-card{border:1px solid var(--border);border-radius:10px;padding:14px 16px;cursor:pointer;transition:all .15s;display:flex;align-items:flex-start;gap:12px}
-.addon-card:hover{border-color:rgba(255,255,255,.18)}
-.addon-card.checked{border-color:var(--teal);background:var(--teal-dim)}
-.addon-card input[type=checkbox]{width:16px;height:16px;margin-top:2px;accent-color:var(--teal);flex-shrink:0;cursor:pointer}
-.addon-info{flex:1}
-.addon-name{font-size:13px;font-weight:700;margin-bottom:2px}
-.addon-price{font-size:10px;font-weight:700;color:var(--teal);margin-bottom:3px}
-.addon-desc{font-size:10.5px;color:var(--muted);line-height:1.5}
+/* ── Account slot cards ── */
+.acc-slot{border:1px solid var(--border);border-radius:12px;padding:14px 16px;background:rgba(255,255,255,.02);transition:border-color .18s}
+.acc-slot.has-selection{border-color:rgba(32,213,196,.3)}
+.acc-slot-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.acc-slot-name{font-size:12.5px;font-weight:800}
+.acc-slot-price{font-size:10px;font-weight:700;color:var(--muted);display:none}
+.acc-slot.has-selection .acc-slot-price{display:block;color:var(--teal)}
+.acc-type-row{display:flex;gap:6px;flex-wrap:wrap}
+.acc-type-btn{padding:7px 13px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.03);
+  color:var(--muted);font-size:11.5px;font-weight:700;cursor:pointer;transition:all .15s;font-family:inherit;white-space:nowrap}
+.acc-type-btn:hover{border-color:rgba(255,255,255,.2);color:#fff}
+.acc-type-btn.sel{border-color:var(--teal);background:var(--teal-dim);color:var(--teal)}
+.acc-type-btn.none-sel{border-color:rgba(255,255,255,.06);background:none;color:rgba(255,255,255,.25)}
+.acc-creator-note{font-size:10px;color:var(--gold);margin-top:7px;display:none;line-height:1.45}
+.acc-slot.has-selection .acc-creator-note.show{display:block}
 
 /* ── GMV dropdown select custom ── */
 select.gmv-select{padding:11px 14px}
@@ -641,44 +647,21 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
         </div>
       </div>
 
-      <!-- Add-ons -->
-      <div style="margin-top:18px;margin-bottom:8px">
-        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:12px">Add-ons · +$500/mo each</div>
-        <div style="display:flex;flex-direction:column;gap:10px">
-          <label class="addon-card" id="addon-aicontent" onclick="toggleAddon('aicontent',this)">
-            <input type="checkbox" id="sc-addonAI" style="width:16px;height:16px;margin-top:2px;accent-color:var(--teal);flex-shrink:0">
-            <div class="addon-info">
-              <div class="addon-name">AI Content for Brand Page</div>
-              <div class="addon-price">+$500/mo</div>
-              <div class="addon-desc">AI-generated content posted directly to your TikTok brand page. Requires brand page admin access — we'll request post-submission.</div>
-            </div>
-          </label>
-          <div class="addon-card" id="addon-mktacc">
-            <input type="checkbox" id="sc-addonMktAcc" style="width:16px;height:16px;margin-top:2px;accent-color:var(--teal);flex-shrink:0" onchange="toggleMktAccounts(this)">
-            <div class="addon-info">
-              <div class="addon-name">Additional Marketing Accounts</div>
-              <div class="addon-price">+$500/mo per account</div>
-              <div class="addon-desc">Add 1–4 extra social accounts (Instagram, YouTube, etc.) to your managed roster.
-                <div id="mkt-acc-picker" style="display:none;margin-top:10px">
-                  <label style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);display:block;margin-bottom:6px">How many additional accounts?</label>
-                  <div class="toggle-row">
-                    <button type="button" class="t-btn" data-field="sc-mktAccCount" data-val="1" onclick="setToggle(this)">1</button>
-                    <button type="button" class="t-btn" data-field="sc-mktAccCount" data-val="2" onclick="setToggle(this)">2</button>
-                    <button type="button" class="t-btn" data-field="sc-mktAccCount" data-val="3" onclick="setToggle(this)">3</button>
-                    <button type="button" class="t-btn" data-field="sc-mktAccCount" data-val="4" onclick="setToggle(this)">4</button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-          <label class="addon-card" id="addon-cmpage" onclick="toggleAddon('cmpage',this)">
-            <input type="checkbox" id="sc-addonCMPage" style="width:16px;height:16px;margin-top:2px;accent-color:var(--teal);flex-shrink:0">
-            <div class="addon-info">
-              <div class="addon-name">Creator-Managed Page</div>
-              <div class="addon-price">+$500/mo · requires $3,000 min creator budget</div>
-              <div class="addon-desc">A dedicated TikTok page managed entirely by creators in our network. By checking this you confirm a minimum $3,000/mo creator budget.</div>
-            </div>
-          </label>
+      <!-- Add-ons: 5 account slots -->
+      <div style="margin-top:22px">
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">Account Add-ons</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.6">Each account is <strong style="color:#fff">$500/mo</strong> to manage. Choose a content type for each one — Management only, AI-generated content, or creator UGC content. Creator content requires a minimum $3,000/mo creator budget.</div>
+
+        <div style="display:flex;flex-direction:column;gap:10px" id="sc-account-slots">
+          <!-- slots injected by JS -->
+        </div>
+
+        <!-- Live cost summary -->
+        <div class="cost-card" id="sc-addon-cost" style="margin-top:14px;display:none">
+          <div style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:10px">Add-on Summary</div>
+          <div class="cost-row"><span class="cost-row-label">Accounts selected</span><span class="cost-row-val" id="sc-acc-count">0</span></div>
+          <div class="cost-row"><span class="cost-row-label">Monthly add-on total</span><span class="cost-row-val">$<span id="sc-addon-total">0</span>/mo</span></div>
+          <div id="sc-creator-budget-note" style="display:none;margin-top:8px;font-size:10.5px;color:var(--gold);line-height:1.55">⚠ One or more accounts use creator content — a minimum $3,000/mo creator budget applies.</div>
         </div>
       </div>
     </div>
@@ -1014,18 +997,65 @@ function updateCostCalc() {
   calc.style.display = 'block';
 }
 
-// ─── Add-ons (Scale) ──────────────────────────────────────────────────────────
-function toggleAddon(key, labelEl) {
-  const cb = labelEl.querySelector('input[type=checkbox]');
-  // click came from label, checkbox already toggled by default browser behaviour
-  setTimeout(() => {
-    labelEl.classList.toggle('checked', cb.checked);
-  }, 0);
+// ─── Account slot system (Scale) ─────────────────────────────────────────────
+const SC_ACCOUNTS = ['Brand Page', 'Marketing Account 1', 'Marketing Account 2', 'Marketing Account 3', 'Marketing Account 4'];
+const scAccountSelections = {}; // { 'Brand Page': 'none'|'management'|'ai'|'creator', ... }
+
+function buildAccountSlots() {
+  const container = document.getElementById('sc-account-slots');
+  if (!container) return;
+  container.innerHTML = '';
+  SC_ACCOUNTS.forEach(name => {
+    scAccountSelections[name] = 'none';
+    const id = 'acc-' + name.replace(/\s+/g, '-').toLowerCase();
+    const div = document.createElement('div');
+    div.className = 'acc-slot';
+    div.id = id;
+    div.innerHTML = `
+      <div class="acc-slot-header">
+        <div class="acc-slot-name">${name}</div>
+        <div class="acc-slot-price" id="${id}-price">$500/mo</div>
+      </div>
+      <div class="acc-type-row">
+        <button type="button" class="acc-type-btn none-sel" data-acc="${name}" data-type="none" onclick="selectAccType(this)">Not included</button>
+        <button type="button" class="acc-type-btn" data-acc="${name}" data-type="management" onclick="selectAccType(this)">Management</button>
+        <button type="button" class="acc-type-btn" data-acc="${name}" data-type="ai" onclick="selectAccType(this)">AI Content</button>
+        <button type="button" class="acc-type-btn" data-acc="${name}" data-type="creator" onclick="selectAccType(this)">Creator Content</button>
+      </div>
+      <div class="acc-creator-note" id="${id}-cnote">Requires $3,000/mo minimum creator budget. Great for placing creators on retainer to post to this account — we handle GMV tracking so they earn a revenue share from content they produce for it.</div>`;
+    container.appendChild(div);
+  });
 }
 
-function toggleMktAccounts(cb) {
-  cb.closest('.addon-card').classList.toggle('checked', cb.checked);
-  document.getElementById('mkt-acc-picker').style.display = cb.checked ? 'block' : 'none';
+function selectAccType(btn) {
+  const accName = btn.dataset.acc;
+  const type    = btn.dataset.type;
+  const id      = 'acc-' + accName.replace(/\s+/g, '-').toLowerCase();
+  const slot    = document.getElementById(id);
+  scAccountSelections[accName] = type;
+  slot.querySelectorAll('.acc-type-btn').forEach(b => {
+    b.classList.remove('sel', 'none-sel');
+    b.classList.add(b.dataset.type === type ? 'sel' : (b.dataset.type === 'none' && type !== 'none' ? 'none-sel' : ''));
+  });
+  slot.classList.toggle('has-selection', type !== 'none');
+  const cnote = document.getElementById(id + '-cnote');
+  if (cnote) cnote.classList.toggle('show', type === 'creator');
+  updateScAddonSummary();
+}
+
+function updateScAddonSummary() {
+  const selected = Object.values(scAccountSelections).filter(v => v !== 'none');
+  const count = selected.length;
+  const total = count * 500;
+  const hasCreator = selected.includes('creator');
+  const costEl = document.getElementById('sc-addon-cost');
+  if (costEl) costEl.style.display = count > 0 ? 'block' : 'none';
+  const countEl = document.getElementById('sc-acc-count');
+  if (countEl) countEl.textContent = count;
+  const totalEl = document.getElementById('sc-addon-total');
+  if (totalEl) totalEl.textContent = total.toLocaleString();
+  const noteEl = document.getElementById('sc-creator-budget-note');
+  if (noteEl) noteEl.style.display = hasCreator ? 'block' : 'none';
 }
 
 // ─── Products ─────────────────────────────────────────────────────────────────
@@ -1288,17 +1318,17 @@ function collectOfferDetails() {
     };
   }
   if (state.offerType === 'scale') {
+    const accSelected = Object.entries(scAccountSelections).filter(([,t]) => t !== 'none');
     return {
-      meetingCadence: getToggle('sc-meetingCadence'),
-      reimProduct:    v('sc-reimProduct'),
-      reimOrders:     v('sc-reimOrders'),
-      reimPrice:      v('sc-reimPrice'),
-      addonAI:        document.getElementById('sc-addonAI')?.checked,
-      addonMktAcc:    document.getElementById('sc-addonMktAcc')?.checked,
-      mktAccCount:    getToggle('sc-mktAccCount'),
-      addonCMPage:    document.getElementById('sc-addonCMPage')?.checked,
-      brandColor:     v('sc-brandColor'),
-      brandFonts:     v('sc-brandFonts'),
+      meetingCadence:  getToggle('sc-meetingCadence'),
+      reimProduct:     v('sc-reimProduct'),
+      reimOrders:      v('sc-reimOrders'),
+      reimPrice:       v('sc-reimPrice'),
+      brandColor:      v('sc-brandColor'),
+      brandFonts:      v('sc-brandFonts'),
+      accounts:        scAccountSelections,
+      accountsSelected: accSelected.map(([name, type]) => ({ name, type })),
+      addonMonthlyTotal: accSelected.length * 500,
     };
   }
   if (state.offerType === 'network') {
@@ -1323,6 +1353,7 @@ function collectOfferDetails() {
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 addProduct(); // start with one empty product row
+buildAccountSlots();
 initAssetUploader('gp-asset-upload');
 initAssetUploader('sc-asset-upload');
 </script>
