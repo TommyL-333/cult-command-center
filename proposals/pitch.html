@@ -177,6 +177,97 @@ h1,h2,h3{font-family:'Montserrat',sans-serif;font-weight:900;letter-spacing:-.02
 .press-badge{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:6px 14px;font-size:.7rem;font-weight:600;color:rgba(255,255,255,.42);text-decoration:none;transition:all .18s;}
 .press-badge.linked{color:rgba(201,168,76,.72);border-color:rgba(201,168,76,.18);}
 .press-badge.linked:hover{color:rgba(201,168,76,.95);border-color:rgba(201,168,76,.38);background:rgba(201,168,76,.05);}
+/* ── 06 Aggregator / 07 Unit Economics ── */
+#aggregator{background:var(--dark3);}
+.agg-inner{max-width:1100px;width:100%;}
+.agg-inner h2{font-size:clamp(1.7rem,4vw,2.9rem);margin-bottom:10px;}
+.agg-sub{color:var(--light);font-size:.95rem;max-width:760px;margin-bottom:30px;line-height:1.7;}
+.agg-split{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:28px;}
+.agg-card{border:1px solid var(--border);border-radius:12px;padding:20px 22px;background:rgba(255,255,255,.017);}
+.agg-card.lit{border-color:rgba(123,47,255,.4);background:rgba(123,47,255,.07);}
+.agg-t{font-family:'Montserrat',sans-serif;font-weight:900;font-size:.9rem;margin-bottom:8px;letter-spacing:-.01em;}
+.agg-b{font-size:.83rem;color:var(--light);line-height:1.65;}
+.layers{border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.lyr{display:grid;grid-template-columns:1.5fr 2.4fr auto;gap:14px;align-items:center;padding:11px 18px;border-bottom:1px solid rgba(255,255,255,.045);}
+.lyr:last-child{border-bottom:none;}
+.lyr-n{font-weight:700;font-size:.82rem;}
+.lyr-d{font-size:.76rem;color:var(--muted);line-height:1.5;}
+.pill{font-size:.57rem;font-weight:800;letter-spacing:.11em;text-transform:uppercase;padding:3px 9px;border-radius:20px;white-space:nowrap;}
+.pill.live{background:rgba(16,185,129,.14);color:var(--green);border:1px solid rgba(16,185,129,.3);}
+.pill.hyp{background:rgba(100,116,139,.12);color:var(--muted);border:1px solid rgba(100,116,139,.25);}
+.pill.next{background:rgba(201,168,76,.13);color:var(--gold-lt);border:1px solid rgba(201,168,76,.32);}
+.agg-rule{margin-top:22px;display:flex;gap:12px;align-items:flex-start;border-left:2px solid var(--gold);padding:12px 0 12px 16px;}
+.agg-rule-t{font-size:.83rem;color:var(--light);line-height:1.65;}
+
+#economics{background:var(--dark1);}
+.econ-inner{max-width:1100px;width:100%;}
+.econ-inner h2{font-size:clamp(1.7rem,4vw,2.9rem);margin-bottom:10px;}
+.econ-sub{color:var(--light);font-size:.95rem;max-width:780px;margin-bottom:28px;line-height:1.7;}
+.formula{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.8rem;color:var(--lavender);
+  background:rgba(123,47,255,.08);border:1px solid rgba(123,47,255,.22);border-radius:9px;
+  padding:13px 17px;margin-bottom:26px;letter-spacing:.01em;}
+.econ-grid{display:grid;grid-template-columns:1.25fr 1fr;gap:22px;align-items:start;}
+.thresh{border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.thresh-h{display:grid;grid-template-columns:1fr 1.15fr;gap:10px;padding:10px 18px;background:rgba(255,255,255,.028);
+  font-size:.6rem;font-weight:800;letter-spacing:.11em;text-transform:uppercase;color:var(--muted);}
+.thresh-r{display:grid;grid-template-columns:1fr 1.15fr;gap:10px;padding:10px 18px;border-top:1px solid rgba(255,255,255,.045);font-size:.85rem;}
+.thresh-r.now{background:rgba(255,0,80,.07);}
+.thresh-r.tgt{background:rgba(16,185,129,.08);}
+.thresh-r .v{font-weight:700;}
+.thresh-tag{font-size:.57rem;font-weight:800;letter-spacing:.09em;text-transform:uppercase;margin-left:8px;}
+.tag-now{color:var(--pink);} .tag-tgt{color:var(--green);}
+.gap-box{border:1px solid var(--border);border-radius:12px;padding:20px 22px;background:rgba(255,255,255,.017);}
+.gap-t{font-family:'Montserrat',sans-serif;font-weight:900;font-size:.82rem;margin-bottom:14px;letter-spacing:.02em;}
+.gap-i{display:flex;gap:11px;align-items:flex-start;margin-bottom:13px;font-size:.79rem;color:var(--light);line-height:1.6;}
+.gap-i:last-child{margin-bottom:0;}
+.gap-d{width:5px;height:5px;border-radius:50%;background:var(--gold);margin-top:7px;flex-shrink:0;}
+.econ-note{margin-top:24px;font-size:.73rem;color:var(--muted);line-height:1.6;border-top:1px solid var(--border);padding-top:16px;}
+@media(max-width:860px){.agg-split,.econ-grid{grid-template-columns:1fr;}
+  .lyr{grid-template-columns:1fr auto;}.lyr-d{grid-column:1/-1;}}
+.stack{border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:20px;}
+.stack-r{display:grid;grid-template-columns:1.5fr 1fr 2fr;gap:12px;padding:11px 18px;border-bottom:1px solid rgba(255,255,255,.045);font-size:.8rem;align-items:center;}
+.stack-r:last-child{border-bottom:none;}
+.stack-r.tot{background:rgba(255,255,255,.03);font-weight:700;}
+.stack-n{font-weight:600;}
+.stack-v{font-weight:700;text-align:right;}
+.stack-d{font-size:.72rem;color:var(--muted);line-height:1.5;}
+.hero-row{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:22px;}
+.hero-c{border:1px solid var(--border);border-radius:12px;padding:16px 18px;background:rgba(255,255,255,.017);}
+.hero-c.lit{border-color:rgba(16,185,129,.35);background:rgba(16,185,129,.07);}
+.hero-n{font-family:'Montserrat',sans-serif;font-weight:900;font-size:1.55rem;line-height:1;letter-spacing:-.01em;}
+.hero-c.lit .hero-n{color:var(--green);}
+.hero-l{font-size:.64rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:6px;line-height:1.4;}
+/* slide 07 density */
+#economics .econ-inner h2{font-size:clamp(1.5rem,3.2vw,2.3rem);margin-bottom:8px;}
+#economics .econ-sub{font-size:.86rem;margin-bottom:18px;}
+#economics .hero-row{gap:12px;margin-bottom:16px;}
+#economics .hero-c{padding:12px 15px;}
+#economics .hero-n{font-size:1.3rem;}
+#economics .hero-l{font-size:.6rem;margin-top:5px;}
+#economics .formula{font-size:.72rem;padding:10px 14px;margin-bottom:16px;}
+#economics .stack-r{padding:8px 16px;font-size:.75rem;}
+#economics .stack-d{font-size:.68rem;}
+#economics .stack{margin-bottom:16px;}
+#economics .thresh-r,#economics .thresh-h{padding:7px 16px;}
+#economics .thresh-r{font-size:.79rem;}
+#economics .gap-box{padding:15px 17px;}
+#economics .gap-i{font-size:.73rem;margin-bottom:10px;}
+#economics .gap-t{font-size:.76rem;margin-bottom:11px;}
+#economics .econ-note{margin-top:16px;padding-top:12px;font-size:.67rem;}
+#economics .econ-grid{gap:18px;}
+/* ── Risk slide ── */
+#risks{background:var(--dark3);}
+.risk-inner{max-width:1120px;width:100%;}
+.risk-inner h2{font-size:clamp(1.5rem,3.4vw,2.4rem);margin-bottom:8px;}
+.risk-sub{color:var(--light);font-size:.88rem;max-width:780px;margin-bottom:22px;line-height:1.65;}
+.risk-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px;}
+.risk-c{border:1px solid var(--border);border-left:2px solid var(--pink);border-radius:10px;padding:14px 17px;background:rgba(255,255,255,.017);}
+.risk-t{font-family:'Montserrat',sans-serif;font-weight:900;font-size:.82rem;margin-bottom:7px;letter-spacing:-.005em;}
+.risk-b{font-size:.75rem;color:var(--light);line-height:1.6;margin-bottom:9px;}
+.risk-m{font-size:.71rem;color:var(--muted);line-height:1.55;border-top:1px solid rgba(255,255,255,.055);padding-top:8px;}
+.risk-m strong{color:var(--gold-lt);font-weight:700;}
+.risk-foot{margin-top:18px;font-size:.75rem;color:var(--light);line-height:1.65;border-left:2px solid var(--gold);padding:10px 0 10px 15px;}
+@media(max-width:860px){.risk-grid{grid-template-columns:1fr;}}
 /* ── 06 Team ── */
 #team{background:var(--dark2);}
 .team-inner{max-width:960px;width:100%;display:flex;flex-direction:column;align-items:flex-start;}
@@ -291,8 +382,11 @@ h1,h2,h3{font-family:'Montserrat',sans-serif;font-weight:900;letter-spacing:-.02
   <div class="nav-dot" data-t="proof"></div>
   <div class="nav-dot" data-t="client"></div>
   <div class="nav-dot" data-t="model"></div>
+  <div class="nav-dot" data-t="aggregator"></div>
+  <div class="nav-dot" data-t="economics"></div>
   <div class="nav-dot" data-t="team"></div>
   <div class="nav-dot" data-t="infrastructure"></div>
+  <div class="nav-dot" data-t="risks"></div>
   <div class="nav-dot" data-t="ask"></div>
   <div class="nav-dot" data-t="return"></div>
   <div class="nav-dot" data-t="vision"></div>
@@ -576,10 +670,79 @@ h1,h2,h3{font-family:'Montserrat',sans-serif;font-weight:900;letter-spacing:-.02
   </div>
 </section>
 
+<!-- 06 Aggregator -->
+<section class="screen" id="aggregator">
+  <div class="agg-inner">
+    <div class="eyebrow">06 — Where This Goes</div>
+    <h2>The software is the acquisition cost.<br>The commerce is the business.</h2>
+    <p class="agg-sub">Every competitor in this category — Reacher, Kruva, Yuka — builds campaign tools and sells seats. Seats cap out. We are not trying to win a feature race against them. We give the software away, aggregate the tools that already exist, and take a share of the commerce that flows through it.</p>
+    <div class="agg-split">
+      <div class="agg-card">
+        <div class="agg-t">What everyone else sells</div>
+        <div class="agg-b">A seat. Revenue is capped by how many logins you can close, and every competitor is racing the same feature roadmap. The brand pays whether or not they sell anything — so the vendor's incentive ends at signup.</div>
+      </div>
+      <div class="agg-card lit">
+        <div class="agg-t">What we sell</div>
+        <div class="agg-b">Nothing, at signup. Free access is the customer-acquisition mechanism. We earn when the brand earns, which means our incentive and theirs never diverge — and our revenue per account rises without us adding headcount.</div>
+      </div>
+    </div>
+    <div class="layers">
+      <div class="lyr"><div class="lyr-n">Agency retainers</div><div class="lyr-d">Done-for-you management. $2,000–$5,000/mo per brand.</div><div class="pill live">Live</div></div>
+      <div class="lyr"><div class="lyr-n">Brand net sales share</div><div class="lyr-d">3–10% of net sales, inverse to retainer. ~5% on the self-serve tier.</div><div class="pill live">Live</div></div>
+      <div class="lyr"><div class="lyr-n">Marketplace take rate</div><div class="lyr-d">Consultants marketplace. 20% today.</div><div class="pill live">Live</div></div>
+      <div class="lyr"><div class="lyr-n">Compute pass-through</div><div class="lyr-d">Brands cover the compute their own account consumes. This is what makes free structurally viable.</div><div class="pill hyp">Hypothesis</div></div>
+      <div class="lyr"><div class="lyr-n">Referred-tool commission</div><div class="lyr-d">Affiliate revenue on tooling we point users toward. One partner has offered 30%. Near-zero marginal cost.</div><div class="pill hyp">Hypothesis</div></div>
+      <div class="lyr"><div class="lyr-n">Creator matchmaking fee</div><div class="lyr-d">A tap fee on affiliate GMV, charged to the brand on top of creator commissions. 4% plus $2,000/mo for brands that want creators without ops; 2% for brands already in our network.</div><div class="pill next">Launching</div></div>
+      <div class="lyr"><div class="lyr-n">Messaging unlock</div><div class="lyr-d">~$30/mo. TikTok caps how many creators a brand can contact; creators inside our portal are already reachable.</div><div class="pill hyp">Hypothesis</div></div>
+    </div>
+    <div class="agg-rule">
+      <div class="agg-rule-t"><strong>The rule that makes it work:</strong> nothing enters our stack unless it exposes an API or an MCP. Every tool we adopt has to be automatable and wrappable on day one. That single constraint is why we can aggregate a category instead of rebuilding it — and why our cost of adding a capability is integration time, not an engineering roadmap.</div>
+    </div>
+  </div>
+</section>
+
+<!-- 07 Unit Economics -->
+<section class="screen" id="economics">
+  <div class="econ-inner">
+    <div class="eyebrow">07 — The Unit Economics</div>
+    <h2>Free is a cost-structure claim.<br>Here is the number it requires.</h2>
+    <p class="econ-sub">Giving software away is only a strategy if the marginal account is cheap enough to carry. We know what that threshold is, because it is arithmetic — and we know what we actually spend, because we pulled it from the card ledger.</p>
+    <div class="hero-row">
+      <div class="hero-c lit"><div class="hero-n">−75%</div><div class="hero-l">AI inference cost, one month<br>$5,455 July → $1,333 August</div></div>
+      <div class="hero-c"><div class="hero-n">$4,600</div><div class="hero-l">Total monthly cost to run<br>the entire operation</div></div>
+      <div class="hero-c"><div class="hero-n">77%</div><div class="hero-l">August gross margin<br>before payroll</div></div>
+    </div>
+    <div class="formula">break-even net sales per free brand &nbsp;=&nbsp; cost to serve ÷ take rate &nbsp;&nbsp;·&nbsp;&nbsp; at a 5% take: $250/mo cost ⇒ the brand must do $5,000/mo in net sales to pay for itself</div>
+    <div class="stack">
+      <div class="stack-r"><div class="stack-n">AI inference</div><div class="stack-v">$1,371/mo</div><div class="stack-d">Was $5,455 in July. Routing to OpenRouter and Kimi in place of frontier models cut it 75% in a single month, and it has held.</div></div>
+      <div class="stack-r"><div class="stack-n">Reacher</div><div class="stack-v">$149.75 <span style="font-weight:400;color:var(--muted);">/account</span></div><div class="stack-d">The one cost that scales per account rather than amortising — and today it is billed per seat. Moving it to usage-based billing is the goal, not a deal we have done.</div></div>
+      <div class="stack-r"><div class="stack-n">Fixed SaaS &amp; infra</div><div class="stack-v">$1,432/mo</div><div class="stack-d">Flat regardless of how many brands we serve. Every account added divides it further.</div></div>
+      <div class="stack-r tot"><div class="stack-n">Total, today</div><div class="stack-v">$4,600/mo</div><div class="stack-d">Against $19,736 of August revenue.</div></div>
+    </div>
+    <div class="econ-grid">
+      <div class="thresh">
+        <div class="thresh-h"><div>Cost to serve / account / mo</div><div>Brand must sell (net, monthly)</div></div>
+        <div class="thresh-r now"><div class="v">$383<span class="thresh-tag tag-now">Today, 12 accounts</span></div><div class="v">$7,660</div></div>
+        <div class="thresh-r"><div class="v">$243 &nbsp;<span style="font-size:.62rem;color:var(--muted);">at 30 accounts</span></div><div class="v">$4,860</div></div>
+        <div class="thresh-r"><div class="v">$178 &nbsp;<span style="font-size:.62rem;color:var(--muted);">at 100 accounts</span></div><div class="v">$3,560</div></div>
+        <div class="thresh-r tgt"><div class="v">$100<span class="thresh-tag tag-tgt">Target</span></div><div class="v">$2,000</div></div>
+      </div>
+      <div class="gap-box">
+        <div class="gap-t">What closes the gap</div>
+        <div class="gap-i"><div class="gap-d"></div><div><strong>Inference is already solved.</strong> The single largest variable cost fell 75% in one month and stayed down. That is the proof that marginal cost here is an engineering problem, not a law of nature.</div></div>
+        <div class="gap-i"><div class="gap-d"></div><div><strong>Per-seat tooling is the remaining floor, and we are honest that it is unsolved.</strong> Reacher is $149.75 an account today. Volume pricing above 30 accounts, usage-based billing, and a self-serve tier that consumes no managed seat are the three routes down. None is negotiated yet — driving this number toward zero is the core engineering and commercial objective of this raise.</div></div>
+        <div class="gap-i"><div class="gap-d"></div><div><strong>Compute pass-through.</strong> Brands cover the compute their own account consumes, moving the most volatile cost off our P&amp;L entirely.</div></div>
+        
+      </div>
+    </div>
+    <div class="econ-note"><strong>Being precise about where we are:</strong> $4,600/mo is tooling and infrastructure, drawn from the card ledger Oct 2025 – Sep 2026. It excludes payroll and owner draw, so the 77% figure is a gross margin on cost of tooling, not a net margin. The per-account figures divide total operating cost across the 12 accounts currently provisioned. The free tier is the bet, and the threshold above is the number that decides it.</div>
+    </div>
+</section>
+
 <!-- 06 Team -->
 <section class="screen" id="team">
   <div class="team-inner">
-    <div class="eyebrow">06 — The Team</div>
+    <div class="eyebrow">08 — The Team</div>
     <h2>Incentive-driven.<br>Built to scale without bloat.</h2>
     <div class="team-body">
       <div>
@@ -632,7 +795,7 @@ h1,h2,h3{font-family:'Montserrat',sans-serif;font-weight:900;letter-spacing:-.02
 <!-- 07 Infrastructure -->
 <section class="screen" id="infrastructure">
   <div class="infra-inner">
-    <div class="eyebrow">07 — The Infrastructure</div>
+    <div class="eyebrow">09 — The Infrastructure</div>
     <h2>The moat is already built.</h2>
     <p class="infra-sub">Most agencies run on spreadsheets, Slack, and a founder who knows everyone. That model breaks the moment you try to scale it. We built two systems specifically so it doesn't.</p>
     <div class="infra-cards">
@@ -652,10 +815,42 @@ h1,h2,h3{font-family:'Montserrat',sans-serif;font-weight:900;letter-spacing:-.02
   </div>
 </section>
 
+<!-- 10 Risks -->
+<section class="screen" id="risks">
+  <div class="risk-inner">
+    <div class="eyebrow">10 — What Could Break This</div>
+    <h2>The four things that would sink it.</h2>
+    <p class="risk-sub">We would rather you heard these from us. Each one is measured, not hypothetical, and each has a specific response rather than a promise to work harder.</p>
+    <div class="risk-grid">
+      <div class="risk-c">
+        <div class="risk-t">Retention, not acquisition</div>
+        <div class="risk-b">Ten of the fifteen brands we have worked with since June have churned, averaging under two months — against an offer whose results compound over six. Acquisition is organic and costs us almost nothing. Duration is what fails.</div>
+        <div class="risk-m"><strong>Response:</strong> minimum terms on every new agreement (already live — three months on Leaf &amp; Liven), and a deliberate move toward funded brands that can sustain a ramp.</div>
+      </div>
+      <div class="risk-c">
+        <div class="risk-t">The per-seat floor</div>
+        <div class="risk-b">Reacher costs $149.75 per account and does not amortise across accounts the way software does. Until that changes, marginal cost bottoms out near $150 an account no matter how large we get — a services curve, not a software curve.</div>
+        <div class="risk-m"><strong>Response:</strong> volume pricing above thirty accounts, a push toward usage-based billing, and a self-serve tier that consumes no managed seat. None of the three is negotiated yet.</div>
+      </div>
+      <div class="risk-c">
+        <div class="risk-t">Free only works if brands grow</div>
+        <div class="risk-b">Under a retainer, a flat brand still pays us. Under free plus a revenue share, a flat brand pays nothing and still costs us to serve. The brands that left us did so because they were not growing — the same population would generate almost no transaction revenue.</div>
+        <div class="risk-m"><strong>Response:</strong> free is a funnel and an ecosystem asset, not the revenue model. The paid tiers fund it. Brand selection is the control, and it is the single largest driver in our model.</div>
+      </div>
+      <div class="risk-c">
+        <div class="risk-t">Concentration and thin cash</div>
+        <div class="risk-b">Five active brands, one of them behind on payment. Across eight months of bank statements our balance never exceeded $5,046 and fell as low as $284. Losing a single client is material, and we have no buffer to absorb a bad month.</div>
+        <div class="risk-m"><strong>Response:</strong> this is precisely what the raise is for — the runway to widen the base before concentration forces a decision.</div>
+      </div>
+    </div>
+    <div class="risk-foot">What we are <em>not</em> worried about: cost of inference. It fell 75% in a single month and held. When we model the business, inference is the smallest lever on the page — brand quality and take rate move the outcome roughly ten times as much. Cost control is what earns us the right to give the software away. It is not what makes the business worth owning.</div>
+  </div>
+</section>
+
 <!-- 08 Ask -->
 <section class="screen" id="ask">
   <div class="ask-inner">
-    <div class="eyebrow">08 — The Investment</div>
+    <div class="eyebrow">11 — The Investment</div>
     <h2>$500,000.<br>Every dollar has a job.</h2>
     <div class="ask-amount">$500K</div>
     <p class="ask-range">One partner. No syndicate. No committee. One relationship, at the moment this is about to become a very different business.</p>
@@ -674,7 +869,7 @@ h1,h2,h3{font-family:'Montserrat',sans-serif;font-weight:900;letter-spacing:-.02
 <!-- 08 Return -->
 <section class="screen" id="return">
   <div class="return-inner">
-    <div class="eyebrow">09 — Your Return</div>
+    <div class="eyebrow">12 — Your Return</div>
     <h2>Revenue-backed. Not speculative.</h2>
     <p class="return-sub">A royalty structure — not a traditional equity play. Your return is directly tied to the revenue this investment unlocks. No exit event required to get paid.</p>
     <div class="return-model">
@@ -708,7 +903,7 @@ h1,h2,h3{font-family:'Montserrat',sans-serif;font-weight:900;letter-spacing:-.02
 <!-- 09 Vision -->
 <section class="screen" id="vision">
   <div class="vision-inner">
-    <div class="eyebrow">10 — The Long Vision</div>
+    <div class="eyebrow">13 — The Long Vision</div>
     <h2>This is bigger than<br><span class="purple">an agency.</span></h2>
     <div class="rule"></div>
     <p class="vision-body">The agency is the mechanism. The point of it — the actual goal — is a network of creator communities that own themselves. Not another platform. Not another exit to a third party. Creators, brands, and community members with a real stake in what they built together. The commercial revenue is what makes that possible.</p>
