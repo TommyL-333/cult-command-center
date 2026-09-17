@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scale — Cult Content</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07070d;
+  --surface:#0f0f1a;
+  --border:#1a1a2e;
+  --accent:#20d5c4;
+  --accent-dim:rgba(32,213,196,0.12);
+  --text:#e8e8f0;
+  --muted:#7a7a9a;
+  --white:#fff;
+}
+body{background:var(--bg);color:var(--text);font-family:'Lato',sans-serif;line-height:1.6;min-height:100vh}
+a{color:var(--accent);text-decoration:none}
+nav{display:flex;align-items:center;justify-content:space-between;padding:24px 48px;border-bottom:1px solid var(--border)}
+.nav-logo{font-family:'Montserrat',sans-serif;font-weight:900;font-size:1.1rem;letter-spacing:.08em;color:var(--white);text-transform:uppercase}
+.nav-logo span{color:var(--accent)}
+.nav-back{font-size:.85rem;color:var(--muted);transition:color .2s}
+.nav-back:hover{color:var(--accent)}
+.hero{max-width:860px;margin:0 auto;padding:96px 48px 72px;text-align:center}
+.hero-badge{display:inline-block;background:var(--accent-dim);border:1px solid rgba(32,213,196,.3);color:var(--accent);font-size:.78rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:6px 16px;border-radius:100px;margin-bottom:32px}
+.hero h1{font-family:'Montserrat',sans-serif;font-weight:900;font-size:clamp(2.4rem,5vw,3.6rem);line-height:1.1;color:var(--white);margin-bottom:24px}
+.hero h1 span{color:var(--accent)}
+.hero p{font-size:1.15rem;color:var(--muted);max-width:620px;margin:0 auto 40px}
+.hero-price{font-family:'Montserrat',sans-serif;font-size:2.8rem;font-weight:900;color:var(--white)}
+.hero-price sup{font-size:1.2rem;vertical-align:super;color:var(--accent)}
+.hero-price-sub{font-size:1rem;color:var(--muted);margin-left:8px}
+.hero-price-label{font-size:.9rem;color:var(--muted);margin-top:6px}
+.btn{display:inline-block;background:var(--accent);color:#07070d;font-family:'Montserrat',sans-serif;font-weight:900;font-size:.9rem;letter-spacing:.08em;text-transform:uppercase;padding:16px 40px;border-radius:6px;transition:opacity .2s;margin-top:36px}
+.btn:hover{opacity:.85;color:#07070d}
+section{max-width:960px;margin:0 auto;padding:72px 48px}
+.section-label{font-size:.78rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:16px}
+.section-title{font-family:'Montserrat',sans-serif;font-weight:900;font-size:clamp(1.6rem,3vw,2.2rem);color:var(--white);margin-bottom:16px}
+.section-sub{color:var(--muted);font-size:1.05rem;max-width:640px}
+.divider{border:none;border-top:1px solid var(--border);margin:0}
+
+/* INCLUDED */
+.included-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;margin-top:48px}
+.included-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:32px}
+.included-card h3{font-family:'Montserrat',sans-serif;font-weight:900;font-size:1rem;color:var(--white);margin-bottom:10px}
+.included-card p{font-size:.9rem;color:var(--muted);line-height:1.6}
+.included-icon{font-size:1.4rem;margin-bottom:16px}
+
+/* REIMBURSEMENT */
+.reimburse-box{background:var(--surface);border:1px solid rgba(32,213,196,.2);border-radius:16px;padding:48px;margin-top:48px}
+.reimburse-box h3{font-family:'Montserrat',sans-serif;font-weight:900;font-size:1.4rem;color:var(--white);margin-bottom:12px}
+.reimburse-box > p{color:var(--muted);font-size:.95rem;margin-bottom:32px;max-width:700px}
+.reimburse-steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px}
+.reimburse-step{text-align:center;padding:24px 16px;background:rgba(32,213,196,.06);border:1px solid rgba(32,213,196,.15);border-radius:10px}
+.reimburse-step .num{font-family:'Montserrat',sans-serif;font-weight:900;font-size:1.4rem;color:var(--accent);margin-bottom:8px}
+.reimburse-step p{font-size:.82rem;color:var(--muted);line-height:1.5}
+
+/* ADD-ONS */
+.addon-table{width:100%;border-collapse:collapse;margin-top:40px}
+.addon-table th{text-align:left;font-size:.78rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);font-weight:700;padding:0 0 16px;border-bottom:1px solid var(--border)}
+.addon-table td{padding:20px 0;border-bottom:1px solid var(--border);vertical-align:top;font-size:.9rem}
+.addon-table td:first-child{color:var(--white);font-weight:700;padding-right:24px}
+.addon-table td:last-child{color:var(--muted)}
+.addon-price{color:var(--accent);font-family:'Montserrat',sans-serif;font-weight:900;font-size:1rem;white-space:nowrap}
+.addon-table tr:last-child td{border-bottom:none}
+
+/* PRICING */
+.pricing-box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:40px;margin-top:48px}
+.pricing-row{display:flex;justify-content:space-between;align-items:center;padding:16px 0;border-bottom:1px solid var(--border);gap:24px}
+.pricing-row:last-child{border-bottom:none;padding-bottom:0}
+.pricing-row .label{color:var(--muted);font-size:.95rem}
+.pricing-row .value{font-family:'Montserrat',sans-serif;font-weight:700;color:var(--white);text-align:right}
+.pricing-row .value.accent{color:var(--accent)}
+
+/* CTA */
+.cta-section{text-align:center;padding:96px 48px;border-top:1px solid var(--border)}
+.cta-section h2{font-family:'Montserrat',sans-serif;font-weight:900;font-size:clamp(1.8rem,3.5vw,2.6rem);color:var(--white);margin-bottom:16px}
+.cta-section p{color:var(--muted);font-size:1.05rem;max-width:500px;margin:0 auto}
+
+@media(max-width:768px){
+  nav{padding:20px 24px}
+  section{padding:56px 24px}
+  .reimburse-box{padding:32px 24px}
+  .cta-section{padding:72px 24px}
+  .pricing-row{flex-direction:column;align-items:flex-start;gap:6px}
+  .pricing-row .value{text-align:left}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">Cult <span>Content</span></div>
+  <a href="/offers" class="nav-back">← All Offers</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-badge">Done-For-You</div>
+  <h1>We run it.<br><span>You grow.</span></h1>
+  <p>Full-service TikTok Shop management. Cult Content takes the wheel — ads, creators, content, strategy, reimbursement campaigns — so you can focus on your brand.</p>
+  <div class="hero-price"><sup>$</sup>4,000<span class="hero-price-sub">/ month</span></div>
+  <div class="hero-price-label">+ 5% of net sales · 30-day term</div>
+  <a href="https://cultcontent.cc/book-with-tommy" target="_blank" class="btn">Book a Call</a>
+</div>
+
+<hr class="divider">
+
+<section>
+  <div class="section-label">What's Included</div>
+  <div class="section-title">Full-stack TikTok Shop management.<br>Nothing left on your plate.</div>
+
+  <div class="included-grid">
+    <div class="included-card">
+      <div class="included-icon">🎮</div>
+      <h3>Full Account Management</h3>
+      <p>We operate your TikTok Shop end-to-end using our Command Center and Sisyphus automation stack. You keep ownership — we do the work.</p>
+    </div>
+    <div class="included-card">
+      <div class="included-icon">🎠</div>
+      <h3>AI Carousel Content</h3>
+      <p>AI-generated carousel content on a dedicated marketing account — included in your base plan. Consistent product exposure, zero extra effort from you.</p>
+    </div>
+    <div class="included-card">
+      <div class="included-icon">📣</div>
+      <h3>Ads Management</h3>
+      <p>Full TikTok Shop ad management — campaign strategy, creative, budget pacing, and optimization handled completely by CC.</p>
+    </div>
+    <div class="included-card">
+      <div class="included-icon">📦</div>
+      <h3>Creator Purchase Reimbursement</h3>
+      <p>Structured campaigns where creators buy your product, get reimbursed, then create content. Real orders, real momentum. See below for how it works.</p>
+    </div>
+    <div class="included-card">
+      <div class="included-icon">📊</div>
+      <h3>Client Portal Access</h3>
+      <p>Full visibility into what the team is doing, what's performing, and what's next — all in your brand dashboard.</p>
+    </div>
+    <div class="included-card">
+      <div class="included-icon">📈</div>
+      <h3>Monthly Strategy Review</h3>
+      <p>A monthly call to review performance, discuss strategy, and align on the next month's priorities.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<section>
+  <div class="section-label">Creator Purchase Reimbursement</div>
+  <div class="section-title">Real orders. Real content. Real momentum.</div>
+  <p class="section-sub">Most brands pay for UGC and get nothing but the video. Our reimbursement program generates actual TikTok Shop orders — which drives the algorithm — and then you get the content on top of it.</p>
+
+  <div class="reimburse-box">
+    <h3>How the campaign works</h3>
+    <p>You tell us how many creators and which products. We run the rest — from campaign setup to creator payout to content verification.</p>
+    <div class="reimburse-steps">
+      <div class="reimburse-step">
+        <div class="num">01</div>
+        <p>Brand specifies products and number of creator orders</p>
+      </div>
+      <div class="reimburse-step">
+        <div class="num">02</div>
+        <p>Brand is pre-charged at retail price × order quantity</p>
+      </div>
+      <div class="reimburse-step">
+        <div class="num">03</div>
+        <p>Creators join the campaign and self-purchase the product</p>
+      </div>
+      <div class="reimburse-step">
+        <div class="num">04</div>
+        <p>Creator submits reimbursement via Lark form</p>
+      </div>
+      <div class="reimburse-step">
+        <div class="num">05</div>
+        <p>CC processes payout through Reacher on receipt confirmation</p>
+      </div>
+      <div class="reimburse-step">
+        <div class="num">06</div>
+        <p>Creator receives product and produces content</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<section>
+  <div class="section-label">Add-Ons</div>
+  <div class="section-title">Scale your content footprint.</div>
+  <p class="section-sub">Your base plan includes one dedicated marketing account with AI carousel content. Add more pages — up to 5 total including your brand page — at +$500/mo each.</p>
+
+  <table class="addon-table">
+    <thead>
+      <tr>
+        <th>Add-On</th>
+        <th>Price</th>
+        <th>What's included</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>AI content for brand page</td>
+        <td><span class="addon-price">+$500/mo</span></td>
+        <td>AI carousel content posted directly to your brand's main TikTok page. Content included — management only charge.</td>
+      </tr>
+      <tr>
+        <td>Additional marketing account (AI content)</td>
+        <td><span class="addon-price">+$500/mo each</span></td>
+        <td>Up to 4 additional accounts beyond your brand page. Each includes content management and posting.</td>
+      </tr>
+      <tr>
+        <td>Creator-managed page</td>
+        <td><span class="addon-price">+$500/mo</span></td>
+        <td>A page managed by a creator instead of AI. Requires a minimum $3,000/mo creator budget (billed separately).</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<hr class="divider">
+
+<section>
+  <div class="section-label">Pricing</div>
+  <div class="section-title">One rate. Total alignment.</div>
+
+  <div class="pricing-box">
+    <div class="pricing-row">
+      <span class="label">Monthly retainer</span>
+      <span class="value accent">$4,000 / month</span>
+    </div>
+    <div class="pricing-row">
+      <span class="label">Net sales commission</span>
+      <span class="value">5% of net sales</span>
+    </div>
+    <div class="pricing-row">
+      <span class="label">Net sales definition</span>
+      <span class="value">GMV minus returns, before TikTok commission and affiliate payout</span>
+    </div>
+    <div class="pricing-row">
+      <span class="label">Add-ons</span>
+      <span class="value">+$500/mo per additional page (up to 5 total)</span>
+    </div>
+    <div class="pricing-row">
+      <span class="label">Minimum term</span>
+      <span class="value">30 days · cancel with 30-day notice</span>
+    </div>
+    <div class="pricing-row">
+      <span class="label">Who it's for</span>
+      <span class="value">Brands ready to hand off TikTok Shop and focus on product</span>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<div class="cta-section">
+  <h2>Ready to hand it off?</h2>
+  <p>Book a call with Tommy. We can typically onboard a new Scale client within two weeks.</p>
+  <a href="https://cultcontent.cc/book-with-tommy" target="_blank" class="btn">Book a Call</a>
+</div>
+
+</body>
+</html>

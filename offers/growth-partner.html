@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Growth Partner — Cult Content</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07070d;
+  --surface:#0f0f1a;
+  --border:#1a1a2e;
+  --accent:#20d5c4;
+  --accent-dim:rgba(32,213,196,0.12);
+  --text:#e8e8f0;
+  --muted:#7a7a9a;
+  --white:#fff;
+}
+body{background:var(--bg);color:var(--text);font-family:'Lato',sans-serif;line-height:1.6;min-height:100vh}
+a{color:var(--accent);text-decoration:none}
+nav{display:flex;align-items:center;justify-content:space-between;padding:24px 48px;border-bottom:1px solid var(--border)}
+.nav-logo{font-family:'Montserrat',sans-serif;font-weight:900;font-size:1.1rem;letter-spacing:.08em;color:var(--white);text-transform:uppercase}
+.nav-logo span{color:var(--accent)}
+.nav-back{font-size:.85rem;color:var(--muted);transition:color .2s}
+.nav-back:hover{color:var(--accent)}
+.hero{max-width:860px;margin:0 auto;padding:96px 48px 72px;text-align:center}
+.hero-badge{display:inline-block;background:var(--accent-dim);border:1px solid rgba(32,213,196,.3);color:var(--accent);font-size:.78rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:6px 16px;border-radius:100px;margin-bottom:32px}
+.hero h1{font-family:'Montserrat',sans-serif;font-weight:900;font-size:clamp(2.4rem,5vw,3.6rem);line-height:1.1;color:var(--white);margin-bottom:24px}
+.hero h1 span{color:var(--accent)}
+.hero p{font-size:1.15rem;color:var(--muted);max-width:620px;margin:0 auto 40px}
+.hero-price{font-family:'Montserrat',sans-serif;font-size:2.8rem;font-weight:900;color:var(--white)}
+.hero-price sup{font-size:1.2rem;vertical-align:super;color:var(--accent)}
+.hero-price-sub{font-size:1rem;color:var(--muted);margin-left:8px}
+.hero-price-label{font-size:.9rem;color:var(--muted);margin-top:6px}
+.btn{display:inline-block;background:var(--accent);color:#07070d;font-family:'Montserrat',sans-serif;font-weight:900;font-size:.9rem;letter-spacing:.08em;text-transform:uppercase;padding:16px 40px;border-radius:6px;transition:opacity .2s;margin-top:36px}
+.btn:hover{opacity:.85;color:#07070d}
+section{max-width:960px;margin:0 auto;padding:72px 48px}
+.section-label{font-size:.78rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:16px}
+.section-title{font-family:'Montserrat',sans-serif;font-weight:900;font-size:clamp(1.6rem,3vw,2.2rem);color:var(--white);margin-bottom:16px}
+.section-sub{color:var(--muted);font-size:1.05rem;max-width:640px}
+.divider{border:none;border-top:1px solid var(--border);margin:0}
+
+/* WHAT'S INCLUDED */
+.included-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;margin-top:48px}
+.included-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:32px}
+.included-card h3{font-family:'Montserrat',sans-serif;font-weight:900;font-size:1rem;color:var(--white);margin-bottom:10px}
+.included-card p{font-size:.9rem;color:var(--muted);line-height:1.6}
+.included-icon{font-size:1.4rem;margin-bottom:16px}
+
+/* MODEL EXPLAINER */
+.model-box{background:var(--surface);border:1px solid rgba(32,213,196,.2);border-radius:16px;padding:48px;margin-top:48px;display:grid;grid-template-columns:1fr 1fr;gap:48px;align-items:center}
+.model-label{font-size:.78rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:12px}
+.model-box h3{font-family:'Montserrat',sans-serif;font-weight:900;font-size:1.5rem;color:var(--white);margin-bottom:16px}
+.model-box p{color:var(--muted);font-size:.95rem;line-height:1.7}
+.model-list{list-style:none;display:flex;flex-direction:column;gap:12px}
+.model-list li{display:flex;align-items:flex-start;gap:12px;font-size:.9rem;color:var(--text)}
+.model-list li::before{content:'→';color:var(--accent);flex-shrink:0;margin-top:2px}
+
+/* PRICING */
+.pricing-box{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:40px;margin-top:48px}
+.pricing-row{display:flex;justify-content:space-between;align-items:center;padding:16px 0;border-bottom:1px solid var(--border)}
+.pricing-row:last-child{border-bottom:none;padding-bottom:0}
+.pricing-row .label{color:var(--muted);font-size:.95rem}
+.pricing-row .value{font-family:'Montserrat',sans-serif;font-weight:700;color:var(--white)}
+.pricing-row .value.accent{color:var(--accent)}
+
+/* CTA */
+.cta-section{text-align:center;padding:96px 48px;border-top:1px solid var(--border)}
+.cta-section h2{font-family:'Montserrat',sans-serif;font-weight:900;font-size:clamp(1.8rem,3.5vw,2.6rem);color:var(--white);margin-bottom:16px}
+.cta-section p{color:var(--muted);font-size:1.05rem;max-width:500px;margin:0 auto}
+
+@media(max-width:768px){
+  nav{padding:20px 24px}
+  section{padding:56px 24px}
+  .model-box{grid-template-columns:1fr;gap:32px;padding:32px 24px}
+  .cta-section{padding:72px 24px}
+}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">Cult <span>Content</span></div>
+  <a href="/offers" class="nav-back">← All Offers</a>
+</nav>
+
+<div class="hero">
+  <div class="hero-badge">Done-With-You</div>
+  <h1>Your TikTok Shop, with a <span>full team behind it.</span></h1>
+  <p>You stay in control. We're behind every decision — strategy, ads, content, creator sourcing — available through your Lark channel whenever you need us.</p>
+  <div class="hero-price"><sup>$</sup>2,000<span class="hero-price-sub">/ month</span></div>
+  <div class="hero-price-label">+ 9% of net sales · 30-day term</div>
+  <a href="https://cultcontent.cc/book-with-tommy" target="_blank" class="btn">Book a Call</a>
+</div>
+
+<hr class="divider">
+
+<section>
+  <div class="section-label">The Model</div>
+  <div class="section-title">We grow with you.</div>
+
+  <div class="model-box">
+    <div>
+      <div class="model-label">Done-With-You</div>
+      <h3>Your shop, your decisions — with CC on every call.</h3>
+      <p>Growth Partner is built for brands who want the expertise of a full TikTok Shop team without handing over the keys. You run your account. We're the team behind you: strategy, ads, content, and creator guidance — on demand through your dedicated Lark channel.</p>
+    </div>
+    <div>
+      <ul class="model-list">
+        <li>Ask us anything — strategy, creator briefs, ad copy — and get a real answer</li>
+        <li>We manage your TikTok Shop ads so you're not guessing on budget</li>
+        <li>AI carousel content running on a dedicated marketing account, not your main page</li>
+        <li>Monthly performance review to track what's working and adjust</li>
+        <li>Our commission is tied to your net sales — we only win when you do</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<section>
+  <div class="section-label">What's Included</div>
+  <div class="section-title">Everything you need.<br>Nothing you don't.</div>
+
+  <div class="included-grid">
+    <div class="included-card">
+      <div class="included-icon">💬</div>
+      <h3>Dedicated Lark Channel</h3>
+      <p>Direct line to the Cult Content team. Questions, reviews, strategy calls, content feedback — we're there.</p>
+    </div>
+    <div class="included-card">
+      <div class="included-icon">📊</div>
+      <h3>Client Portal Access</h3>
+      <p>Your brand's dashboard — performance data, task tracking, and everything the team is working on, in one place.</p>
+    </div>
+    <div class="included-card">
+      <div class="included-icon">📣</div>
+      <h3>Ads Management</h3>
+      <p>We manage your TikTok Shop ad campaigns — strategy, creative direction, budget pacing, and optimization.</p>
+    </div>
+    <div class="included-card">
+      <div class="included-icon">🎠</div>
+      <h3>AI Carousel Content</h3>
+      <p>AI-generated carousel content posted to a dedicated marketing account. Consistent product visibility without touching your brand page.</p>
+    </div>
+    <div class="included-card">
+      <div class="included-icon">🤝</div>
+      <h3>Creator Sourcing Guidance</h3>
+      <p>We help you identify the right creators for your brief, your budget, and your category — and coach you through outreach.</p>
+    </div>
+    <div class="included-card">
+      <div class="included-icon">📈</div>
+      <h3>Monthly Performance Review</h3>
+      <p>A monthly check-in covering what moved, what didn't, and exactly what to do next month.</p>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<section>
+  <div class="section-label">Pricing</div>
+  <div class="section-title">Simple. Aligned with your growth.</div>
+  <p class="section-sub">A flat monthly retainer plus a net sales commission — so we're always incentivized to grow your shop, not just show up.</p>
+
+  <div class="pricing-box">
+    <div class="pricing-row">
+      <span class="label">Monthly retainer</span>
+      <span class="value accent">$2,000 / month</span>
+    </div>
+    <div class="pricing-row">
+      <span class="label">Net sales commission</span>
+      <span class="value">9% of net sales</span>
+    </div>
+    <div class="pricing-row">
+      <span class="label">Net sales definition</span>
+      <span class="value">GMV minus returns, before TikTok commission and affiliate payout</span>
+    </div>
+    <div class="pricing-row">
+      <span class="label">Minimum term</span>
+      <span class="value">30 days · cancel anytime with 30-day notice</span>
+    </div>
+    <div class="pricing-row">
+      <span class="label">Who it's for</span>
+      <span class="value">Brands who want expert support while staying in control</span>
+    </div>
+  </div>
+</section>
+
+<hr class="divider">
+
+<div class="cta-section">
+  <h2>Ready to grow with us?</h2>
+  <p>Book a call with Tommy and we'll get you set up within the week.</p>
+  <a href="https://cultcontent.cc/book-with-tommy" target="_blank" class="btn">Book a Call</a>
+</div>
+
+</body>
+</html>

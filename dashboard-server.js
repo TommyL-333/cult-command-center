@@ -583,6 +583,21 @@ app.get('/app/*', (req, res, next) => {
   res.sendFile(indexPath);
 });
 
+// Public offers — shareable HTML files, no auth required
+const OFFERS_DIR = path.join(__dirname, 'offers');
+app.get('/offers', (req, res) => {
+  const filePath = path.join(OFFERS_DIR, 'index.html');
+  if (!fs.existsSync(filePath)) return res.status(404).send('Not found');
+  res.setHeader('Content-Type', 'text/html');
+  res.sendFile(filePath);
+});
+app.get('/offers/:slug', (req, res) => {
+  const filePath = path.join(OFFERS_DIR, req.params.slug + '.html');
+  if (!fs.existsSync(filePath)) return res.status(404).send('Offer not found');
+  res.setHeader('Content-Type', 'text/html');
+  res.sendFile(filePath);
+});
+
 // Public proposals — shareable HTML files, no auth required
 const PROPOSALS_DIR = path.join(__dirname, 'proposals');
 app.get('/proposals/:slug', (req, res) => {
@@ -610,15 +625,22 @@ a{color:#20d5c4;text-decoration:none}</style></head>
 Ask the sender to re-export and share a fresh link.</p></div></body></html>`);
 });
 
-// GET /onboard — public client onboarding form
-// manifest.cultcontent.cc is behind CF Access — redirect to portal.cultcontent.cc
-// which is publicly accessible (no login wall).
+// GET /onboard — public client onboarding form (v2, offer-aware)
 app.get('/onboard', (req, res) => {
   const host = req.headers['x-forwarded-host'] || req.headers.host || '';
   if (host.includes('manifest.cultcontent.cc')) {
     return res.redirect(301, 'https://portal.cultcontent.cc/onboard');
   }
   res.sendFile(path.join(__dirname, 'dashboard', 'onboard.html'));
+});
+
+// GET /onboard-v1 — legacy onboarding form (kept for reference)
+app.get('/onboard-v1', (req, res) => {
+  const host = req.headers['x-forwarded-host'] || req.headers.host || '';
+  if (host.includes('manifest.cultcontent.cc')) {
+    return res.redirect(301, 'https://portal.cultcontent.cc/onboard-v1');
+  }
+  res.sendFile(path.join(__dirname, 'dashboard', 'onboard-v1.html'));
 });
 
 // POST /api/onboard/logo ��� public upload during onboarding (no auth, registered before requireAuth)
@@ -641,6 +663,28 @@ app.post('/api/onboard/logo', (req, res, next) => {
     if (err) return res.status(400).json({ error: err.message });
     if (!req.file) return res.status(400).json({ error: 'No file received' });
     res.json({ ok: true, logoUrl: `${PUBLIC_BASE_URL}/uploads/${req.file.filename}` });
+  });
+});
+
+// POST /api/onboard/assets — public multi-file upload for brand assets (logo, fonts, images)
+app.post('/api/onboard/assets', (req, res, next) => {
+  const multer = require('multer');
+  const m = multer({
+    storage: multer.diskStorage({
+      destination: (_, __, cb) => cb(null, UPLOAD_DIR),
+      filename: (_, file, cb) => {
+        const ext  = require('path').extname(file.originalname) || '';
+        const base = require('path').basename(file.originalname, ext).replace(/[^a-z0-9_.-]/gi, '_').slice(0, 60);
+        cb(null, `asset_${Date.now()}_${base}${ext}`);
+      },
+    }),
+    limits: { fileSize: 20 * 1024 * 1024 },
+  }).array('files', 20);
+  m(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message });
+    if (!req.files?.length) return res.status(400).json({ error: 'No files received' });
+    const urls = req.files.map(f => ({ name: f.originalname, url: `${PUBLIC_BASE_URL}/uploads/${f.filename}` }));
+    res.json({ ok: true, files: urls });
   });
 });
 
@@ -11743,7 +11787,7 @@ async function runOnboardingPipeline(formData) {
       locationId: CFG.locationId,
       firstName: formData.firstName, lastName: formData.lastName,
       email: formData.email, phone: formData.phone || '',
-      tags: ['client-onboarding', `client-${slugify(brandName)}`],
+      tags: ['client-onboarding', `client-${slugify(brandName)}`, ...(formData.offerType ? [`offer-${slugify(formData.offerType)}`] : [])],
       source: 'Client Onboarding Form',
     });
     ghlContactId = cr.data?.contact?.id;
