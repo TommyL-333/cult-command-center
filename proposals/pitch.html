@@ -291,6 +291,23 @@ h1,h2,h3{font-family:'Montserrat',sans-serif;font-weight:900;letter-spacing:-.02
 .ceil{margin-top:16px;border-left:2px solid var(--gold);padding:11px 0 11px 15px;font-size:.78rem;
   color:var(--light);line-height:1.65;}
 .ceil code{font-family:ui-monospace,Menlo,monospace;color:var(--lavender);font-size:.8rem;}
+/* ── Team: the growth panel (deliberate light break from the dark deck) ── */
+.grow{position:relative;width:100%;margin-top:18px;border-radius:18px;padding:22px 26px 24px;overflow:hidden;
+  background:linear-gradient(152deg,#eaf7ee 0%,#d7efe0 48%,#bfe6d1 100%);
+  box-shadow:0 18px 46px -18px rgba(16,185,129,.45), 0 0 0 1px rgba(16,185,129,.22);}
+.grow::after{content:'';position:absolute;right:-70px;bottom:-90px;width:260px;height:260px;border-radius:50%;
+  background:radial-gradient(circle at 35% 35%,rgba(255,255,255,.75),rgba(16,185,129,.16) 62%,transparent 72%);
+  pointer-events:none;}
+.grow-head{display:flex;align-items:baseline;gap:11px;margin-bottom:4px;position:relative;z-index:1;flex-wrap:wrap;}
+.grow-label{font-family:'Montserrat',sans-serif;font-weight:900;font-size:1.02rem;color:#123a2b;letter-spacing:-.01em;}
+.grow-note{font-size:.68rem;color:#3d6b57;font-weight:600;letter-spacing:.02em;}
+.grow-sub{font-size:.75rem;color:#2f5f4b;line-height:1.6;margin-bottom:16px;max-width:660px;position:relative;z-index:1;}
+.grow-roles{display:grid;grid-template-columns:repeat(3,1fr);gap:13px;position:relative;z-index:1;}
+.role{background:rgba(255,255,255,.62);border:1px solid rgba(16,185,129,.2);border-radius:12px;padding:13px 15px;}
+.role-ic{width:20px;height:20px;margin-bottom:8px;display:block;}
+.role-n{font-family:'Montserrat',sans-serif;font-weight:900;font-size:.79rem;color:#0f3527;margin-bottom:5px;line-height:1.25;}
+.role-d{font-size:.7rem;color:#3a6354;line-height:1.55;}
+@media(max-width:780px){.grow-roles{grid-template-columns:1fr;}}
 /* ── 06 Team ── */
 #team{background:var(--dark2);}
 .team-inner{max-width:960px;width:100%;display:flex;flex-direction:column;align-items:flex-start;}
@@ -698,7 +715,7 @@ h1,h2,h3{font-family:'Montserrat',sans-serif;font-weight:900;letter-spacing:-.02
   <div class="agg-inner">
     <div class="eyebrow">06 — Where This Goes</div>
     <h2>The software is the acquisition cost.<br>The commerce is the business.</h2>
-    <p class="agg-sub">Every competitor in this category — Reacher, Kruva, Yuka — builds campaign tools and sells seats. Seats cap out. We are not trying to win a feature race against them. We give the software away, aggregate the tools that already exist, and take a share of the commerce that flows through it.</p>
+    <p class="agg-sub">Every competitor in this category — Reacher, Cruva, Euka — builds campaign tools and sells seats. Seats cap out. We are not trying to win a feature race against them. We give the software away, aggregate the tools that already exist, and take a share of the commerce that flows through it.</p>
     <div class="agg-split">
       <div class="agg-card">
         <div class="agg-t">What everyone else sells</div>
@@ -729,7 +746,7 @@ h1,h2,h3{font-family:'Montserrat',sans-serif;font-weight:900;letter-spacing:-.02
   <div class="econ-inner">
     <div class="eyebrow">07 — The Unit Economics</div>
     <h2>Free is a cost-structure claim.<br>Here is the number it requires.</h2>
-    <p class="econ-sub">Giving software away is only a strategy if the marginal account is cheap enough to carry. We know what that threshold is, because it is arithmetic — and we know what we actually spend, because we pulled it from the card ledger.</p>
+    <p class="econ-sub">Giving software away is only a strategy if the marginal account is cheap enough to carry. We know what that threshold is, because it is arithmetic — not optimism.</p>
     <div class="hero-row">
       <div class="hero-c lit"><div class="hero-n">−75%</div><div class="hero-l">AI inference cost, one month<br>$5,455 July → $1,333 August</div></div>
       <div class="hero-c"><div class="hero-n">$4,600</div><div class="hero-l">Total monthly cost to run<br>the entire operation</div></div>
@@ -804,14 +821,20 @@ h1,h2,h3{font-family:'Montserrat',sans-serif;font-weight:900;letter-spacing:-.02
       <div>
         <div class="tm-label">The Compensation Model</div>
         <p class="tm-body">Every team member earns a base salary gated to performance metrics — then a percentage of the business's monthly net sales share when they hit thresholds. No one carries fat overhead against a slow month. Comp rises when revenue rises. The team is literally invested in every brand's success.<br><br>The next evolution is <strong>pod-based comp</strong> — each operator aligned to a client pod, earning on that pod's GMV. Every team member becomes a profit center, not a cost center. The model is already live. The structure is already in the software.</p>
-        <div class="tm-label" style="margin-top:4px;">Who We're Building Next</div>
-        <div class="tm-hires">
-          <div class="hire-item">Head of Sales <span class="hire-tag">— owns the brand pipeline end to end</span></div>
-          <div class="hire-item">Agents &amp; Operators <span class="hire-tag">— brand management at scale</span></div>
-          <div class="hire-item">Creator Coaches <span class="hire-tag">— talent from agencies and creator networks</span></div>
-        </div>
       </div>
     </div>
+    <div class="grow">
+          <div class="grow-head">
+            <div class="grow-label">Who we hire next — and why</div>
+            <div class="grow-note">Funded by this round</div>
+          </div>
+          <p class="grow-sub">We are not hiring people to win more brands. Brands already find us. We are hiring the people who keep the ones we win — because a brand that reaches month six is worth more to us than three that leave in month two.</p>
+          <div class="grow-roles">
+            <div class="role"><svg class="role-ic" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.7" stroke-linecap="round"><path d="M12 21V11"/><path d="M12 13c0-3.3-2.5-6-5.5-6C6 10.4 8.6 13 12 13z"/><path d="M12 11c0-3.9 2.9-7 6.5-7C18.5 8 15.6 11 12 11z"/></svg><div class="role-n">Client Success Lead</div><div class="role-d">Owns the first ninety days of every brand relationship — onboarding, the weekly rhythm, and the honest conversation when results are still building. This is the role that turns month two into month six.</div></div>
+            <div class="role"><svg class="role-ic" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20c0-8 5-14 16-15 0 11-5.5 16-12 16H4z"/><path d="M4 20c3-5 6.5-8 11-10"/></svg><div class="role-n">Brand Operations Manager</div><div class="role-d">Runs live campaigns across the whole roster so delivery stops depending on one person being awake. Takes the day-to-day off the founder and makes the next ten accounts possible.</div></div>
+            <div class="role"><svg class="role-ic" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.7" stroke-linecap="round"><path d="M12 21V6"/><path d="M12 12 6.5 8.5"/><path d="M12 15l5.5-3.5"/><circle cx="12" cy="4.4" r="1.9"/><circle cx="5.2" cy="7.8" r="1.7"/><circle cx="18.8" cy="10.9" r="1.7"/></svg><div class="role-n">Creator Network Manager</div><div class="role-d">Places creators into brand campaigns and keeps the network active between them. Owns the matchmaking pipeline that the 4% fee is earned on.</div></div>
+          </div>
+        </div>
   </div>
 </section>
 
