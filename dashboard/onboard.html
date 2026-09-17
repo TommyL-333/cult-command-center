@@ -243,9 +243,9 @@ select.gmv-select{padding:11px 14px}
         </div>
       </div>
       <div class="field">
-        <label>TikTok Shop Link <span class="req">*</span></label>
+        <label>TikTok Shop Link</label>
         <input type="url" id="tiktokShopUrl" placeholder="https://www.tiktok.com/t/...">
-        <div class="hint">Your TikTok Shop storefront URL</div>
+        <div class="hint">Your TikTok Shop storefront URL (optional)</div>
       </div>
     </div>
 
@@ -877,8 +877,7 @@ function validateStep(n) {
     return requireField('brandName', 'Brand name is required') &&
            requireField('website', 'Website is required') &&
            requireField('firstName', 'Contact name is required') &&
-           requireField('email', 'Email is required') &&
-           requireField('tiktokShopUrl', 'TikTok Shop link is required');
+           requireField('email', 'Email is required');
   }
   if (n === 2) {
     return requireField('targetAudience', 'Target audience is required') &&
