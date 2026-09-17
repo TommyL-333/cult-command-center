@@ -220,6 +220,16 @@ select.gmv-select{padding:11px 14px}
   background:var(--teal);display:none;align-items:center;justify-content:center;font-size:10px}
 .product-card.selected .product-card-check{display:flex}
 .shopify-preview-hint{font-size:11px;color:var(--muted);margin-top:10px}
+/* ── Cohort 2 per-product rows ── */
+.c2-product-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.c2-product-row:last-child{border-bottom:none}
+.c2-product-thumb{width:44px;height:44px;border-radius:8px;object-fit:cover;flex-shrink:0;background:#1a1a2e}
+.c2-product-info{flex:1;min-width:0}
+.c2-product-name{font-size:12.5px;font-weight:700;color:#e2e8f0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.c2-product-price-label{font-size:11px;color:var(--teal);font-weight:800;margin-top:2px}
+.c2-creator-wrap{display:flex;flex-direction:column;align-items:center;gap:4px;flex-shrink:0}
+.c2-creator-input{width:68px;text-align:center;font-size:15px;font-weight:900;padding:6px 4px !important}
+.c2-creator-label{font-size:9px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap}
 
 #stepOverlay{position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;flex-direction:column;
   align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s}
@@ -785,33 +795,16 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
         <span style="background:linear-gradient(135deg,var(--teal),#7b2fff);color:#fff;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;padding:3px 9px;border-radius:100px">Cohort 2</span>
         <div class="card-title" style="margin:0">Mass Community</div>
       </div>
-      <div class="card-sub">A contest-style activation across our creator community. Creators purchase your product, post authentic content, and get reimbursed. We build the brief from your inputs here.</div>
+      <div class="card-sub">Creators purchase your product, post authentic content, and get reimbursed. Set how many creators you want per product — we handle the rest.</div>
 
-      <div class="row">
-        <div class="field">
-          <label>Number of Creators <span class="req">*</span></label>
-          <input type="number" id="c2-creatorCount" min="10" max="100" step="5" placeholder="Min 10, max 100" oninput="updateCostCalc()">
-          <div class="hint">10–100 creators. Each purchases and posts once.</div>
-        </div>
-        <div class="field">
-          <label>Product Retail Price / Unit ($) <span class="req">*</span></label>
-          <input type="number" id="c2-productPrice" min="0" step="0.01" placeholder="e.g. 49.00" oninput="updateCostCalc()">
-          <div class="hint">We reimburse each creator at retail cost</div>
-        </div>
-      </div>
-
-      <div class="row full">
-        <div class="field">
-          <label>Product(s) to Feature</label>
-          <input type="text" id="c2-products" placeholder="e.g. Hero Serum, SPF Moisturizer">
-        </div>
-      </div>
+      <!-- Per-product creator count rows — populated from step 2 selections -->
+      <div id="c2-products-list"></div>
 
       <!-- Live cost calculator -->
       <div class="cost-card" id="costCalc" style="display:none">
         <div style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:12px">Estimated Campaign Cost</div>
-        <div class="cost-row"><span class="cost-row-label">Reimbursement (<span id="cc-creators">0</span> creators × $<span id="cc-price">0</span>)</span><span class="cost-row-val">$<span id="cc-reimb">0</span></span></div>
-        <div class="cost-row"><span class="cost-row-label">Platform fee (<span id="cc-creators2">0</span> × $10/creator)</span><span class="cost-row-val">$<span id="cc-fee">0</span></span></div>
+        <div class="cost-row"><span class="cost-row-label">Reimbursement (<span id="cc-creators">0</span> creators × avg $<span id="cc-price">0</span>/unit)</span><span class="cost-row-val">$<span id="cc-reimb">0</span></span></div>
+        <div class="cost-row"><span class="cost-row-label">Platform fee (<span id="cc-creators2">0</span> creators × $10)</span><span class="cost-row-val">$<span id="cc-fee">0</span></span></div>
         <hr class="cost-divider">
         <div class="cost-row"><span class="cost-total-label">Total campaign budget</span><span class="cost-total">$<span id="cc-total">0</span></span></div>
         <div style="font-size:10px;color:var(--muted);margin-top:10px;line-height:1.55">Payment links generated via Reacher after you're onboarded. Costs confirmed before any charge.</div>
@@ -970,9 +963,23 @@ function validateStep(n) {
       return requireField('fn-shopCategory', 'Please select a TikTok Shop category');
     }
     if (state.offerType === 'network') {
-      return requireField('cn-shopCode', 'TikTok Shop Code is required') &&
-             requireField('c2-creatorCount', 'Number of creators is required') &&
-             requireField('c2-productPrice', 'Product retail price is required');
+      if (!requireField('cn-shopCode', 'TikTok Shop Code is required')) return false;
+      // Check that at least one product has a creator count set
+      const rows = document.querySelectorAll('.c2-creator-input');
+      if (rows.length) {
+        const total = [...rows].reduce((s, el) => s + (parseInt(el.value) || 0), 0);
+        if (total < 10) {
+          const first = rows[0];
+          first.style.borderColor = 'var(--red)';
+          first.focus();
+          return false;
+        }
+      } else {
+        // Manual fallback
+        if (!requireField('c2-creatorCount-manual', 'Number of creators is required')) return false;
+        if (!requireField('c2-productPrice-manual', 'Product retail price is required')) return false;
+      }
+      return true;
     }
   }
   return true;
@@ -1026,6 +1033,15 @@ function showConditionalSection() {
   const map = { foundation: 'cond-foundation', growth: 'cond-growth', scale: 'cond-scale', network: 'cond-network' };
   const el = document.getElementById(map[state.offerType]);
   if (el) el.classList.add('show');
+  if (state.offerType === 'network') {
+    renderCohort2Products();
+    // Auto-fill cohort 1 products field from step 2 selections
+    const c1Field = document.getElementById('c1-products');
+    if (c1Field && !c1Field.value && shopifyPreviewProducts.length) {
+      const names = [...selectedPreviewProducts].map(i => shopifyPreviewProducts[i]?.title).filter(Boolean);
+      if (names.length) c1Field.value = names.join(', ');
+    }
+  }
 }
 
 // ─── Budget slider (Cohort 1) ─────────────────────────────────────────────────
@@ -1035,21 +1051,74 @@ function updateBudgetDisplay() {
   document.getElementById('c1-budget-display').innerHTML = '$' + val.toLocaleString() + '<small>/mo</small>';
 }
 
-// ─── Cost calculator (Cohort 2) ───────────────────────────────────────────────
-function updateCostCalc() {
-  const creators = parseInt(document.getElementById('c2-creatorCount').value) || 0;
-  const price    = parseFloat(document.getElementById('c2-productPrice').value) || 0;
-  const calc     = document.getElementById('costCalc');
-  if (!creators || !price) { calc.style.display = 'none'; return; }
-  const reimb = (creators * price).toFixed(2);
-  const fee   = (creators * 10).toFixed(2);
-  const total = (creators * price + creators * 10).toFixed(2);
-  document.getElementById('cc-creators').textContent  = creators;
-  document.getElementById('cc-creators2').textContent = creators;
-  document.getElementById('cc-price').textContent     = price.toFixed(2);
-  document.getElementById('cc-reimb').textContent     = parseFloat(reimb).toLocaleString('en-US', {minimumFractionDigits:2});
-  document.getElementById('cc-fee').textContent       = parseFloat(fee).toLocaleString('en-US', {minimumFractionDigits:2});
-  document.getElementById('cc-total').textContent     = parseFloat(total).toLocaleString('en-US', {minimumFractionDigits:2});
+// ─── Cohort 2 per-product rows ────────────────────────────────────────────────
+function renderCohort2Products() {
+  const container = document.getElementById('c2-products-list');
+  if (!container) return;
+  const products = [...selectedPreviewProducts].map(i => shopifyPreviewProducts[i]).filter(Boolean);
+  if (!products.length) {
+    // Fallback: no shopify products — plain manual inputs
+    container.innerHTML = `
+      <div class="row">
+        <div class="field">
+          <label>Number of Creators <span class="req">*</span></label>
+          <input type="number" id="c2-creatorCount-manual" min="10" max="100" step="5" placeholder="Min 10, max 100" oninput="updateCohort2Calc()">
+          <div class="hint">10–100 creators. Each purchases and posts once.</div>
+        </div>
+        <div class="field">
+          <label>Product Retail Price / Unit ($) <span class="req">*</span></label>
+          <input type="number" id="c2-productPrice-manual" min="0" step="0.01" placeholder="e.g. 49.00" oninput="updateCohort2Calc()">
+          <div class="hint">We reimburse each creator at retail cost</div>
+        </div>
+      </div>`;
+    return;
+  }
+  container.innerHTML = `
+    <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px">Creators per product</div>
+    ${products.map((p, i) => {
+      const price = parseFloat(p.price) || 0;
+      return `<div class="c2-product-row">
+        ${p.imageUrl ? `<img class="c2-product-thumb" src="${p.imageUrl}" alt="" onerror="this.style.display='none'">` : '<div class="c2-product-thumb"></div>'}
+        <div class="c2-product-info">
+          <div class="c2-product-name">${p.title}</div>
+          <div class="c2-product-price-label">${price ? '$' + price.toFixed(2) + ' retail' : 'price unavailable'}</div>
+        </div>
+        <div class="c2-creator-wrap">
+          <input type="number" class="c2-creator-input" data-price="${price}" min="10" max="100" step="5" value="20" oninput="updateCohort2Calc()">
+          <div class="c2-creator-label">creators</div>
+        </div>
+      </div>`;
+    }).join('')}`;
+  updateCohort2Calc();
+}
+
+function updateCohort2Calc() {
+  const rows = document.querySelectorAll('.c2-creator-input');
+  let totalReim = 0, totalFee = 0, totalCreators = 0;
+  if (rows.length) {
+    rows.forEach(input => {
+      const creators = parseInt(input.value) || 0;
+      const price = parseFloat(input.dataset.price) || 0;
+      totalReim += creators * price;
+      totalFee += creators * 10;
+      totalCreators += creators;
+    });
+  } else {
+    const creators = parseInt(document.getElementById('c2-creatorCount-manual')?.value) || 0;
+    const price = parseFloat(document.getElementById('c2-productPrice-manual')?.value) || 0;
+    totalReim = creators * price;
+    totalFee = creators * 10;
+    totalCreators = creators;
+  }
+  const calc = document.getElementById('costCalc');
+  if (!totalCreators) { calc.style.display = 'none'; return; }
+  const avgPrice = totalCreators ? (totalReim / totalCreators) : 0;
+  document.getElementById('cc-creators').textContent  = totalCreators;
+  document.getElementById('cc-creators2').textContent = totalCreators;
+  document.getElementById('cc-price').textContent     = avgPrice.toFixed(2);
+  document.getElementById('cc-reimb').textContent     = totalReim.toLocaleString('en-US', {minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('cc-fee').textContent       = totalFee.toLocaleString('en-US', {minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('cc-total').textContent     = (totalReim + totalFee).toLocaleString('en-US', {minimumFractionDigits:2,maximumFractionDigits:2});
   calc.style.display = 'block';
 }
 
@@ -1522,20 +1591,40 @@ function collectOfferDetails() {
     };
   }
   if (state.offerType === 'network') {
-    const creators = parseInt(v('c2-creatorCount')) || 0;
-    const price    = parseFloat(v('c2-productPrice')) || 0;
+    // Aggregate per-product creator counts
+    const rows = document.querySelectorAll('.c2-creator-input');
+    let cohort2Products = [], totalCreators = 0, totalReim = 0, totalFee = 0;
+    if (rows.length) {
+      const previewProds = [...selectedPreviewProducts].map(i => shopifyPreviewProducts[i]).filter(Boolean);
+      rows.forEach((input, i) => {
+        const creators = parseInt(input.value) || 0;
+        const price = parseFloat(input.dataset.price) || 0;
+        const prod = previewProds[i];
+        cohort2Products.push({ name: prod?.title || `Product ${i+1}`, price, creators, reimbursement: (creators * price).toFixed(2) });
+        totalCreators += creators;
+        totalReim += creators * price;
+        totalFee += creators * 10;
+      });
+    } else {
+      // Manual fallback
+      const creators = parseInt(document.getElementById('c2-creatorCount-manual')?.value) || 0;
+      const price = parseFloat(document.getElementById('c2-productPrice-manual')?.value) || 0;
+      cohort2Products = [{ name: 'Product', price, creators, reimbursement: (creators * price).toFixed(2) }];
+      totalCreators = creators;
+      totalReim = creators * price;
+      totalFee = creators * 10;
+    }
     return {
-      shopCode:             v('cn-shopCode'),
-      cohort1Budget:        document.getElementById('c1-budget')?.value,
-      cohort1Niches:        v('c1-niches'),
-      cohort1Products:      v('c1-products'),
-      cohort1Creators:      v('c1-specificCreators'),
-      cohort2CreatorCount:  creators,
-      cohort2ProductPrice:  price,
-      cohort2Products:      v('c2-products'),
-      cohort2ReimbTotal:    (creators * price).toFixed(2),
-      cohort2PlatformFee:   (creators * 10).toFixed(2),
-      cohort2TotalCost:     (creators * price + creators * 10).toFixed(2),
+      shopCode:            v('cn-shopCode'),
+      cohort1Budget:       document.getElementById('c1-budget')?.value,
+      cohort1Niches:       v('c1-niches'),
+      cohort1Products:     v('c1-products'),
+      cohort1Creators:     v('c1-specificCreators'),
+      cohort2Products,
+      cohort2CreatorCount: totalCreators,
+      cohort2ReimbTotal:   totalReim.toFixed(2),
+      cohort2PlatformFee:  totalFee.toFixed(2),
+      cohort2TotalCost:    (totalReim + totalFee).toFixed(2),
     };
   }
   return {};
