@@ -268,6 +268,29 @@ h1,h2,h3{font-family:'Montserrat',sans-serif;font-weight:900;letter-spacing:-.02
 .risk-m strong{color:var(--gold-lt);font-weight:700;}
 .risk-foot{margin-top:18px;font-size:.75rem;color:var(--light);line-height:1.65;border-left:2px solid var(--gold);padding:10px 0 10px 15px;}
 @media(max-width:860px){.risk-grid{grid-template-columns:1fr;}}
+/* ── Raise / Return v2 ── */
+.uof{border:1px solid var(--border);border-radius:12px;overflow:hidden;margin:18px 0 14px;}
+.uof-r{display:grid;grid-template-columns:auto 1.4fr 2.4fr auto;gap:13px;align-items:center;
+  padding:10px 17px;border-bottom:1px solid rgba(255,255,255,.045);font-size:.79rem;}
+.uof-r:last-child{border-bottom:none;}
+.uof-r.tot{background:rgba(255,255,255,.03);font-weight:700;}
+.uof-i{width:6px;height:6px;border-radius:50%;background:var(--gold);}
+.uof-n{font-weight:600;}
+.uof-d{font-size:.71rem;color:var(--muted);line-height:1.5;}
+.uof-v{font-weight:700;text-align:right;white-space:nowrap;}
+.scen{border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-top:16px;}
+.scen-h,.scen-r{display:grid;grid-template-columns:1.1fr 1fr 1fr 1fr 1.05fr;gap:10px;padding:9px 17px;font-size:.78rem;}
+.scen-h{background:rgba(255,255,255,.03);font-size:.6rem;font-weight:800;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--muted);}
+.scen-r{border-top:1px solid rgba(255,255,255,.045);}
+.scen-r div:not(:first-child){text-align:right;}
+.scen-h div:not(:first-child){text-align:right;}
+.scen-r.mid{background:rgba(123,47,255,.07);}
+.scen-r.low{color:var(--light);}
+.scen-n{font-weight:700;}
+.ceil{margin-top:16px;border-left:2px solid var(--gold);padding:11px 0 11px 15px;font-size:.78rem;
+  color:var(--light);line-height:1.65;}
+.ceil code{font-family:ui-monospace,Menlo,monospace;color:var(--lavender);font-size:.8rem;}
 /* ── 06 Team ── */
 #team{background:var(--dark2);}
 .team-inner{max-width:960px;width:100%;display:flex;flex-direction:column;align-items:flex-start;}
@@ -851,18 +874,17 @@ h1,h2,h3{font-family:'Montserrat',sans-serif;font-weight:900;letter-spacing:-.02
 <section class="screen" id="ask">
   <div class="ask-inner">
     <div class="eyebrow">11 — The Investment</div>
-    <h2>$500,000.<br>Every dollar has a job.</h2>
-    <div class="ask-amount">$500K</div>
-    <p class="ask-range">One partner. No syndicate. No committee. One relationship, at the moment this is about to become a very different business.</p>
-    <table class="ask-budget">
-      <tr><td>Sales &amp; marketing team — Head of Sales + Head of Marketing, 12 months</td><td>$200K</td></tr>
-      <tr><td>Marketing activation — events, travel, ad spend, creator acquisition</td><td>$160K</td></tr>
-      <tr><td>Agents, operators &amp; creator coaches</td><td>$80K</td></tr>
-      <tr><td>Platform + Sisyphus development</td><td>$50K</td></tr>
-      <tr><td>Working capital</td><td>$10K</td></tr>
-      <tr class="total-row"><td>Total</td><td>$500K</td></tr>
-    </table>
-    <p class="ask-note">This is not survival capital. The business is already cash-neutral and climbing. This is the capital that takes growth off of Tommy's shoulders and puts it into a structure that can actually scale.</p>
+    <h2>$150,000.<br>Every dollar has a job.</h2>
+    <p class="ask-range">One partner. No syndicate. No committee. We sized this to what the business actually needs, not to what we could ask for — a smaller round we can service is worth more to both of us than a larger one we cannot.</p>
+    <div class="uof">
+      <div class="uof-r"><div class="uof-i"></div><div class="uof-n">Delivery &amp; retention capacity</div><div class="uof-d">One dedicated client-success hire, 18 months. Brands leave us in month two of a six-month ramp. This is the single highest-leverage dollar in the round.</div><div class="uof-v">$54K</div></div>
+      <div class="uof-r"><div class="uof-i"></div><div class="uof-n">Self-serve tier &amp; seat independence</div><div class="uof-d">Engineering to build the free tier and cut the $149.75 per-account tooling floor that currently stops marginal cost from falling.</div><div class="uof-v">$36K</div></div>
+      <div class="uof-r"><div class="uof-i"></div><div class="uof-n">Working capital floor</div><div class="uof-d">Our bank balance hit $284 in June. A business with no buffer makes short-term decisions. This ends that.</div><div class="uof-v">$30K</div></div>
+      <div class="uof-r"><div class="uof-i"></div><div class="uof-n">Demand generation, funded brands</div><div class="uof-d">Not volume — selection. Acquisition already costs us almost nothing; what we need is brands that can survive the ramp.</div><div class="uof-v">$20K</div></div>
+      <div class="uof-r"><div class="uof-i"></div><div class="uof-n">Contingency</div><div class="uof-d">Unallocated.</div><div class="uof-v">$10K</div></div>
+      <div class="uof-r tot"><div class="uof-i" style="background:var(--lavender)"></div><div class="uof-n">Total</div><div class="uof-d">18-month deployment.</div><div class="uof-v">$150K</div></div>
+    </div>
+    <div class="ceil">Note what is <em>not</em> in this round: a sales team. Our brands arrive through referral, word of mouth and LinkedIn, and cost us close to nothing to win. Spending the round on acquisition would be spending it on the one thing already working.</div>
   </div>
 </section>
 
@@ -871,32 +893,14 @@ h1,h2,h3{font-family:'Montserrat',sans-serif;font-weight:900;letter-spacing:-.02
   <div class="return-inner">
     <div class="eyebrow">12 — Your Return</div>
     <h2>Revenue-backed. Not speculative.</h2>
-    <p class="return-sub">A royalty structure — not a traditional equity play. Your return is directly tied to the revenue this investment unlocks. No exit event required to get paid.</p>
-    <div class="return-model">
-      <div class="rm-title">Royalty Structure — Draft Terms</div>
-      <div class="rm-terms">
-        <div class="rm-term">
-          <div class="rm-val">X%</div>
-          <div class="rm-label">Of Gross Revenue</div>
-          <div class="rm-note">Monthly royalty from all revenue streams — management fees + net sales share</div>
-        </div>
-        <div class="rm-term">
-          <div class="rm-val">2.5×</div>
-          <div class="rm-label">Return Target</div>
-          <div class="rm-note">Royalty continues until the full 2.5× is received, then steps down or exits</div>
-        </div>
-        <div class="rm-term">
-          <div class="rm-val">~3 Yr</div>
-          <div class="rm-label">Projected Payback</div>
-          <div class="rm-note">Based on Year 1–3 trajectory; accelerates if growth exceeds projection</div>
-        </div>
-      </div>
+    <p class="return-sub">A <strong>7% royalty on gross revenue until you have received 2.5× — $375,000</strong> — then it steps down. No exit event required to get paid, and you are paid from month one rather than from a liquidity event that may never come.</p>
+    <div class="scen">
+      <div class="scen-h"><div>Scenario</div><div>New brands/mo</div><div>Monthly churn</div><div>Revenue at 24mo</div><div>2.5× payback</div></div>
+      <div class="scen-r low"><div class="scen-n">Conservative</div><div>1</div><div>15%</div><div>$22K/mo</div><div>Not reached</div></div>
+      <div class="scen-r mid"><div class="scen-n">Base</div><div>2</div><div>10%</div><div>$88K/mo</div><div>5.3 years</div></div>
+      <div class="scen-r"><div class="scen-n">Optimistic</div><div>3</div><div>7%</div><div>$268K/mo</div><div>2.2 years</div></div>
     </div>
-    <div class="return-alt">
-      <div class="ra-label">Why Royalty Over Equity</div>
-      <div class="ra-title">You participate in the upside as it happens. No exit required.</div>
-      <div class="ra-body">As the business grows, you get paid faster. Terms are negotiated between two people, not a committee. And we stay free to pursue the long-term structure we actually want — one that a standard equity deal would complicate. If you want equity participation on top of the royalty, we can structure that too.</div>
-    </div>
+    <div class="ceil">Every one of those rows is decided by the same equation: <code>steady-state clients = new per month ÷ monthly churn</code>. At our current 29% churn, even three new brands a month settles at ten clients and the conservative row is where we land. That is why this round buys retention before it buys anything else — and why we would rather show you the row where you do not get paid than pretend it is not on the page.</div>
   </div>
 </section>
 
