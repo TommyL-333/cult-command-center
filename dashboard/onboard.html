@@ -4,139 +4,199 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Client Onboarding — Cult Content</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#0d0b14;--surface:#1a1429;--surface2:#221c35;--border:rgba(255,255,255,.08);
-  --teal:#00f2ea;--gold:#c9a84c;--muted:rgba(255,255,255,.4);--red:#ff3b30;--green:#00d27a;
+  --bg:#0d0b14;--surface:#16131f;--surface2:#1e1a2e;--border:rgba(255,255,255,.08);
+  --teal:#20d5c4;--teal-dim:rgba(32,213,196,.12);--muted:rgba(255,255,255,.4);
+  --red:#ff3b30;--green:#00d27a;--gold:#c9a84c;
 }
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:#fff;min-height:100vh}
-.header{background:var(--surface);border-bottom:1px solid var(--border);padding:18px 24px}
-.logo{font-size:17px;font-weight:900;letter-spacing:-.01em}
-.logo span{color:var(--teal)}
-.header-sub{font-size:12px;color:var(--muted);margin-top:2px}
-.progress-wrap{max-width:700px;margin:28px auto 0;padding:0 20px}
+body{font-family:'Montserrat',system-ui,sans-serif;background:var(--bg);color:#fff;min-height:100vh}
+
+/* ── Header ── */
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:16px 24px;display:flex;align-items:center;justify-content:space-between}
+.header-right{font-size:11px;color:var(--muted)}
+
+/* ── Progress ── */
+.progress-wrap{max-width:680px;margin:28px auto 0;padding:0 20px}
 .step-labels{display:flex;justify-content:space-between;margin-bottom:10px}
-.step-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);transition:color .2s;text-align:center;flex:1}
+.step-label{font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);transition:color .2s;text-align:center;flex:1;cursor:pointer}
 .step-label.active{color:var(--teal)}
-.step-label.done{color:rgba(0,210,122,.7)}
-.progress-bar{height:3px;background:rgba(255,255,255,.07);border-radius:4px;overflow:hidden}
+.step-label.done{color:rgba(0,210,122,.8)}
+.progress-bar{height:2px;background:rgba(255,255,255,.06);border-radius:4px;overflow:hidden}
 .progress-fill{height:100%;background:linear-gradient(90deg,var(--teal),#7b2fff);border-radius:4px;transition:width .35s ease}
-.form-wrap{max-width:700px;margin:32px auto 80px;padding:0 20px}
-.step-pane{display:none}
-.step-pane.active{display:block}
-.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;margin-bottom:18px}
-.card-title{font-size:16px;font-weight:800;margin-bottom:4px}
-.card-sub{font-size:12px;color:var(--muted);margin-bottom:22px;line-height:1.55}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+
+/* ── Form layout ── */
+.form-wrap{max-width:680px;margin:28px auto 100px;padding:0 20px}
+.step-pane{display:none}.step-pane.active{display:block}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;margin-bottom:16px}
+.card-title{font-size:17px;font-weight:800;margin-bottom:4px;letter-spacing:-.01em}
+.card-sub{font-size:12px;color:var(--muted);margin-bottom:22px;line-height:1.6}
+
+/* ── Fields ── */
+.row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
 .row.full{grid-template-columns:1fr}
 .row.trio{grid-template-columns:1fr 1fr 1fr}
-@media(max-width:520px){.row,.row.trio{grid-template-columns:1fr}}
+@media(max-width:540px){.row,.row.trio{grid-template-columns:1fr}}
 .field{display:flex;flex-direction:column;gap:5px}
-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+label{font-size:9.5px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}
 label .req{color:var(--teal)}
-input[type=text],input[type=email],input[type=tel],input[type=url],input[type=number],select,textarea{
-  background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;
-  color:#fff;font-size:14px;padding:11px 14px;outline:none;width:100%;font-family:inherit;
-  transition:border-color .18s,background .18s
+input[type=text],input[type=email],input[type=tel],input[type=url],input[type=number],input[type=date],select,textarea{
+  background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:9px;
+  color:#fff;font-size:13.5px;padding:11px 14px;outline:none;width:100%;font-family:inherit;
+  transition:border-color .18s,background .18s;-webkit-appearance:none
 }
 input::placeholder,textarea::placeholder{color:rgba(255,255,255,.2)}
-input:focus,select:focus,textarea:focus{border-color:var(--teal);background:rgba(0,242,234,.04)}
-select option{background:#1a1429;color:#fff}
-textarea{resize:vertical;min-height:80px}
-.hint{font-size:10px;color:var(--muted);margin-top:3px;line-height:1.4}
-/* Yes/No/multi toggles */
-.yn-row{display:flex;gap:8px;flex-wrap:wrap}
-.yn-btn{flex:1;min-width:60px;padding:10px 8px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.04);
-  color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;transition:all .18s;text-align:center;white-space:nowrap}
-.yn-btn:hover{border-color:rgba(255,255,255,.2);color:#fff}
-.yn-btn.selected{border-color:var(--teal);background:rgba(0,242,234,.08);color:var(--teal)}
-/* Products */
+input:focus,select:focus,textarea:focus{border-color:var(--teal);background:rgba(32,213,196,.04)}
+select option{background:#16131f;color:#fff}
+textarea{resize:vertical;min-height:80px;line-height:1.55}
+.hint{font-size:10px;color:var(--muted);margin-top:3px;line-height:1.45}
+.field-error{font-size:10px;color:var(--red);margin-top:3px;display:none}
+
+/* ── Prefix input ── */
+.prefix-input{position:relative}
+.prefix-input .pfx{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none}
+.prefix-input input{padding-left:22px}
+
+/* ── Toggle (Yes/No/options) ── */
+.toggle-row{display:flex;gap:8px;flex-wrap:wrap}
+.t-btn{padding:9px 14px;border:1px solid var(--border);border-radius:8px;background:rgba(255,255,255,.03);
+  color:var(--muted);font-size:12px;font-weight:700;cursor:pointer;transition:all .15s;font-family:inherit;white-space:nowrap}
+.t-btn:hover{border-color:rgba(255,255,255,.2);color:#fff}
+.t-btn.sel{border-color:var(--teal);background:var(--teal-dim);color:var(--teal)}
+.t-btn.sel-red{border-color:var(--red);background:rgba(255,59,48,.1);color:var(--red)}
+
+/* ── Products ── */
 .product-list{display:flex;flex-direction:column;gap:10px;margin-bottom:12px}
-.product-row{display:flex;flex-direction:column;gap:10px;padding:14px;border:1px solid var(--border);border-radius:10px;background:rgba(255,255,255,0.02)}
-.product-row-top{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;align-items:center}
-.product-row-costs{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
-@media(max-width:520px){.product-row-top{grid-template-columns:1fr;}.product-row-costs{grid-template-columns:1fr;}}
+.product-row{border:1px solid var(--border);border-radius:10px;padding:14px;background:rgba(255,255,255,.02)}
+.product-top{display:grid;grid-template-columns:1fr 100px auto;gap:10px;align-items:start;margin-bottom:10px}
+@media(max-width:540px){.product-top{grid-template-columns:1fr}}
 .remove-btn{background:none;border:1px solid var(--border);border-radius:7px;color:var(--muted);
-  font-size:18px;width:36px;height:36px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center;
-  transition:color .15s,border-color .15s}
+  font-size:16px;width:34px;height:34px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .15s;font-family:inherit}
 .remove-btn:hover{color:var(--red);border-color:var(--red)}
-.add-btn{background:none;border:1px dashed rgba(0,242,234,.3);border-radius:8px;color:var(--teal);
-  font-size:13px;font-weight:600;padding:10px;width:100%;cursor:pointer;transition:all .18s}
-.add-btn:hover{background:rgba(0,242,234,.06);border-color:var(--teal)}
-/* Compensation */
-.comp-card{border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:12px;transition:border-color .2s}
-.comp-card.open{border-color:rgba(0,242,234,.3)}
-.comp-toggle{display:flex;align-items:center;gap:14px;padding:16px 18px;cursor:pointer;user-select:none;background:rgba(255,255,255,.02)}
-.comp-toggle:hover{background:rgba(255,255,255,.04)}
-.comp-icon{font-size:20px;flex-shrink:0}
-.comp-info{flex:1}
-.comp-name{font-size:14px;font-weight:700;margin-bottom:2px}
-.comp-desc{font-size:11px;color:var(--muted);line-height:1.45}
-.comp-switch{width:42px;height:24px;background:rgba(255,255,255,.1);border-radius:100px;
-  position:relative;transition:background .2s;flex-shrink:0}
-.comp-switch::after{content:'';position:absolute;left:3px;top:3px;width:18px;height:18px;
-  background:#fff;border-radius:50%;transition:transform .2s}
-.comp-card.open .comp-switch{background:var(--teal)}
-.comp-card.open .comp-switch::after{transform:translateX(18px)}
-.comp-fields{display:none;padding:16px 18px;background:rgba(0,0,0,.15);border-top:1px solid var(--border)}
-.comp-card.open .comp-fields{display:block}
-.leaderboard-places{display:flex;flex-direction:column;gap:8px;margin-top:12px}
-.place-row{display:grid;grid-template-columns:80px 1fr;gap:10px;align-items:center}
-.place-label{font-size:12px;font-weight:700;color:var(--muted)}
-.example-box{background:rgba(0,242,234,.06);border:1px solid rgba(0,242,234,.15);border-radius:8px;padding:10px 14px;font-size:12px;color:rgba(255,255,255,.65);line-height:1.55;margin-top:10px}
-/* Nav */
-.nav-row{display:flex;gap:12px;margin-top:20px;justify-content:space-between;align-items:center}
+.add-btn{background:none;border:1px dashed rgba(32,213,196,.3);border-radius:9px;color:var(--teal);
+  font-size:12px;font-weight:700;padding:10px;width:100%;cursor:pointer;transition:all .18s;font-family:inherit}
+.add-btn:hover{background:var(--teal-dim);border-color:var(--teal)}
+
+/* ── Offer cards ── */
+.offers-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:4px}
+@media(max-width:540px){.offers-grid{grid-template-columns:1fr}}
+.offer-card{border:1.5px solid var(--border);border-radius:14px;padding:20px;cursor:pointer;transition:all .2s;background:rgba(255,255,255,.02);position:relative}
+.offer-card:hover{border-color:rgba(255,255,255,.2);background:rgba(255,255,255,.04)}
+.offer-card.selected{border-color:var(--teal);background:var(--teal-dim)}
+.offer-card.selected .offer-radio{border-color:var(--teal);background:var(--teal)}
+.offer-card.selected .offer-radio::after{opacity:1}
+.offer-radio{width:18px;height:18px;border:2px solid var(--border);border-radius:50%;position:absolute;top:18px;right:18px;transition:all .2s;flex-shrink:0}
+.offer-radio::after{content:'';position:absolute;inset:3px;background:#0d0b14;border-radius:50%;opacity:0;transition:opacity .2s}
+.offer-name{font-size:13px;font-weight:800;letter-spacing:-.01em;margin-bottom:4px;padding-right:28px}
+.offer-price{font-size:11px;font-weight:700;color:var(--teal);margin-bottom:8px}
+.offer-desc{font-size:10.5px;color:var(--muted);line-height:1.55}
+.offer-tag{display:inline-block;font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;
+  padding:3px 8px;border-radius:100px;background:rgba(32,213,196,.15);color:var(--teal);margin-bottom:8px}
+
+/* ── Conditional sections ── */
+.cond-section{display:none}.cond-section.show{display:block}
+
+/* ── Tier sub-section ── */
+.tier-section{display:none}.tier-section.show{display:block}
+.tier-notice{background:rgba(32,213,196,.07);border:1px solid rgba(32,213,196,.2);border-radius:10px;padding:12px 16px;font-size:11.5px;color:rgba(255,255,255,.7);line-height:1.6;margin-bottom:14px}
+.tier-notice strong{color:var(--teal)}
+
+/* ── Asset upload ── */
+.asset-drop{border:1.5px dashed rgba(32,213,196,.3);border-radius:10px;padding:20px;text-align:center;cursor:pointer;transition:all .2s}
+.asset-drop:hover,.asset-drop.drag-over{border-color:var(--teal);background:var(--teal-dim)}
+.asset-drop-icon{font-size:24px;margin-bottom:6px}
+.asset-drop-text{font-size:12px;color:var(--muted);line-height:1.5}
+.asset-drop-text strong{color:#fff;display:block;margin-bottom:2px}
+.asset-list{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.asset-item{display:flex;align-items:center;gap:10px;padding:8px 12px;background:rgba(255,255,255,.04);border-radius:8px;font-size:11.5px}
+.asset-item-name{flex:1;color:rgba(255,255,255,.8);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.asset-item-size{color:var(--muted);flex-shrink:0}
+.asset-item-status{font-size:10px;font-weight:700;flex-shrink:0}
+.asset-item-status.uploading{color:var(--gold)}
+.asset-item-status.done{color:var(--green)}
+.asset-item-status.err{color:var(--red)}
+.asset-remove{background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0;flex-shrink:0;font-family:inherit}
+.asset-remove:hover{color:var(--red)}
+
+/* ── Checkboxes ── */
+.check-group{display:flex;flex-direction:column;gap:10px}
+.check-item{display:flex;align-items:flex-start;gap:10px;cursor:pointer}
+.check-item input[type=checkbox]{width:16px;height:16px;margin-top:2px;accent-color:var(--teal);flex-shrink:0;cursor:pointer}
+.check-item-text{font-size:12.5px;line-height:1.5}
+.check-item-sub{font-size:10px;color:var(--muted)}
+
+/* ── Add-ons ── */
+.addon-card{border:1px solid var(--border);border-radius:10px;padding:14px 16px;cursor:pointer;transition:all .15s;display:flex;align-items:flex-start;gap:12px}
+.addon-card:hover{border-color:rgba(255,255,255,.18)}
+.addon-card.checked{border-color:var(--teal);background:var(--teal-dim)}
+.addon-card input[type=checkbox]{width:16px;height:16px;margin-top:2px;accent-color:var(--teal);flex-shrink:0;cursor:pointer}
+.addon-info{flex:1}
+.addon-name{font-size:13px;font-weight:700;margin-bottom:2px}
+.addon-price{font-size:10px;font-weight:700;color:var(--teal);margin-bottom:3px}
+.addon-desc{font-size:10.5px;color:var(--muted);line-height:1.5}
+
+/* ── GMV dropdown select custom ── */
+select.gmv-select{padding:11px 14px}
+
+/* ── Review ── */
+.rv-section{margin-bottom:18px}
+.rv-section-title{font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.rv-section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+.rv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px}
+.rv{background:rgba(255,255,255,.04);border-radius:8px;padding:10px 12px}
+.rv-label{font-size:9.5px;color:var(--muted);margin-bottom:3px;font-weight:600}
+.rv-val{font-size:12.5px;font-weight:600;word-break:break-word;line-height:1.4}
+.rv-val.offer-pill{display:inline-block;background:var(--teal-dim);color:var(--teal);border:1px solid rgba(32,213,196,.3);border-radius:100px;padding:3px 12px;font-size:11px}
+
+/* ── Nav ── */
+.nav-row{display:flex;gap:12px;margin-top:18px;justify-content:space-between;align-items:center}
 .btn-back{background:none;border:1px solid var(--border);border-radius:10px;color:var(--muted);
-  font-size:14px;font-weight:600;padding:12px 24px;cursor:pointer;transition:all .18s}
+  font-size:13px;font-weight:700;padding:12px 24px;cursor:pointer;transition:all .18s;font-family:inherit}
 .btn-back:hover{border-color:rgba(255,255,255,.25);color:#fff}
-.btn-next{background:var(--teal);color:#000;border:none;border-radius:10px;font-size:14px;
-  font-weight:800;padding:12px 32px;cursor:pointer;transition:opacity .18s}
+.btn-next{background:var(--teal);color:#0d0b14;border:none;border-radius:10px;font-size:13px;
+  font-weight:800;padding:12px 32px;cursor:pointer;transition:opacity .18s;font-family:inherit}
 .btn-next:hover{opacity:.88}
-.btn-next:disabled{opacity:.4;cursor:not-allowed}
+.btn-next:disabled{opacity:.35;cursor:not-allowed}
 .btn-submit{background:linear-gradient(135deg,var(--teal),#7b2fff);color:#fff;border:none;
-  border-radius:10px;font-size:15px;font-weight:800;padding:14px 40px;cursor:pointer;width:100%;margin-top:6px}
+  border-radius:10px;font-size:15px;font-weight:800;padding:14px 40px;cursor:pointer;width:100%;margin-top:8px;font-family:inherit}
 .btn-submit:hover{opacity:.9}
 .btn-submit:disabled{opacity:.4;cursor:not-allowed}
-/* Review */
-.review-section{margin-bottom:16px}
-.review-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:8px}
-.review-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px}
-.rv{background:rgba(255,255,255,.04);border-radius:8px;padding:10px 12px}
-.rv-label{font-size:10px;color:var(--muted);margin-bottom:2px}
-.rv-val{font-size:13px;font-weight:600;word-break:break-word}
-.incentive-pill{display:inline-block;background:rgba(0,242,234,.1);color:var(--teal);
-  border:1px solid rgba(0,242,234,.2);border-radius:100px;padding:4px 12px;font-size:11px;font-weight:600;margin:3px 4px 3px 0}
-/* Consent */
-.consent-box{background:rgba(255,255,255,.03);border:1px solid var(--border);border-radius:10px;
+
+/* ── Consent ── */
+.consent-box{background:rgba(255,255,255,.02);border:1px solid var(--border);border-radius:10px;
   padding:14px 16px;font-size:11px;color:var(--muted);line-height:1.7;margin-bottom:14px}
-.consent-check{display:flex;gap:10px;align-items:flex-start;margin-bottom:10px;cursor:pointer}
-.consent-check input{margin-top:2px;accent-color:var(--teal)}
-.consent-check span{font-size:12px;color:rgba(255,255,255,.65);line-height:1.5}
 .form-error{background:rgba(255,59,48,.1);border:1px solid rgba(255,59,48,.25);border-radius:8px;
-  padding:10px 14px;font-size:13px;color:var(--red);margin-top:12px;display:none}
-.field-error{font-size:11px;color:var(--red);margin-top:3px}
-/* Success */
+  padding:10px 14px;font-size:12.5px;color:var(--red);margin-top:12px;display:none}
+
+/* ── Success ── */
 #successState{display:none;text-align:center;padding:80px 20px}
-.success-icon{font-size:60px;margin-bottom:20px}
-.success-title{font-size:26px;font-weight:900;margin-bottom:10px}
-.success-msg{font-size:15px;color:var(--muted);line-height:1.7;max-width:400px;margin:0 auto}
+.success-icon{font-size:56px;margin-bottom:18px}
+.success-title{font-size:26px;font-weight:900;margin-bottom:10px;letter-spacing:-.02em}
+.success-msg{font-size:14.5px;color:var(--muted);line-height:1.75;max-width:420px;margin:0 auto}
+
+/* ── Info box ── */
+.info-box{background:rgba(32,213,196,.06);border:1px solid rgba(32,213,196,.18);border-radius:10px;
+  padding:12px 16px;font-size:11.5px;color:rgba(255,255,255,.65);line-height:1.6;margin-bottom:14px}
+.info-box strong{color:var(--teal)}
 </style>
 </head>
 <body>
 
 <div class="header">
-  <div class="logo"><img src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png" alt="Cult Content" style="height:32px;width:auto;display:block"></div>
-  <div class="header-sub">Client Onboarding — Takes ~5 minutes</div>
+  <img src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png" alt="Cult Content" style="height:30px;width:auto;display:block">
+  <div class="header-right">Client Onboarding · Takes ~8 minutes</div>
 </div>
 
 <div class="progress-wrap">
   <div class="step-labels">
-    <span class="step-label active" id="lbl-1" onclick="jumpStep(1)" style="cursor:pointer">Brand Info</span>
-    <span class="step-label" id="lbl-2" onclick="jumpStep(2)" style="cursor:pointer">Shop Setup</span>
-    <span class="step-label" id="lbl-3" onclick="jumpStep(3)" style="cursor:pointer">Products &amp; Budget</span>
-    <span class="step-label" id="lbl-4" onclick="jumpStep(4)" style="cursor:pointer">Creator Program</span>
-    <span class="step-label" id="lbl-5" onclick="jumpStep(5)" style="cursor:pointer">Review</span>
+    <span class="step-label active" id="lbl-1" onclick="jumpStep(1)">Your Brand</span>
+    <span class="step-label" id="lbl-2" onclick="jumpStep(2)">Products</span>
+    <span class="step-label" id="lbl-3" onclick="jumpStep(3)">Your Plan</span>
+    <span class="step-label" id="lbl-4" onclick="jumpStep(4)">Plan Details</span>
+    <span class="step-label" id="lbl-5" onclick="jumpStep(5)">Review</span>
   </div>
   <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:20%"></div></div>
 </div>
@@ -144,63 +204,57 @@ textarea{resize:vertical;min-height:80px}
 <div class="form-wrap">
 <div id="mainForm">
 
-<!-- ── STEP 1: Brand Info ── -->
+<!-- ═══════════════════════════════════════════════════════
+     STEP 1 — Your Brand
+     ═══════════════════════════════════════════════════════ -->
 <div class="step-pane active" id="step-1">
   <div class="card">
-    <div class="card-title">Welcome to the cult 😉</div>
-    <div class="card-sub">Fill this out and we'll move fast, clean, and organized.</div>
+    <div class="card-title">Let's get started</div>
+    <div class="card-sub">Tell us who you are and how to reach you. Takes about 2 minutes.</div>
+
     <div class="row">
       <div class="field">
         <label>Brand Name <span class="req">*</span></label>
-        <input type="text" id="brandName" placeholder="e.g. Cult Content">
+        <input type="text" id="brandName" placeholder="e.g. Glow Essentials">
       </div>
       <div class="field">
         <label>Website <span class="req">*</span></label>
         <input type="url" id="website" placeholder="https://yourbrand.com">
       </div>
     </div>
+
     <div class="row">
       <div class="field">
-        <label>First Name <span class="req">*</span></label>
-        <input type="text" id="firstName" placeholder="Jane">
-      </div>
-      <div class="field">
-        <label>Last Name <span class="req">*</span></label>
-        <input type="text" id="lastName" placeholder="Smith">
-      </div>
-    </div>
-    <div class="row">
-      <div class="field">
-        <label>Phone <span class="req">*</span></label>
-        <input type="tel" id="phone" placeholder="+1 555-000-0000">
+        <label>Contact Name <span class="req">*</span></label>
+        <input type="text" id="firstName" placeholder="Jane Smith">
       </div>
       <div class="field">
         <label>Email <span class="req">*</span></label>
-        <input type="email" id="email" placeholder="jane@brand.com">
+        <input type="email" id="email" placeholder="jane@yourbrand.com">
       </div>
     </div>
+
     <div class="row">
       <div class="field">
         <label>TikTok Handle</label>
-        <div style="position:relative">
-          <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none">@</span>
-          <input type="text" id="tiktokHandle" placeholder="yourbrand" style="padding-left:24px">
+        <div class="prefix-input">
+          <span class="pfx">@</span>
+          <input type="text" id="tiktokHandle" placeholder="yourbrand">
         </div>
       </div>
       <div class="field">
-        <label>TikTok Shop Handle</label>
-        <div style="position:relative">
-          <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none">@</span>
-          <input type="text" id="tiktokShopHandle" placeholder="yourbrandshop" style="padding-left:24px">
-        </div>
+        <label>TikTok Shop Link <span class="req">*</span></label>
+        <input type="url" id="tiktokShopUrl" placeholder="https://www.tiktok.com/t/...">
+        <div class="hint">Your TikTok Shop storefront URL</div>
       </div>
     </div>
+
     <div class="row full">
       <div class="field">
-        <label>Brand Logo <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">(optional)</span></label>
+        <label>Brand Logo <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">(optional — PNG or SVG preferred)</span></label>
         <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <label style="display:inline-flex;align-items:center;gap:8px;padding:10px 18px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:8px;cursor:pointer;font-size:12px;font-weight:600;color:#e2e8f0;text-transform:none;letter-spacing:0">
-            <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor"><path d="M16.88 9.94l-6-6a1 1 0 00-1.41 0l-6 6A1 1 0 004.88 11.35l4.12-4.12V17a1 1 0 002 0V7.23l4.12 4.12a1 1 0 001.41-1.41z"/></svg>
+          <label style="display:inline-flex;align-items:center;gap:8px;padding:10px 18px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:9px;cursor:pointer;font-size:12px;font-weight:700;color:#e2e8f0;text-transform:none;letter-spacing:0">
+            <svg width="13" height="13" viewBox="0 0 20 20" fill="currentColor"><path d="M16.88 9.94l-6-6a1 1 0 00-1.41 0l-6 6A1 1 0 004.88 11.35l4.12-4.12V17a1 1 0 002 0V7.23l4.12 4.12a1 1 0 001.41-1.41z"/></svg>
             Upload Logo
             <input type="file" id="logoFile" accept="image/*" style="display:none" onchange="handleLogoUpload(this)">
           </label>
@@ -210,107 +264,119 @@ textarea{resize:vertical;min-height:80px}
         <div id="logoUploadStatus" style="font-size:11px;margin-top:6px"></div>
       </div>
     </div>
-    <div class="row full">
-      <div class="field">
-        <label>Brand Mission &amp; Story</label>
-        <textarea id="brandMission" placeholder="Tell us about your brand — what problem you solve, who you serve, what makes you different…"></textarea>
-      </div>
-    </div>
   </div>
+
   <div class="nav-row">
     <div></div>
     <button class="btn-next" onclick="goNext(1)">Continue →</button>
   </div>
 </div>
 
-<!-- ── STEP 2: Shop Setup ── -->
+<!-- ═══════════════════════════════════════════════════════
+     STEP 2 — Products & Goals
+     ═══════════════════════════════════════════════════════ -->
 <div class="step-pane" id="step-2">
   <div class="card">
-    <div class="card-title">TikTok Shop Setup</div>
-    <div class="card-sub">Help us understand where you are in your TikTok Shop journey.</div>
+    <div class="card-title">Your top products</div>
+    <div class="card-sub">Add your 3–5 hero SKUs. These appear on your creator landing page and drive our outreach copy.</div>
+    <div class="product-list" id="productList"></div>
+    <button type="button" class="add-btn" onclick="addProduct()">+ Add Product</button>
+  </div>
 
-    <div class="row" style="margin-bottom:20px">
+  <div class="card">
+    <div class="card-title">Audience & goals</div>
+    <div class="card-sub">Help us understand who you're selling to and what winning looks like for you.</div>
+
+    <div class="row full" style="margin-bottom:14px">
       <div class="field">
-        <label>Are you registered for TikTok Shop? <span class="req">*</span></label>
-        <div class="yn-row">
-          <button type="button" class="yn-btn" data-field="tiktokShop" data-val="Yes" onclick="setYN(this)">Yes</button>
-          <button type="button" class="yn-btn" data-field="tiktokShop" data-val="No" onclick="setYN(this)">No</button>
-        </div>
+        <label>Target Audience <span class="req">*</span></label>
+        <textarea id="targetAudience" placeholder="e.g. Women 25–45 who care about clean skincare, budget-conscious, follow skinfluencers…"></textarea>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="field">
+        <label>Current Monthly TikTok GMV <span class="req">*</span></label>
+        <select id="tiktokGmv">
+          <option value="">— select a range —</option>
+          <option>Not yet selling on TikTok Shop</option>
+          <option>Under $5,000</option>
+          <option>$5,000 – $25,000</option>
+          <option>$25,000 – $100,000</option>
+          <option>$100,000 – $500,000</option>
+          <option>$500,000+</option>
+        </select>
       </div>
       <div class="field">
-        <label>Is your Shopify integrated with TikTok? <span class="req">*</span></label>
-        <div class="yn-row">
-          <button type="button" class="yn-btn" data-field="shopifyIntegrated" data-val="Yes" onclick="setYN(this)">Yes</button>
-          <button type="button" class="yn-btn" data-field="shopifyIntegrated" data-val="No" onclick="setYN(this)">No</button>
-          <button type="button" class="yn-btn" data-field="shopifyIntegrated" data-val="N/A" onclick="setYN(this)">N/A</button>
+        <label>Running TikTok Ads?</label>
+        <div class="toggle-row" id="tiktokAds-toggle">
+          <button type="button" class="t-btn" data-field="tiktokAds" data-val="Yes" onclick="setToggle(this)">Yes</button>
+          <button type="button" class="t-btn" data-field="tiktokAds" data-val="No" onclick="setToggle(this)">No</button>
+          <button type="button" class="t-btn" data-field="tiktokAds" data-val="Planning to" onclick="setToggle(this)">Planning to</button>
         </div>
       </div>
     </div>
 
-    <div class="row" style="margin-bottom:20px">
+    <div class="row full">
       <div class="field">
-        <label>Dedicated TikTok account manager? <span class="req">*</span></label>
-        <div class="yn-row">
-          <button type="button" class="yn-btn" data-field="tiktokAccountManager" data-val="Yes" onclick="setYN(this)">Yes</button>
-          <button type="button" class="yn-btn" data-field="tiktokAccountManager" data-val="No" onclick="setYN(this)">No</button>
-        </div>
-      </div>
-      <div class="field">
-        <label>Reviews imported (Reviews.io / similar)? <span class="req">*</span></label>
-        <div class="yn-row">
-          <button type="button" class="yn-btn" data-field="reviewsImported" data-val="Yes" onclick="setYN(this)">Yes</button>
-          <button type="button" class="yn-btn" data-field="reviewsImported" data-val="No" onclick="setYN(this)">No</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="row" style="margin-bottom:0">
-      <div class="field">
-        <label>Registered for Fulfilled by TikTok (FBT)? <span class="req">*</span></label>
-        <div class="yn-row">
-          <button type="button" class="yn-btn" data-field="fbt" data-val="Yes" onclick="setYN(this)">Yes</button>
-          <button type="button" class="yn-btn" data-field="fbt" data-val="No" onclick="setYN(this)">No</button>
-        </div>
-      </div>
-      <div class="field">
-        <label>Willing to send free samples?</label>
-        <div class="yn-row">
-          <button type="button" class="yn-btn selected" data-field="sendSamples" data-val="Yes" onclick="setYN(this)">Yes</button>
-          <button type="button" class="yn-btn" data-field="sendSamples" data-val="No" onclick="setYN(this)">No</button>
-        </div>
+        <label>Goals — what does success look like? <span class="req">*</span></label>
+        <textarea id="brandGoals" placeholder="e.g. Hit $50k/mo TikTok GMV within 90 days, build a roster of 30 active creators, drive top-of-funnel awareness for our new serum launch…"></textarea>
       </div>
     </div>
   </div>
+
   <div class="nav-row">
     <button class="btn-back" onclick="goBack(2)">← Back</button>
     <button class="btn-next" onclick="goNext(2)">Continue →</button>
   </div>
 </div>
 
-<!-- ── STEP 3: Products & Budget ── -->
+<!-- ═══════════════════════════════════════════════════════
+     STEP 3 — Choose Your Plan
+     ═══════════════════════════════════════════════════════ -->
 <div class="step-pane" id="step-3">
   <div class="card">
-    <div class="card-title">Products to Promote</div>
-    <div class="card-sub">Add all products you want creators to promote. We'll build outreach copy and an affiliate resource hub for each one.</div>
-    <div class="product-list" id="productList"></div>
-    <button type="button" class="add-btn" onclick="addProduct()">+ Add Product</button>
-  </div>
+    <div class="card-title">Choose your engagement</div>
+    <div class="card-sub">Select the offer that fits where you are. You can always upgrade — we'll make a recommendation after reviewing your shop data.</div>
 
-  <!-- USPs -->
-  <div class="card">
-    <div class="card-title">Product USPs</div>
-    <div class="card-sub">3 reasons creators will love promoting this brand. These appear on the creator landing page.</div>
-    <div style="display:flex;flex-direction:column;gap:10px">
-      <div class="field">
-        <input type="text" id="usp1" placeholder="e.g. Clinically proven results in 30 days">
+    <div class="offers-grid">
+      <!-- The Foundation -->
+      <div class="offer-card" id="offer-foundation" onclick="selectOffer('foundation')">
+        <div class="offer-radio" id="radio-foundation"></div>
+        <div class="offer-tag">One-Time</div>
+        <div class="offer-name">The Foundation</div>
+        <div class="offer-price">$1,500</div>
+        <div class="offer-desc">TikTok Shop setup, brand qualification, creator strategy session, and a fully configured Reacher account. Start here if you're new or not yet set up.</div>
       </div>
-      <div class="field">
-        <input type="text" id="usp2" placeholder="e.g. $60 average order value = higher commissions">
+
+      <!-- Growth Partner -->
+      <div class="offer-card" id="offer-growth" onclick="selectOffer('growth')">
+        <div class="offer-radio" id="radio-growth"></div>
+        <div class="offer-tag">Monthly Retainer</div>
+        <div class="offer-name">Growth Partner</div>
+        <div class="offer-price">$2,000 / mo + 9% net sales</div>
+        <div class="offer-desc">Ongoing creator affiliate management, TikTok ads support, UGC content production, and monthly strategy. Best for brands ready to scale consistently.</div>
       </div>
-      <div class="field">
-        <input type="text" id="usp3" placeholder="e.g. 4.8★ rating from 2,000+ reviews">
+
+      <!-- Scale -->
+      <div class="offer-card" id="offer-scale" onclick="selectOffer('scale')">
+        <div class="offer-radio" id="radio-scale"></div>
+        <div class="offer-tag">Monthly Retainer</div>
+        <div class="offer-name">Scale</div>
+        <div class="offer-price">$4,000 / mo + 5% net sales</div>
+        <div class="offer-desc">Full-service TikTok commerce management — creator campaigns, AI content, brand page, ads, and dedicated team access. For brands going all-in.</div>
+      </div>
+
+      <!-- Creator Network -->
+      <div class="offer-card" id="offer-network" onclick="selectOffer('network')">
+        <div class="offer-radio" id="radio-network"></div>
+        <div class="offer-tag">Performance</div>
+        <div class="offer-name">Creator Network</div>
+        <div class="offer-price">$2,000 / mo + 4% GMV from placements</div>
+        <div class="offer-desc">Access to our retainer creator roster and mass UGC community. Creator retainers, video ordering, and affiliate campaigns at scale.</div>
       </div>
     </div>
+    <div class="form-error" id="offerError" style="display:none;margin-top:14px">Please select an offer to continue.</div>
   </div>
 
   <div class="nav-row">
@@ -319,264 +385,431 @@ textarea{resize:vertical;min-height:80px}
   </div>
 </div>
 
-<!-- ── STEP 4: Creator Compensation Program ── -->
+<!-- ═══════════════════════════════════════════════════════
+     STEP 4 — Plan Details (conditional)
+     ═══════════════════════════════════════════════════════ -->
 <div class="step-pane" id="step-4">
 
-  <!-- Creator Kickoff Call -->
-  <div class="card" style="margin-bottom:16px">
-    <div class="card-title">Creator Kickoff Call</div>
-    <div class="card-sub">When is your first creator kickoff call? We schedule all creator outreach &amp; reminder texts around this date.</div>
-    <div class="field">
-      <label>Kickoff Call Date</label>
-      <input type="date" id="creatorKickoffDate">
-      <div class="hint">The cult rallies your creators around this moment — leave blank if not set yet.</div>
-    </div>
-    <div class="row">
-      <div class="field">
-        <label>Weekly Creator Call — Day</label>
-        <select id="weeklyCallDay">
-          <option value="">— select —</option>
-          <option>Monday</option><option>Tuesday</option><option>Wednesday</option>
-          <option>Thursday</option><option>Friday</option><option>Saturday</option><option>Sunday</option>
-        </select>
-        <div class="hint">Recurring call day for signed-up creators of this brand.</div>
+  <!-- ─── THE FOUNDATION ─── -->
+  <div class="cond-section" id="cond-foundation">
+    <div class="card">
+      <div class="card-title">The Foundation — details</div>
+      <div class="card-sub">These help us configure your TikTok Shop, Reacher account, and prepare your strategy session.</div>
+
+      <div class="row">
+        <div class="field">
+          <label>TikTok Shop Category <span class="req">*</span></label>
+          <select id="fn-shopCategory">
+            <option value="">— select —</option>
+            <option>Beauty & Personal Care</option>
+            <option>Health & Wellness</option>
+            <option>Fashion & Apparel</option>
+            <option>Home & Kitchen</option>
+            <option>Food & Beverage</option>
+            <option>Sports & Outdoors</option>
+            <option>Electronics & Accessories</option>
+            <option>Baby & Kids</option>
+            <option>Pet Supplies</option>
+            <option>Other</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Brand Qualification Status <span class="req">*</span></label>
+          <div class="toggle-row">
+            <button type="button" class="t-btn" data-field="fn-qualStatus" data-val="Qualified" onclick="setToggle(this)">Qualified</button>
+            <button type="button" class="t-btn" data-field="fn-qualStatus" data-val="In Progress" onclick="setToggle(this)">In Progress</button>
+            <button type="button" class="t-btn" data-field="fn-qualStatus" data-val="Not Started" onclick="setToggle(this)">Not Started</button>
+          </div>
+          <div class="hint">TikTok Shop brand qualification for the badge</div>
+        </div>
       </div>
-      <div class="field">
-        <label>Weekly Creator Call — Time (ET)</label>
-        <input type="time" id="weeklyCallTime">
-        <div class="hint">Eastern time — we send a reminder text the day of each call.</div>
+
+      <div class="row">
+        <div class="field">
+          <label>Brand Registration / Trademark</label>
+          <div class="toggle-row">
+            <button type="button" class="t-btn" data-field="fn-trademark" data-val="Registered" onclick="setToggle(this)">Registered</button>
+            <button type="button" class="t-btn" data-field="fn-trademark" data-val="Pending" onclick="setToggle(this)">Pending</button>
+            <button type="button" class="t-btn" data-field="fn-trademark" data-val="None" onclick="setToggle(this)">None</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Do you have a Reacher account?</label>
+          <div class="toggle-row">
+            <button type="button" class="t-btn" data-field="fn-hasReacher" data-val="Yes" onclick="setToggle(this)">Yes</button>
+            <button type="button" class="t-btn" data-field="fn-hasReacher" data-val="No" onclick="setToggle(this)">No — CC will create one</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="row full">
+        <div class="field">
+          <label>Content Tone & Style References</label>
+          <textarea id="fn-contentStyle" placeholder="Link to TikToks you love, describe the vibe, share creator handles you admire — e.g. 'educational but fun, not pushy, skincare-girl aesthetic'"></textarea>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label>Approximate Creator Budget</label>
+          <select id="fn-creatorBudget">
+            <option value="">— select a range —</option>
+            <option>Under $500/mo</option>
+            <option>$500 – $1,000/mo</option>
+            <option>$1,000 – $3,000/mo</option>
+            <option>$3,000 – $5,000/mo</option>
+            <option>$5,000+/mo</option>
+            <option>Not sure yet</option>
+          </select>
+          <div class="hint">For creator retainers and sample programs — rough estimate</div>
+        </div>
+        <div class="field">
+          <label>Strategy Session Availability</label>
+          <textarea id="fn-sessionAvail" style="min-height:60px" placeholder="e.g. 'Weekdays after 2pm ET' or paste a Calendly link"></textarea>
+          <div class="hint">1-hour kickoff session with your Cult Content strategist</div>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Affiliate budgets -->
-  <div class="card" style="margin-bottom:16px">
-    <div class="card-title">Affiliate Budgets</div>
-    <div class="card-sub">These help us plan the right campaigns from day one.</div>
-    <div class="row">
-      <div class="field">
-        <label>Monthly Sample Budget (units) <span class="req">*</span></label>
-        <input type="number" id="sampleBudget" placeholder="e.g. 50" min="0" step="1">
-        <div class="hint">Number of sample units per month across creators</div>
+  <!-- ─── GROWTH PARTNER ─── -->
+  <div class="cond-section" id="cond-growth">
+    <div class="card">
+      <div class="card-title">Growth Partner — details</div>
+      <div class="card-sub">Helps us set up your ad accounts, plan your creator campaigns, and match your brand aesthetic.</div>
+
+      <div class="row">
+        <div class="field">
+          <label>Monthly Ads Budget</label>
+          <select id="gp-adsBudget">
+            <option value="">— select —</option>
+            <option>Under $1,000</option>
+            <option>$1,000 – $3,000</option>
+            <option>$3,000 – $10,000</option>
+            <option>$10,000 – $30,000</option>
+            <option>$30,000+</option>
+            <option>No ads budget yet</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Existing TikTok Ads Account?</label>
+          <div class="toggle-row">
+            <button type="button" class="t-btn" data-field="gp-hasAdsAccount" data-val="Yes" onclick="setToggle(this)">Yes — CC will request access</button>
+            <button type="button" class="t-btn" data-field="gp-hasAdsAccount" data-val="No" onclick="setToggle(this)">No</button>
+          </div>
+        </div>
       </div>
-      <div class="field">
-        <label>Sample Budget Notes</label>
-        <input type="text" id="sampleBudgetNotes" placeholder="e.g. up to 50 units/product, hero SKU priority">
-        <div class="hint">Any nuance on how the sample budget should be split or prioritized</div>
+
+      <div class="row">
+        <div class="field">
+          <label>Current ROAS / Ad Spend History <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">(optional)</span></label>
+          <input type="text" id="gp-roas" placeholder="e.g. 2.4x ROAS, $8k/mo spend, mostly Meta">
+        </div>
+        <div class="field">
+          <label>Monthly Creator Budget</label>
+          <select id="gp-creatorBudget">
+            <option value="">— select —</option>
+            <option>Under $1,000</option>
+            <option>$1,000 – $3,000</option>
+            <option>$3,000 – $5,000</option>
+            <option>$5,000 – $10,000</option>
+            <option>$10,000+</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label>Past Creator Experience</label>
+          <div class="toggle-row">
+            <button type="button" class="t-btn" data-field="gp-creatorExp" data-val="None" onclick="setToggle(this)">None</button>
+            <button type="button" class="t-btn" data-field="gp-creatorExp" data-val="Some" onclick="setToggle(this)">Some</button>
+            <button type="button" class="t-btn" data-field="gp-creatorExp" data-val="Extensive" onclick="setToggle(this)">Extensive</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>Preferred Meeting Cadence</label>
+          <div class="toggle-row">
+            <button type="button" class="t-btn" data-field="gp-meetingCadence" data-val="Weekly" onclick="setToggle(this)">Weekly</button>
+            <button type="button" class="t-btn" data-field="gp-meetingCadence" data-val="Biweekly" onclick="setToggle(this)">Biweekly</button>
+            <button type="button" class="t-btn" data-field="gp-meetingCadence" data-val="Monthly" onclick="setToggle(this)">Monthly</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="row full">
+        <div class="field">
+          <label>Content Style Preference</label>
+          <textarea id="gp-contentStyle" placeholder="Links to TikToks you like, creator handles, vibe description — e.g. 'raw & authentic, no heavy edits, educational demo style'"></textarea>
+        </div>
       </div>
     </div>
-    <div class="row">
-      <div class="field">
-        <label>Monthly Retainer Budget</label>
-        <input type="number" id="retainerBudget" placeholder="e.g. 2000" min="0">
-        <div class="hint">Rough max you'd spend on creator retainers/month — we won't exceed this</div>
+
+    <!-- Brand Assets -->
+    <div class="card">
+      <div class="card-title">Brand assets</div>
+      <div class="card-sub">Upload your logo, product images, fonts, or brand guidelines. We use these for carousel content and ads.</div>
+      <div class="row" style="margin-bottom:14px">
+        <div class="field">
+          <label>Primary Brand Color (hex)</label>
+          <input type="text" id="gp-brandColor" placeholder="#FF5A5F">
+        </div>
+        <div class="field">
+          <label>Brand Fonts</label>
+          <input type="text" id="gp-brandFonts" placeholder="e.g. Montserrat, Lato — or 'not sure'">
+        </div>
       </div>
-      <div class="field">
-        <label>Monthly UGC / JoinBrands Budget</label>
-        <input type="number" id="ugcBudget" placeholder="e.g. 500" min="0">
-        <div class="hint">Budget for paid UGC content via JoinBrands — leave blank if none</div>
+      <div id="gp-asset-upload" class="asset-uploader" data-offer="gp"></div>
+    </div>
+  </div>
+
+  <!-- ─── SCALE ─── -->
+  <div class="cond-section" id="cond-scale">
+    <div class="card">
+      <div class="card-title">Scale — details</div>
+      <div class="card-sub">Full-service setup. We'll need collaborator access and a few configuration decisions.</div>
+
+      <div class="info-box">
+        <strong>Collaborator seat:</strong> After you submit, CC will send a collaborator access request to your TikTok Shop. You'll approve it under Shop → Partner Center → Collaborators. This gives us managed access to run your shop operations.
+      </div>
+
+      <div class="row">
+        <div class="field">
+          <label>Preferred Meeting Cadence</label>
+          <div class="toggle-row">
+            <button type="button" class="t-btn" data-field="sc-meetingCadence" data-val="Weekly" onclick="setToggle(this)">Weekly</button>
+            <button type="button" class="t-btn" data-field="sc-meetingCadence" data-val="Biweekly" onclick="setToggle(this)">Biweekly</button>
+            <button type="button" class="t-btn" data-field="sc-meetingCadence" data-val="Monthly" onclick="setToggle(this)">Monthly</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Creator Purchase Reimbursement -->
+      <div style="margin-top:18px;margin-bottom:8px">
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:12px">Creator Purchase Reimbursement Campaign</div>
+        <div class="row trio">
+          <div class="field">
+            <label>Product(s) to Feature</label>
+            <input type="text" id="sc-reimProduct" placeholder="e.g. Hero Serum, Eye Cream">
+          </div>
+          <div class="field">
+            <label>Creator Orders Desired</label>
+            <input type="number" id="sc-reimOrders" placeholder="e.g. 20" min="1">
+          </div>
+          <div class="field">
+            <label>Retail Price / Unit ($)</label>
+            <input type="number" id="sc-reimPrice" placeholder="e.g. 49" min="0" step="0.01">
+            <div class="hint">CC pre-charges at retail × qty</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Add-ons -->
+      <div style="margin-top:18px;margin-bottom:8px">
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:12px">Add-ons · +$500/mo each</div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <label class="addon-card" id="addon-aicontent" onclick="toggleAddon('aicontent',this)">
+            <input type="checkbox" id="sc-addonAI" style="width:16px;height:16px;margin-top:2px;accent-color:var(--teal);flex-shrink:0">
+            <div class="addon-info">
+              <div class="addon-name">AI Content for Brand Page</div>
+              <div class="addon-price">+$500/mo</div>
+              <div class="addon-desc">AI-generated content posted directly to your TikTok brand page. Requires brand page admin access — we'll request post-submission.</div>
+            </div>
+          </label>
+          <div class="addon-card" id="addon-mktacc">
+            <input type="checkbox" id="sc-addonMktAcc" style="width:16px;height:16px;margin-top:2px;accent-color:var(--teal);flex-shrink:0" onchange="toggleMktAccounts(this)">
+            <div class="addon-info">
+              <div class="addon-name">Additional Marketing Accounts</div>
+              <div class="addon-price">+$500/mo per account</div>
+              <div class="addon-desc">Add 1–4 extra social accounts (Instagram, YouTube, etc.) to your managed roster.
+                <div id="mkt-acc-picker" style="display:none;margin-top:10px">
+                  <label style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);display:block;margin-bottom:6px">How many additional accounts?</label>
+                  <div class="toggle-row">
+                    <button type="button" class="t-btn" data-field="sc-mktAccCount" data-val="1" onclick="setToggle(this)">1</button>
+                    <button type="button" class="t-btn" data-field="sc-mktAccCount" data-val="2" onclick="setToggle(this)">2</button>
+                    <button type="button" class="t-btn" data-field="sc-mktAccCount" data-val="3" onclick="setToggle(this)">3</button>
+                    <button type="button" class="t-btn" data-field="sc-mktAccCount" data-val="4" onclick="setToggle(this)">4</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <label class="addon-card" id="addon-cmpage" onclick="toggleAddon('cmpage',this)">
+            <input type="checkbox" id="sc-addonCMPage" style="width:16px;height:16px;margin-top:2px;accent-color:var(--teal);flex-shrink:0">
+            <div class="addon-info">
+              <div class="addon-name">Creator-Managed Page</div>
+              <div class="addon-price">+$500/mo · requires $3,000 min creator budget</div>
+              <div class="addon-desc">A dedicated TikTok page managed entirely by creators in our network. By checking this you confirm a minimum $3,000/mo creator budget.</div>
+            </div>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- Brand Assets -->
+    <div class="card">
+      <div class="card-title">Brand assets</div>
+      <div class="card-sub">Logo, fonts, colors, product images — anything we need to create on-brand content.</div>
+      <div class="row" style="margin-bottom:14px">
+        <div class="field">
+          <label>Primary Brand Color (hex)</label>
+          <input type="text" id="sc-brandColor" placeholder="#FF5A5F">
+        </div>
+        <div class="field">
+          <label>Brand Fonts</label>
+          <input type="text" id="sc-brandFonts" placeholder="e.g. Montserrat, Lato">
+        </div>
+      </div>
+      <div id="sc-asset-upload" class="asset-uploader" data-offer="sc"></div>
+    </div>
+  </div>
+
+  <!-- ─── CREATOR NETWORK ─── -->
+  <div class="cond-section" id="cond-network">
+    <div class="card">
+      <div class="card-title">Creator Network — details</div>
+      <div class="card-sub">Set up your network engagement. Select your tier(s) and configure each one below.</div>
+
+      <div class="row">
+        <div class="field">
+          <label>TikTok Shop Affiliate Code <span class="req">*</span></label>
+          <input type="text" id="cn-shopCode" placeholder="e.g. BRAND2025">
+          <div class="hint">The short referral/affiliate code for your TikTok Shop</div>
+        </div>
+        <div class="field" style="align-self:start">
+          <label>Affiliate Dashboard Access</label>
+          <label class="check-item" style="margin-top:6px">
+            <input type="checkbox" id="cn-affiliateAccess" style="width:16px;height:16px;accent-color:var(--teal)">
+            <span class="check-item-text">I confirm Cult Content will be given access to my TikTok Shop affiliate dashboard to manage placements and track performance.</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Tier selection -->
+      <div style="margin-top:6px;margin-bottom:16px">
+        <label style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);display:block;margin-bottom:10px">Select your tier(s) <span class="req">*</span></label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="offer-card" id="tier1-card" onclick="toggleTier('tier1')" style="padding:16px">
+            <div class="offer-radio" id="radio-tier1" style="position:absolute;top:14px;right:14px"></div>
+            <div class="offer-name" style="font-size:12px;padding-right:26px">Tier 1 — Creator Retainers</div>
+            <div class="offer-desc" style="margin-top:4px;font-size:10px">Monthly retainer agreements with hand-picked creators. Minimum $10,000/mo budget.</div>
+          </div>
+          <div class="offer-card" id="tier2-card" onclick="toggleTier('tier2')" style="padding:16px">
+            <div class="offer-radio" id="radio-tier2" style="position:absolute;top:14px;right:14px"></div>
+            <div class="offer-name" style="font-size:12px;padding-right:26px">Tier 2 — Mass Community</div>
+            <div class="offer-desc" style="margin-top:4px;font-size:10px">High-volume UGC ordering from our creator community. Minimum 10 videos at $10/video.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tier 1 details -->
+      <div class="tier-section" id="tier1-details">
+        <div style="border-top:1px solid var(--border);padding-top:18px;margin-top:4px">
+          <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--teal);margin-bottom:14px">Tier 1 — Creator Retainers</div>
+          <div class="row">
+            <div class="field">
+              <label>Monthly Retainer Budget <span class="req">*</span></label>
+              <input type="number" id="t1-budget" placeholder="Minimum $10,000" min="10000" step="500">
+              <div class="hint">Minimum $10,000/mo to activate Tier 1</div>
+            </div>
+            <div class="field">
+              <label>Preferred Creator Niches</label>
+              <input type="text" id="t1-niches" placeholder="e.g. skincare, wellness, lifestyle, mom creators">
+            </div>
+          </div>
+          <div class="row">
+            <div class="field">
+              <label>Specific Creators in Mind? <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">(optional)</span></label>
+              <textarea id="t1-specificCreators" style="min-height:60px" placeholder="TikTok handles or names — we'll check fit and availability"></textarea>
+            </div>
+            <div class="field">
+              <label>Products to Feature</label>
+              <textarea id="t1-products" style="min-height:60px" placeholder="Which SKUs should retainer creators focus on?"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tier 2 details -->
+      <div class="tier-section" id="tier2-details">
+        <div style="border-top:1px solid var(--border);padding-top:18px;margin-top:4px">
+          <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--teal);margin-bottom:14px">Tier 2 — Mass Community</div>
+          <div class="row trio">
+            <div class="field">
+              <label>Videos to Order <span class="req">*</span></label>
+              <input type="number" id="t2-videoCount" placeholder="Min 10" min="10" step="1">
+              <div class="hint">$10/video — minimum 10</div>
+            </div>
+            <div class="field">
+              <label>Products to Feature</label>
+              <input type="text" id="t2-products" placeholder="e.g. Hero Serum, SPF Moisturizer">
+            </div>
+          </div>
+          <div class="row full">
+            <div class="field">
+              <label>Campaign Brief</label>
+              <textarea id="t2-brief" placeholder="Key messages, content requirements (e.g. 'must show before/after', 'outdoor lighting only'), posting specs, any exclusions or things to avoid…" style="min-height:100px"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Creator Purchase Reimbursement (CN) -->
+      <div style="border-top:1px solid var(--border);padding-top:18px;margin-top:4px">
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:12px">Creator Purchase Reimbursement Campaign <span style="font-size:9px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></div>
+        <div class="row trio">
+          <div class="field">
+            <label>Product(s) to Feature</label>
+            <input type="text" id="cn-reimProduct" placeholder="e.g. Hero Serum">
+          </div>
+          <div class="field">
+            <label>Creator Orders Desired</label>
+            <input type="number" id="cn-reimOrders" placeholder="e.g. 20" min="1">
+          </div>
+          <div class="field">
+            <label>Retail Price / Unit ($)</label>
+            <input type="number" id="cn-reimPrice" placeholder="e.g. 49" min="0" step="0.01">
+            <div class="hint">CC pre-charges at retail × qty</div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 
-  <!-- Commission rates -->
-  <div class="card" style="margin-bottom:16px">
-    <div class="card-title">Commission Rates</div>
-    <div class="card-sub">Set the default commission rates for TikTok Shop collaborations. These are used when automatically sending invites to creators who apply.</div>
-    <div style="display:flex;gap:14px;flex-wrap:wrap">
-      <div class="field" style="flex:1;min-width:180px">
-        <label>Target Collaboration Commission</label>
-        <div style="position:relative">
-          <input type="number" id="tcCommission" placeholder="e.g. 10" min="1" max="80" step="0.5" style="padding-right:32px">
-          <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px">%</span>
-        </div>
-        <div class="hint">Commission offered on the TC invite card sent to creators</div>
-      </div>
-      <div class="field" style="flex:1;min-width:180px">
-        <label>Open Collaboration Commission</label>
-        <div style="position:relative">
-          <input type="number" id="openCommission" placeholder="e.g. 15" min="1" max="80" step="0.5" style="padding-right:32px">
-          <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px">%</span>
-        </div>
-        <div class="hint">Default rate for open / open-plan affiliate collaborations</div>
-      </div>
-      <div class="field" style="flex:1;min-width:180px">
-        <label>Ads Commission</label>
-        <div style="position:relative">
-          <input type="number" id="adsCommission" placeholder="e.g. 8" min="0" max="80" step="0.5" style="padding-right:32px">
-          <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px">%</span>
-        </div>
-        <div class="hint">Commission on creator-driven ads (GMV Max / Spark). Often ~half the TC rate.</div>
-      </div>
-      <div class="field" style="flex:1;min-width:180px">
-        <label>Net Sales Commission (rev-share)</label>
-        <div style="position:relative">
-          <input type="number" id="netSalesCommission" placeholder="e.g. 20" min="0" max="100" step="0.5" style="padding-right:32px">
-          <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px">%</span>
-        </div>
-        <div class="hint">Cult Content's share of net affiliate GMV — your agency rev-share rate</div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Promotional Strategy -->
-  <div class="card" style="margin-bottom:16px">
-    <div class="card-title">Promotional Strategy</div>
-    <div class="card-sub">Set once. We run these automatically while your shop isn't enrolled in a TikTok-wide campaign (Deals For You Days, etc.).</div>
-    <div class="row">
-      <div class="field">
-        <label>Flash Sale Cadence</label>
-        <select id="flashSaleCadence">
-          <option value="">— select —</option>
-          <option>None</option>
-          <option>Weekly</option>
-          <option>Bi-weekly</option>
-          <option>Monthly</option>
-        </select>
-        <div class="hint">How often we run a flash-sale promo on your hero products</div>
-      </div>
-      <div class="field">
-        <label>Free Shipping Threshold ($)</label>
-        <input type="text" id="freeShipThreshold" placeholder="e.g. 35  (or 'none')">
-        <div class="hint">Cart value for free shipping — leave 'none' if not offered</div>
-      </div>
-    </div>
-    <div class="field">
-      <label>Bundle / Gift-With-Purchase Strategy</label>
-      <input type="text" id="bundleStrategy" placeholder="e.g. Buy 2 get 1, free sample sachet over $40">
-      <div class="hint">Any BMSM / GWP offers you want creators and the shop to push</div>
-    </div>
-    <div class="row">
-      <div class="field">
-        <label>Auto-Approve Sample Requests?</label>
-        <select id="sampleAutoApprove">
-          <option value="">— select —</option>
-          <option>Yes</option>
-          <option>No</option>
-        </select>
-        <div class="hint">Auto-approve incoming creator sample requests in Reacher</div>
-      </div>
-      <div class="field">
-        <label>Sample Approval Criteria</label>
-        <input type="text" id="sampleApprovalCriteria" placeholder="e.g. 1k+ followers, US-based, on-niche">
-        <div class="hint">Who qualifies — used when auto-approve is off or as a filter</div>
-      </div>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-title">Creator Compensation Program</div>
-    <div class="card-sub">Toggle on the incentive programs you want to run. These will appear on your creator interest page and in all outreach messages. Everything is optional — you can always add more later.</div>
-
-    <!-- GMV Cashback -->
-    <div class="comp-card" id="comp-cashback">
-      <div class="comp-toggle" onclick="toggleComp('cashback')">
-        <div class="comp-icon">💸</div>
-        <div class="comp-info">
-          <div class="comp-name">GMV Cashback</div>
-          <div class="comp-desc">Creator hits a GMV target → receives that amount back as a cash bonus. An easy early win to get creators engaged and posting.</div>
-        </div>
-        <div class="comp-switch"></div>
-      </div>
-      <div class="comp-fields">
-        <div class="row" style="margin:0">
-          <div class="field">
-            <label>Cashback GMV Target <span class="req">*</span></label>
-            <input type="number" id="cashback-target" placeholder="e.g. 75" min="1">
-            <div class="hint">$ GMV creator must generate to receive the bonus</div>
-          </div>
-        </div>
-        <div class="example-box">Example: A creator generates $75 in GMV → they receive a $75 cash bonus. Simple, motivating, low-risk for you.</div>
-      </div>
-    </div>
-
-    <!-- Leaderboard -->
-    <div class="comp-card" id="comp-leaderboard">
-      <div class="comp-toggle" onclick="toggleComp('leaderboard')">
-        <div class="comp-icon">🏆</div>
-        <div class="comp-info">
-          <div class="comp-name">Leaderboard Challenge</div>
-          <div class="comp-desc">Rank creators by GMV generated over a period and pay bonuses to the top performers</div>
-        </div>
-        <div class="comp-switch"></div>
-      </div>
-      <div class="comp-fields">
-        <div class="row" style="margin-bottom:14px">
-          <div class="field">
-            <label>Minimum GMV to Qualify <span class="req">*</span></label>
-            <input type="number" id="lb-threshold" placeholder="e.g. 500" min="0">
-            <div class="hint">$ minimum GMV to appear on the leaderboard</div>
-          </div>
-          <div class="field">
-            <label>Number of Winning Places <span class="req">*</span></label>
-            <select id="lb-places" onchange="renderLeaderboardPlaces()">
-              <option value="2">2 places</option>
-              <option value="3" selected>3 places</option>
-              <option value="4">4 places</option>
-              <option value="5">5 places</option>
-            </select>
-          </div>
-        </div>
-        <div class="leaderboard-places" id="lbPlacesList"></div>
-      </div>
-    </div>
-
-    <!-- Volume Bonus -->
-    <div class="comp-card" id="comp-volumeBonus">
-      <div class="comp-toggle" onclick="toggleComp('volumeBonus')">
-        <div class="comp-icon">🎬</div>
-        <div class="comp-info">
-          <div class="comp-name">Volume Bonus</div>
-          <div class="comp-desc">Reward creators who hit a target number of posted videos with a lump-sum bonus</div>
-        </div>
-        <div class="comp-switch"></div>
-      </div>
-      <div class="comp-fields">
-        <div class="row" style="margin:0">
-          <div class="field">
-            <label>Video Quantity Target <span class="req">*</span></label>
-            <input type="number" id="vb-quantity" placeholder="e.g. 10" min="1">
-            <div class="hint">Number of videos required to earn the bonus</div>
-          </div>
-          <div class="field">
-            <label>Bonus Amount <span class="req">*</span></label>
-            <input type="number" id="vb-bonus" placeholder="e.g. 100" min="1">
-            <div class="hint">$ one-time bonus paid on hitting the target</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-  </div>
   <div class="nav-row">
     <button class="btn-back" onclick="goBack(4)">← Back</button>
-    <button class="btn-next" onclick="goNext(4)">Review →</button>
+    <button class="btn-next" onclick="goNext(4)">Continue →</button>
   </div>
 </div>
 
-<!-- ── STEP 5: Review & Submit ── -->
+<!-- ═══════════════════════════════════════════════════════
+     STEP 5 — Review & Submit
+     ═══════════════════════════════════════════════════════ -->
 <div class="step-pane" id="step-5">
-  <div class="card">
-    <div class="card-title">Review &amp; Submit</div>
-    <div class="card-sub">Look good? Once you submit, our team gets notified and everything kicks off automatically.</div>
+  <div class="card" id="reviewCard">
+    <div class="card-title">Review your submission</div>
+    <div class="card-sub">Looks right? Hit submit and we'll be in touch within 24 hours.</div>
     <div id="reviewContent"></div>
   </div>
 
   <div class="card">
-    <div class="consent-box">By submitting, you agree to receive SMS messages, emails, and other communications from Cult Content related to your account, campaign updates, and marketing materials. Message &amp; data rates may apply. Reply STOP to opt out of SMS.</div>
-    <label class="consent-check">
-      <input type="checkbox" id="consentSMS">
-      <span>I agree to receive SMS and email communications from Cult Content</span>
+    <div class="consent-box">
+      By submitting this form you confirm that all information provided is accurate and authorise Cult Content to use it to set up your creator affiliate program and associated services. You understand that service agreements will be shared separately for signature.
+    </div>
+    <label class="check-item" style="margin-bottom:12px">
+      <input type="checkbox" id="consentData" style="accent-color:var(--teal)">
+      <span class="check-item-text">I agree to Cult Content storing and using the information submitted here to deliver our services.</span>
     </label>
-    <label class="consent-check">
-      <input type="checkbox" id="consentTerms">
-      <span>I agree to Cult Content's <a href="https://cultcontent.cc/terms" target="_blank" style="color:var(--teal)">Terms of Service</a></span>
+    <label class="check-item">
+      <input type="checkbox" id="consentContact" style="accent-color:var(--teal)">
+      <span class="check-item-text">I agree to be contacted by the Cult Content team via email and phone regarding my onboarding.</span>
     </label>
-    <div class="form-error" id="submitError"></div>
-    <button class="btn-submit" id="submitBtn" onclick="submitForm()">Submit Onboarding 🚀</button>
+
+    <div class="form-error" id="submitError" style="display:none;margin-top:14px">Please check all boxes before submitting.</div>
+    <button class="btn-submit" id="submitBtn" onclick="handleSubmit()">Submit →</button>
   </div>
 
-  <div class="nav-row" style="margin-top:0">
+  <div class="nav-row">
     <button class="btn-back" onclick="goBack(5)">← Back</button>
     <div></div>
   </div>
@@ -584,341 +817,468 @@ textarea{resize:vertical;min-height:80px}
 
 </div><!-- /mainForm -->
 
+<!-- Success state -->
 <div id="successState">
   <div class="success-icon">🎉</div>
-  <div class="success-title">Welcome to the cult!</div>
-  <div class="success-msg" id="successMsg">Our team has been notified and your onboarding pipeline has kicked off. Expect to hear from us within 24 hours.</div>
+  <div class="success-title">You're in.</div>
+  <div class="success-msg">We've received your submission and a member of the Cult Content team will reach out within 24 hours to kick things off.<br><br>Keep an eye on <strong id="successEmail"></strong>.</div>
 </div>
+
 </div><!-- /form-wrap -->
 
 <script>
-// ── State ──
-const F = {
-  tiktokShop: '', shopifyIntegrated: '', tiktokAccountManager: '', reviewsImported: '', fbt: '', sendSamples: 'Yes',
-  products: [],
-  compensation: { cashback:{enabled:false}, leaderboard:{enabled:false}, volumeBonus:{enabled:false} },
+// ─── State ───────────────────────────────────────────────────────────────────
+const state = {
+  step: 1, totalSteps: 5,
+  logoUrl: '', assetUrls: {},
+  offerType: '',  // foundation | growth | scale | network
+  tiers: {},      // { tier1: bool, tier2: bool }
+  toggles: {},    // field → value
 };
-let currentStep = 1;
-const TOTAL_STEPS = 5;
 
-// ── Step navigation ──
-window._logoUrl = null;
-async function handleLogoUpload(input) {
-  if (!input.files[0]) return;
-  const st = document.getElementById('logoUploadStatus');
-  const nameEl = document.getElementById('logoFileName');
-  const thumb = document.getElementById('logoThumb');
-  st.style.color = 'var(--muted)'; st.textContent = 'Uploading…';
-  nameEl.textContent = input.files[0].name;
-  const fd = new FormData();
-  fd.append('logo', input.files[0]);
-  try {
-    const r = await fetch('/api/onboard/logo', { method: 'POST', body: fd });
-    const d = await r.json();
-    if (d.ok) {
-      window._logoUrl = d.logoUrl;
-      thumb.src = d.logoUrl;
-      thumb.style.display = 'inline-block';
-      st.style.color = '#00d27a'; st.textContent = '✓ Logo uploaded';
-    } else { st.style.color = '#ff3b30'; st.textContent = d.error || 'Upload failed'; }
-  } catch(_) { st.style.color = '#ff3b30'; st.textContent = 'Upload failed — you can add it later'; }
-  input.value = '';
+// ─── Step navigation ─────────────────────────────────────────────────────────
+function setProgress(n) {
+  document.getElementById('progressFill').style.width = ((n / state.totalSteps) * 100) + '%';
+  for (let i = 1; i <= state.totalSteps; i++) {
+    const lbl = document.getElementById('lbl-' + i);
+    if (!lbl) continue;
+    lbl.className = 'step-label' + (i === n ? ' active' : i < n ? ' done' : '');
+  }
+}
+
+function showStep(n) {
+  document.querySelectorAll('.step-pane').forEach(p => p.classList.remove('active'));
+  const pane = document.getElementById('step-' + n);
+  if (pane) { pane.classList.add('active'); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  state.step = n;
+  setProgress(n);
+}
+
+function jumpStep(n) {
+  if (n >= state.step) return; // only jump backwards
+  showStep(n);
 }
 
 function goNext(from) {
   if (!validateStep(from)) return;
-  currentStep = from + 1;
-  showStep(currentStep);
-  if (currentStep === TOTAL_STEPS) buildReview();
-}
-function goBack(from) {
-  currentStep = from - 1;
-  showStep(currentStep);
-}
-function showStep(n) {
-  document.querySelectorAll('.step-pane').forEach(p => p.classList.remove('active'));
-  document.getElementById(`step-${n}`).classList.add('active');
-  document.getElementById('progressFill').style.width = (n / TOTAL_STEPS * 100) + '%';
-  for (let i = 1; i <= TOTAL_STEPS; i++) {
-    const lbl = document.getElementById(`lbl-${i}`);
-    lbl.classList.toggle('active', i === n);
-    lbl.classList.toggle('done', i < n);
-  }
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-function jumpStep(n) {
-  currentStep = n;
-  showStep(n);
-  if (n === TOTAL_STEPS) buildReview();
+  if (from === 3) showConditionalSection();
+  if (from === 4) buildReview();
+  showStep(from + 1);
 }
 
-// ── Validation ──
+function goBack(from) {
+  showStep(from - 1);
+}
+
+// ─── Validation ──────────────────────────────────────────────────────────────
 function validateStep(n) {
-  const req = (id, label) => {
-    const el = document.getElementById(id);
-    if (!el) return true;
-    const val = el.value?.trim();
-    if (!val) { el.focus(); markErr(el, `${label} is required`); return false; }
-    clearErr(el); return true;
-  };
-  const yn = (field, label) => {
-    if (!F[field]) { alert(`Please select an answer for: ${label}`); return false; }
-    return true;
-  };
-  if (n === 1) return req('brandName','Brand name') && req('website','Website') && req('firstName','First name') && req('lastName','Last name') && req('phone','Phone') && req('email','Email');
-  if (n === 2) return yn('tiktokShop','TikTok Shop registered?') && yn('shopifyIntegrated','Shopify integrated?') && yn('tiktokAccountManager','TikTok account manager?') && yn('reviewsImported','Reviews imported?') && yn('fbt','FBT registered?');
-  if (n === 3) {
-    if (!F.products.length || !F.products.some(p => p.name?.trim())) { alert('Please add at least one product.'); return false; }
-    return true;
+  clearErrors();
+  if (n === 1) {
+    return requireField('brandName', 'Brand name is required') &&
+           requireField('website', 'Website is required') &&
+           requireField('firstName', 'Contact name is required') &&
+           requireField('email', 'Email is required') &&
+           requireField('tiktokShopUrl', 'TikTok Shop link is required');
   }
-  if (n === 4) return req('sampleBudget','Monthly sample budget');
+  if (n === 2) {
+    return requireField('targetAudience', 'Target audience is required') &&
+           requireField('tiktokGmv', 'Please select your GMV range') &&
+           requireField('brandGoals', 'Goals are required');
+  }
+  if (n === 3) {
+    if (!state.offerType) {
+      document.getElementById('offerError').style.display = 'block';
+      return false;
+    }
+  }
+  if (n === 4) {
+    if (state.offerType === 'foundation') {
+      return requireField('fn-shopCategory', 'Please select a TikTok Shop category');
+    }
+    if (state.offerType === 'network') {
+      if (!state.offerType) return false;
+      // at least one tier selected
+      if (!state.tiers.tier1 && !state.tiers.tier2) {
+        alert('Please select at least one tier.');
+        return false;
+      }
+    }
+  }
   return true;
 }
-function markErr(el, msg) {
-  let e = el.parentNode.querySelector('.field-error');
-  if (!e) { e = document.createElement('div'); e.className = 'field-error'; el.parentNode.appendChild(e); }
-  e.textContent = msg; el.style.borderColor = 'var(--red)';
-}
-function clearErr(el) {
-  const e = el.parentNode?.querySelector('.field-error');
-  if (e) e.textContent = ''; el.style.borderColor = '';
+
+function requireField(id, msg) {
+  const el = document.getElementById(id);
+  if (!el) return true;
+  const val = el.value?.trim();
+  if (!val) {
+    el.style.borderColor = 'var(--red)';
+    const hint = el.parentElement.querySelector('.field-error');
+    if (hint) { hint.textContent = msg; hint.style.display = 'block'; }
+    el.focus();
+    return false;
+  }
+  return true;
 }
 
-// ── Yes/No ──
-function setYN(btn) {
-  btn.parentNode.querySelectorAll('.yn-btn').forEach(b => b.classList.remove('selected'));
-  btn.classList.add('selected');
-  F[btn.dataset.field] = btn.dataset.val;
+function clearErrors() {
+  document.querySelectorAll('input,select,textarea').forEach(el => el.style.borderColor = '');
+  document.querySelectorAll('.field-error').forEach(el => el.style.display = 'none');
+  const oe = document.getElementById('offerError');
+  if (oe) oe.style.display = 'none';
 }
 
-// ── Products ──
+// ─── Toggle buttons ───────────────────────────────────────────────────────────
+function setToggle(btn) {
+  const field = btn.dataset.field;
+  const val   = btn.dataset.val;
+  btn.closest('.toggle-row').querySelectorAll('.t-btn').forEach(b => b.classList.remove('sel'));
+  btn.classList.add('sel');
+  state.toggles[field] = val;
+}
+
+function getToggle(field) { return state.toggles[field] || ''; }
+
+// ─── Offer selection ──────────────────────────────────────────────────────────
+function selectOffer(key) {
+  ['foundation','growth','scale','network'].forEach(k => {
+    document.getElementById('offer-' + k).classList.toggle('selected', k === key);
+    document.getElementById('radio-' + k).style.background = k === key ? 'var(--teal)' : '';
+  });
+  state.offerType = key;
+  const oe = document.getElementById('offerError');
+  if (oe) oe.style.display = 'none';
+}
+
+function showConditionalSection() {
+  document.querySelectorAll('.cond-section').forEach(s => s.classList.remove('show'));
+  const map = { foundation: 'cond-foundation', growth: 'cond-growth', scale: 'cond-scale', network: 'cond-network' };
+  const el = document.getElementById(map[state.offerType]);
+  if (el) el.classList.add('show');
+}
+
+// ─── Tier selection (Creator Network) ────────────────────────────────────────
+function toggleTier(tier) {
+  state.tiers[tier] = !state.tiers[tier];
+  const card = document.getElementById(tier + '-card');
+  const radio = document.getElementById('radio-' + tier);
+  const details = document.getElementById(tier + '-details');
+  card.classList.toggle('selected', state.tiers[tier]);
+  if (radio) radio.style.background = state.tiers[tier] ? 'var(--teal)' : '';
+  if (details) details.classList.toggle('show', state.tiers[tier]);
+}
+
+// ─── Add-ons (Scale) ──────────────────────────────────────────────────────────
+function toggleAddon(key, labelEl) {
+  const cb = labelEl.querySelector('input[type=checkbox]');
+  // click came from label, checkbox already toggled by default browser behaviour
+  setTimeout(() => {
+    labelEl.classList.toggle('checked', cb.checked);
+  }, 0);
+}
+
+function toggleMktAccounts(cb) {
+  cb.closest('.addon-card').classList.toggle('checked', cb.checked);
+  document.getElementById('mkt-acc-picker').style.display = cb.checked ? 'block' : 'none';
+}
+
+// ─── Products ─────────────────────────────────────────────────────────────────
+let productCount = 0;
 function addProduct() {
-  F.products.push({ id: Date.now(), name: '', url: '', cogs: '', shipping: '', minPrice: '' });
-  renderProducts();
+  if (productCount >= 5) return;
+  const idx = productCount++;
+  const row = document.createElement('div');
+  row.className = 'product-row';
+  row.id = 'pr-' + idx;
+  row.innerHTML = `
+    <div class="product-top">
+      <div class="field"><label>Product Name</label><input type="text" id="p${idx}-name" placeholder="e.g. Glow Serum"></div>
+      <div class="field"><label>Price ($)</label><input type="number" id="p${idx}-price" placeholder="49" min="0" step="0.01"></div>
+      <button type="button" class="remove-btn" onclick="removeProduct(${idx})">×</button>
+    </div>
+    <div class="field"><label>TikTok Shop Link</label><input type="url" id="p${idx}-url" placeholder="https://www.tiktok.com/t/..."></div>`;
+  document.getElementById('productList').appendChild(row);
 }
-function removeProduct(id) {
-  F.products = F.products.filter(p => p.id !== id);
-  renderProducts();
-}
-function renderProducts() {
-  const list = document.getElementById('productList');
-  list.innerHTML = F.products.map((p, i) => `
-    <div class="product-row">
-      <div class="product-row-top">
-        <input type="text" placeholder="Product name" value="${esc(p.name)}"
-          oninput="F.products[${i}].name=this.value" style="font-size:13px">
-        <input type="url" placeholder="TikTok Shop link (optional)" value="${esc(p.url)}"
-          oninput="F.products[${i}].url=this.value" style="font-size:13px">
-        <button type="button" class="remove-btn" onclick="removeProduct(${p.id})">×</button>
-      </div>
-      <div class="product-row-costs">
-        <div>
-          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Cost of Goods (per unit)</div>
-          <div style="position:relative">
-            <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none">$</span>
-            <input type="number" min="0" step="0.01" placeholder="0.00" value="${esc(p.cogs)}"
-              oninput="F.products[${i}].cogs=this.value" style="font-size:13px;padding-left:22px;width:100%;box-sizing:border-box">
-          </div>
-        </div>
-        <div>
-          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Est. Shipping Cost (per unit)</div>
-          <div style="position:relative">
-            <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none">$</span>
-            <input type="number" min="0" step="0.01" placeholder="0.00" value="${esc(p.shipping)}"
-              oninput="F.products[${i}].shipping=this.value" style="font-size:13px;padding-left:22px;width:100%;box-sizing:border-box">
-          </div>
-        </div>
-        <div>
-          <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Min. Retail Sale Price</div>
-          <div style="position:relative">
-            <span style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px;pointer-events:none">$</span>
-            <input type="number" min="0" step="0.01" placeholder="0.00" value="${esc(p.minPrice)}"
-              oninput="F.products[${i}].minPrice=this.value" style="font-size:13px;padding-left:22px;width:100%;box-sizing:border-box">
-          </div>
-        </div>
-      </div>
-    </div>`).join('');
-}
-addProduct(); // start with one
 
-// ── Compensation ──
-function toggleComp(type) {
-  const card = document.getElementById(`comp-${type}`);
-  const open = !card.classList.contains('open');
-  card.classList.toggle('open', open);
-  F.compensation[type].enabled = open;
-  if (type === 'leaderboard' && open) renderLeaderboardPlaces();
+function removeProduct(idx) {
+  const row = document.getElementById('pr-' + idx);
+  if (row) row.remove();
 }
-function renderLeaderboardPlaces() {
-  const n = parseInt(document.getElementById('lb-places')?.value || '3');
-  const ordinals = ['1st','2nd','3rd','4th','5th'];
-  const list = document.getElementById('lbPlacesList');
-  const existing = Array.from(list?.querySelectorAll('input')||[]).map(i => i.value);
-  list.innerHTML = Array.from({length:n},(_,i)=>`
-    <div class="place-row">
-      <div class="place-label">${ordinals[i]} Place</div>
-      <input type="number" placeholder="e.g. ${[500,300,150,100,75][i]||50}" min="0"
-        id="lb-place-${i}" value="${existing[i]||''}" style="font-size:13px">
-    </div>`).join('');
-}
-renderLeaderboardPlaces();
 
-function collectCompensation() {
-  const c = F.compensation;
-  if (c.cashback.enabled)    c.cashback.target    = v('cashback-target');
-  if (c.leaderboard.enabled) {
-    c.leaderboard.threshold  = v('lb-threshold');
-    const n = parseInt(document.getElementById('lb-places')?.value||'3');
-    c.leaderboard.places     = Array.from({length:n},(_,i)=>document.getElementById(`lb-place-${i}`)?.value||'0');
+function collectProducts() {
+  const products = [];
+  document.querySelectorAll('.product-row').forEach((row, i) => {
+    const idx = row.id.replace('pr-', '');
+    const name  = document.getElementById('p' + idx + '-name')?.value.trim();
+    const price = document.getElementById('p' + idx + '-price')?.value.trim();
+    const url   = document.getElementById('p' + idx + '-url')?.value.trim();
+    if (name) products.push({ name, price, url });
+  });
+  return products;
+}
+
+// ─── Asset upload ─────────────────────────────────────────────────────────────
+function initAssetUploader(containerId) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  const offer = container.dataset.offer;
+  state.assetUrls[offer] = state.assetUrls[offer] || [];
+
+  container.innerHTML = `
+    <div class="asset-drop" id="${offer}-drop" onclick="document.getElementById('${offer}-file-input').click()" ondragover="handleDragOver(event,this)" ondragleave="this.classList.remove('drag-over')" ondrop="handleDrop(event,'${offer}')">
+      <div class="asset-drop-icon">📁</div>
+      <div class="asset-drop-text"><strong>Upload brand assets</strong>Logo, fonts, product images, brand guidelines — any file up to 20MB</div>
+      <input type="file" id="${offer}-file-input" multiple style="display:none" onchange="handleAssetFiles(this,'${offer}')">
+    </div>
+    <div class="asset-list" id="${offer}-asset-list"></div>`;
+}
+
+function handleDragOver(e, el) {
+  e.preventDefault(); el.classList.add('drag-over');
+}
+
+function handleDrop(e, offer) {
+  e.preventDefault();
+  document.getElementById(offer + '-drop').classList.remove('drag-over');
+  uploadAssetFiles(e.dataTransfer.files, offer);
+}
+
+function handleAssetFiles(input, offer) {
+  uploadAssetFiles(input.files, offer);
+  input.value = '';
+}
+
+async function uploadAssetFiles(files, offer) {
+  const list = document.getElementById(offer + '-asset-list');
+  for (const file of files) {
+    const itemId = 'af-' + Date.now() + '-' + Math.random().toString(36).slice(2,6);
+    const item = document.createElement('div');
+    item.className = 'asset-item';
+    item.id = itemId;
+    const size = file.size < 1048576 ? (file.size / 1024).toFixed(0) + ' KB' : (file.size / 1048576).toFixed(1) + ' MB';
+    item.innerHTML = `
+      <div class="asset-item-name">${file.name}</div>
+      <div class="asset-item-size">${size}</div>
+      <div class="asset-item-status uploading" id="${itemId}-status">Uploading…</div>`;
+    list.appendChild(item);
+    try {
+      const fd = new FormData();
+      fd.append('files', file);
+      const r = await fetch('/api/onboard/assets', { method: 'POST', body: fd });
+      const j = await r.json();
+      if (j.ok && j.files?.length) {
+        state.assetUrls[offer] = state.assetUrls[offer] || [];
+        state.assetUrls[offer].push(...j.files.map(f => f.url));
+        document.getElementById(itemId + '-status').textContent = '✓';
+        document.getElementById(itemId + '-status').className = 'asset-item-status done';
+      } else {
+        document.getElementById(itemId + '-status').textContent = 'Error';
+        document.getElementById(itemId + '-status').className = 'asset-item-status err';
+      }
+    } catch(e) {
+      document.getElementById(itemId + '-status').textContent = 'Error';
+      document.getElementById(itemId + '-status').className = 'asset-item-status err';
+    }
   }
-  if (c.volumeBonus.enabled) {
-    c.volumeBonus.quantity   = v('vb-quantity');
-    c.volumeBonus.bonus      = v('vb-bonus');
+}
+
+// ─── Logo upload ──────────────────────────────────────────────────────────────
+async function handleLogoUpload(input) {
+  if (!input.files[0]) return;
+  const status = document.getElementById('logoUploadStatus');
+  const file = input.files[0];
+  document.getElementById('logoFileName').textContent = file.name;
+  status.style.color = 'var(--gold)';
+  status.textContent = 'Uploading…';
+  try {
+    const fd = new FormData();
+    fd.append('logo', file);
+    const r = await fetch('/api/onboard/logo', { method: 'POST', body: fd });
+    const j = await r.json();
+    if (j.logoUrl) {
+      state.logoUrl = j.logoUrl;
+      status.style.color = 'var(--green)';
+      status.textContent = '✓ Uploaded';
+      const thumb = document.getElementById('logoThumb');
+      thumb.src = j.logoUrl; thumb.style.display = 'block';
+    } else {
+      status.style.color = 'var(--red)';
+      status.textContent = 'Upload failed — ' + (j.error || 'try again');
+    }
+  } catch(e) {
+    status.style.color = 'var(--red)';
+    status.textContent = 'Upload failed — check connection';
   }
 }
 
-// ── Review ──
+// ─── Review builder ───────────────────────────────────────────────────────────
+const offerLabels = {
+  foundation: 'The Foundation — $1,500 one-time',
+  growth:     'Growth Partner — $2,000/mo + 9%',
+  scale:      'Scale — $4,000/mo + 5%',
+  network:    'Creator Network — $2,000/mo + 4% GMV',
+};
+
+function rv(label, val) {
+  if (!val) return '';
+  return `<div class="rv"><div class="rv-label">${label}</div><div class="rv-val">${val}</div></div>`;
+}
+
 function buildReview() {
-  collectCompensation();
-  const comp = F.compensation;
-  const ordinals = ['1st','2nd','3rd','4th','5th'];
-  const incentivePills = [];
-  if (comp.cashback?.enabled)    incentivePills.push(`💸 GMV Cashback ($${comp.cashback.target} target)`);
-  if (comp.leaderboard?.enabled) incentivePills.push(`🏆 Leaderboard (${(comp.leaderboard.places||[]).map((a,i)=>`${ordinals[i]}: $${a}`).join(', ')})`);
-  if (comp.volumeBonus?.enabled) incentivePills.push(`🎬 Volume Bonus ($${comp.volumeBonus.bonus} for ${comp.volumeBonus.quantity} videos)`);
+  const products = collectProducts();
+  let html = '';
 
-  document.getElementById('reviewContent').innerHTML = `
-    <div class="review-section">
-      <div class="review-title">Brand</div>
-      <div class="review-grid">
-        <div class="rv"><div class="rv-label">Brand Name</div><div class="rv-val">${esc(v('brandName'))}</div></div>
-        ${v('tiktokHandle')?`<div class="rv"><div class="rv-label">TikTok</div><div class="rv-val">@${esc(v('tiktokHandle'))}</div></div>`:''}
-        ${v('tiktokShopHandle')?`<div class="rv"><div class="rv-label">TikTok Shop</div><div class="rv-val">@${esc(v('tiktokShopHandle'))}</div></div>`:''}
-        <div class="rv"><div class="rv-label">Contact</div><div class="rv-val">${esc(v('firstName'))} ${esc(v('lastName'))}</div></div>
-        <div class="rv"><div class="rv-label">Email</div><div class="rv-val">${esc(v('email'))}</div></div>
-        <div class="rv"><div class="rv-label">Phone</div><div class="rv-val">${esc(v('phone'))}</div></div>
-        <div class="rv"><div class="rv-label">Website</div><div class="rv-val">${esc(v('website'))}</div></div>
-      </div>
-    </div>
-    <div class="review-section">
-      <div class="review-title">TikTok Shop Setup</div>
-      <div class="review-grid">
-        <div class="rv"><div class="rv-label">TikTok Shop</div><div class="rv-val">${esc(F.tiktokShop||'—')}</div></div>
-        <div class="rv"><div class="rv-label">Shopify Integrated</div><div class="rv-val">${esc(F.shopifyIntegrated||'—')}</div></div>
-        <div class="rv"><div class="rv-label">TikTok AM</div><div class="rv-val">${esc(F.tiktokAccountManager||'—')}</div></div>
-        <div class="rv"><div class="rv-label">Reviews Imported</div><div class="rv-val">${esc(F.reviewsImported||'—')}</div></div>
-        <div class="rv"><div class="rv-label">FBT Registered</div><div class="rv-val">${esc(F.fbt||'—')}</div></div>
-      </div>
-    </div>
-    <div class="review-section">
-      <div class="review-title">Products (${F.products.filter(p=>p.name).length})</div>
-      <div class="review-grid">
-        ${F.products.filter(p=>p.name).map(p=>`
-          <div class="rv"><div class="rv-label">Product</div><div class="rv-val">${esc(p.name)}${p.url?` <a href="${esc(p.url)}" target="_blank" style="color:var(--teal);font-size:11px;margin-left:6px">↗ Shop</a>`:''}</div></div>
-          <div class="rv" style="margin-left:12px">
-            <div class="rv-label">COGS</div><div class="rv-val">${p.cogs?'$'+Number(p.cogs).toFixed(2):'—'}</div>
-          </div>
-          <div class="rv" style="margin-left:12px">
-            <div class="rv-label">Shipping</div><div class="rv-val">${p.shipping?'$'+Number(p.shipping).toFixed(2):'—'}</div>
-          </div>
-          <div class="rv" style="margin-left:12px">
-            <div class="rv-label">Min Sale Price</div><div class="rv-val">${p.minPrice?'$'+Number(p.minPrice).toFixed(2):'—'}</div>
-          </div>`).join('')}
-      </div>
-    </div>
-    <div class="review-section">
-      <div class="review-title">Budgets</div>
-      <div class="review-grid">
-        <div class="rv"><div class="rv-label">Sample Budget</div><div class="rv-val">${esc(v('sampleBudget'))}</div></div>
-        <div class="rv"><div class="rv-label">Retainer Budget</div><div class="rv-val">${v('retainerBudget') ? '$'+esc(v('retainerBudget'))+'/mo' : '—'}</div></div>
-        <div class="rv"><div class="rv-label">Sending Samples</div><div class="rv-val">${esc(F.sendSamples)}</div></div>
-      </div>
-    </div>
-    <div class="review-section">
-      <div class="review-title">Creator Compensation</div>
-      ${incentivePills.length
-        ? `<div>${incentivePills.map(p=>`<span class="incentive-pill">${p}</span>`).join('')}</div>`
-        : `<div style="font-size:13px;color:var(--muted)">None selected — can be added later</div>`}
-    </div>
-    ${[v('usp1'),v('usp2'),v('usp3')].some(Boolean) ? `
-    <div class="review-section">
-      <div class="review-title">Product USPs</div>
-      <div class="review-grid">
-        ${[v('usp1'),v('usp2'),v('usp3')].filter(Boolean).map(u=>`<div class="rv"><div class="rv-val">${esc(u)}</div></div>`).join('')}
-      </div>
-    </div>` : ''}
-    ${v('talkingPoints') ? `
-    <div class="review-section">
-      <div class="review-title">Talking Points</div>
-      <div class="rv" style="max-width:100%"><div class="rv-val" style="white-space:pre-wrap;font-size:12px">${esc(v('talkingPoints'))}</div></div>
-    </div>` : ''}
-    ${(v('tcCommission') || v('openCommission')) ? `
-    <div class="review-section">
-      <div class="review-title">Commission Rates</div>
-      <div style="display:flex;gap:12px;flex-wrap:wrap">
-        ${v('tcCommission') ? `<div class="rv"><div class="rv-label">Target Collab</div><div class="rv-val">${esc(v('tcCommission'))}%</div></div>` : ''}
-        ${v('openCommission') ? `<div class="rv"><div class="rv-label">Open Collab</div><div class="rv-val">${esc(v('openCommission'))}%</div></div>` : ''}
-      </div>
-    </div>` : ''}`;
+  html += `<div class="rv-section"><div class="rv-section-title">Your Brand</div><div class="rv-grid">
+    ${rv('Brand', v('brandName'))}
+    ${rv('Website', v('website'))}
+    ${rv('Contact', v('firstName'))}
+    ${rv('Email', v('email'))}
+    ${rv('TikTok Handle', v('tiktokHandle') ? '@' + v('tiktokHandle') : '')}
+    ${rv('TikTok Shop', v('tiktokShopUrl'))}
+    ${rv('Monthly GMV', v('tiktokGmv'))}
+    ${rv('Running Ads?', getToggle('tiktokAds'))}
+  </div></div>`;
+
+  if (products.length) {
+    html += `<div class="rv-section"><div class="rv-section-title">Products</div><div class="rv-grid">
+      ${products.map(p => rv(p.name, `$${p.price}${p.url ? ' · ' + p.url : ''}`)).join('')}
+    </div></div>`;
+  }
+
+  html += `<div class="rv-section"><div class="rv-section-title">Selected Plan</div>
+    <div style="margin-top:4px"><span class="rv-val offer-pill">${offerLabels[state.offerType] || state.offerType}</span></div>
+  </div>`;
+
+  html += `<div class="rv-section"><div class="rv-section-title">Goals</div>
+    <div style="font-size:12.5px;color:rgba(255,255,255,.75);line-height:1.6">${(v('brandGoals')||'').replace(/</g,'&lt;')}</div>
+  </div>`;
+
+  document.getElementById('reviewContent').innerHTML = html;
 }
 
-// ── Submit ──
-async function submitForm() {
-  const errEl = document.getElementById('submitError');
-  errEl.style.display = 'none';
-  if (!document.getElementById('consentSMS').checked || !document.getElementById('consentTerms').checked) {
-    errEl.textContent = 'Please check both boxes to continue.';
-    errEl.style.display = 'block'; return;
-  }
-  collectCompensation();
-  const payload = {
-    brandName: v('brandName'), firstName: v('firstName'), lastName: v('lastName'),
-    phone: v('phone'), email: v('email'), website: v('website'),
-    tiktokHandle: v('tiktokHandle'), tiktokShopHandle: v('tiktokShopHandle'),
-    brandMission: v('brandMission'),
-    tiktokShop: F.tiktokShop, shopifyIntegrated: F.shopifyIntegrated,
-    tiktokAccountManager: F.tiktokAccountManager, reviewsImported: F.reviewsImported,
-    fbt: F.fbt, sendSamples: F.sendSamples,
-    products: F.products.filter(p => p.name?.trim()),
-    sampleBudget: v('sampleBudget'), sampleBudgetNotes: v('sampleBudgetNotes'),
-    retainerBudget: v('retainerBudget'), ugcBudget: v('ugcBudget'),
-    compensation: F.compensation,
-    usp1: v('usp1'), usp2: v('usp2'), usp3: v('usp3'),
-    talkingPoints: v('talkingPoints'),
-    tcCommission: v('tcCommission'), openCommission: v('openCommission'),
-    adsCommission: v('adsCommission'), netSalesCommission: v('netSalesCommission'),
-    flashSaleCadence: v('flashSaleCadence'), freeShipThreshold: v('freeShipThreshold'),
-    bundleStrategy: v('bundleStrategy'), sampleAutoApprove: v('sampleAutoApprove'),
-    sampleApprovalCriteria: v('sampleApprovalCriteria'),
-    logoUrl: window._logoUrl || null,
-    creatorKickoffDate: v('creatorKickoffDate'),
-    weeklyCallDay: v('weeklyCallDay'),
-    weeklyCallTime: v('weeklyCallTime'),
-    submittedAt: new Date().toISOString(),
-  };
+function v(id) { const el = document.getElementById(id); return el?.value?.trim() || ''; }
+
+// ─── Submit ───────────────────────────────────────────────────────────────────
+async function handleSubmit() {
+  const c1 = document.getElementById('consentData').checked;
+  const c2 = document.getElementById('consentContact').checked;
+  const err = document.getElementById('submitError');
+  if (!c1 || !c2) { err.style.display = 'block'; err.textContent = 'Please check both consent boxes to submit.'; return; }
+  err.style.display = 'none';
+
   const btn = document.getElementById('submitBtn');
   btn.disabled = true; btn.textContent = 'Submitting…';
+
+  const products = collectProducts();
+  const nameVal = v('firstName');
+  const firstLast = nameVal.includes(' ') ? [nameVal.split(' ')[0], nameVal.split(' ').slice(1).join(' ')] : [nameVal, ''];
+
+  const payload = {
+    brandName:      v('brandName'),
+    website:        v('website'),
+    firstName:      firstLast[0],
+    lastName:       firstLast[1],
+    email:          v('email'),
+    tiktokHandle:   v('tiktokHandle'),
+    tiktokShopUrl:  v('tiktokShopUrl'),
+    logoUrl:        state.logoUrl,
+    targetAudience: v('targetAudience'),
+    tiktokGmv:      v('tiktokGmv'),
+    tiktokAds:      getToggle('tiktokAds'),
+    brandGoals:     v('brandGoals'),
+    offerType:      state.offerType,
+    products,
+    // Offer-specific
+    offerDetails: collectOfferDetails(),
+    // Assets
+    brandAssets: state.assetUrls,
+  };
+
   try {
     const r = await fetch('/api/onboard/submit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    const d = await r.json();
-    if (d.ok) {
-      const email = encodeURIComponent(v('email') || '');
-      window.location.href = 'https://portal.cultcontent.cc/client/login?new=1&email=' + email;
-    } else throw new Error(d.error || 'Submission failed');
+    const j = await r.json();
+    if (j.ok) {
+      document.getElementById('mainForm').style.display = 'none';
+      document.getElementById('successState').style.display = 'block';
+      document.getElementById('successEmail').textContent = v('email');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      btn.disabled = false; btn.textContent = 'Submit →';
+      err.style.display = 'block'; err.textContent = j.error || 'Something went wrong — please try again.';
+    }
   } catch(e) {
-    errEl.textContent = 'Something went wrong — please try again or email hello@cultcontent.cc';
-    errEl.style.display = 'block';
-    btn.disabled = false; btn.textContent = 'Submit Onboarding 🚀';
+    btn.disabled = false; btn.textContent = 'Submit →';
+    err.style.display = 'block'; err.textContent = 'Network error — please check your connection and try again.';
   }
 }
 
-// ── Helpers ──
-function v(id) { return document.getElementById(id)?.value?.trim() || ''; }
-function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function collectOfferDetails() {
+  if (state.offerType === 'foundation') {
+    return {
+      shopCategory:   v('fn-shopCategory'),
+      qualStatus:     getToggle('fn-qualStatus'),
+      trademark:      getToggle('fn-trademark'),
+      hasReacher:     getToggle('fn-hasReacher'),
+      contentStyle:   v('fn-contentStyle'),
+      creatorBudget:  v('fn-creatorBudget'),
+      sessionAvail:   v('fn-sessionAvail'),
+    };
+  }
+  if (state.offerType === 'growth') {
+    return {
+      adsBudget:      v('gp-adsBudget'),
+      hasAdsAccount:  getToggle('gp-hasAdsAccount'),
+      roas:           v('gp-roas'),
+      creatorBudget:  v('gp-creatorBudget'),
+      creatorExp:     getToggle('gp-creatorExp'),
+      meetingCadence: getToggle('gp-meetingCadence'),
+      contentStyle:   v('gp-contentStyle'),
+      brandColor:     v('gp-brandColor'),
+      brandFonts:     v('gp-brandFonts'),
+    };
+  }
+  if (state.offerType === 'scale') {
+    return {
+      meetingCadence: getToggle('sc-meetingCadence'),
+      reimProduct:    v('sc-reimProduct'),
+      reimOrders:     v('sc-reimOrders'),
+      reimPrice:      v('sc-reimPrice'),
+      addonAI:        document.getElementById('sc-addonAI')?.checked,
+      addonMktAcc:    document.getElementById('sc-addonMktAcc')?.checked,
+      mktAccCount:    getToggle('sc-mktAccCount'),
+      addonCMPage:    document.getElementById('sc-addonCMPage')?.checked,
+      brandColor:     v('sc-brandColor'),
+      brandFonts:     v('sc-brandFonts'),
+    };
+  }
+  if (state.offerType === 'network') {
+    return {
+      shopCode:          v('cn-shopCode'),
+      affiliateAccess:   document.getElementById('cn-affiliateAccess')?.checked,
+      tiers:             state.tiers,
+      t1Budget:          v('t1-budget'),
+      t1Niches:          v('t1-niches'),
+      t1SpecificCreators:v('t1-specificCreators'),
+      t1Products:        v('t1-products'),
+      t2VideoCount:      v('t2-videoCount'),
+      t2Products:        v('t2-products'),
+      t2Brief:           v('t2-brief'),
+      reimProduct:       v('cn-reimProduct'),
+      reimOrders:        v('cn-reimOrders'),
+      reimPrice:         v('cn-reimPrice'),
+    };
+  }
+  return {};
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+addProduct(); // start with one empty product row
+initAssetUploader('gp-asset-upload');
+initAssetUploader('sc-asset-upload');
 </script>
 </body>
 </html>
