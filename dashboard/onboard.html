@@ -189,6 +189,38 @@ select.gmv-select{padding:11px 14px}
 .info-box strong{color:var(--teal)}
 
 /* ── Step transition overlay ── */
+/* ── Build sequence screen ── */
+#buildScreen{display:none;padding:60px 20px 80px;text-align:center;max-width:520px;margin:0 auto}
+.build-brand{font-size:13px;font-weight:700;color:var(--teal);letter-spacing:.08em;text-transform:uppercase;margin-bottom:20px}
+.build-title{font-size:28px;font-weight:900;letter-spacing:-.02em;margin-bottom:8px}
+.build-sub{font-size:13.5px;color:var(--muted);margin-bottom:40px;line-height:1.5}
+.build-steps{display:flex;flex-direction:column;gap:14px;text-align:left;margin-bottom:40px}
+.build-step{display:flex;align-items:flex-start;gap:14px;padding:14px 16px;border-radius:12px;
+  background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06);
+  opacity:0;transform:translateY(8px);transition:opacity .4s,transform .4s}
+.build-step.in{opacity:1;transform:none}
+.build-step-icon{font-size:20px;line-height:1;flex-shrink:0;margin-top:1px}
+.build-step-text{}
+.build-step-title{font-size:13.5px;font-weight:700;color:#fff;margin-bottom:2px}
+.build-step-sub{font-size:12px;color:var(--muted)}
+.build-pulse{width:32px;height:32px;border:2.5px solid rgba(32,213,196,.2);border-top-color:var(--teal);
+  border-radius:50%;animation:spin .7s linear infinite;margin:0 auto 20px}
+/* ── Shopify product preview ── */
+.shopify-preview{background:rgba(32,213,196,.04);border:1px solid rgba(32,213,196,.12);border-radius:14px;padding:18px;margin-bottom:18px}
+.shopify-preview-title{font-size:11px;font-weight:800;color:var(--teal);letter-spacing:.08em;text-transform:uppercase;margin-bottom:14px}
+.product-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px}
+.product-card{border-radius:10px;overflow:hidden;border:1.5px solid rgba(255,255,255,.07);cursor:pointer;
+  transition:border-color .15s,transform .15s;position:relative}
+.product-card:hover{border-color:var(--teal);transform:translateY(-2px)}
+.product-card.selected{border-color:var(--teal);box-shadow:0 0 0 3px rgba(32,213,196,.2)}
+.product-card img{width:100%;aspect-ratio:1;object-fit:cover;display:block;background:#1a1a2e}
+.product-card-name{font-size:10.5px;font-weight:700;color:#e2e8f0;padding:7px 8px 4px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.product-card-price{font-size:10px;color:var(--teal);font-weight:800;padding:0 8px 8px}
+.product-card-check{position:absolute;top:6px;right:6px;width:18px;height:18px;border-radius:50%;
+  background:var(--teal);display:none;align-items:center;justify-content:center;font-size:10px}
+.product-card.selected .product-card-check{display:flex}
+.shopify-preview-hint{font-size:11px;color:var(--muted);margin-top:10px}
+
 #stepOverlay{position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;flex-direction:column;
   align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s}
 #stepOverlay.visible{opacity:1;pointer-events:all}
@@ -319,6 +351,13 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
      STEP 2 — Products & Goals
      ═══════════════════════════════════════════════════════ -->
 <div class="step-pane" id="step-2">
+  <!-- Shopify product preview — auto-populated from step 1 website URL -->
+  <div class="shopify-preview" id="shopifyPreview" style="display:none">
+    <div class="shopify-preview-title">Products detected from your store</div>
+    <div class="product-cards" id="shopifyProductCards"></div>
+    <div class="shopify-preview-hint">Tap products to select which ones to feature. We'll auto-fill the details below.</div>
+  </div>
+
   <div class="card">
     <div class="card-title">Your top products</div>
     <div class="card-sub">Add your 3–5 hero SKUs. These appear on your creator landing page and drive our outreach copy.</div>
@@ -821,11 +860,21 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 
 </div><!-- /mainForm -->
 
+<!-- Build sequence screen -->
+<div id="buildScreen">
+  <div class="build-brand">Cult Content</div>
+  <div class="build-title">Building your setup</div>
+  <div class="build-sub">This takes about 60 seconds. We're creating everything you need to start acquiring creators today.</div>
+  <div class="build-pulse" id="buildPulse"></div>
+  <div class="build-steps" id="buildSteps"></div>
+</div>
+
 <!-- Success state -->
 <div id="successState">
   <div class="success-icon">🎉</div>
-  <div class="success-title">You're in.</div>
-  <div class="success-msg">We've received your submission and a member of the Cult Content team will reach out within 24 hours to kick things off.<br><br>Keep an eye on <strong id="successEmail"></strong>.</div>
+  <div class="success-title">You're live.</div>
+  <div class="success-msg">Your Cult Content setup is complete. Your creator landing page is live, your outreach automations are running, and your account manager has everything they need.<br><br>Check <strong id="successEmail"></strong> for next steps.</div>
+  <div id="successLinks" style="margin-top:24px;display:flex;flex-direction:column;gap:10px;align-items:center"></div>
 </div>
 
 </div><!-- /form-wrap -->
@@ -877,6 +926,13 @@ function goNext(from) {
   document.getElementById('overlayBody').textContent = msg.body;
   const overlay = document.getElementById('stepOverlay');
   overlay.classList.add('visible');
+
+  // When leaving step 1, fire Shopify preview in parallel with the 900ms overlay
+  if (from === 1) {
+    const website = document.getElementById('website')?.value?.trim();
+    if (website) fetchShopifyPreview(website);
+  }
+
   setTimeout(() => {
     if (from === 3) showConditionalSection();
     if (from === 4) buildReview();
@@ -1279,9 +1335,11 @@ async function handleSubmit() {
     const j = await r.json();
     if (j.ok) {
       document.getElementById('mainForm').style.display = 'none';
-      document.getElementById('successState').style.display = 'block';
+      document.getElementById('buildScreen').style.display = 'block';
       document.getElementById('successEmail').textContent = v('email');
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (j.jobId) startBuildSequence(j.jobId, v('email'));
+      else showSuccessState();
     } else {
       btn.disabled = false; btn.textContent = 'Submit →';
       err.style.display = 'block'; err.textContent = j.error || 'Something went wrong — please try again.';
@@ -1290,6 +1348,138 @@ async function handleSubmit() {
     btn.disabled = false; btn.textContent = 'Submit →';
     err.style.display = 'block'; err.textContent = 'Network error — please check your connection and try again.';
   }
+}
+
+// ─── Shopify product preview ──────────────────────────────────────────────────
+let shopifyPreviewProducts = [];
+let selectedPreviewProducts = new Set();
+
+async function fetchShopifyPreview(website) {
+  try {
+    const r = await fetch('/api/onboard/shopify-preview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ website }),
+    });
+    const j = await r.json();
+    if (!j.ok || !j.products?.length) return;
+    shopifyPreviewProducts = j.products;
+    renderShopifyPreview(j.products);
+  } catch {}
+}
+
+function renderShopifyPreview(products) {
+  const wrap = document.getElementById('shopifyPreview');
+  const grid = document.getElementById('shopifyProductCards');
+  if (!wrap || !grid || !products.length) return;
+  grid.innerHTML = products.map((p, i) => `
+    <div class="product-card" id="pcard-${i}" onclick="togglePreviewProduct(${i})">
+      ${p.imageUrl ? `<img src="${p.imageUrl}" alt="${p.title}" onerror="this.style.display='none'">` : '<div style="aspect-ratio:1;background:#1a1a2e"></div>'}
+      <div class="product-card-name">${p.title}</div>
+      <div class="product-card-price">${p.price ? '$' + p.price : ''}</div>
+      <div class="product-card-check">✓</div>
+    </div>`).join('');
+  wrap.style.display = 'block';
+  // Auto-select all initially
+  products.forEach((_, i) => {
+    selectedPreviewProducts.add(i);
+    document.getElementById(`pcard-${i}`)?.classList.add('selected');
+  });
+  populateProductsFromPreview();
+}
+
+function togglePreviewProduct(idx) {
+  const card = document.getElementById(`pcard-${idx}`);
+  if (selectedPreviewProducts.has(idx)) {
+    selectedPreviewProducts.delete(idx);
+    card?.classList.remove('selected');
+  } else {
+    selectedPreviewProducts.add(idx);
+    card?.classList.add('selected');
+  }
+  populateProductsFromPreview();
+}
+
+function populateProductsFromPreview() {
+  const selected = [...selectedPreviewProducts].map(i => shopifyPreviewProducts[i]).filter(Boolean);
+  if (!selected.length) return;
+  const list = document.getElementById('productList');
+  if (!list) return;
+  list.innerHTML = '';
+  selected.forEach(p => {
+    const row = document.createElement('div');
+    row.className = 'product-row';
+    row.innerHTML = `
+      <input type="text" placeholder="Product name" value="${p.title.replace(/"/g,'&quot;')}" class="prod-name">
+      <input type="text" placeholder="Price" value="${p.price || ''}" class="prod-price">
+      <input type="text" placeholder="Product URL" value="" class="prod-url">
+      <button type="button" class="remove-btn" onclick="this.parentElement.remove()">×</button>`;
+    list.appendChild(row);
+  });
+}
+
+// ─── Build sequence (SSE) ─────────────────────────────────────────────────────
+function showSuccessState(links) {
+  document.getElementById('buildScreen').style.display = 'none';
+  document.getElementById('successState').style.display = 'block';
+  document.getElementById('buildPulse').style.display = 'none';
+  if (links?.creatorPageUrl || links?.tcSignupLink) {
+    const linksDiv = document.getElementById('successLinks');
+    if (links.creatorPageUrl) {
+      linksDiv.insertAdjacentHTML('beforeend',
+        `<a href="${links.creatorPageUrl}" target="_blank" style="color:var(--teal);font-size:13px;font-weight:700;text-decoration:none">→ View creator landing page</a>`);
+    }
+    if (links.tcSignupLink) {
+      linksDiv.insertAdjacentHTML('beforeend',
+        `<a href="${links.tcSignupLink}" target="_blank" style="color:rgba(255,255,255,.6);font-size:12px;font-weight:600;text-decoration:none">→ TikTok Target Collab sign-up link</a>`);
+    }
+  }
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function addBuildStep(step) {
+  const container = document.getElementById('buildSteps');
+  const el = document.createElement('div');
+  el.className = 'build-step';
+  el.innerHTML = `
+    <div class="build-step-icon">${step.icon || '⚙️'}</div>
+    <div class="build-step-text">
+      <div class="build-step-title">${step.title}</div>
+      ${step.subtitle ? `<div class="build-step-sub">${step.subtitle}</div>` : ''}
+    </div>`;
+  container.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('in'));
+  el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function startBuildSequence(jobId, email) {
+  const maxWait = 180000; // 3 min timeout
+  let sse;
+  const timer = setTimeout(() => {
+    sse?.close();
+    showSuccessState();
+  }, maxWait);
+
+  sse = new EventSource(`/api/onboard/build-status/${jobId}`);
+  sse.onmessage = e => {
+    try {
+      const step = JSON.parse(e.data);
+      if (step.type === 'step') {
+        addBuildStep(step);
+      } else if (step.type === 'done') {
+        clearTimeout(timer);
+        sse.close();
+        document.getElementById('buildPulse').style.display = 'none';
+        addBuildStep({ icon: '🎉', title: 'Setup complete!', subtitle: step.message || 'Welcome to Cult Content.' });
+        setTimeout(() => showSuccessState(step), 1500);
+      }
+    } catch {}
+  };
+  sse.onerror = () => {
+    clearTimeout(timer);
+    sse.close();
+    showSuccessState();
+  };
 }
 
 function collectOfferDetails() {

@@ -598,16 +598,103 @@ app.get('/offers/:slug', (req, res) => {
   res.sendFile(filePath);
 });
 
-// Public proposals — shareable HTML files, no auth required
+// Proposals — shareable HTML files. Most are public; those listed in
+// PROTECTED_PROPOSALS require a password before the file is served.
 const PROPOSALS_DIR = path.join(__dirname, 'proposals');
+const SLUG_RE = /^[A-Za-z0-9_-]{1,64}$/;
+
+// bcrypt hashes — safe to commit. Override per-slug with an env var if rotated.
+const PROTECTED_PROPOSALS = {
+  pitch: process.env.PITCH_PASSWORD_HASH
+    || '$2b$12$n13dxLvD7nlcnDku0e4e2.WX0uLTDXiW8C92v2fVMR4WUvMrZvBn6',
+};
+
+const proposalUnlockLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 10,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Too many attempts. Try again in 15 minutes.',
+});
+
+function proposalGate(slug, req) {
+  const hash = PROTECTED_PROPOSALS[slug];
+  if (!hash) return true;                                  // not protected
+  return Boolean(req.session && req.session.proposalAccess && req.session.proposalAccess[slug]);
+}
+
+function lockScreen(slug, error) {
+  return `<!doctype html><html><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Cult Content — Protected</title>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#080710;color:#e8eaf2;font-family:'Inter',-apple-system,sans-serif;
+  min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}
+.box{width:100%;max-width:400px;text-align:center}
+.mark{font-family:'Montserrat',sans-serif;font-weight:900;font-size:.72rem;letter-spacing:.2em;
+  text-transform:uppercase;color:#c9a84c;margin-bottom:26px}
+h1{font-family:'Montserrat',sans-serif;font-weight:900;font-size:1.5rem;margin-bottom:10px;letter-spacing:-.01em}
+p.sub{font-size:.85rem;color:rgba(232,234,242,.55);margin-bottom:26px;line-height:1.6}
+input{width:100%;background:#0d0b18;border:1px solid rgba(255,255,255,.12);border-radius:9px;
+  color:#fff;font-family:inherit;font-size:.92rem;padding:13px 15px;outline:none;margin-bottom:12px}
+input:focus{border-color:#7b2fff}
+button{width:100%;background:linear-gradient(90deg,#7b2fff,#b899ff);color:#fff;border:none;
+  border-radius:9px;font-family:'Montserrat',sans-serif;font-weight:700;font-size:.85rem;
+  letter-spacing:.04em;padding:13px;cursor:pointer}
+button:hover{opacity:.9}
+.err{background:rgba(255,0,80,.1);border:1px solid rgba(255,0,80,.3);color:#ff6b95;
+  font-size:.78rem;border-radius:8px;padding:9px 12px;margin-bottom:14px}
+</style></head><body>
+<div class="box">
+  <div class="mark">Cult Content</div>
+  <h1>This document is private.</h1>
+  <p class="sub">Enter the password you were given to continue.</p>
+  ${error ? `<div class="err">${error}</div>` : ''}
+  <form method="POST" action="/proposals/${slug}/unlock">
+    <input type="password" name="password" placeholder="Password" autofocus autocomplete="current-password" required>
+    <button type="submit">View document</button>
+  </form>
+</div></body></html>`;
+}
+
+app.post('/proposals/:slug/unlock', proposalUnlockLimiter, express.urlencoded({ extended: false }), async (req, res) => {
+  const slug = req.params.slug;
+  if (!SLUG_RE.test(slug)) return res.status(400).send('Bad request');
+  const hash = PROTECTED_PROPOSALS[slug];
+  if (!hash) return res.redirect(`/proposals/${slug}`);
+
+  let ok = false;
+  try { ok = await bcrypt.compare(String(req.body.password || ''), hash); } catch (e) { ok = false; }
+
+  if (!ok) {
+    console.log(`[proposals] failed unlock attempt for ${slug}`);
+    return res.status(401).setHeader('Content-Type', 'text/html')
+      .send(lockScreen(slug, 'That password is not correct.'));
+  }
+  req.session.proposalAccess = req.session.proposalAccess || {};
+  req.session.proposalAccess[slug] = true;
+  req.session.save(() => res.redirect(`/proposals/${slug}`));
+});
+
 app.get('/proposals/:slug', (req, res) => {
-  const filePath = path.join(PROPOSALS_DIR, req.params.slug + '.html');
-  console.log(`[proposals] GET /proposals/${req.params.slug} → ${filePath}`);
+  const slug = req.params.slug;
+  if (!SLUG_RE.test(slug)) return res.status(400).send('Bad request');
+
+  const filePath = path.join(PROPOSALS_DIR, slug + '.html');
+  console.log(`[proposals] GET /proposals/${slug} → ${filePath}`);
   if (!fs.existsSync(filePath)) {
     console.log(`[proposals] NOT FOUND: ${filePath}`);
     return res.status(404).send('Proposal not found');
   }
+  if (!proposalGate(slug, req)) {
+    return res.status(401).setHeader('Content-Type', 'text/html').send(lockScreen(slug, null));
+  }
   res.setHeader('Content-Type', 'text/html');
+  res.setHeader('Cache-Control', 'no-store');
+  res.setHeader('X-Robots-Tag', 'noindex, nofollow');
   res.sendFile(filePath);
 });
 
@@ -689,11 +776,63 @@ app.post('/api/onboard/assets', (req, res, next) => {
 });
 
 // POST /api/onboard/submit — public, responds immediately then runs pipeline async
+// ─── Build-job progress store ─────────────────────────────────────────────────
+const buildJobs = new Map(); // jobId → { steps:[], clients:Set<res>, done:false }
+
+function emitBuildStep(jobId, step) {
+  if (!jobId) return;
+  const job = buildJobs.get(jobId);
+  if (!job) return;
+  job.steps.push(step);
+  const data = `data: ${JSON.stringify(step)}\n\n`;
+  for (const res of job.clients) { try { res.write(data); } catch {} }
+  if (step.type === 'done') {
+    job.done = true;
+    for (const res of job.clients) { try { res.end(); } catch {} }
+    setTimeout(() => buildJobs.delete(jobId), 120000);
+  }
+}
+
 app.post('/api/onboard/submit', express.json({ limit: '2mb' }), async (req, res) => {
   const { brandName, email } = req.body || {};
   if (!brandName || !email) return res.status(400).json({ ok: false, error: 'Brand name and email required' });
-  res.json({ ok: true, message: `Welcome to the cult, ${brandName}! Our team will be in touch within 24 hours.` });
-  runOnboardingPipeline(req.body).catch(e => console.error('[onboard] pipeline error:', e.message));
+  const jobId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  buildJobs.set(jobId, { steps: [], clients: new Set(), done: false });
+  res.json({ ok: true, jobId, message: `Welcome to the cult, ${brandName}! Our team will be in touch within 24 hours.` });
+  runOnboardingPipeline(req.body, jobId).catch(e => {
+    console.error('[onboard] pipeline error:', e.message);
+    emitBuildStep(jobId, { type: 'done', success: false, error: e.message });
+  });
+});
+
+// POST /api/onboard/shopify-preview — public, early product scrape for form step 2
+app.post('/api/onboard/shopify-preview', express.json({ limit: '50kb' }), async (req, res) => {
+  const { website } = req.body || {};
+  if (!website) return res.status(400).json({ ok: false, error: 'website required' });
+  try {
+    const data = await scrapeShopify(website);
+    const topProducts = (data.products || []).slice(0, 6).map(p => ({
+      title: p.title, handle: p.handle, imageUrl: p.imageUrl,
+      price: p.price, compareAtPrice: p.compareAtPrice,
+    }));
+    res.json({ ok: true, products: topProducts, brand: data.brand || {} });
+  } catch(e) {
+    res.json({ ok: false, products: [], error: e.message });
+  }
+});
+
+// GET /api/onboard/build-status/:jobId — SSE stream for build sequence
+app.get('/api/onboard/build-status/:jobId', (req, res) => {
+  const job = buildJobs.get(req.params.jobId);
+  if (!job) return res.status(404).json({ error: 'job not found' });
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  for (const s of job.steps) res.write(`data: ${JSON.stringify(s)}\n\n`);
+  if (job.done) { res.end(); return; }
+  job.clients.add(res);
+  req.on('close', () => job.clients.delete(res));
 });
 
 // ─── Favicon — proxy from CDN so browsers always load it correctly ────────────
@@ -11739,9 +11878,10 @@ async function sendLarkOnboardingAlert(formData, shopifyData, aiContent, larkDoc
 }
 
 // Full async pipeline — runs after form submission responds
-async function runOnboardingPipeline(formData) {
+async function runOnboardingPipeline(formData, jobId) {
   const brandName = formData.brandName;
   console.log(`[onboard] Pipeline start: ${brandName}`);
+  emitBuildStep(jobId, { type: 'step', icon: '🚀', title: 'Pipeline started', subtitle: `Building your Cult Content setup for ${brandName}` });
 
   // Save a stub entry immediately so the submission is never lost even if the process is killed
   const entryId = Date.now().toString(36) + Math.random().toString(36).slice(2,6);
@@ -11757,6 +11897,7 @@ async function runOnboardingPipeline(formData) {
   }
 
   // 1. Scrape product data — try shopifyUrl first, fall back to website, then Amazon
+  emitBuildStep(jobId, { type: 'step', icon: '🛍️', title: 'Scraping your store', subtitle: 'Reading product catalogue & brand data' });
   const scrapeTarget = formData.shopifyUrl || formData.website;
   let shopifyData = await scrapeShopify(scrapeTarget).catch(() => ({ brand:{}, products:[] }));
 
@@ -11767,9 +11908,11 @@ async function runOnboardingPipeline(formData) {
   }
 
   console.log(`[onboard] Scraped ${shopifyData.products.length} products from ${shopifyData.domain || scrapeTarget}`);
+  emitBuildStep(jobId, { type: 'step', icon: '✅', title: `${shopifyData.products.length} products found`, subtitle: 'Building your creator brief & outreach copy' });
   updatePendingEntry({ shopifyData });
 
   // 2. Generate AI content
+  emitBuildStep(jobId, { type: 'step', icon: '🤖', title: 'Generating AI content', subtitle: 'Creator pitch, hooks, Reacher copy & campaign brief' });
   const aiContent = await generateOnboardingContent(formData, shopifyData).catch(e => {
     console.error('[onboard] AI gen error:', e.message); return null;
   });
@@ -11779,6 +11922,8 @@ async function runOnboardingPipeline(formData) {
   const creatorBrief = await generateCreatorBrief(formData, shopifyData, aiContent).catch(e => {
     console.error('[onboard] creator brief gen error:', e.message); return null;
   });
+
+  emitBuildStep(jobId, { type: 'step', icon: '📋', title: 'AI content ready', subtitle: 'Creating your CRM profile & resource hub' });
 
   // 3. Create GHL contact (or update if duplicate)
   let ghlContactId = null;
@@ -11808,6 +11953,8 @@ async function runOnboardingPipeline(formData) {
   const larkDoc = await createLarkResourceHub(formData).catch(e => {
     console.error('[onboard] lark doc error:', e.message); return null;
   });
+
+  emitBuildStep(jobId, { type: 'step', icon: '🎯', title: 'Creator landing page', subtitle: 'Setting up your brand page & affiliate hub' });
 
   // 5. Create draft creator page (always first so URL exists for automations)
   let creatorPage = null;
@@ -11852,6 +11999,8 @@ async function runOnboardingPipeline(formData) {
     creatorPage = { slug, publicUrl: `${CREATOR_BASE_URL}/creators/${slug}`, active: true };
     console.log(`[onboard] Creator page live: ${creatorPage.publicUrl}`);
   } catch(e) { console.error('[onboard] creator page error:', e.message); }
+
+  emitBuildStep(jobId, { type: 'step', icon: '🔗', title: 'Reacher shop matching', subtitle: 'Connecting your TikTok Shop affiliate account' });
 
   // 5b. Auto-match Reacher shop by brand name (fuzzy)
   let matchedShopId = null;
@@ -11923,6 +12072,63 @@ async function runOnboardingPipeline(formData) {
     } catch(e) { console.error('[onboard] DM automation error:', e.message); }
   }
 
+  // 5d. Create Target Collab automation in Reacher (for Creator Network offer)
+  let tcAutomationId = null;
+  let tcSignupLink = null;
+  if (matchedShopId) {
+    try {
+      emitBuildStep(jobId, { type: 'step', icon: '📣', title: 'Creator Network campaign', subtitle: 'Launching Target Collab automation on Reacher' });
+      const firstProductName = (aiContent?.mergedProducts || formData.products || [])[0]?.name || brandName;
+      const tcMsg = aiContent?.reacherCopy?.[firstProductName]?.tc_message || `Join ${brandName}'s creator affiliate program on TikTok Shop! We're offering competitive commission rates and product gifting. Click below to apply.`;
+      const tcResp = await reacherClient(matchedShopId).post('/automations/target-collab', {
+        automation_name: `${brandName} — Creator Network`,
+        shop_id: matchedShopId,
+        product_ids: [],
+        creators_to_include: { min_followers: 1000 },
+        schedule: { type: 'immediate' },
+        message: tcMsg.slice(0, 500),
+      });
+      tcAutomationId = tcResp.data?.automation_id || tcResp.data?.id;
+      if (tcAutomationId) {
+        tcSignupLink = `https://affiliate.tiktok.com/connection/creator?shop_id=${matchedShopId}`;
+        const bd = loadBrands();
+        const bi = bd.clients.findIndex(b => slugify(b.name) === slugify(brandName));
+        if (bi !== -1) {
+          if (!bd.clients[bi].creatorPage) bd.clients[bi].creatorPage = {};
+          bd.clients[bi].creatorPage.tcAutomationId = tcAutomationId;
+          bd.clients[bi].creatorPage.tcSignupLink = tcSignupLink;
+          saveBrands(bd);
+        }
+        console.log(`[onboard] TC automation created: ${tcAutomationId}`);
+        emitBuildStep(jobId, { type: 'step', icon: '✅', title: 'TC campaign live', subtitle: 'Creators can now apply via TikTok Shop' });
+      }
+    } catch(e) {
+      console.error('[onboard] TC automation error:', e.message);
+      emitBuildStep(jobId, { type: 'step', icon: '⚠️', title: 'TC setup pending', subtitle: 'Account manager will activate campaign manually' });
+    }
+  }
+
+  // 5e. Create high-priority GHL task for payment amounts when applicable
+  const od = formData.offerDetails || {};
+  const paymentAmounts = [];
+  if (od.cohort1Budget) paymentAmounts.push(`Cohort 1 creator retainer: $${parseInt(od.cohort1Budget).toLocaleString()}/mo`);
+  if (od.cohort2TotalCost) paymentAmounts.push(`Cohort 2 total cost: $${parseFloat(od.cohort2TotalCost).toLocaleString()} (${od.cohort2CreatorCount} creators × $${od.cohort2ProductPrice} reimbursement + $${od.cohort2PlatformFee} platform fee)`);
+  if (od.addonMonthlyTotal) paymentAmounts.push(`Scale add-ons: $${od.addonMonthlyTotal.toLocaleString()}/mo`);
+  if (paymentAmounts.length && ghlContactId) {
+    try {
+      await ghl.post('/tasks/', {
+        locationId: CFG.locationId,
+        title: `[HIGH PRIORITY] Payment links for ${brandName}`,
+        body: `Client onboarded — set up payment links for:\n\n${paymentAmounts.join('\n')}\n\nContact ID: ${ghlContactId}${tcSignupLink ? `\nTC Signup Link: ${tcSignupLink}` : ''}\nCreator Page: ${creatorPage?.publicUrl || 'N/A'}`,
+        dueDate: new Date(Date.now() + 24 * 3600000).toISOString(),
+        status: 'incompleted',
+        assignedTo: [],
+        contactId: ghlContactId,
+      });
+      console.log(`[onboard] Payment task created for ${brandName}`);
+    } catch(e) { console.error('[onboard] GHL payment task error:', e.message); }
+  }
+
   // 6. Finalise pending review entry (was saved as stub at pipeline start)
   updatePendingEntry({ status: 'pending', ghlContactId, larkDoc, creatorPage });
 
@@ -11952,6 +12158,14 @@ async function runOnboardingPipeline(formData) {
   } catch (e) { console.error('[client-chat] sync error:', e.message); }
 
   console.log(`[onboard] Pipeline complete: ${brandName} (id: ${entryId})`);
+  emitBuildStep(jobId, {
+    type: 'done',
+    success: true,
+    creatorPageUrl: creatorPage?.publicUrl || null,
+    tcSignupLink: tcSignupLink || null,
+    larkDocUrl: typeof larkDoc !== 'undefined' ? (larkDoc?.url || null) : null,
+    message: `${brandName} is live in Cult Content.`,
+  });
 }
 
 // GET /api/onboard/pending
