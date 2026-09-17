@@ -598,6 +598,10 @@ app.get('/offers/:slug', (req, res) => {
   res.sendFile(filePath);
 });
 
+// Decorative assets referenced by proposal pages. Public by design — the
+// gated deck's HTML stays protected; only its imagery is served openly.
+app.use('/proposal-assets', express.static(path.join(__dirname, 'proposals', 'assets'), { maxAge: '30d' }));
+
 // Proposals — shareable HTML files. Most are public; those listed in
 // PROTECTED_PROPOSALS require a password before the file is served.
 const PROPOSALS_DIR = path.join(__dirname, 'proposals');

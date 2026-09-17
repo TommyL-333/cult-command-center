@@ -291,23 +291,55 @@ h1,h2,h3{font-family:'Montserrat',sans-serif;font-weight:900;letter-spacing:-.02
 .ceil{margin-top:16px;border-left:2px solid var(--gold);padding:11px 0 11px 15px;font-size:.78rem;
   color:var(--light);line-height:1.65;}
 .ceil code{font-family:ui-monospace,Menlo,monospace;color:var(--lavender);font-size:.8rem;}
-/* ── Team: the growth panel (deliberate light break from the dark deck) ── */
-.grow{position:relative;width:100%;margin-top:18px;border-radius:18px;padding:22px 26px 24px;overflow:hidden;
-  background:linear-gradient(152deg,#eaf7ee 0%,#d7efe0 48%,#bfe6d1 100%);
-  box-shadow:0 18px 46px -18px rgba(16,185,129,.45), 0 0 0 1px rgba(16,185,129,.22);}
-.grow::after{content:'';position:absolute;right:-70px;bottom:-90px;width:260px;height:260px;border-radius:50%;
-  background:radial-gradient(circle at 35% 35%,rgba(255,255,255,.75),rgba(16,185,129,.16) 62%,transparent 72%);
-  pointer-events:none;}
-.grow-head{display:flex;align-items:baseline;gap:11px;margin-bottom:4px;position:relative;z-index:1;flex-wrap:wrap;}
-.grow-label{font-family:'Montserrat',sans-serif;font-weight:900;font-size:1.02rem;color:#123a2b;letter-spacing:-.01em;}
-.grow-note{font-size:.68rem;color:#3d6b57;font-weight:600;letter-spacing:.02em;}
-.grow-sub{font-size:.75rem;color:#2f5f4b;line-height:1.6;margin-bottom:16px;max-width:660px;position:relative;z-index:1;}
-.grow-roles{display:grid;grid-template-columns:repeat(3,1fr);gap:13px;position:relative;z-index:1;}
-.role{background:rgba(255,255,255,.62);border:1px solid rgba(16,185,129,.2);border-radius:12px;padding:13px 15px;}
+/* ── Team: next hires ── */
+.grow{position:relative;width:100%;margin-top:18px;border-radius:14px;padding:20px 24px 22px;
+  background:rgba(255,255,255,.022);border:1px solid var(--border);}
+.grow-head{display:flex;align-items:baseline;gap:11px;margin-bottom:4px;flex-wrap:wrap;}
+.grow-label{font-family:'Montserrat',sans-serif;font-weight:900;font-size:.98rem;letter-spacing:-.01em;}
+.grow-note{font-size:.62rem;color:var(--gold);font-weight:700;letter-spacing:.12em;text-transform:uppercase;}
+.grow-sub{font-size:.76rem;color:var(--light);line-height:1.6;margin-bottom:16px;max-width:680px;}
+.grow-roles{display:grid;grid-template-columns:repeat(3,1fr);gap:13px;}
+.role{background:rgba(123,47,255,.05);border:1px solid rgba(123,47,255,.18);border-radius:11px;padding:13px 15px;}
 .role-ic{width:20px;height:20px;margin-bottom:8px;display:block;}
-.role-n{font-family:'Montserrat',sans-serif;font-weight:900;font-size:.79rem;color:#0f3527;margin-bottom:5px;line-height:1.25;}
-.role-d{font-size:.7rem;color:#3a6354;line-height:1.55;}
+.role-n{font-family:'Montserrat',sans-serif;font-weight:900;font-size:.79rem;color:var(--lavender);margin-bottom:5px;line-height:1.25;}
+.role-d{font-size:.7rem;color:var(--muted);line-height:1.55;}
 @media(max-width:780px){.grow-roles{grid-template-columns:1fr;}}
+/* ── 13 Long Vision: leaf frame over a soft sunset ── */
+#vision{position:relative;overflow:hidden;background:#0b0a14;}
+.sunset{position:absolute;inset:0;z-index:0;pointer-events:none;
+  /* Drop a photo at proposals/assets/sunset.jpg and it takes over automatically.
+     Until then the browser skips the missing layer and the gradient below shows. */
+  background-size:cover,auto,auto,auto,auto,auto,auto,auto;
+  background-position:center 45%;
+  background-repeat:no-repeat;
+  background-image:
+    url('/proposal-assets/sunset.jpg'),
+    radial-gradient(circle 60px at 50% 58%, rgba(255,251,226,1) 0%, rgba(255,240,190,.9) 40%, transparent 72%),
+    radial-gradient(ellipse 40% 16% at 50% 58%, rgba(255,236,176,.95) 0%, rgba(255,205,128,.6) 45%, transparent 78%),
+    radial-gradient(ellipse 96% 30% at 50% 60%, rgba(255,181,110,.75) 0%, rgba(255,150,105,.34) 46%, transparent 80%),
+    radial-gradient(ellipse 46% 13% at 20% 40%, rgba(255,158,148,.58) 0%, transparent 76%),
+    radial-gradient(ellipse 44% 12% at 78% 34%, rgba(238,152,186,.52) 0%, transparent 76%),
+    radial-gradient(ellipse 38% 10% at 62% 47%, rgba(255,186,150,.45) 0%, transparent 78%),
+    linear-gradient(180deg,
+      #3b2f66 0%, #6b4470 20%, #a85f6b 36%, #d98a63 50%,
+      #f0ad70 57%, #c98a5f 65%, #6d6a4e 74%, #38452f 85%, #1b2419 100%);
+  filter:blur(1px) saturate(1.2) brightness(1.05);transform:scale(1.04);}
+.sunset::after{content:'';position:absolute;left:48.2%;top:59%;width:3.6%;height:34%;
+  background:linear-gradient(180deg,rgba(255,238,190,.85),rgba(255,206,140,.25) 55%,transparent);
+  filter:blur(11px);border-radius:50%;}
+.vig{position:absolute;inset:0;z-index:1;pointer-events:none;
+  background:radial-gradient(ellipse 58% 52% at 50% 52%, rgba(10,8,20,.30) 0%, rgba(10,8,20,.52) 58%, rgba(10,8,20,.80) 100%);}
+.leafframe{position:absolute;inset:0;z-index:3;pointer-events:none;
+  border-style:solid;border-width:96px 112px;
+  border-image:url('/proposal-assets/leaf-frame.webp') 172 round;
+  filter:drop-shadow(0 8px 22px rgba(0,0,0,.55)) saturate(1.1);}
+#vision .vision-inner{position:relative;z-index:4;padding:26px 30px;max-width:720px;}
+#vision h2,#vision .vision-body,#vision .vision-footer{text-shadow:0 2px 16px rgba(0,0,0,.75);}
+#vision .vision-body{color:rgba(255,255,255,.88);}
+#vision .vp-text{color:rgba(255,255,255,.80);}
+#vision .vp-text strong{color:#ffe9b8;}
+#vision .vision-footer{color:#ffe9b8;}
+@media(max-width:900px){.leafframe{border-width:62px 54px;border-image-slice:172 round;}}
 /* ── 06 Team ── */
 #team{background:var(--dark2);}
 .team-inner{max-width:960px;width:100%;display:flex;flex-direction:column;align-items:flex-start;}
@@ -830,9 +862,9 @@ h1,h2,h3{font-family:'Montserrat',sans-serif;font-weight:900;letter-spacing:-.02
           </div>
           <p class="grow-sub">We are not hiring people to win more brands. Brands already find us. We are hiring the people who keep the ones we win — because a brand that reaches month six is worth more to us than three that leave in month two.</p>
           <div class="grow-roles">
-            <div class="role"><svg class="role-ic" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.7" stroke-linecap="round"><path d="M12 21V11"/><path d="M12 13c0-3.3-2.5-6-5.5-6C6 10.4 8.6 13 12 13z"/><path d="M12 11c0-3.9 2.9-7 6.5-7C18.5 8 15.6 11 12 11z"/></svg><div class="role-n">Client Success Lead</div><div class="role-d">Owns the first ninety days of every brand relationship — onboarding, the weekly rhythm, and the honest conversation when results are still building. This is the role that turns month two into month six.</div></div>
-            <div class="role"><svg class="role-ic" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20c0-8 5-14 16-15 0 11-5.5 16-12 16H4z"/><path d="M4 20c3-5 6.5-8 11-10"/></svg><div class="role-n">Brand Operations Manager</div><div class="role-d">Runs live campaigns across the whole roster so delivery stops depending on one person being awake. Takes the day-to-day off the founder and makes the next ten accounts possible.</div></div>
-            <div class="role"><svg class="role-ic" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="1.7" stroke-linecap="round"><path d="M12 21V6"/><path d="M12 12 6.5 8.5"/><path d="M12 15l5.5-3.5"/><circle cx="12" cy="4.4" r="1.9"/><circle cx="5.2" cy="7.8" r="1.7"/><circle cx="18.8" cy="10.9" r="1.7"/></svg><div class="role-n">Creator Network Manager</div><div class="role-d">Places creators into brand campaigns and keeps the network active between them. Owns the matchmaking pipeline that the 4% fee is earned on.</div></div>
+            <div class="role"><svg class="role-ic" viewBox="0 0 24 24" fill="none" stroke="#b899ff" stroke-width="1.7" stroke-linecap="round"><path d="M12 21V11"/><path d="M12 13c0-3.3-2.5-6-5.5-6C6 10.4 8.6 13 12 13z"/><path d="M12 11c0-3.9 2.9-7 6.5-7C18.5 8 15.6 11 12 11z"/></svg><div class="role-n">Client Success Lead</div><div class="role-d">Owns the first ninety days of every brand relationship — onboarding, the weekly rhythm, and the honest conversation when results are still building. This is the role that turns month two into month six.</div></div>
+            <div class="role"><svg class="role-ic" viewBox="0 0 24 24" fill="none" stroke="#b899ff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20c0-8 5-14 16-15 0 11-5.5 16-12 16H4z"/><path d="M4 20c3-5 6.5-8 11-10"/></svg><div class="role-n">Brand Operations Manager</div><div class="role-d">Runs live campaigns across the whole roster so delivery stops depending on one person being awake. Takes the day-to-day off the founder and makes the next ten accounts possible.</div></div>
+            <div class="role"><svg class="role-ic" viewBox="0 0 24 24" fill="none" stroke="#b899ff" stroke-width="1.7" stroke-linecap="round"><path d="M12 21V6"/><path d="M12 12 6.5 8.5"/><path d="M12 15l5.5-3.5"/><circle cx="12" cy="4.4" r="1.9"/><circle cx="5.2" cy="7.8" r="1.7"/><circle cx="18.8" cy="10.9" r="1.7"/></svg><div class="role-n">Creator Network Manager</div><div class="role-d">Places creators into brand campaigns and keeps the network active between them. Owns the matchmaking pipeline that the 4% fee is earned on.</div></div>
           </div>
         </div>
   </div>
@@ -929,6 +961,9 @@ h1,h2,h3{font-family:'Montserrat',sans-serif;font-weight:900;letter-spacing:-.02
 
 <!-- 09 Vision -->
 <section class="screen" id="vision">
+  <div class="sunset"></div>
+  <div class="vig"></div>
+  <div class="leafframe"></div>
   <div class="vision-inner">
     <div class="eyebrow">13 — The Long Vision</div>
     <h2>This is bigger than<br><span class="purple">an agency.</span></h2>
