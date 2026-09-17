@@ -8,76 +8,82 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#07070d;
+  --bg:#080710;
   --surface:#0f0f1a;
-  --border:#1a1a2e;
-  --accent:#20d5c4;
-  --accent-dim:rgba(32,213,196,0.12);
+  --border:#1a1a35;
+  --teal:#00f2ea;
+  --purple:#7b2fff;
+  --lavender:#b899ff;
   --text:#e8e8f0;
   --muted:#7a7a9a;
   --white:#fff;
+  --teal-dim:rgba(0,242,234,0.1);
 }
 body{background:var(--bg);color:var(--text);font-family:'Lato',sans-serif;line-height:1.6;min-height:100vh}
-a{color:var(--accent);text-decoration:none}
+a{color:var(--teal);text-decoration:none}
 
 /* NAV */
-nav{display:flex;align-items:center;justify-content:space-between;padding:24px 48px;border-bottom:1px solid var(--border)}
+nav{display:flex;align-items:center;justify-content:space-between;padding:24px 48px;border-bottom:1px solid var(--border);position:relative;z-index:10}
 .nav-logo{font-family:'Montserrat',sans-serif;font-weight:900;font-size:1.1rem;letter-spacing:.08em;color:var(--white);text-transform:uppercase}
-.nav-logo span{color:var(--accent)}
+.nav-logo span{background:linear-gradient(135deg,var(--teal),var(--lavender));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .nav-back{font-size:.85rem;color:var(--muted);transition:color .2s}
-.nav-back:hover{color:var(--accent)}
+.nav-back:hover{color:var(--teal)}
 
 /* HERO */
-.hero{max-width:860px;margin:0 auto;padding:96px 48px 72px;text-align:center}
-.hero-badge{display:inline-block;background:var(--accent-dim);border:1px solid rgba(32,213,196,.3);color:var(--accent);font-size:.78rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:6px 16px;border-radius:100px;margin-bottom:32px}
+.hero-wrap{position:relative;overflow:hidden}
+.hero-wrap::before{content:'';position:absolute;inset:0;background:
+  radial-gradient(ellipse 75% 55% at 50% -5%, rgba(0,242,234,.2) 0%, transparent 65%),
+  radial-gradient(ellipse 50% 40% at 15% 100%, rgba(123,47,255,.14) 0%, transparent 60%);
+  pointer-events:none}
+.hero{max-width:860px;margin:0 auto;padding:96px 48px 72px;text-align:center;position:relative}
+.hero-badge{display:inline-block;background:var(--teal-dim);border:1px solid rgba(0,242,234,.3);color:var(--teal);font-size:.78rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;padding:6px 16px;border-radius:100px;margin-bottom:32px}
 .hero h1{font-family:'Montserrat',sans-serif;font-weight:900;font-size:clamp(2.4rem,5vw,3.6rem);line-height:1.1;color:var(--white);margin-bottom:24px}
-.hero h1 span{color:var(--accent)}
+.hero h1 .grad{background:linear-gradient(135deg,var(--teal) 0%,var(--lavender) 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .hero p{font-size:1.15rem;color:var(--muted);max-width:620px;margin:0 auto 40px}
 .hero-price{font-family:'Montserrat',sans-serif;font-size:2.8rem;font-weight:900;color:var(--white)}
-.hero-price sup{font-size:1.2rem;vertical-align:super;color:var(--accent)}
+.hero-price sup{font-size:1.2rem;vertical-align:super;background:linear-gradient(135deg,var(--teal),var(--lavender));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .hero-price-label{font-size:.9rem;color:var(--muted);margin-top:6px}
 
-/* CTA BUTTON */
-.btn{display:inline-block;background:var(--accent);color:#07070d;font-family:'Montserrat',sans-serif;font-weight:900;font-size:.9rem;letter-spacing:.08em;text-transform:uppercase;padding:16px 40px;border-radius:6px;transition:opacity .2s;margin-top:36px}
-.btn:hover{opacity:.85;color:#07070d}
-.btn-outline{background:transparent;color:var(--accent);border:2px solid var(--accent)}
-.btn-outline:hover{background:var(--accent-dim)}
+/* BUTTON */
+.btn{display:inline-block;background:linear-gradient(135deg,var(--teal) 0%,var(--purple) 100%);color:var(--white);font-family:'Montserrat',sans-serif;font-weight:900;font-size:.9rem;letter-spacing:.08em;text-transform:uppercase;padding:16px 40px;border-radius:8px;transition:opacity .2s,transform .2s;margin-top:36px}
+.btn:hover{opacity:.88;transform:translateY(-1px);color:var(--white)}
 
 /* SECTIONS */
 section{max-width:960px;margin:0 auto;padding:72px 48px}
-.section-label{font-size:.78rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);margin-bottom:16px}
+.section-label{font-size:.78rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;background:linear-gradient(135deg,var(--teal),var(--lavender));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;display:inline-block;margin-bottom:16px}
 .section-title{font-family:'Montserrat',sans-serif;font-weight:900;font-size:clamp(1.6rem,3vw,2.2rem);color:var(--white);margin-bottom:16px}
 .section-sub{color:var(--muted);font-size:1.05rem;max-width:640px}
 
 /* DELIVERABLES GRID */
 .deliverables{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:24px;margin-top:48px}
-.deliverable-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:32px}
+.deliverable-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:32px;transition:border-color .2s,transform .2s}
+.deliverable-card:hover{border-color:rgba(0,242,234,.2);transform:translateY(-2px)}
 .deliverable-card h3{font-family:'Montserrat',sans-serif;font-weight:900;font-size:1rem;color:var(--white);margin-bottom:10px}
 .deliverable-card p{font-size:.9rem;color:var(--muted);line-height:1.6}
 .deliverable-icon{font-size:1.4rem;margin-bottom:16px}
 
 /* HOW IT WORKS */
 .steps{display:flex;flex-direction:column;gap:0;margin-top:48px;position:relative}
-.steps::before{content:'';position:absolute;left:20px;top:40px;bottom:40px;width:1px;background:var(--border)}
+.steps::before{content:'';position:absolute;left:20px;top:40px;bottom:40px;width:1px;background:linear-gradient(180deg,var(--teal),var(--purple))}
 .step{display:flex;gap:28px;align-items:flex-start;padding:0 0 40px}
 .step:last-child{padding-bottom:0}
-.step-num{flex-shrink:0;width:40px;height:40px;border-radius:50%;background:var(--accent);color:#07070d;font-family:'Montserrat',sans-serif;font-weight:900;font-size:.9rem;display:flex;align-items:center;justify-content:center;position:relative;z-index:1}
+.step-num{flex-shrink:0;width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,var(--teal),var(--purple));color:var(--white);font-family:'Montserrat',sans-serif;font-weight:900;font-size:.9rem;display:flex;align-items:center;justify-content:center;position:relative;z-index:1}
 .step-content h3{font-family:'Montserrat',sans-serif;font-weight:700;font-size:1.05rem;color:var(--white);margin-bottom:6px}
 .step-content p{font-size:.9rem;color:var(--muted)}
 
 /* TIMELINE BAR */
-.timeline-bar{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:32px 40px;margin-top:48px;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
+.timeline-bar{background:var(--surface);border:1px solid rgba(0,242,234,.18);border-radius:14px;padding:32px 40px;margin-top:48px;display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap}
 .timeline-item{text-align:center}
-.timeline-item .val{font-family:'Montserrat',sans-serif;font-weight:900;font-size:1.6rem;color:var(--accent)}
+.timeline-item .val{font-family:'Montserrat',sans-serif;font-weight:900;font-size:1.6rem;background:linear-gradient(135deg,var(--teal),var(--lavender));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .timeline-item .lbl{font-size:.8rem;color:var(--muted);margin-top:4px}
 .timeline-divider{height:40px;width:1px;background:var(--border)}
 
 /* WHAT'S NEXT */
 .next-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-top:40px}
-.next-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:24px;transition:border-color .2s}
-.next-card:hover{border-color:rgba(32,213,196,.3)}
+.next-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:24px;transition:border-color .2s,transform .2s}
+.next-card:hover{border-color:rgba(0,242,234,.3);transform:translateY(-2px)}
 .next-card .offer-name{font-family:'Montserrat',sans-serif;font-weight:900;font-size:.95rem;color:var(--white);margin-bottom:6px}
-.next-card .offer-price{font-size:.82rem;color:var(--accent);margin-bottom:10px}
+.next-card .offer-price{font-size:.82rem;color:var(--teal);margin-bottom:10px}
 .next-card .offer-desc{font-size:.85rem;color:var(--muted)}
 
 /* CTA SECTION */
@@ -90,8 +96,8 @@ section{max-width:960px;margin:0 auto;padding:72px 48px}
 
 @media(max-width:640px){
   nav{padding:20px 24px}
-  .hero,.section-title,.steps,.deliverables{padding-left:24px;padding-right:24px}
   section{padding:56px 24px}
+  .hero{padding:72px 24px 56px}
   .cta-section{padding:72px 24px}
   .timeline-divider{display:none}
 }
@@ -104,13 +110,15 @@ section{max-width:960px;margin:0 auto;padding:72px 48px}
   <a href="/offers" class="nav-back">← All Offers</a>
 </nav>
 
-<div class="hero">
-  <div class="hero-badge">One-Time Engagement</div>
-  <h1>Start with <span>a real foundation.</span></h1>
-  <p>Before you spend a dollar on creators or ads, you need to know exactly where your brand stands on TikTok Shop — and exactly what to do next.</p>
-  <div class="hero-price"><sup>$</sup>1,500</div>
-  <div class="hero-price-label">One-time · 14-day delivery</div>
-  <a href="https://cultcontent.cc/book-with-tommy" target="_blank" class="btn">Book a Call</a>
+<div class="hero-wrap">
+  <div class="hero">
+    <div class="hero-badge">One-Time Engagement</div>
+    <h1>Start with <span class="grad">a real foundation.</span></h1>
+    <p>Before you spend a dollar on creators or ads, you need to know exactly where your brand stands on TikTok Shop — and exactly what to do next.</p>
+    <div class="hero-price"><sup>$</sup>1,500</div>
+    <div class="hero-price-label">One-time · 14-day delivery</div>
+    <a href="https://cultcontent.cc/brand-apply" target="_blank" class="btn">Apply Now</a>
+  </div>
 </div>
 
 <hr class="divider">
@@ -175,7 +183,7 @@ section{max-width:960px;margin:0 auto;padding:72px 48px}
       <div class="step-num">1</div>
       <div class="step-content">
         <h3>Book & Pay</h3>
-        <p>Schedule a call with Tommy. Once you're signed and paid, your 14-day clock starts.</p>
+        <p>Apply and complete onboarding. Once you're signed and paid, your 14-day clock starts.</p>
       </div>
     </div>
     <div class="step">
@@ -254,8 +262,8 @@ section{max-width:960px;margin:0 auto;padding:72px 48px}
 
 <div class="cta-section">
   <h2>Ready to start?</h2>
-  <p>Book a call with Tommy and we'll get your Foundation started within the week.</p>
-  <a href="https://cultcontent.cc/book-with-tommy" target="_blank" class="btn">Book a Call</a>
+  <p>Apply now and we'll get your Foundation started within the week.</p>
+  <a href="https://cultcontent.cc/brand-apply" target="_blank" class="btn">Apply Now</a>
 </div>
 
 </body>
