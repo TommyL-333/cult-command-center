@@ -181,9 +181,46 @@ select.gmv-select{padding:11px 14px}
 .info-box{background:rgba(32,213,196,.06);border:1px solid rgba(32,213,196,.18);border-radius:10px;
   padding:12px 16px;font-size:11.5px;color:rgba(255,255,255,.65);line-height:1.6;margin-bottom:14px}
 .info-box strong{color:var(--teal)}
+
+/* ── Step transition overlay ── */
+#stepOverlay{position:fixed;inset:0;background:var(--bg);z-index:999;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .25s}
+#stepOverlay.visible{opacity:1;pointer-events:all}
+.overlay-logo{height:32px;width:auto;margin-bottom:32px;opacity:.7}
+.overlay-spinner{width:36px;height:36px;border:2.5px solid rgba(32,213,196,.2);border-top-color:var(--teal);
+  border-radius:50%;animation:spin .7s linear infinite;margin-bottom:20px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.overlay-msg{font-size:13px;font-weight:700;color:var(--muted);letter-spacing:.04em;text-align:center;max-width:240px;line-height:1.6}
+.overlay-msg span{display:block;color:#fff;font-size:17px;font-weight:900;letter-spacing:-.01em;margin-bottom:6px}
+
+/* ── Budget slider ── */
+.budget-slider-wrap{display:flex;flex-direction:column;gap:10px}
+.budget-display{font-size:22px;font-weight:900;color:var(--teal);letter-spacing:-.02em}
+.budget-display small{font-size:11px;font-weight:600;color:var(--muted);letter-spacing:0}/mo
+input[type=range]{-webkit-appearance:none;width:100%;height:4px;background:rgba(255,255,255,.08);border-radius:4px;outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;
+  background:var(--teal);cursor:pointer;box-shadow:0 0 0 3px rgba(32,213,196,.2)}
+input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--teal);cursor:pointer;border:none}
+.range-labels{display:flex;justify-content:space-between;font-size:9.5px;color:var(--muted);font-weight:700}
+
+/* ── Cost calc ── */
+.cost-card{background:rgba(32,213,196,.05);border:1px solid rgba(32,213,196,.15);border-radius:12px;padding:16px 18px;margin-top:14px}
+.cost-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:12.5px}
+.cost-row-label{color:rgba(255,255,255,.6)}
+.cost-row-val{font-weight:700;color:#fff}
+.cost-divider{border:none;border-top:1px solid rgba(255,255,255,.07);margin:8px 0}
+.cost-total{font-size:14px;font-weight:900;color:var(--teal)}
+.cost-total-label{font-size:11px;font-weight:800;color:var(--teal)}
 </style>
 </head>
 <body>
+
+<!-- Step transition overlay -->
+<div id="stepOverlay">
+  <img class="overlay-logo" src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png" alt="">
+  <div class="overlay-spinner"></div>
+  <div class="overlay-msg" id="overlayMsg"><span id="overlayTitle"></span><span id="overlayBody"></span></div>
+</div>
 
 <div class="header">
   <img src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png" alt="Cult Content" style="height:30px;width:auto;display:block">
@@ -668,110 +705,94 @@ select.gmv-select{padding:11px 14px}
   <div class="cond-section" id="cond-network">
     <div class="card">
       <div class="card-title">Creator Network — details</div>
-      <div class="card-sub">Set up your network engagement. Select your tier(s) and configure each one below.</div>
+      <div class="card-sub">Your network is split into two cohorts. Configure both below — we'll build your brief from what you share here.</div>
+
+      <div class="info-box" style="margin-bottom:18px">
+        <strong>Reacher account required.</strong> Creator Network runs through Reacher — our outreach and affiliate management platform. After you submit, we'll onboard you and generate your payment links directly from the details below.
+      </div>
+
+      <div class="row full">
+        <div class="field">
+          <label>TikTok Shop Code <span class="req">*</span></label>
+          <input type="text" id="cn-shopCode" placeholder="e.g. BRAND25CC">
+          <div class="hint">Find your Shop Code in TikTok Seller Center → your profile icon → Shop Code. It's a short alphanumeric code unique to your store.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Cohort 1 — Creator Retainers ── -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+        <span style="background:var(--teal);color:#0d0b14;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;padding:3px 9px;border-radius:100px">Cohort 1</span>
+        <div class="card-title" style="margin:0">Creator Retainers</div>
+      </div>
+      <div class="card-sub">Hand-picked creators on monthly retainer agreements. We match, pitch, and manage them for you.</div>
+
+      <div style="margin-bottom:18px">
+        <label style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);display:block;margin-bottom:10px">Monthly Retainer Budget <span class="req">*</span></label>
+        <div class="budget-slider-wrap">
+          <div class="budget-display" id="c1-budget-display">$10,000<small>/mo</small></div>
+          <input type="range" id="c1-budgetSlider" min="10000" max="100000" step="5000" value="10000" oninput="updateBudgetDisplay()">
+          <div class="range-labels"><span>$10,000</span><span>$100,000</span></div>
+        </div>
+        <input type="hidden" id="c1-budget" value="10000">
+      </div>
 
       <div class="row">
         <div class="field">
-          <label>TikTok Shop Affiliate Code <span class="req">*</span></label>
-          <input type="text" id="cn-shopCode" placeholder="e.g. BRAND2025">
-          <div class="hint">The short referral/affiliate code for your TikTok Shop</div>
+          <label>Preferred Creator Niches</label>
+          <input type="text" id="c1-niches" placeholder="e.g. skincare, wellness, lifestyle, mom creators">
         </div>
-        <div class="field" style="align-self:start">
-          <label>Affiliate Dashboard Access</label>
-          <label class="check-item" style="margin-top:6px">
-            <input type="checkbox" id="cn-affiliateAccess" style="width:16px;height:16px;accent-color:var(--teal)">
-            <span class="check-item-text">I confirm Cult Content will be given access to my TikTok Shop affiliate dashboard to manage placements and track performance.</span>
-          </label>
+        <div class="field">
+          <label>Products to Feature</label>
+          <input type="text" id="c1-products" placeholder="Which SKUs should retainer creators focus on?">
         </div>
       </div>
 
-      <!-- Tier selection -->
-      <div style="margin-top:6px;margin-bottom:16px">
-        <label style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);display:block;margin-bottom:10px">Select your tier(s) <span class="req">*</span></label>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-          <div class="offer-card" id="tier1-card" onclick="toggleTier('tier1')" style="padding:16px">
-            <div class="offer-radio" id="radio-tier1" style="position:absolute;top:14px;right:14px"></div>
-            <div class="offer-name" style="font-size:12px;padding-right:26px">Tier 1 — Creator Retainers</div>
-            <div class="offer-desc" style="margin-top:4px;font-size:10px">Monthly retainer agreements with hand-picked creators. Minimum $10,000/mo budget.</div>
-          </div>
-          <div class="offer-card" id="tier2-card" onclick="toggleTier('tier2')" style="padding:16px">
-            <div class="offer-radio" id="radio-tier2" style="position:absolute;top:14px;right:14px"></div>
-            <div class="offer-name" style="font-size:12px;padding-right:26px">Tier 2 — Mass Community</div>
-            <div class="offer-desc" style="margin-top:4px;font-size:10px">High-volume UGC ordering from our creator community. Minimum 10 videos at $10/video.</div>
-          </div>
+      <div class="row full">
+        <div class="field">
+          <label>Specific Creators in Mind? <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">(optional)</span></label>
+          <textarea id="c1-specificCreators" style="min-height:60px" placeholder="TikTok handles or names — we'll check fit and availability"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Cohort 2 — Mass Community ── -->
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
+        <span style="background:linear-gradient(135deg,var(--teal),#7b2fff);color:#fff;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;padding:3px 9px;border-radius:100px">Cohort 2</span>
+        <div class="card-title" style="margin:0">Mass Community</div>
+      </div>
+      <div class="card-sub">A contest-style activation across our creator community. Creators purchase your product, post authentic content, and get reimbursed. We build the brief from your inputs here.</div>
+
+      <div class="row">
+        <div class="field">
+          <label>Number of Creators <span class="req">*</span></label>
+          <input type="number" id="c2-creatorCount" min="10" max="100" step="5" placeholder="Min 10, max 100" oninput="updateCostCalc()">
+          <div class="hint">10–100 creators. Each purchases and posts once.</div>
+        </div>
+        <div class="field">
+          <label>Product Retail Price / Unit ($) <span class="req">*</span></label>
+          <input type="number" id="c2-productPrice" min="0" step="0.01" placeholder="e.g. 49.00" oninput="updateCostCalc()">
+          <div class="hint">We reimburse each creator at retail cost</div>
         </div>
       </div>
 
-      <!-- Tier 1 details -->
-      <div class="tier-section" id="tier1-details">
-        <div style="border-top:1px solid var(--border);padding-top:18px;margin-top:4px">
-          <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--teal);margin-bottom:14px">Tier 1 — Creator Retainers</div>
-          <div class="row">
-            <div class="field">
-              <label>Monthly Retainer Budget <span class="req">*</span></label>
-              <input type="number" id="t1-budget" placeholder="Minimum $10,000" min="10000" step="500">
-              <div class="hint">Minimum $10,000/mo to activate Tier 1</div>
-            </div>
-            <div class="field">
-              <label>Preferred Creator Niches</label>
-              <input type="text" id="t1-niches" placeholder="e.g. skincare, wellness, lifestyle, mom creators">
-            </div>
-          </div>
-          <div class="row">
-            <div class="field">
-              <label>Specific Creators in Mind? <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">(optional)</span></label>
-              <textarea id="t1-specificCreators" style="min-height:60px" placeholder="TikTok handles or names — we'll check fit and availability"></textarea>
-            </div>
-            <div class="field">
-              <label>Products to Feature</label>
-              <textarea id="t1-products" style="min-height:60px" placeholder="Which SKUs should retainer creators focus on?"></textarea>
-            </div>
-          </div>
+      <div class="row full">
+        <div class="field">
+          <label>Product(s) to Feature</label>
+          <input type="text" id="c2-products" placeholder="e.g. Hero Serum, SPF Moisturizer">
         </div>
       </div>
 
-      <!-- Tier 2 details -->
-      <div class="tier-section" id="tier2-details">
-        <div style="border-top:1px solid var(--border);padding-top:18px;margin-top:4px">
-          <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--teal);margin-bottom:14px">Tier 2 — Mass Community</div>
-          <div class="row trio">
-            <div class="field">
-              <label>Videos to Order <span class="req">*</span></label>
-              <input type="number" id="t2-videoCount" placeholder="Min 10" min="10" step="1">
-              <div class="hint">$10/video — minimum 10</div>
-            </div>
-            <div class="field">
-              <label>Products to Feature</label>
-              <input type="text" id="t2-products" placeholder="e.g. Hero Serum, SPF Moisturizer">
-            </div>
-          </div>
-          <div class="row full">
-            <div class="field">
-              <label>Campaign Brief</label>
-              <textarea id="t2-brief" placeholder="Key messages, content requirements (e.g. 'must show before/after', 'outdoor lighting only'), posting specs, any exclusions or things to avoid…" style="min-height:100px"></textarea>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Creator Purchase Reimbursement (CN) -->
-      <div style="border-top:1px solid var(--border);padding-top:18px;margin-top:4px">
-        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:12px">Creator Purchase Reimbursement Campaign <span style="font-size:9px;color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">(optional)</span></div>
-        <div class="row trio">
-          <div class="field">
-            <label>Product(s) to Feature</label>
-            <input type="text" id="cn-reimProduct" placeholder="e.g. Hero Serum">
-          </div>
-          <div class="field">
-            <label>Creator Orders Desired</label>
-            <input type="number" id="cn-reimOrders" placeholder="e.g. 20" min="1">
-          </div>
-          <div class="field">
-            <label>Retail Price / Unit ($)</label>
-            <input type="number" id="cn-reimPrice" placeholder="e.g. 49" min="0" step="0.01">
-            <div class="hint">CC pre-charges at retail × qty</div>
-          </div>
-        </div>
+      <!-- Live cost calculator -->
+      <div class="cost-card" id="costCalc" style="display:none">
+        <div style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:12px">Estimated Campaign Cost</div>
+        <div class="cost-row"><span class="cost-row-label">Reimbursement (<span id="cc-creators">0</span> creators × $<span id="cc-price">0</span>)</span><span class="cost-row-val">$<span id="cc-reimb">0</span></span></div>
+        <div class="cost-row"><span class="cost-row-label">Platform fee (<span id="cc-creators2">0</span> × $10/creator)</span><span class="cost-row-val">$<span id="cc-fee">0</span></span></div>
+        <hr class="cost-divider">
+        <div class="cost-row"><span class="cost-total-label">Total campaign budget</span><span class="cost-total">$<span id="cc-total">0</span></span></div>
+        <div style="font-size:10px;color:var(--muted);margin-top:10px;line-height:1.55">Payment links generated via Reacher after you're onboarded. Costs confirmed before any charge.</div>
       </div>
     </div>
   </div>
@@ -846,6 +867,13 @@ function setProgress(n) {
   }
 }
 
+const overlayMessages = {
+  1: { title: 'Building your profile…', body: 'Getting your brand set up' },
+  2: { title: 'Locking in your products…', body: 'Mapping your catalogue' },
+  3: { title: 'Crafting your plan…', body: 'Configuring your engagement' },
+  4: { title: 'Almost there…', body: 'Preparing your review' },
+};
+
 function showStep(n) {
   document.querySelectorAll('.step-pane').forEach(p => p.classList.remove('active'));
   const pane = document.getElementById('step-' + n);
@@ -855,15 +883,23 @@ function showStep(n) {
 }
 
 function jumpStep(n) {
-  if (n >= state.step) return; // only jump backwards
+  if (n >= state.step) return;
   showStep(n);
 }
 
 function goNext(from) {
   if (!validateStep(from)) return;
-  if (from === 3) showConditionalSection();
-  if (from === 4) buildReview();
-  showStep(from + 1);
+  const msg = overlayMessages[from] || { title: 'One moment…', body: '' };
+  document.getElementById('overlayTitle').textContent = msg.title;
+  document.getElementById('overlayBody').textContent = msg.body;
+  const overlay = document.getElementById('stepOverlay');
+  overlay.classList.add('visible');
+  setTimeout(() => {
+    if (from === 3) showConditionalSection();
+    if (from === 4) buildReview();
+    showStep(from + 1);
+    overlay.classList.remove('visible');
+  }, 900);
 }
 
 function goBack(from) {
@@ -895,12 +931,9 @@ function validateStep(n) {
       return requireField('fn-shopCategory', 'Please select a TikTok Shop category');
     }
     if (state.offerType === 'network') {
-      if (!state.offerType) return false;
-      // at least one tier selected
-      if (!state.tiers.tier1 && !state.tiers.tier2) {
-        alert('Please select at least one tier.');
-        return false;
-      }
+      return requireField('cn-shopCode', 'TikTok Shop Code is required') &&
+             requireField('c2-creatorCount', 'Number of creators is required') &&
+             requireField('c2-productPrice', 'Product retail price is required');
     }
   }
   return true;
@@ -956,15 +989,29 @@ function showConditionalSection() {
   if (el) el.classList.add('show');
 }
 
-// ─── Tier selection (Creator Network) ────────────────────────────────────────
-function toggleTier(tier) {
-  state.tiers[tier] = !state.tiers[tier];
-  const card = document.getElementById(tier + '-card');
-  const radio = document.getElementById('radio-' + tier);
-  const details = document.getElementById(tier + '-details');
-  card.classList.toggle('selected', state.tiers[tier]);
-  if (radio) radio.style.background = state.tiers[tier] ? 'var(--teal)' : '';
-  if (details) details.classList.toggle('show', state.tiers[tier]);
+// ─── Budget slider (Cohort 1) ─────────────────────────────────────────────────
+function updateBudgetDisplay() {
+  const val = parseInt(document.getElementById('c1-budgetSlider').value);
+  document.getElementById('c1-budget').value = val;
+  document.getElementById('c1-budget-display').innerHTML = '$' + val.toLocaleString() + '<small>/mo</small>';
+}
+
+// ─── Cost calculator (Cohort 2) ───────────────────────────────────────────────
+function updateCostCalc() {
+  const creators = parseInt(document.getElementById('c2-creatorCount').value) || 0;
+  const price    = parseFloat(document.getElementById('c2-productPrice').value) || 0;
+  const calc     = document.getElementById('costCalc');
+  if (!creators || !price) { calc.style.display = 'none'; return; }
+  const reimb = (creators * price).toFixed(2);
+  const fee   = (creators * 10).toFixed(2);
+  const total = (creators * price + creators * 10).toFixed(2);
+  document.getElementById('cc-creators').textContent  = creators;
+  document.getElementById('cc-creators2').textContent = creators;
+  document.getElementById('cc-price').textContent     = price.toFixed(2);
+  document.getElementById('cc-reimb').textContent     = parseFloat(reimb).toLocaleString('en-US', {minimumFractionDigits:2});
+  document.getElementById('cc-fee').textContent       = parseFloat(fee).toLocaleString('en-US', {minimumFractionDigits:2});
+  document.getElementById('cc-total').textContent     = parseFloat(total).toLocaleString('en-US', {minimumFractionDigits:2});
+  calc.style.display = 'block';
 }
 
 // ─── Add-ons (Scale) ──────────────────────────────────────────────────────────
@@ -1255,20 +1302,20 @@ function collectOfferDetails() {
     };
   }
   if (state.offerType === 'network') {
+    const creators = parseInt(v('c2-creatorCount')) || 0;
+    const price    = parseFloat(v('c2-productPrice')) || 0;
     return {
-      shopCode:          v('cn-shopCode'),
-      affiliateAccess:   document.getElementById('cn-affiliateAccess')?.checked,
-      tiers:             state.tiers,
-      t1Budget:          v('t1-budget'),
-      t1Niches:          v('t1-niches'),
-      t1SpecificCreators:v('t1-specificCreators'),
-      t1Products:        v('t1-products'),
-      t2VideoCount:      v('t2-videoCount'),
-      t2Products:        v('t2-products'),
-      t2Brief:           v('t2-brief'),
-      reimProduct:       v('cn-reimProduct'),
-      reimOrders:        v('cn-reimOrders'),
-      reimPrice:         v('cn-reimPrice'),
+      shopCode:             v('cn-shopCode'),
+      cohort1Budget:        document.getElementById('c1-budget')?.value,
+      cohort1Niches:        v('c1-niches'),
+      cohort1Products:      v('c1-products'),
+      cohort1Creators:      v('c1-specificCreators'),
+      cohort2CreatorCount:  creators,
+      cohort2ProductPrice:  price,
+      cohort2Products:      v('c2-products'),
+      cohort2ReimbTotal:    (creators * price).toFixed(2),
+      cohort2PlatformFee:   (creators * 10).toFixed(2),
+      cohort2TotalCost:     (creators * price + creators * 10).toFixed(2),
     };
   }
   return {};
