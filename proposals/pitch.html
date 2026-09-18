@@ -325,18 +325,22 @@ h1,h2,h3{font-family:'Montserrat',sans-serif;font-weight:900;letter-spacing:-.02
   filter:saturate(1.08);transform:scale(1.03);}
 
 .vig{position:absolute;inset:0;z-index:1;pointer-events:none;
-  background:radial-gradient(ellipse 66% 60% at 50% 50%, rgba(9,7,18,.22) 0%, rgba(9,7,18,.44) 58%, rgba(9,7,18,.78) 100%);}
-.leafframe{position:absolute;inset:0;z-index:3;pointer-events:none;
-  border-style:solid;border-width:96px 112px;
-  border-image:url('/proposal-assets/leaf-frame.webp') 172 round;
-  filter:drop-shadow(0 8px 22px rgba(0,0,0,.55)) saturate(1.1);}
+  background:radial-gradient(ellipse 72% 66% at 50% 50%, rgba(9,7,18,.26) 0%, rgba(9,7,18,.50) 56%, rgba(9,7,18,.92) 100%);}
 #vision .vision-inner{position:relative;z-index:4;padding:26px 30px;max-width:720px;}
 #vision h2,#vision .vision-body,#vision .vision-footer{text-shadow:0 2px 16px rgba(0,0,0,.75);}
 #vision .vision-body{color:rgba(255,255,255,.88);}
 #vision .vp-text{color:rgba(255,255,255,.80);}
 #vision .vp-text strong{color:#ffe9b8;}
 #vision .vision-footer{color:#ffe9b8;}
-@media(max-width:900px){.leafframe{border-width:62px 54px;border-image-slice:172 round;}}
+/* risks: density with the 5th card */
+#risks .risk-inner h2{font-size:clamp(1.4rem,3vw,2.1rem);margin-bottom:6px;}
+#risks .risk-sub{font-size:.82rem;margin-bottom:15px;}
+#risks .risk-grid{gap:11px;}
+#risks .risk-c{padding:11px 15px;}
+#risks .risk-t{font-size:.78rem;margin-bottom:5px;}
+#risks .risk-b{font-size:.715rem;line-height:1.5;margin-bottom:7px;}
+#risks .risk-m{font-size:.68rem;line-height:1.48;padding-top:6px;}
+#risks .risk-foot{margin-top:13px;padding:8px 0 8px 14px;font-size:.72rem;line-height:1.55;}
 /* ── 06 Team ── */
 #team{background:var(--dark2);}
 .team-inner{max-width:960px;width:100%;display:flex;flex-direction:column;align-items:flex-start;}
@@ -895,7 +899,7 @@ h1,h2,h3{font-family:'Montserrat',sans-serif;font-weight:900;letter-spacing:-.02
 <section class="screen" id="risks">
   <div class="risk-inner">
     <div class="eyebrow">10 — What Could Break This</div>
-    <h2>The four things that would sink it.</h2>
+    <h2>The five things that would sink it.</h2>
     <p class="risk-sub">We would rather you heard these from us. Each one is measured, not hypothetical, and each has a specific response rather than a promise to work harder.</p>
     <div class="risk-grid">
       <div class="risk-c">
@@ -912,6 +916,11 @@ h1,h2,h3{font-family:'Montserrat',sans-serif;font-weight:900;letter-spacing:-.02
         <div class="risk-t">Free only works if brands grow</div>
         <div class="risk-b">Under a retainer, a flat brand still pays us. Under free plus a revenue share, a flat brand pays nothing and still costs us to serve. The brands that left us did so because they were not growing — the same population would generate almost no transaction revenue.</div>
         <div class="risk-m"><strong>Response:</strong> free is a funnel and an ecosystem asset, not the revenue model. The paid tiers fund it. Brand selection is the control, and it is the single largest driver in our model.</div>
+      </div>
+      <div class="risk-c" style="grid-column:span 2;">
+        <div class="risk-t">We depend on platforms we do not own</div>
+        <div class="risk-b">Our stack sits on top of other people's software and, underneath all of it, on TikTok itself. Reacher is our preferred partner rather than a vendor we control — it could reprice, restrict its API, or decide agencies compete with it. TikTok Shop sets the commission structure our revenue share is calculated from, and the messaging limits our portal is built to relieve.</div>
+        <div class="risk-m"><strong>Response:</strong> nothing enters our stack unless it exposes an API or an MCP, which is precisely what makes every component swappable rather than load-bearing — the rule exists for this risk, not for convenience. The relationships are real and the tooling is replaceable. What is not replaceable is TikTok, and we do not pretend otherwise.</div>
       </div>
       <div class="risk-c">
         <div class="risk-t">Concentration and thin cash</div>
@@ -961,7 +970,6 @@ h1,h2,h3{font-family:'Montserrat',sans-serif;font-weight:900;letter-spacing:-.02
 <section class="screen" id="vision">
   <div class="sunset"></div>
   <div class="vig"></div>
-  <div class="leafframe"></div>
   <div class="vision-inner">
     <div class="eyebrow">13 — The Long Vision</div>
     <h2>This is bigger than<br><span class="purple">an agency.</span></h2>
