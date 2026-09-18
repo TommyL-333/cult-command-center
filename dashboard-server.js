@@ -774,7 +774,7 @@ app.get('/brand-applications', requirePortalAdmin, (req, res) => {
 // GET /api/brand-applications/list — returns all records from the Lark Base, newest first
 app.get('/api/brand-applications/list', requirePortalAdmin, async (req, res) => {
   try {
-    const token = await getLarkToken();
+    const token = await getLarkTenantToken();
     const allRecords = [];
     let pageToken = '';
     do {
