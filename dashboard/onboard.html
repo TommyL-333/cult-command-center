@@ -482,6 +482,121 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
      ═══════════════════════════════════════════════════════ -->
 <div class="step-pane" id="step-4">
 
+  <!-- ─── SHARED CARDS (all clients) ─── -->
+
+  <!-- Card A: Commission Rates -->
+  <div class="card">
+    <div class="card-title">Commission rates</div>
+    <div class="card-sub">Default rates used when sending TikTok Shop collaboration invitations. We configure these in your Reacher account.</div>
+    <div class="row trio">
+      <div class="field">
+        <label>Target Collab Commission</label>
+        <div style="position:relative">
+          <input type="number" id="tcCommission" placeholder="e.g. 10" min="1" max="80" step="0.5" style="padding-right:30px">
+          <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px">%</span>
+        </div>
+        <div class="hint">Commission on TC invite cards sent to creators</div>
+      </div>
+      <div class="field">
+        <label>Open Collab Commission</label>
+        <div style="position:relative">
+          <input type="number" id="openCommission" placeholder="e.g. 15" min="1" max="80" step="0.5" style="padding-right:30px">
+          <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px">%</span>
+        </div>
+        <div class="hint">Rate for open / open-plan affiliate collabs</div>
+      </div>
+      <div class="field">
+        <label>Ads Commission</label>
+        <div style="position:relative">
+          <input type="number" id="adsCommission" placeholder="e.g. 8" min="0" max="80" step="0.5" style="padding-right:30px">
+          <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px">%</span>
+        </div>
+        <div class="hint">For GMV Max / Spark creator ads</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Card B: Promotional Strategy -->
+  <div class="card">
+    <div class="card-title">Promotional strategy</div>
+    <div class="card-sub">We run these automatically on your shop. Set once — easily adjusted later.</div>
+    <div class="row">
+      <div class="field">
+        <label>Flash Sale Cadence</label>
+        <select id="flashSaleCadence">
+          <option value="">— select —</option>
+          <option>None</option>
+          <option>Weekly</option>
+          <option>Bi-weekly</option>
+          <option>Monthly</option>
+        </select>
+        <div class="hint">How often we run flash promos on your hero products</div>
+      </div>
+      <div class="field">
+        <label>Free Shipping Threshold ($)</label>
+        <input type="text" id="freeShipThreshold" placeholder="e.g. 35  (or 'none')">
+        <div class="hint">Cart value for free shipping</div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Bundle / Gift-With-Purchase</label>
+        <input type="text" id="bundleStrategy" placeholder="e.g. Buy 2 get 1, free sachet over $40">
+        <div class="hint">BMSM / GWP offers for creators and shop to push</div>
+      </div>
+      <div class="field">
+        <label>Monthly Sample Budget (units)</label>
+        <input type="number" id="sampleBudget" placeholder="e.g. 50" min="0">
+        <div class="hint">Sample units per month across creators</div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="field">
+        <label>Auto-Approve Sample Requests?</label>
+        <select id="sampleAutoApprove">
+          <option value="">— select —</option>
+          <option>Yes</option>
+          <option>No — manual review</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Sample Approval Criteria</label>
+        <input type="text" id="sampleApprovalCriteria" placeholder="e.g. 1k+ followers, US-based, on-niche">
+        <div class="hint">Who qualifies — used when auto-approve is off</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Card C: Brand Assets (shared) -->
+  <div class="card" id="shared-brand-assets">
+    <div class="card-title">Brand assets</div>
+    <div class="card-sub">Upload your logo, product images, fonts, or brand guidelines. Used for content creation and ads.</div>
+    <div class="row" style="margin-bottom:14px">
+      <div class="field">
+        <label>Primary Brand Color</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="color" id="brandColorPicker" value="#20d5c4" oninput="document.getElementById('brandColorHex').value=this.value" style="width:44px;height:40px;padding:2px 4px;border-radius:8px;cursor:pointer;background:rgba(255,255,255,.05);border:1px solid var(--border)">
+          <input type="text" id="brandColorHex" placeholder="#20d5c4" style="flex:1" oninput="syncColorPicker()">
+        </div>
+      </div>
+      <div class="field">
+        <label>Brand Fonts</label>
+        <input type="text" id="brandFonts" list="font-list" placeholder="e.g. Montserrat, Inter">
+        <datalist id="font-list">
+          <option value="Montserrat"><option value="Inter"><option value="Lato">
+          <option value="Poppins"><option value="Raleway"><option value="Nunito">
+          <option value="Open Sans"><option value="Playfair Display"><option value="DM Sans">
+          <option value="Outfit"><option value="Figtree"><option value="Plus Jakarta Sans">
+          <option value="Sora"><option value="Manrope"><option value="Work Sans">
+          <option value="Bebas Neue"><option value="Anton"><option value="Oswald">
+          <option value="Josefin Sans"><option value="Cinzel">
+        </datalist>
+        <div class="hint">Start typing to search Google Fonts we use</div>
+      </div>
+    </div>
+    <div id="shared-asset-upload" class="asset-uploader" data-offer="shared"></div>
+  </div>
+
   <!-- ─── THE FOUNDATION ─── -->
   <div class="cond-section" id="cond-foundation">
     <div class="card">
@@ -518,12 +633,13 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 
       <div class="row">
         <div class="field">
-          <label>Brand Registration / Trademark</label>
-          <div class="toggle-row">
-            <button type="button" class="t-btn" data-field="fn-trademark" data-val="Registered" onclick="setToggle(this)">Registered</button>
-            <button type="button" class="t-btn" data-field="fn-trademark" data-val="Pending" onclick="setToggle(this)">Pending</button>
-            <button type="button" class="t-btn" data-field="fn-trademark" data-val="None" onclick="setToggle(this)">None</button>
+          <label>Category Qualification Status</label>
+          <div class="toggle-row" id="fn-catQual-toggle">
+            <button type="button" class="t-btn" data-field="fn-catQual" data-val="Qualified" onclick="setToggle(this)">Qualified</button>
+            <button type="button" class="t-btn" data-field="fn-catQual" data-val="In Progress" onclick="setToggle(this)">In Progress</button>
+            <button type="button" class="t-btn" data-field="fn-catQual" data-val="Not Started" onclick="setToggle(this)">Not Started</button>
           </div>
+          <div class="hint">TikTok Shop category badge qualification (separate from brand badge)</div>
         </div>
         <div class="field">
           <label>Do you have a Reacher account?</label>
@@ -531,34 +647,6 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
             <button type="button" class="t-btn" data-field="fn-hasReacher" data-val="Yes" onclick="setToggle(this)">Yes</button>
             <button type="button" class="t-btn" data-field="fn-hasReacher" data-val="No" onclick="setToggle(this)">No — CC will create one</button>
           </div>
-        </div>
-      </div>
-
-      <div class="row full">
-        <div class="field">
-          <label>Content Tone & Style References</label>
-          <textarea id="fn-contentStyle" placeholder="Link to TikToks you love, describe the vibe, share creator handles you admire — e.g. 'educational but fun, not pushy, skincare-girl aesthetic'"></textarea>
-        </div>
-      </div>
-
-      <div class="row">
-        <div class="field">
-          <label>Approximate Creator Budget</label>
-          <select id="fn-creatorBudget">
-            <option value="">— select a range —</option>
-            <option>Under $500/mo</option>
-            <option>$500 – $1,000/mo</option>
-            <option>$1,000 – $3,000/mo</option>
-            <option>$3,000 – $5,000/mo</option>
-            <option>$5,000+/mo</option>
-            <option>Not sure yet</option>
-          </select>
-          <div class="hint">For creator retainers and sample programs — rough estimate</div>
-        </div>
-        <div class="field">
-          <label>Strategy Session Availability</label>
-          <textarea id="fn-sessionAvail" style="min-height:60px" placeholder="e.g. 'Weekdays after 2pm ET' or paste a Calendly link"></textarea>
-          <div class="hint">1-hour kickoff session with your Cult Content strategist</div>
         </div>
       </div>
     </div>
@@ -610,48 +698,17 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
         </div>
       </div>
 
-      <div class="row">
-        <div class="field">
-          <label>Past Creator Experience</label>
-          <div class="toggle-row">
-            <button type="button" class="t-btn" data-field="gp-creatorExp" data-val="None" onclick="setToggle(this)">None</button>
-            <button type="button" class="t-btn" data-field="gp-creatorExp" data-val="Some" onclick="setToggle(this)">Some</button>
-            <button type="button" class="t-btn" data-field="gp-creatorExp" data-val="Extensive" onclick="setToggle(this)">Extensive</button>
-          </div>
-        </div>
-        <div class="field">
-          <label>Preferred Meeting Cadence</label>
-          <div class="toggle-row">
-            <button type="button" class="t-btn" data-field="gp-meetingCadence" data-val="Weekly" onclick="setToggle(this)">Weekly</button>
-            <button type="button" class="t-btn" data-field="gp-meetingCadence" data-val="Biweekly" onclick="setToggle(this)">Biweekly</button>
-            <button type="button" class="t-btn" data-field="gp-meetingCadence" data-val="Monthly" onclick="setToggle(this)">Monthly</button>
-          </div>
-        </div>
+      <div class="info-box">
+        <strong>Monthly strategy call + async chat support.</strong> Your Growth Partner includes one monthly strategy session and ongoing async support via your dedicated Lark channel. Additional calls can be booked as needed.
       </div>
 
       <div class="row full">
         <div class="field">
-          <label>Content Style Preference</label>
-          <textarea id="gp-contentStyle" placeholder="Links to TikToks you like, creator handles, vibe description — e.g. 'raw & authentic, no heavy edits, educational demo style'"></textarea>
+          <label>Creative Direction <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">(optional)</span></label>
+          <textarea id="gp-creativeDirection" placeholder="TikTok links you love, creators you admire, vibe description — e.g. 'educational but fun, not pushy, skincare-girl aesthetic'"></textarea>
+          <div class="hint">Helps us match the right creators and set the right brief</div>
         </div>
       </div>
-    </div>
-
-    <!-- Brand Assets -->
-    <div class="card">
-      <div class="card-title">Brand assets</div>
-      <div class="card-sub">Upload your logo, product images, fonts, or brand guidelines. We use these for carousel content and ads.</div>
-      <div class="row" style="margin-bottom:14px">
-        <div class="field">
-          <label>Primary Brand Color (hex)</label>
-          <input type="text" id="gp-brandColor" placeholder="#FF5A5F">
-        </div>
-        <div class="field">
-          <label>Brand Fonts</label>
-          <input type="text" id="gp-brandFonts" placeholder="e.g. Montserrat, Lato — or 'not sure'">
-        </div>
-      </div>
-      <div id="gp-asset-upload" class="asset-uploader" data-offer="gp"></div>
     </div>
   </div>
 
@@ -715,22 +772,6 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
       </div>
     </div>
 
-    <!-- Brand Assets -->
-    <div class="card">
-      <div class="card-title">Brand assets</div>
-      <div class="card-sub">Logo, fonts, colors, product images — anything we need to create on-brand content.</div>
-      <div class="row" style="margin-bottom:14px">
-        <div class="field">
-          <label>Primary Brand Color (hex)</label>
-          <input type="text" id="sc-brandColor" placeholder="#FF5A5F">
-        </div>
-        <div class="field">
-          <label>Brand Fonts</label>
-          <input type="text" id="sc-brandFonts" placeholder="e.g. Montserrat, Lato">
-        </div>
-      </div>
-      <div id="sc-asset-upload" class="asset-uploader" data-offer="sc"></div>
-    </div>
   </div>
 
   <!-- ─── CREATOR NETWORK ─── -->
@@ -803,10 +844,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
       <!-- Live cost calculator -->
       <div class="cost-card" id="costCalc" style="display:none">
         <div style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:12px">Estimated Campaign Cost</div>
-        <div class="cost-row"><span class="cost-row-label">Reimbursement (<span id="cc-creators">0</span> creators × avg $<span id="cc-price">0</span>/unit)</span><span class="cost-row-val">$<span id="cc-reimb">0</span></span></div>
-        <div class="cost-row"><span class="cost-row-label">Platform fee (<span id="cc-creators2">0</span> creators × $10)</span><span class="cost-row-val">$<span id="cc-fee">0</span></span></div>
-        <hr class="cost-divider">
-        <div class="cost-row"><span class="cost-total-label">Total campaign budget</span><span class="cost-total">$<span id="cc-total">0</span></span></div>
+        <div class="cost-row"><span class="cost-row-label"><span id="cc-creators">0</span> creators × 10 videos × $10/video</span><span class="cost-row-val">$<span id="cc-total">0</span></span></div>
         <div style="font-size:10px;color:var(--muted);margin-top:10px;line-height:1.55">Payment links generated via Reacher after you're onboarded. Costs confirmed before any charge.</div>
       </div>
     </div>
@@ -977,7 +1015,6 @@ function validateStep(n) {
       } else {
         // Manual fallback
         if (!requireField('c2-creatorCount-manual', 'Number of creators is required')) return false;
-        if (!requireField('c2-productPrice-manual', 'Product retail price is required')) return false;
       }
       return true;
     }
@@ -1063,12 +1100,7 @@ function renderCohort2Products() {
         <div class="field">
           <label>Number of Creators <span class="req">*</span></label>
           <input type="number" id="c2-creatorCount-manual" min="10" max="100" step="5" placeholder="Min 10, max 100" oninput="updateCohort2Calc()">
-          <div class="hint">10–100 creators. Each purchases and posts once.</div>
-        </div>
-        <div class="field">
-          <label>Product Retail Price / Unit ($) <span class="req">*</span></label>
-          <input type="number" id="c2-productPrice-manual" min="0" step="0.01" placeholder="e.g. 49.00" oninput="updateCohort2Calc()">
-          <div class="hint">We reimburse each creator at retail cost</div>
+          <div class="hint">10–100 creators. Each makes 10 videos × $10/video = $100/creator</div>
         </div>
       </div>`;
     return;
@@ -1076,15 +1108,14 @@ function renderCohort2Products() {
   container.innerHTML = `
     <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px">Creators per product</div>
     ${products.map((p, i) => {
-      const price = parseFloat(p.price) || 0;
       return `<div class="c2-product-row">
         ${p.imageUrl ? `<img class="c2-product-thumb" src="${p.imageUrl}" alt="" onerror="this.style.display='none'">` : '<div class="c2-product-thumb"></div>'}
         <div class="c2-product-info">
           <div class="c2-product-name">${p.title}</div>
-          <div class="c2-product-price-label">${price ? '$' + price.toFixed(2) + ' retail' : 'price unavailable'}</div>
+          <div class="c2-product-price-label" id="c2-cost-${i}">20 creators × $100 = $2,000</div>
         </div>
         <div class="c2-creator-wrap">
-          <input type="number" class="c2-creator-input" data-price="${price}" min="10" max="100" step="5" value="20" oninput="updateCohort2Calc()">
+          <input type="number" class="c2-creator-input" min="10" max="100" step="5" value="20" oninput="updateCohort2Calc()">
           <div class="c2-creator-label">creators</div>
         </div>
       </div>`;
@@ -1094,31 +1125,21 @@ function renderCohort2Products() {
 
 function updateCohort2Calc() {
   const rows = document.querySelectorAll('.c2-creator-input');
-  let totalReim = 0, totalFee = 0, totalCreators = 0;
+  let totalCreators = 0;
   if (rows.length) {
-    rows.forEach(input => {
+    rows.forEach((input, i) => {
       const creators = parseInt(input.value) || 0;
-      const price = parseFloat(input.dataset.price) || 0;
-      totalReim += creators * price;
-      totalFee += creators * 10;
       totalCreators += creators;
+      const costLabel = document.getElementById('c2-cost-' + i);
+      if (costLabel) costLabel.textContent = `${creators} creators × $100 = $${(creators * 100).toLocaleString()}`;
     });
   } else {
-    const creators = parseInt(document.getElementById('c2-creatorCount-manual')?.value) || 0;
-    const price = parseFloat(document.getElementById('c2-productPrice-manual')?.value) || 0;
-    totalReim = creators * price;
-    totalFee = creators * 10;
-    totalCreators = creators;
+    totalCreators = parseInt(document.getElementById('c2-creatorCount-manual')?.value) || 0;
   }
   const calc = document.getElementById('costCalc');
   if (!totalCreators) { calc.style.display = 'none'; return; }
-  const avgPrice = totalCreators ? (totalReim / totalCreators) : 0;
-  document.getElementById('cc-creators').textContent  = totalCreators;
-  document.getElementById('cc-creators2').textContent = totalCreators;
-  document.getElementById('cc-price').textContent     = avgPrice.toFixed(2);
-  document.getElementById('cc-reimb').textContent     = totalReim.toLocaleString('en-US', {minimumFractionDigits:2,maximumFractionDigits:2});
-  document.getElementById('cc-fee').textContent       = totalFee.toLocaleString('en-US', {minimumFractionDigits:2,maximumFractionDigits:2});
-  document.getElementById('cc-total').textContent     = (totalReim + totalFee).toLocaleString('en-US', {minimumFractionDigits:2,maximumFractionDigits:2});
+  document.getElementById('cc-creators').textContent = totalCreators;
+  document.getElementById('cc-total').textContent    = (totalCreators * 100).toLocaleString();
   calc.style.display = 'block';
 }
 
@@ -1142,7 +1163,6 @@ function buildAccountSlots() {
         <div class="acc-slot-price" id="${id}-price">$500/mo</div>
       </div>
       <div class="acc-type-row">
-        <button type="button" class="acc-type-btn none-sel" data-acc="${name}" data-type="none" onclick="selectAccType(this)">Not included</button>
         <button type="button" class="acc-type-btn" data-acc="${name}" data-type="management" onclick="selectAccType(this)">Management</button>
         <button type="button" class="acc-type-btn" data-acc="${name}" data-type="ai" onclick="selectAccType(this)">AI Content</button>
         <button type="button" class="acc-type-btn" data-acc="${name}" data-type="creator" onclick="selectAccType(this)">Creator Content</button>
@@ -1157,14 +1177,17 @@ function selectAccType(btn) {
   const type    = btn.dataset.type;
   const id      = 'acc-' + accName.replace(/\s+/g, '-').toLowerCase();
   const slot    = document.getElementById(id);
-  scAccountSelections[accName] = type;
+  // Toggle off if already selected
+  const current = scAccountSelections[accName];
+  const newType = (current === type) ? 'none' : type;
+  scAccountSelections[accName] = newType;
   slot.querySelectorAll('.acc-type-btn').forEach(b => {
-    b.classList.remove('sel', 'none-sel');
-    b.classList.add(b.dataset.type === type ? 'sel' : (b.dataset.type === 'none' && type !== 'none' ? 'none-sel' : ''));
+    b.classList.remove('sel');
+    if (b.dataset.type === newType) b.classList.add('sel');
   });
-  slot.classList.toggle('has-selection', type !== 'none');
+  slot.classList.toggle('has-selection', newType !== 'none');
   const cnote = document.getElementById(id + '-cnote');
-  if (cnote) cnote.classList.toggle('show', type === 'creator');
+  if (cnote) cnote.classList.toggle('show', newType === 'creator');
   updateScAddonSummary();
 }
 
@@ -1350,6 +1373,51 @@ function buildReview() {
     <div style="margin-top:4px"><span class="rv-val offer-pill">${offerLabels[state.offerType] || state.offerType}</span></div>
   </div>`;
 
+  // Financial Commitment
+  const offerCosts = {
+    foundation: '$1,500 one-time',
+    growth:     '$2,000/mo + 9% net sales',
+    scale:      '$4,000/mo + 5% net sales',
+    network:    '$2,000/mo + 4% GMV from placements',
+  };
+  let finHtml = `<div class="rv-section"><div class="rv-section-title">Financial Commitment</div><div class="rv-grid">
+    ${rv('Base Cost', offerCosts[state.offerType] || '')}`;
+
+  if (state.offerType === 'scale') {
+    const accSelected = Object.entries(scAccountSelections).filter(([,t]) => t !== 'none');
+    if (accSelected.length) {
+      finHtml += rv('Account Add-ons', `${accSelected.length} accounts × $500/mo = $${(accSelected.length * 500).toLocaleString()}/mo`);
+      const scOrders = parseInt(v('sc-reimOrders')) || 0;
+      const scPrice  = parseFloat(v('sc-reimPrice')) || 0;
+      if (scOrders && scPrice) finHtml += rv('Reimbursement Campaign', `${scOrders} orders × $${scPrice} = $${(scOrders * scPrice).toLocaleString()}`);
+    }
+  }
+  if (state.offerType === 'network') {
+    const c1budget = parseInt(document.getElementById('c1-budget')?.value) || 0;
+    if (c1budget) finHtml += rv('Cohort 1 Retainer Budget', `$${c1budget.toLocaleString()}/mo`);
+    const rows = document.querySelectorAll('.c2-creator-input');
+    const totalC2 = [...rows].reduce((s, el) => s + (parseInt(el.value) || 0), 0);
+    if (totalC2) finHtml += rv('Cohort 2 Creator Payments', `${totalC2} creators × $100 = $${(totalC2 * 100).toLocaleString()}`);
+  }
+  const tc = v('tcCommission'), oc = v('openCommission'), ac = v('adsCommission');
+  if (tc) finHtml += rv('TC Commission', tc + '%');
+  if (oc) finHtml += rv('Open Collab Commission', oc + '%');
+  if (ac) finHtml += rv('Ads Commission', ac + '%');
+  finHtml += `</div></div>`;
+  html += finHtml;
+
+  // Promotional Strategy
+  const flashCadence = v('flashSaleCadence'), freeShip = v('freeShipThreshold'), bundle = v('bundleStrategy'), samples = v('sampleBudget');
+  if (flashCadence || freeShip || bundle || samples) {
+    html += `<div class="rv-section"><div class="rv-section-title">Promotional Strategy</div><div class="rv-grid">
+      ${rv('Flash Sale Cadence', flashCadence)}
+      ${rv('Free Shipping Threshold', freeShip ? '$' + freeShip : '')}
+      ${rv('Bundle / GWP', bundle)}
+      ${rv('Sample Budget', samples ? samples + ' units/mo' : '')}
+      ${rv('Auto-Approve Samples', v('sampleAutoApprove'))}
+    </div></div>`;
+  }
+
   html += `<div class="rv-section"><div class="rv-section-title">Goals</div>
     <div style="font-size:12.5px;color:rgba(255,255,255,.75);line-height:1.6">${(v('brandGoals')||'').replace(/</g,'&lt;')}</div>
   </div>`;
@@ -1389,6 +1457,18 @@ async function handleSubmit() {
     brandGoals:     v('brandGoals'),
     offerType:      state.offerType,
     products,
+    // Shared commission & promo fields
+    tcCommission:           v('tcCommission'),
+    openCommission:         v('openCommission'),
+    adsCommission:          v('adsCommission'),
+    flashSaleCadence:       v('flashSaleCadence'),
+    freeShipThreshold:      v('freeShipThreshold'),
+    bundleStrategy:         v('bundleStrategy'),
+    sampleBudget:           v('sampleBudget'),
+    sampleAutoApprove:      v('sampleAutoApprove'),
+    sampleApprovalCriteria: v('sampleApprovalCriteria'),
+    brandColor:             v('brandColorHex'),
+    brandFonts:             v('brandFonts'),
     // Offer-specific
     offerDetails: collectOfferDetails(),
     // Assets
@@ -1554,87 +1634,79 @@ function startBuildSequence(jobId, email) {
 function collectOfferDetails() {
   if (state.offerType === 'foundation') {
     return {
-      shopCategory:   v('fn-shopCategory'),
-      qualStatus:     getToggle('fn-qualStatus'),
-      trademark:      getToggle('fn-trademark'),
-      hasReacher:     getToggle('fn-hasReacher'),
-      contentStyle:   v('fn-contentStyle'),
-      creatorBudget:  v('fn-creatorBudget'),
-      sessionAvail:   v('fn-sessionAvail'),
+      shopCategory: v('fn-shopCategory'),
+      qualStatus:   getToggle('fn-qualStatus'),
+      catQual:      getToggle('fn-catQual'),
+      hasReacher:   getToggle('fn-hasReacher'),
     };
   }
   if (state.offerType === 'growth') {
     return {
-      adsBudget:      v('gp-adsBudget'),
-      hasAdsAccount:  getToggle('gp-hasAdsAccount'),
-      roas:           v('gp-roas'),
-      creatorBudget:  v('gp-creatorBudget'),
-      creatorExp:     getToggle('gp-creatorExp'),
-      meetingCadence: getToggle('gp-meetingCadence'),
-      contentStyle:   v('gp-contentStyle'),
-      brandColor:     v('gp-brandColor'),
-      brandFonts:     v('gp-brandFonts'),
+      adsBudget:        v('gp-adsBudget'),
+      hasAdsAccount:    getToggle('gp-hasAdsAccount'),
+      roas:             v('gp-roas'),
+      creatorBudget:    v('gp-creatorBudget'),
+      creativeDirection: v('gp-creativeDirection'),
+      brandColor:       v('brandColorHex'),
+      brandFonts:       v('brandFonts'),
     };
   }
   if (state.offerType === 'scale') {
     const accSelected = Object.entries(scAccountSelections).filter(([,t]) => t !== 'none');
     return {
-      meetingCadence:  getToggle('sc-meetingCadence'),
-      reimProduct:     v('sc-reimProduct'),
-      reimOrders:      v('sc-reimOrders'),
-      reimPrice:       v('sc-reimPrice'),
-      brandColor:      v('sc-brandColor'),
-      brandFonts:      v('sc-brandFonts'),
-      accounts:        scAccountSelections,
+      reimProduct:      v('sc-reimProduct'),
+      reimOrders:       v('sc-reimOrders'),
+      reimPrice:        v('sc-reimPrice'),
+      brandColor:       v('brandColorHex'),
+      brandFonts:       v('brandFonts'),
+      accounts:         scAccountSelections,
       accountsSelected: accSelected.map(([name, type]) => ({ name, type })),
       addonMonthlyTotal: accSelected.length * 500,
     };
   }
   if (state.offerType === 'network') {
-    // Aggregate per-product creator counts
     const rows = document.querySelectorAll('.c2-creator-input');
-    let cohort2Products = [], totalCreators = 0, totalReim = 0, totalFee = 0;
+    let cohort2Products = [], totalCreators = 0;
     if (rows.length) {
       const previewProds = [...selectedPreviewProducts].map(i => shopifyPreviewProducts[i]).filter(Boolean);
       rows.forEach((input, i) => {
         const creators = parseInt(input.value) || 0;
-        const price = parseFloat(input.dataset.price) || 0;
         const prod = previewProds[i];
-        cohort2Products.push({ name: prod?.title || `Product ${i+1}`, price, creators, reimbursement: (creators * price).toFixed(2) });
+        cohort2Products.push({ name: prod?.title || `Product ${i+1}`, creators, cost: (creators * 100).toFixed(2) });
         totalCreators += creators;
-        totalReim += creators * price;
-        totalFee += creators * 10;
       });
     } else {
-      // Manual fallback
       const creators = parseInt(document.getElementById('c2-creatorCount-manual')?.value) || 0;
-      const price = parseFloat(document.getElementById('c2-productPrice-manual')?.value) || 0;
-      cohort2Products = [{ name: 'Product', price, creators, reimbursement: (creators * price).toFixed(2) }];
+      cohort2Products = [{ name: 'Product', creators, cost: (creators * 100).toFixed(2) }];
       totalCreators = creators;
-      totalReim = creators * price;
-      totalFee = creators * 10;
     }
     return {
-      shopCode:            v('cn-shopCode'),
-      cohort1Budget:       document.getElementById('c1-budget')?.value,
-      cohort1Niches:       v('c1-niches'),
-      cohort1Products:     v('c1-products'),
-      cohort1Creators:     v('c1-specificCreators'),
+      shopCode:              v('cn-shopCode'),
+      cohort1Budget:         document.getElementById('c1-budget')?.value,
+      cohort1Niches:         v('c1-niches'),
+      cohort1Products:       v('c1-products'),
+      cohort1Creators:       v('c1-specificCreators'),
       cohort2Products,
-      cohort2CreatorCount: totalCreators,
-      cohort2ReimbTotal:   totalReim.toFixed(2),
-      cohort2PlatformFee:  totalFee.toFixed(2),
-      cohort2TotalCost:    (totalReim + totalFee).toFixed(2),
+      cohort2CreatorCount:   totalCreators,
+      cohort2CostPerCreator: 100,
+      cohort2TotalCost:      (totalCreators * 100).toFixed(2),
     };
   }
   return {};
 }
 
+// ─── Color picker sync ───────────────────────────────────────────────────────
+function syncColorPicker() {
+  const hex = document.getElementById('brandColorHex').value.trim();
+  if (/^#[0-9a-f]{6}$/i.test(hex)) {
+    document.getElementById('brandColorPicker').value = hex;
+  }
+}
+
 // ─── Init ─────────────────────────────────────────────────────────────────────
 addProduct(); // start with one empty product row
 buildAccountSlots();
-initAssetUploader('gp-asset-upload');
-initAssetUploader('sc-asset-upload');
+initAssetUploader('shared-asset-upload');
 </script>
 </body>
 </html>
