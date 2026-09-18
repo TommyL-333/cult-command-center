@@ -487,31 +487,57 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
   <!-- Card A: Commission Rates -->
   <div class="card">
     <div class="card-title">Commission rates</div>
-    <div class="card-sub">Default rates used when sending TikTok Shop collaboration invitations. We configure these in your Reacher account.</div>
-    <div class="row trio">
-      <div class="field">
-        <label>Target Collab Commission</label>
-        <div style="position:relative">
-          <input type="number" id="tcCommission" placeholder="e.g. 10" min="1" max="80" step="0.5" style="padding-right:30px">
-          <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px">%</span>
+
+    <!-- Standard packages: Foundation / Growth / Scale -->
+    <div id="comm-standard" style="display:none">
+      <div class="card-sub">Default rates used when sending TikTok Shop collaboration invitations. We configure these in your Reacher account.</div>
+      <div class="row">
+        <div class="field">
+          <label>Target Collab Commission</label>
+          <div style="position:relative">
+            <input type="number" id="tcCommission" placeholder="e.g. 10" min="1" max="80" step="0.5" style="padding-right:30px">
+            <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px">%</span>
+          </div>
+          <div class="hint">Commission on TC invite cards sent to creators</div>
         </div>
-        <div class="hint">Commission on TC invite cards sent to creators</div>
+        <div class="field">
+          <label>Open Collab Commission</label>
+          <div style="position:relative">
+            <input type="number" id="openCommission" placeholder="e.g. 15" min="1" max="80" step="0.5" style="padding-right:30px">
+            <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px">%</span>
+          </div>
+          <div class="hint">Rate for open / open-plan affiliate collabs</div>
+        </div>
       </div>
-      <div class="field">
-        <label>Open Collab Commission</label>
-        <div style="position:relative">
-          <input type="number" id="openCommission" placeholder="e.g. 15" min="1" max="80" step="0.5" style="padding-right:30px">
-          <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px">%</span>
+    </div>
+
+    <!-- Creator Network: Matchmaking commission -->
+    <div id="comm-network" style="display:none">
+      <div class="card-sub">Set the creator commission for your matchmaking campaigns. Cult Content's 4% platform cut is fixed and non-negotiable.</div>
+      <div class="row trio">
+        <div class="field">
+          <label>Creator Commission <span class="req">*</span></label>
+          <div style="position:relative">
+            <input type="number" id="cnCreatorCommission" placeholder="Min 15%" min="15" max="76" step="0.5" style="padding-right:30px" oninput="updateCNCommission()">
+            <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px">%</span>
+          </div>
+          <div class="hint">What creators earn on each sale — minimum 15%</div>
         </div>
-        <div class="hint">Rate for open / open-plan affiliate collabs</div>
-      </div>
-      <div class="field">
-        <label>Ads Commission</label>
-        <div style="position:relative">
-          <input type="number" id="adsCommission" placeholder="e.g. 8" min="0" max="80" step="0.5" style="padding-right:30px">
-          <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px">%</span>
+        <div class="field">
+          <label>Cult Content Cut</label>
+          <div style="position:relative">
+            <input type="number" id="cnCCCommission" value="4" readonly style="padding-right:30px;opacity:.55;cursor:not-allowed">
+            <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px">%</span>
+          </div>
+          <div class="hint">Fixed — covers matchmaking &amp; platform</div>
         </div>
-        <div class="hint">For GMV Max / Spark creator ads</div>
+        <div class="field">
+          <label>Total Commission</label>
+          <div style="background:rgba(32,213,196,.08);border:1px solid rgba(32,213,196,.25);border-radius:8px;padding:10px 14px;font-size:18px;font-weight:800;color:var(--teal);text-align:center">
+            <span id="cnTotalCommission">—</span>%
+          </div>
+          <div class="hint">What TikTok Shop shows creators</div>
+        </div>
       </div>
     </div>
   </div>
@@ -519,50 +545,105 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
   <!-- Card B: Promotional Strategy -->
   <div class="card">
     <div class="card-title">Promotional strategy</div>
-    <div class="card-sub">We run these automatically on your shop. Set once — easily adjusted later.</div>
-    <div class="row">
-      <div class="field">
-        <label>Flash Sale Cadence</label>
-        <select id="flashSaleCadence">
-          <option value="">— select —</option>
-          <option>None</option>
-          <option>Weekly</option>
-          <option>Bi-weekly</option>
-          <option>Monthly</option>
-        </select>
-        <div class="hint">How often we run flash promos on your hero products</div>
-      </div>
-      <div class="field">
-        <label>Free Shipping Threshold ($)</label>
-        <input type="text" id="freeShipThreshold" placeholder="e.g. 35  (or 'none')">
-        <div class="hint">Cart value for free shipping</div>
+
+    <!-- Creator Network: simple active offer question -->
+    <div id="promo-network" style="display:none">
+      <div class="card-sub">Tell creators what you want them to talk about — a sale, a launch, a limited offer, or your everyday value prop.</div>
+      <div class="row full">
+        <div class="field">
+          <label>Active Promotion / Offer</label>
+          <textarea id="cnActivePromo" style="min-height:80px" placeholder="e.g. We're running a 20% launch discount through October. Creators should highlight the limited-time pricing and push the promo code LAUNCH20."></textarea>
+          <div class="hint">This will be included in the creator brief and matchmaking outreach</div>
+        </div>
       </div>
     </div>
-    <div class="row">
-      <div class="field">
-        <label>Bundle / Gift-With-Purchase</label>
-        <input type="text" id="bundleStrategy" placeholder="e.g. Buy 2 get 1, free sachet over $40">
-        <div class="hint">BMSM / GWP offers for creators and shop to push</div>
+
+    <!-- Standard packages: full promotional setup -->
+    <div id="promo-standard" style="display:none">
+      <div class="card-sub">We run and manage these on your TikTok Shop. Set once — easily adjusted later.</div>
+      <div class="row">
+        <div class="field">
+          <label>Creator Promo Code</label>
+          <input type="text" id="promoCode" placeholder="e.g. BRAND20">
+          <div class="hint">Custom code creators share in their videos</div>
+        </div>
+        <div class="field">
+          <label>Promo Code Discount</label>
+          <div style="position:relative">
+            <input type="number" id="promoCodeDiscount" placeholder="e.g. 15" min="1" max="80" step="1" style="padding-right:30px">
+            <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px">%</span>
+          </div>
+          <div class="hint">% off for viewers using the creator's code</div>
+        </div>
       </div>
-      <div class="field">
-        <label>Monthly Sample Budget (units)</label>
-        <input type="number" id="sampleBudget" placeholder="e.g. 50" min="0">
-        <div class="hint">Sample units per month across creators</div>
+      <div class="row">
+        <div class="field">
+          <label>Flash Sale Cadence</label>
+          <select id="flashSaleCadence">
+            <option value="">— select —</option>
+            <option>None</option>
+            <option>Weekly</option>
+            <option>Bi-weekly</option>
+            <option>Monthly</option>
+            <option>Campaign-only</option>
+          </select>
+          <div class="hint">How often we run seller flash sales on hero products</div>
+        </div>
+        <div class="field">
+          <label>Free Shipping Threshold ($)</label>
+          <input type="text" id="freeShipThreshold" placeholder="e.g. 35  (or leave blank)">
+          <div class="hint">Cart value to unlock free shipping</div>
+        </div>
       </div>
-    </div>
-    <div class="row">
-      <div class="field">
-        <label>Auto-Approve Sample Requests?</label>
-        <select id="sampleAutoApprove">
-          <option value="">— select —</option>
-          <option>Yes</option>
-          <option>No — manual review</option>
-        </select>
+      <div class="row">
+        <div class="field">
+          <label>Bundle / BMSM / GWP</label>
+          <input type="text" id="bundleStrategy" placeholder="e.g. Buy 2 get 10% off, free sachet over $40">
+          <div class="hint">Buy More Save More, bundles, or gift-with-purchase</div>
+        </div>
+        <div class="field">
+          <label>Follower Coupon</label>
+          <input type="text" id="followerCoupon" placeholder="e.g. 10% off for shop followers">
+          <div class="hint">Reward people who follow your TikTok Shop</div>
+        </div>
       </div>
-      <div class="field">
-        <label>Sample Approval Criteria</label>
-        <input type="text" id="sampleApprovalCriteria" placeholder="e.g. 1k+ followers, US-based, on-niche">
-        <div class="hint">Who qualifies — used when auto-approve is off</div>
+      <div class="row">
+        <div class="field">
+          <label>Review Coupon</label>
+          <input type="text" id="reviewCoupon" placeholder="e.g. $3 off next order after review">
+          <div class="hint">Post-purchase coupon — drives TikTok Shop reviews</div>
+        </div>
+        <div class="field">
+          <label>Creator Exclusive Price?</label>
+          <select id="creatorExclusivePrice">
+            <option value="">— select —</option>
+            <option>Yes — offer a special price during creator content</option>
+            <option>No</option>
+          </select>
+          <div class="hint">Special price shown only when a creator is promoting</div>
+        </div>
+      </div>
+      <div class="row">
+        <div class="field">
+          <label>Monthly Sample Budget (units)</label>
+          <input type="number" id="sampleBudget" placeholder="e.g. 50" min="0">
+          <div class="hint">Sample units per month across creators</div>
+        </div>
+        <div class="field">
+          <label>Auto-Approve Sample Requests?</label>
+          <select id="sampleAutoApprove">
+            <option value="">— select —</option>
+            <option>Yes</option>
+            <option>No — manual review</option>
+          </select>
+        </div>
+      </div>
+      <div class="row full">
+        <div class="field">
+          <label>Sample Approval Criteria</label>
+          <input type="text" id="sampleApprovalCriteria" placeholder="e.g. 1k+ followers, US-based, beauty niche">
+          <div class="hint">Who qualifies — used when auto-approve is off</div>
+        </div>
       </div>
     </div>
   </div>
@@ -1079,6 +1160,26 @@ function showConditionalSection() {
       if (names.length) c1Field.value = names.join(', ');
     }
   }
+  updateStep4Cards();
+}
+
+function updateStep4Cards() {
+  const isNetwork = state.offerType === 'network';
+  document.getElementById('comm-standard').style.display = isNetwork ? 'none' : '';
+  document.getElementById('comm-network').style.display  = isNetwork ? '' : 'none';
+  document.getElementById('promo-standard').style.display = isNetwork ? 'none' : '';
+  document.getElementById('promo-network').style.display  = isNetwork ? '' : 'none';
+}
+
+function updateCNCommission() {
+  const creator = parseFloat(document.getElementById('cnCreatorCommission')?.value) || 0;
+  const totalEl = document.getElementById('cnTotalCommission');
+  if (!totalEl) return;
+  if (creator >= 15) {
+    totalEl.textContent = (creator + 4).toFixed(creator % 1 === 0 ? 0 : 1);
+  } else {
+    totalEl.textContent = '—';
+  }
 }
 
 // ─── Budget slider (Cohort 1) ─────────────────────────────────────────────────
@@ -1108,14 +1209,16 @@ function renderCohort2Products() {
   container.innerHTML = `
     <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px">Creators per product</div>
     ${products.map((p, i) => {
+      const priceNum = parseFloat((p.price || '').replace(/[^0-9.]/g, '')) || 0;
       return `<div class="c2-product-row">
         ${p.imageUrl ? `<img class="c2-product-thumb" src="${p.imageUrl}" alt="" onerror="this.style.display='none'">` : '<div class="c2-product-thumb"></div>'}
         <div class="c2-product-info">
-          <div class="c2-product-name">${p.title}</div>
-          <div class="c2-product-price-label" id="c2-cost-${i}">20 creators × $100 = $2,000</div>
+          <div class="c2-product-name">${p.title}${priceNum ? ' <span style="color:var(--muted);font-weight:400">· $' + priceNum.toFixed(2) + '</span>' : ''}</div>
+          <div class="c2-product-price-label" id="c2-cost-${i}" data-price="${priceNum}">20 creators × 10 videos × $10/video = $2,000</div>
+          ${priceNum ? `<div style="font-size:10px;color:var(--muted);margin-top:2px" id="c2-reimb-${i}">+ 20 creators × $${priceNum.toFixed(2)} reimbursement = $${(20 * priceNum).toFixed(2)}</div>` : ''}
         </div>
         <div class="c2-creator-wrap">
-          <input type="number" class="c2-creator-input" min="10" max="100" step="5" value="20" oninput="updateCohort2Calc()">
+          <input type="number" class="c2-creator-input" min="10" max="100" step="5" value="20" data-price="${priceNum}" oninput="updateCohort2Calc()">
           <div class="c2-creator-label">creators</div>
         </div>
       </div>`;
@@ -1125,21 +1228,37 @@ function renderCohort2Products() {
 
 function updateCohort2Calc() {
   const rows = document.querySelectorAll('.c2-creator-input');
-  let totalCreators = 0;
+  let totalCreators = 0, totalVideoFees = 0, totalReimbursement = 0;
   if (rows.length) {
     rows.forEach((input, i) => {
       const creators = parseInt(input.value) || 0;
+      const price = parseFloat(input.dataset.price) || 0;
       totalCreators += creators;
+      totalVideoFees += creators * 100;
+      totalReimbursement += creators * price;
+
       const costLabel = document.getElementById('c2-cost-' + i);
-      if (costLabel) costLabel.textContent = `${creators} creators × $100 = $${(creators * 100).toLocaleString()}`;
+      if (costLabel) costLabel.textContent = `${creators} creators × 10 videos × $10/video = $${(creators * 100).toLocaleString()}`;
+
+      const reimbLabel = document.getElementById('c2-reimb-' + i);
+      if (reimbLabel && price) reimbLabel.textContent = `+ ${creators} creators × $${price.toFixed(2)} reimbursement = $${(creators * price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
     });
   } else {
     totalCreators = parseInt(document.getElementById('c2-creatorCount-manual')?.value) || 0;
+    totalVideoFees = totalCreators * 100;
   }
   const calc = document.getElementById('costCalc');
   if (!totalCreators) { calc.style.display = 'none'; return; }
-  document.getElementById('cc-creators').textContent = totalCreators;
-  document.getElementById('cc-total').textContent    = (totalCreators * 100).toLocaleString();
+
+  const grandTotal = totalVideoFees + totalReimbursement;
+  let calcHtml = `<div style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:12px">Estimated Campaign Cost</div>
+    <div class="cost-row"><span class="cost-row-label">${totalCreators} creators × 10 videos × $10/video</span><span class="cost-row-val">$${totalVideoFees.toLocaleString()}</span></div>`;
+  if (totalReimbursement > 0) {
+    calcHtml += `<div class="cost-row"><span class="cost-row-label">Product reimbursements</span><span class="cost-row-val">$${totalReimbursement.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></div>
+    <div class="cost-row" style="border-top:1px solid rgba(255,255,255,.08);margin-top:8px;padding-top:8px"><span class="cost-row-label" style="font-weight:700">Total campaign cost</span><span class="cost-row-val" style="color:var(--teal);font-weight:800">$${grandTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></div>`;
+  }
+  calcHtml += `<div style="font-size:10px;color:var(--muted);margin-top:10px;line-height:1.55">Payment links generated via Reacher after onboarding. Costs confirmed before any charge.</div>`;
+  calc.innerHTML = calcHtml;
   calc.style.display = 'block';
 }
 
@@ -1399,23 +1518,45 @@ function buildReview() {
     const totalC2 = [...rows].reduce((s, el) => s + (parseInt(el.value) || 0), 0);
     if (totalC2) finHtml += rv('Cohort 2 Creator Payments', `${totalC2} creators × $100 = $${(totalC2 * 100).toLocaleString()}`);
   }
-  const tc = v('tcCommission'), oc = v('openCommission'), ac = v('adsCommission');
-  if (tc) finHtml += rv('TC Commission', tc + '%');
-  if (oc) finHtml += rv('Open Collab Commission', oc + '%');
-  if (ac) finHtml += rv('Ads Commission', ac + '%');
+  if (state.offerType === 'network') {
+    const creatorComm = v('cnCreatorCommission'), totalComm = document.getElementById('cnTotalCommission')?.textContent;
+    if (creatorComm) finHtml += rv('Creator Commission', creatorComm + '%');
+    finHtml += rv('Cult Content Cut', '4% (fixed)');
+    if (totalComm && totalComm !== '—') finHtml += rv('Total Shown to Creators', totalComm + '%');
+  } else {
+    const tc = v('tcCommission'), oc = v('openCommission');
+    if (tc) finHtml += rv('TC Commission', tc + '%');
+    if (oc) finHtml += rv('Open Collab Commission', oc + '%');
+  }
   finHtml += `</div></div>`;
   html += finHtml;
 
   // Promotional Strategy
-  const flashCadence = v('flashSaleCadence'), freeShip = v('freeShipThreshold'), bundle = v('bundleStrategy'), samples = v('sampleBudget');
-  if (flashCadence || freeShip || bundle || samples) {
-    html += `<div class="rv-section"><div class="rv-section-title">Promotional Strategy</div><div class="rv-grid">
-      ${rv('Flash Sale Cadence', flashCadence)}
-      ${rv('Free Shipping Threshold', freeShip ? '$' + freeShip : '')}
-      ${rv('Bundle / GWP', bundle)}
-      ${rv('Sample Budget', samples ? samples + ' units/mo' : '')}
-      ${rv('Auto-Approve Samples', v('sampleAutoApprove'))}
-    </div></div>`;
+  if (state.offerType === 'network') {
+    const activePromo = v('cnActivePromo');
+    if (activePromo) {
+      html += `<div class="rv-section"><div class="rv-section-title">Active Promotion</div>
+        <div style="font-size:12.5px;color:rgba(255,255,255,.75);line-height:1.6">${activePromo.replace(/</g,'&lt;')}</div>
+      </div>`;
+    }
+  } else {
+    const promo = v('promoCode'), promoDisc = v('promoCodeDiscount'), flash = v('flashSaleCadence'),
+          freeShip = v('freeShipThreshold'), bundle = v('bundleStrategy'),
+          follower = v('followerCoupon'), review = v('reviewCoupon'),
+          creatorExcl = v('creatorExclusivePrice'), samples = v('sampleBudget');
+    if (promo || flash || freeShip || bundle || follower || review || creatorExcl || samples) {
+      html += `<div class="rv-section"><div class="rv-section-title">Promotional Strategy</div><div class="rv-grid">
+        ${rv('Creator Promo Code', promo ? promo + (promoDisc ? ' (' + promoDisc + '% off)' : '') : '')}
+        ${rv('Flash Sale Cadence', flash)}
+        ${rv('Free Shipping', freeShip ? '$' + freeShip + ' threshold' : '')}
+        ${rv('Bundle / GWP', bundle)}
+        ${rv('Follower Coupon', follower)}
+        ${rv('Review Coupon', review)}
+        ${rv('Creator Exclusive Price', creatorExcl)}
+        ${rv('Monthly Samples', samples ? samples + ' units/mo' : '')}
+        ${rv('Auto-Approve Samples', v('sampleAutoApprove'))}
+      </div></div>`;
+    }
   }
 
   html += `<div class="rv-section"><div class="rv-section-title">Goals</div>
@@ -1457,13 +1598,22 @@ async function handleSubmit() {
     brandGoals:     v('brandGoals'),
     offerType:      state.offerType,
     products,
-    // Shared commission & promo fields
+    // Commission fields (offer-aware)
     tcCommission:           v('tcCommission'),
     openCommission:         v('openCommission'),
-    adsCommission:          v('adsCommission'),
+    cnCreatorCommission:    v('cnCreatorCommission'),
+    cnCCCommission:         '4',
+    cnTotalCommission:      document.getElementById('cnTotalCommission')?.textContent || '',
+    // Promo fields
+    cnActivePromo:          v('cnActivePromo'),
+    promoCode:              v('promoCode'),
+    promoCodeDiscount:      v('promoCodeDiscount'),
     flashSaleCadence:       v('flashSaleCadence'),
     freeShipThreshold:      v('freeShipThreshold'),
     bundleStrategy:         v('bundleStrategy'),
+    followerCoupon:         v('followerCoupon'),
+    reviewCoupon:           v('reviewCoupon'),
+    creatorExclusivePrice:  v('creatorExclusivePrice'),
     sampleBudget:           v('sampleBudget'),
     sampleAutoApprove:      v('sampleAutoApprove'),
     sampleApprovalCriteria: v('sampleApprovalCriteria'),
