@@ -332,6 +332,13 @@ h1,h2,h3{font-family:'Montserrat',sans-serif;font-weight:900;letter-spacing:-.02
 #vision .vp-text{color:rgba(255,255,255,.80);}
 #vision .vp-text strong{color:#ffe9b8;}
 #vision .vision-footer{color:#ffe9b8;}
+/* ── cover: logo · title · agency badge ── */
+.cover-row{display:flex;align-items:center;justify-content:center;gap:clamp(16px,3vw,34px);margin-bottom:26px;width:100%;}
+.cover-row .cover-logo{width:clamp(66px,7.4vw,112px);height:auto;margin-bottom:0;flex:0 0 auto;}
+.cover-badge{width:clamp(78px,8.8vw,134px);height:auto;object-fit:contain;flex:0 0 auto;
+  filter:drop-shadow(0 0 24px rgba(0,242,234,.30));}
+.cover-row .cover-h{margin-bottom:0;font-size:clamp(1.7rem,4.3vw,3.7rem);flex:0 1 auto;}
+@media(max-width:700px){.cover-row{flex-direction:column;gap:16px;}}
 /* ── 06 Team ── */
 #team{background:var(--dark2);}
 .team-inner{max-width:960px;width:100%;display:flex;flex-direction:column;align-items:flex-start;}
@@ -462,10 +469,13 @@ h1,h2,h3{font-family:'Montserrat',sans-serif;font-weight:900;letter-spacing:-.02
   <div class="checker-floor"></div>
   <div class="screen-inner">
     <div class="cover-mark">Private &nbsp;·&nbsp; 2026</div>
-    <img src="https://assets.cdn.filesafe.space/c216j58Vx9XxYa7WYMiA/media/68529ceff63e1913ceb4e2e0.png" alt="Cult Content" class="cover-logo">
-    <h1 class="cover-h">
-      <span class="ln2">Investment Opportunity</span>
-    </h1>
+    <div class="cover-row">
+      <img src="/proposal-assets/logo.webp" alt="Cult Content" class="cover-logo">
+      <h1 class="cover-h">
+        <span class="ln2">Investment Opportunity</span>
+      </h1>
+      <img src="/proposal-assets/badge.webp" alt="TikTok Shop Certified Agency since 2025" class="cover-badge" title="TikTok Shop Certified Agency · Since 2025">
+    </div>
     <p class="cover-sub">Cult Content manages brands, coordinates creator affiliates, and builds the infrastructure layer for how businesses sell in the creator economy. Seven people. $212K in revenue.</p>
     <div class="cover-links">
       <a href="https://cultcontent.cc" target="_blank" class="btn btn-ghost">cultcontent.cc</a>
