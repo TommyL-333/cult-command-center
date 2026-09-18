@@ -762,6 +762,63 @@ app.get('/onboard', (req, res) => {
   res.sendFile(path.join(__dirname, 'dashboard', 'onboard.html'));
 });
 
+// GET /brand-applications — password-protected admin view of all brand applications
+// Uses the same isPortalAdmin session as /portal-admin.
+const SALES_BASE_TOKEN = process.env.SALES_APP_BASE_TOKEN || 'E3UKbx6C7a5CKHscVZruH91otGb';
+const SALES_TABLE_ID   = process.env.SALES_APP_TABLE_ID   || 'tblzBuIbAMueZcPA';
+
+app.get('/brand-applications', requirePortalAdmin, (req, res) => {
+  res.sendFile(path.join(__dirname, 'dashboard', 'brand-applications.html'));
+});
+
+// GET /api/brand-applications/list — returns all records from the Lark Base, newest first
+app.get('/api/brand-applications/list', requirePortalAdmin, async (req, res) => {
+  try {
+    const token = await getLarkToken();
+    const allRecords = [];
+    let pageToken = '';
+    do {
+      const params = new URLSearchParams({ page_size: '100' });
+      if (pageToken) params.set('page_token', pageToken);
+      const r = await axios.get(
+        `https://open.larksuite.com/open-apis/bitable/v1/apps/${SALES_BASE_TOKEN}/tables/${SALES_TABLE_ID}/records?${params}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (r.data?.code !== 0) {
+        console.error('[brand-applications] Lark Base error:', r.data?.code, r.data?.msg);
+        return res.status(502).json({ error: `Lark Base error: ${r.data?.msg}` });
+      }
+      const items = r.data?.data?.items || [];
+      allRecords.push(...items);
+      pageToken = r.data?.data?.has_more ? r.data.data.page_token : '';
+    } while (pageToken);
+
+    // Shape each record for the UI
+    const rows = allRecords.map(item => ({
+      recordId:      item.record_id,
+      applicantName: item.fields['Applicant Name']  || item.fields['Primary Contact Name'] || '—',
+      brandName:     item.fields['Brand Name']       || '—',
+      offer:         item.fields['Offer Selected']   || '—',
+      submittedAt:   item.fields['Submitted At']     || '',
+      email:         item.fields['Primary Contact Email'] || '',
+      website:       item.fields['Website URL']      || '',
+      budget:        item.fields['Monthly Budget']   || '—',
+    }));
+
+    // Sort newest first
+    rows.sort((a, b) => {
+      const da = a.submittedAt ? new Date(a.submittedAt).getTime() : 0;
+      const db = b.submittedAt ? new Date(b.submittedAt).getTime() : 0;
+      return db - da;
+    });
+
+    res.json({ ok: true, rows });
+  } catch (err) {
+    console.error('[brand-applications] list error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /onboard-v1 — legacy onboarding form (kept for reference)
 app.get('/onboard-v1', (req, res) => {
   const host = req.headers['x-forwarded-host'] || req.headers.host || '';
