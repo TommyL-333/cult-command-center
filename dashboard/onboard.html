@@ -251,6 +251,14 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--teal);cursor:pointer;border:none}
 .range-labels{display:flex;justify-content:space-between;font-size:9.5px;color:var(--muted);font-weight:700}
 
+/* ── Product chip picker ── */
+.product-chip-picker{display:flex;flex-wrap:wrap;gap:8px;min-height:40px;padding:4px 0}
+.product-chip-picker:empty::before{content:'No products selected from step 2 — go back and choose products';font-size:10.5px;color:var(--muted);font-style:italic;padding:6px 0}
+.prod-chip{display:flex;align-items:center;gap:7px;padding:6px 10px 6px 7px;border:1.5px solid rgba(255,255,255,.12);border-radius:100px;cursor:pointer;transition:all .15s;background:rgba(255,255,255,.03)}
+.prod-chip img{width:26px;height:26px;border-radius:50%;object-fit:cover;flex-shrink:0;background:#1a1a2e}
+.prod-chip-name{font-size:11.5px;font-weight:600;color:rgba(255,255,255,.7);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.prod-chip.sel{border-color:var(--teal);background:rgba(32,213,196,.08)}
+.prod-chip.sel .prod-chip-name{color:#fff}
 /* ── Cost calc ── */
 .cost-card{background:rgba(32,213,196,.05);border:1px solid rgba(32,213,196,.15);border-radius:12px;padding:16px 18px;margin-top:14px}
 .cost-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;font-size:12.5px}
@@ -597,22 +605,29 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
       </div>
       <div class="row">
         <div class="field">
-          <label>Bundle / BMSM / GWP</label>
-          <input type="text" id="bundleStrategy" placeholder="e.g. Buy 2 get 10% off, free sachet over $40">
-          <div class="hint">Buy More Save More, bundles, or gift-with-purchase</div>
+          <label>Buy More Save More (BMSM)</label>
+          <input type="text" id="bmsmStrategy" placeholder="e.g. Spend $50, get 15% off">
+          <div class="hint">Discount triggered by spend amount or item quantity</div>
         </div>
+        <div class="field">
+          <label>Gift With Purchase (GWP)</label>
+          <input type="text" id="gwpStrategy" placeholder="e.g. Buy any serum, get a free sachet">
+          <div class="hint">Free item added to cart when purchase threshold is met</div>
+        </div>
+      </div>
+      <div class="row">
         <div class="field">
           <label>Follower Coupon</label>
           <input type="text" id="followerCoupon" placeholder="e.g. 10% off for shop followers">
           <div class="hint">Reward people who follow your TikTok Shop</div>
         </div>
-      </div>
-      <div class="row">
         <div class="field">
           <label>Review Coupon</label>
           <input type="text" id="reviewCoupon" placeholder="e.g. $3 off next order after review">
           <div class="hint">Post-purchase coupon — drives TikTok Shop reviews</div>
         </div>
+      </div>
+      <div class="row">
         <div class="field">
           <label>Creator Exclusive Price?</label>
           <select id="creatorExclusivePrice">
@@ -622,37 +637,36 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
           </select>
           <div class="hint">Special price shown only when a creator is promoting</div>
         </div>
-      </div>
-      <div class="row">
         <div class="field">
           <label>Monthly Sample Budget (units)</label>
-          <input type="number" id="sampleBudget" placeholder="e.g. 50" min="0">
-          <div class="hint">Sample units per month across creators</div>
+          <input type="number" id="sampleBudget" placeholder="e.g. 50" min="0" oninput="updateSampleCostEstimate()">
+          <div class="hint">Sample units per month across all creators</div>
         </div>
+      </div>
+      <div class="row" style="margin-bottom:4px">
         <div class="field">
           <label>Auto-Approve Sample Requests?</label>
-          <select id="sampleAutoApprove">
+          <select id="sampleAutoApprove" onchange="toggleSampleCriteria()">
             <option value="">— select —</option>
             <option>Yes</option>
             <option>No — manual review</option>
           </select>
         </div>
-      </div>
-      <div class="row full">
-        <div class="field">
+        <div class="field" id="sample-criteria-row" style="display:none">
           <label>Sample Approval Criteria</label>
           <input type="text" id="sampleApprovalCriteria" placeholder="e.g. 1k+ followers, US-based, beauty niche">
-          <div class="hint">Who qualifies — used when auto-approve is off</div>
+          <div class="hint">Who qualifies — only applies when manual review is on</div>
         </div>
       </div>
+      <div id="sampleCostEstimate" style="display:none;font-size:11px;color:var(--teal);font-weight:700;padding:8px 0 2px"></div>
     </div>
   </div>
 
   <!-- Card C: Brand Assets (shared) -->
   <div class="card" id="shared-brand-assets">
     <div class="card-title">Brand assets</div>
-    <div class="card-sub">Upload your logo, product images, fonts, or brand guidelines. Used for content creation and ads.</div>
-    <div class="row" style="margin-bottom:14px">
+    <div class="card-sub">Upload your brand logo and any supporting materials. Used for your creator landing page, content briefs, and ad setup.</div>
+    <div class="row full" style="margin-bottom:20px">
       <div class="field">
         <label>Primary Brand Color</label>
         <div style="display:flex;gap:8px;align-items:center">
@@ -660,21 +674,10 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
           <input type="text" id="brandColorHex" placeholder="#20d5c4" style="flex:1" oninput="syncColorPicker()">
         </div>
       </div>
-      <div class="field">
-        <label>Brand Fonts</label>
-        <input type="text" id="brandFonts" list="font-list" placeholder="e.g. Montserrat, Inter">
-        <datalist id="font-list">
-          <option value="Montserrat"><option value="Inter"><option value="Lato">
-          <option value="Poppins"><option value="Raleway"><option value="Nunito">
-          <option value="Open Sans"><option value="Playfair Display"><option value="DM Sans">
-          <option value="Outfit"><option value="Figtree"><option value="Plus Jakarta Sans">
-          <option value="Sora"><option value="Manrope"><option value="Work Sans">
-          <option value="Bebas Neue"><option value="Anton"><option value="Oswald">
-          <option value="Josefin Sans"><option value="Cinzel">
-        </datalist>
-        <div class="hint">Start typing to search Google Fonts we use</div>
-      </div>
     </div>
+    <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:8px">Brand Logo <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:9.5px">— used as your TikTok Shop &amp; CRM profile picture</span></div>
+    <div id="logo-asset-upload" class="asset-uploader" data-offer="logo" style="margin-bottom:20px"></div>
+    <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:8px">Brand Assets <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:9.5px">— deck, product info, brand guidelines, marketing materials</span></div>
     <div id="shared-asset-upload" class="asset-uploader" data-offer="shared"></div>
   </div>
 
@@ -820,7 +823,8 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
         <div class="row trio">
           <div class="field">
             <label>Product(s) to Feature</label>
-            <input type="text" id="sc-reimProduct" placeholder="e.g. Hero Serum, Eye Cream">
+            <div id="sc-reim-product-picker" class="product-chip-picker"></div>
+            <div class="hint">Select which products creators should purchase &amp; post about</div>
           </div>
           <div class="field">
             <label>Creator Orders Desired</label>
@@ -837,7 +841,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
       <!-- Add-ons: 5 account slots -->
       <div style="margin-top:22px">
         <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">Account Add-ons</div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.6">Each account is <strong style="color:#fff">$500/mo</strong> to manage. Choose a content type for each one — Management only, AI-generated content, or creator UGC content. Creator content requires a minimum $3,000/mo creator budget.</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.6">Each account is <strong style="color:#fff">$500/mo</strong>. Choose what kind of content we produce for it — AI-generated content or creator UGC content. Creator content requires a minimum $3,000/mo creator budget.</div>
 
         <div style="display:flex;flex-direction:column;gap:10px" id="sc-account-slots">
           <!-- slots injected by JS -->
@@ -899,7 +903,8 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
         </div>
         <div class="field">
           <label>Products to Feature</label>
-          <input type="text" id="c1-products" placeholder="Which SKUs should retainer creators focus on?">
+          <div id="c1-product-picker" class="product-chip-picker"></div>
+          <div class="hint">Select the products retainer creators should focus on</div>
         </div>
       </div>
 
@@ -1153,14 +1158,57 @@ function showConditionalSection() {
   if (el) el.classList.add('show');
   if (state.offerType === 'network') {
     renderCohort2Products();
-    // Auto-fill cohort 1 products field from step 2 selections
-    const c1Field = document.getElementById('c1-products');
-    if (c1Field && !c1Field.value && shopifyPreviewProducts.length) {
-      const names = [...selectedPreviewProducts].map(i => shopifyPreviewProducts[i]?.title).filter(Boolean);
-      if (names.length) c1Field.value = names.join(', ');
-    }
+    renderProductPicker('c1-product-picker', true);
+  }
+  if (state.offerType === 'scale') {
+    renderProductPicker('sc-reim-product-picker', true);
   }
   updateStep4Cards();
+}
+
+// Renders clickable product chips using the step-2 selected Shopify products.
+// multi=true allows multiple selections; false = single-select.
+const pickerSelections = {}; // containerId → Set of indices
+
+function renderProductPicker(containerId, multi) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  pickerSelections[containerId] = pickerSelections[containerId] || new Set([...selectedPreviewProducts]);
+  const products = shopifyPreviewProducts;
+  if (!products.length) {
+    container.innerHTML = '<div style="font-size:10.5px;color:var(--muted);font-style:italic">No products detected from your store — enter manually in step 2.</div>';
+    return;
+  }
+  // Only show products the client selected in step 2
+  const available = [...selectedPreviewProducts].map(i => ({ i, p: products[i] })).filter(x => x.p);
+  if (!available.length) {
+    container.innerHTML = '<div style="font-size:10.5px;color:var(--muted);font-style:italic">No products selected — go back to step 2 and choose products.</div>';
+    return;
+  }
+  container.innerHTML = available.map(({ i, p }) => `
+    <div class="prod-chip${pickerSelections[containerId].has(i) ? ' sel' : ''}" data-idx="${i}" data-container="${containerId}" data-multi="${multi}" onclick="toggleProductChip(this)">
+      ${p.imageUrl ? `<img src="${p.imageUrl}" alt="" onerror="this.style.display='none'">` : '<div style="width:26px;height:26px;border-radius:50%;background:#1a1a2e;flex-shrink:0"></div>'}
+      <span class="prod-chip-name">${p.title}</span>
+    </div>`).join('');
+}
+
+function toggleProductChip(chip) {
+  const idx = parseInt(chip.dataset.idx);
+  const containerId = chip.dataset.container;
+  const multi = chip.dataset.multi === 'true';
+  const sel = pickerSelections[containerId];
+  if (!sel) return;
+  if (sel.has(idx)) {
+    sel.delete(idx);
+    chip.classList.remove('sel');
+  } else {
+    if (!multi) {
+      sel.clear();
+      chip.closest('.product-chip-picker').querySelectorAll('.prod-chip').forEach(c => c.classList.remove('sel'));
+    }
+    sel.add(idx);
+    chip.classList.add('sel');
+  }
 }
 
 function updateStep4Cards() {
@@ -1282,7 +1330,6 @@ function buildAccountSlots() {
         <div class="acc-slot-price" id="${id}-price">$500/mo</div>
       </div>
       <div class="acc-type-row">
-        <button type="button" class="acc-type-btn" data-acc="${name}" data-type="management" onclick="selectAccType(this)">Management</button>
         <button type="button" class="acc-type-btn" data-acc="${name}" data-type="ai" onclick="selectAccType(this)">AI Content</button>
         <button type="button" class="acc-type-btn" data-acc="${name}" data-type="creator" onclick="selectAccType(this)">Creator Content</button>
       </div>
@@ -1336,7 +1383,9 @@ function addProduct() {
   row.innerHTML = `
     <div class="product-top">
       <div class="field"><label>Product Name</label><input type="text" id="p${idx}-name" placeholder="e.g. Glow Serum"></div>
-      <div class="field"><label>Price ($)</label><input type="number" id="p${idx}-price" placeholder="49" min="0" step="0.01"></div>
+      <div class="field"><label>Retail Price ($)</label><input type="number" id="p${idx}-price" placeholder="49" min="0" step="0.01" oninput="updateSampleCostEstimate()"></div>
+      <div class="field"><label>COGS ($)</label><input type="number" id="p${idx}-cogs" placeholder="12" min="0" step="0.01" oninput="updateSampleCostEstimate()"><div class="hint" style="font-size:9px">Cost to produce one unit</div></div>
+      <div class="field"><label>Est. Shipping ($)</label><input type="number" id="p${idx}-shipping" placeholder="5" min="0" step="0.01" oninput="updateSampleCostEstimate()"><div class="hint" style="font-size:9px">Avg fulfillment per unit</div></div>
       <button type="button" class="remove-btn" onclick="removeProduct(${idx})">×</button>
     </div>
     <div class="field"><label>TikTok Shop Link</label><input type="url" id="p${idx}-url" placeholder="https://www.tiktok.com/t/..."></div>`;
@@ -1350,14 +1399,43 @@ function removeProduct(idx) {
 
 function collectProducts() {
   const products = [];
-  document.querySelectorAll('.product-row').forEach((row, i) => {
+  document.querySelectorAll('.product-row').forEach(row => {
     const idx = row.id.replace('pr-', '');
-    const name  = document.getElementById('p' + idx + '-name')?.value.trim();
-    const price = document.getElementById('p' + idx + '-price')?.value.trim();
-    const url   = document.getElementById('p' + idx + '-url')?.value.trim();
-    if (name) products.push({ name, price, url });
+    const name     = document.getElementById('p' + idx + '-name')?.value.trim();
+    const price    = document.getElementById('p' + idx + '-price')?.value.trim();
+    const cogs     = document.getElementById('p' + idx + '-cogs')?.value.trim();
+    const shipping = document.getElementById('p' + idx + '-shipping')?.value.trim();
+    const url      = document.getElementById('p' + idx + '-url')?.value.trim();
+    if (name) products.push({ name, price, cogs, shipping, url });
   });
   return products;
+}
+
+function updateSampleCostEstimate() {
+  const units = parseInt(document.getElementById('sampleBudget')?.value) || 0;
+  const estEl = document.getElementById('sampleCostEstimate');
+  if (!estEl) return;
+  if (!units) { estEl.style.display = 'none'; return; }
+  const rows = document.querySelectorAll('.product-row');
+  let totalCogs = 0, totalShip = 0, count = 0;
+  rows.forEach(row => {
+    const idx = row.id.replace('pr-', '');
+    const c = parseFloat(document.getElementById('p' + idx + '-cogs')?.value) || 0;
+    const s = parseFloat(document.getElementById('p' + idx + '-shipping')?.value) || 0;
+    if (c || s) { totalCogs += c; totalShip += s; count++; }
+  });
+  if (!count) { estEl.style.display = 'none'; return; }
+  const avgCogs = totalCogs / count, avgShip = totalShip / count;
+  const costPerUnit = avgCogs + avgShip;
+  const monthlyCost = units * costPerUnit;
+  estEl.textContent = `Estimated monthly sample cost: ${units} units × $${costPerUnit.toFixed(2)} (COGS + shipping) = $${monthlyCost.toFixed(2)}/mo`;
+  estEl.style.display = 'block';
+}
+
+function toggleSampleCriteria() {
+  const sel = document.getElementById('sampleAutoApprove')?.value;
+  const row = document.getElementById('sample-criteria-row');
+  if (row) row.style.display = (sel === 'No — manual review') ? '' : 'none';
 }
 
 // ─── Asset upload ─────────────────────────────────────────────────────────────
@@ -1541,15 +1619,16 @@ function buildReview() {
     }
   } else {
     const promo = v('promoCode'), promoDisc = v('promoCodeDiscount'), flash = v('flashSaleCadence'),
-          freeShip = v('freeShipThreshold'), bundle = v('bundleStrategy'),
+          freeShip = v('freeShipThreshold'), bmsm = v('bmsmStrategy'), gwp = v('gwpStrategy'),
           follower = v('followerCoupon'), review = v('reviewCoupon'),
           creatorExcl = v('creatorExclusivePrice'), samples = v('sampleBudget');
-    if (promo || flash || freeShip || bundle || follower || review || creatorExcl || samples) {
+    if (promo || flash || freeShip || bmsm || gwp || follower || review || creatorExcl || samples) {
       html += `<div class="rv-section"><div class="rv-section-title">Promotional Strategy</div><div class="rv-grid">
         ${rv('Creator Promo Code', promo ? promo + (promoDisc ? ' (' + promoDisc + '% off)' : '') : '')}
         ${rv('Flash Sale Cadence', flash)}
         ${rv('Free Shipping', freeShip ? '$' + freeShip + ' threshold' : '')}
-        ${rv('Bundle / GWP', bundle)}
+        ${rv('Buy More Save More', bmsm)}
+        ${rv('Gift With Purchase', gwp)}
         ${rv('Follower Coupon', follower)}
         ${rv('Review Coupon', review)}
         ${rv('Creator Exclusive Price', creatorExcl)}
@@ -1610,7 +1689,8 @@ async function handleSubmit() {
     promoCodeDiscount:      v('promoCodeDiscount'),
     flashSaleCadence:       v('flashSaleCadence'),
     freeShipThreshold:      v('freeShipThreshold'),
-    bundleStrategy:         v('bundleStrategy'),
+    bmsmStrategy:           v('bmsmStrategy'),
+    gwpStrategy:            v('gwpStrategy'),
     followerCoupon:         v('followerCoupon'),
     reviewCoupon:           v('reviewCoupon'),
     creatorExclusivePrice:  v('creatorExclusivePrice'),
@@ -1618,7 +1698,6 @@ async function handleSubmit() {
     sampleAutoApprove:      v('sampleAutoApprove'),
     sampleApprovalCriteria: v('sampleApprovalCriteria'),
     brandColor:             v('brandColorHex'),
-    brandFonts:             v('brandFonts'),
     // Offer-specific
     offerDetails: collectOfferDetails(),
     // Assets
@@ -1705,14 +1784,21 @@ function populateProductsFromPreview() {
   const list = document.getElementById('productList');
   if (!list) return;
   list.innerHTML = '';
+  productCount = 0;
   selected.forEach(p => {
+    const idx = productCount++;
     const row = document.createElement('div');
     row.className = 'product-row';
+    row.id = 'pr-' + idx;
     row.innerHTML = `
-      <input type="text" placeholder="Product name" value="${p.title.replace(/"/g,'&quot;')}" class="prod-name">
-      <input type="text" placeholder="Price" value="${p.price || ''}" class="prod-price">
-      <input type="text" placeholder="Product URL" value="" class="prod-url">
-      <button type="button" class="remove-btn" onclick="this.parentElement.remove()">×</button>`;
+      <div class="product-top">
+        <div class="field"><label>Product Name</label><input type="text" id="p${idx}-name" value="${p.title.replace(/"/g,'&quot;')}" placeholder="e.g. Glow Serum"></div>
+        <div class="field"><label>Retail Price ($)</label><input type="number" id="p${idx}-price" value="${(p.price || '').replace(/[^0-9.]/g,'')}" placeholder="49" min="0" step="0.01" oninput="updateSampleCostEstimate()"></div>
+        <div class="field"><label>COGS ($)</label><input type="number" id="p${idx}-cogs" placeholder="12" min="0" step="0.01" oninput="updateSampleCostEstimate()"><div class="hint" style="font-size:9px">Cost to produce one unit</div></div>
+        <div class="field"><label>Est. Shipping ($)</label><input type="number" id="p${idx}-shipping" placeholder="5" min="0" step="0.01" oninput="updateSampleCostEstimate()"><div class="hint" style="font-size:9px">Avg fulfillment per unit</div></div>
+        <button type="button" class="remove-btn" onclick="removeProduct(${idx})">×</button>
+      </div>
+      <div class="field"><label>TikTok Shop Link</label><input type="url" id="p${idx}-url" placeholder="https://www.tiktok.com/t/..."></div>`;
     list.appendChild(row);
   });
 }
@@ -1798,17 +1884,18 @@ function collectOfferDetails() {
       creatorBudget:    v('gp-creatorBudget'),
       creativeDirection: v('gp-creativeDirection'),
       brandColor:       v('brandColorHex'),
-      brandFonts:       v('brandFonts'),
     };
   }
   if (state.offerType === 'scale') {
     const accSelected = Object.entries(scAccountSelections).filter(([,t]) => t !== 'none');
+    const scReimProducts = pickerSelections['sc-reim-product-picker']
+      ? [...pickerSelections['sc-reim-product-picker']].map(i => shopifyPreviewProducts[i]?.title).filter(Boolean).join(', ')
+      : '';
     return {
-      reimProduct:      v('sc-reimProduct'),
+      reimProducts:     scReimProducts,
       reimOrders:       v('sc-reimOrders'),
       reimPrice:        v('sc-reimPrice'),
       brandColor:       v('brandColorHex'),
-      brandFonts:       v('brandFonts'),
       accounts:         scAccountSelections,
       accountsSelected: accSelected.map(([name, type]) => ({ name, type })),
       addonMonthlyTotal: accSelected.length * 500,
@@ -1834,7 +1921,9 @@ function collectOfferDetails() {
       shopCode:              v('cn-shopCode'),
       cohort1Budget:         document.getElementById('c1-budget')?.value,
       cohort1Niches:         v('c1-niches'),
-      cohort1Products:       v('c1-products'),
+      cohort1Products:       pickerSelections['c1-product-picker']
+        ? [...pickerSelections['c1-product-picker']].map(i => shopifyPreviewProducts[i]?.title).filter(Boolean).join(', ')
+        : '',
       cohort1Creators:       v('c1-specificCreators'),
       cohort2Products,
       cohort2CreatorCount:   totalCreators,
@@ -1856,6 +1945,7 @@ function syncColorPicker() {
 // ─── Init ─────────────────────────────────────────────────────────────────────
 addProduct(); // start with one empty product row
 buildAccountSlots();
+initAssetUploader('logo-asset-upload');
 initAssetUploader('shared-asset-upload');
 </script>
 </body>
