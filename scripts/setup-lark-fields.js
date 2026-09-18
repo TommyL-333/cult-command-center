@@ -89,9 +89,17 @@ async function run() {
     { field_name: 'Ads Budget',             type: 2 },
     { field_name: 'Addon Monthly Total',    type: 2 },
     // text
-    { field_name: 'TikTok Shop Code',    type: 1 },
-    { field_name: 'Account Slot Type',   type: 1 },
-    { field_name: 'ROAS Target',         type: 1 },
+    { field_name: 'TikTok Shop Code',          type: 1 },
+    { field_name: 'Account Slot Type',         type: 1 },
+    { field_name: 'ROAS Target',               type: 1 },
+    // Promotional strategy
+    { field_name: 'Promo Code',                type: 1 },
+    { field_name: 'Promo Discount',            type: 1 },
+    { field_name: 'BMSM Strategy',             type: 1 },
+    { field_name: 'GWP Strategy',              type: 1 },
+    { field_name: 'Follower Coupon',           type: 1 },
+    { field_name: 'Review Coupon',             type: 1 },
+    { field_name: 'Creator Exclusive Price',   type: 1 },
   ];
 
   for (const spec of clientsToAdd) {
