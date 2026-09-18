@@ -307,13 +307,12 @@ h1,h2,h3{font-family:'Montserrat',sans-serif;font-weight:900;letter-spacing:-.02
 /* ── 13 Long Vision: leaf frame over a soft sunset ── */
 #vision{position:relative;overflow:hidden;background:#0b0a14;}
 .sunset{position:absolute;inset:0;z-index:0;pointer-events:none;
-  /* Drop a photo at proposals/assets/sunset.jpg and it takes over automatically.
-     Until then the browser skips the missing layer and the gradient below shows. */
+  /* Photo layer. The gradient stack below is the fallback if it ever fails to load. */
   background-size:cover,auto,auto,auto,auto,auto,auto,auto;
-  background-position:center 45%;
+  background-position:center 38%;
   background-repeat:no-repeat;
   background-image:
-    url('/proposal-assets/sunset.jpg'),
+    url('/proposal-assets/sunset.webp'),
     radial-gradient(circle 60px at 50% 58%, rgba(255,251,226,1) 0%, rgba(255,240,190,.9) 40%, transparent 72%),
     radial-gradient(ellipse 40% 16% at 50% 58%, rgba(255,236,176,.95) 0%, rgba(255,205,128,.6) 45%, transparent 78%),
     radial-gradient(ellipse 96% 30% at 50% 60%, rgba(255,181,110,.75) 0%, rgba(255,150,105,.34) 46%, transparent 80%),
@@ -323,12 +322,10 @@ h1,h2,h3{font-family:'Montserrat',sans-serif;font-weight:900;letter-spacing:-.02
     linear-gradient(180deg,
       #3b2f66 0%, #6b4470 20%, #a85f6b 36%, #d98a63 50%,
       #f0ad70 57%, #c98a5f 65%, #6d6a4e 74%, #38452f 85%, #1b2419 100%);
-  filter:blur(1px) saturate(1.2) brightness(1.05);transform:scale(1.04);}
-.sunset::after{content:'';position:absolute;left:48.2%;top:59%;width:3.6%;height:34%;
-  background:linear-gradient(180deg,rgba(255,238,190,.85),rgba(255,206,140,.25) 55%,transparent);
-  filter:blur(11px);border-radius:50%;}
+  filter:saturate(1.08);transform:scale(1.03);}
+
 .vig{position:absolute;inset:0;z-index:1;pointer-events:none;
-  background:radial-gradient(ellipse 58% 52% at 50% 52%, rgba(10,8,20,.30) 0%, rgba(10,8,20,.52) 58%, rgba(10,8,20,.80) 100%);}
+  background:radial-gradient(ellipse 66% 60% at 50% 50%, rgba(9,7,18,.22) 0%, rgba(9,7,18,.44) 58%, rgba(9,7,18,.78) 100%);}
 .leafframe{position:absolute;inset:0;z-index:3;pointer-events:none;
   border-style:solid;border-width:96px 112px;
   border-image:url('/proposal-assets/leaf-frame.webp') 172 round;
