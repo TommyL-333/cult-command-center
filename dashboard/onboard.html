@@ -877,6 +877,10 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- ─── SHARED COHORTS (Growth / Scale / Network) ─── -->
+  <div id="cond-cohorts" style="display:none">
 
     <!-- ── Cohort 1 — Creator Retainers ── -->
     <div class="card">
@@ -887,13 +891,13 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
       <div class="card-sub">Hand-picked creators on monthly retainer agreements. We match, pitch, and manage them for you.</div>
 
       <div style="margin-bottom:18px">
-        <label style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);display:block;margin-bottom:10px">Monthly Retainer Budget <span class="req">*</span></label>
+        <label style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);display:block;margin-bottom:10px">Monthly Retainer Budget</label>
         <div class="budget-slider-wrap">
-          <div class="budget-display" id="c1-budget-display">$10,000<small>/mo</small></div>
-          <input type="range" id="c1-budgetSlider" min="10000" max="100000" step="5000" value="10000" oninput="updateBudgetDisplay()">
-          <div class="range-labels"><span>$10,000</span><span>$100,000</span></div>
+          <div class="budget-display" id="c1-budget-display">$0<small>/mo</small></div>
+          <input type="range" id="c1-budgetSlider" min="0" max="10000" step="1000" value="0" oninput="updateBudgetDisplay()">
+          <div class="range-labels" id="c1-range-labels"><span>$0</span><span>$10,000</span></div>
         </div>
-        <input type="hidden" id="c1-budget" value="10000">
+        <input type="hidden" id="c1-budget" value="0">
       </div>
 
       <div class="row">
@@ -922,17 +926,13 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
         <span style="background:linear-gradient(135deg,var(--teal),#7b2fff);color:#fff;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;padding:3px 9px;border-radius:100px">Cohort 2</span>
         <div class="card-title" style="margin:0">Mass Community</div>
       </div>
-      <div class="card-sub">Creators purchase your product, post authentic content, and get reimbursed. Set how many creators you want per product — we handle the rest.</div>
+      <div class="card-sub">Creators purchase your product, post authentic content, and get reimbursed $25 per video. Set how many creators you want per product — we handle the rest.</div>
 
       <!-- Per-product creator count rows — populated from step 2 selections -->
       <div id="c2-products-list"></div>
 
       <!-- Live cost calculator -->
-      <div class="cost-card" id="costCalc" style="display:none">
-        <div style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:12px">Estimated Campaign Cost</div>
-        <div class="cost-row"><span class="cost-row-label"><span id="cc-creators">0</span> creators × 10 videos × $10/video</span><span class="cost-row-val">$<span id="cc-total">0</span></span></div>
-        <div style="font-size:10px;color:var(--muted);margin-top:10px;line-height:1.55">Payment links generated via Reacher after you're onboarded. Costs confirmed before any charge.</div>
-      </div>
+      <div class="cost-card" id="costCalc" style="display:none"></div>
     </div>
   </div>
 
@@ -1083,6 +1083,16 @@ function validateStep(n) {
     }
   }
   if (n === 4) {
+    // Validate Creator Network commission minimum
+    if (state.offerType === 'network') {
+      const comm = parseFloat(document.getElementById('cnCreatorCommission')?.value) || 0;
+      if (comm < 15) {
+        const inp = document.getElementById('cnCreatorCommission');
+        if (inp) { inp.style.borderColor = 'var(--red, #f87171)'; inp.focus(); }
+        updateCNCommission(); // show error hint
+        return false;
+      }
+    }
     if (state.offerType === 'foundation') {
       return requireField('fn-shopCategory', 'Please select a TikTok Shop category');
     }
@@ -1156,7 +1166,27 @@ function showConditionalSection() {
   const map = { foundation: 'cond-foundation', growth: 'cond-growth', scale: 'cond-scale', network: 'cond-network' };
   const el = document.getElementById(map[state.offerType]);
   if (el) el.classList.add('show');
-  if (state.offerType === 'network') {
+
+  const showCohorts = ['growth', 'scale', 'network'].includes(state.offerType);
+  const cohortsEl = document.getElementById('cond-cohorts');
+  if (cohortsEl) cohortsEl.style.display = showCohorts ? '' : 'none';
+
+  if (showCohorts) {
+    // Configure Cohort 1 slider range by offer
+    const slider = document.getElementById('c1-budgetSlider');
+    const labels = document.getElementById('c1-range-labels');
+    if (slider) {
+      if (state.offerType === 'growth') {
+        slider.min = 0; slider.max = 10000; slider.step = 1000;
+        if (parseInt(slider.value) > 10000) slider.value = 0;
+        if (labels) labels.innerHTML = '<span>$0</span><span>$10,000</span>';
+      } else {
+        slider.min = 10000; slider.max = 100000; slider.step = 5000;
+        if (parseInt(slider.value) < 10000) slider.value = 10000;
+        if (labels) labels.innerHTML = '<span>$10,000</span><span>$100,000</span>';
+      }
+      updateBudgetDisplay();
+    }
     renderCohort2Products();
     renderProductPicker('c1-product-picker', true);
   }
@@ -1220,12 +1250,19 @@ function updateStep4Cards() {
 }
 
 function updateCNCommission() {
-  const creator = parseFloat(document.getElementById('cnCreatorCommission')?.value) || 0;
+  const input = document.getElementById('cnCreatorCommission');
+  const creator = parseFloat(input?.value) || 0;
   const totalEl = document.getElementById('cnTotalCommission');
+  const hintEl = input?.closest('.field')?.querySelector('.hint');
   if (!totalEl) return;
-  if (creator >= 15) {
+  if (creator > 0 && creator < 15) {
+    if (hintEl) { hintEl.textContent = 'Minimum 15% — raise to continue'; hintEl.style.color = 'var(--red, #f87171)'; }
+    totalEl.textContent = '—';
+  } else if (creator >= 15) {
+    if (hintEl) { hintEl.textContent = 'What creators earn on each sale — minimum 15%'; hintEl.style.color = ''; }
     totalEl.textContent = (creator + 4).toFixed(creator % 1 === 0 ? 0 : 1);
   } else {
+    if (hintEl) { hintEl.textContent = 'What creators earn on each sale — minimum 15%'; hintEl.style.color = ''; }
     totalEl.textContent = '—';
   }
 }
@@ -1249,7 +1286,7 @@ function renderCohort2Products() {
         <div class="field">
           <label>Number of Creators <span class="req">*</span></label>
           <input type="number" id="c2-creatorCount-manual" min="10" max="100" step="5" placeholder="Min 10, max 100" oninput="updateCohort2Calc()">
-          <div class="hint">10–100 creators. Each makes 10 videos × $10/video = $100/creator</div>
+          <div class="hint">10–100 creators. Each makes 10 videos × $25/video = $250/creator</div>
         </div>
       </div>`;
     return;
@@ -1262,7 +1299,7 @@ function renderCohort2Products() {
         ${p.imageUrl ? `<img class="c2-product-thumb" src="${p.imageUrl}" alt="" onerror="this.style.display='none'">` : '<div class="c2-product-thumb"></div>'}
         <div class="c2-product-info">
           <div class="c2-product-name">${p.title}${priceNum ? ' <span style="color:var(--muted);font-weight:400">· $' + priceNum.toFixed(2) + '</span>' : ''}</div>
-          <div class="c2-product-price-label" id="c2-cost-${i}" data-price="${priceNum}">20 creators × 10 videos × $10/video = $2,000</div>
+          <div class="c2-product-price-label" id="c2-cost-${i}" data-price="${priceNum}">20 creators × 10 videos × $25/video = $5,000</div>
           ${priceNum ? `<div style="font-size:10px;color:var(--muted);margin-top:2px" id="c2-reimb-${i}">+ 20 creators × $${priceNum.toFixed(2)} reimbursement = $${(20 * priceNum).toFixed(2)}</div>` : ''}
         </div>
         <div class="c2-creator-wrap">
@@ -1282,25 +1319,25 @@ function updateCohort2Calc() {
       const creators = parseInt(input.value) || 0;
       const price = parseFloat(input.dataset.price) || 0;
       totalCreators += creators;
-      totalVideoFees += creators * 100;
+      totalVideoFees += creators * 250;
       totalReimbursement += creators * price;
 
       const costLabel = document.getElementById('c2-cost-' + i);
-      if (costLabel) costLabel.textContent = `${creators} creators × 10 videos × $10/video = $${(creators * 100).toLocaleString()}`;
+      if (costLabel) costLabel.textContent = `${creators} creators × 10 videos × $25/video = $${(creators * 250).toLocaleString()}`;
 
       const reimbLabel = document.getElementById('c2-reimb-' + i);
       if (reimbLabel && price) reimbLabel.textContent = `+ ${creators} creators × $${price.toFixed(2)} reimbursement = $${(creators * price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
     });
   } else {
     totalCreators = parseInt(document.getElementById('c2-creatorCount-manual')?.value) || 0;
-    totalVideoFees = totalCreators * 100;
+    totalVideoFees = totalCreators * 250;
   }
   const calc = document.getElementById('costCalc');
   if (!totalCreators) { calc.style.display = 'none'; return; }
 
   const grandTotal = totalVideoFees + totalReimbursement;
   let calcHtml = `<div style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:12px">Estimated Campaign Cost</div>
-    <div class="cost-row"><span class="cost-row-label">${totalCreators} creators × 10 videos × $10/video</span><span class="cost-row-val">$${totalVideoFees.toLocaleString()}</span></div>`;
+    <div class="cost-row"><span class="cost-row-label">${totalCreators} creators × 10 videos × $25/video</span><span class="cost-row-val">$${totalVideoFees.toLocaleString()}</span></div>`;
   if (totalReimbursement > 0) {
     calcHtml += `<div class="cost-row"><span class="cost-row-label">Product reimbursements</span><span class="cost-row-val">$${totalReimbursement.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></div>
     <div class="cost-row" style="border-top:1px solid rgba(255,255,255,.08);margin-top:8px;padding-top:8px"><span class="cost-row-label" style="font-weight:700">Total campaign cost</span><span class="cost-row-val" style="color:var(--teal);font-weight:800">$${grandTotal.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span></div>`;
@@ -1589,12 +1626,12 @@ function buildReview() {
       if (scOrders && scPrice) finHtml += rv('Reimbursement Campaign', `${scOrders} orders × $${scPrice} = $${(scOrders * scPrice).toLocaleString()}`);
     }
   }
-  if (state.offerType === 'network') {
+  if (['growth', 'scale', 'network'].includes(state.offerType)) {
     const c1budget = parseInt(document.getElementById('c1-budget')?.value) || 0;
     if (c1budget) finHtml += rv('Cohort 1 Retainer Budget', `$${c1budget.toLocaleString()}/mo`);
     const rows = document.querySelectorAll('.c2-creator-input');
     const totalC2 = [...rows].reduce((s, el) => s + (parseInt(el.value) || 0), 0);
-    if (totalC2) finHtml += rv('Cohort 2 Creator Payments', `${totalC2} creators × $100 = $${(totalC2 * 100).toLocaleString()}`);
+    if (totalC2) finHtml += rv('Cohort 2 Creator Payments', `${totalC2} creators × 10 videos × $25/video = $${(totalC2 * 250).toLocaleString()}`);
   }
   if (state.offerType === 'network') {
     const creatorComm = v('cnCreatorCommission'), totalComm = document.getElementById('cnTotalCommission')?.textContent;
@@ -1901,7 +1938,8 @@ function collectOfferDetails() {
       addonMonthlyTotal: accSelected.length * 500,
     };
   }
-  if (state.offerType === 'network') {
+  // Cohort data — shared across Growth, Scale, Network
+  if (['growth', 'scale', 'network'].includes(state.offerType)) {
     const rows = document.querySelectorAll('.c2-creator-input');
     let cohort2Products = [], totalCreators = 0;
     if (rows.length) {
@@ -1909,16 +1947,15 @@ function collectOfferDetails() {
       rows.forEach((input, i) => {
         const creators = parseInt(input.value) || 0;
         const prod = previewProds[i];
-        cohort2Products.push({ name: prod?.title || `Product ${i+1}`, creators, cost: (creators * 100).toFixed(2) });
+        cohort2Products.push({ name: prod?.title || `Product ${i+1}`, creators, cost: (creators * 250).toFixed(2) });
         totalCreators += creators;
       });
     } else {
       const creators = parseInt(document.getElementById('c2-creatorCount-manual')?.value) || 0;
-      cohort2Products = [{ name: 'Product', creators, cost: (creators * 100).toFixed(2) }];
+      cohort2Products = [{ name: 'Product', creators, cost: (creators * 250).toFixed(2) }];
       totalCreators = creators;
     }
-    return {
-      shopCode:              v('cn-shopCode'),
+    const cohortData = {
       cohort1Budget:         document.getElementById('c1-budget')?.value,
       cohort1Niches:         v('c1-niches'),
       cohort1Products:       pickerSelections['c1-product-picker']
@@ -1927,9 +1964,13 @@ function collectOfferDetails() {
       cohort1Creators:       v('c1-specificCreators'),
       cohort2Products,
       cohort2CreatorCount:   totalCreators,
-      cohort2CostPerCreator: 100,
-      cohort2TotalCost:      (totalCreators * 100).toFixed(2),
+      cohort2CostPerCreator: 250,
+      cohort2TotalCost:      (totalCreators * 250).toFixed(2),
     };
+    if (state.offerType === 'network') {
+      return { shopCode: v('cn-shopCode'), ...cohortData };
+    }
+    return cohortData;
   }
   return {};
 }
