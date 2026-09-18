@@ -621,10 +621,46 @@ const proposalUnlockLimiter = rateLimit({
   message: 'Too many attempts. Try again in 15 minutes.',
 });
 
+// Remembered access. The session store is in-memory, so sessions die on every
+// deploy — a viewer would be asked for the password again several times a day.
+// This is a stateless HMAC cookie instead: nothing is stored server-side, so it
+// survives deploys. Keyed on CLIENT_SESSION_SECRET, so rotating that secret
+// invalidates every remembered viewer at once.
+const PROPOSAL_REMEMBER_DAYS = 90;
+
+function proposalSecret() {
+  return process.env.CLIENT_SESSION_SECRET || 'cc-client-portal-secret-change-in-prod';
+}
+function signProposalAccess(slug, exp) {
+  return crypto.createHmac('sha256', proposalSecret()).update(slug + '.' + exp).digest('base64url');
+}
+function readProposalCookie(slug, req) {
+  const raw = req.headers.cookie || '';
+  const m = raw.match(new RegExp('(?:^|;\\s*)pp_' + slug + '=([^;]+)'));
+  if (!m) return false;
+  const parts = decodeURIComponent(m[1]).split('.');
+  if (parts.length !== 2) return false;
+  const [exp, sig] = parts;
+  if (!/^\d+$/.test(exp) || Date.now() > Number(exp)) return false;
+  const expected = signProposalAccess(slug, exp);
+  const a = Buffer.from(sig), b = Buffer.from(expected);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+function setProposalCookie(slug, res) {
+  const exp = Date.now() + PROPOSAL_REMEMBER_DAYS * 24 * 60 * 60 * 1000;
+  res.cookie('pp_' + slug, exp + '.' + signProposalAccess(slug, exp), {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: PROPOSAL_REMEMBER_DAYS * 24 * 60 * 60 * 1000,
+  });
+}
+
 function proposalGate(slug, req) {
   const hash = PROTECTED_PROPOSALS[slug];
   if (!hash) return true;                                  // not protected
-  return Boolean(req.session && req.session.proposalAccess && req.session.proposalAccess[slug]);
+  if (req.session && req.session.proposalAccess && req.session.proposalAccess[slug]) return true;
+  return readProposalCookie(slug, req);
 }
 
 function lockScreen(slug, error) {
@@ -680,6 +716,7 @@ app.post('/proposals/:slug/unlock', proposalUnlockLimiter, express.urlencoded({ 
   }
   req.session.proposalAccess = req.session.proposalAccess || {};
   req.session.proposalAccess[slug] = true;
+  setProposalCookie(slug, res);
   req.session.save(() => res.redirect(`/proposals/${slug}`));
 });
 
