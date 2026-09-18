@@ -95,14 +95,8 @@ nav{
   pointer-events:none;z-index:2
 }
 
-/* Grid horizon glow — pink/purple */
-.horizon-glow{
-  position:absolute;bottom:calc(58vh * 0.22);
-  left:0;right:0;height:1px;
-  background:linear-gradient(90deg,transparent 0%,rgba(255,0,80,.6) 20%,rgba(255,0,80,.9) 50%,rgba(255,0,80,.6) 80%,transparent 100%);
-  box-shadow:0 0 60px 12px rgba(255,0,80,.25),0 0 120px 30px rgba(123,47,255,.08);
-  pointer-events:none;z-index:3
-}
+/* Grid horizon glow — removed (was clashing with hero CTAs) */
+.horizon-glow{display:none}
 
 /* Cloud images */
 .cloud-wrap{position:absolute;inset:0;pointer-events:none;z-index:4;overflow:hidden}
@@ -300,7 +294,7 @@ nav{
 .reimburse-box::before{content:'';position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:radial-gradient(circle,rgba(255,0,80,.08) 0%,transparent 70%);pointer-events:none}
 .reimburse-box h3{font-family:'Montserrat',sans-serif;font-weight:900;font-size:1.4rem;color:var(--white);margin-bottom:12px}
 .reimburse-box > p{color:var(--muted);font-size:.95rem;margin-bottom:32px;max-width:700px}
-.reimburse-steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:16px}
+.reimburse-steps{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
 .reimburse-step{text-align:center;padding:24px 16px;background:rgba(255,0,80,.05);border:1px solid rgba(255,0,80,.14);border-radius:12px}
 .reimburse-step .num{font-family:'Montserrat',sans-serif;font-weight:900;font-size:1.4rem;color:var(--pink);margin-bottom:8px}
 .reimburse-step p{font-size:.82rem;color:var(--muted);line-height:1.5}
@@ -507,13 +501,13 @@ nav{
   <div class="section-num">01</div>
   <div class="section-inner">
     <div class="label-pill">Why Creator Network</div>
-    <h2 class="section-title">23,000 affiliates.<br>Most of them earning $4.60 a month.</h2>
-    <p class="section-sub">The long tail of TikTok Shop affiliates is broken by design. Creator Network fixes the structure.</p>
+    <h2 class="section-title">Your affiliate program<br><span class="grad">wasn't built to work.</span></h2>
+    <p class="section-sub">Not because creators can't convert — because the infrastructure was never there. No real briefs. No tracking. No accountability. Creator Network fixes that.</p>
 
     <div class="problem-box">
       <p>
         The average TikTok Shop brand has a long tail of affiliates that aren't performing. <strong>Not because creators are lazy</strong> — because the structure is broken. No proper brief, no real incentive, no relationship. Brands treat creators like vending machines: load them up with commission rates, hope for a purchase. When nothing happens, they recruit more affiliates and try again.<br><br>
-        Creator Network fixes the infrastructure. <strong>We handle brief delivery, creator qualification, content verification, and payouts</strong> — so your program actually runs like a program, not a wish list. Two tiers cover the full spectrum: retainer arrangements with proven high-GMV creators, and a scalable $10/video mass community program for broader reach.
+        Creator Network fixes the infrastructure. <strong>We handle brief delivery, creator qualification, content verification, and payouts</strong> — so your program actually runs like a program, not a wish list. Two cohorts cover the full spectrum: retainer arrangements with proven high-GMV creators, and a scalable $10/video mass community program for broader reach.
       </p>
     </div>
   </div>
@@ -525,13 +519,13 @@ nav{
   <div class="section-num">02</div>
   <div class="section-inner">
     <div class="label-pill">The System</div>
-    <h2 class="section-title">Two tiers. One program.</h2>
-    <p class="section-sub">Tier 1 locks in your best performers. Tier 2 scales volume across the CC creator network.</p>
+    <h2 class="section-title">Two cohorts. One program.</h2>
+    <p class="section-sub">Cohort 1 locks in your best performers. Cohort 2 scales volume across the CC creator network.</p>
 
     <div class="tier-grid">
       <!-- Tier 1 -->
       <div class="tier-card">
-        <div class="tier-label">Tier 1</div>
+        <div class="tier-label">Cohort 1</div>
         <div class="tier-name">Creator Retainers</div>
         <div class="tier-tagline">"For the creators who actually move product."</div>
         <ul class="tier-list">
@@ -547,7 +541,7 @@ nav{
 
       <!-- Tier 2 -->
       <div class="tier-card">
-        <div class="tier-label">Tier 2</div>
+        <div class="tier-label">Cohort 2</div>
         <div class="tier-name">Mass Community <span style="font-family:'Lato',sans-serif;font-weight:400;font-size:.9rem;color:var(--pink)">— $10/video</span></div>
         <div class="tier-tagline">"Scale your creator base with volume."</div>
         <ul class="tier-list">
@@ -625,11 +619,11 @@ nav{
         <span class="value">4% of GMV from CC-placed creators only</span>
       </div>
       <div class="pricing-row">
-        <span class="label">Tier 1 minimum spend</span>
+        <span class="label">Cohort 1 minimum spend</span>
         <span class="value">$10,000/mo in creator retainer spend (brand-funded)</span>
       </div>
       <div class="pricing-row">
-        <span class="label">Tier 2 per-video rate</span>
+        <span class="label">Cohort 2 per-video rate</span>
         <span class="value">$10 per qualifying video · $100 campaign minimum</span>
       </div>
       <div class="pricing-row">
