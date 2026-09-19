@@ -598,6 +598,19 @@ app.get('/offers/:slug', (req, res) => {
   res.sendFile(filePath);
 });
 
+// Design mockups — shareable, link-only HTML. Same shape as /offers above and
+// registered well before app.use(requireAuth) so they open without a
+// Cloudflare Access session. Pages carry <meta robots="noindex">; they're
+// meant to be passed around by link, not found. Self-contained (no assets).
+const MOCKUPS_DIR = path.join(__dirname, 'mockups');
+app.get(['/mockup', '/mockup-build-plan'], (req, res) => {
+  const slug = req.path.replace(/^\//, '');
+  const filePath = path.join(MOCKUPS_DIR, slug + '.html');
+  if (!fs.existsSync(filePath)) return res.status(404).send('Not found');
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.sendFile(filePath);
+});
+
 // Decorative assets referenced by proposal pages. Public by design — the
 // gated deck's HTML stays protected; only its imagery is served openly.
 app.use('/proposal-assets', express.static(path.join(__dirname, 'proposals', 'assets'), { maxAge: '30d' }));

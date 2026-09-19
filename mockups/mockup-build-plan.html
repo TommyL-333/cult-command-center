@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Creator Launcher — Build Plan</title>
+<meta name="description" content="Build notes for the Cult Content creator portal launcher: data model, routes, and how it merges the two existing creator dashboards.">
+<meta name="robots" content="noindex, nofollow">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Martian+Mono:wght@400;600&display=swap">
+<style>
+/* ─────────────────────────────────────────────────────────────
+   PAGE TOKENS — theme-aware (the spec sheet around the device)
+   ───────────────────────────────────────────────────────────── */
+:root {
+  --bg:        #EDEEF3;
+  --surface:   #FFFFFF;
+  --sunk:      #E3E5EC;
+  --line:      #D6D9E2;
+  --text:      #13151C;
+  --dim:       #5B6072;
+  --faint:     #888EA0;
+  --accent:    #00706A;
+  --money:     #C10048;
+  --shadow:    0 1px 2px rgba(20,24,40,.06), 0 12px 32px rgba(20,24,40,.09);
+  --shadow-lg: 0 2px 6px rgba(20,24,40,.08), 0 40px 80px rgba(20,24,40,.18);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:        #0A0C12;
+    --surface:   #13161E;
+    --sunk:      #0F121A;
+    --line:      #242936;
+    --text:      #ECEEF4;
+    --dim:       #949AAC;
+    --faint:     #6E7488;
+    --accent:    #2EF0E2;
+    --money:     #FF3D78;
+    --shadow:    0 1px 2px rgba(0,0,0,.5), 0 12px 32px rgba(0,0,0,.45);
+    --shadow-lg: 0 2px 6px rgba(0,0,0,.6), 0 40px 80px rgba(0,0,0,.7);
+  }
+}
+:root[data-theme="dark"] {
+  --bg:        #0A0C12;
+  --surface:   #13161E;
+  --sunk:      #0F121A;
+  --line:      #242936;
+  --text:      #ECEEF4;
+  --dim:       #949AAC;
+  --faint:     #6E7488;
+  --accent:    #2EF0E2;
+  --money:     #FF3D78;
+  --shadow:    0 1px 2px rgba(0,0,0,.5), 0 12px 32px rgba(0,0,0,.45);
+  --shadow-lg: 0 2px 6px rgba(0,0,0,.6), 0 40px 80px rgba(0,0,0,.7);
+}
+
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Archivo, system-ui, -apple-system, sans-serif;
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+.mono {
+  font-family: "Martian Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  text-transform: uppercase;
+  letter-spacing: .1em;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+h1, h2, h3 { text-wrap: balance; margin: 0; }
+p { margin: 0; }
+a { color: inherit; }
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+
+/* ── Page shell ─────────────────────────────────────────────── */
+.wrap { max-width: 1240px; margin: 0 auto; padding: 0 28px 100px; }
+
+.masthead {
+  display: flex; flex-direction: column; gap: 18px;
+  padding: 64px 0 44px;
+  border-bottom: 1px solid var(--line);
+}
+.eyebrow { color: var(--accent); }
+.masthead h1 {
+  font-size: clamp(34px, 5.2vw, 56px);
+  font-weight: 700; letter-spacing: -.028em; line-height: 1.02;
+  max-width: 17ch;
+}
+.masthead .lede {
+  max-width: 62ch; color: var(--dim); font-size: 17.5px;
+}
+.masthead .lede strong { color: var(--text); font-weight: 600; }
+
+/* ─────────────────────────────────────────────────────────────
+   SPEC COLUMN
+   ───────────────────────────────────────────────────────────── */
+.spec {
+  display: flex; flex-direction: column; gap: 18px;
+  max-width: 760px; margin: 0 auto; padding-top: 64px;
+}
+
+.note {
+  display: flex; flex-direction: column; gap: 12px;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 15px; padding: 24px 26px 26px;
+  box-shadow: var(--shadow);
+}
+.note-head { display: flex; align-items: center; gap: 13px; }
+.key {
+  width: 34px; height: 34px; border-radius: 9px;
+  display: grid; place-items: center;
+  background: var(--sunk); border: 1px solid var(--line);
+  color: var(--accent);
+  font-family: "Martian Mono", ui-monospace, monospace; font-size: 11px; font-weight: 600;
+}
+.note .content { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.note h3 { font-size: 19.5px; font-weight: 600; letter-spacing: -.021em; }
+.note p { color: var(--dim); font-size: 15px; }
+.note p strong { color: var(--text); font-weight: 600; }
+.note .try {
+  display: inline-flex; align-self: flex-start; align-items: center; gap: 7px;
+  color: var(--accent); font-size: 13px; font-weight: 600;
+}
+.note .try::before { content: "◀"; font-size: 8px; }
+
+.build {
+  background: var(--sunk); border: 1px solid var(--line); border-radius: 11px;
+  padding: 14px 16px; display: flex; flex-direction: column; gap: 6px;
+}
+.build .mono { color: var(--faint); margin-bottom: 2px; }
+.build ul { margin: 0; padding-left: 17px; display: flex; flex-direction: column; gap: 5px; }
+.build li { color: var(--dim); font-size: 14px; }
+.build code {
+  font-family: "Martian Mono", ui-monospace, monospace;
+  font-size: 11.5px; text-transform: none; letter-spacing: 0;
+  background: var(--surface); border: 1px solid var(--line);
+  padding: 1.5px 5px; border-radius: 5px; color: var(--text);
+  white-space: nowrap;
+}
+
+/* ── Closing block ──────────────────────────────────────────── */
+.outro {
+  max-width: 760px; margin: 18px auto 0; padding: 30px 32px;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 15px; box-shadow: var(--shadow);
+  display: flex; flex-direction: column; gap: 13px;
+}
+.outro h3 { font-size: 19px; font-weight: 600; letter-spacing: -.02em; }
+.outro p { color: var(--dim); font-size: 15px; max-width: 62ch; }
+.outro .mono { color: var(--accent); }
+.scroll-x { overflow-x: auto; }
+.tbl { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 460px; }
+.tbl th, .tbl td { text-align: left; padding: 9px 14px 9px 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+.tbl th {
+  font-family: "Martian Mono", ui-monospace, monospace;
+  font-size: 9.5px; text-transform: uppercase; letter-spacing: .1em;
+  color: var(--faint); font-weight: 600;
+}
+.tbl td { color: var(--dim); }
+.tbl td:first-child { color: var(--text); font-weight: 500; white-space: nowrap; }
+.tbl tr:last-child td { border-bottom: none; }
+
+
+/* ── Cross-link between the two pages ───────────────────────── */
+.crosslink {
+  max-width: 760px; margin: 56px auto 0;
+  display: flex; flex-wrap: wrap; align-items: center; gap: 14px;
+  padding: 22px 26px;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 15px; box-shadow: var(--shadow);
+}
+.crosslink .txt { flex: 1 1 260px; min-width: 0; }
+.crosslink .txt b { display: block; font-size: 16px; font-weight: 600; letter-spacing: -.015em; }
+.crosslink .txt span { color: var(--dim); font-size: 14.5px; }
+.crosslink a {
+  flex: none; text-decoration: none;
+  padding: 11px 20px; border-radius: 100px;
+  background: var(--accent); color: var(--bg);
+  font-weight: 600; font-size: 14.5px;
+  transition: opacity .15s;
+}
+.crosslink a:hover { opacity: .85; }
+
+@media (max-width: 460px) {
+  .wrap { padding: 0 16px 70px; }
+  .device { width: 100%; max-width: 390px; height: 730px; border-radius: 32px; }
+  .spec { gap: 16px; padding-top: 48px; }
+  .note { padding: 22px 20px 24px; }
+  .outro { padding: 26px 22px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header class="masthead">
+    <div class="mono eyebrow">Cult Content · Creator portal · Build plan</div>
+    <h1>How it gets built</h1>
+    <p class="lede">Six notes on the launcher — what each screen does, where the data comes from, and which existing code it reuses. Written for whoever picks this up: every note names the tables, routes and files it touches.</p>
+  </header>
+
+  <div class="spec" style="padding-top:48px">
+
+      <div class="note">
+        <div class="note-head"><span class="key">01</span><h3>The controls live at the bottom</h3></div>
+        <div class="content">
+          <p>
+            No top nav, no sidebar. Five slots, thumb-height: <strong>Home, Deals, Add,
+            Inbox, Me</strong>. Add is the raised center key because adding your own button
+            is the thing that makes this yours rather than ours. Everything above the dock
+            is content the creator owns.
+          </p>
+          <span class="try">Tap the dock. The whole screen changes; the bar never moves.</span>
+          <div class="build">
+            <div class="mono">Build</div>
+            <ul>
+              <li>One <code>&lt;nav&gt;</code> pinned to the viewport, <code>100dvh</code> layout so it survives mobile URL bars.</li>
+              <li>Views swap client-side — no route change, no reload, scroll position kept per view.</li>
+              <li>Badges come from unread counts on <code>/api/creator/inbox</code> and deals needing action.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="note">
+        <div class="note-head"><span class="key">02</span><h3>Deals sit above everything</h3></div>
+        <div class="content">
+          <p>
+            First thing on the screen after your name. A side-scrolling rail of live deals
+            with the money stated plainly. <strong>Pink appears nowhere else in the
+            interface</strong> — if it's pink, it's money. That rule is worth protecting as
+            more gets added.
+          </p>
+          <div class="build">
+            <div class="mono">Build</div>
+            <ul>
+              <li>Reuse the existing contracts and offers data — <code>retainer_agreements</code>, <code>retainer_offers</code>.</li>
+              <li>Three states only: <em>needs you</em>, <em>running</em>, <em>waiting on brand</em>. Creators don't need our internal statuses.</li>
+              <li>Amount is always the creator's take, never gross.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="note">
+        <div class="note-head"><span class="key">03</span><h3>Buttons, preloaded and self-serve</h3></div>
+        <div class="content">
+          <p>
+            Ships with <strong>Creators for Mental Health, Creators Guild of America,
+            Social Current, Reacher</strong> and <strong>the Creator App</strong>. Those are
+            ours — curated, endorsed, not removable. Everything after that is theirs:
+            paste a link, name it, done. No request queue, no approval step.
+          </p>
+          <span class="try">Hit Add in the dock, then Edit to remove one.</span>
+          <div class="build">
+            <div class="mono">Build</div>
+            <ul>
+              <li>Curated tiles are a server-side config array. Personal tiles go in <code>creator_links</code> — mirror the <code>inner_circle_handles</code> route shape, it already does exactly this.</li>
+              <li><code>GET / POST / DELETE /api/creator/links</code>, plus <code>PATCH</code> for order once drag lands.</li>
+              <li>User-supplied URLs: <strong>https only</strong>, reject <code>javascript:</code>, render with <code>rel="noopener noreferrer"</code>.</li>
+              <li>Icons fall back to a letter mark when no favicon resolves — never a broken image.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="note">
+        <div class="note-head"><span class="key">04</span><h3>Edit mode is the home-screen gesture</h3></div>
+        <div class="content">
+          <p>
+            Tiles wobble, an X appears, tap to remove. People already know this gesture
+            from their phone, which is the point — <strong>the whole design borrows from
+            the OS instead of from web apps</strong>. Drag-to-reorder is the obvious next
+            step and should be planned for, not retrofitted.
+          </p>
+          <div class="build">
+            <div class="mono">Build</div>
+            <ul>
+              <li>Only personal tiles enter edit mode. Curated ones stay put — dashed border already signals which is which.</li>
+              <li>Store <code>position</code> on row one so reordering is a column update, not a migration.</li>
+              <li>Respect <code>prefers-reduced-motion</code>: no wobble, X still appears.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="note">
+        <div class="note-head"><span class="key">05</span><h3>One inbox for every channel</h3></div>
+        <div class="content">
+          <p>
+            Brand DMs, TikTok Shop messages, Reacher replies, and our own notifications in
+            a single list, each tagged with where it came from. This is the piece that makes
+            it <strong>infrastructure rather than another tab</strong> — the creator stops
+            checking five places.
+          </p>
+          <div class="build">
+            <div class="mono">Build</div>
+            <ul>
+              <li>Start read-only: aggregate and display. Replying in-app is phase two.</li>
+              <li>Normalize every source to <code>{ source, from, subject, preview, received_at, url, read_at }</code> and keep the adapters separate so a new source is one file.</li>
+              <li><code>messaging.js</code> already exists — extend it rather than starting a second system.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="note">
+        <div class="note-head"><span class="key">06</span><h3>Me is where the survey lives</h3></div>
+        <div class="content">
+          <p>
+            Accounts, rates, and <strong>Shape the Roster</strong> — the brand survey. It sits
+            with the profile because it's the creator telling us who they are, and it earns
+            its place by paying off visibly: when a brand they voted for signs, they hear
+            about it.
+          </p>
+          <div class="build">
+            <div class="mono">Build</div>
+            <ul>
+              <li>Open-text write-in <em>before</em> the brand list, or you only learn what they think of your list.</li>
+              <li>Capture intent per brand — <em>already use it</em> / <em>would post free</em> / <em>would post if paid</em>.</li>
+              <li>Join votes to follower counts via <code>inner_circle_handles</code>. "247 creators, 18M reach" is the number that moves a brand.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /spec -->
+    <div class="outro">
+        <div class="mono">What this replaces</div>
+        <h3>Two creator dashboards become one</h3>
+        <p>
+          <strong>/app/creator</strong> and <strong>/inner-circle/dashboard</strong> currently
+          model profile, rates, brands and contracts separately. This is the merge target —
+          the launcher is the shell, and both existing feature sets land inside it.
+        </p>
+        <div class="scroll-x">
+          <table class="tbl">
+            <thead>
+              <tr><th>Screen</th><th>Comes from</th><th>Work</th></tr>
+            </thead>
+            <tbody>
+              <tr><td>Home</td><td>New</td><td>Shell, dock, tile grid, <code>creator_links</code></td></tr>
+              <tr><td>Deals</td><td>Both — merge</td><td>Reconcile contract vs. offer models</td></tr>
+              <tr><td>Inbox</td><td><code>messaging.js</code></td><td>Source adapters + normalizing</td></tr>
+              <tr><td>Me</td><td>Inner Circle profile modal</td><td>Port as-is, add survey</td></tr>
+              <tr><td>Opportunities</td><td>New</td><td>Last — needs supply before it's worth showing</td></tr>
+            </tbody>
+          </table>
+        </div>
+    </div><!-- /outro -->
+  <div class="crosslink">
+    <div class="txt"><b>See it working</b><span>The live prototype — tap the dock, add a button, remove one.</span></div>
+    <a href="/mockup">Open the prototype</a>
+  </div>
+
+</div>
+</body>
+</html>
