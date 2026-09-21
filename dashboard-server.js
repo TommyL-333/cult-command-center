@@ -806,17 +806,34 @@ app.get('/api/brand-applications/list', requirePortalAdmin, async (req, res) => 
       pageToken = r.data?.data?.has_more ? r.data.data.page_token : '';
     } while (pageToken);
 
+    // Normalize a Lark Base field value to a plain string.
+    // SingleSelect → "{text}", MultiSelect → "text1, text2", array of rich-text → joined text, else String().
+    function larkTxt(v) {
+      if (v == null || v === '') return '';
+      if (typeof v === 'string') return v;
+      if (typeof v === 'number') return String(v);
+      if (Array.isArray(v)) return v.map(larkTxt).join(', ');
+      if (typeof v === 'object') {
+        if ('text' in v) return String(v.text);   // SingleSelect, rich-text segment
+        if ('value' in v) return String(v.value); // some option types
+      }
+      return String(v);
+    }
+
     // Shape each record for the UI
-    const rows = allRecords.map(item => ({
-      recordId:      item.record_id,
-      applicantName: item.fields['Applicant Name']  || item.fields['Primary Contact Name'] || '—',
-      brandName:     item.fields['Brand Name']       || '—',
-      offer:         item.fields['Offer Selected']   || '—',
-      submittedAt:   item.fields['Submitted At']     || '',
-      email:         item.fields['Primary Contact Email'] || '',
-      website:       item.fields['Website URL']      || '',
-      budget:        item.fields['Monthly Budget']   || '—',
-    }));
+    const rows = allRecords.map(item => {
+      const f = item.fields;
+      return {
+        recordId:      item.record_id,
+        applicantName: larkTxt(f['Applicant Name'])  || larkTxt(f['Primary Contact Name']) || '—',
+        brandName:     larkTxt(f['Brand Name'])       || '—',
+        offer:         larkTxt(f['Offer Selected'])   || '—',
+        submittedAt:   larkTxt(f['Submitted At'])     || '',
+        email:         larkTxt(f['Primary Contact Email']) || '',
+        website:       larkTxt(f['Website URL'])      || '',
+        budget:        larkTxt(f['Monthly Budget'])   || '—',
+      };
+    });
 
     // Sort newest first
     rows.sort((a, b) => {

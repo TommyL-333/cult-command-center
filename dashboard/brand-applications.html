@@ -213,18 +213,17 @@ async function doLogin() {
 async function checkSession() {
   try {
     const r = await fetch('/api/brand-applications/list');
-    if (r.ok) {
-      document.getElementById('login-screen').style.display = 'none';
-      document.getElementById('app-screen').style.display = '';
-      const data = await r.json();
-      allRows = data.rows || [];
-      renderStats();
-      renderTable();
-      document.getElementById('loading-state').style.display = 'none';
-      return;
-    }
-  } catch {}
-  // not logged in — show login
+    if (!r.ok) return; // not authed — keep login screen visible
+    const data = await r.json();
+    allRows = data.rows || [];
+    // Only switch screens after data is safely parsed
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display = '';
+    renderStats();
+    renderTable();
+  } catch {
+    // Network error or parse failure — keep login screen visible
+  }
 }
 
 async function loadApplications() {
