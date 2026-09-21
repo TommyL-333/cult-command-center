@@ -847,10 +847,74 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
           <!-- slots injected by JS -->
         </div>
 
+        <!-- Meta Ads Management add-on -->
+        <div style="margin-top:16px;border:1px solid var(--border);border-radius:10px;overflow:hidden">
+          <label style="display:flex;align-items:center;gap:10px;padding:14px 16px;cursor:pointer;user-select:none">
+            <input type="checkbox" id="sc-metaAdsAddon" onchange="toggleMetaAdsAddon()" style="width:16px;height:16px;accent-color:var(--teal);cursor:pointer;flex-shrink:0">
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--text)">Meta Ads Management <span style="font-size:11px;font-weight:700;color:var(--teal);margin-left:6px">+$500/mo</span></div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px;line-height:1.5">We create, run, and optimize your Meta (Facebook &amp; Instagram) ad campaigns. CC manages the strategy and execution — your ad spend is separate.</div>
+            </div>
+          </label>
+          <div id="sc-metaAds-fields" style="display:none;padding:0 16px 16px;border-top:1px solid var(--border)">
+            <div style="margin-top:14px" class="row">
+              <div class="field">
+                <label>Existing Meta Business Manager account?</label>
+                <div class="toggle-row">
+                  <button type="button" class="t-btn" data-field="sc-metaHasBM" data-val="Yes" onclick="setToggle(this);toggleMetaBMId()">Yes</button>
+                  <button type="button" class="t-btn" data-field="sc-metaHasBM" data-val="No" onclick="setToggle(this);toggleMetaBMId()">No</button>
+                </div>
+              </div>
+            </div>
+            <div id="sc-metaBMId-row" style="display:none" class="row">
+              <div class="field">
+                <label>Meta Business Manager ID</label>
+                <input type="text" id="sc-metaBMId" placeholder="e.g. 1234567890123">
+              </div>
+              <div class="field">
+                <label>Meta Ad Account ID <span style="font-weight:400;color:var(--muted)">(if created)</span></label>
+                <input type="text" id="sc-metaAdAccountId" placeholder="e.g. act_1234567890">
+              </div>
+            </div>
+            <div class="row">
+              <div class="field">
+                <label>Primary Ad Objective</label>
+                <select id="sc-metaAdObjective">
+                  <option value="">Select objective…</option>
+                  <option>Conversions / Sales</option>
+                  <option>Traffic</option>
+                  <option>Awareness / Reach</option>
+                  <option>Lead Generation</option>
+                  <option>Engagement</option>
+                </select>
+              </div>
+              <div class="field">
+                <label>Monthly Ad Budget Range</label>
+                <select id="sc-metaAdBudget">
+                  <option value="">Select range…</option>
+                  <option>Under $1,000</option>
+                  <option>$1,000 – $3,000</option>
+                  <option>$3,000 – $5,000</option>
+                  <option>$5,000 – $10,000</option>
+                  <option>$10,000+</option>
+                </select>
+                <div class="hint">CC manages the campaigns — you control the spend</div>
+              </div>
+            </div>
+            <div class="row full">
+              <div class="field">
+                <label>Existing creative assets or brand guidelines for Meta? <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+                <textarea id="sc-metaCreativeNotes" style="min-height:60px" placeholder="e.g. Drive link to existing ad folder, Canva brand kit, or describe your visual style (colors, fonts, tone)…"></textarea>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Live cost summary -->
         <div class="cost-card" id="sc-addon-cost" style="margin-top:14px;display:none">
           <div style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:10px">Add-on Summary</div>
           <div class="cost-row"><span class="cost-row-label">Accounts selected</span><span class="cost-row-val" id="sc-acc-count">0</span></div>
+          <div class="cost-row" id="sc-meta-cost-row" style="display:none"><span class="cost-row-label">Meta Ads Management</span><span class="cost-row-val">$500/mo</span></div>
           <div class="cost-row"><span class="cost-row-label">Monthly add-on total</span><span class="cost-row-val">$<span id="sc-addon-total">0</span>/mo</span></div>
           <div id="sc-creator-budget-note" style="display:none;margin-top:8px;font-size:10.5px;color:var(--gold);line-height:1.55">⚠ One or more accounts use creator content — a minimum $3,000/mo creator budget applies.</div>
         </div>
@@ -1397,16 +1461,32 @@ function selectAccType(btn) {
 function updateScAddonSummary() {
   const selected = Object.values(scAccountSelections).filter(v => v !== 'none');
   const count = selected.length;
-  const total = count * 500;
+  const hasMeta = document.getElementById('sc-metaAdsAddon')?.checked;
+  const total = count * 500 + (hasMeta ? 500 : 0);
   const hasCreator = selected.includes('creator');
   const costEl = document.getElementById('sc-addon-cost');
-  if (costEl) costEl.style.display = count > 0 ? 'block' : 'none';
+  if (costEl) costEl.style.display = (count > 0 || hasMeta) ? 'block' : 'none';
   const countEl = document.getElementById('sc-acc-count');
   if (countEl) countEl.textContent = count;
   const totalEl = document.getElementById('sc-addon-total');
   if (totalEl) totalEl.textContent = total.toLocaleString();
   const noteEl = document.getElementById('sc-creator-budget-note');
   if (noteEl) noteEl.style.display = hasCreator ? 'block' : 'none';
+  const metaRow = document.getElementById('sc-meta-cost-row');
+  if (metaRow) metaRow.style.display = hasMeta ? 'flex' : 'none';
+}
+
+function toggleMetaAdsAddon() {
+  const checked = document.getElementById('sc-metaAdsAddon')?.checked;
+  const fields = document.getElementById('sc-metaAds-fields');
+  if (fields) fields.style.display = checked ? 'block' : 'none';
+  updateScAddonSummary();
+}
+
+function toggleMetaBMId() {
+  const hasBM = document.querySelector('[data-field="sc-metaHasBM"].active')?.dataset.val === 'Yes';
+  const row = document.getElementById('sc-metaBMId-row');
+  if (row) row.style.display = hasBM ? 'flex' : 'none';
 }
 
 // ─── Products ─────────────────────────────────────────────────────────────────
@@ -1935,7 +2015,16 @@ function collectOfferDetails() {
       brandColor:       v('brandColorHex'),
       accounts:         scAccountSelections,
       accountsSelected: accSelected.map(([name, type]) => ({ name, type })),
-      addonMonthlyTotal: accSelected.length * 500,
+      addonMonthlyTotal: accSelected.length * 500 + (document.getElementById('sc-metaAdsAddon')?.checked ? 500 : 0),
+      metaAdsAddon: document.getElementById('sc-metaAdsAddon')?.checked ? {
+        enabled: true,
+        hasBM:            document.querySelector('[data-field="sc-metaHasBM"].active')?.dataset.val || '',
+        bmId:             v('sc-metaBMId'),
+        adAccountId:      v('sc-metaAdAccountId'),
+        adObjective:      v('sc-metaAdObjective'),
+        adBudgetRange:    v('sc-metaAdBudget'),
+        creativeNotes:    v('sc-metaCreativeNotes'),
+      } : null,
     };
   }
   // Cohort data — shared across Growth, Scale, Network
