@@ -799,6 +799,24 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
           <div class="hint">Helps us match the right creators and set the right brief</div>
         </div>
       </div>
+
+      <!-- Add-ons -->
+      <div style="margin-top:22px">
+        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:10px">Add-ons</div>
+        <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden">
+          <label style="display:flex;align-items:center;gap:10px;padding:14px 16px;cursor:pointer;user-select:none">
+            <input type="checkbox" id="gp-aiCarouselAddon" onchange="updateGpAddonSummary()" style="width:16px;height:16px;accent-color:var(--teal);cursor:pointer;flex-shrink:0">
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--text)">AI Carousel Content <span style="font-size:11px;font-weight:700;color:var(--teal);margin-left:6px">+$500/mo</span></div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px;line-height:1.5">CC generates and posts AI-powered carousel content to your brand social accounts. No extra setup needed from you — we handle account configuration on our end.</div>
+            </div>
+          </label>
+        </div>
+        <div class="cost-card" id="gp-addon-cost" style="margin-top:12px;display:none">
+          <div style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:10px">Add-on Summary</div>
+          <div class="cost-row"><span class="cost-row-label">AI Carousel Content</span><span class="cost-row-val">$500/mo</span></div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -920,10 +938,22 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
           </div>
         </div>
 
+        <!-- AI Carousel Content add-on -->
+        <div style="margin-top:10px;border:1px solid var(--border);border-radius:10px;overflow:hidden">
+          <label style="display:flex;align-items:center;gap:10px;padding:14px 16px;cursor:pointer;user-select:none">
+            <input type="checkbox" id="sc-aiCarouselAddon" onchange="updateScAddonSummary()" style="width:16px;height:16px;accent-color:var(--teal);cursor:pointer;flex-shrink:0">
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--text)">AI Carousel Content <span style="font-size:11px;font-weight:700;color:var(--teal);margin-left:6px">+$500/mo</span></div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px;line-height:1.5">CC generates and posts AI-powered carousel content to your brand social accounts. No extra setup needed from you — we handle account configuration on our end.</div>
+            </div>
+          </label>
+        </div>
+
         <!-- Live cost summary -->
         <div class="cost-card" id="sc-addon-cost" style="margin-top:14px;display:none">
           <div style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:10px">Add-on Summary</div>
           <div class="cost-row"><span class="cost-row-label">Accounts selected</span><span class="cost-row-val" id="sc-acc-count">0</span></div>
+          <div class="cost-row" id="sc-ai-carousel-cost-row" style="display:none"><span class="cost-row-label">AI Carousel Content</span><span class="cost-row-val">$500/mo</span></div>
           <div class="cost-row" id="sc-meta-cost-row" style="display:none"><span class="cost-row-label">Meta Ads Management</span><span class="cost-row-val">$500/mo</span></div>
           <div class="cost-row"><span class="cost-row-label">Monthly add-on total</span><span class="cost-row-val">$<span id="sc-addon-total">0</span>/mo</span></div>
           <div id="sc-creator-budget-note" style="display:none;margin-top:8px;font-size:10.5px;color:var(--gold);line-height:1.55">⚠ One or more accounts use creator content — a minimum $3,000/mo creator budget applies.</div>
@@ -1472,10 +1502,12 @@ function updateScAddonSummary() {
   const selected = Object.values(scAccountSelections).filter(v => v !== 'none');
   const count = selected.length;
   const hasMeta = document.getElementById('sc-metaAdsAddon')?.checked;
-  const total = count * 500 + (hasMeta ? 500 : 0);
+  const hasAiCarousel = document.getElementById('sc-aiCarouselAddon')?.checked;
+  const total = count * 500 + (hasMeta ? 500 : 0) + (hasAiCarousel ? 500 : 0);
   const hasCreator = selected.includes('creator');
+  const anyAddon = count > 0 || hasMeta || hasAiCarousel;
   const costEl = document.getElementById('sc-addon-cost');
-  if (costEl) costEl.style.display = (count > 0 || hasMeta) ? 'block' : 'none';
+  if (costEl) costEl.style.display = anyAddon ? 'block' : 'none';
   const countEl = document.getElementById('sc-acc-count');
   if (countEl) countEl.textContent = count;
   const totalEl = document.getElementById('sc-addon-total');
@@ -1484,6 +1516,14 @@ function updateScAddonSummary() {
   if (noteEl) noteEl.style.display = hasCreator ? 'block' : 'none';
   const metaRow = document.getElementById('sc-meta-cost-row');
   if (metaRow) metaRow.style.display = hasMeta ? 'flex' : 'none';
+  const aiRow = document.getElementById('sc-ai-carousel-cost-row');
+  if (aiRow) aiRow.style.display = hasAiCarousel ? 'flex' : 'none';
+}
+
+function updateGpAddonSummary() {
+  const hasAiCarousel = document.getElementById('gp-aiCarouselAddon')?.checked;
+  const costEl = document.getElementById('gp-addon-cost');
+  if (costEl) costEl.style.display = hasAiCarousel ? 'block' : 'none';
 }
 
 function toggleMetaAdsAddon() {
@@ -2011,6 +2051,8 @@ function collectOfferDetails() {
       creatorBudget:    v('gp-creatorBudget'),
       creativeDirection: v('gp-creativeDirection'),
       brandColor:       v('brandColorHex'),
+      aiCarouselAddon:  document.getElementById('gp-aiCarouselAddon')?.checked || false,
+      addonMonthlyTotal: document.getElementById('gp-aiCarouselAddon')?.checked ? 500 : 0,
     };
   }
   if (state.offerType === 'scale') {
@@ -2025,7 +2067,8 @@ function collectOfferDetails() {
       brandColor:       v('brandColorHex'),
       accounts:         scAccountSelections,
       accountsSelected: accSelected.map(([name, type]) => ({ name, type })),
-      addonMonthlyTotal: accSelected.length * 500 + (document.getElementById('sc-metaAdsAddon')?.checked ? 500 : 0),
+      aiCarouselAddon:  document.getElementById('sc-aiCarouselAddon')?.checked || false,
+      addonMonthlyTotal: accSelected.length * 500 + (document.getElementById('sc-metaAdsAddon')?.checked ? 500 : 0) + (document.getElementById('sc-aiCarouselAddon')?.checked ? 500 : 0),
       metaAdsAddon: document.getElementById('sc-metaAdsAddon')?.checked ? {
         enabled: true,
         hasBM:            document.querySelector('[data-field="sc-metaHasBM"].active')?.dataset.val || '',
