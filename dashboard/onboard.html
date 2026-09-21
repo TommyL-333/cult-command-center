@@ -268,6 +268,17 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 .cost-total{font-size:14px;font-weight:900;color:var(--teal)}
 .cost-total-label{font-size:11px;font-weight:800;color:var(--teal)}
 
+/* ── Login screen ── */
+#onboard-login{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:200}
+.login-card{background:#16131f;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:40px;width:100%;max-width:380px;text-align:center}
+.login-card h2{font-size:1.3rem;font-weight:900;margin-bottom:8px}
+.login-card p{color:rgba(255,255,255,.45);font-size:.875rem;margin-bottom:28px}
+.login-input{width:100%;background:var(--bg);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:#fff;padding:12px 16px;font-size:.95rem;outline:none;margin-bottom:16px;font-family:inherit}
+.login-input:focus{border-color:rgba(32,213,196,.5)}
+.login-btn{width:100%;background:linear-gradient(135deg,var(--teal),#7b2fff);color:#fff;border:none;border-radius:8px;padding:13px;font-size:.875rem;font-weight:800;cursor:pointer;letter-spacing:.02em}
+.login-btn:hover{opacity:.88}
+.login-err{color:#ff3b30;font-size:.82rem;margin-bottom:12px;display:none}
+
 /* ── Queue view ── */
 #queue-view{max-width:820px;margin:0 auto;padding:32px 20px}
 .queue-topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px}
@@ -296,6 +307,19 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 </style>
 </head>
 <body>
+
+<!-- ── Login screen ── -->
+<div id="onboard-login">
+  <div class="login-card">
+    <div style="font-size:2rem;margin-bottom:16px">🔐</div>
+    <h2>Cult Content</h2>
+    <p>Enter your admin password to access onboarding.</p>
+    <div class="login-err" id="onboard-login-err">Incorrect password.</div>
+    <input class="login-input" type="password" id="onboard-pw" placeholder="Password" autofocus
+           onkeydown="if(event.key==='Enter')doOnboardLogin()" />
+    <button class="login-btn" onclick="doOnboardLogin()">Sign In</button>
+  </div>
+</div>
 
 <!-- Step transition overlay -->
 <div id="stepOverlay">
@@ -2229,19 +2253,35 @@ function syncColorPicker() {
   async function loadQueue() {
     try {
       const r = await fetch('/api/brand-applications/list');
-      if (!r.ok) {
-        // Not a portal admin — skip queue and go straight to wizard
-        startWizard(null);
-        return;
-      }
+      if (!r.ok) return; // not authed — keep login screen up
       const data = await r.json();
+      document.getElementById('onboard-login').style.display = 'none';
       document.getElementById('queue-view').style.display = '';
       renderQueueCards(data.rows || []);
     } catch (_) {
-      // Network error — show wizard directly
-      startWizard(null);
+      // network error — keep login screen up
     }
   }
+
+  async function doOnboardLogin() {
+    const pw = document.getElementById('onboard-pw').value;
+    const errEl = document.getElementById('onboard-login-err');
+    errEl.style.display = 'none';
+    try {
+      const r = await fetch('/portal-admin/login', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pw }),
+      });
+      if (!r.ok) throw new Error('bad');
+      document.getElementById('onboard-login').style.display = 'none';
+      document.getElementById('queue-view').style.display = '';
+      loadQueue();
+    } catch {
+      errEl.style.display = '';
+      document.getElementById('onboard-pw').select();
+    }
+  }
+  window.doOnboardLogin = doOnboardLogin;
 
   window.startWizardFromQueue = function (idx) {
     const rows = window._queueRows || [];
