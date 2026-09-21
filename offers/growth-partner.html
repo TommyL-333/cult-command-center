@@ -379,10 +379,24 @@ nav{
   .model-box{padding:36px 28px}
   .ci-1,.ci-2,.ci-3{display:none}
 }
+.addon-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:20px;margin-top:48px}
+.addon-card{
+  background:rgba(12,12,28,.7);border:1px solid rgba(0,242,234,.18);
+  border-radius:16px;padding:32px;
+  position:relative;overflow:hidden;
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  transition:border-color .25s,transform .25s
+}
+.addon-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,var(--teal),var(--lavender))}
+.addon-card:hover{border-color:rgba(0,242,234,.35);transform:translateY(-4px)}
+.addon-type{font-size:.7rem;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--teal);opacity:.8;margin-bottom:10px}
+.addon-name{font-family:'Montserrat',sans-serif;font-weight:900;font-size:1.1rem;color:var(--white);margin-bottom:14px}
+.addon-card p{font-size:.9rem;color:var(--muted);line-height:1.65}
 @media(max-width:600px){
   .hero-price{font-size:2.4rem}
   .stats-strip{grid-template-columns:1fr 1fr}
   .cta-inner{padding:80px 28px}
+  .addon-grid{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -476,7 +490,7 @@ nav{
     <p>You stay in control. We're behind every decision — strategy, ads, content, creator sourcing — available through your Lark channel whenever you need us.</p>
     <div class="hero-price-wrap">
       <div class="hero-price"><sup>$</sup>2,000<span style="font-size:1.6rem;background:linear-gradient(135deg,var(--purple),var(--lavender));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;font-weight:900;font-family:'Montserrat',sans-serif;margin-left:10px">+ 9%</span></div>
-      <div class="hero-price-label">Per month + 9% of net sales · 30-day term</div>
+      <div class="hero-price-label">Per month + 9% of net sales · 3-month minimum</div>
     </div>
     <div class="hero-cta-row">
       <a href="https://cultcontent.cc/brand-apply" target="_blank" class="btn">Apply Now</a>
@@ -499,7 +513,6 @@ nav{
       <ul class="model-list">
         <li>Ask us anything — strategy, creator briefs, ad copy — and get a real answer fast</li>
         <li>We manage your TikTok Shop ads so you're not guessing on budget or creative</li>
-        <li>AI carousel content running on a dedicated marketing account, not your main page</li>
         <li>Monthly performance review to track what's working and adjust the plan</li>
         <li>Commission tied to net sales — we only win when you do</li>
       </ul>
@@ -513,7 +526,7 @@ nav{
   <div class="section-num">02</div>
   <div class="section-inner">
     <div class="label-pill">What's Included</div>
-    <h2 class="section-title">Six services.<br>One team on your side.</h2>
+    <h2 class="section-title">Five services.<br>One team on your side.</h2>
     <p class="section-sub">Everything you need to run a serious TikTok Shop — without hiring a full in-house team.</p>
 
     <div class="deliverables-list">
@@ -534,16 +547,11 @@ nav{
       </div>
       <div class="d-row">
         <div class="d-num">04</div>
-        <div class="d-title">AI Carousel Content</div>
-        <div class="d-desc">AI-generated carousel content running on a dedicated marketing account — so your main page stays untouched while volume goes up.</div>
-      </div>
-      <div class="d-row">
-        <div class="d-num">05</div>
         <div class="d-title">Creator Sourcing Guidance</div>
         <div class="d-desc">We identify the right creators for your brief, budget, and category — then coach you through outreach and follow-up.</div>
       </div>
       <div class="d-row">
-        <div class="d-num">06</div>
+        <div class="d-num">05</div>
         <div class="d-title">Monthly Performance Review</div>
         <div class="d-desc">Monthly check-in covering what moved, what didn't, and what the plan looks like next month. No surprises, no guessing.</div>
       </div>
@@ -564,7 +572,7 @@ nav{
       <div class="price-card">
         <div class="pc-label">Monthly Retainer</div>
         <div class="pc-val">$2,000</div>
-        <div class="pc-desc">Covers your dedicated Lark channel, portal access, ads management, AI carousel content, creator sourcing guidance, and monthly review. Cancel anytime after 30 days.</div>
+        <div class="pc-desc">Covers your dedicated Lark channel, portal access, ads management, creator sourcing guidance, and monthly review. 3-month minimum commitment.</div>
       </div>
       <div class="price-card">
         <div class="pc-label">Net Sales Commission</div>
@@ -583,21 +591,45 @@ nav{
         <div class="stat-lbl">Net Sales Commission</div>
       </div>
       <div class="stat">
-        <div class="stat-val">6</div>
+        <div class="stat-val">5</div>
         <div class="stat-lbl">Services Included</div>
       </div>
       <div class="stat">
-        <div class="stat-val">30</div>
-        <div class="stat-lbl">Day Term</div>
+        <div class="stat-val">3mo</div>
+        <div class="stat-lbl">Minimum Term</div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════ SECTION 04: OTHER OFFERS ══════════════════════════════════════ -->
+<!-- ══════════════════════════════════════ SECTION 04: ADD-ONS ══════════════════════════════════════ -->
+<hr class="h-rule">
+<div class="section-wrap checker-section">
+  <div class="section-num">04</div>
+  <div class="section-inner">
+    <div class="label-pill">Add-Ons</div>
+    <h2 class="section-title">Extend your reach.<br>+$500/mo each.</h2>
+    <p class="section-sub">Optional additions to your Growth Partner plan — add what fits your brand.</p>
+
+    <div class="addon-grid">
+      <div class="addon-card">
+        <div class="addon-type">+$500/mo</div>
+        <div class="addon-name">AI Carousel Content</div>
+        <p>AI-generated carousel content on a dedicated marketing account — volume without touching your main page.</p>
+      </div>
+      <div class="addon-card">
+        <div class="addon-type">+$500/mo</div>
+        <div class="addon-name">Meta Ads Management</div>
+        <p>Full Meta (Facebook &amp; Instagram) ads management — campaign strategy, creative briefing, budget pacing, and optimization. Ad spend billed separately to your Meta account.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════ SECTION 05: OTHER OFFERS ══════════════════════════════════════ -->
 <hr class="h-rule">
 <div class="section-wrap next-section">
-  <div class="section-num">04</div>
+  <div class="section-num">05</div>
   <div class="section-inner">
     <div class="label-pill">Other Offers</div>
     <h2 class="section-title">Not the right fit?<br>There's a path for that.</h2>
