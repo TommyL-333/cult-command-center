@@ -6706,6 +6706,42 @@ tiktokApiMap.mount(app, { requirePortalAdmin });
 const financialDashboard = require('./routes/financial-dashboard');
 financialDashboard.mount(app, { requirePortalAdmin });
 
+// ── /tommy — Tommy's private console (revenue projections + link hub) ──
+// Registered before app.use(requireAuth) so it opens on portal.cultcontent.cc
+// with a portal-admin session as well as on manifest.cultcontent.cc behind
+// Cloudflare Access. Unlike the other staff pages this is scoped to one person:
+// every other @cultcontent.cc address gets a 403, not the page. Override the
+// allowlist with TOMMY_EMAILS (comma-separated) if the address ever changes.
+const TOMMY_EMAILS = (process.env.TOMMY_EMAILS || 'tommy@cultcontent.cc')
+  .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+
+function requireTommy(req, res, next) {
+  const denied = who => res.status(403).type('html').send(
+    `<body style="background:#07101A;color:#7A9AB4;font:14px/1.6 -apple-system,sans-serif;padding:80px 24px;text-align:center">
+       Not your page.${who ? ` Signed in as ${who}.` : ''}
+     </body>`);
+
+  // Cloudflare Access (manifest.cultcontent.cc) — the edge already proved identity.
+  const cfEmail = (req.headers['cf-access-authenticated-user-email'] || '').toLowerCase();
+  if (cfEmail) return TOMMY_EMAILS.includes(cfEmail) ? next() : denied(cfEmail);
+
+  // portal-admin session (portal.cultcontent.cc has no CF Access at the edge).
+  // Per-user logins carry an email; the legacy shared-password login does not,
+  // and that session is already staff-only, so it passes.
+  if (req.session && req.session.isPortalAdmin) {
+    const who = (req.session.portalUserEmail || '').toLowerCase();
+    return (!who || TOMMY_EMAILS.includes(who)) ? next() : denied(who);
+  }
+
+  if (!process.env.CF_ACCESS_AUD) return next(); // local dev — no auth configured
+  return res.redirect('/portal-admin-login');
+}
+
+app.get('/tommy', requireTommy, (req, res) => {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.sendFile(path.join(__dirname, 'dashboard', 'tommy.html'));
+});
+
 const openCollabQueue = require('./routes/open-collab-queue');
 openCollabQueue.mount(app, { DATA_DIR, requirePortalAdmin });
 const linkTracker = require('./routes/link-tracker');

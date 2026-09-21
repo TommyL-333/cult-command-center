@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Tommy · Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07101A; --surface:#0D1E2E; --surface-2:#0A1826; --border:#1A3348;
+  --teal:#00C898; --amber:#F0A830; --violet:#8B7FE8; --rose:#E8607F;
+  --t1:#E4EFF8; --t2:#7A9AB4; --t3:#3D5F75;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:var(--bg);color:var(--t1);font-family:'DM Sans',-apple-system,sans-serif;-webkit-font-smoothing:antialiased}
+body{min-height:100vh;padding-bottom:60px}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace;font-variant-numeric:tabular-nums}
+
+/* ── header ─────────────────────────────────────────── */
+header{border-bottom:1px solid var(--border);background:linear-gradient(180deg,#0A1826,#07101A);position:sticky;top:0;z-index:20}
+.hwrap{max-width:1560px;margin:0 auto;padding:14px 24px 0}
+.htop{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:10px}
+.brand h1{font-size:15px;font-weight:700;letter-spacing:.2px}
+.brand .sub{font-size:11px;color:var(--t3);letter-spacing:1.2px;text-transform:uppercase}
+.stamp{font-size:11px;color:var(--t3);letter-spacing:.4px}
+.tabs{display:flex;gap:2px;margin-top:14px}
+.tab{background:none;border:none;border-bottom:2px solid transparent;color:var(--t3);font-family:inherit;font-size:13px;font-weight:500;padding:9px 16px;cursor:pointer;transition:.15s}
+.tab:hover{color:var(--t2)}
+.tab.on{color:var(--t1);border-bottom-color:var(--teal)}
+
+main{max-width:1560px;margin:0 auto;padding:22px 24px}
+.panel-page{display:none}
+.panel-page.on{display:block}
+
+/* ── model layout ───────────────────────────────────── */
+.layout{display:grid;grid-template-columns:320px minmax(0,1fr);gap:20px;align-items:start}
+@media(max-width:1080px){.layout{grid-template-columns:minmax(0,1fr)}}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px}
+.card h3{font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--t3);margin-bottom:12px}
+
+aside{position:sticky;top:96px}
+@media(max-width:1080px){aside{position:static}}
+.inputs{max-height:calc(100vh - 130px);overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--border) transparent}
+.inputs::-webkit-scrollbar{width:6px}.inputs::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+@media(max-width:1080px){.inputs{max-height:none;overflow:visible}}
+.grp{margin-bottom:18px}
+.grp:last-child{margin-bottom:4px}
+.grp-h{font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--teal);padding-bottom:7px;margin-bottom:10px;border-bottom:1px solid var(--border)}
+.ctl{margin-bottom:11px}
+.ctl-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px}
+.ctl-lab{font-size:12px;color:var(--t2);line-height:1.25}
+.ctl-val{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:12px;font-weight:700;color:var(--t1);background:var(--surface-2);border:1px solid var(--border);border-radius:5px;padding:3px 7px;width:84px;text-align:right;flex:none}
+.ctl-val:focus{outline:none;border-color:var(--teal)}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:3px;background:var(--border);border-radius:2px;outline:none}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:var(--teal);cursor:pointer;border:2px solid var(--bg);box-shadow:0 0 0 1px var(--teal)}
+input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:var(--teal);cursor:pointer;border:2px solid var(--bg)}
+.ctl.cost input[type=range]::-webkit-slider-thumb{background:var(--amber);box-shadow:0 0 0 1px var(--amber)}
+.ctl.cost input[type=range]::-moz-range-thumb{background:var(--amber)}
+
+.cohort{display:flex;gap:6px;margin-bottom:14px}
+.cbtn{flex:1;background:var(--surface-2);border:1px solid var(--border);color:var(--t2);font-family:'JetBrains Mono',monospace;font-size:11px;font-weight:700;padding:8px 6px;border-radius:7px;cursor:pointer;transition:.15s}
+.cbtn:hover{border-color:var(--t3);color:var(--t1)}
+.cbtn.on{background:rgba(0,200,152,.12);border-color:var(--teal);color:var(--teal)}
+.reset{width:100%;background:none;border:1px solid var(--border);color:var(--t3);font-family:inherit;font-size:11px;padding:8px;border-radius:7px;cursor:pointer;margin-top:6px}
+.reset:hover{color:var(--rose);border-color:var(--rose)}
+
+/* ── summary strip ──────────────────────────────────── */
+.strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(178px,1fr));gap:12px;margin-bottom:16px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:14px 15px;position:relative;overflow:hidden}
+.kpi:before{content:'';position:absolute;left:0;top:0;bottom:0;width:2px;background:var(--teal);opacity:.55}
+.kpi.amber:before{background:var(--amber)}
+.kpi.violet:before{background:var(--violet)}
+.kpi.rose:before{background:var(--rose)}
+.kpi .k{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--t3);margin-bottom:7px}
+.kpi .v{font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:23px;font-weight:700;letter-spacing:-.5px;line-height:1}
+.kpi .v.teal{color:var(--teal)} .kpi .v.amber{color:var(--amber)} .kpi .v.violet{color:var(--violet)} .kpi .v.rose{color:var(--rose)}
+.kpi .d{font-size:11px;color:var(--t2);margin-top:6px;font-family:'JetBrains Mono',monospace}
+.kpi .f{font-size:10px;color:var(--t3);margin-top:5px;line-height:1.35}
+
+.chart-card{margin-bottom:16px}
+.chart-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:10px}
+.legend{display:flex;gap:14px;flex-wrap:wrap}
+.lg{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--t2)}
+.sw{width:10px;height:10px;border-radius:2px;flex:none}
+.sw.line{height:0;border-top:2px solid var(--teal);border-radius:0}
+.sw.dash{height:0;border-top:2px dashed var(--amber);border-radius:0}
+svg{display:block;width:100%;height:auto}
+.note{font-size:11px;color:var(--t3);line-height:1.5;margin-top:10px}
+.note b{color:var(--t2);font-weight:500}
+
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+@media(max-width:900px){.two{grid-template-columns:minmax(0,1fr)}}
+
+table{width:100%;border-collapse:collapse;font-family:'JetBrains Mono',monospace;font-variant-numeric:tabular-nums;font-size:11.5px}
+.tscroll{overflow-x:auto}
+th{text-align:right;color:var(--t3);font-weight:500;font-size:9.5px;letter-spacing:.6px;text-transform:uppercase;padding:7px 9px;border-bottom:1px solid var(--border);white-space:nowrap;font-family:'DM Sans',sans-serif}
+th:first-child,td:first-child{text-align:left;position:sticky;left:0;background:var(--surface)}
+td{text-align:right;padding:7px 9px;border-bottom:1px solid rgba(26,51,72,.5);color:var(--t2);white-space:nowrap}
+tbody tr:hover td{background:rgba(26,51,72,.28)}
+td.pos{color:var(--teal)} td.neg{color:var(--rose)} td.strong{color:var(--t1);font-weight:700}
+tr.be td{background:rgba(0,200,152,.07)}
+
+.ltv{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.ltvbox{background:var(--surface-2);border:1px solid var(--border);border-radius:9px;padding:12px}
+.ltvbox .n{font-size:11px;color:var(--t2);margin-bottom:6px}
+.ltvbox .a{font-family:'JetBrains Mono',monospace;font-size:19px;font-weight:700;color:var(--violet)}
+.ltvbox .b{font-size:10px;color:var(--t3);margin-top:5px;line-height:1.4;font-family:'JetBrains Mono',monospace}
+
+/* ── links tab ──────────────────────────────────────── */
+.lgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:16px}
+.lcard h3{color:var(--teal)}
+.lrow{display:flex;align-items:baseline;gap:9px;padding:8px 0;border-bottom:1px solid rgba(26,51,72,.5);text-decoration:none;color:var(--t1);font-size:13px;transition:.12s}
+.lrow:last-child{border-bottom:none}
+.lrow:hover{color:var(--teal);padding-left:4px}
+.lrow .lt{flex:1;min-width:0}
+.lrow .ld{display:block;font-size:10.5px;color:var(--t3);margin-top:2px;line-height:1.35}
+.lrow .lx{font-size:10px;color:var(--t3);font-family:'JetBrains Mono',monospace;flex:none}
+.lrow:hover .lx{color:var(--teal)}
+.hint{font-size:11px;color:var(--t3);margin-bottom:16px;line-height:1.6;max-width:760px}
+.hint code{font-family:'JetBrains Mono',monospace;color:var(--t2);background:var(--surface);padding:1px 5px;border-radius:4px;border:1px solid var(--border)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hwrap">
+    <div class="htop">
+      <div class="brand">
+        <h1>Tommy</h1>
+        <span class="sub">Cult Content · private</span>
+      </div>
+      <div class="stamp mono" id="stamp">—</div>
+    </div>
+    <div class="tabs">
+      <button class="tab on" data-tab="model">Projections</button>
+      <button class="tab" data-tab="links">The Business</button>
+    </div>
+  </div>
+</header>
+
+<main>
+
+<!-- ══════════════ PROJECTIONS ══════════════ -->
+<section class="panel-page on" id="page-model">
+  <div class="layout">
+
+    <aside>
+      <div class="card inputs">
+        <h3>Assumptions</h3>
+        <div class="cohort">
+          <button class="cbtn on" data-churn="29">29% churn · actual</button>
+          <button class="cbtn" data-churn="10">10% churn · fixed</button>
+        </div>
+        <div id="controls"></div>
+        <button class="reset" id="reset">Reset to Sep 2026 baseline</button>
+      </div>
+    </aside>
+
+    <section>
+      <div class="strip" id="strip"></div>
+
+      <div class="card chart-card">
+        <div class="chart-head">
+          <div>
+            <h3 style="margin-bottom:4px">12-month forward view</h3>
+            <div style="font-size:11px;color:var(--t3)">Stacked bars are retainer revenue by offer. The solid line is total revenue including commissions — the gap between line and bars <i>is</i> the commission.</div>
+          </div>
+          <div class="legend">
+            <span class="lg"><span class="sw" style="background:#00C898"></span>Growth Partner</span>
+            <span class="lg"><span class="sw" style="background:#8B7FE8"></span>Scale</span>
+            <span class="lg"><span class="sw" style="background:#2F9BD6"></span>Creator Network</span>
+            <span class="lg"><span class="sw" style="background:#4A6A85"></span>Foundation</span>
+            <span class="lg"><span class="sw line"></span>Total revenue</span>
+            <span class="lg"><span class="sw dash"></span>Total burn</span>
+          </div>
+        </div>
+        <div id="chart"></div>
+      </div>
+
+      <div class="two">
+        <div class="card">
+          <h3>Churn cohort · 29% vs 10%</h3>
+          <div id="cochart"></div>
+          <div class="note" id="conote"></div>
+        </div>
+        <div class="card">
+          <h3>LTV by offer</h3>
+          <div class="ltv" id="ltv"></div>
+          <div class="note" id="ltvnote"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Month by month</h3>
+        <div class="tscroll">
+          <table>
+            <thead><tr>
+              <th>Month</th><th>GP</th><th>SC</th><th>CN</th><th>Retainer</th><th>One-time</th>
+              <th>Commission</th><th>Revenue</th><th>Reacher</th><th>Tooling</th><th>Burn</th>
+              <th>Gross&nbsp;%</th><th>Net</th>
+            </tr></thead>
+            <tbody id="tbody"></tbody>
+          </table>
+        </div>
+        <div class="note">
+          <b>Gross %</b> = (revenue − tooling) ÷ revenue — tooling only, no payroll. <b>Net</b> = revenue − total burn.
+          Client counts are carried as fractions so churn compounds honestly; they are displayed rounded to one decimal.
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <h3>Where these numbers come from</h3>
+        <div class="note" id="prov"></div>
+      </div>
+    </section>
+  </div>
+</section>
+
+<!-- ══════════════ LINKS ══════════════ -->
+<section class="panel-page" id="page-links">
+  <div class="hint">
+    Everything worth one click. Internal links resolve on whichever host you are on
+    (<code>manifest.cultcontent.cc</code> or <code>portal.cultcontent.cc</code>) — some staff pages only open on the host you are authenticated against.
+    Edit the list in <code>dashboard/tommy.html</code> → <code>const LINKS</code>.
+  </div>
+  <div class="lgrid" id="lgrid"></div>
+</section>
+
+</main>
+
+<script>
+/* ══════════════════════════════════════════════════════════════════════════
+   BASELINE — Sep 2026. Every figure below is sourced, not invented.
+   Roster, retainer base, burn ......... bank + Stripe reconciliation 2026-09-17
+   Churn 29%/mo, 67% since Jun 2026 .... 10 of 15 clients touched since Jun
+   Tooling stack ....................... Rho card analysis 2026-09-17
+   Pricing card ........................ current offer sheet (/offers)
+   ══════════════════════════════════════════════════════════════════════════ */
+var DEF = {
+  gp0:3, sc0:1, cn0:1,
+  gpAdd:1, scAdd:0.5, cnAdd:0.5, fdAdd:2,
+  churn:29, fdConv:20, addons:1,
+  gpSales:15000, scSales:30000, cnGmv:10000,
+  gpRate:9, scRate:5, cnRate:4,
+  gpFee:2000, scFee:4000, cnFee:2000, addonFee:500, fdFee:1500,
+  payroll:5400, ai:1371, saas:1432, reacher:149.75
+};
+
+var CONTROLS = [
+  {g:'Roster today · 5 active', items:[
+    {k:'gp0',   l:'Growth Partner clients',   min:0,max:40,step:1,   f:'n'},
+    {k:'sc0',   l:'Scale clients',            min:0,max:40,step:1,   f:'n'},
+    {k:'cn0',   l:'Creator Network clients',  min:0,max:40,step:1,   f:'n'}
+  ]},
+  {g:'New clients per month', items:[
+    {k:'gpAdd', l:'Growth Partner adds',      min:0,max:10,step:0.5, f:'n'},
+    {k:'scAdd', l:'Scale adds',               min:0,max:10,step:0.5, f:'n'},
+    {k:'cnAdd', l:'Creator Network adds',     min:0,max:10,step:0.5, f:'n'},
+    {k:'fdAdd', l:'Foundation sold ($1.5K one-time)', min:0,max:20,step:0.5, f:'n'}
+  ]},
+  {g:'Retention & conversion', items:[
+    {k:'churn', l:'Monthly churn rate',       min:0,max:50,step:1,   f:'p'},
+    {k:'fdConv',l:'Foundation → Growth conversion (lands month +2)', min:0,max:100,step:5, f:'p'},
+    {k:'addons',l:'Scale add-on pages per client (max 4)', min:0,max:4,step:0.25, f:'n'}
+  ]},
+  {g:'Volume per client / month', items:[
+    {k:'gpSales',l:'Growth Partner net sales', min:0,max:150000,step:1000, f:'$'},
+    {k:'scSales',l:'Scale net sales',          min:0,max:300000,step:5000, f:'$'},
+    {k:'cnGmv',  l:'Creator Network GMV placed',min:0,max:150000,step:1000,f:'$'}
+  ]},
+  {g:'Pricing card', items:[
+    {k:'gpFee', l:'Growth Partner retainer',  min:0,max:10000,step:100, f:'$'},
+    {k:'gpRate',l:'Growth Partner commission',min:0,max:20,step:0.5,    f:'p'},
+    {k:'scFee', l:'Scale retainer',           min:0,max:20000,step:250, f:'$'},
+    {k:'scRate',l:'Scale commission',         min:0,max:20,step:0.5,    f:'p'},
+    {k:'addonFee',l:'Scale add-on page',      min:0,max:2000,step:50,   f:'$'},
+    {k:'cnFee', l:'Creator Network retainer', min:0,max:10000,step:100, f:'$'},
+    {k:'cnRate',l:'Creator Network commission',min:0,max:20,step:0.5,   f:'p'},
+    {k:'fdFee', l:'Foundation one-time',      min:0,max:10000,step:100, f:'$'}
+  ]},
+  {g:'Cost base', cost:true, items:[
+    {k:'payroll',l:'Payroll & contractors (fixed)', min:0,max:40000,step:200, f:'$'},
+    {k:'ai',     l:'AI inference (flat post-routing)', min:0,max:8000,step:50, f:'$'},
+    {k:'saas',   l:'Fixed SaaS stack',        min:0,max:8000,step:50,   f:'$'},
+    {k:'reacher',l:'Reacher per client / mo', min:0,max:400,step:0.25,  f:'$'}
+  ]}
+];
+
+var KEY='tommy-model-v2';
+var S = load();
+
+function load(){
+  var s={}; for(var k in DEF) s[k]=DEF[k];
+  try{ var raw=localStorage.getItem(KEY); if(raw){ var p=JSON.parse(raw); for(var j in p) if(j in s && typeof p[j]==='number' && isFinite(p[j])) s[j]=p[j]; } }catch(e){}
+  return s;
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(S)); }catch(e){} }
+
+/* ── formatting ─────────────────────────────────────── */
+function $m(n){ var s=n<0?'-':''; n=Math.abs(Math.round(n)); return s+'$'+n.toLocaleString('en-US'); }
+function $k(n){
+  if(Math.abs(n)<1000) return '$'+Math.round(n);
+  var k=n/1000, s=(Math.abs(k)>=10||k===Math.round(k)) ? k.toFixed(0) : k.toFixed(1);
+  return '$'+s+'k';
+}
+function pct(n){ return (n*100).toFixed(1)+'%'; }
+function num(n){ return (Math.round(n*10)/10).toString(); }
+function fmt(v,f){ return f==='$'?$m(v) : f==='p'?v+'%' : num(v); }
+function MONTHS(){
+  var base=new Date(2026,9,1), out=[];
+  for(var i=0;i<12;i++){ var d=new Date(base.getFullYear(), base.getMonth()+i, 1);
+    out.push(d.toLocaleDateString('en-US',{month:'short'})+" '"+String(d.getFullYear()).slice(2)); }
+  return out;
+}
+
+/* ══ THE MODEL ══════════════════════════════════════════════════════════════
+   active(m) = active(m-1) × (1 − churn) + new adds  [+ Foundation converts]
+   Churn is applied to the surviving base before new clients are added, so a
+   client added this month bills this month and is exposed to churn next month.
+   Commission is recognised one month after the retainer month (~30-day lag),
+   so month 1 commission comes off the roster you have today.
+   ═════════════════════════════════════════════════════════════════════════ */
+function project(s, churnOverride){
+  var churn = (churnOverride==null ? s.churn : churnOverride)/100;
+  var surv = 1-churn;
+  var gp=s.gp0, sc=s.sc0, cn=s.cn0, rows=[];
+  var scFee = s.scFee + s.addonFee*s.addons;
+
+  for(var m=1;m<=12;m++){
+    var pgp=gp, psc=sc, pcn=cn;                        // last month's billing roster
+    var conv = m>2 ? s.fdAdd*(s.fdConv/100) : 0;       // 60-day window → lands m+2
+    gp = gp*surv + s.gpAdd + conv;
+    sc = sc*surv + s.scAdd;
+    cn = cn*surv + s.cnAdd;
+
+    var rGp=gp*s.gpFee, rSc=sc*scFee, rCn=cn*s.cnFee, rFd=s.fdAdd*s.fdFee;
+    var retainer = rGp+rSc+rCn;
+    var comm = pgp*s.gpSales*(s.gpRate/100) + psc*s.scSales*(s.scRate/100) + pcn*s.cnGmv*(s.cnRate/100);
+    var clients = gp+sc+cn;
+    var reacher = clients*s.reacher;
+    var tooling = reacher + s.ai + s.saas;
+    var burn = tooling + s.payroll;
+    var total = retainer + rFd + comm;
+
+    rows.push({ m:m, gp:gp, sc:sc, cn:cn, clients:clients,
+      rGp:rGp, rSc:rSc, rCn:rCn, rFd:rFd, retainer:retainer, comm:comm, total:total,
+      reacher:reacher, tooling:tooling, burn:burn, net:total-burn,
+      gross: total>0 ? (total-tooling)/total : 0,
+      full:  total>0 ? (total-burn)/total : 0,
+      conv:conv });
+  }
+  return rows;
+}
+
+/* ── controls ───────────────────────────────────────── */
+function buildControls(){
+  var h='';
+  CONTROLS.forEach(function(g){
+    h += '<div class="grp"><div class="grp-h">'+g.g+'</div>';
+    g.items.forEach(function(c){
+      h += '<div class="ctl'+(g.cost?' cost':'')+'">'
+        +   '<div class="ctl-top"><span class="ctl-lab">'+c.l+'</span>'
+        +   '<input class="ctl-val mono" type="text" id="t_'+c.k+'" data-k="'+c.k+'" data-f="'+c.f+'"></div>'
+        +   '<input type="range" id="r_'+c.k+'" data-k="'+c.k+'" min="'+c.min+'" max="'+c.max+'" step="'+c.step+'">'
+        + '</div>';
+    });
+    h += '</div>';
+  });
+  document.getElementById('controls').innerHTML = h;
+
+  CONTROLS.forEach(function(g){ g.items.forEach(function(c){
+    var r=document.getElementById('r_'+c.k), t=document.getElementById('t_'+c.k);
+    r.addEventListener('input', function(){ S[c.k]=parseFloat(r.value); t.value=fmt(S[c.k],c.f); save(); render(); syncCohort(); });
+    t.addEventListener('change', function(){
+      var v=parseFloat(String(t.value).replace(/[^0-9.\-]/g,''));
+      if(!isFinite(v)) v=DEF[c.k];
+      v=Math.max(c.min, Math.min(c.max, v));
+      S[c.k]=v; r.value=v; t.value=fmt(v,c.f); save(); render(); syncCohort();
+    });
+  });});
+}
+function syncControls(){
+  CONTROLS.forEach(function(g){ g.items.forEach(function(c){
+    document.getElementById('r_'+c.k).value = S[c.k];
+    document.getElementById('t_'+c.k).value = fmt(S[c.k], c.f);
+  });});
+}
+function syncCohort(){
+  document.querySelectorAll('.cbtn').forEach(function(b){
+    b.classList.toggle('on', parseFloat(b.dataset.churn)===S.churn);
+  });
+}
+
+/* ── charts (hand-rolled SVG, no dependencies) ──────── */
+var COL={gp:'#00C898', sc:'#8B7FE8', cn:'#2F9BD6', fd:'#4A6A85'};
+
+function drawMain(rows){
+  var W=980,H=360,pl=58,pr=14,pt=14,pb=42, iw=W-pl-pr, ih=H-pt-pb;
+  var peak=0; rows.forEach(function(r){ peak=Math.max(peak,r.total,r.burn); });
+  var max = niceMax(peak);
+  var bw = iw/rows.length, bar = Math.min(38, bw*0.56);
+  var y = function(v){ return pt+ih - (v/max)*ih; };
+  var labels = MONTHS();
+  var s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="12-month revenue projection">';
+
+  for(var i=0;i<=5;i++){
+    var v=max*i/5, yy=y(v);
+    s+='<line x1="'+pl+'" y1="'+yy+'" x2="'+(W-pr)+'" y2="'+yy+'" stroke="#1A3348" stroke-width="1"'+(i?'':'')+'/>';
+    s+='<text x="'+(pl-9)+'" y="'+(yy+3.5)+'" text-anchor="end" fill="#3D5F75" font-size="10" font-family="JetBrains Mono, monospace">'+$k(v)+'</text>';
+  }
+
+  rows.forEach(function(r,i){
+    var cx = pl + bw*i + bw/2, x0 = cx-bar/2, acc=0;
+    [['rGp',COL.gp],['rSc',COL.sc],['rCn',COL.cn],['rFd',COL.fd]].forEach(function(p){
+      var v=r[p[0]]; if(v<=0) return;
+      var h=(v/max)*ih; acc+=v;
+      s+='<rect x="'+x0+'" y="'+(y(acc))+'" width="'+bar+'" height="'+h+'" fill="'+p[1]+'" opacity=".9"><title>'+labels[i]+' — '+$m(v)+'</title></rect>';
+    });
+    s+='<text x="'+cx+'" y="'+(H-14)+'" text-anchor="middle" fill="#3D5F75" font-size="10" font-family="JetBrains Mono, monospace">'+labels[i]+'</text>';
+  });
+
+  var lp='', bp='';
+  rows.forEach(function(r,i){
+    var cx=pl+bw*i+bw/2;
+    lp += (i?' L':'M')+cx+' '+y(r.total);
+    bp += (i?' L':'M')+cx+' '+y(r.burn);
+  });
+  s+='<path d="'+bp+'" fill="none" stroke="#F0A830" stroke-width="1.6" stroke-dasharray="5 4"/>';
+  s+='<path d="'+lp+'" fill="none" stroke="#00C898" stroke-width="2.2" stroke-linejoin="round"/>';
+  rows.forEach(function(r,i){
+    var cx=pl+bw*i+bw/2;
+    s+='<circle cx="'+cx+'" cy="'+y(r.total)+'" r="3.2" fill="#07101A" stroke="#00C898" stroke-width="2"><title>'+labels[i]+' total '+$m(r.total)+' · burn '+$m(r.burn)+'</title></circle>';
+  });
+
+  var be = rows.findIndex(function(r){ return r.total>=r.burn; });
+  if(be>=0){
+    var bx=pl+bw*be+bw/2;
+    s+='<line x1="'+bx+'" y1="'+pt+'" x2="'+bx+'" y2="'+(pt+ih)+'" stroke="#00C898" stroke-width="1" stroke-dasharray="2 3" opacity=".5"/>';
+    s+='<text x="'+(bx+6)+'" y="'+(pt+11)+'" fill="#00C898" font-size="10" font-family="JetBrains Mono, monospace">breakeven</text>';
+  }
+  s+='</svg>';
+  document.getElementById('chart').innerHTML=s;
+}
+
+function drawCohort(a, b){
+  var W=520,H=190,pl=48,pr=10,pt=12,pb=26, iw=W-pl-pr, ih=H-pt-pb;
+  var peak=0; a.concat(b).forEach(function(r){ peak=Math.max(peak,r.total); });
+  var max=niceMax(peak);
+  var y=function(v){ return pt+ih-(v/max)*ih; };
+  var x=function(i){ return pl + iw*i/11; };
+  var s='<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Churn cohort comparison">';
+  for(var i=0;i<=4;i++){ var v=max*i/4, yy=y(v);
+    s+='<line x1="'+pl+'" y1="'+yy+'" x2="'+(W-pr)+'" y2="'+yy+'" stroke="#1A3348"/>';
+    s+='<text x="'+(pl-8)+'" y="'+(yy+3.5)+'" text-anchor="end" fill="#3D5F75" font-size="9" font-family="JetBrains Mono, monospace">'+$k(v)+'</text>'; }
+  function path(rows){ var p=''; rows.forEach(function(r,i){ p+=(i?' L':'M')+x(i)+' '+y(r.total); }); return p; }
+  s+='<path d="'+path(a)+'" fill="none" stroke="#F0A830" stroke-width="2"/>';
+  s+='<path d="'+path(b)+'" fill="none" stroke="#00C898" stroke-width="2"/>';
+  s+='<text x="'+(W-pr)+'" y="'+(y(b[11].total)-7)+'" text-anchor="end" fill="#00C898" font-size="10" font-family="JetBrains Mono, monospace">10% · '+$k(b[11].total)+'</text>';
+  s+='<text x="'+(W-pr)+'" y="'+(y(a[11].total)+14)+'" text-anchor="end" fill="#F0A830" font-size="10" font-family="JetBrains Mono, monospace">29% · '+$k(a[11].total)+'</text>';
+  s+='<text x="'+pl+'" y="'+(H-6)+'" fill="#3D5F75" font-size="9" font-family="JetBrains Mono, monospace">M1</text>';
+  s+='<text x="'+(W-pr)+'" y="'+(H-6)+'" text-anchor="end" fill="#3D5F75" font-size="9" font-family="JetBrains Mono, monospace">M12</text>';
+  s+='</svg>';
+  document.getElementById('cochart').innerHTML=s;
+}
+
+function niceMax(v){
+  if(v<=0) return 1000;
+  var mag=Math.pow(10, Math.floor(Math.log10(v)));
+  var n=v/mag;
+  var step = n<=1.2?1.2 : n<=1.5?1.5 : n<=2?2 : n<=2.5?2.5 : n<=3?3 : n<=4?4 : n<=5?5 : n<=6?6 : n<=8?8 : 10;
+  return step*mag;
+}
+
+/* ── render ─────────────────────────────────────────── */
+function render(){
+  var rows = project(S);
+  var m1=rows[0], m12=rows[11];
+  var beIdx = rows.findIndex(function(r){ return r.total>=r.burn; });
+  var labels = MONTHS();
+
+  /* summary strip */
+  var mrr12 = m12.retainer, mrr1 = m1.retainer;
+  var strip = [
+    {k:'Retainer MRR · M12', v:$m(mrr12), c:'teal', d:'M1 '+$m(mrr1),
+     f:'GP '+num(m12.gp)+'×'+$m(S.gpFee)+' · SC '+num(m12.sc)+'×'+$m(S.scFee+S.addonFee*S.addons)+' · CN '+num(m12.cn)+'×'+$m(S.cnFee)},
+    {k:'Commission · M12', v:$m(m12.comm), c:'violet', d:'M1 '+$m(m1.comm),
+     f:'M11 roster × net sales × rate, recognised one month later'},
+    {k:'Total revenue · M12', v:$m(m12.total), c:'', d:'incl. '+$m(m12.rFd)+' one-time',
+     f:'retainer + Foundation + commission'},
+    {k:'Gross margin · M12', v:pct(m12.gross), c:'teal', d:'tooling '+$m(m12.tooling),
+     f:'(revenue − tooling) ÷ revenue — excludes payroll'},
+    {k:'Full margin · M12', v:pct(m12.full), c:(m12.full>=0?'':'rose'), d:'burn '+$m(m12.burn),
+     f:'(revenue − burn) ÷ revenue — burn = tooling + '+$m(S.payroll)+' payroll'},
+    {k:'Breakeven', v:(beIdx>=0?labels[beIdx]:'—'), c:(beIdx>=0?'teal':'rose'),
+     d:(beIdx>=0?'month '+(beIdx+1)+' of 12':'not inside 12 months'),
+     f:'first month total revenue ≥ total burn'},
+    {k:'Active clients · M12', v:num(m12.clients), c:'amber', d:'from '+num(S.gp0+S.sc0+S.cn0)+' today',
+     f:'steady state = adds ÷ churn = '+num((S.gpAdd+S.scAdd+S.cnAdd+S.fdAdd*(S.fdConv/100))/(S.churn/100||1))+' clients'}
+  ];
+  document.getElementById('strip').innerHTML = strip.map(function(c){
+    return '<div class="kpi '+(c.c==='amber'?'amber':c.c==='violet'?'violet':c.c==='rose'?'rose':'')+'">'
+      + '<div class="k">'+c.k+'</div><div class="v '+(c.c||'')+'">'+c.v+'</div>'
+      + '<div class="d">'+(c.d||'')+'</div><div class="f">'+(c.f||'')+'</div></div>';
+  }).join('');
+
+  drawMain(rows);
+
+  /* cohort */
+  var a=project(S,29), b=project(S,10);
+  drawCohort(a,b);
+  var aBe=a.findIndex(function(r){return r.total>=r.burn;}), bBe=b.findIndex(function(r){return r.total>=r.burn;});
+  document.getElementById('conote').innerHTML =
+    'Same adds, same pricing, only churn differs. <b>29%</b> lands at '+$m(a[11].total)+'/mo ('
+    + (aBe>=0?'breakeven '+labels[aBe]:'never breaks even') + '). <b>10%</b> lands at '+$m(b[11].total)+'/mo ('
+    + (bBe>=0?'breakeven '+labels[bBe]:'never breaks even') + '). Difference at M12: <b>'+$m(b[11].total-a[11].total)+'/mo</b>.';
+
+  /* LTV */
+  var life = S.churn>0 ? 1/(S.churn/100) : Infinity;
+  var scFee = S.scFee + S.addonFee*S.addons;
+  var offers = [
+    {n:'Growth Partner', v:S.gpFee + S.gpSales*(S.gpRate/100), d:$m(S.gpFee)+' + '+S.gpRate+'% of '+$k(S.gpSales)},
+    {n:'Scale',          v:scFee   + S.scSales*(S.scRate/100), d:$m(scFee)+' + '+S.scRate+'% of '+$k(S.scSales)},
+    {n:'Creator Network',v:S.cnFee + S.cnGmv*(S.cnRate/100),  d:$m(S.cnFee)+' + '+S.cnRate+'% of '+$k(S.cnGmv)},
+    {n:'Foundation',     v:0, one:S.fdFee, d:'one-time, '+S.fdConv+'% convert to GP'}
+  ];
+  document.getElementById('ltv').innerHTML = offers.map(function(o){
+    var ltv = o.one!=null ? o.one + (S.fdConv/100)*(S.gpFee+S.gpSales*(S.gpRate/100))*(isFinite(life)?life:0)
+                          : o.v*(isFinite(life)?life:0);
+    var contrib = o.one!=null ? ltv : (o.v-S.reacher)*(isFinite(life)?life:0);
+    return '<div class="ltvbox"><div class="n">'+o.n+'</div><div class="a">'
+      + (isFinite(life)?$m(ltv):'∞')+'</div><div class="b">'+o.d
+      + '<br>net of Reacher '+(isFinite(life)?$m(contrib):'∞')+'</div></div>';
+  }).join('');
+  document.getElementById('ltvnote').innerHTML =
+    'LTV = monthly value × (1 ÷ churn). At <b>'+S.churn+'%</b> monthly churn the average client lasts <b>'
+    + (isFinite(life)?life.toFixed(1):'∞')+' months</b>. CAC is ~$0 — acquisition is organic — so LTV:CAC is not the constraint here; lifespan is.';
+
+  /* table */
+  document.getElementById('tbody').innerHTML = rows.map(function(r,i){
+    return '<tr'+(i===beIdx?' class="be"':'')+'>'
+      + '<td>'+labels[i]+'</td>'
+      + '<td>'+num(r.gp)+'</td><td>'+num(r.sc)+'</td><td>'+num(r.cn)+'</td>'
+      + '<td>'+$m(r.retainer)+'</td><td>'+$m(r.rFd)+'</td><td>'+$m(r.comm)+'</td>'
+      + '<td class="strong">'+$m(r.total)+'</td>'
+      + '<td>'+$m(r.reacher)+'</td><td>'+$m(r.tooling)+'</td><td>'+$m(r.burn)+'</td>'
+      + '<td>'+pct(r.gross)+'</td>'
+      + '<td class="'+(r.net>=0?'pos':'neg')+'">'+$m(r.net)+'</td></tr>';
+  }).join('');
+
+  /* provenance */
+  document.getElementById('prov').innerHTML =
+    '<b>Roster & retainer base</b> — 5 active clients, $8,994/mo contracted, ~$7,451 collecting (bank + Stripe reconciliation, 17 Sep 2026). '
+    + 'The five live clients are on legacy pricing ($1,500–$2,949); this model prices every client on the current card, so M1 retainer here reads higher than what is actually invoiced today.<br><br>'
+    + '<b>Churn 29%/mo</b> — 10 of 15 clients touched since Jun 2026 have churned (67%), average lifespan ~2 months. This is the single number the model is most sensitive to.<br><br>'
+    + '<b>Tooling</b> — Reacher $149.75 per client/mo (the only true 1:1 variable cost), AI inference ~$1,371/mo flat after the Aug 2026 OpenRouter routing (down from $5,455 in Jul), fixed SaaS ~$1,432/mo. '
+    + 'Note ~12 Reacher subscriptions are provisioned against 5 active clients — this model bills one per active client, so it understates today\'s actual card spend by roughly '+$m((12-(S.gp0+S.sc0+S.cn0))*S.reacher)+'/mo until the idle ones are cancelled.<br><br>'
+    + '<b>Burn</b> — payroll/contractors carried as a flat '+$m(S.payroll)+'/mo placeholder on top of tooling. Bank-derived average total burn is ~$10,520/mo.<br><br>'
+    + '<b>Commission base</b> — net sales = GMV minus returns, before TikTok commission and affiliate payout. Creator Network is charged on GMV from CC-placed creators only.<br><br>'
+    + '<b>Read the breakeven date carefully</b> — on the default assumptions the model breaks even immediately, because it bills every client at card price <i>and</i> recognises commission from month 1. Actual collections today are ~$7,451/mo against ~$10,520/mo burn. The honest read: this is what the book looks like once the current roster is repriced onto the card and the brands are doing the net sales entered above. Drop net sales toward $0 to see the retainer-only floor.<br><br>'
+    + '<b>Not modelled</b> — booths, sponsorships, event and cash revenue (a material share of 2026 actuals — Aug was $19.7K total against $13.0K of Stripe invoices), and the free/self-serve tier.';
+
+  document.getElementById('stamp').textContent = 'baseline Sep 2026 · ' + S.churn + '% churn · saved locally';
+}
+
+/* ── links ──────────────────────────────────────────── */
+var LINKS = [
+  {g:'Run the day', items:[
+    ['/task-management','Task Management','Ops engine — every open task, by person'],
+    ['/my-tasks','My Tasks','Your queue only'],
+    ['/','Command Center','Short Video, Growth Partners, Agents & Ops'],
+    ['/portal-admin','Portal Admin','Client + brand administration'],
+    ['/portal-admin/team','Team','Accounts and per-user logins'],
+    ['/portal-admin/clients','Clients','Brand roster and portal state']
+  ]},
+  {g:'Money', items:[
+    ['/financial-dashboard','Financial Dashboard','Live Stripe + GHL — cash flow, receivables'],
+    ['https://dashboard.stripe.com','Stripe','Invoices, subscriptions, balance'],
+    ['https://app.rho.co','Rho','Bank + card — the source of truth for spend'],
+    ['https://qbo.intuit.com','QuickBooks','Books (dormant — Bench migration pending)'],
+    ['https://railway.app/dashboard','Railway','Hosting spend, env vars, deploys']
+  ]},
+  {g:'The raise', items:[
+    ['/proposals/pitch','Pitch Deck','Slides 01–13 · password gated'],
+    ['/proposals/ccc-investment','CCC Investment','Event investment deck'],
+    ['/proposals/case-studies','Case Studies','Proof, client outcomes'],
+    ['https://claude.ai/code/artifact/96a1093d-3e23-4fc2-b9e4-0a08ad751e51','Cost to Serve','Rho card breakdown + Reacher scaling'],
+    ['https://claude.ai/code/artifact/ff05f008-66f8-4bdd-9b5b-0041ab9d71b7','Cash In','Sep 2026 receivables tracker']
+  ]},
+  {g:'Offers', items:[
+    ['/offers','All Offers','The public offer index'],
+    ['/offers/the-foundation','The Foundation','$1,500 one-time'],
+    ['/offers/growth-partner','Growth Partner','$2,000/mo + 9% net sales'],
+    ['/offers/scale','Scale','$4,000/mo + 5% + $500/add-on page'],
+    ['/offers/creator-network','Creator Network','$2,000/mo + 4% placed GMV']
+  ]},
+  {g:'Client & creator surfaces', items:[
+    ['/client/dashboard','Brand Portal','What clients see'],
+    ['/brand-applications','Brand Applications','Inbound brand queue'],
+    ['/creators','Creator Portal','Creator-side surface'],
+    ['/inner-circle','Inner Circle','Covenant + membership'],
+    ['/creator-cadence','Creator Cadence','Launch texts + weekly-call reminders'],
+    ['/open-collab-outreach','Open Collab Queue','Outreach approvals'],
+    ['https://events.cultcontent.cc','Events','Creator Carnival + networking hub']
+  ]},
+  {g:'Tools', items:[
+    ['https://app.profitibull.com/v2/location/c216j58Vx9XxYa7WYMiA/','GoHighLevel','CRM, pipelines, workflows, forms'],
+    ['https://app.reacherapp.com','Reacher','Affiliate backbone — $149.75/account'],
+    ['https://publish.buffer.com','Buffer','Scheduling across every channel'],
+    ['https://www.skool.com/cult-content','Skool','Community'],
+    ['https://app.larksuite.com','Lark','Base, docs, alerts'],
+    ['https://www.fastmoss.com','FastMoss','TikTok Shop data'],
+    ['https://www.kalodata.com','Kalodata','TikTok Shop analytics'],
+    ['https://partner.tiktokshop.com','TikTok Partner Center','Shop API, matchmaking'],
+    ['https://console.apify.com','Apify','Social scrapers behind Performance'],
+    ['https://dash.cloudflare.com','Cloudflare','DNS + Access policies']
+  ]},
+  {g:'Code & infra', items:[
+    ['https://github.com/TommyL-333/cult-command-center','cult-command-center','This app — manifest + portal'],
+    ['https://github.com/TommyL-333/cultcontent-server','cultcontent-server','Scheduler + webhooks on Railway'],
+    ['https://cultcontent-server-production.up.railway.app','Server health','Railway service root'],
+    ['/mockup','Creator Portal Mockup','Launcher concept'],
+    ['/health','Health','This service']
+  ]}
+];
+
+function buildLinks(){
+  document.getElementById('lgrid').innerHTML = LINKS.map(function(g){
+    return '<div class="card lcard"><h3>'+g.g+'</h3>' + g.items.map(function(it){
+      var ext = it[0].indexOf('http')===0;
+      return '<a class="lrow" href="'+it[0]+'"'+(ext?' target="_blank" rel="noopener noreferrer"':'')+'>'
+        + '<span class="lt">'+it[1]+'<span class="ld">'+it[2]+'</span></span>'
+        + '<span class="lx">'+(ext?'↗':'→')+'</span></a>';
+    }).join('') + '</div>';
+  }).join('');
+}
+
+/* ── tabs ───────────────────────────────────────────── */
+function setTab(name){
+  document.querySelectorAll('.tab').forEach(function(b){ b.classList.toggle('on', b.dataset.tab===name); });
+  document.querySelectorAll('.panel-page').forEach(function(p){ p.classList.toggle('on', p.id==='page-'+name); });
+  try{ localStorage.setItem('tommy-tab', name); }catch(e){}
+  if(location.hash.slice(1)!==name) history.replaceState(null,'','#'+name);
+}
+
+/* ── init ───────────────────────────────────────────── */
+buildControls();
+syncControls();
+syncCohort();
+buildLinks();
+render();
+
+document.querySelectorAll('.tab').forEach(function(b){
+  b.addEventListener('click', function(){ setTab(b.dataset.tab); });
+});
+document.querySelectorAll('.cbtn').forEach(function(b){
+  b.addEventListener('click', function(){
+    S.churn = parseFloat(b.dataset.churn);
+    syncControls(); syncCohort(); save(); render();
+  });
+});
+document.getElementById('reset').addEventListener('click', function(){
+  for(var k in DEF) S[k]=DEF[k];
+  syncControls(); syncCohort(); save(); render();
+});
+window.addEventListener('resize', function(){ render(); });
+
+var startTab = location.hash.slice(1);
+if(startTab!=='model' && startTab!=='links'){ try{ startTab=localStorage.getItem('tommy-tab')||'model'; }catch(e){ startTab='model'; } }
+setTab(startTab);
+</script>
+</body>
+</html>
