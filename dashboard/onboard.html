@@ -2243,7 +2243,10 @@ function syncColorPicker() {
           ${r.website ? `<span>🌐 ${qEsc(r.website)}</span>` : ''}
           ${r.submittedAt ? `<span>📅 ${fmtDate(r.submittedAt)}</span>` : ''}
         </div>
-        <button class="queue-begin-btn" onclick="startWizardFromQueue(${i})">Begin Onboarding →</button>
+        <div style="display:flex;gap:8px">
+          <button class="queue-begin-btn" style="flex:1" onclick="startWizardFromQueue(${i})">Begin Onboarding →</button>
+          <button class="queue-begin-btn" style="flex:0 0 auto;padding:10px 14px;font-size:.75rem;opacity:.7" onclick="copyOnboardLink(${JSON.stringify(r.recordId)})" title="Copy shareable link">🔗</button>
+        </div>
       </div>
     `).join('');
     // expose rows for prefill lookup
@@ -2283,6 +2286,24 @@ function syncColorPicker() {
   }
   window.doOnboardLogin = doOnboardLogin;
 
+  window.copyOnboardLink = function (recordId) {
+    const url = window.location.origin + '/onboard/' + recordId;
+    navigator.clipboard.writeText(url).then(() => {
+      // brief visual feedback via the button text — we can't easily target the button here,
+      // so just show a transient toast-style div
+      const toast = document.createElement('div');
+      toast.textContent = 'Link copied!';
+      Object.assign(toast.style, {
+        position:'fixed',bottom:'24px',left:'50%',transform:'translateX(-50%)',
+        background:'rgba(32,213,196,.9)',color:'#000',fontWeight:'800',fontSize:'.82rem',
+        padding:'10px 20px',borderRadius:'8px',zIndex:'999',pointerEvents:'none',
+        animation:'fadeIn .15s ease',
+      });
+      document.body.appendChild(toast);
+      setTimeout(() => toast.remove(), 2000);
+    });
+  };
+
   window.startWizardFromQueue = function (idx) {
     const rows = window._queueRows || [];
     const row = rows[idx];
@@ -2297,6 +2318,7 @@ function syncColorPicker() {
   };
 
   window.startWizard = function (prefill) {
+    document.getElementById('onboard-login').style.display = 'none';
     document.getElementById('queue-view').style.display = 'none';
     document.getElementById('wizard-view').style.display = '';
     if (prefill) {
@@ -2304,15 +2326,16 @@ function syncColorPicker() {
       if (prefill.website)   document.getElementById('website').value   = prefill.website;
       if (prefill.firstName) document.getElementById('firstName').value = prefill.firstName;
       if (prefill.email)     document.getElementById('email').value     = prefill.email;
-      if (prefill.offerType) {
-        // Navigate to Step 3 and select the offer after Step 1 validation passes
-        // Store for after user steps through naturally — expose a helper they can call
-        window._prefillOfferType = prefill.offerType;
-      }
+      if (prefill.offerType) window._prefillOfferType = prefill.offerType;
     }
   };
 
-  loadQueue();
+  // Shared client link — server injects __ONBOARD_PREFILL__ when visiting /onboard/:recordId
+  if (window.__ONBOARD_PREFILL__) {
+    startWizard(window.__ONBOARD_PREFILL__);
+  } else {
+    loadQueue();
+  }
 })();
 
 // ─── Init ─────────────────────────────────────────────────────────────────────

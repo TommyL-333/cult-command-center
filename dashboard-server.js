@@ -775,6 +775,49 @@ app.get('/onboard', (req, res) => {
   res.sendFile(path.join(__dirname, 'dashboard', 'onboard.html'));
 });
 
+// GET /onboard/:recordId — shareable client link; no auth, prefill data injected server-side
+app.get('/onboard/:recordId', async (req, res) => {
+  const { recordId } = req.params;
+  // Lark record IDs start with "rec" followed by alphanumeric chars
+  if (!/^rec[A-Za-z0-9]{8,}$/.test(recordId)) return res.redirect('/onboard');
+  try {
+    const tok = await getLarkTenantToken();
+    const salesBase  = process.env.SALES_APP_BASE_TOKEN  || 'E3UKbx6C7a5CKHscVZruH91otGb';
+    const salesTable = process.env.SALES_APP_TABLE_ID    || 'tblzBuIbAMueZcPA';
+    const r = await axios.get(
+      `https://open.larksuite.com/open-apis/bitable/v1/apps/${salesBase}/tables/${salesTable}/records/${recordId}`,
+      { headers: { Authorization: `Bearer ${tok}` } }
+    );
+    if (r.data?.code !== 0) return res.redirect('/onboard');
+    const f = r.data?.data?.record?.fields || {};
+    function _lt(v) {
+      if (v == null || v === '') return '';
+      if (typeof v === 'string') return v;
+      if (typeof v === 'number') return String(v);
+      if (Array.isArray(v)) return v.map(_lt).join(', ');
+      if (typeof v === 'object') {
+        if ('text'  in v) return String(v.text);
+        if ('value' in v) return String(v.value);
+      }
+      return String(v);
+    }
+    const OFFER_MAP = { 'foundation':'foundation','growth partner':'growth','scale':'scale','creator network':'network' };
+    const prefill = {
+      brandName: _lt(f['Brand Name']),
+      website:   _lt(f['Website URL']),
+      firstName: _lt(f['Primary Contact Name']) || _lt(f['Applicant Name']),
+      email:     _lt(f['Primary Contact Email']),
+      offerType: OFFER_MAP[_lt(f['Offer Selected']).toLowerCase()] || null,
+    };
+    let html = fs.readFileSync(require('path').join(__dirname, 'dashboard', 'onboard.html'), 'utf8');
+    html = html.replace('</head>', `<script>window.__ONBOARD_PREFILL__=${JSON.stringify(prefill)};</script></head>`);
+    res.send(html);
+  } catch (err) {
+    console.error('[onboard-link]', err.message);
+    res.redirect('/onboard');
+  }
+});
+
 // GET /brand-applications — password-protected admin view of all brand applications
 // Uses the same isPortalAdmin session as /portal-admin.
 const SALES_BASE_TOKEN = process.env.SALES_APP_BASE_TOKEN || 'E3UKbx6C7a5CKHscVZruH91otGb';
