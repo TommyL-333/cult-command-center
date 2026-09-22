@@ -592,6 +592,7 @@ app.get('/offers', (req, res) => {
   res.sendFile(filePath);
 });
 app.get('/offers/:slug', (req, res) => {
+  if (req.params.slug === 'scale') return res.redirect(301, '/offers/growth-partner');
   const filePath = path.join(OFFERS_DIR, req.params.slug + '.html');
   if (!fs.existsSync(filePath)) return res.status(404).send('Offer not found');
   res.setHeader('Content-Type', 'text/html');
