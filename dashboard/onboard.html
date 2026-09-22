@@ -519,20 +519,11 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
         <div class="offer-radio" id="radio-growth"></div>
         <div class="offer-tag">Monthly Retainer</div>
         <div class="offer-name">Growth Partner</div>
-        <div class="offer-price">$2,000 / mo + 9% net sales</div>
+        <div class="offer-price">$2,500 / mo + 8% net sales</div>
         <div class="offer-desc">Ongoing creator affiliate management, TikTok ads support, UGC content production, and monthly strategy. Best for brands ready to scale consistently.</div>
         <div style="margin-top:8px;font-size:10px;font-weight:700;color:var(--teal);letter-spacing:.02em">3-month minimum commitment</div>
       </div>
 
-      <!-- Scale -->
-      <div class="offer-card" id="offer-scale" onclick="selectOffer('scale')">
-        <div class="offer-radio" id="radio-scale"></div>
-        <div class="offer-tag">Monthly Retainer</div>
-        <div class="offer-name">Scale</div>
-        <div class="offer-price">$4,000 / mo + 5% net sales</div>
-        <div class="offer-desc">Full-service TikTok commerce management — creator campaigns, AI content, brand page, ads, and dedicated team access. For brands going all-in.</div>
-        <div style="margin-top:8px;font-size:10px;font-weight:700;color:var(--teal);letter-spacing:.02em">3-month minimum commitment</div>
-      </div>
 
       <!-- Creator Network -->
       <div class="offer-card" id="offer-network" onclick="selectOffer('network')">
@@ -868,111 +859,55 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
       <!-- Add-ons -->
       <div style="margin-top:22px">
         <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:10px">Add-ons</div>
-        <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden">
-          <label style="display:flex;align-items:center;gap:10px;padding:14px 16px;cursor:pointer;user-select:none">
-            <input type="checkbox" id="gp-aiCarouselAddon" onchange="updateGpAddonSummary()" style="width:16px;height:16px;accent-color:var(--teal);cursor:pointer;flex-shrink:0">
+
+        <!-- Additional marketing accounts -->
+        <div style="border:1px solid var(--border);border-radius:10px;padding:14px 16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
             <div>
-              <div style="font-size:13px;font-weight:700;color:var(--text)">AI Carousel Content <span style="font-size:11px;font-weight:700;color:var(--teal);margin-left:6px">+$500/mo</span></div>
-              <div style="font-size:11px;color:var(--muted);margin-top:2px;line-height:1.5">CC generates and posts AI-powered carousel content to your brand social accounts. No extra setup needed from you — we handle account configuration on our end.</div>
+              <div style="font-size:13px;font-weight:700;color:var(--text)">Additional Marketing Accounts <span style="font-size:11px;font-weight:700;color:var(--teal);margin-left:6px">+$500/mo each</span></div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px;line-height:1.5">Extra TikTok, Instagram, or YouTube accounts beyond your primary account. We handle content and management for each.</div>
             </div>
-          </label>
-        </div>
-        <div class="cost-card" id="gp-addon-cost" style="margin-top:12px;display:none">
-          <div style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:10px">Add-on Summary</div>
-          <div class="cost-row"><span class="cost-row-label">AI Carousel Content</span><span class="cost-row-val">$500/mo</span></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- ─── SCALE ─── -->
-  <div class="cond-section" id="cond-scale">
-    <div class="card">
-      <div class="card-title">Scale — details</div>
-      <div class="card-sub">Full-service setup. We'll need collaborator access and a few configuration decisions.</div>
-
-      <div class="tier-notice">
-        <strong>3-month minimum commitment.</strong> Scale agreements run for an initial 3 months. After that, the engagement continues month-to-month with 30 days' written notice to cancel.
-      </div>
-
-      <div class="info-box">
-        <strong>Collaborator seat:</strong> After you submit, CC will send a collaborator access request to your TikTok Shop. You'll approve it under Shop → Partner Center → Collaborators. This gives us managed access to run your shop operations.
-      </div>
-
-      <div class="row">
-        <div class="field">
-          <label>Preferred Meeting Cadence</label>
-          <div class="toggle-row">
-            <button type="button" class="t-btn" data-field="sc-meetingCadence" data-val="Weekly" onclick="setToggle(this)">Weekly</button>
-            <button type="button" class="t-btn" data-field="sc-meetingCadence" data-val="Biweekly" onclick="setToggle(this)">Biweekly</button>
-            <button type="button" class="t-btn" data-field="sc-meetingCadence" data-val="Monthly" onclick="setToggle(this)">Monthly</button>
+            <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
+              <button type="button" onclick="adjustGpAccounts(-1)" style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.06);border:1px solid var(--border);color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">−</button>
+              <span id="gp-acc-count" style="font-size:16px;font-weight:800;min-width:20px;text-align:center">0</span>
+              <button type="button" onclick="adjustGpAccounts(1)" style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.06);border:1px solid var(--border);color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">+</button>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- Creator Purchase Reimbursement -->
-      <div style="margin-top:18px;margin-bottom:8px">
-        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:12px">Creator Purchase Reimbursement Campaign</div>
-        <div class="row trio">
-          <div class="field">
-            <label>Product(s) to Feature</label>
-            <div id="sc-reim-product-picker" class="product-chip-picker"></div>
-            <div class="hint">Select which products creators should purchase &amp; post about</div>
-          </div>
-          <div class="field">
-            <label>Creator Orders Desired</label>
-            <input type="number" id="sc-reimOrders" placeholder="e.g. 20" min="1">
-          </div>
-          <div class="field">
-            <label>Retail Price / Unit ($)</label>
-            <input type="number" id="sc-reimPrice" placeholder="e.g. 49" min="0" step="0.01">
-            <div class="hint">CC pre-charges at retail × qty</div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Add-ons: 5 account slots -->
-      <div style="margin-top:22px">
-        <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:6px">Account Add-ons</div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:14px;line-height:1.6">Each account is <strong style="color:#fff">$500/mo</strong>. Choose what kind of content we produce for it — AI-generated content or creator UGC content. Creator content requires a minimum $3,000/mo creator budget.</div>
-
-        <div style="display:flex;flex-direction:column;gap:10px" id="sc-account-slots">
-          <!-- slots injected by JS -->
-        </div>
-
-        <!-- Meta Ads Management add-on -->
-        <div style="margin-top:16px;border:1px solid var(--border);border-radius:10px;overflow:hidden">
+        <!-- Meta Ads Management -->
+        <div style="margin-top:10px;border:1px solid var(--border);border-radius:10px;overflow:hidden">
           <label style="display:flex;align-items:center;gap:10px;padding:14px 16px;cursor:pointer;user-select:none">
-            <input type="checkbox" id="sc-metaAdsAddon" onchange="toggleMetaAdsAddon()" style="width:16px;height:16px;accent-color:var(--teal);cursor:pointer;flex-shrink:0">
+            <input type="checkbox" id="gp-metaAdsAddon" onchange="toggleGpMetaAdsAddon()" style="width:16px;height:16px;accent-color:var(--teal);cursor:pointer;flex-shrink:0">
             <div>
-              <div style="font-size:13px;font-weight:700;color:var(--text)">Meta Ads Management <span style="font-size:11px;font-weight:700;color:var(--teal);margin-left:6px">+$500/mo</span></div>
+              <div style="font-size:13px;font-weight:700;color:var(--text)">Meta Ads Management <span style="font-size:11px;font-weight:700;color:var(--teal);margin-left:6px">+$1,000/mo</span></div>
               <div style="font-size:11px;color:var(--muted);margin-top:2px;line-height:1.5">We create, run, and optimize your Meta (Facebook &amp; Instagram) ad campaigns. CC manages the strategy and execution — your ad spend is separate.</div>
             </div>
           </label>
-          <div id="sc-metaAds-fields" style="display:none;padding:0 16px 16px;border-top:1px solid var(--border)">
+          <div id="gp-metaAds-fields" style="display:none;padding:0 16px 16px;border-top:1px solid var(--border)">
             <div style="margin-top:14px" class="row">
               <div class="field">
                 <label>Existing Meta Business Manager account?</label>
                 <div class="toggle-row">
-                  <button type="button" class="t-btn" data-field="sc-metaHasBM" data-val="Yes" onclick="setToggle(this);toggleMetaBMId()">Yes</button>
-                  <button type="button" class="t-btn" data-field="sc-metaHasBM" data-val="No" onclick="setToggle(this);toggleMetaBMId()">No</button>
+                  <button type="button" class="t-btn" data-field="gp-metaHasBM" data-val="Yes" onclick="setToggle(this);toggleGpMetaBMId()">Yes</button>
+                  <button type="button" class="t-btn" data-field="gp-metaHasBM" data-val="No" onclick="setToggle(this);toggleGpMetaBMId()">No</button>
                 </div>
               </div>
             </div>
-            <div id="sc-metaBMId-row" style="display:none" class="row">
+            <div id="gp-metaBMId-row" style="display:none" class="row">
               <div class="field">
                 <label>Meta Business Manager ID</label>
-                <input type="text" id="sc-metaBMId" placeholder="e.g. 1234567890123">
+                <input type="text" id="gp-metaBMId" placeholder="e.g. 1234567890123">
               </div>
               <div class="field">
                 <label>Meta Ad Account ID <span style="font-weight:400;color:var(--muted)">(if created)</span></label>
-                <input type="text" id="sc-metaAdAccountId" placeholder="e.g. act_1234567890">
+                <input type="text" id="gp-metaAdAccountId" placeholder="e.g. act_1234567890">
               </div>
             </div>
             <div class="row">
               <div class="field">
                 <label>Primary Ad Objective</label>
-                <select id="sc-metaAdObjective">
+                <select id="gp-metaAdObjective">
                   <option value="">Select objective…</option>
                   <option>Conversions / Sales</option>
                   <option>Traffic</option>
@@ -983,7 +918,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
               </div>
               <div class="field">
                 <label>Monthly Ad Budget Range</label>
-                <select id="sc-metaAdBudget">
+                <select id="gp-metaAdBudget">
                   <option value="">Select range…</option>
                   <option>Under $1,000</option>
                   <option>$1,000 – $3,000</option>
@@ -997,16 +932,16 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
             <div class="row full">
               <div class="field">
                 <label>Existing creative assets or brand guidelines for Meta? <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
-                <textarea id="sc-metaCreativeNotes" style="min-height:60px" placeholder="e.g. Drive link to existing ad folder, Canva brand kit, or describe your visual style (colors, fonts, tone)…"></textarea>
+                <textarea id="gp-metaCreativeNotes" style="min-height:60px" placeholder="e.g. Drive link to existing ad folder, Canva brand kit, or describe your visual style…"></textarea>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- AI Carousel Content add-on -->
+        <!-- AI Carousel Content -->
         <div style="margin-top:10px;border:1px solid var(--border);border-radius:10px;overflow:hidden">
           <label style="display:flex;align-items:center;gap:10px;padding:14px 16px;cursor:pointer;user-select:none">
-            <input type="checkbox" id="sc-aiCarouselAddon" onchange="updateScAddonSummary()" style="width:16px;height:16px;accent-color:var(--teal);cursor:pointer;flex-shrink:0">
+            <input type="checkbox" id="gp-aiCarouselAddon" onchange="updateGpAddonSummary()" style="width:16px;height:16px;accent-color:var(--teal);cursor:pointer;flex-shrink:0">
             <div>
               <div style="font-size:13px;font-weight:700;color:var(--text)">AI Carousel Content <span style="font-size:11px;font-weight:700;color:var(--teal);margin-left:6px">+$500/mo</span></div>
               <div style="font-size:11px;color:var(--muted);margin-top:2px;line-height:1.5">CC generates and posts AI-powered carousel content to your brand social accounts. No extra setup needed from you — we handle account configuration on our end.</div>
@@ -1014,18 +949,16 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
           </label>
         </div>
 
-        <!-- Live cost summary -->
-        <div class="cost-card" id="sc-addon-cost" style="margin-top:14px;display:none">
+        <!-- Cost summary -->
+        <div class="cost-card" id="gp-addon-cost" style="margin-top:12px;display:none">
           <div style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:10px">Add-on Summary</div>
-          <div class="cost-row"><span class="cost-row-label">Accounts selected</span><span class="cost-row-val" id="sc-acc-count">0</span></div>
-          <div class="cost-row" id="sc-ai-carousel-cost-row" style="display:none"><span class="cost-row-label">AI Carousel Content</span><span class="cost-row-val">$500/mo</span></div>
-          <div class="cost-row" id="sc-meta-cost-row" style="display:none"><span class="cost-row-label">Meta Ads Management</span><span class="cost-row-val">$500/mo</span></div>
-          <div class="cost-row"><span class="cost-row-label">Monthly add-on total</span><span class="cost-row-val">$<span id="sc-addon-total">0</span>/mo</span></div>
-          <div id="sc-creator-budget-note" style="display:none;margin-top:8px;font-size:10.5px;color:var(--gold);line-height:1.55">⚠ One or more accounts use creator content — a minimum $3,000/mo creator budget applies.</div>
+          <div class="cost-row" id="gp-acc-cost-row" style="display:none"><span class="cost-row-label">Extra accounts (<span id="gp-acc-cost-count">0</span>)</span><span class="cost-row-val" id="gp-acc-cost-val">$0/mo</span></div>
+          <div class="cost-row" id="gp-meta-cost-row" style="display:none"><span class="cost-row-label">Meta Ads Management</span><span class="cost-row-val">$1,000/mo</span></div>
+          <div class="cost-row" id="gp-ai-carousel-cost-row" style="display:none"><span class="cost-row-label">AI Carousel Content</span><span class="cost-row-val">$500/mo</span></div>
+          <div class="cost-row"><span class="cost-row-label">Monthly add-on total</span><span class="cost-row-val">$<span id="gp-addon-total">0</span>/mo</span></div>
         </div>
       </div>
     </div>
-
   </div>
 
   <!-- ─── CREATOR NETWORK ─── -->
@@ -1171,7 +1104,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 const state = {
   step: 1, totalSteps: 5,
   logoUrl: '', assetUrls: {},
-  offerType: '',  // foundation | growth | scale | network
+  offerType: '',  // foundation | growth | network
   tiers: {},      // { tier1: bool, tier2: bool }
   toggles: {},    // field → value
 };
@@ -1326,7 +1259,7 @@ function getToggle(field) { return state.toggles[field] || ''; }
 
 // ─── Offer selection ──────────────────────────────────────────────────────────
 function selectOffer(key) {
-  ['foundation','growth','scale','network'].forEach(k => {
+  ['foundation','growth','network'].forEach(k => {
     document.getElementById('offer-' + k).classList.toggle('selected', k === key);
     document.getElementById('radio-' + k).style.background = k === key ? 'var(--teal)' : '';
   });
@@ -1337,11 +1270,11 @@ function selectOffer(key) {
 
 function showConditionalSection() {
   document.querySelectorAll('.cond-section').forEach(s => s.classList.remove('show'));
-  const map = { foundation: 'cond-foundation', growth: 'cond-growth', scale: 'cond-scale', network: 'cond-network' };
+  const map = { foundation: 'cond-foundation', growth: 'cond-growth', network: 'cond-network' };
   const el = document.getElementById(map[state.offerType]);
   if (el) el.classList.add('show');
 
-  const showCohorts = ['growth', 'scale', 'network'].includes(state.offerType);
+  const showCohorts = ['growth', 'network'].includes(state.offerType);
   const cohortsEl = document.getElementById('cond-cohorts');
   if (cohortsEl) cohortsEl.style.display = showCohorts ? '' : 'none';
 
@@ -1350,22 +1283,19 @@ function showConditionalSection() {
     const slider = document.getElementById('c1-budgetSlider');
     const labels = document.getElementById('c1-range-labels');
     if (slider) {
-      if (state.offerType === 'growth') {
-        slider.min = 0; slider.max = 10000; slider.step = 1000;
-        if (parseInt(slider.value) > 10000) slider.value = 0;
-        if (labels) labels.innerHTML = '<span>$0</span><span>$10,000</span>';
-      } else {
+      if (state.offerType === 'network') {
         slider.min = 10000; slider.max = 100000; slider.step = 5000;
         if (parseInt(slider.value) < 10000) slider.value = 10000;
         if (labels) labels.innerHTML = '<span>$10,000</span><span>$100,000</span>';
+      } else {
+        slider.min = 0; slider.max = 30000; slider.step = 1000;
+        if (parseInt(slider.value) > 30000) slider.value = 0;
+        if (labels) labels.innerHTML = '<span>$0</span><span>$30,000</span>';
       }
       updateBudgetDisplay();
     }
     renderCohort2Products();
     renderProductPicker('c1-product-picker', true);
-  }
-  if (state.offerType === 'scale') {
-    renderProductPicker('sc-reim-product-picker', true);
   }
   updateStep4Cards();
 }
@@ -1521,91 +1451,47 @@ function updateCohort2Calc() {
   calc.style.display = 'block';
 }
 
-// ─── Account slot system (Scale) ─────────────────────────────────────────────
-const SC_ACCOUNTS = ['Brand Page', 'Marketing Account 1', 'Marketing Account 2', 'Marketing Account 3', 'Marketing Account 4'];
-const scAccountSelections = {}; // { 'Brand Page': 'none'|'management'|'ai'|'creator', ... }
 
-function buildAccountSlots() {
-  const container = document.getElementById('sc-account-slots');
-  if (!container) return;
-  container.innerHTML = '';
-  SC_ACCOUNTS.forEach(name => {
-    scAccountSelections[name] = 'none';
-    const id = 'acc-' + name.replace(/\s+/g, '-').toLowerCase();
-    const div = document.createElement('div');
-    div.className = 'acc-slot';
-    div.id = id;
-    div.innerHTML = `
-      <div class="acc-slot-header">
-        <div class="acc-slot-name">${name}</div>
-        <div class="acc-slot-price" id="${id}-price">$500/mo</div>
-      </div>
-      <div class="acc-type-row">
-        <button type="button" class="acc-type-btn" data-acc="${name}" data-type="ai" onclick="selectAccType(this)">AI Content</button>
-        <button type="button" class="acc-type-btn" data-acc="${name}" data-type="creator" onclick="selectAccType(this)">Creator Content</button>
-      </div>
-      <div class="acc-creator-note" id="${id}-cnote">Requires $3,000/mo minimum creator budget. Great for placing creators on retainer to post to this account — we handle GMV tracking so they earn a revenue share from content they produce for it.</div>`;
-    container.appendChild(div);
-  });
-}
+let gpExtraAccounts = 0;
 
-function selectAccType(btn) {
-  const accName = btn.dataset.acc;
-  const type    = btn.dataset.type;
-  const id      = 'acc-' + accName.replace(/\s+/g, '-').toLowerCase();
-  const slot    = document.getElementById(id);
-  // Toggle off if already selected
-  const current = scAccountSelections[accName];
-  const newType = (current === type) ? 'none' : type;
-  scAccountSelections[accName] = newType;
-  slot.querySelectorAll('.acc-type-btn').forEach(b => {
-    b.classList.remove('sel');
-    if (b.dataset.type === newType) b.classList.add('sel');
-  });
-  slot.classList.toggle('has-selection', newType !== 'none');
-  const cnote = document.getElementById(id + '-cnote');
-  if (cnote) cnote.classList.toggle('show', newType === 'creator');
-  updateScAddonSummary();
-}
-
-function updateScAddonSummary() {
-  const selected = Object.values(scAccountSelections).filter(v => v !== 'none');
-  const count = selected.length;
-  const hasMeta = document.getElementById('sc-metaAdsAddon')?.checked;
-  const hasAiCarousel = document.getElementById('sc-aiCarouselAddon')?.checked;
-  const total = count * 500 + (hasMeta ? 500 : 0) + (hasAiCarousel ? 500 : 0);
-  const hasCreator = selected.includes('creator');
-  const anyAddon = count > 0 || hasMeta || hasAiCarousel;
-  const costEl = document.getElementById('sc-addon-cost');
-  if (costEl) costEl.style.display = anyAddon ? 'block' : 'none';
-  const countEl = document.getElementById('sc-acc-count');
-  if (countEl) countEl.textContent = count;
-  const totalEl = document.getElementById('sc-addon-total');
-  if (totalEl) totalEl.textContent = total.toLocaleString();
-  const noteEl = document.getElementById('sc-creator-budget-note');
-  if (noteEl) noteEl.style.display = hasCreator ? 'block' : 'none';
-  const metaRow = document.getElementById('sc-meta-cost-row');
-  if (metaRow) metaRow.style.display = hasMeta ? 'flex' : 'none';
-  const aiRow = document.getElementById('sc-ai-carousel-cost-row');
-  if (aiRow) aiRow.style.display = hasAiCarousel ? 'flex' : 'none';
+function adjustGpAccounts(delta) {
+  gpExtraAccounts = Math.max(0, Math.min(5, gpExtraAccounts + delta));
+  document.getElementById('gp-acc-count').textContent = gpExtraAccounts;
+  updateGpAddonSummary();
 }
 
 function updateGpAddonSummary() {
+  const hasMeta      = document.getElementById('gp-metaAdsAddon')?.checked;
   const hasAiCarousel = document.getElementById('gp-aiCarouselAddon')?.checked;
+  const accCount     = gpExtraAccounts;
+  const total = accCount * 500 + (hasMeta ? 1000 : 0) + (hasAiCarousel ? 500 : 0);
+  const anyAddon = accCount > 0 || hasMeta || hasAiCarousel;
   const costEl = document.getElementById('gp-addon-cost');
-  if (costEl) costEl.style.display = hasAiCarousel ? 'block' : 'none';
+  if (costEl) costEl.style.display = anyAddon ? 'block' : 'none';
+  const accRow = document.getElementById('gp-acc-cost-row');
+  if (accRow) accRow.style.display = accCount > 0 ? 'flex' : 'none';
+  const accCountEl = document.getElementById('gp-acc-cost-count');
+  if (accCountEl) accCountEl.textContent = accCount;
+  const accValEl = document.getElementById('gp-acc-cost-val');
+  if (accValEl) accValEl.textContent = `$${(accCount * 500).toLocaleString()}/mo`;
+  const metaRow = document.getElementById('gp-meta-cost-row');
+  if (metaRow) metaRow.style.display = hasMeta ? 'flex' : 'none';
+  const aiRow = document.getElementById('gp-ai-carousel-cost-row');
+  if (aiRow) aiRow.style.display = hasAiCarousel ? 'flex' : 'none';
+  const totalEl = document.getElementById('gp-addon-total');
+  if (totalEl) totalEl.textContent = total.toLocaleString();
 }
 
-function toggleMetaAdsAddon() {
-  const checked = document.getElementById('sc-metaAdsAddon')?.checked;
-  const fields = document.getElementById('sc-metaAds-fields');
+function toggleGpMetaAdsAddon() {
+  const checked = document.getElementById('gp-metaAdsAddon')?.checked;
+  const fields = document.getElementById('gp-metaAds-fields');
   if (fields) fields.style.display = checked ? 'block' : 'none';
-  updateScAddonSummary();
+  updateGpAddonSummary();
 }
 
-function toggleMetaBMId() {
-  const hasBM = document.querySelector('[data-field="sc-metaHasBM"].active')?.dataset.val === 'Yes';
-  const row = document.getElementById('sc-metaBMId-row');
+function toggleGpMetaBMId() {
+  const hasBM = document.querySelector('[data-field="gp-metaHasBM"].active')?.dataset.val === 'Yes';
+  const row = document.getElementById('gp-metaBMId-row');
   if (row) row.style.display = hasBM ? 'flex' : 'none';
 }
 
@@ -1772,8 +1658,7 @@ async function handleLogoUpload(input) {
 // ─── Review builder ───────────────────────────────────────────────────────────
 const offerLabels = {
   foundation: 'The Foundation — $1,500 one-time',
-  growth:     'Growth Partner — $2,000/mo + 9%',
-  scale:      'Scale — $4,000/mo + 5%',
+  growth:     'Growth Partner — $2,500/mo + 8%',
   network:    'Creator Network — $2,000/mo + 4% GMV',
 };
 
@@ -1810,23 +1695,18 @@ function buildReview() {
   // Financial Commitment
   const offerCosts = {
     foundation: '$1,500 one-time',
-    growth:     '$2,000/mo + 9% net sales',
-    scale:      '$4,000/mo + 5% net sales',
+    growth:     '$2,500/mo + 8% net sales',
     network:    '$2,000/mo + 4% GMV from placements',
   };
   let finHtml = `<div class="rv-section"><div class="rv-section-title">Financial Commitment</div><div class="rv-grid">
     ${rv('Base Cost', offerCosts[state.offerType] || '')}`;
 
-  if (state.offerType === 'scale') {
-    const accSelected = Object.entries(scAccountSelections).filter(([,t]) => t !== 'none');
-    if (accSelected.length) {
-      finHtml += rv('Account Add-ons', `${accSelected.length} accounts × $500/mo = $${(accSelected.length * 500).toLocaleString()}/mo`);
-      const scOrders = parseInt(v('sc-reimOrders')) || 0;
-      const scPrice  = parseFloat(v('sc-reimPrice')) || 0;
-      if (scOrders && scPrice) finHtml += rv('Reimbursement Campaign', `${scOrders} orders × $${scPrice} = $${(scOrders * scPrice).toLocaleString()}`);
-    }
+  if (state.offerType === 'growth') {
+    if (gpExtraAccounts > 0) finHtml += rv('Extra Accounts', `${gpExtraAccounts} × $500/mo = $${(gpExtraAccounts * 500).toLocaleString()}/mo`);
+    if (document.getElementById('gp-metaAdsAddon')?.checked) finHtml += rv('Meta Ads Management', '$1,000/mo');
+    if (document.getElementById('gp-aiCarouselAddon')?.checked) finHtml += rv('AI Carousel Content', '$500/mo');
   }
-  if (['growth', 'scale', 'network'].includes(state.offerType)) {
+  if (['growth', 'network'].includes(state.offerType)) {
     const c1budget = parseInt(document.getElementById('c1-budget')?.value) || 0;
     if (c1budget) finHtml += rv('Cohort 1 Retainer Budget', `$${c1budget.toLocaleString()}/mo`);
     const rows = document.querySelectorAll('.c2-creator-input');
@@ -2114,44 +1994,31 @@ function collectOfferDetails() {
     };
   }
   if (state.offerType === 'growth') {
+    const hasMeta = document.getElementById('gp-metaAdsAddon')?.checked || false;
+    const hasAiCarousel = document.getElementById('gp-aiCarouselAddon')?.checked || false;
     return {
-      adsBudget:        v('gp-adsBudget'),
-      hasAdsAccount:    getToggle('gp-hasAdsAccount'),
-      roas:             v('gp-roas'),
-      creatorBudget:    v('gp-creatorBudget'),
+      adsBudget:         v('gp-adsBudget'),
+      hasAdsAccount:     getToggle('gp-hasAdsAccount'),
+      roas:              v('gp-roas'),
+      creatorBudget:     v('gp-creatorBudget'),
       creativeDirection: v('gp-creativeDirection'),
-      brandColor:       v('brandColorHex'),
-      aiCarouselAddon:  document.getElementById('gp-aiCarouselAddon')?.checked || false,
-      addonMonthlyTotal: document.getElementById('gp-aiCarouselAddon')?.checked ? 500 : 0,
-    };
-  }
-  if (state.offerType === 'scale') {
-    const accSelected = Object.entries(scAccountSelections).filter(([,t]) => t !== 'none');
-    const scReimProducts = pickerSelections['sc-reim-product-picker']
-      ? [...pickerSelections['sc-reim-product-picker']].map(i => shopifyPreviewProducts[i]?.title).filter(Boolean).join(', ')
-      : '';
-    return {
-      reimProducts:     scReimProducts,
-      reimOrders:       v('sc-reimOrders'),
-      reimPrice:        v('sc-reimPrice'),
-      brandColor:       v('brandColorHex'),
-      accounts:         scAccountSelections,
-      accountsSelected: accSelected.map(([name, type]) => ({ name, type })),
-      aiCarouselAddon:  document.getElementById('sc-aiCarouselAddon')?.checked || false,
-      addonMonthlyTotal: accSelected.length * 500 + (document.getElementById('sc-metaAdsAddon')?.checked ? 500 : 0) + (document.getElementById('sc-aiCarouselAddon')?.checked ? 500 : 0),
-      metaAdsAddon: document.getElementById('sc-metaAdsAddon')?.checked ? {
-        enabled: true,
-        hasBM:            document.querySelector('[data-field="sc-metaHasBM"].active')?.dataset.val || '',
-        bmId:             v('sc-metaBMId'),
-        adAccountId:      v('sc-metaAdAccountId'),
-        adObjective:      v('sc-metaAdObjective'),
-        adBudgetRange:    v('sc-metaAdBudget'),
-        creativeNotes:    v('sc-metaCreativeNotes'),
+      brandColor:        v('brandColorHex'),
+      extraAccounts:     gpExtraAccounts,
+      aiCarouselAddon:   hasAiCarousel,
+      metaAdsAddon:      hasMeta ? {
+        enabled:       true,
+        hasBM:         document.querySelector('[data-field="gp-metaHasBM"].active')?.dataset.val || '',
+        bmId:          v('gp-metaBMId'),
+        adAccountId:   v('gp-metaAdAccountId'),
+        adObjective:   v('gp-metaAdObjective'),
+        adBudgetRange: v('gp-metaAdBudget'),
+        creativeNotes: v('gp-metaCreativeNotes'),
       } : null,
+      addonMonthlyTotal: gpExtraAccounts * 500 + (hasMeta ? 1000 : 0) + (hasAiCarousel ? 500 : 0),
     };
   }
-  // Cohort data — shared across Growth, Scale, Network
-  if (['growth', 'scale', 'network'].includes(state.offerType)) {
+  // Cohort data — shared across Growth, Network
+  if (['growth', 'network'].includes(state.offerType)) {
     const rows = document.querySelectorAll('.c2-creator-input');
     let cohort2Products = [], totalCreators = 0;
     if (rows.length) {
@@ -2200,7 +2067,7 @@ function syncColorPicker() {
   const OFFER_MAP = {
     'foundation':      'foundation',
     'growth partner':  'growth',
-    'scale':           'scale',
+    'scale':           'growth',
     'creator network': 'network',
   };
 
@@ -2340,7 +2207,6 @@ function syncColorPicker() {
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 addProduct(); // start with one empty product row
-buildAccountSlots();
 initAssetUploader('logo-asset-upload');
 initAssetUploader('shared-asset-upload');
 </script>
