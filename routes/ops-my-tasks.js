@@ -3108,7 +3108,7 @@ function vqRowHtml(r){
     +'</div>'
     +'<div class="vq-row-detail">'
     +(r.description?'<div style="font-size:13px;line-height:1.5;margin-bottom:10px"><strong>Brief:</strong> '+esc(r.description)+'</div>':'')
-    +(r.script?'<div style="font-size:12px;line-height:1.5;margin-bottom:12px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;white-space:pre-wrap"><strong>Script:</strong>\n'+esc(r.script)+'</div>':'')
+    +(r.script?'<div style="font-size:12px;line-height:1.5;margin-bottom:12px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;white-space:pre-wrap"><strong>Script:</strong> '+esc(r.script)+'</div>':'')
     +'<div class="vq-actions">'+driveBtn+actionBtn+'</div>'
     +'</div>'
     +'</div>';
