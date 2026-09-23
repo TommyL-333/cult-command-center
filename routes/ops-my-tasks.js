@@ -143,7 +143,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
 <title>My Tasks · Cult Content</title>
-<script>window.__VQ_IS_EDITOR__=false;window.__VQ_IS_ADMIN__=false;</script>
+<script>window.__VQ_IS_EDITOR__=false;window.__VQ_IS_ADMIN__=false;window.__USER_ROLE__="";window.__USER_MODULES__=[];</script>
 <style>
   :root{--bg:#161823;--panel:#1e2030;--panel2:#252838;--border:#2f3346;--txt:#e8eaf2;--muted:#9aa0b5;--cyan:#00f2ea;--red:#ff0050;--p1:#ff0050;--p2:#ff9f0a;--p3:#ffd60a;--p4:#5a6072;}
   *{box-sizing:border-box}
@@ -461,6 +461,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     <button class="tab" onclick="switchTab(1)">Client Reports</button>
     <button class="tab" onclick="switchTab(2)">Sprint</button>
     <button class="tab" id="vq-tab-btn" onclick="switchTab(3)">__VQ_TAB_LABEL__</button>
+    <button class="tab" id="tab-btn-content-studio" style="display:none" onclick="switchTab(4)">🎬 Content Studio</button>
   </div>
 
   <div id="tab-tasks">
@@ -626,6 +627,89 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
       <span>Status</span>
     </div>
     <div id="vq-list-rows"></div>
+  </div>
+</div>
+
+<!-- ── Content Studio ──────────────────────────────────────────────── -->
+<div id="tab-content-studio" style="display:none">
+  <style>
+    .cs-section{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px 20px;margin-bottom:16px}
+    .cs-hdr{font-size:10px;font-weight:800;letter-spacing:.08em;color:var(--muted);margin-bottom:12px}
+    .cs-drop{border:2px dashed var(--border);border-radius:10px;padding:32px 20px;text-align:center;cursor:pointer;transition:border-color .2s}
+    .cs-drop:hover,.cs-drop.over{border-color:var(--cyan)}
+    .cs-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px}
+    .cs-card-top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+    .cs-thumb{width:60px;height:42px;object-fit:cover;border-radius:6px;background:#000;flex-shrink:0}
+    .cs-fname{font-size:12px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .cs-fsize{font-size:11px;color:var(--muted)}
+    .cs-status{font-size:11px;white-space:nowrap}
+    .cs-prog-wrap{margin-bottom:8px}
+    .cs-prog-bar-bg{height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+    .cs-prog-bar{height:100%;width:0%;background:var(--cyan);border-radius:2px;transition:width .3s}
+    .cs-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px}
+    .cs-field-hdr{font-size:10px;font-weight:800;color:var(--muted);margin-bottom:4px;display:flex;justify-content:space-between;align-items:center}
+    .cs-ta{width:100%;min-height:100px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;color:var(--txt);padding:8px 10px;font-size:12px;line-height:1.5;font-family:inherit;resize:vertical}
+    .cs-ta:focus{outline:none;border-color:var(--cyan)}
+    .cs-tags{display:flex;flex-wrap:wrap;gap:5px;min-height:22px;margin-bottom:6px}
+    .cs-tag{padding:3px 10px;border-radius:14px;background:rgba(0,242,234,.1);border:1px solid rgba(0,242,234,.25);color:var(--cyan);font-size:11px;font-weight:700;display:flex;align-items:center;gap:5px}
+    .cs-tag-rm{cursor:pointer;opacity:.6}.cs-tag-rm:hover{opacity:1}
+    .cs-ch-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:12px}
+    .cs-ch-card{padding:9px 12px;border-radius:8px;border:1px solid var(--border);background:var(--panel2);cursor:pointer;transition:.15s;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600}
+    .cs-ch-card.selected{border-color:var(--cyan);background:rgba(0,242,234,.08);color:var(--cyan)}
+    .cs-ch-card:hover{border-color:var(--cyan)}
+    .cs-preview{margin-top:8px;font-size:11px;line-height:1.5;background:var(--panel2);border:1px solid var(--border);border-radius:6px;padding:8px 10px;white-space:pre-wrap;color:var(--muted);display:none}
+    .cs-result-row{font-size:11px;padding:2px 0}
+    .cs-input{background:var(--panel2);border:1px solid var(--border);border-radius:8px;color:var(--txt);padding:6px 10px;font-size:12px;font-family:inherit}
+    .cs-input:focus{outline:none;border-color:var(--cyan)}
+    .cs-btn{background:var(--panel2);border:1px solid var(--border);border-radius:7px;color:var(--txt);padding:5px 12px;font-size:11px;font-weight:600;cursor:pointer;transition:.15s;font-family:inherit}
+    .cs-btn:hover{border-color:var(--cyan);color:var(--cyan)}
+    .cs-btn-primary{background:var(--cyan);border-color:var(--cyan);color:#000;font-weight:700}
+    .cs-btn-primary:hover{opacity:.9;color:#000}
+    .cs-btn-primary:disabled{opacity:.4;cursor:default}
+  </style>
+
+  <!-- Step 1: Upload -->
+  <div class="cs-section">
+    <div class="cs-hdr">① UPLOAD VIDEOS</div>
+    <div id="csDropZone" class="cs-drop"
+      onclick="document.getElementById('csFileInput').click()"
+      ondragover="event.preventDefault();this.classList.add('over')"
+      ondragleave="this.classList.remove('over')"
+      ondrop="csHandleDrop(event)">
+      <div style="font-size:28px;margin-bottom:8px">🎬</div>
+      <div style="font-size:13px;font-weight:700;margin-bottom:4px">Drop videos here or click to browse</div>
+      <div style="font-size:11px;color:var(--muted)">MP4, MOV, AVI — multiple files supported</div>
+    </div>
+    <input type="file" id="csFileInput" accept="video/*" multiple style="display:none" onchange="csHandleFiles(this)">
+  </div>
+
+  <!-- Video cards render here -->
+  <div id="csVideoList"></div>
+  <div id="csEmpty" style="text-align:center;padding:12px;color:var(--muted);font-size:12px">Drop videos above to get started</div>
+
+  <!-- Step 2: Publish -->
+  <div class="cs-section">
+    <div class="cs-hdr">② PUBLISH</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Select channels:</div>
+    <div id="csChGrid" class="cs-ch-grid"><div style="color:var(--muted);font-size:11px">Loading channels…</div></div>
+
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+      <span style="font-size:11px;color:var(--muted);font-weight:700">WHEN</span>
+      <label style="font-size:12px;display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="csWhen" value="now" checked onchange="csToggleSched(this.value)"> Post now</label>
+      <label style="font-size:12px;display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="csWhen" value="schedule" onchange="csToggleSched(this.value)"> Schedule all</label>
+      <label style="font-size:12px;display:flex;align-items:center;gap:5px;cursor:pointer"><input type="radio" name="csWhen" value="space" onchange="csToggleSched(this.value)"> Space out</label>
+    </div>
+    <input type="datetime-local" id="csSchedAt" class="cs-input" style="font-size:11px;display:none;margin-bottom:8px">
+    <div id="csSpaceRow" style="display:none;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">
+      <span style="font-size:12px;color:var(--muted)">Start:</span>
+      <input type="datetime-local" id="csSpaceStart" class="cs-input" style="font-size:11px">
+      <span style="font-size:12px;color:var(--muted)">then every</span>
+      <input type="number" id="csSpaceHours" class="cs-input" value="2" min="0.5" step="0.5" style="font-size:11px;width:60px">
+      <span style="font-size:12px;color:var(--muted)">hours</span>
+    </div>
+
+    <button class="cs-btn cs-btn-primary" id="csPublishBtn" onclick="csPublish()">📤 Post to Selected Channels</button>
+    <div id="csPublishResults" style="margin-top:12px;display:none"></div>
   </div>
 </div>
 
@@ -876,9 +960,11 @@ function switchTab(idx){
   document.getElementById('tab-report').style.display=idx===1?'':'none';
   document.getElementById('tab-sprint').style.display=idx===2?'':'none';
   document.getElementById('tab-video-queue').style.display=idx===3?'':'none';
+  document.getElementById('tab-content-studio').style.display=idx===4?'':'none';
   if(idx===1)loadReportTab();
   if(idx===2)loadSprint();
   if(idx===3){applyVqRole();loadVideoQueue();}
+  if(idx===4&&!_cs.channelsLoaded)csLoadChannels();
 }
 
 /* ── Sprint planner ──────────────────────────────────── */
@@ -2235,7 +2321,346 @@ function submitVideoRequest(){
   }).catch(function(e){errEl.textContent=''+e;errEl.style.display='block';});
 }
 
+/* ── Content Studio ─────────────────────────────────────────────────── */
+var _cs={videos:[],channels:[],selected:new Set(),channelsLoaded:false,_id:1};
+
+function csMakeId(){return 'cs'+(+_cs._id++);}
+
+function csHandleDrop(e){
+  e.preventDefault();
+  document.getElementById('csDropZone').classList.remove('over');
+  csAddFiles(Array.from(e.dataTransfer.files).filter(csIsVideo));
+}
+function csHandleFiles(inp){csAddFiles(Array.from(inp.files).filter(csIsVideo));inp.value='';}
+function csIsVideo(f){
+  return f.type.startsWith('video/')||f.type==='application/octet-stream'||
+    /\.(mp4|mov|avi|webm|mkv|m4v|flv|wmv)$/i.test(f.name);
+}
+function csAddFiles(files){
+  files.forEach(function(file){
+    var v={id:csMakeId(),file:file,objectUrl:URL.createObjectURL(file),uploadedUrl:null,
+           transcript:'',caption:'',hashtags:[],status:'pending'};
+    _cs.videos.push(v);
+    csRenderCard(v);
+    csProcessVideo(v);
+  });
+  csUpdatePublishBtn();
+  document.getElementById('csEmpty').style.display=_cs.videos.length?'none':'block';
+}
+
+function csRenderCard(v){
+  var card=document.createElement('div');
+  card.className='cs-card';card.id='csCard_'+v.id;
+  card.innerHTML='<div class="cs-card-top">'
+    +'<video class="cs-thumb" src="'+v.objectUrl+'" muted></video>'
+    +'<div style="flex:1;min-width:0"><div class="cs-fname">'+esc(v.file.name)+'</div>'
+    +'<div class="cs-fsize">'+(v.file.size/1024/1024).toFixed(1)+' MB</div></div>'
+    +'<div style="display:flex;align-items:center;gap:6px;flex-shrink:0">'
+    +'<span id="csStat_'+v.id+'" class="cs-status" style="color:var(--muted)">⏳ Pending</span>'
+    +'<button id="csRetry_'+v.id+'" onclick="csRetry(\\''+v.id+'\\')" style="display:none;font-size:10px;padding:3px 8px;background:var(--red);color:#fff;border:none;border-radius:4px;cursor:pointer">↺ Retry</button>'
+    +'</div>'
+    +'<button class="cs-btn" style="flex-shrink:0;font-size:11px;padding:4px 9px" onclick="csRemoveVideo(\\''+v.id+'\\')">✕</button>'
+    +'</div>'
+    +'<div id="csProgWrap_'+v.id+'" class="cs-prog-wrap" style="display:none">'
+    +'<div class="cs-prog-bar-bg"><div id="csProgBar_'+v.id+'" class="cs-prog-bar"></div></div></div>'
+    +'<div class="cs-grid">'
+    +'<div>'
+    +'<div class="cs-field-hdr">TRANSCRIPT <button class="cs-btn" style="font-size:10px;padding:2px 7px" onclick="csRetranscribe(\\''+v.id+'\\')">🎤 Re-transcribe</button></div>'
+    +'<textarea id="csTx_'+v.id+'" class="cs-ta" rows="5" placeholder="Transcription will appear here…" oninput="csGetV(\\''+v.id+'\\').transcript=this.value"></textarea>'
+    +'</div>'
+    +'<div>'
+    +'<div class="cs-field-hdr">CAPTION'
+    +'<div style="display:flex;gap:4px;align-items:center">'
+    +'<select id="csPlatform_'+v.id+'" class="cs-input" style="font-size:10px;padding:2px 5px">'
+    +'<option value="tiktok">🎵 TikTok</option>'
+    +'<option value="instagram">📸 Instagram</option>'
+    +'<option value="linkedin">💼 LinkedIn</option>'
+    +'<option value="youtube">▶️ YouTube</option>'
+    +'<option value="twitter">𝕏 Twitter</option>'
+    +'<option value="facebook">👤 Facebook</option>'
+    +'</select>'
+    +'<button class="cs-btn cs-btn-primary" style="font-size:10px;padding:2px 8px" onclick="csGenCaption(\\''+v.id+'\\')">✨ Gen</button>'
+    +'</div></div>'
+    +'<textarea id="csCap_'+v.id+'" class="cs-ta" rows="5" placeholder="Caption will be generated…" oninput="csUpdatePreview(\\''+v.id+'\\')"></textarea>'
+    +'</div></div>'
+    +'<div style="margin-top:8px">'
+    +'<div class="cs-field-hdr">HASHTAGS</div>'
+    +'<div id="csTags_'+v.id+'" class="cs-tags"></div>'
+    +'<input class="cs-input" placeholder="Add hashtag + Enter" style="font-size:11px;padding:4px 8px;width:180px" onkeydown="if(event.key===\\'Enter\\'){csAddTag(\\''+v.id+'\\',this.value);this.value=\\'\\';event.preventDefault();}">'
+    +'</div>'
+    +'<div id="csPrev_'+v.id+'" class="cs-preview"></div>';
+  document.getElementById('csVideoList').appendChild(card);
+}
+
+function csGetV(id){return _cs.videos.find(function(x){return x.id===id;});}
+
+function csStat(v,status,msg,pct){
+  v.status=status;
+  var el=document.getElementById('csStat_'+v.id);
+  var rb=document.getElementById('csRetry_'+v.id);
+  var pw=document.getElementById('csProgWrap_'+v.id);
+  var pb=document.getElementById('csProgBar_'+v.id);
+  if(!el)return;
+  var cols={uploading:'var(--cyan)',transcribing:'var(--p3)',captioning:'var(--p2)',
+            ready:'#00d27a',error:'var(--red)',posting:'var(--cyan)',done:'#00d27a'};
+  el.style.color=cols[status]||'var(--muted)';el.textContent=msg;
+  if(pw)pw.style.display=status==='uploading'?'block':'none';
+  if(pb&&pct!==undefined)pb.style.width=pct+'%';
+  if(pb&&status!=='uploading')pb.style.width='0%';
+  if(rb)rb.style.display=status==='error'?'inline-block':'none';
+}
+
+function csRetry(id){
+  var v=csGetV(id);if(!v)return;
+  v.uploadedUrl=null;v.transcript='';v.caption='';v.hashtags=[];
+  var ta=document.getElementById('csTx_'+id);if(ta)ta.value='';
+  var ca=document.getElementById('csCap_'+id);if(ca)ca.value='';
+  csStat(v,'uploading','⬆ Uploading 0%…',0);csProcessVideo(v);
+}
+
+function csRemoveVideo(id){
+  var idx=_cs.videos.findIndex(function(x){return x.id===id;});
+  if(idx<0)return;
+  var v=_cs.videos[idx];if(v.objectUrl)URL.revokeObjectURL(v.objectUrl);
+  _cs.videos.splice(idx,1);
+  var card=document.getElementById('csCard_'+id);if(card)card.remove();
+  csUpdatePublishBtn();
+  document.getElementById('csEmpty').style.display=_cs.videos.length?'none':'block';
+}
+
+async function csProcessVideo(v){
+  var MB=1024*1024;
+  csStat(v,'uploading','⬆ Uploading…',0);
+  try{
+    var CHUNK=20*MB;
+    var total=Math.ceil(v.file.size/CHUNK);
+    var uploadId=Date.now()+'_'+Math.random().toString(36).slice(2);
+    var cfgRes=await fetch('/api/upload-config');
+    var cfg=await cfgRes.json();
+    var chunkUrl=cfg.uploadUrl.replace(/\/[^/]+$/,'')+'/upload/chunk';
+    var lastData=null;
+    for(var i=0;i<total;i++){
+      var start=i*CHUNK,end=Math.min(start+CHUNK,v.file.size);
+      var pct=Math.round(((i+1)/total)*100);
+      csStat(v,'uploading','⬆ Uploading '+pct+'%…',pct);
+      var r=await fetch(chunkUrl,{method:'POST',headers:{
+        'Authorization':'Bearer '+cfg.token,'X-Upload-Id':uploadId,
+        'X-Chunk-Index':String(i),'X-Total-Chunks':String(total),
+        'X-Filename':v.file.name,'X-File-Size':String(v.file.size),
+        'Content-Type':'application/octet-stream'
+      },body:v.file.slice(start,end)});
+      if(!r.ok){csStat(v,'error','✗ Upload failed (chunk '+(i+1)+'/'+total+')');return;}
+      lastData=await r.json();
+      if(!lastData.ok){csStat(v,'error','✗ '+(lastData.error||'Chunk error'));return;}
+    }
+    if(!lastData||!lastData.url){csStat(v,'error','✗ No URL returned');return;}
+    v.uploadedUrl=lastData.url;
+  }catch(e){csStat(v,'error','✗ Upload failed — '+e.message);return;}
+
+  csStat(v,'transcribing','🎤 Transcribing…');
+  try{
+    var MB=1024*1024,txText='';
+    if(v.file.size>25*MB){
+      var fn=v.uploadedUrl?v.uploadedUrl.split('/uploads/')[1]:null;
+      if(!fn){csStat(v,'ready','⚠ Transcribe failed — no filename');return;}
+      var tr=await fetch('/api/transcribe-uploaded',{method:'POST',
+        headers:{'Content-Type':'application/json'},body:JSON.stringify({filename:fn})});
+      var td=await tr.json();
+      if(!td.ok||!td.text){csStat(v,'ready','⚠ Transcribe failed — '+(td.error||'no text'));return;}
+      txText=td.text;
+    }else{
+      var fd=new FormData();fd.append('audio',v.file);
+      var controller=new AbortController();
+      var tout=setTimeout(function(){controller.abort();},60000);
+      var tr;
+      try{tr=await fetch('/api/whisper-transcribe',{method:'POST',body:fd,signal:controller.signal});}
+      finally{clearTimeout(tout);}
+      var td=await tr.json();
+      if(!td.ok||!td.text){csStat(v,'ready','⚠ Transcribe failed — '+(td.error||'add manually'));return;}
+      txText=td.text;
+    }
+    v.transcript=txText;
+    var ta=document.getElementById('csTx_'+v.id);if(ta)ta.value=txText;
+  }catch(e){csStat(v,'ready','⚠ Transcribe timed out — add manually');return;}
+
+  csStat(v,'captioning','✨ Generating caption…');
+  try{
+    var platform=document.getElementById('csPlatform_'+v.id);
+    var pl=platform?platform.value:'tiktok';
+    var cr=await fetch('/api/video/generate-caption',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({transcript:v.transcript,platform:pl})});
+    var cd=await cr.json();
+    if(cd.ok){
+      v.caption=cd.caption||'';v.hashtags=cd.hashtags||[];
+      var ca=document.getElementById('csCap_'+v.id);if(ca)ca.value=v.caption;
+      csRenderTags(v);csUpdatePreview(v.id);csStat(v,'ready','✓ Ready');
+    }else{csStat(v,'ready','⚠ Caption failed — edit manually');}
+  }catch(e){csStat(v,'ready','⚠ Caption failed — edit manually');}
+}
+
+async function csRetranscribe(id){
+  var v=csGetV(id);if(!v)return;
+  csStat(v,'transcribing','🎤 Transcribing…');
+  try{
+    var fd=new FormData();fd.append('audio',v.file);
+    var r=await fetch('/api/whisper-transcribe',{method:'POST',body:fd});
+    var d=await r.json();
+    if(d.text){v.transcript=d.text;var ta=document.getElementById('csTx_'+id);if(ta)ta.value=d.text;csStat(v,'ready','✓ Transcribed');}
+    else{csStat(v,'ready','⚠ Transcribe failed');}
+  }catch(e){csStat(v,'error','✗ '+e.message);}
+}
+
+async function csGenCaption(id){
+  var v=csGetV(id);if(!v)return;
+  var ta=document.getElementById('csTx_'+id);
+  var tx=(ta&&ta.value.trim())||'';
+  if(!tx){toast('Add a transcript first');return;}
+  var pl=(document.getElementById('csPlatform_'+id)||{}).value||'tiktok';
+  csStat(v,'captioning','✨ Generating…');
+  try{
+    var r=await fetch('/api/video/generate-caption',{method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({transcript:tx,platform:pl})});
+    var d=await r.json();
+    if(d.ok){
+      v.caption=d.caption||'';v.hashtags=d.hashtags||[];
+      var ca=document.getElementById('csCap_'+id);if(ca)ca.value=v.caption;
+      csRenderTags(v);csUpdatePreview(id);csStat(v,'ready','✓ Ready');
+    }else{csStat(v,'ready','⚠ Failed');}
+  }catch(e){csStat(v,'error','✗ '+e.message);}
+}
+
+function csRenderTags(v){
+  var el=document.getElementById('csTags_'+v.id);if(!el)return;
+  el.innerHTML=v.hashtags.map(function(t,i){
+    return '<span class="cs-tag">#'+esc(t.replace(/^#/,''))+'<span class="cs-tag-rm" onclick="csRemoveTag(\\''+v.id+'\\','+i+')">✕</span></span>';
+  }).join('');
+}
+function csAddTag(id,val){
+  var v=csGetV(id);if(!v)return;
+  var tag=val.trim().replace(/^#/,'');
+  if(!tag||v.hashtags.indexOf(tag)>=0)return;
+  v.hashtags.push(tag);csRenderTags(v);csUpdatePreview(id);
+}
+function csRemoveTag(id,i){
+  var v=csGetV(id);if(!v)return;
+  v.hashtags.splice(i,1);csRenderTags(v);csUpdatePreview(id);
+}
+function csUpdatePreview(id){
+  var v=csGetV(id);var el=document.getElementById('csPrev_'+id);if(!v||!el)return;
+  var cap=(document.getElementById('csCap_'+id)||{}).value||'';
+  var ht=v.hashtags.map(function(t){return'#'+t.replace(/^#/,'');}).join(' ');
+  var full=cap.trim()+(ht?'\\n\\n'+ht:'');
+  el.style.display=full?'block':'none';el.textContent=full;
+}
+
+function csToggleSched(val){
+  document.getElementById('csSchedAt').style.display=val==='schedule'?'block':'none';
+  document.getElementById('csSpaceRow').style.display=val==='space'?'flex':'none';
+}
+
+function csUpdatePublishBtn(){
+  var nV=_cs.videos.length,nC=_cs.selected.size;
+  var btn=document.getElementById('csPublishBtn');if(!btn)return;
+  btn.textContent=(nV>0&&nC>0)
+    ?'📤 Post '+nV+' Video'+(nV>1?'s':'')+' to '+nC+' Channel'+(nC>1?'s':'')
+    :'📤 Post to Selected Channels';
+}
+
+async function csLoadChannels(){
+  var grid=document.getElementById('csChGrid');
+  try{
+    var r=await fetch('/api/buffer/channels',{credentials:'include'});
+    var d=await r.json();
+    _cs.channels=d.channels||[];_cs.channelsLoaded=true;
+    if(!_cs.channels.length){
+      grid.innerHTML='<div style="font-size:12px;color:var(--muted)">No Buffer channels connected. <a href="https://publish.buffer.com" target="_blank" style="color:var(--cyan)">Connect in Buffer →</a></div>';
+      return;
+    }
+    var icons={tiktok:'🎵',instagram:'📸',youtube:'▶️',twitter:'𝕏',linkedin:'💼',facebook:'👤',threads:'🧵'};
+    grid.innerHTML=_cs.channels.map(function(ch){
+      return '<div class="cs-ch-card" id="csCh_'+esc(ch.id)+'" onclick="csToggleCh(\\''+esc(ch.id)+'\\')">'
+        +'<span style="font-size:16px">'+(icons[(ch.service||'').toLowerCase()]||'📱')+'</span>'
+        +'<span style="font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'
+        +esc(ch.name||ch.service)+'</span></div>';
+    }).join('');
+  }catch(e){
+    grid.innerHTML='<div style="font-size:12px;color:var(--red)">Failed to load channels</div>';
+  }
+}
+
+function csToggleCh(id){
+  if(_cs.selected.has(id))_cs.selected.delete(id);else _cs.selected.add(id);
+  document.querySelectorAll('[id^="csCh_"]').forEach(function(el){
+    el.classList.toggle('selected',_cs.selected.has(el.id.replace('csCh_','')));
+  });
+  csUpdatePublishBtn();
+}
+
+async function csPublish(){
+  var ready=_cs.videos.filter(function(v){return v.uploadedUrl;});
+  if(!ready.length){toast('No uploaded videos yet — wait for uploads to finish');return;}
+  if(!_cs.selected.size){toast('Select at least one channel');return;}
+  var when=(document.querySelector('[name="csWhen"]:checked')||{}).value||'now';
+  var schedAt=document.getElementById('csSchedAt').value;
+  var spaceStart=document.getElementById('csSpaceStart').value;
+  var spaceHours=parseFloat(document.getElementById('csSpaceHours').value)||2;
+  var btn=document.getElementById('csPublishBtn');btn.disabled=true;btn.textContent='⏳ Posting…';
+  var resEl=document.getElementById('csPublishResults');resEl.style.display='block';resEl.innerHTML='';
+  var chIds=Array.from(_cs.selected);
+  var chMap={};_cs.channels.forEach(function(c){chMap[c.id]=c.name||c.service;});
+  var channels=chIds.map(function(id){
+    var ch=_cs.channels.find(function(c){return c.id===id;});
+    return{id:id,service:ch?ch.service:null};
+  });
+  for(var i=0;i<ready.length;i++){
+    var v=ready[i];
+    csStat(v,'posting','⏳ Posting ('+(i+1)+'/'+ready.length+')…');
+    var scheduledAt=null;
+    if(when==='schedule'&&schedAt)scheduledAt=new Date(schedAt).toISOString();
+    else if(when==='space'&&spaceStart){
+      var base=new Date(spaceStart);base.setTime(base.getTime()+i*spaceHours*3600000);
+      scheduledAt=base.toISOString();
+    }
+    var cap=(document.getElementById('csCap_'+v.id)||{}).value||v.caption;
+    var ht=v.hashtags.map(function(t){return'#'+t.replace(/^#/,'');}).join(' ');
+    var text=cap.trim()+(ht?'\\n\\n'+ht:'');
+    try{
+      var r=await fetch('/api/buffer/post-to-channels',{method:'POST',credentials:'include',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({channels:channels,text:text,mediaUrl:v.uploadedUrl,scheduledAt:scheduledAt||undefined})});
+      var d=await r.json();
+      var rows=d.results||[];
+      var fails=rows.filter(function(x){return!x.ok;}).length;
+      csStat(v,fails?'error':'done',fails?'⚠ '+fails+' failed':'✓ Posted');
+      var label=v.file.name.replace(/\\.[^.]+$/,'');
+      var tl=scheduledAt?'📅 '+new Date(scheduledAt).toLocaleString():'🚀 Now';
+      resEl.innerHTML+='<div style="margin-bottom:8px;border:1px solid var(--border);border-radius:8px;padding:10px 12px">'
+        +'<div style="font-size:12px;font-weight:700;margin-bottom:6px">'+esc(label)+' — '+tl+'</div>'
+        +rows.map(function(row){
+          return'<div class="cs-result-row" style="color:'+(row.ok?'#00d27a':'var(--red)')+';">'
+            +(row.ok?'✓':'✗')+' '+esc(chMap[row.channelId]||row.channelId)
+            +(!row.ok?' — '+(typeof row.error==='object'?JSON.stringify(row.error):row.error||'Failed'):'')+'</div>';
+        }).join('')+'</div>';
+    }catch(e){
+      csStat(v,'error','✗ '+e.message);
+      resEl.innerHTML+='<div style="font-size:12px;color:var(--red);padding:6px 0">✗ '+esc(v.file.name)+': '+esc(e.message)+'</div>';
+    }
+  }
+  btn.disabled=false;csUpdatePublishBtn();
+}
+
+function initModules(){
+  var mods=window.__USER_MODULES__||[];
+  if(mods.indexOf('content-studio')>=0){
+    var btn=document.getElementById('tab-btn-content-studio');
+    if(btn)btn.style.display='';
+  }
+}
+
 load();
+initModules();
 </script>
 </body>
 </html>`;
@@ -4823,16 +5248,28 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
   // fetches /api/my-tasks/list on load, groups tasks by Priority, offers a
   // Pillar filter, and completes tasks via a modal with a CLIENT-SIDE
   // required-result guard (submit disabled until the textarea is non-empty).
-  app.get('/my-tasks', requireAuth, (req, res) => {
-    const email = effectiveEmail(req).toLowerCase();
-    const isEditor = VIDEO_EDITOR_EMAILS.has(email);
-    const isAdmin = ADMIN_EMAILS.has(email);
-    const tabLabel = isEditor ? 'Video Queue' : 'Submit Request';
-    const html = MY_TASKS_HTML
-      .replace('window.__VQ_IS_EDITOR__=false;', `window.__VQ_IS_EDITOR__=${isEditor};`)
-      .replace('window.__VQ_IS_ADMIN__=false;', `window.__VQ_IS_ADMIN__=${isAdmin};`)
-      .replace('__VQ_TAB_LABEL__', tabLabel);
-    res.type('html').send(html);
+  app.get('/my-tasks', requireAuth, async (req, res) => {
+    try {
+      const email = effectiveEmail(req).toLowerCase();
+      const isAdmin = ADMIN_EMAILS.has(email);
+      const role = await resolveUserRole(email);
+      const modules = isAdmin
+        ? (ROLE_MODULES[role] || []).concat(ROLE_MODULES['admin'] || [])
+        : (ROLE_MODULES[role] || []);
+      const isEditor = modules.includes('video-queue-editor');
+      const hasVqAdmin = modules.includes('video-queue-admin') || isAdmin;
+      const tabLabel = isEditor ? 'Video Queue' : 'Submit Request';
+      const html = MY_TASKS_HTML
+        .replace('window.__VQ_IS_EDITOR__=false;', `window.__VQ_IS_EDITOR__=${isEditor};`)
+        .replace('window.__VQ_IS_ADMIN__=false;', `window.__VQ_IS_ADMIN__=${hasVqAdmin};`)
+        .replace('__VQ_TAB_LABEL__', tabLabel)
+        .replace('window.__USER_ROLE__="";', `window.__USER_ROLE__="${role}";`)
+        .replace('window.__USER_MODULES__=[];', `window.__USER_MODULES__=${JSON.stringify(modules)};`);
+      res.type('html').send(html);
+    } catch (e) {
+      console.error('[my-tasks] page serve error:', e.message);
+      res.status(500).type('html').send('<p style="font-family:sans-serif;padding:40px">Error loading page. Try refreshing.</p>');
+    }
   });
   // ---------- SERVER-SIDE COMP TIER HELPER ----------
   function computeCompTierSrv(model, kpis) {
@@ -5106,6 +5543,63 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
   app.get('/ops/my-tasks', requireAuth, (req, res) => {
     res.type('html').send(MY_TASKS_HTML);
   });
+
+  // ---------- ROLE MODULE SYSTEM ----------
+  // Maps Lark role names (normalized to kebab-case) to the modules the user sees.
+  // To add a new role: add an entry here. To change what a role can do: edit its array.
+  // Module IDs: 'video-queue-editor' (editor list view), 'video-queue-admin' (kanban),
+  //             'content-studio' (upload+transcribe+publish pipeline)
+  const ROLE_MODULES = {
+    'video-editor':      ['video-queue-editor', 'content-studio'],
+    'brand-manager':     [],
+    'community-manager': [],
+    'developer':         [],
+    'affiliate-manager': [],
+    'shop-manager':      [],
+    'admin':             ['video-queue-admin'],
+    'member':            [],
+  };
+  // Email fallback (used when Lark table has no Email field or lookup fails)
+  const EMAIL_ROLES = {
+    'gilbert@cultcontent.cc':  'video-editor',
+    'gourab@cultcontent.cc':   'brand-manager',
+    'jina@cultcontent.cc':     'community-manager',
+    'becca@cultcontent.cc':    'community-manager',
+    'jenna@cultcontent.cc':    'community-manager',
+    'daniel@cultcontent.cc':   'developer',
+    'tommy@cultcontent.cc':    'admin',
+  };
+  const _roleCache = new Map(); // email → { role, expiresAt }
+  const ROLE_CACHE_TTL = 10 * 60 * 1000;
+
+  async function resolveUserRole(email) {
+    const hit = _roleCache.get(email);
+    if (hit && Date.now() < hit.expiresAt) return hit.role;
+    // Try Lark Team table (looks for Email field)
+    try {
+      const data = await larkGet(
+        `/open-apis/bitable/v1/apps/${OPS_APP_TOKEN}/tables/${TEAM_TABLE}/records`,
+        { page_size: 100 }
+      );
+      const items = (data.data && data.data.items) || [];
+      for (const it of items) {
+        const f = it.fields || {};
+        const rowEmail = (textVal(f.Email) || textVal(f.email) || '').toLowerCase();
+        if (rowEmail && rowEmail === email) {
+          const raw = textVal(f.Role) || textVal(f.role) || '';
+          const role = raw.toLowerCase().replace(/\s+/g, '-') || 'member';
+          _roleCache.set(email, { role, expiresAt: Date.now() + ROLE_CACHE_TTL });
+          return role;
+        }
+      }
+    } catch (e) {
+      console.warn('[my-tasks] role Lark lookup failed:', e.message);
+    }
+    // Fallback to EMAIL_ROLES map
+    const role = EMAIL_ROLES[email] || 'member';
+    _roleCache.set(email, { role, expiresAt: Date.now() + ROLE_CACHE_TTL });
+    return role;
+  }
 
   // ---------- ROUTE: GET /api/video-requests ----------
   // Returns all video requests. Editor/admin see all; others see own.
