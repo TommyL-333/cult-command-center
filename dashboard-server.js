@@ -6331,7 +6331,7 @@ app.post('/api/creator-onboard', express.json(), async (req, res) => {
   res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.set('Access-Control-Allow-Headers', 'Content-Type');
 
-  const { name = '', tiktokHandle = '', email: rawEmail = '', phone = '', discordUsername = '' } = req.body || {};
+  const { name = '', tiktokHandle = '', email: rawEmail = '', phone = '', discordUsername = '', ref = '' } = req.body || {};
   // Normalize email so dup-check + INSERT are case/whitespace-insensitive (matches IC login lookup which lowercases)
   const email = String(rawEmail || '').trim().toLowerCase();
   if (!name.trim() || !email.trim() || !phone.trim()) {
@@ -6370,7 +6370,7 @@ app.post('/api/creator-onboard', express.json(), async (req, res) => {
     const payload = {
       firstName, lastName, email,
       phone: cleanPhone,
-      tags: ['affiliate', 'creator-community-form'],
+      tags: (() => { const t = ['affiliate', 'creator-community-form']; const r = String(ref||'').toLowerCase().replace(/[^a-z0-9_-]/g,'').slice(0,30); if(r) t.push(`referred-by-${r}`); return t; })(),
       locationId: process.env.GHL_LOCATION_ID || process.env.GHL_LOC_ID,
     };
     if (handle) payload.customFields = [{ key: 'tiktok_handle', field_value: `@${handle}` }];

@@ -417,6 +417,12 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .vq-btn.vq-done{background:rgba(107,232,107,.15);color:#6be86b;border-color:rgba(107,232,107,.3)}
   .vq-btn.vq-drive{background:rgba(0,242,234,.1);color:var(--cyan);border-color:rgba(0,242,234,.3)}
   .vq-empty{color:var(--muted);font-size:12px;padding:20px 0;text-align:center}
+  /* Gilbert tools panel */
+  .vq-tools-panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:18px}
+  .vq-tools-hdr{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:12px}
+  .vq-tool-links{display:flex;flex-wrap:wrap;gap:8px}
+  .vq-tool-link{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border:1px solid var(--border);border-radius:8px;font-size:12px;font-weight:600;color:var(--txt);text-decoration:none;background:var(--panel2);transition:.15s}
+  .vq-tool-link:hover{border-color:var(--cyan);color:var(--cyan)}
   /* Gilbert list view */
   .vq-list-hdr{display:grid;grid-template-columns:10px 110px 1fr 80px 80px 80px;gap:12px;align-items:center;padding:0 16px 8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:1px solid var(--border);margin-bottom:8px}
   .vq-row{border:1px solid var(--border);border-radius:10px;margin-bottom:7px;overflow:hidden;transition:.15s}
@@ -569,6 +575,9 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     <div class="fr full"><div class="fg"><label>Brief / Context</label>
       <textarea id="vq-desc" style="min-height:70px" placeholder="What needs to be edited? Hook direction, style notes, any must-includes…"></textarea>
     </div></div>
+    <div class="fr full"><div class="fg"><label>Script (optional)</label>
+      <textarea id="vq-script" style="min-height:80px" placeholder="Paste the video script or hook here if you have one…"></textarea>
+    </div></div>
     <div class="fr full"><div class="fg"><label>Footage — Google Drive Folder URL</label>
       <input type="url" id="vq-drive" placeholder="https://drive.google.com/drive/folders/…"/>
     </div></div>
@@ -590,6 +599,19 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     <div>
       <div class="vq-col-hdr">Done <span class="vq-col-count" id="vq-cnt-done">0</span></div>
       <div id="vq-col-done"></div>
+    </div>
+  </div>
+
+  <!-- Gilbert tools panel (video_editor only) -->
+  <div id="vq-tools-panel" style="display:none" class="vq-tools-panel">
+    <div class="vq-tools-hdr">Your Tools</div>
+    <div class="vq-tool-links">
+      <a href="https://www.capcut.com" target="_blank" class="vq-tool-link">🎬 CapCut</a>
+      <a href="https://seedance.ai" target="_blank" class="vq-tool-link">✨ Seedance AI</a>
+      <a href="https://www.tiktok.com/studio" target="_blank" class="vq-tool-link">📱 TikTok Studio</a>
+      <a href="https://publish.buffer.com" target="_blank" class="vq-tool-link">📅 Buffer</a>
+      <a href="https://drive.google.com" target="_blank" class="vq-tool-link">📁 Google Drive</a>
+      <a href="https://manifest.cultcontent.cc" target="_blank" class="vq-tool-link">🖥 Content Pipeline →</a>
     </div>
   </div>
 
@@ -3016,6 +3038,7 @@ function applyVqRole(){
   var isAdm=!!(window.__VQ_IS_ADMIN__);
   document.getElementById('vq-submit-form').style.display=isEd?'none':'';
   document.getElementById('vq-queue-wrap').style.display=isAdm?'':'none';
+  document.getElementById('vq-tools-panel').style.display=isEd?'':'none';
   document.getElementById('vq-list-wrap').style.display=isEd?'':'none';
 }
 
@@ -3084,7 +3107,8 @@ function vqRowHtml(r){
     +'<div style="font-size:11px;color:var(--muted)">'+esc(statusPretty)+'</div>'
     +'</div>'
     +'<div class="vq-row-detail">'
-    +(r.description?'<div style="font-size:13px;line-height:1.5;margin-bottom:12px">'+esc(r.description)+'</div>':'')
+    +(r.description?'<div style="font-size:13px;line-height:1.5;margin-bottom:10px"><strong>Brief:</strong> '+esc(r.description)+'</div>':'')
+    +(r.script?'<div style="font-size:12px;line-height:1.5;margin-bottom:12px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;white-space:pre-wrap"><strong>Script:</strong>\n'+esc(r.script)+'</div>':'')
     +'<div class="vq-actions">'+driveBtn+actionBtn+'</div>'
     +'</div>'
     +'</div>';
@@ -3143,17 +3167,19 @@ function submitVideoRequest(){
   var brand=(document.getElementById('vq-brand').value||'').trim();
   var title=(document.getElementById('vq-title').value||'').trim();
   var desc=(document.getElementById('vq-desc').value||'').trim();
+  var script=(document.getElementById('vq-script').value||'').trim();
   var drive=(document.getElementById('vq-drive').value||'').trim();
   var prio=document.getElementById('vq-priority').value||'normal';
   var due=document.getElementById('vq-due').value||'';
   if(!title){errEl.textContent='Title is required';errEl.style.display='block';return;}
-  var payload={brand:brand,title:title,description:desc,driveUrl:drive,priority:prio,dueDate:due};
+  var payload={brand:brand,title:title,description:desc,script:script,driveUrl:drive,priority:prio,dueDate:due};
   fetch('/api/video-requests',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
   .then(function(r){return r.json();}).then(function(d){
     if(d.ok){
       document.getElementById('vq-brand').value='';
       document.getElementById('vq-title').value='';
       document.getElementById('vq-desc').value='';
+      document.getElementById('vq-script').value='';
       document.getElementById('vq-drive').value='';
       document.getElementById('vq-due').value='';
       document.getElementById('vq-priority').value='normal';
@@ -5111,7 +5137,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       const names = { 'gilbert@cultcontent.cc':'Gilbert', 'jina@cultcontent.cc':'Jina',
         'becca@cultcontent.cc':'Becca', 'jenna@cultcontent.cc':'Jenna',
         'gourab@cultcontent.cc':'Gourab', 'tommy@cultcontent.cc':'Tommy' };
-      const { brand, title, description, driveUrl, priority, dueDate } = req.body || {};
+      const { brand, title, description, script, driveUrl, priority, dueDate } = req.body || {};
       if (!title || !title.trim()) return res.status(400).json({ error: 'Title is required' });
       const all = readJsonFile(VR_FILE, []);
       const id = 'vr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
@@ -5119,8 +5145,8 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
         id, submittedBy: email, submittedByName: names[email] || email,
         submittedAt: Date.now(), brand: (brand || '').trim(),
         title: title.trim(), description: (description || '').trim(),
-        driveUrl: (driveUrl || '').trim(), priority: priority || 'normal',
-        dueDate: dueDate || '', status: 'pending',
+        script: (script || '').trim(), driveUrl: (driveUrl || '').trim(),
+        priority: priority || 'normal', dueDate: dueDate || '', status: 'pending',
       });
       writeJsonFile(VR_FILE, all);
       res.json({ ok: true, id });
