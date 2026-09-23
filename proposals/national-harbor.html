@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>National Harbor × Cult Content — Digital Commerce Partner Program</title>
+<style>
+:root{
+  --bg:#07070d;--surface:#0e0e18;--card:#141420;--border:#1e1e30;
+  --accent:#00f2ea;--pink:#ff0050;--purple:#7b2fff;--lavender:#b899ff;--gold:#c9a84c;
+  --green:#10b981;--yellow:#f59e0b;
+  --text:#e2e8f0;--muted:#64748b;--light:#94a3b8;--radius:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Inter",sans-serif;font-size:14px;line-height:1.65;}
+
+/* ── TOPBAR ── */
+.topbar{position:sticky;top:0;z-index:100;background:rgba(7,7,13,.93);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:10px 48px;display:flex;align-items:center;justify-content:space-between;}
+.topbar-logo{font-size:.72rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--accent);}
+.topbar-links{display:flex;gap:24px;}
+.topbar-links a{color:var(--muted);font-size:.68rem;font-weight:600;text-decoration:none;letter-spacing:.05em;text-transform:uppercase;transition:color .15s;}
+.topbar-links a:hover{color:var(--accent);}
+
+/* ── HERO ── */
+.hero{padding:72px 48px 56px;max-width:960px;margin:0 auto;border-bottom:1px solid var(--border);}
+.hero-eyebrow{display:inline-flex;align-items:center;gap:8px;background:rgba(0,242,234,.08);border:1px solid rgba(0,242,234,.2);color:var(--accent);font-size:.65rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;padding:5px 13px;border-radius:20px;margin-bottom:22px;}
+.dot{width:6px;height:6px;background:var(--accent);border-radius:50%;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.hero h1{font-size:3rem;font-weight:900;line-height:1.04;letter-spacing:-.03em;margin-bottom:14px;}
+.hero h1 .acc{background:linear-gradient(135deg,var(--accent),var(--lavender));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hero h1 .pk{background:linear-gradient(135deg,var(--pink),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hero-sub{font-size:.92rem;color:var(--light);max-width:620px;line-height:1.75;margin-bottom:36px;}
+.hero-meta{display:flex;gap:40px;flex-wrap:wrap;}
+.meta-item{display:flex;flex-direction:column;gap:2px;}
+.meta-label{font-size:.6rem;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:700;}
+.meta-val{font-size:.87rem;font-weight:700;color:var(--text);}
+
+/* ── KPI STRIP ── */
+.kpi-strip{max-width:960px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-top:none;}
+.kpi{background:var(--surface);padding:24px 22px;}
+.kpi-val{font-size:1.9rem;font-weight:900;line-height:1;}
+.kpi-val.acc{color:var(--accent);}
+.kpi-val.pk{color:var(--pink);}
+.kpi-val.pu{color:var(--lavender);}
+.kpi-val.go{color:var(--gold);}
+.kpi-label{font-size:.63rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin-top:5px;}
+.kpi-sub{font-size:.63rem;color:var(--muted);margin-top:2px;}
+
+/* ── MAIN ── */
+.main{max-width:960px;margin:0 auto;padding:60px 48px;}
+.section{margin-bottom:64px;}
+.sec-label{display:flex;align-items:center;gap:10px;font-size:.6rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:10px;}
+.sec-label::after{content:"";flex:1;height:1px;background:var(--border);}
+.sec-label.pk{color:var(--pink);}
+.sec-label.pk::after{background:var(--border);}
+.sec-label.pu{color:var(--lavender);}
+.sec-label.go{color:var(--gold);}
+.sec-title{font-size:1.5rem;font-weight:900;letter-spacing:-.015em;margin-bottom:8px;}
+.sec-sub{font-size:.86rem;color:var(--light);line-height:1.75;margin-bottom:26px;max-width:680px;}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:22px;}
+.card.tl{border-left:3px solid var(--accent);}
+.card.pl{border-left:3px solid var(--pink);}
+.card.pul{border-left:3px solid var(--lavender);}
+.card.gl{border-left:3px solid var(--green);}
+.card.gol{border-left:3px solid var(--gold);}
+.card-title{font-size:.7rem;font-weight:800;color:var(--text);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+
+.cklist{list-style:none;display:flex;flex-direction:column;gap:8px;}
+.cklist li{display:flex;align-items:flex-start;gap:9px;font-size:.8rem;color:var(--light);}
+.cklist li::before{content:"✓";color:var(--accent);font-weight:900;flex-shrink:0;margin-top:1px;}
+.cklist.pk li::before{color:var(--pink);}
+.cklist.pu li::before{color:var(--lavender);}
+.cklist.go li::before{color:var(--gold);}
+
+.blist{list-style:none;display:flex;flex-direction:column;gap:7px;}
+.blist li{display:flex;align-items:flex-start;gap:9px;font-size:.8rem;color:var(--light);}
+.blist li::before{content:"→";color:var(--accent);font-weight:700;flex-shrink:0;}
+
+/* ── CHANNEL CARDS ── */
+.channel-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px;}
+.ch-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 16px;}
+.ch-icon{font-size:1.6rem;margin-bottom:10px;}
+.ch-name{font-size:.78rem;font-weight:800;color:var(--text);margin-bottom:5px;}
+.ch-desc{font-size:.72rem;color:var(--muted);line-height:1.55;}
+.ch-tag{display:inline-block;margin-top:8px;font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:3px 8px;border-radius:10px;}
+.ch-tag.live{background:rgba(0,242,234,.12);color:var(--accent);}
+.ch-tag.tbd{background:rgba(201,168,76,.12);color:var(--gold);}
+
+/* ── CALLOUT ── */
+.callout{display:flex;align-items:flex-start;gap:12px;background:rgba(0,242,234,.05);border:1px solid rgba(0,242,234,.18);border-radius:10px;padding:15px 18px;margin:14px 0;}
+.callout.warn{background:rgba(245,158,11,.05);border-color:rgba(245,158,11,.18);}
+.callout.pink{background:rgba(255,0,80,.05);border-color:rgba(255,0,80,.18);}
+.callout.pu{background:rgba(184,153,255,.05);border-color:rgba(184,153,255,.18);}
+.ci{font-size:1.1rem;flex-shrink:0;margin-top:1px;}
+.cb{font-size:.8rem;color:var(--light);line-height:1.65;}
+.cb strong{color:var(--text);}
+
+/* ── MEETUP SECTION ── */
+.meetup-banner{background:linear-gradient(135deg,rgba(123,47,255,.12),rgba(0,242,234,.07));border:1px solid rgba(123,47,255,.25);border-radius:var(--radius);padding:30px;margin-bottom:20px;}
+.meetup-banner h3{font-size:1.1rem;font-weight:900;letter-spacing:-.01em;margin-bottom:8px;}
+.meetup-banner h3 span{background:linear-gradient(135deg,var(--purple),var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.meetup-banner p{font-size:.83rem;color:var(--light);line-height:1.7;max-width:600px;}
+.meetup-phases{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:20px;}
+.meetup-phase{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;}
+.mp-num{font-size:.6rem;font-weight:900;letter-spacing:.1em;text-transform:uppercase;color:var(--purple);margin-bottom:6px;}
+.mp-title{font-size:.82rem;font-weight:800;color:var(--text);margin-bottom:6px;}
+.mp-desc{font-size:.74rem;color:var(--muted);line-height:1.55;}
+
+/* ── PRICING ── */
+.pricing-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
+.price-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+.pc-head{padding:18px 20px 14px;border-bottom:1px solid var(--border);}
+.pc-badge{font-size:.6rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;border-radius:10px;display:inline-block;margin-bottom:8px;}
+.pc-badge.nh{background:rgba(0,242,234,.12);color:var(--accent);}
+.pc-badge.tenant{background:rgba(123,47,255,.12);color:var(--lavender);}
+.pc-name{font-size:.95rem;font-weight:900;color:var(--text);margin-bottom:4px;}
+.pc-price{font-size:1.6rem;font-weight:900;line-height:1;}
+.pc-price.acc{color:var(--accent);}
+.pc-price.pu{color:var(--lavender);}
+.pc-freq{font-size:.72rem;color:var(--muted);margin-top:3px;}
+.pc-body{padding:16px 20px;}
+
+.addon-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(30,30,48,.5);font-size:.78rem;}
+.addon-row:last-child{border-bottom:none;}
+.addon-name-txt{color:var(--light);}
+.addon-price-txt{font-weight:700;color:var(--text);}
+
+/* ── INVESTMENT CARD ── */
+.invest-card{background:var(--card);border:1px solid rgba(0,242,234,.2);border-radius:var(--radius);overflow:hidden;margin-bottom:16px;}
+.invest-head{padding:20px 24px 16px;background:rgba(0,242,234,.04);border-bottom:1px solid var(--border);}
+.invest-title{font-size:.95rem;font-weight:900;margin-bottom:4px;}
+.invest-sub{font-size:.75rem;color:var(--muted);}
+.ir{display:flex;justify-content:space-between;align-items:flex-start;padding:11px 24px;border-bottom:1px solid rgba(30,30,48,.5);font-size:.8rem;}
+.ir:last-child{border-bottom:none;}
+.ir.ir-total{background:rgba(0,242,234,.05);border-top:1px solid rgba(0,242,234,.18);}
+.ir-label{color:var(--light);}
+.ir-val{font-weight:700;color:var(--text);text-align:right;}
+.ir-val.acc{color:var(--accent);}
+.ir-note{font-size:.64rem;color:var(--muted);margin-top:2px;}
+.ir-stack{display:flex;flex-direction:column;}
+.ir.ir-total .ir-label{color:var(--text);font-weight:800;}
+.ir.ir-total .ir-val{color:var(--accent);font-size:.93rem;}
+
+/* ── ROADMAP ── */
+.roadmap{display:flex;flex-direction:column;gap:0;}
+.rm-row{display:grid;grid-template-columns:120px 1fr;position:relative;}
+.rm-row:not(:last-child)::before{content:"";position:absolute;left:57px;top:50px;bottom:-10px;width:1px;background:linear-gradient(to bottom,rgba(0,242,234,.3),transparent);}
+.rm-phase{padding:20px 14px 20px 0;display:flex;align-items:flex-start;justify-content:flex-end;}
+.rm-tag{background:var(--accent);color:#000;font-size:.6rem;font-weight:900;letter-spacing:.07em;text-transform:uppercase;padding:4px 10px;border-radius:20px;white-space:nowrap;}
+.rm-tag.t2{background:rgba(0,242,234,.18);color:var(--accent);}
+.rm-tag.t3{background:transparent;color:var(--accent);border:1px solid rgba(0,242,234,.28);}
+.rm-body{padding:18px 0 18px 24px;border-left:1px solid var(--border);}
+.rm-title{font-size:.88rem;font-weight:800;color:var(--text);margin-bottom:8px;}
+
+/* ── TBD BLOCK ── */
+.tbd-block{background:rgba(201,168,76,.04);border:1px dashed rgba(201,168,76,.3);border-radius:var(--radius);padding:24px;text-align:center;}
+.tbd-icon{font-size:1.8rem;margin-bottom:10px;}
+.tbd-title{font-size:.88rem;font-weight:800;color:var(--gold);margin-bottom:6px;}
+.tbd-desc{font-size:.78rem;color:var(--muted);line-height:1.65;max-width:500px;margin:0 auto;}
+
+/* ── CTA ── */
+.cta-section{background:linear-gradient(135deg,rgba(0,242,234,.06),rgba(123,47,255,.06));border-top:1px solid var(--border);padding:56px 48px;text-align:center;}
+.cta-inner{max-width:560px;margin:0 auto;}
+.cta-title{font-size:1.6rem;font-weight:900;letter-spacing:-.02em;margin-bottom:10px;}
+.cta-title span{background:linear-gradient(135deg,var(--accent),var(--lavender));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.cta-sub{font-size:.85rem;color:var(--light);line-height:1.7;margin-bottom:28px;}
+.cta-btn{display:inline-block;background:var(--accent);color:#000;font-weight:900;font-size:.8rem;letter-spacing:.05em;text-transform:uppercase;padding:13px 32px;border-radius:8px;text-decoration:none;transition:opacity .15s;}
+.cta-btn:hover{opacity:.85;}
+
+/* ── FOOTER ── */
+.footer{border-top:1px solid var(--border);padding:20px 48px;display:flex;justify-content:space-between;align-items:center;}
+.footer-logo{font-size:.68rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);}
+.footer-note{font-size:.65rem;color:var(--muted);}
+
+@media(max-width:700px){
+  .topbar{padding:10px 20px;}
+  .hero{padding:48px 20px 40px;}
+  .main{padding:40px 20px;}
+  .hero h1{font-size:2rem;}
+  .kpi-strip{grid-template-columns:1fr 1fr;}
+  .channel-grid{grid-template-columns:1fr 1fr;}
+  .grid2,.pricing-grid{grid-template-columns:1fr;}
+  .grid3,.meetup-phases{grid-template-columns:1fr;}
+  .footer{flex-direction:column;gap:8px;padding:16px 20px;text-align:center;}
+}
+</style>
+</head>
+<body>
+
+<nav class="topbar">
+  <div class="topbar-logo">Cult Content</div>
+  <div class="topbar-links">
+    <a href="#opportunity">Opportunity</a>
+    <a href="#program">Program</a>
+    <a href="#meetups">Creator Meetups</a>
+    <a href="#pricing">Pricing</a>
+    <a href="#pilot">Pilot</a>
+  </div>
+</nav>
+
+<!-- ══ HERO ══ -->
+<div class="hero">
+  <div class="hero-eyebrow"><span class="dot"></span>Partnership Proposal · September 2026</div>
+  <h1>Where <span class="acc">Brick-and-Mortar</span><br>Meets the <span class="pk">Creator Economy</span></h1>
+  <p class="hero-sub">A white-label digital commerce program that gives every National Harbor tenant access to omnichannel growth — TikTok Shop, Meta, Amazon, and beyond — without having to figure it out alone.</p>
+  <div class="hero-meta">
+    <div class="meta-item"><span class="meta-label">Prepared for</span><span class="meta-val">National Harbor</span></div>
+    <div class="meta-item"><span class="meta-label">Prepared by</span><span class="meta-val">Cult Content</span></div>
+    <div class="meta-item"><span class="meta-label">Model</span><span class="meta-val">B2B2B · Omnichannel</span></div>
+    <div class="meta-item"><span class="meta-label">Pilot Start</span><span class="meta-val">Q4 2026</span></div>
+  </div>
+</div>
+
+<!-- ══ KPI STRIP ══ -->
+<div class="kpi-strip">
+  <div class="kpi">
+    <div class="kpi-val acc">22+</div>
+    <div class="kpi-label">NH Tenant Businesses</div>
+    <div class="kpi-sub">Addressable from day one</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-val pk">$2,500</div>
+    <div class="kpi-label">NH Program Fee / mo</div>
+    <div class="kpi-sub">Flat access + meetup mgmt</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-val pu">$2,000</div>
+    <div class="kpi-label">Tenant Partner Rate / mo</div>
+    <div class="kpi-sub">vs. $2,500 standard</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-val go">4×/yr</div>
+    <div class="kpi-label">Creator Meetups</div>
+    <div class="kpi-sub">At National Harbor venues</div>
+  </div>
+</div>
+
+<!-- ══ MAIN ══ -->
+<div class="main">
+
+  <!-- OPPORTUNITY -->
+  <div class="section" id="opportunity">
+    <div class="sec-label">01 — The Opportunity</div>
+    <h2 class="sec-title">National Harbor is a destination. It should also be a digital brand.</h2>
+    <p class="sec-sub">Your tenants have foot traffic, physical presence, and loyal customers — but most of them are leaving significant revenue on the table because they don't have the infrastructure or expertise to sell online at scale. That gap is the opportunity.</p>
+
+    <div class="grid2" style="margin-bottom:14px;">
+      <div class="card tl">
+        <div class="card-title">What tenants have</div>
+        <ul class="cklist">
+          <li>Physical retail presence and brand recognition</li>
+          <li>Existing customer base and repeat foot traffic</li>
+          <li>Real products that photograph and film well</li>
+          <li>A location that draws creators and tourists naturally</li>
+        </ul>
+      </div>
+      <div class="card pl">
+        <div class="card-title">What most tenants lack</div>
+        <ul class="cklist pk">
+          <li>Active TikTok Shop listings and creator programs</li>
+          <li>Meta ads strategy and budget allocation</li>
+          <li>Amazon marketplace presence (or optimization)</li>
+          <li>A dedicated team to manage digital operations</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout">
+      <span class="ci">💡</span>
+      <div class="cb"><strong>The insight:</strong> The creator economy is democratizing retail — brands that sell on TikTok Shop alongside Meta and Amazon are seeing 3–10× the revenue of those that don't. National Harbor can be the first destination retail complex in the country to offer its tenants a unified digital commerce program.</div>
+    </div>
+  </div>
+
+  <!-- PROGRAM -->
+  <div class="section" id="program">
+    <div class="sec-label">02 — The Program</div>
+    <h2 class="sec-title">Omnichannel commerce, fully managed.</h2>
+    <p class="sec-sub">Cult Content runs the digital side so tenants can focus on what they do best. Each channel is handled end-to-end — from setup through ongoing management, creator sourcing, and performance reporting.</p>
+
+    <div class="channel-grid">
+      <div class="ch-card">
+        <div class="ch-icon">🎵</div>
+        <div class="ch-name">TikTok Shop</div>
+        <div class="ch-desc">Full account setup, creator program management, content briefs, and TikTok ads. The highest-velocity social commerce channel in the market.</div>
+        <span class="ch-tag live">Live Now</span>
+      </div>
+      <div class="ch-card">
+        <div class="ch-icon">📘</div>
+        <div class="ch-name">Meta (Facebook & Instagram)</div>
+        <div class="ch-desc">Campaign strategy, creative briefing, budget pacing, and ad optimization across Facebook and Instagram. Ad spend billed separately to the brand's Meta account.</div>
+        <span class="ch-tag live">Live Now</span>
+      </div>
+      <div class="ch-card">
+        <div class="ch-icon">🛒</div>
+        <div class="ch-name">Shopify & DTC</div>
+        <div class="ch-desc">Storefront setup and optimization for direct-to-consumer sales. Connects seamlessly with TikTok Shop and Meta for unified inventory and analytics.</div>
+        <span class="ch-tag live">Live Now</span>
+      </div>
+      <div class="ch-card">
+        <div class="ch-icon">📦</div>
+        <div class="ch-name">Amazon</div>
+        <div class="ch-desc">Marketplace listing, optimization, and brand registry support delivered in partnership with Movement Retail — our Amazon operations partner.</div>
+        <span class="ch-tag tbd">Via Movement Retail</span>
+      </div>
+    </div>
+
+    <div class="callout pu">
+      <span class="ci">🤝</span>
+      <div class="cb"><strong>Amazon partnership:</strong> Cult Content is partnering with Movement Retail to handle Amazon channel strategy and execution. Scope, timeline, and pricing for Amazon services will be defined jointly — details to be confirmed as part of the pilot agreement.</div>
+    </div>
+
+    <div class="grid3" style="margin-top:20px;">
+      <div class="card">
+        <div class="card-title">Setup & Onboarding</div>
+        <ul class="blist">
+          <li>TikTok Shop account creation and product listing</li>
+          <li>Brand asset upload and profile optimization</li>
+          <li>Shopify integration (if applicable)</li>
+          <li>14-day delivery via The Foundation</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title">Ongoing Management</div>
+        <ul class="blist">
+          <li>Creator program — brief, recruit, oversee</li>
+          <li>Ads management across TikTok + Meta</li>
+          <li>Monthly performance review and strategy call</li>
+          <li>Client portal access for full visibility</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title">Content Engine</div>
+        <ul class="blist">
+          <li>Two creator cohorts (retainer + mass community)</li>
+          <li>AI-assisted content briefs and scripts</li>
+          <li>Product reimbursement campaigns for GMV</li>
+          <li>Optional AI carousel content add-on</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- CREATOR MEETUPS -->
+  <div class="section" id="meetups">
+    <div class="sec-label pu">03 — Quarterly Creator Meetups</div>
+    <h2 class="sec-title">Bringing creators to National Harbor. Four times a year.</h2>
+    <p class="sec-sub">The physical location is a competitive advantage most digital agencies can't offer. Cult Content organizes quarterly creator events at National Harbor — bringing social media creators directly to participating tenants for live content creation, brand relationships, and authentic UGC at scale.</p>
+
+    <div class="meetup-banner">
+      <h3><span>Content creation inside the destination.</span></h3>
+      <p>Creators visit National Harbor, shoot content in the actual stores and venues, and post it to their audiences. Tenants get authentic, high-performing content. National Harbor gets organic reach and foot traffic from the creator's followers. Everyone wins.</p>
+      <div class="meetup-phases">
+        <div class="meetup-phase">
+          <div class="mp-num">Before the event</div>
+          <div class="mp-title">Creator Selection</div>
+          <div class="mp-desc">CC curates and invites 20–40 creators matched to participating tenant categories — beauty, food, retail, lifestyle.</div>
+        </div>
+        <div class="meetup-phase">
+          <div class="mp-num">Day of</div>
+          <div class="mp-title">Live Content Creation</div>
+          <div class="mp-desc">Creators visit each tenant, receive product, and create content on-site. CC provides briefs and on-the-ground coordination.</div>
+        </div>
+        <div class="meetup-phase">
+          <div class="mp-num">After the event</div>
+          <div class="mp-title">Distribution & Tracking</div>
+          <div class="mp-desc">Content goes live across TikTok, Instagram, and YouTube. CC tracks GMV, views, and engagement driven back to each tenant.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="grid2">
+      <div class="card pul">
+        <div class="card-title">What Cult Content provides</div>
+        <ul class="cklist pu">
+          <li>Creator sourcing, vetting, and invitations</li>
+          <li>Pre-event brand briefs for each tenant</li>
+          <li>Day-of coordination and logistics</li>
+          <li>Post-event performance report</li>
+          <li>4 events per year (quarterly cadence)</li>
+        </ul>
+      </div>
+      <div class="card">
+        <div class="card-title">What National Harbor provides</div>
+        <ul class="cklist">
+          <li>Venue access for the event</li>
+          <li>Tenant coordination and communication</li>
+          <li>Event sponsorship budget (food, product, hospitality)</li>
+          <li>On-site marketing and signage support</li>
+          <li>PR and social promotion of the event</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRICING -->
+  <div class="section" id="pricing">
+    <div class="sec-label pk">04 — Pricing Structure</div>
+    <h2 class="sec-title">Two revenue layers. Simple to understand.</h2>
+    <p class="sec-sub">National Harbor pays a flat monthly program fee to offer this service to its tenants. Each tenant then pays their own service fee directly — at a discounted partner rate exclusive to the National Harbor program.</p>
+
+    <div class="pricing-grid">
+      <div class="price-card">
+        <div class="pc-head">
+          <span class="pc-badge nh">National Harbor</span>
+          <div class="pc-name">Program Access Fee</div>
+          <div class="pc-price acc">$2,500</div>
+          <div class="pc-freq">Per month · flat rate</div>
+        </div>
+        <div class="pc-body">
+          <ul class="cklist" style="margin-bottom:0;">
+            <li>License to offer the CC program to all tenants</li>
+            <li>Quarterly creator meetup organization (CC runs it)</li>
+            <li>Dedicated account contact for NH management</li>
+            <li>Monthly program performance summary</li>
+            <li>Co-marketing and press support</li>
+          </ul>
+        </div>
+      </div>
+      <div class="price-card">
+        <div class="pc-head">
+          <span class="pc-badge tenant">Per Tenant</span>
+          <div class="pc-name">Growth Partner (Partner Rate)</div>
+          <div class="pc-price pu">$2,000</div>
+          <div class="pc-freq">Per month + 8% of net sales · 3-month minimum</div>
+        </div>
+        <div class="pc-body">
+          <ul class="cklist pu" style="margin-bottom:14px;">
+            <li>Full TikTok Shop account management</li>
+            <li>Creator program — brief, recruit, oversee</li>
+            <li>TikTok + Meta ads management (ad spend separate)</li>
+            <li>Content direction and monthly strategy call</li>
+            <li>Client portal with full visibility</li>
+          </ul>
+          <div style="border-top:1px solid var(--border);padding-top:12px;">
+            <div class="card-title" style="margin-bottom:8px;">Optional Add-ons</div>
+            <div class="addon-row"><span class="addon-name-txt">AI Carousel Content</span><span class="addon-price-txt">+$500/mo</span></div>
+            <div class="addon-row"><span class="addon-name-txt">Meta Ads Management</span><span class="addon-price-txt">+$1,000/mo</span></div>
+            <div class="addon-row"><span class="addon-name-txt">Discord Community Mgmt</span><span class="addon-price-txt">+$500/mo</span></div>
+            <div class="addon-row"><span class="addon-name-txt">Additional Marketing Accounts</span><span class="addon-price-txt">+$500/mo ea.</span></div>
+            <div class="addon-row"><span class="addon-name-txt">Setup (The Foundation)</span><span class="addon-price-txt">$1,200 one-time</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout">
+      <span class="ci">📊</span>
+      <div class="cb"><strong>Economics at scale:</strong> At full rollout with 20 active tenants — NH fee ($2,500) + tenant fees (20 × $2,000 = $40,000) = <strong>$42,500/mo base revenue</strong> plus 8% net sales commission on each tenant's TikTok Shop GMV. The program pays for itself from the first 2–3 tenants signed.</div>
+    </div>
+  </div>
+
+  <!-- AMAZON TBD -->
+  <div class="section">
+    <div class="sec-label go">05 — Amazon Channel</div>
+    <h2 class="sec-title">Marketplace expansion, powered by Movement Retail.</h2>
+    <p class="sec-sub">Amazon remains the largest e-commerce marketplace in the US. For tenants that are ready to expand there — or optimize an existing presence — Cult Content is partnering with Movement Retail to deliver end-to-end Amazon channel management.</p>
+
+    <div class="tbd-block">
+      <div class="tbd-icon">🔄</div>
+      <div class="tbd-title">Scope & Pricing — To Be Confirmed</div>
+      <div class="tbd-desc">Amazon services will be scoped jointly with Movement Retail based on each tenant's product catalog, existing marketplace presence, and readiness. Pricing, timelines, and deliverables will be defined as part of the pilot agreement and presented as a separate addendum to this proposal.</div>
+    </div>
+
+    <div class="callout warn" style="margin-top:14px;">
+      <span class="ci">🤝</span>
+      <div class="cb"><strong>Movement Retail</strong> specializes in Amazon brand management, listing optimization, and marketplace growth for consumer brands. Their involvement ensures tenants have a dedicated expert for the Amazon channel rather than a generalist approach.</div>
+    </div>
+  </div>
+
+  <!-- PILOT -->
+  <div class="section" id="pilot">
+    <div class="sec-label">06 — The Pilot</div>
+    <h2 class="sec-title">Start with six. Prove the model. Roll out to all 22.</h2>
+    <p class="sec-sub">Rather than committing 22 tenants on day one, we propose a structured pilot with six businesses — chosen across diverse categories — to demonstrate results before expanding to the full tenant roster.</p>
+
+    <div class="roadmap">
+      <div class="rm-row">
+        <div class="rm-phase"><span class="rm-tag">Month 1</span></div>
+        <div class="rm-body">
+          <div class="rm-title">Pilot Onboarding</div>
+          <ul class="blist">
+            <li>NH selects 6 pilot tenants across 3–4 categories</li>
+            <li>Cult Content runs Foundation setup for each (14 days)</li>
+            <li>Accounts live on TikTok Shop and Meta by end of month</li>
+            <li>Kick-off meeting with NH leadership + all 6 tenant contacts</li>
+          </ul>
+        </div>
+      </div>
+      <div class="rm-row">
+        <div class="rm-phase"><span class="rm-tag t2">Month 2–3</span></div>
+        <div class="rm-body">
+          <div class="rm-title">Active Management + First Creator Meetup</div>
+          <ul class="blist">
+            <li>Full Growth Partner program running for all 6 tenants</li>
+            <li>Creator campaigns live — GMV and content performance tracked</li>
+            <li>First quarterly creator meetup at National Harbor</li>
+            <li>Monthly performance reviews with each tenant</li>
+          </ul>
+        </div>
+      </div>
+      <div class="rm-row">
+        <div class="rm-phase"><span class="rm-tag t3">Day 90</span></div>
+        <div class="rm-body">
+          <div class="rm-title">Pilot Review + Full Rollout Decision</div>
+          <ul class="blist">
+            <li>Comprehensive 90-day results report for NH leadership</li>
+            <li>Tenant-by-tenant revenue, GMV, and engagement breakdown</li>
+            <li>Rollout proposal for remaining 16+ tenants</li>
+            <li>Amazon addendum presented alongside Movement Retail</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="callout" style="margin-top:20px;">
+      <span class="ci">🎯</span>
+      <div class="cb"><strong>Pilot economics:</strong> NH ($2,500) + 6 tenants × $2,000 = <strong>$14,500/mo base</strong> during the pilot, plus commissions. No risk to NH — if tenants aren't seeing results at day 90, the conversation is data-driven and transparent.</div>
+    </div>
+  </div>
+
+  <!-- INVESTMENT SUMMARY -->
+  <div class="section">
+    <div class="sec-label">07 — Investment Summary</div>
+    <h2 class="sec-title">What this costs. What it returns.</h2>
+    <p class="sec-sub">Clear numbers for both parties — no surprises.</p>
+
+    <div class="invest-card">
+      <div class="invest-head">
+        <div class="invest-title">National Harbor — Monthly Investment</div>
+        <div class="invest-sub">Flat rate regardless of how many tenants are enrolled</div>
+      </div>
+      <div class="ir"><div class="ir-stack"><div class="ir-label">Program Access Fee</div><div class="ir-note">Includes creator meetup coordination, dedicated account contact, monthly reporting</div></div><div class="ir-val">$2,500/mo</div></div>
+      <div class="ir ir-total"><div class="ir-label">Total NH Commitment</div><div class="ir-val acc">$2,500/mo</div></div>
+    </div>
+
+    <div class="invest-card">
+      <div class="invest-head">
+        <div class="invest-title">Per Tenant — Monthly Investment</div>
+        <div class="invest-sub">Partner rate exclusive to the National Harbor program</div>
+      </div>
+      <div class="ir"><div class="ir-stack"><div class="ir-label">Setup (The Foundation)</div><div class="ir-note">One-time · 14-day delivery. Standard rate $1,500 — partner rate applied.</div></div><div class="ir-val">$1,200 one-time</div></div>
+      <div class="ir"><div class="ir-stack"><div class="ir-label">Growth Partner Retainer</div><div class="ir-note">3-month minimum commitment. Standard rate $2,500 — partner rate applied.</div></div><div class="ir-val">$2,000/mo</div></div>
+      <div class="ir"><div class="ir-stack"><div class="ir-label">Net Sales Commission</div><div class="ir-note">Applied to net sales after refunds and platform fees.</div></div><div class="ir-val">8% of net sales</div></div>
+      <div class="ir"><div class="ir-stack"><div class="ir-label">Add-ons (optional)</div><div class="ir-note">AI Carousel ($500), Meta Ads Mgmt ($1,000), Discord Mgmt ($500), Additional accounts ($500 each)</div></div><div class="ir-val">À la carte</div></div>
+      <div class="ir"><div class="ir-stack"><div class="ir-label">Amazon Channel</div><div class="ir-note">Via Movement Retail partnership — pricing TBD based on catalog and readiness.</div></div><div class="ir-val">TBD</div></div>
+      <div class="ir ir-total"><div class="ir-label">Pilot Total (6 Tenants)</div><div class="ir-val acc">$14,500/mo base</div></div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<!-- ══ CTA ══ -->
+<div class="cta-section">
+  <div class="cta-inner">
+    <div class="cta-title">Ready to make <span>National Harbor</span> the first destination retail complex with a full digital commerce program?</div>
+    <p class="cta-sub">Let's align on pilot tenant selection and get six businesses live before the end of Q4. The first creator meetup would follow in Q1.</p>
+    <a href="mailto:tommy@cultcontent.cc" class="cta-btn">Let's move forward →</a>
+  </div>
+</div>
+
+<div class="footer">
+  <div class="footer-logo">Cult Content</div>
+  <div class="footer-note">Tommy@cultcontent.cc · cultcontent.cc · Confidential — September 2026</div>
+</div>
+
+</body>
+</html>
