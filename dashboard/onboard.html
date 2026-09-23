@@ -949,12 +949,24 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
           </label>
         </div>
 
+        <!-- Discord Community Management -->
+        <div style="margin-top:10px;border:1px solid var(--border);border-radius:10px;overflow:hidden">
+          <label style="display:flex;align-items:center;gap:10px;padding:14px 16px;cursor:pointer;user-select:none">
+            <input type="checkbox" id="gp-discordAddon" onchange="updateGpAddonSummary()" style="width:16px;height:16px;accent-color:var(--teal);cursor:pointer;flex-shrink:0">
+            <div>
+              <div style="font-size:13px;font-weight:700;color:var(--text)">Discord Community Management <span style="font-size:11px;font-weight:700;color:var(--teal);margin-left:6px">+$500/mo</span></div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px;line-height:1.5">Full management of your brand's Discord — moderation, community programming, engagement, and member growth. CC handles it end to end.</div>
+            </div>
+          </label>
+        </div>
+
         <!-- Cost summary -->
         <div class="cost-card" id="gp-addon-cost" style="margin-top:12px;display:none">
           <div style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:10px">Add-on Summary</div>
           <div class="cost-row" id="gp-acc-cost-row" style="display:none"><span class="cost-row-label">Extra accounts (<span id="gp-acc-cost-count">0</span>)</span><span class="cost-row-val" id="gp-acc-cost-val">$0/mo</span></div>
           <div class="cost-row" id="gp-meta-cost-row" style="display:none"><span class="cost-row-label">Meta Ads Management</span><span class="cost-row-val">$1,000/mo</span></div>
           <div class="cost-row" id="gp-ai-carousel-cost-row" style="display:none"><span class="cost-row-label">AI Carousel Content</span><span class="cost-row-val">$500/mo</span></div>
+          <div class="cost-row" id="gp-discord-cost-row" style="display:none"><span class="cost-row-label">Discord Community Management</span><span class="cost-row-val">$500/mo</span></div>
           <div class="cost-row"><span class="cost-row-label">Monthly add-on total</span><span class="cost-row-val">$<span id="gp-addon-total">0</span>/mo</span></div>
         </div>
       </div>
@@ -1461,11 +1473,12 @@ function adjustGpAccounts(delta) {
 }
 
 function updateGpAddonSummary() {
-  const hasMeta      = document.getElementById('gp-metaAdsAddon')?.checked;
+  const hasMeta       = document.getElementById('gp-metaAdsAddon')?.checked;
   const hasAiCarousel = document.getElementById('gp-aiCarouselAddon')?.checked;
-  const accCount     = gpExtraAccounts;
-  const total = accCount * 500 + (hasMeta ? 1000 : 0) + (hasAiCarousel ? 500 : 0);
-  const anyAddon = accCount > 0 || hasMeta || hasAiCarousel;
+  const hasDiscord    = document.getElementById('gp-discordAddon')?.checked;
+  const accCount      = gpExtraAccounts;
+  const total = accCount * 500 + (hasMeta ? 1000 : 0) + (hasAiCarousel ? 500 : 0) + (hasDiscord ? 500 : 0);
+  const anyAddon = accCount > 0 || hasMeta || hasAiCarousel || hasDiscord;
   const costEl = document.getElementById('gp-addon-cost');
   if (costEl) costEl.style.display = anyAddon ? 'block' : 'none';
   const accRow = document.getElementById('gp-acc-cost-row');
@@ -1478,6 +1491,8 @@ function updateGpAddonSummary() {
   if (metaRow) metaRow.style.display = hasMeta ? 'flex' : 'none';
   const aiRow = document.getElementById('gp-ai-carousel-cost-row');
   if (aiRow) aiRow.style.display = hasAiCarousel ? 'flex' : 'none';
+  const discordRow = document.getElementById('gp-discord-cost-row');
+  if (discordRow) discordRow.style.display = hasDiscord ? 'flex' : 'none';
   const totalEl = document.getElementById('gp-addon-total');
   if (totalEl) totalEl.textContent = total.toLocaleString();
 }
@@ -1705,6 +1720,7 @@ function buildReview() {
     if (gpExtraAccounts > 0) finHtml += rv('Extra Accounts', `${gpExtraAccounts} × $500/mo = $${(gpExtraAccounts * 500).toLocaleString()}/mo`);
     if (document.getElementById('gp-metaAdsAddon')?.checked) finHtml += rv('Meta Ads Management', '$1,000/mo');
     if (document.getElementById('gp-aiCarouselAddon')?.checked) finHtml += rv('AI Carousel Content', '$500/mo');
+    if (document.getElementById('gp-discordAddon')?.checked) finHtml += rv('Discord Community Management', '$500/mo');
   }
   if (['growth', 'network'].includes(state.offerType)) {
     const c1budget = parseInt(document.getElementById('c1-budget')?.value) || 0;
@@ -1994,8 +2010,9 @@ function collectOfferDetails() {
     };
   }
   if (state.offerType === 'growth') {
-    const hasMeta = document.getElementById('gp-metaAdsAddon')?.checked || false;
+    const hasMeta       = document.getElementById('gp-metaAdsAddon')?.checked || false;
     const hasAiCarousel = document.getElementById('gp-aiCarouselAddon')?.checked || false;
+    const hasDiscord    = document.getElementById('gp-discordAddon')?.checked || false;
     return {
       adsBudget:         v('gp-adsBudget'),
       hasAdsAccount:     getToggle('gp-hasAdsAccount'),
@@ -2005,6 +2022,7 @@ function collectOfferDetails() {
       brandColor:        v('brandColorHex'),
       extraAccounts:     gpExtraAccounts,
       aiCarouselAddon:   hasAiCarousel,
+      discordAddon:      hasDiscord,
       metaAdsAddon:      hasMeta ? {
         enabled:       true,
         hasBM:         document.querySelector('[data-field="gp-metaHasBM"].active')?.dataset.val || '',
@@ -2014,7 +2032,7 @@ function collectOfferDetails() {
         adBudgetRange: v('gp-metaAdBudget'),
         creativeNotes: v('gp-metaCreativeNotes'),
       } : null,
-      addonMonthlyTotal: gpExtraAccounts * 500 + (hasMeta ? 1000 : 0) + (hasAiCarousel ? 500 : 0),
+      addonMonthlyTotal: gpExtraAccounts * 500 + (hasMeta ? 1000 : 0) + (hasAiCarousel ? 500 : 0) + (hasDiscord ? 500 : 0),
     };
   }
   // Cohort data — shared across Growth, Network
