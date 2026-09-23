@@ -2076,6 +2076,165 @@ function doDelete(){
   });
 }
 
+/* ── Video Queue ─────────────────────────────────────────────────────── */
+var VQ_DATA=[], VQ_MY_EMAIL='', VQ_IS_EDITOR=false, VQ_IS_ADMIN=false, VQ_LOADED=false;
+var VQ_BRANDS=['Lode WTR','Roots by Genetic Art','Trip Visuals','Made Right','B NOOR','Elasco Skincare','Starlit Scribbles'];
+
+function applyVqRole(){
+  var isEd=!!(window.__VQ_IS_EDITOR__);
+  var isAdm=!!(window.__VQ_IS_ADMIN__);
+  document.getElementById('vq-submit-form').style.display=isEd?'none':'';
+  document.getElementById('vq-queue-wrap').style.display=isAdm?'':'none';
+  document.getElementById('vq-tools-panel').style.display=isEd?'':'none';
+  document.getElementById('vq-list-wrap').style.display=isEd?'':'none';
+}
+
+function loadVideoQueue(){
+  if(!VQ_LOADED){
+    var dl=document.getElementById('vq-brand-list');
+    if(dl)VQ_BRANDS.forEach(function(b){var o=document.createElement('option');o.value=b;dl.appendChild(o);});
+  }
+  fetch('/api/video-requests',{credentials:'include'})
+  .then(function(r){return r.json();}).then(function(d){
+    VQ_DATA=d.requests||[];
+    VQ_MY_EMAIL=d.myEmail||'';
+    VQ_IS_EDITOR=!!d.isEditor;
+    VQ_IS_ADMIN=!!d.isAdmin;
+    VQ_LOADED=true;
+    renderVideoQueue();
+  }).catch(function(e){toast('Could not load video queue: '+e);});
+}
+
+function renderVideoQueue(){
+  if(window.__VQ_IS_EDITOR__){
+    renderVqList();
+    return;
+  }
+  var pending=VQ_DATA.filter(function(r){return r.status==='pending';});
+  var inprog=VQ_DATA.filter(function(r){return r.status==='in-progress';});
+  var done=VQ_DATA.filter(function(r){return r.status==='done';});
+  document.getElementById('vq-cnt-pending').textContent=pending.length;
+  document.getElementById('vq-cnt-inprogress').textContent=inprog.length;
+  document.getElementById('vq-cnt-done').textContent=done.length;
+  document.getElementById('vq-col-pending').innerHTML=pending.map(vqCardHtml).join('')||'<div class="vq-empty">No pending requests</div>';
+  document.getElementById('vq-col-inprogress').innerHTML=inprog.map(vqCardHtml).join('')||'<div class="vq-empty">Nothing in progress</div>';
+  document.getElementById('vq-col-done').innerHTML=done.map(vqCardHtml).join('')||'<div class="vq-empty">Nothing done yet</div>';
+}
+
+function renderVqList(){
+  var order={pending:0,'in-progress':1,done:2};
+  var sorted=VQ_DATA.slice().sort(function(a,b){
+    var od=(order[a.status]||0)-(order[b.status]||0);
+    return od!==0?od:(b.submittedAt||0)-(a.submittedAt||0);
+  });
+  document.getElementById('vq-list-rows').innerHTML=
+    sorted.length?sorted.map(vqRowHtml).join(''):'<div class="vq-empty">No video requests yet.</div>';
+}
+
+function vqRowHtml(r){
+  var id=esc(r.id||'');
+  var prioClass=r.priority==='high'?'vq-prio-high':r.priority==='low'?'vq-prio-low':'vq-prio-normal';
+  var prioPretty=r.priority==='high'?'🔴 High':r.priority==='low'?'Low':'Normal';
+  var dotClass=r.status==='done'?'vq-dot-done':r.status==='in-progress'?'vq-dot-inprogress':'vq-dot-pending';
+  var statusPretty=r.status==='in-progress'?'In Progress':r.status==='done'?'Done':'Pending';
+  var due=r.dueDate||'—';
+  var driveBtn=r.driveUrl?'<button class="vq-btn vq-drive" onclick="event.stopPropagation();vqOpenDrive(\\''+id+'\\')">📁 Open Footage</button>':'<span style="color:var(--muted);font-size:12px">No footage linked</span>';
+  var actionBtn='';
+  if(r.status==='pending') actionBtn='<button class="vq-btn vq-primary" onclick="event.stopPropagation();vqSetStatus(\\''+id+'\\',\\'in-progress\\')">▶ Start</button>';
+  if(r.status==='in-progress') actionBtn='<button class="vq-btn vq-done" onclick="event.stopPropagation();vqSetStatus(\\''+id+'\\',\\'done\\')">✓ Mark Done</button>';
+  if(r.status==='done') actionBtn='<button class="vq-btn" onclick="event.stopPropagation();vqSetStatus(\\''+id+'\\',\\'pending\\')">↩ Reopen</button>';
+  return '<div class="vq-row" id="vqrow-'+id+'">'
+    +'<div class="vq-row-summary" onclick="vqToggleRow(\\''+id+'\\')">'
+    +'<div class="vq-dot '+dotClass+'"></div>'
+    +'<div class="vq-row-member">'+esc(r.submittedByName||r.submittedBy||'?')+'</div>'
+    +'<div><div class="vq-row-title">'+esc(r.title||'Untitled')+'</div><div class="vq-row-sub">'+esc(r.brand||'—')+'</div></div>'
+    +'<span class="vq-prio-chip '+prioClass+'">'+prioPretty+'</span>'
+    +'<div class="vq-row-due">'+esc(due)+'</div>'
+    +'<div style="font-size:11px;color:var(--muted)">'+esc(statusPretty)+'</div>'
+    +'</div>'
+    +'<div class="vq-row-detail">'
+    +(r.description?'<div style="font-size:13px;line-height:1.5;margin-bottom:10px"><strong>Brief:</strong> '+esc(r.description)+'</div>':'')
+    +(r.script?'<div style="font-size:12px;line-height:1.5;margin-bottom:12px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;white-space:pre-wrap"><strong>Script:</strong> '+esc(r.script)+'</div>':'')
+    +'<div class="vq-actions">'+driveBtn+actionBtn+'</div>'
+    +'</div>'
+    +'</div>';
+}
+
+function vqToggleRow(id){
+  var el=document.getElementById('vqrow-'+id);
+  if(el)el.classList.toggle('expanded');
+}
+
+function vqCardHtml(r){
+  var prioClass=r.priority==='high'?'vq-prio-high':r.priority==='low'?'vq-prio-low':'vq-prio-normal';
+  var prioPretty=r.priority==='high'?'High':r.priority==='low'?'Low':'Normal';
+  var date=r.submittedAt?new Date(r.submittedAt).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
+  var due=r.dueDate?'<span> · due '+esc(r.dueDate)+'</span>':'';
+  var id=esc(r.id||'');
+  var driveBtn=r.driveUrl?'<button class="vq-btn vq-drive" onclick="vqOpenDrive(\\''+id+'\\')">📁 Footage</button>':'';
+  var startBtn='',doneBtn='',reopenBtn='';
+  if(VQ_IS_EDITOR||VQ_IS_ADMIN){
+    if(r.status==='pending') startBtn='<button class="vq-btn vq-primary" onclick="vqSetStatus(\\''+id+'\\',\\'in-progress\\')">▶ Start</button>';
+    if(r.status==='in-progress') doneBtn='<button class="vq-btn vq-done" onclick="vqSetStatus(\\''+id+'\\',\\'done\\')">✓ Done</button>';
+    if(r.status==='done') reopenBtn='<button class="vq-btn" onclick="vqSetStatus(\\''+id+'\\',\\'pending\\')">↩ Reopen</button>';
+  }
+  var deleteBtn=(VQ_IS_ADMIN||r.submittedBy===VQ_MY_EMAIL)?'<button class="vq-btn" style="margin-left:auto;color:var(--red)" onclick="vqDelete(\\''+id+'\\')">✕</button>':'';
+  return '<div class="vq-card">'
+    +'<div class="vq-card-top"><span class="vq-brand-chip">'+esc(r.brand||'—')+'</span><span class="vq-prio-chip '+prioClass+'">'+prioPretty+'</span></div>'
+    +'<div class="vq-title">'+esc(r.title||'Untitled request')+'</div>'
+    +(r.description?'<div class="vq-desc">'+esc(r.description)+'</div>':'')
+    +'<div class="vq-meta">by <strong>'+esc(r.submittedByName||r.submittedBy||'?')+'</strong> · '+date+due+'</div>'
+    +'<div class="vq-actions">'+driveBtn+startBtn+doneBtn+reopenBtn+deleteBtn+'</div>'
+    +'</div>';
+}
+
+function vqSetStatus(id,status){
+  fetch('/api/video-requests/'+id,{method:'PATCH',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:status})})
+  .then(function(r){return r.json();}).then(function(d){
+    if(d.ok){loadVideoQueue();}else toast('Error: '+(d.error||'Failed'));
+  }).catch(function(e){toast(''+e);});
+}
+
+function vqDelete(id){
+  if(!confirm('Delete this video request?'))return;
+  fetch('/api/video-requests/'+id,{method:'DELETE',credentials:'include'})
+  .then(function(r){return r.json();}).then(function(d){
+    if(d.ok){loadVideoQueue();}else toast('Error: '+(d.error||'Failed'));
+  }).catch(function(e){toast(''+e);});
+}
+
+function vqOpenDrive(id){
+  var r=VQ_DATA.find(function(x){return x.id===id;});
+  if(r&&r.driveUrl)window.open(r.driveUrl,'_blank');
+}
+
+function submitVideoRequest(){
+  var errEl=document.getElementById('vq-err');errEl.style.display='none';
+  var brand=(document.getElementById('vq-brand').value||'').trim();
+  var title=(document.getElementById('vq-title').value||'').trim();
+  var desc=(document.getElementById('vq-desc').value||'').trim();
+  var script=(document.getElementById('vq-script').value||'').trim();
+  var drive=(document.getElementById('vq-drive').value||'').trim();
+  var prio=document.getElementById('vq-priority').value||'normal';
+  var due=document.getElementById('vq-due').value||'';
+  if(!title){errEl.textContent='Title is required';errEl.style.display='block';return;}
+  var payload={brand:brand,title:title,description:desc,script:script,driveUrl:drive,priority:prio,dueDate:due};
+  fetch('/api/video-requests',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
+  .then(function(r){return r.json();}).then(function(d){
+    if(d.ok){
+      document.getElementById('vq-brand').value='';
+      document.getElementById('vq-title').value='';
+      document.getElementById('vq-desc').value='';
+      document.getElementById('vq-script').value='';
+      document.getElementById('vq-drive').value='';
+      document.getElementById('vq-due').value='';
+      document.getElementById('vq-priority').value='normal';
+      toast('Video request submitted!');
+      loadVideoQueue();
+    } else {errEl.textContent=d.error||'Failed';errEl.style.display='block';}
+  }).catch(function(e){errEl.textContent=''+e;errEl.style.display='block';});
+}
+
 load();
 </script>
 </body>
@@ -3027,166 +3186,6 @@ function doAdminDelete(){
   }).catch(function(e){
     var el=document.getElementById('adel-err');el.textContent=''+e;el.style.display='block';btn.disabled=false;btn.textContent='Delete Task';
   });
-}
-
-/* ── Video Queue ─────────────────────────────────────────────────────── */
-var VQ_DATA=[], VQ_MY_EMAIL='', VQ_IS_EDITOR=false, VQ_IS_ADMIN=false, VQ_LOADED=false;
-var VQ_BRANDS=['Lode WTR','Roots by Genetic Art','Trip Visuals','Made Right','B NOOR','Elasco Skincare','Starlit Scribbles'];
-
-function applyVqRole(){
-  var isEd=!!(window.__VQ_IS_EDITOR__);
-  var isAdm=!!(window.__VQ_IS_ADMIN__);
-  document.getElementById('vq-submit-form').style.display=isEd?'none':'';
-  document.getElementById('vq-queue-wrap').style.display=isAdm?'':'none';
-  document.getElementById('vq-tools-panel').style.display=isEd?'':'none';
-  document.getElementById('vq-list-wrap').style.display=isEd?'':'none';
-}
-
-function loadVideoQueue(){
-  if(!VQ_LOADED){
-    var dl=document.getElementById('vq-brand-list');
-    if(dl)VQ_BRANDS.forEach(function(b){var o=document.createElement('option');o.value=b;dl.appendChild(o);});
-  }
-  fetch('/api/video-requests',{credentials:'include'})
-  .then(function(r){return r.json();}).then(function(d){
-    VQ_DATA=d.requests||[];
-    VQ_MY_EMAIL=d.myEmail||'';
-    VQ_IS_EDITOR=!!d.isEditor;
-    VQ_IS_ADMIN=!!d.isAdmin;
-    VQ_LOADED=true;
-    renderVideoQueue();
-  }).catch(function(e){toast('Could not load video queue: '+e);});
-}
-
-function renderVideoQueue(){
-  if(window.__VQ_IS_EDITOR__){
-    renderVqList();
-    return;
-  }
-  var pending=VQ_DATA.filter(function(r){return r.status==='pending';});
-  var inprog=VQ_DATA.filter(function(r){return r.status==='in-progress';});
-  var done=VQ_DATA.filter(function(r){return r.status==='done';});
-  document.getElementById('vq-cnt-pending').textContent=pending.length;
-  document.getElementById('vq-cnt-inprogress').textContent=inprog.length;
-  document.getElementById('vq-cnt-done').textContent=done.length;
-  document.getElementById('vq-col-pending').innerHTML=pending.map(vqCardHtml).join('')||'<div class="vq-empty">No pending requests</div>';
-  document.getElementById('vq-col-inprogress').innerHTML=inprog.map(vqCardHtml).join('')||'<div class="vq-empty">Nothing in progress</div>';
-  document.getElementById('vq-col-done').innerHTML=done.map(vqCardHtml).join('')||'<div class="vq-empty">Nothing done yet</div>';
-}
-
-function renderVqList(){
-  // Sort: pending first, then in-progress, then done; within each by submittedAt desc
-  var order={pending:0,'in-progress':1,done:2};
-  var sorted=VQ_DATA.slice().sort(function(a,b){
-    var od=(order[a.status]||0)-(order[b.status]||0);
-    return od!==0?od:(b.submittedAt||0)-(a.submittedAt||0);
-  });
-  document.getElementById('vq-list-rows').innerHTML=
-    sorted.length?sorted.map(vqRowHtml).join(''):'<div class="vq-empty">No video requests yet.</div>';
-}
-
-function vqRowHtml(r){
-  var id=esc(r.id||'');
-  var prioClass=r.priority==='high'?'vq-prio-high':r.priority==='low'?'vq-prio-low':'vq-prio-normal';
-  var prioPretty=r.priority==='high'?'🔴 High':r.priority==='low'?'Low':'Normal';
-  var dotClass=r.status==='done'?'vq-dot-done':r.status==='in-progress'?'vq-dot-inprogress':'vq-dot-pending';
-  var statusPretty=r.status==='in-progress'?'In Progress':r.status==='done'?'Done':'Pending';
-  var due=r.dueDate||'—';
-  var driveBtn=r.driveUrl?'<button class="vq-btn vq-drive" onclick="event.stopPropagation();vqOpenDrive(\\''+id+'\\')">📁 Open Footage</button>':'<span style="color:var(--muted);font-size:12px">No footage linked</span>';
-  var actionBtn='';
-  if(r.status==='pending') actionBtn='<button class="vq-btn vq-primary" onclick="event.stopPropagation();vqSetStatus(\\''+id+'\\',\\'in-progress\\')">▶ Start</button>';
-  if(r.status==='in-progress') actionBtn='<button class="vq-btn vq-done" onclick="event.stopPropagation();vqSetStatus(\\''+id+'\\',\\'done\\')">✓ Mark Done</button>';
-  if(r.status==='done') actionBtn='<button class="vq-btn" onclick="event.stopPropagation();vqSetStatus(\\''+id+'\\',\\'pending\\')">↩ Reopen</button>';
-  return '<div class="vq-row" id="vqrow-'+id+'">'
-    +'<div class="vq-row-summary" onclick="vqToggleRow(\\''+id+'\\')">'
-    +'<div class="vq-dot '+dotClass+'"></div>'
-    +'<div class="vq-row-member">'+esc(r.submittedByName||r.submittedBy||'?')+'</div>'
-    +'<div><div class="vq-row-title">'+esc(r.title||'Untitled')+'</div><div class="vq-row-sub">'+esc(r.brand||'—')+'</div></div>'
-    +'<span class="vq-prio-chip '+prioClass+'">'+prioPretty+'</span>'
-    +'<div class="vq-row-due">'+esc(due)+'</div>'
-    +'<div style="font-size:11px;color:var(--muted)">'+esc(statusPretty)+'</div>'
-    +'</div>'
-    +'<div class="vq-row-detail">'
-    +(r.description?'<div style="font-size:13px;line-height:1.5;margin-bottom:10px"><strong>Brief:</strong> '+esc(r.description)+'</div>':'')
-    +(r.script?'<div style="font-size:12px;line-height:1.5;margin-bottom:12px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;white-space:pre-wrap"><strong>Script:</strong> '+esc(r.script)+'</div>':'')
-    +'<div class="vq-actions">'+driveBtn+actionBtn+'</div>'
-    +'</div>'
-    +'</div>';
-}
-
-function vqToggleRow(id){
-  var el=document.getElementById('vqrow-'+id);
-  if(el)el.classList.toggle('expanded');
-}
-
-function vqCardHtml(r){
-  var prioClass=r.priority==='high'?'vq-prio-high':r.priority==='low'?'vq-prio-low':'vq-prio-normal';
-  var prioPretty=r.priority==='high'?'High':r.priority==='low'?'Low':'Normal';
-  var date=r.submittedAt?new Date(r.submittedAt).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
-  var due=r.dueDate?'<span> · due '+esc(r.dueDate)+'</span>':'';
-  var id=esc(r.id||'');
-  var driveBtn=r.driveUrl?'<button class="vq-btn vq-drive" onclick="vqOpenDrive(\\''+id+'\\')">📁 Footage</button>':'';
-  var startBtn='',doneBtn='',reopenBtn='';
-  if(VQ_IS_EDITOR||VQ_IS_ADMIN){
-    if(r.status==='pending') startBtn='<button class="vq-btn vq-primary" onclick="vqSetStatus(\\''+id+'\\',\\'in-progress\\')">▶ Start</button>';
-    if(r.status==='in-progress') doneBtn='<button class="vq-btn vq-done" onclick="vqSetStatus(\\''+id+'\\',\\'done\\')">✓ Done</button>';
-    if(r.status==='done') reopenBtn='<button class="vq-btn" onclick="vqSetStatus(\\''+id+'\\',\\'pending\\')">↩ Reopen</button>';
-  }
-  var deleteBtn=(VQ_IS_ADMIN||r.submittedBy===VQ_MY_EMAIL)?'<button class="vq-btn" style="margin-left:auto;color:var(--red)" onclick="vqDelete(\\''+id+'\\')">✕</button>':'';
-  return '<div class="vq-card">'
-    +'<div class="vq-card-top"><span class="vq-brand-chip">'+esc(r.brand||'—')+'</span><span class="vq-prio-chip '+prioClass+'">'+prioPretty+'</span></div>'
-    +'<div class="vq-title">'+esc(r.title||'Untitled request')+'</div>'
-    +(r.description?'<div class="vq-desc">'+esc(r.description)+'</div>':'')
-    +'<div class="vq-meta">by <strong>'+esc(r.submittedByName||r.submittedBy||'?')+'</strong> · '+date+due+'</div>'
-    +'<div class="vq-actions">'+driveBtn+startBtn+doneBtn+reopenBtn+deleteBtn+'</div>'
-    +'</div>';
-}
-
-function vqSetStatus(id,status){
-  fetch('/api/video-requests/'+id,{method:'PATCH',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:status})})
-  .then(function(r){return r.json();}).then(function(d){
-    if(d.ok){loadVideoQueue();}else toast('Error: '+(d.error||'Failed'));
-  }).catch(function(e){toast(''+e);});
-}
-
-function vqDelete(id){
-  if(!confirm('Delete this video request?'))return;
-  fetch('/api/video-requests/'+id,{method:'DELETE',credentials:'include'})
-  .then(function(r){return r.json();}).then(function(d){
-    if(d.ok){loadVideoQueue();}else toast('Error: '+(d.error||'Failed'));
-  }).catch(function(e){toast(''+e);});
-}
-
-function vqOpenDrive(id){
-  var r=VQ_DATA.find(function(x){return x.id===id;});
-  if(r&&r.driveUrl)window.open(r.driveUrl,'_blank');
-}
-
-function submitVideoRequest(){
-  var errEl=document.getElementById('vq-err');errEl.style.display='none';
-  var brand=(document.getElementById('vq-brand').value||'').trim();
-  var title=(document.getElementById('vq-title').value||'').trim();
-  var desc=(document.getElementById('vq-desc').value||'').trim();
-  var script=(document.getElementById('vq-script').value||'').trim();
-  var drive=(document.getElementById('vq-drive').value||'').trim();
-  var prio=document.getElementById('vq-priority').value||'normal';
-  var due=document.getElementById('vq-due').value||'';
-  if(!title){errEl.textContent='Title is required';errEl.style.display='block';return;}
-  var payload={brand:brand,title:title,description:desc,script:script,driveUrl:drive,priority:prio,dueDate:due};
-  fetch('/api/video-requests',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
-  .then(function(r){return r.json();}).then(function(d){
-    if(d.ok){
-      document.getElementById('vq-brand').value='';
-      document.getElementById('vq-title').value='';
-      document.getElementById('vq-desc').value='';
-      document.getElementById('vq-script').value='';
-      document.getElementById('vq-drive').value='';
-      document.getElementById('vq-due').value='';
-      document.getElementById('vq-priority').value='normal';
-      toast('Video request submitted!');
-      loadVideoQueue();
-    } else {errEl.textContent=d.error||'Failed';errEl.style.display='block';}
-  }).catch(function(e){errEl.textContent=''+e;errEl.style.display='block';});
 }
 
 /* ── Bulk selection ─────────────────────────────────────────────────── */
