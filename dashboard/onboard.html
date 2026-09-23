@@ -829,14 +829,17 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
         </div>
         <div class="field">
           <label>Monthly Creator Budget</label>
-          <select id="gp-creatorBudget">
-            <option value="">— select —</option>
-            <option>Under $1,000</option>
-            <option>$1,000 – $3,000</option>
-            <option>$3,000 – $5,000</option>
-            <option>$5,000 – $10,000</option>
-            <option>$10,000+</option>
-          </select>
+          <div style="margin-top:6px">
+            <input type="range" id="gp-creatorBudget" min="2000" max="10000" step="500" value="2000"
+              oninput="document.getElementById('gp-creatorBudgetVal').textContent='$'+parseInt(this.value).toLocaleString()+'/mo'"
+              style="width:100%;accent-color:var(--teal)">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+              <span style="font-size:11px;color:var(--muted)">$2,000</span>
+              <span id="gp-creatorBudgetVal" style="font-size:14px;font-weight:800;color:var(--teal)">$2,000/mo</span>
+              <span style="font-size:11px;color:var(--muted)">$10,000</span>
+            </div>
+          </div>
+          <div class="hint">Minimum $2,000/mo required for creator campaigns</div>
         </div>
       </div>
 
@@ -861,18 +864,18 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
         <div style="font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:10px">Add-ons</div>
 
         <!-- Additional marketing accounts -->
-        <div style="border:1px solid var(--border);border-radius:10px;padding:14px 16px">
-          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
+        <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden">
+          <div style="padding:14px 16px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
             <div>
               <div style="font-size:13px;font-weight:700;color:var(--text)">Additional Marketing Accounts <span style="font-size:11px;font-weight:700;color:var(--teal);margin-left:6px">+$500/mo each</span></div>
-              <div style="font-size:11px;color:var(--muted);margin-top:2px;line-height:1.5">Extra TikTok, Instagram, or YouTube accounts beyond your primary account. We handle content and management for each.</div>
+              <div style="font-size:11px;color:var(--muted);margin-top:2px;line-height:1.5">Add TikTok, Instagram, YouTube, or other accounts. Choose content type for each — mix and match as needed.</div>
             </div>
-            <div style="display:flex;align-items:center;gap:12px;flex-shrink:0">
-              <button type="button" onclick="adjustGpAccounts(-1)" style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.06);border:1px solid var(--border);color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">−</button>
-              <span id="gp-acc-count" style="font-size:16px;font-weight:800;min-width:20px;text-align:center">0</span>
-              <button type="button" onclick="adjustGpAccounts(1)" style="width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.06);border:1px solid var(--border);color:#fff;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center">+</button>
-            </div>
+            <button type="button" onclick="addGpAccount()" id="gp-add-acc-btn"
+              style="background:rgba(0,198,184,.12);border:1px solid var(--teal);border-radius:8px;color:var(--teal);font-size:12px;font-weight:700;padding:7px 14px;cursor:pointer;flex-shrink:0">
+              + Add Account
+            </button>
           </div>
+          <div id="gp-acc-slots" style="display:none"></div>
         </div>
 
         <!-- Meta Ads Management -->
@@ -938,17 +941,6 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
           </div>
         </div>
 
-        <!-- AI Carousel Content -->
-        <div style="margin-top:10px;border:1px solid var(--border);border-radius:10px;overflow:hidden">
-          <label style="display:flex;align-items:center;gap:10px;padding:14px 16px;cursor:pointer;user-select:none">
-            <input type="checkbox" id="gp-aiCarouselAddon" onchange="updateGpAddonSummary()" style="width:16px;height:16px;accent-color:var(--teal);cursor:pointer;flex-shrink:0">
-            <div>
-              <div style="font-size:13px;font-weight:700;color:var(--text)">AI Carousel Content <span style="font-size:11px;font-weight:700;color:var(--teal);margin-left:6px">+$500/mo</span></div>
-              <div style="font-size:11px;color:var(--muted);margin-top:2px;line-height:1.5">CC generates and posts AI-powered carousel content to your brand social accounts. No extra setup needed from you — we handle account configuration on our end.</div>
-            </div>
-          </label>
-        </div>
-
         <!-- Discord Community Management -->
         <div style="margin-top:10px;border:1px solid var(--border);border-radius:10px;overflow:hidden">
           <label style="display:flex;align-items:center;gap:10px;padding:14px 16px;cursor:pointer;user-select:none">
@@ -965,7 +957,6 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
           <div style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:10px">Add-on Summary</div>
           <div class="cost-row" id="gp-acc-cost-row" style="display:none"><span class="cost-row-label">Extra accounts (<span id="gp-acc-cost-count">0</span>)</span><span class="cost-row-val" id="gp-acc-cost-val">$0/mo</span></div>
           <div class="cost-row" id="gp-meta-cost-row" style="display:none"><span class="cost-row-label">Meta Ads Management</span><span class="cost-row-val">$1,000/mo</span></div>
-          <div class="cost-row" id="gp-ai-carousel-cost-row" style="display:none"><span class="cost-row-label">AI Carousel Content</span><span class="cost-row-val">$500/mo</span></div>
           <div class="cost-row" id="gp-discord-cost-row" style="display:none"><span class="cost-row-label">Discord Community Management</span><span class="cost-row-val">$500/mo</span></div>
           <div class="cost-row"><span class="cost-row-label">Monthly add-on total</span><span class="cost-row-val">$<span id="gp-addon-total">0</span>/mo</span></div>
         </div>
@@ -1464,21 +1455,73 @@ function updateCohort2Calc() {
 }
 
 
-let gpExtraAccounts = 0;
+let gpAccountSlots = []; // [{id, platform, types:[]}]
+let gpAccNextId = 1;
 
-function adjustGpAccounts(delta) {
-  gpExtraAccounts = Math.max(0, Math.min(5, gpExtraAccounts + delta));
-  document.getElementById('gp-acc-count').textContent = gpExtraAccounts;
+function addGpAccount() {
+  if (gpAccountSlots.length >= 5) return;
+  const id = gpAccNextId++;
+  gpAccountSlots.push({ id, platform: 'TikTok', types: [] });
+  renderGpAccountSlots();
   updateGpAddonSummary();
 }
 
+function removeGpAccount(id) {
+  gpAccountSlots = gpAccountSlots.filter(s => s.id !== id);
+  renderGpAccountSlots();
+  updateGpAddonSummary();
+}
+
+function renderGpAccountSlots() {
+  const container = document.getElementById('gp-acc-slots');
+  if (!container) return;
+  container.style.display = gpAccountSlots.length ? 'block' : 'none';
+  container.innerHTML = gpAccountSlots.map((slot, i) => `
+    <div style="padding:14px 16px;border-top:1px solid var(--border)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div style="font-size:12px;font-weight:800;color:var(--text);text-transform:uppercase;letter-spacing:.04em">Account ${i + 2}</div>
+        <button type="button" onclick="removeGpAccount(${slot.id})"
+          style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;line-height:1;padding:2px 4px" title="Remove">×</button>
+      </div>
+      <div class="row" style="margin-bottom:10px">
+        <div class="field">
+          <label>Platform</label>
+          <select id="gp-acc-${slot.id}-platform" onchange="gpAccountSlots.find(s=>s.id===${slot.id}).platform=this.value">
+            <option>TikTok</option>
+            <option>Instagram</option>
+            <option>YouTube</option>
+            <option>Facebook</option>
+            <option>Pinterest</option>
+            <option>LinkedIn</option>
+            <option>Other</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:8px">Content Type — select all that apply</div>
+        <div style="display:flex;gap:14px;flex-wrap:wrap">
+          ${[['ugc','Creator UGC'],['carousel','AI Carousel Content'],['mgmt','Management Only']].map(([key, label]) => `
+            <label style="display:flex;align-items:center;gap:7px;font-size:12px;font-weight:600;color:var(--text);cursor:pointer;user-select:none">
+              <input type="checkbox" id="gp-acc-${slot.id}-${key}"
+                onchange="(function(){var s=gpAccountSlots.find(s=>s.id===${slot.id});var types=s.types;var idx=types.indexOf('${key}');if(this.checked&&idx<0)types.push('${key}');else if(!this.checked&&idx>=0)types.splice(idx,1)}).call(this)"
+                style="width:14px;height:14px;accent-color:var(--teal);cursor:pointer">
+              ${label}
+            </label>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+  `).join('');
+  const addBtn = document.getElementById('gp-add-acc-btn');
+  if (addBtn) addBtn.style.opacity = gpAccountSlots.length >= 5 ? '0.4' : '1';
+}
+
 function updateGpAddonSummary() {
-  const hasMeta       = document.getElementById('gp-metaAdsAddon')?.checked;
-  const hasAiCarousel = document.getElementById('gp-aiCarouselAddon')?.checked;
-  const hasDiscord    = document.getElementById('gp-discordAddon')?.checked;
-  const accCount      = gpExtraAccounts;
-  const total = accCount * 500 + (hasMeta ? 1000 : 0) + (hasAiCarousel ? 500 : 0) + (hasDiscord ? 500 : 0);
-  const anyAddon = accCount > 0 || hasMeta || hasAiCarousel || hasDiscord;
+  const hasMeta    = document.getElementById('gp-metaAdsAddon')?.checked;
+  const hasDiscord = document.getElementById('gp-discordAddon')?.checked;
+  const accCount   = gpAccountSlots.length;
+  const total = accCount * 500 + (hasMeta ? 1000 : 0) + (hasDiscord ? 500 : 0);
+  const anyAddon = accCount > 0 || hasMeta || hasDiscord;
   const costEl = document.getElementById('gp-addon-cost');
   if (costEl) costEl.style.display = anyAddon ? 'block' : 'none';
   const accRow = document.getElementById('gp-acc-cost-row');
@@ -1489,8 +1532,6 @@ function updateGpAddonSummary() {
   if (accValEl) accValEl.textContent = `$${(accCount * 500).toLocaleString()}/mo`;
   const metaRow = document.getElementById('gp-meta-cost-row');
   if (metaRow) metaRow.style.display = hasMeta ? 'flex' : 'none';
-  const aiRow = document.getElementById('gp-ai-carousel-cost-row');
-  if (aiRow) aiRow.style.display = hasAiCarousel ? 'flex' : 'none';
   const discordRow = document.getElementById('gp-discord-cost-row');
   if (discordRow) discordRow.style.display = hasDiscord ? 'flex' : 'none';
   const totalEl = document.getElementById('gp-addon-total');
@@ -1717,9 +1758,15 @@ function buildReview() {
     ${rv('Base Cost', offerCosts[state.offerType] || '')}`;
 
   if (state.offerType === 'growth') {
-    if (gpExtraAccounts > 0) finHtml += rv('Extra Accounts', `${gpExtraAccounts} × $500/mo = $${(gpExtraAccounts * 500).toLocaleString()}/mo`);
+    const typeLabels = { ugc: 'Creator UGC', carousel: 'AI Carousel', mgmt: 'Management Only' };
+    if (gpAccountSlots.length > 0) {
+      finHtml += rv('Additional Accounts', `${gpAccountSlots.length} × $500/mo = $${(gpAccountSlots.length * 500).toLocaleString()}/mo`);
+      gpAccountSlots.forEach((s, i) => {
+        const typeStr = s.types.length ? s.types.map(t => typeLabels[t] || t).join(', ') : 'Management Only';
+        finHtml += rv(`Account ${i + 2} — ${s.platform}`, typeStr);
+      });
+    }
     if (document.getElementById('gp-metaAdsAddon')?.checked) finHtml += rv('Meta Ads Management', '$1,000/mo');
-    if (document.getElementById('gp-aiCarouselAddon')?.checked) finHtml += rv('AI Carousel Content', '$500/mo');
     if (document.getElementById('gp-discordAddon')?.checked) finHtml += rv('Discord Community Management', '$500/mo');
   }
   if (['growth', 'network'].includes(state.offerType)) {
@@ -2010,20 +2057,21 @@ function collectOfferDetails() {
     };
   }
   if (state.offerType === 'growth') {
-    const hasMeta       = document.getElementById('gp-metaAdsAddon')?.checked || false;
-    const hasAiCarousel = document.getElementById('gp-aiCarouselAddon')?.checked || false;
-    const hasDiscord    = document.getElementById('gp-discordAddon')?.checked || false;
+    const hasMeta    = document.getElementById('gp-metaAdsAddon')?.checked || false;
+    const hasDiscord = document.getElementById('gp-discordAddon')?.checked || false;
     return {
       adsBudget:         v('gp-adsBudget'),
       hasAdsAccount:     getToggle('gp-hasAdsAccount'),
       roas:              v('gp-roas'),
-      creatorBudget:     v('gp-creatorBudget'),
+      creatorBudget:     '$' + parseInt(document.getElementById('gp-creatorBudget')?.value || 2000).toLocaleString() + '/mo',
       creativeDirection: v('gp-creativeDirection'),
       brandColor:        v('brandColorHex'),
-      extraAccounts:     gpExtraAccounts,
-      aiCarouselAddon:   hasAiCarousel,
-      discordAddon:      hasDiscord,
-      metaAdsAddon:      hasMeta ? {
+      additionalAccounts: gpAccountSlots.map(s => ({
+        platform: s.platform,
+        contentTypes: s.types.length ? s.types : ['mgmt'],
+      })),
+      discordAddon: hasDiscord,
+      metaAdsAddon: hasMeta ? {
         enabled:       true,
         hasBM:         document.querySelector('[data-field="gp-metaHasBM"].active')?.dataset.val || '',
         bmId:          v('gp-metaBMId'),
@@ -2032,7 +2080,7 @@ function collectOfferDetails() {
         adBudgetRange: v('gp-metaAdBudget'),
         creativeNotes: v('gp-metaCreativeNotes'),
       } : null,
-      addonMonthlyTotal: gpExtraAccounts * 500 + (hasMeta ? 1000 : 0) + (hasAiCarousel ? 500 : 0) + (hasDiscord ? 500 : 0),
+      addonMonthlyTotal: gpAccountSlots.length * 500 + (hasMeta ? 1000 : 0) + (hasDiscord ? 500 : 0),
     };
   }
   // Cohort data — shared across Growth, Network
