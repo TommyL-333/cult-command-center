@@ -11931,18 +11931,16 @@ Generate this EXACT JSON (no markdown, no explanation):
     { "name": "...", "why": "...", "outline": ["...", "...", "..."] }
   ],
   "sampleScripts": [
-    {
-      "framework": "PAS",
-      "title": "Short descriptive title",
-      "duration": "~30 seconds",
-      "script": "Full word-for-word script. Label sections: [HOOK] [PROBLEM] [SOLUTION] [CTA]. Write it as spoken dialogue, conversational and natural."
-    },
-    {
-      "framework": "BAB",
-      "title": "Short descriptive title",
-      "duration": "~30 seconds",
-      "script": "Full word-for-word script. Label sections: [BEFORE] [AFTER] [BRIDGE] [CTA]."
-    }
+    { "framework": "PAS", "title": "Short descriptive title", "duration": "~30 seconds", "script": "Full word-for-word script. Label sections: [HOOK] [PROBLEM] [SOLUTION] [CTA]. Write it as spoken dialogue, conversational and natural." },
+    { "framework": "BAB", "title": "Short descriptive title", "duration": "~45 seconds", "script": "Full word-for-word script. Label sections: [BEFORE] [AFTER] [BRIDGE] [CTA]." },
+    { "framework": "AIDA", "title": "Short descriptive title", "duration": "~30 seconds", "script": "Full word-for-word script. Label sections: [ATTENTION] [INTEREST] [DESIRE] [ACTION]." },
+    { "framework": "Why I Switched", "title": "Short descriptive title", "duration": "~45 seconds", "script": "Personal story format. Label sections: [HOOK] [OLD WAY] [DISCOVERY] [RESULT] [CTA]." },
+    { "framework": "My Honest Review", "title": "Short descriptive title", "duration": "~60 seconds", "script": "Review format. Label sections: [HOOK] [PROS] [CONS] [VERDICT] [CTA]." },
+    { "framework": "3 Reasons Why", "title": "Short descriptive title", "duration": "~30 seconds", "script": "Three-point format. Label sections: [HOOK] [REASON 1] [REASON 2] [REASON 3] [CTA]." },
+    { "framework": "Problem → Solution", "title": "Short descriptive title", "duration": "~30 seconds", "script": "Problem-first format. Label sections: [HOOK] [PAIN POINT] [AGITATE] [PRODUCT FIX] [CTA]." },
+    { "framework": "Industry Secret", "title": "Short descriptive title", "duration": "~30 seconds", "script": "Insider knowledge angle. Label sections: [HOOK] [SECRET] [WHY IT MATTERS] [PRODUCT] [CTA]." },
+    { "framework": "Reply to Comment", "title": "Short descriptive title", "duration": "~30 seconds", "script": "Comment-reply overlay format. Label sections: [COMMENT HOOK] [ANSWER] [PRODUCT REVEAL] [CTA]." },
+    { "framework": "Before & After", "title": "Short descriptive title", "duration": "~45 seconds", "script": "Transformation format. Label sections: [HOOK] [BEFORE STATE] [TURNING POINT] [AFTER STATE] [CTA]." }
   ],
   "talkingPoints": {
     "benefits": ["benefit 1", "benefit 2", "benefit 3", "benefit 4", "benefit 5"],
@@ -11962,11 +11960,61 @@ Generate this EXACT JSON (no markdown, no explanation):
 
   const msg = await anthropic.messages.create({
     model: 'claude-sonnet-4-6',
-    max_tokens: 4000,
+    max_tokens: 8000,
     messages: [{ role: 'user', content: prompt }],
   });
 
   return JSON.parse(msg.content[0].text.trim().replace(/^```json\n?/, '').replace(/\n?```$/, ''));
+}
+
+// Append 10 video scripts to the Lark resource hub doc as a dedicated section
+async function writeScriptsToLarkDoc(docToken, creatorBrief, brandName) {
+  if (!docToken || !creatorBrief?.sampleScripts?.length) return;
+  try {
+    const larkToken = await getLarkTenantToken();
+    // Fetch the document blocks to find the page (root) block id
+    const blocksRes = await axios.get(
+      `https://open.larksuite.com/open-apis/docx/v1/documents/${docToken}/blocks`,
+      { headers: { Authorization: `Bearer ${larkToken}` }, params: { document_revision_id: -1, page_size: 50 } }
+    );
+    const blocks = blocksRes.data?.data?.items || [];
+    const pageBlock = blocks.find(b => b.block_type === 1);
+    if (!pageBlock) { console.error('[onboard] writeScriptsToLarkDoc: no page block found'); return; }
+
+    // Build block children: section heading + one heading2+text pair per script
+    const children = [
+      {
+        block_type: 3, // heading1
+        heading1: { elements: [{ type: 'text_run', text_run: { content: 'Video Scripts' } }] }
+      },
+      {
+        block_type: 2, // text
+        text: { elements: [{ type: 'text_run', text_run: { content: `${creatorBrief.sampleScripts.length} ready-to-record scripts for ${brandName} creators. Each script is complete and ready to use as-is, or can be adapted to your style.`, text_element_style: { italic: true } } }] }
+      },
+    ];
+
+    creatorBrief.sampleScripts.forEach((script, i) => {
+      children.push(
+        {
+          block_type: 4, // heading2
+          heading2: { elements: [{ type: 'text_run', text_run: { content: `${i + 1}. ${script.title}` } }, { type: 'text_run', text_run: { content: `  ·  ${script.framework}  ·  ${script.duration}`, text_element_style: { text_color: 8 } } }] }
+        },
+        {
+          block_type: 2, // text — script body
+          text: { elements: [{ type: 'text_run', text_run: { content: script.script } }] }
+        }
+      );
+    });
+
+    await axios.post(
+      `https://open.larksuite.com/open-apis/docx/v1/documents/${docToken}/blocks/${pageBlock.block_id}/children`,
+      { children, index: -1 },
+      { headers: { Authorization: `Bearer ${larkToken}`, 'Content-Type': 'application/json' } }
+    );
+    console.log(`[onboard] Wrote ${creatorBrief.sampleScripts.length} scripts to Lark doc ${docToken}`);
+  } catch(e) {
+    console.error('[onboard] writeScriptsToLarkDoc error:', e.response?.data ? JSON.stringify(e.response.data) : e.message);
+  }
 }
 
 // Copy Lark Affiliate Resource Hub template and return {token, url, name}
@@ -12048,6 +12096,24 @@ async function sendLarkOnboardingAlert(formData, shopifyData, aiContent, larkDoc
     text += `💰 Monthly Budget: ${formData.monthlyBudget ? '$' + formData.monthlyBudget : 'TBD'}  |  GMV Goal: ${formData.gmvGoal ? '$' + formData.gmvGoal : 'TBD'}\n`;
     text += `🛍 TikTok Shop GMV: ${formData.tiktokGmv || 'N/A'}  |  Ads: ${formData.tiktokAds || 'N/A'}\n`;
     text += `📮 Sending Samples: ${formData.sendSamples || 'Yes'}\n`;
+
+    // Offer details summary
+    const od = formData.offerDetails;
+    if (od) {
+      text += `\n📋 *Offer Details (${formData.offerType || 'unknown'}):*\n`;
+      if (od.creatorBudget) text += `• Creator budget: ${od.creatorBudget}\n`;
+      if (od.adsBudget) text += `• Ads budget: ${od.adsBudget}\n`;
+      if (od.additionalAccounts?.length) {
+        text += `• Additional accounts (${od.additionalAccounts.length}):\n`;
+        od.additionalAccounts.forEach((acc, i) => {
+          const types = (acc.contentTypes || []).join(', ') || 'Management Only';
+          text += `  — Account ${i + 2}: ${acc.platform} · ${types}\n`;
+        });
+      }
+      if (od.metaAdsAddon?.enabled) text += `• Meta Ads Management: +$1,000/mo\n`;
+      if (od.discordAddon) text += `• Discord Community Management: +$500/mo\n`;
+      if (od.addonMonthlyTotal) text += `• Add-on total: +$${od.addonMonthlyTotal.toLocaleString()}/mo\n`;
+    }
 
     if (incentiveLine) {
       text += `\n🏆 *Creator Incentive Program:*\n• ${incentiveLine}\n`;
@@ -12140,7 +12206,14 @@ async function runOnboardingPipeline(formData, jobId) {
       locationId: CFG.locationId,
       firstName: formData.firstName, lastName: formData.lastName,
       email: formData.email, phone: formData.phone || '',
-      tags: ['client-onboarding', `client-${slugify(brandName)}`, ...(formData.offerType ? [`offer-${slugify(formData.offerType)}`] : [])],
+      tags: [
+        'client-onboarding',
+        `client-${slugify(brandName)}`,
+        ...(formData.offerType ? [`offer-${slugify(formData.offerType)}`] : []),
+        ...(formData.offerDetails?.metaAdsAddon?.enabled ? ['addon-meta-ads'] : []),
+        ...(formData.offerDetails?.discordAddon ? ['addon-discord'] : []),
+        ...((formData.offerDetails?.additionalAccounts?.length > 0) ? [`addon-extra-accounts-${formData.offerDetails.additionalAccounts.length}`] : []),
+      ],
       source: 'Client Onboarding Form',
     });
     ghlContactId = cr.data?.contact?.id;
@@ -12161,6 +12234,11 @@ async function runOnboardingPipeline(formData, jobId) {
   const larkDoc = await createLarkResourceHub(formData).catch(e => {
     console.error('[onboard] lark doc error:', e.message); return null;
   });
+  if (larkDoc?.token && creatorBrief) {
+    writeScriptsToLarkDoc(larkDoc.token, creatorBrief, brandName).catch(e =>
+      console.error('[onboard] scripts write error:', e.message)
+    );
+  }
 
   emitBuildStep(jobId, { type: 'step', icon: '🎯', title: 'Creator landing page', subtitle: 'Setting up your brand page & affiliate hub' });
 
@@ -12321,7 +12399,7 @@ async function runOnboardingPipeline(formData, jobId) {
   const paymentAmounts = [];
   if (od.cohort1Budget) paymentAmounts.push(`Cohort 1 creator retainer: $${parseInt(od.cohort1Budget).toLocaleString()}/mo`);
   if (od.cohort2TotalCost) paymentAmounts.push(`Cohort 2 total cost: $${parseFloat(od.cohort2TotalCost).toLocaleString()} (${od.cohort2CreatorCount} creators × $${od.cohort2ProductPrice} reimbursement + $${od.cohort2PlatformFee} platform fee)`);
-  if (od.addonMonthlyTotal) paymentAmounts.push(`Scale add-ons: $${od.addonMonthlyTotal.toLocaleString()}/mo`);
+  if (od.addonMonthlyTotal) paymentAmounts.push(`Growth Partner add-ons: $${od.addonMonthlyTotal.toLocaleString()}/mo`);
   if (paymentAmounts.length && ghlContactId) {
     try {
       await ghl.post('/tasks/', {
