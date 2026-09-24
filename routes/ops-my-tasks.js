@@ -2437,7 +2437,7 @@ async function csProcessVideo(v){
     var uploadId=Date.now()+'_'+Math.random().toString(36).slice(2);
     var cfgRes=await fetch('/api/upload-config');
     var cfg=await cfgRes.json();
-    var chunkUrl=cfg.uploadUrl.replace(/\/[^/]+$/,'')+'/upload/chunk';
+    var chunkUrl=cfg.uploadUrl.replace(/\\/[^/]+$/,'')+'/upload/chunk';
     var lastData=null;
     for(var i=0;i<total;i++){
       var start=i*CHUNK,end=Math.min(start+CHUNK,v.file.size);
