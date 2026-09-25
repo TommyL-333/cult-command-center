@@ -666,11 +666,22 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     .cs-btn-primary{background:var(--cyan);border-color:var(--cyan);color:#000;font-weight:700}
     .cs-btn-primary:hover{opacity:.9;color:#000}
     .cs-btn-primary:disabled{opacity:.4;cursor:default}
+    .cs-q-item{display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid var(--border);flex-wrap:wrap}
+    .cs-q-item:last-child{border-bottom:none}
+    .cs-q-title{font-size:12px;font-weight:700;flex:1;min-width:120px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .cs-q-badge{font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;flex-shrink:0;white-space:nowrap}
+    .cs-q-badge.staged{background:rgba(0,242,234,.12);color:var(--cyan)}
+    .cs-q-badge.published{background:rgba(0,210,122,.12);color:#00d27a}
+    .cs-q-badge.skipped{background:var(--panel2);color:var(--muted)}
+    .cs-q-actions{display:flex;align-items:center;gap:4px;flex-wrap:wrap}
+    .cs-tt-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:8px 0;border-bottom:1px solid var(--border);margin-bottom:10px}
+    .cs-tt-acct{display:flex;align-items:center;gap:6px;font-size:12px}
+    .cs-tt-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
   </style>
 
-  <!-- Step 1: Upload -->
+  <!-- Step 1: Upload & Process -->
   <div class="cs-section">
-    <div class="cs-hdr">① UPLOAD VIDEOS</div>
+    <div class="cs-hdr">① UPLOAD &amp; PROCESS</div>
     <div id="csDropZone" class="cs-drop"
       onclick="document.getElementById('csFileInput').click()"
       ondragover="event.preventDefault();this.classList.add('over')"
@@ -678,19 +689,33 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
       ondrop="csHandleDrop(event)">
       <div style="font-size:28px;margin-bottom:8px">🎬</div>
       <div style="font-size:13px;font-weight:700;margin-bottom:4px">Drop videos here or click to browse</div>
-      <div style="font-size:11px;color:var(--muted)">MP4, MOV, AVI — multiple files supported</div>
+      <div style="font-size:11px;color:var(--muted)">MP4, MOV, AVI — multiple files supported · up to 500 MB</div>
     </div>
     <input type="file" id="csFileInput" accept="video/*" multiple style="display:none" onchange="csHandleFiles(this)">
   </div>
 
-  <!-- Video cards render here -->
+  <!-- In-progress video cards -->
   <div id="csVideoList"></div>
   <div id="csEmpty" style="text-align:center;padding:12px;color:var(--muted);font-size:12px">Drop videos above to get started</div>
 
+  <!-- Staged Queue -->
+  <div class="cs-section">
+    <div class="cs-hdr" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <span>📋 STAGED VIDEOS</span>
+      <button class="cs-btn" style="font-size:10px;padding:2px 8px" onclick="csRenderUploadQueue()">↻ Refresh</button>
+    </div>
+    <div id="csQueueList"></div>
+    <div id="csQueueEmpty" style="font-size:12px;color:var(--muted);padding:4px 0;display:none">No staged videos yet.</div>
+  </div>
+
   <!-- Step 2: Publish -->
   <div class="cs-section">
-    <div class="cs-hdr">② PUBLISH</div>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Select channels:</div>
+    <div class="cs-hdr">② PUBLISH TO CHANNELS</div>
+
+    <!-- TikTok accounts -->
+    <div id="csTikTokRow"></div>
+
+    <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Buffer channels:</div>
     <div id="csChGrid" class="cs-ch-grid"><div style="color:var(--muted);font-size:11px">Loading channels…</div></div>
 
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px">
@@ -965,6 +990,8 @@ function switchTab(idx){
   if(idx===2)loadSprint();
   if(idx===3){applyVqRole();loadVideoQueue();}
   if(idx===4&&!_cs.channelsLoaded)csLoadChannels();
+  if(idx===4)csRenderUploadQueue();
+  if(idx===4&&!_cs.tikTokLoaded)csLoadTikTokStatus();
 }
 
 /* ── Sprint planner ──────────────────────────────────── */
@@ -2322,7 +2349,7 @@ function submitVideoRequest(){
 }
 
 /* ── Content Studio ─────────────────────────────────────────────────── */
-var _cs={videos:[],channels:[],selected:new Set(),channelsLoaded:false,_id:1};
+var _cs={videos:[],channels:[],selected:new Set(),channelsLoaded:false,tikTokLoaded:false,tikTokAccounts:[],_id:1};
 
 function csMakeId(){return 'cs'+(+_cs._id++);}
 
@@ -2430,43 +2457,53 @@ function csRemoveVideo(id){
 
 async function csProcessVideo(v){
   var MB=1024*1024;
-  csStat(v,'uploading','⬆ Uploading…',0);
+  var sizeMB=v.file.size>MB?(Math.round(v.file.size/MB)+'MB'):'';
+  csStat(v,'uploading','⬆ Uploading'+(sizeMB?' ('+sizeMB+')':'')+'…',0);
   try{
     var CHUNK=20*MB;
     var total=Math.ceil(v.file.size/CHUNK);
     var uploadId=Date.now()+'_'+Math.random().toString(36).slice(2);
     var cfgRes=await fetch('/api/upload-config');
+    if(!cfgRes.ok){csStat(v,'error','✗ Could not fetch upload config ('+cfgRes.status+')');return;}
     var cfg=await cfgRes.json();
-    var chunkUrl=cfg.uploadUrl.replace(/\\/[^/]+$/,'')+'/upload/chunk';
+    var baseUrl=cfg.uploadUrl.replace('/video-direct','');
+    var chunkUrl=baseUrl.replace(/\\/[^/]+$/,'')+'/upload/chunk';
     var lastData=null;
     for(var i=0;i<total;i++){
       var start=i*CHUNK,end=Math.min(start+CHUNK,v.file.size);
       var pct=Math.round(((i+1)/total)*100);
       csStat(v,'uploading','⬆ Uploading '+pct+'%…',pct);
-      var r=await fetch(chunkUrl,{method:'POST',headers:{
-        'Authorization':'Bearer '+cfg.token,'X-Upload-Id':uploadId,
-        'X-Chunk-Index':String(i),'X-Total-Chunks':String(total),
-        'X-Filename':v.file.name,'X-File-Size':String(v.file.size),
-        'Content-Type':'application/octet-stream'
-      },body:v.file.slice(start,end)});
-      if(!r.ok){csStat(v,'error','✗ Upload failed (chunk '+(i+1)+'/'+total+')');return;}
-      lastData=await r.json();
+      var chunkR;
+      try{
+        chunkR=await fetch(chunkUrl,{method:'POST',headers:{
+          'Authorization':'Bearer '+cfg.token,'X-Upload-Id':uploadId,
+          'X-Chunk-Index':String(i),'X-Total-Chunks':String(total),
+          'X-Filename':v.file.name,'X-File-Size':String(v.file.size),
+          'Content-Type':'application/octet-stream'
+        },body:v.file.slice(start,end)});
+      }catch(ce){csStat(v,'error','✗ Upload failed on chunk '+(i+1)+'/'+total+' — '+ce.message);return;}
+      if(!chunkR.ok){
+        var errMsg='Chunk upload failed ('+chunkR.status+')';
+        try{var ej=await chunkR.json();errMsg=ej.error||errMsg;}catch(_){}
+        csStat(v,'error','✗ '+errMsg);return;
+      }
+      lastData=await chunkR.json();
       if(!lastData.ok){csStat(v,'error','✗ '+(lastData.error||'Chunk error'));return;}
     }
-    if(!lastData||!lastData.url){csStat(v,'error','✗ No URL returned');return;}
+    if(!lastData||!lastData.url){csStat(v,'error','✗ Upload finished but no URL returned');return;}
     v.uploadedUrl=lastData.url;
   }catch(e){csStat(v,'error','✗ Upload failed — '+e.message);return;}
 
   csStat(v,'transcribing','🎤 Transcribing…');
   try{
-    var MB=1024*1024,txText='';
+    var txText='';
     if(v.file.size>25*MB){
       var fn=v.uploadedUrl?v.uploadedUrl.split('/uploads/')[1]:null;
       if(!fn){csStat(v,'ready','⚠ Transcribe failed — no filename');return;}
       var tr=await fetch('/api/transcribe-uploaded',{method:'POST',
         headers:{'Content-Type':'application/json'},body:JSON.stringify({filename:fn})});
       var td=await tr.json();
-      if(!td.ok||!td.text){csStat(v,'ready','⚠ Transcribe failed — '+(td.error||'no text'));return;}
+      if(!td.ok||!td.text){csStat(v,'ready','⚠ Transcribe failed — '+(td.error||'no text returned'));return;}
       txText=td.text;
     }else{
       var fd=new FormData();fd.append('audio',v.file);
@@ -2481,7 +2518,10 @@ async function csProcessVideo(v){
     }
     v.transcript=txText;
     var ta=document.getElementById('csTx_'+v.id);if(ta)ta.value=txText;
-  }catch(e){csStat(v,'ready','⚠ Transcribe timed out — add manually');return;}
+  }catch(e){
+    csStat(v,'ready','⚠ Transcribe '+(e.name==='AbortError'?'timed out':'failed ('+e.message+')')+' — add manually');
+    return;
+  }
 
   csStat(v,'captioning','✨ Generating caption…');
   try{
@@ -2649,6 +2689,143 @@ async function csPublish(){
     }
   }
   btn.disabled=false;csUpdatePublishBtn();
+}
+
+async function csRenderUploadQueue(){
+  var list=document.getElementById('csQueueList');
+  var empty=document.getElementById('csQueueEmpty');
+  if(!list)return;
+  list.innerHTML='<div style="font-size:12px;color:var(--muted);padding:4px 0">Loading…</div>';
+  try{
+    var r=await fetch('/api/upload/queue');
+    var d=await r.json();
+    var items=d.queue||d||[];
+    if(!Array.isArray(items)||!items.length){
+      list.innerHTML='';
+      if(empty)empty.style.display='';
+      return;
+    }
+    if(empty)empty.style.display='none';
+    list.innerHTML=items.map(function(it){return csQueueItemHtml(it);}).join('');
+  }catch(e){
+    list.innerHTML='<div style="font-size:12px;color:var(--red)">Failed to load queue: '+esc(e.message)+'</div>';
+  }
+}
+
+function csQueueItemHtml(it){
+  var encodedUrl=encodeURIComponent(it.url||'');
+  var encodedTitle=encodeURIComponent(it.title||it.filename||'video');
+  var statusCls=it.status==='published'?'published':it.status==='skipped'?'skipped':'staged';
+  var statusLabel=it.status==='published'?'Published':it.status==='skipped'?'Skipped':'Staged';
+  var chOpts=_cs.channels.map(function(c){return '<option value="'+esc(c.id)+'">'+esc(c.name)+'</option>';}).join('');
+  var hasTT=_cs.tikTokAccounts.length>0&&it.url;
+  var ttBtn=hasTT?('<button class="cs-btn" style="background:rgba(0,242,234,.15);font-size:10px;padding:2px 7px" onclick="csPostTikTok(\\''+esc(it.id)+'\\',\\''+esc(it.title||it.filename||'video')+'\\',\\''+esc(_cs.tikTokAccounts[0].account||'')+'\\')">TikTok</button>'):'';
+  var isDone=it.status==='published';
+  return '<div class="cs-q-item" id="cs-qi-'+esc(it.id)+'">'
+    +'<span class="cs-q-title" title="'+esc(it.title||it.filename||'')+'">'+esc(it.title||it.filename||'Untitled')+'</span>'
+    +'<span class="cs-q-badge '+statusCls+'">'+statusLabel+'</span>'
+    +'<div class="cs-q-actions">'
+    +(it.url?'<button class="cs-btn" style="font-size:10px;padding:2px 7px" onclick="csCopyLink(\\''+encodedUrl+'\\')">Copy</button>':'')
+    +(it.url?'<a href="'+esc(it.url)+'" download target="_blank" class="cs-btn" style="font-size:10px;padding:2px 7px;text-decoration:none">DL</a>':'')
+    +'<select id="cs-qi-ch-'+esc(it.id)+'" style="font-size:10px;padding:2px 4px;background:var(--panel2);color:var(--fg);border:1px solid var(--border);border-radius:4px">'+chOpts+'</select>'
+    +'<button class="cs-btn" style="font-size:10px;padding:2px 7px" onclick="csPostFromQueue(\\''+esc(it.id)+'\\',\\''+encodedUrl+'\\',\\''+encodedTitle+'\\')" '+(isDone?'disabled':'')+'>'+(isDone?'Posted':'Post ↗')+'</button>'
+    +ttBtn
+    +(!isDone?'<button class="cs-btn" style="background:rgba(0,210,122,.15);color:#00d27a;font-size:10px;padding:2px 7px" onclick="csQueueMarkPublished(\\''+esc(it.id)+'\\')">✓ Done</button>'
+             :'')
+    +'<button class="cs-btn" style="background:rgba(255,59,48,.12);color:var(--red);font-size:10px;padding:2px 7px" onclick="csQueueRemove(\\''+esc(it.id)+'\\')">✕</button>'
+    +'</div>'
+    +'</div>';
+}
+
+async function csPostFromQueue(id,encodedUrl,encodedTitle){
+  var sel=document.getElementById('cs-qi-ch-'+id);
+  var channelId=sel?sel.value:'';
+  if(!channelId){alert('Select a channel first');return;}
+  var url=decodeURIComponent(encodedUrl);
+  var title=decodeURIComponent(encodedTitle);
+  var ch=_cs.channels.find(function(c){return c.id===channelId;})||{};
+  if(!confirm('Post "'+title+'" to '+ch.name+'?'))return;
+  try{
+    var r=await fetch('/api/buffer/post',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({channelId:channelId,text:title,mediaUrl:url})});
+    var d=await r.json();
+    if(d.ok||d.success||d.post){
+      alert('Posted to Buffer!');
+      csQueueMarkPublished(id);
+    }else{
+      alert('Post failed: '+(d.error||JSON.stringify(d)));
+    }
+  }catch(e){alert('Post error: '+e.message);}
+}
+
+async function csPostTikTok(id,title,account){
+  var caption=prompt('TikTok caption:',title);
+  if(caption===null)return;
+  var isDraft=!confirm('Post publicly? (Cancel = save as draft)');
+  var videoId=id;
+  try{
+    var r=await fetch('/api/tiktok/post',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({videoId:videoId,caption:caption,account:account,isDraft:isDraft})});
+    var d=await r.json();
+    if(d.ok||d.success){
+      alert(isDraft?'Saved as TikTok draft!':'Posted to TikTok!');
+      csQueueMarkPublished(id);
+    }else{
+      alert('TikTok post failed: '+(d.error||JSON.stringify(d)));
+    }
+  }catch(e){alert('TikTok error: '+e.message);}
+}
+
+async function csQueueMarkPublished(id){
+  try{
+    await fetch('/api/upload/queue/'+encodeURIComponent(id),{method:'PATCH',
+      headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'published'})});
+  }catch(_){}
+  csRenderUploadQueue();
+}
+
+async function csQueueRemove(id){
+  if(!confirm('Remove this video from the queue?'))return;
+  try{
+    await fetch('/api/upload/queue/'+encodeURIComponent(id),{method:'DELETE'});
+  }catch(_){}
+  csRenderUploadQueue();
+}
+
+function csCopyLink(encodedUrl){
+  var url=decodeURIComponent(encodedUrl);
+  if(navigator.clipboard&&navigator.clipboard.writeText){
+    navigator.clipboard.writeText(url).then(function(){},function(){prompt('Copy this link:',url);});
+  }else{
+    prompt('Copy this link:',url);
+  }
+}
+
+async function csLoadTikTokStatus(){
+  _cs.tikTokLoaded=true;
+  var row=document.getElementById('csTikTokRow');
+  if(!row)return;
+  try{
+    var r=await fetch('/api/tiktok/status');
+    var d=await r.json();
+    var accounts=d.accounts||[];
+    _cs.tikTokAccounts=accounts;
+    if(!accounts.length){
+      row.innerHTML='<div class="cs-tt-row"><span style="font-size:11px;color:var(--muted)">TikTok not connected —</span>'
+        +'<a href="/api/tiktok/auth" style="font-size:11px;color:var(--cyan);margin-left:6px">Connect TikTok ↗</a></div>';
+      return;
+    }
+    row.innerHTML='<div class="cs-tt-row">'
+      +accounts.map(function(a){
+        return '<span class="cs-tt-acct"><span class="cs-tt-dot" style="background:var(--cyan)"></span>'
+          +esc(a.displayName||a.account)+'</span>'
+          +'<a href="/api/tiktok/disconnect?account='+encodeURIComponent(a.account)+'" style="font-size:10px;color:var(--muted);margin-left:2px">✕</a>';
+      }).join('')
+      +'<a href="/api/tiktok/auth" style="font-size:11px;color:var(--cyan);margin-left:8px">+ Add Account</a>'
+      +'</div>';
+  }catch(e){
+    if(row)row.innerHTML='<div style="font-size:11px;color:var(--muted);padding:4px 0">TikTok status unavailable</div>';
+  }
 }
 
 function initModules(){
