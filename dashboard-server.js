@@ -12305,6 +12305,22 @@ async function runOnboardingPipeline(formData, jobId) {
       brief: creatorBrief || null,
       createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
     };
+
+    // Store offer & unit economics so the profit simulator loads with real numbers
+    const od = formData.offerDetails || {};
+    const topProduct = shopifyData?.products?.[0];
+    brand.offerDetails = {
+      // from the onboarding form's offer configuration
+      ...od,
+      // unit economics: form values take priority, fall back to Shopify scrape
+      listPrice:  od.listPrice  ?? (topProduct?.price ? parseFloat(topProduct.price) : null),
+      cogs:       od.cogs       ?? null,
+      shipping:   od.shipping   ?? null,
+      // commRate as a percentage (e.g. 15 = 15%)
+      commRate:   od.commRate   ?? (formData.tcCommission ? parseFloat(formData.tcCommission) : null),
+    };
+    brand.offerType = formData.offerType || brand.offerType || null;
+
     saveBrands(brandsData);
     creatorPage = { slug, publicUrl: `${CREATOR_BASE_URL}/creators/${slug}`, active: true };
     console.log(`[onboard] Creator page live: ${creatorPage.publicUrl}`);
