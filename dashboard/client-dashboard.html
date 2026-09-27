@@ -485,6 +485,7 @@
   <button class="tab-btn" onclick="switchTab('marketplace')">Creator Marketplace</button>
   <button class="tab-btn" onclick="switchTab('tasks')">Tasks</button>
   <button class="tab-btn" id="tab-btn-reports" style="display:none" onclick="switchTab('reports')">Reports</button>
+  <button class="tab-btn" onclick="switchTab('profit-simulator')">Profit Simulator</button>
   <button class="tab-btn" onclick="switchTab('support')">Support</button>
 </nav>
 
@@ -1433,6 +1434,313 @@
 </main>
 </div><!-- end #tab-support -->
 
+<!-- ═══════════════════════ PROFIT SIMULATOR TAB ═══════════════════════ -->
+<div id="tab-profit-simulator" style="display:none">
+<style>
+/* Sim scoped tokens */
+#tab-profit-simulator { --sim-bg:#0c1120; --sim-card:#131d30; --sim-surface:#1b2a45; --sim-border:rgba(140,180,255,.09); --sim-accent:#00e5c3; --sim-profit:#22d97f; --sim-loss:#ff5757; --sim-label:#8ba3c4; --sim-muted:#4e6080; }
+#sim-wrap { background:var(--sim-bg); min-height:calc(100vh - 110px); display:flex; flex-direction:column; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif; }
+#sim-wrap a, #sim-wrap * { box-sizing:border-box; }
+.sim-scenario-strip { padding:14px 24px 0; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.sim-sc-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:var(--sim-muted); margin-right:4px; }
+.sim-sc-btn { background:var(--sim-card); border:1px solid var(--sim-border); border-radius:6px; color:var(--sim-label); font-size:12px; font-weight:500; padding:6px 14px; cursor:pointer; transition:border-color .15s,color .15s; }
+.sim-sc-btn:hover { border-color:rgba(0,229,195,.35); color:var(--sim-accent); }
+.sim-sc-btn.active { background:rgba(0,229,195,.12); border-color:var(--sim-accent); color:var(--sim-accent); }
+#sim-main { display:grid; grid-template-columns:280px 1fr; flex:1; }
+.sim-rail { background:var(--sim-card); border-right:1px solid var(--sim-border); padding:20px 18px; overflow-y:auto; max-height:calc(100vh - 180px); }
+.sim-right { display:grid; grid-template-rows:auto 1fr; overflow:hidden; }
+.sim-kpi-row { display:grid; grid-template-columns:repeat(4,1fr); gap:1px; background:var(--sim-border); border-bottom:1px solid var(--sim-border); }
+.sim-kpi { background:var(--sim-card); padding:20px 20px 16px; }
+.sim-kpi-label { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--sim-muted); margin-bottom:8px; }
+.sim-kpi-value { font-family:'Courier New',Courier,monospace; font-size:24px; font-weight:700; line-height:1; transition:color .3s; }
+.sim-kpi-sub { font-size:11px; color:var(--sim-muted); margin-top:5px; }
+.sim-kpi-value.pos { color:var(--sim-profit); }
+.sim-kpi-value.neg { color:var(--sim-loss); }
+.sim-chart-area { padding:20px 24px; display:flex; flex-direction:column; min-height:260px; }
+.sim-chart-hdr { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.sim-chart-title { font-size:12px; font-weight:700; color:var(--sim-label); text-transform:uppercase; letter-spacing:.06em; }
+.sim-legend { display:flex; gap:14px; }
+.sim-leg-item { display:flex; align-items:center; gap:5px; font-size:11px; color:var(--sim-muted); }
+.sim-leg-dot { width:8px; height:8px; border-radius:50%; }
+canvas#simChart { width:100%; flex:1; }
+.sim-breakdown { padding:0 24px 20px; display:grid; grid-template-columns:repeat(3,1fr); gap:12px; }
+.sim-bd-card { background:var(--sim-card); border:1px solid var(--sim-border); border-radius:10px; padding:14px 16px; }
+.sim-bd-title { font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:var(--sim-muted); margin-bottom:10px; }
+.sim-bd-row { display:flex; justify-content:space-between; align-items:baseline; padding:3px 0; border-bottom:1px solid var(--sim-border); font-size:12px; }
+.sim-bd-row:last-child { border-bottom:none; }
+.sim-bd-row-label { color:var(--sim-label); }
+.sim-bd-row-val { font-family:'Courier New',Courier,monospace; font-size:11px; font-weight:500; color:var(--sim-accent); }
+.sim-bd-total { display:flex; justify-content:space-between; align-items:baseline; margin-top:8px; padding-top:8px; border-top:1px solid var(--sim-border); font-size:12px; font-weight:600; color:var(--text); }
+.sim-bd-total-val { font-family:'Courier New',Courier,monospace; font-size:13px; font-weight:700; }
+.sim-section-head { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.1em; color:var(--sim-muted); margin:18px 0 10px; padding-bottom:7px; border-bottom:1px solid var(--sim-border); }
+.sim-section-head:first-child { margin-top:0; }
+.sim-slider-row { margin-bottom:12px; }
+.sim-slider-top { display:flex; align-items:baseline; justify-content:space-between; margin-bottom:4px; }
+.sim-slider-name { font-size:12px; font-weight:500; color:var(--sim-label); }
+.sim-slider-val { font-family:'Courier New',Courier,monospace; font-size:12px; font-weight:500; color:var(--text); }
+input.sim-range { width:100%; height:3px; appearance:none; -webkit-appearance:none; background:var(--sim-surface); border-radius:2px; outline:none; cursor:pointer; }
+input.sim-range::-webkit-slider-thumb { -webkit-appearance:none; width:14px; height:14px; border-radius:50%; background:var(--sim-accent); cursor:pointer; }
+input.sim-range::-moz-range-thumb { width:14px; height:14px; border-radius:50%; background:var(--sim-accent); cursor:pointer; border:none; }
+@media(max-width:860px){
+  #sim-main{grid-template-columns:1fr}
+  .sim-kpi-row{grid-template-columns:repeat(2,1fr)}
+  .sim-breakdown{grid-template-columns:1fr}
+  .sim-rail{border-right:none;border-bottom:1px solid var(--sim-border);max-height:none}
+}
+</style>
+
+<div id="sim-wrap">
+  <div class="sim-scenario-strip">
+    <span class="sim-sc-label">Scenario</span>
+    <button class="sim-sc-btn" onclick="simLoadScenario('conservative',this)">Conservative</button>
+    <button class="sim-sc-btn active" id="simScBase" onclick="simLoadScenario('base',this)">Your Model</button>
+    <button class="sim-sc-btn" onclick="simLoadScenario('growth',this)">Scale Target</button>
+  </div>
+
+  <div id="sim-main">
+    <div class="sim-rail">
+      <div class="sim-section-head">Creator Performance</div>
+      <div class="sim-slider-row"><div class="sim-slider-top"><span class="sim-slider-name">Active Creators</span><span class="sim-slider-val" id="sv-creators">20</span></div><input class="sim-range" type="range" id="ss-creators" min="1" max="150" value="20" oninput="simUpdate()"></div>
+      <div class="sim-slider-row"><div class="sim-slider-top"><span class="sim-slider-name">Videos / Creator / Month</span><span class="sim-slider-val" id="sv-videos">3</span></div><input class="sim-range" type="range" id="ss-videos" min="1" max="15" value="3" oninput="simUpdate()"></div>
+      <div class="sim-slider-row"><div class="sim-slider-top"><span class="sim-slider-name">Avg Views per Video</span><span class="sim-slider-val" id="sv-views">1,500</span></div><input class="sim-range" type="range" id="ss-views" min="200" max="100000" step="100" value="1500" oninput="simUpdate()"></div>
+      <div class="sim-slider-row"><div class="sim-slider-top"><span class="sim-slider-name">Click-Through Rate</span><span class="sim-slider-val" id="sv-ctr">3.38%</span></div><input class="sim-range" type="range" id="ss-ctr" min="0.1" max="15" step="0.01" value="3.38" oninput="simUpdate()"></div>
+      <div class="sim-slider-row"><div class="sim-slider-top"><span class="sim-slider-name">Conversion Rate</span><span class="sim-slider-val" id="sv-cvr">1.23%</span></div><input class="sim-range" type="range" id="ss-cvr" min="0.1" max="10" step="0.01" value="1.23" oninput="simUpdate()"></div>
+      <div class="sim-section-head">Unit Economics</div>
+      <div class="sim-slider-row"><div class="sim-slider-top"><span class="sim-slider-name">List Price</span><span class="sim-slider-val" id="sv-price">$89</span></div><input class="sim-range" type="range" id="ss-price" min="10" max="500" value="89" oninput="simUpdate()"></div>
+      <div class="sim-slider-row"><div class="sim-slider-top"><span class="sim-slider-name">Promotion Discount</span><span class="sim-slider-val" id="sv-promo">10%</span></div><input class="sim-range" type="range" id="ss-promo" min="0" max="40" step="0.5" value="10" oninput="simUpdate()"></div>
+      <div class="sim-slider-row"><div class="sim-slider-top"><span class="sim-slider-name">COGS</span><span class="sim-slider-val" id="sv-cogs">$15</span></div><input class="sim-range" type="range" id="ss-cogs" min="1" max="200" value="15" oninput="simUpdate()"></div>
+      <div class="sim-slider-row"><div class="sim-slider-top"><span class="sim-slider-name">Shipping</span><span class="sim-slider-val" id="sv-ship">$6</span></div><input class="sim-range" type="range" id="ss-ship" min="0" max="30" value="6" oninput="simUpdate()"></div>
+      <div class="sim-slider-row"><div class="sim-slider-top"><span class="sim-slider-name">Affiliate Commission</span><span class="sim-slider-val" id="sv-comm">15%</span></div><input class="sim-range" type="range" id="ss-comm" min="1" max="40" step="0.5" value="15" oninput="simUpdate()"></div>
+      <div class="sim-section-head">Operational</div>
+      <div class="sim-slider-row"><div class="sim-slider-top"><span class="sim-slider-name">Monthly Samples</span><span class="sim-slider-val" id="sv-samples">100</span></div><input class="sim-range" type="range" id="ss-samples" min="0" max="500" value="100" oninput="simUpdate()"></div>
+      <div class="sim-slider-row"><div class="sim-slider-top"><span class="sim-slider-name">Return Rate</span><span class="sim-slider-val" id="sv-returns">10%</span></div><input class="sim-range" type="range" id="ss-returns" min="0" max="30" step="0.5" value="10" oninput="simUpdate()"></div>
+    </div>
+
+    <div class="sim-right">
+      <div class="sim-kpi-row">
+        <div class="sim-kpi"><div class="sim-kpi-label">Monthly Revenue</div><div class="sim-kpi-value" id="sk-revenue">—</div><div class="sim-kpi-sub" id="sk-orders-sub">— orders</div></div>
+        <div class="sim-kpi"><div class="sim-kpi-label">Gross Profit</div><div class="sim-kpi-value" id="sk-gross">—</div><div class="sim-kpi-sub" id="sk-margin-sub">— margin</div></div>
+        <div class="sim-kpi"><div class="sim-kpi-label">Net Profit / Month</div><div class="sim-kpi-value" id="sk-net">—</div><div class="sim-kpi-sub" id="sk-net-margin-sub">— net margin</div></div>
+        <div class="sim-kpi"><div class="sim-kpi-label">Break-Even Creators</div><div class="sim-kpi-value" id="sk-be">—</div><div class="sim-kpi-sub">creators to cover costs</div></div>
+      </div>
+      <div class="sim-chart-area">
+        <div class="sim-chart-hdr">
+          <div class="sim-chart-title">12-Month Projection</div>
+          <div class="sim-legend">
+            <div class="sim-leg-item"><div class="sim-leg-dot" style="background:#00e5c3"></div>Revenue</div>
+            <div class="sim-leg-item"><div class="sim-leg-dot" style="background:#22d97f"></div>Net Profit</div>
+          </div>
+        </div>
+        <canvas id="simChart"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div class="sim-breakdown">
+    <div class="sim-bd-card">
+      <div class="sim-bd-title">Unit Economics</div>
+      <div class="sim-bd-row"><span class="sim-bd-row-label">Sale Price</span><span class="sim-bd-row-val" id="sb-saleprice">—</span></div>
+      <div class="sim-bd-row"><span class="sim-bd-row-label">Shipping</span><span class="sim-bd-row-val" id="sb-ship">—</span></div>
+      <div class="sim-bd-row"><span class="sim-bd-row-label">COGS</span><span class="sim-bd-row-val" id="sb-cogs">—</span></div>
+      <div class="sim-bd-row"><span class="sim-bd-row-label">Affiliate Commission</span><span class="sim-bd-row-val" id="sb-comm">—</span></div>
+      <div class="sim-bd-row"><span class="sim-bd-row-label">TikTok Fee (6%)</span><span class="sim-bd-row-val" id="sb-tktok">—</span></div>
+      <div class="sim-bd-total"><span>Profit / Unit</span><span class="sim-bd-total-val" id="sb-profitunit">—</span></div>
+    </div>
+    <div class="sim-bd-card">
+      <div class="sim-bd-title">Monthly Volume</div>
+      <div class="sim-bd-row"><span class="sim-bd-row-label">Impressions</span><span class="sim-bd-row-val" id="sb-impr">—</span></div>
+      <div class="sim-bd-row"><span class="sim-bd-row-label">Link Clicks</span><span class="sim-bd-row-val" id="sb-clicks">—</span></div>
+      <div class="sim-bd-row"><span class="sim-bd-row-label">Orders</span><span class="sim-bd-row-val" id="sb-orders">—</span></div>
+      <div class="sim-bd-row"><span class="sim-bd-row-label">Revenue / Creator</span><span class="sim-bd-row-val" id="sb-rev-per">—</span></div>
+      <div class="sim-bd-row"><span class="sim-bd-row-label">Videos Published</span><span class="sim-bd-row-val" id="sb-vids">—</span></div>
+      <div class="sim-bd-total"><span>Total Revenue</span><span class="sim-bd-total-val" id="sb-revtotal">—</span></div>
+    </div>
+    <div class="sim-bd-card">
+      <div class="sim-bd-title">Cost Breakdown</div>
+      <div class="sim-bd-row"><span class="sim-bd-row-label">Cult Content Fee</span><span class="sim-bd-row-val" id="sb-teamcost">—</span></div>
+      <div class="sim-bd-row"><span class="sim-bd-row-label">Sample Cost</span><span class="sim-bd-row-val" id="sb-samplecost">—</span></div>
+      <div class="sim-bd-row"><span class="sim-bd-row-label">Returns &amp; Refunds</span><span class="sim-bd-row-val" id="sb-returns">—</span></div>
+      <div class="sim-bd-row"><span class="sim-bd-row-label">TikTok Fees (total)</span><span class="sim-bd-row-val" id="sb-tktoktotal">—</span></div>
+      <div class="sim-bd-row"><span class="sim-bd-row-label">Affiliate Commissions</span><span class="sim-bd-row-val" id="sb-commtotal">—</span></div>
+      <div class="sim-bd-total"><span>Net Profit</span><span class="sim-bd-total-val" id="sb-netprofit">—</span></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var SIM_TEAM_BASE = 2500, SIM_REV_SHARE = 0.10, SIM_TK_FEE = 0.06;
+  var _simLoaded = false;
+
+  var SIM_SCENARIOS = {
+    conservative:{creators:8,videos:2,views:800,ctr:2.0,cvr:0.7,price:89,promo:10,cogs:15,ship:6,comm:15,samples:50,returns:12},
+    base:{creators:20,videos:3,views:1500,ctr:3.38,cvr:1.23,price:89,promo:10,cogs:15,ship:6,comm:15,samples:100,returns:10},
+    growth:{creators:60,videos:5,views:5000,ctr:3.38,cvr:1.5,price:89,promo:8,cogs:15,ship:6,comm:15,samples:200,returns:8},
+  };
+  var _simBase = Object.assign({}, SIM_SCENARIOS.base); // will be overridden by API
+
+  window.initProfitSimulator = function() {
+    if (window._simLoaded) return;
+    window._simLoaded = true;
+    fetch('/api/client/simulator-params', { credentials: 'include' })
+      .then(function(r){ return r.json(); })
+      .then(function(d) {
+        if (d.ok && d.params) {
+          var p = d.params;
+          if (p.listPrice)  { _simBase.price  = p.listPrice;  SIM_SCENARIOS.base.price  = p.listPrice;  }
+          if (p.cogs)       { _simBase.cogs   = p.cogs;       SIM_SCENARIOS.base.cogs   = p.cogs;       }
+          if (p.shipping)   { _simBase.ship   = p.shipping;   SIM_SCENARIOS.base.ship   = p.shipping;   }
+          if (p.commRate)   { _simBase.comm   = p.commRate;   SIM_SCENARIOS.base.comm   = p.commRate;   }
+        }
+        simApplyScenario(SIM_SCENARIOS.base);
+        simUpdate();
+      }).catch(function(){ simApplyScenario(SIM_SCENARIOS.base); simUpdate(); });
+  };
+
+  window.simLoadScenario = function(key, btn) {
+    document.querySelectorAll('.sim-sc-btn').forEach(function(b){ b.classList.remove('active'); });
+    if (btn) btn.classList.add('active');
+    simApplyScenario(SIM_SCENARIOS[key]);
+    simUpdate();
+  };
+
+  function simApplyScenario(s) {
+    function set(id, v) { var el = document.getElementById(id); if (el) el.value = v; }
+    set('ss-creators', s.creators); set('ss-videos', s.videos); set('ss-views', s.views);
+    set('ss-ctr', s.ctr); set('ss-cvr', s.cvr); set('ss-price', s.price);
+    set('ss-promo', s.promo); set('ss-cogs', s.cogs); set('ss-ship', s.ship);
+    set('ss-comm', s.comm); set('ss-samples', s.samples); set('ss-returns', s.returns);
+  }
+
+  function simVal(id) { return parseFloat(document.getElementById(id)?.value || 0); }
+  function simFmt(n,d) { return new Intl.NumberFormat('en-US',{minimumFractionDigits:d||0,maximumFractionDigits:d||0}).format(n); }
+  function simDollar(n) { return '$' + simFmt(Math.round(n)); }
+  function simPct(n) { return n.toFixed(1) + '%'; }
+
+  function simCalc() {
+    var creators=simVal('ss-creators'), videos=simVal('ss-videos'), views=simVal('ss-views');
+    var ctr=simVal('ss-ctr')/100, cvr=simVal('ss-cvr')/100;
+    var price=simVal('ss-price'), promo=simVal('ss-promo')/100;
+    var cogs=simVal('ss-cogs'), ship=simVal('ss-ship'), comm=simVal('ss-comm')/100;
+    var samples=simVal('ss-samples'), returns=simVal('ss-returns')/100;
+    var salePrice=price*(1-promo), tkFee=salePrice*SIM_TK_FEE, commCost=salePrice*comm;
+    var profitPerUnit=salePrice-ship-cogs-commCost-tkFee;
+    var impressions=creators*videos*views, clicks=impressions*ctr, orders=clicks*cvr;
+    var revenue=orders*salePrice, grossProfit=orders*profitPerUnit;
+    var sampleCost=(ship+cogs)*samples, teamCost=SIM_TEAM_BASE+(SIM_REV_SHARE*revenue), returnsCost=revenue*returns;
+    var netProfit=grossProfit-sampleCost-teamCost-returnsCost;
+    var marginPct=revenue>0?grossProfit/revenue:0, netMarginPct=revenue>0?netProfit/revenue:0;
+    var ordersPerCreator=videos*views*ctr*cvr;
+    var netPerUnitAdj=profitPerUnit-SIM_REV_SHARE*salePrice-returns*salePrice;
+    var be=netPerUnitAdj>0?Math.ceil((sampleCost+SIM_TEAM_BASE)/(ordersPerCreator*netPerUnitAdj)):Infinity;
+    return {creators,videos,views,ctr,cvr,price,promo,salePrice,ship,cogs,comm,commCost,tkFee,profitPerUnit,
+            impressions,clicks,orders,revenue,grossProfit,sampleCost,teamCost,returnsCost,netProfit,
+            marginPct,netMarginPct,samples,returns,be};
+  }
+
+  window.simUpdate = function() {
+    var m = simCalc();
+    function setText(id,v){ var el=document.getElementById(id); if(el) el.textContent=v; }
+    function setClass(id,cls){ var el=document.getElementById(id); if(el){ el.className='sim-kpi-value '+cls; } }
+    // slider labels
+    setText('sv-creators', simFmt(simVal('ss-creators')));
+    setText('sv-videos',   simVal('ss-videos'));
+    setText('sv-views',    simFmt(simVal('ss-views')));
+    setText('sv-ctr',      simVal('ss-ctr').toFixed(2)+'%');
+    setText('sv-cvr',      simVal('ss-cvr').toFixed(2)+'%');
+    setText('sv-price',    '$'+simVal('ss-price'));
+    setText('sv-promo',    simVal('ss-promo')+'%');
+    setText('sv-cogs',     '$'+simVal('ss-cogs'));
+    setText('sv-ship',     '$'+simVal('ss-ship'));
+    setText('sv-comm',     simVal('ss-comm')+'%');
+    setText('sv-samples',  simFmt(simVal('ss-samples')));
+    setText('sv-returns',  simVal('ss-returns')+'%');
+    // KPIs
+    setText('sk-revenue', simDollar(m.revenue));
+    setText('sk-orders-sub', simFmt(Math.round(m.orders))+' orders');
+    setText('sk-gross', simDollar(m.grossProfit)); setClass('sk-gross', m.grossProfit>=0?'pos':'neg');
+    setText('sk-margin-sub', simPct(m.marginPct*100)+' margin');
+    setText('sk-net', simDollar(m.netProfit)); setClass('sk-net', m.netProfit>=0?'pos':'neg');
+    setText('sk-net-margin-sub', simPct(m.netMarginPct*100)+' net margin');
+    setText('sk-be', isFinite(m.be)?simFmt(m.be):'∞'); setClass('sk-be', m.be<=m.creators?'pos':(isFinite(m.be)?'':'neg'));
+    // unit econ
+    setText('sb-saleprice', simDollar(m.salePrice));
+    setText('sb-ship', simDollar(m.ship));
+    setText('sb-cogs', simDollar(m.cogs));
+    setText('sb-comm', simDollar(m.commCost)+' ('+simPct(m.comm*100)+')');
+    setText('sb-tktok', simDollar(m.tkFee));
+    setText('sb-profitunit', simDollar(m.profitPerUnit));
+    var pu=document.getElementById('sb-profitunit'); if(pu) pu.style.color=m.profitPerUnit>=0?'var(--sim-profit)':'var(--sim-loss)';
+    // volume
+    setText('sb-impr', simFmt(Math.round(m.impressions)));
+    setText('sb-clicks', simFmt(Math.round(m.clicks)));
+    setText('sb-orders', simFmt(Math.round(m.orders)));
+    setText('sb-rev-per', m.creators>0?simDollar(m.revenue/m.creators):'—');
+    setText('sb-vids', simFmt(m.creators*m.videos));
+    setText('sb-revtotal', simDollar(m.revenue));
+    // costs
+    setText('sb-teamcost', simDollar(m.teamCost));
+    setText('sb-samplecost', simDollar(m.sampleCost));
+    setText('sb-returns', simDollar(m.returnsCost));
+    setText('sb-tktoktotal', simDollar(m.orders*m.tkFee));
+    setText('sb-commtotal', simDollar(m.orders*m.commCost));
+    setText('sb-netprofit', simDollar(m.netProfit));
+    var np=document.getElementById('sb-netprofit'); if(np) np.style.color=m.netProfit>=0?'var(--sim-profit)':'var(--sim-loss)';
+    simDrawChart(m);
+  };
+
+  function simDrawChart(m) {
+    var canvas = document.getElementById('simChart');
+    if (!canvas) return;
+    var dpr = window.devicePixelRatio||1, W=canvas.offsetWidth, H=canvas.offsetHeight;
+    if (!W||!H) return;
+    canvas.width=W*dpr; canvas.height=H*dpr;
+    var ctx=canvas.getContext('2d'); ctx.scale(dpr,dpr);
+    var MONTHS=12;
+    var data=[];
+    for (var i=0;i<MONTHS;i++){
+      var cr=m.creators*Math.pow(1.08,i);
+      var ord=cr*m.videos*m.views*m.ctr*m.cvr;
+      var rev=ord*m.salePrice, gross=ord*m.profitPerUnit;
+      var costs=m.sampleCost+(SIM_TEAM_BASE+SIM_REV_SHARE*rev)+(rev*m.returns);
+      data.push({revenue:rev, net:gross-costs});
+    }
+    var PAD={t:12,r:16,b:36,l:62};
+    var cW=W-PAD.l-PAD.r, cH=H-PAD.t-PAD.b;
+    var allVals=data.reduce(function(a,d){a.push(d.revenue,d.net,0);return a;},[]);
+    var maxV=Math.max.apply(null,allVals)*1.12, minV=Math.min.apply(null,allVals.concat([0])), range=maxV-minV||1;
+    var toX=function(i){return PAD.l+(i/(MONTHS-1))*cW;};
+    var toY=function(v){return PAD.t+(1-(v-minV)/range)*cH;};
+    // grid
+    ctx.strokeStyle='rgba(140,180,255,0.06)'; ctx.lineWidth=1;
+    [0,0.25,0.5,0.75,1].forEach(function(t){
+      var y=PAD.t+t*cH; ctx.beginPath();ctx.moveTo(PAD.l,y);ctx.lineTo(PAD.l+cW,y);ctx.stroke();
+      var v=maxV-t*range;
+      ctx.fillStyle='rgba(100,130,160,0.6)'; ctx.font='10px Courier New,monospace'; ctx.textAlign='right';
+      ctx.fillText('$'+(Math.abs(v)>=1000?(v/1000).toFixed(0)+'k':Math.round(v)),PAD.l-6,y+4);
+    });
+    if (minV<0&&maxV>0){var y0=toY(0);ctx.strokeStyle='rgba(255,255,255,0.15)';ctx.setLineDash([4,4]);ctx.beginPath();ctx.moveTo(PAD.l,y0);ctx.lineTo(PAD.l+cW,y0);ctx.stroke();ctx.setLineDash([]);}
+    var drawLine=function(series,color,width){
+      var pts=series.map(function(v,i){return[toX(i),toY(v)];});
+      ctx.beginPath();pts.forEach(function(p,i){i===0?ctx.moveTo(p[0],p[1]):ctx.lineTo(p[0],p[1]);});
+      ctx.strokeStyle=color;ctx.lineWidth=width||2;ctx.lineJoin='round';ctx.stroke();
+      var ep=pts[pts.length-1];ctx.beginPath();ctx.arc(ep[0],ep[1],3,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();
+    };
+    drawLine(data.map(function(d){return d.revenue;}),'#00e5c3',1.5);
+    drawLine(data.map(function(d){return d.net;}),'#22d97f',2);
+    var MO=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    var now=new Date().getMonth();
+    ctx.fillStyle='rgba(100,130,160,0.7)';ctx.font='10px -apple-system,sans-serif';ctx.textAlign='center';
+    [0,2,4,6,8,10,11].forEach(function(i){ctx.fillText(MO[(now+i)%12],toX(i),H-PAD.b+16);});
+  }
+
+  var _simRo = new ResizeObserver(function(){ if(window._simLoaded) simUpdate(); });
+  var _simRoEl = document.getElementById('simChart');
+  if (_simRoEl && _simRoEl.parentElement) _simRo.observe(_simRoEl.parentElement);
+})();
+</script>
+</div><!-- end #tab-profit-simulator -->
+
 <style>
 .support-ticket-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px}
 .support-badge{font-size:0.7rem;font-weight:700;padding:2px 8px;border-radius:6px;text-transform:uppercase;letter-spacing:.03em}
@@ -2225,7 +2533,7 @@ async function submitSupportTicket() {
     document.querySelectorAll('[id^="tab-"]').forEach(el => el.style.display = 'none');
     document.getElementById('tab-' + name).style.display = 'block';
     const btns = document.querySelectorAll('.tab-btn');
-    const labels = { 'overview': 'Overview', 'content-studio': 'Content Studio', 'billing': 'Billing', 'inner-circle': 'Inner Circle', 'marketplace': 'Creator Marketplace', 'tasks': 'Tasks', 'reports': 'Reports', 'support': 'Support' };
+    const labels = { 'overview': 'Overview', 'content-studio': 'Content Studio', 'billing': 'Billing', 'inner-circle': 'Inner Circle', 'marketplace': 'Creator Marketplace', 'tasks': 'Tasks', 'reports': 'Reports', 'profit-simulator': 'Profit Simulator', 'support': 'Support' };
     btns.forEach(b => { if (b.textContent.trim() === labels[name]) b.classList.add('active'); });
     if (name === 'content-studio' && !window._channelsLoaded) loadChannels();
     if (name === 'content-studio' && !window._arcadsLoaded) loadArcads();
@@ -2238,6 +2546,7 @@ async function submitSupportTicket() {
     if (name === 'marketplace' && !_mktLoaded) loadMarketplace();
     if (name === 'tasks' && !window._tasksLoaded) loadClientTasks();
     if (name === 'support' && !window._supportLoaded) loadSupportTickets();
+    if (name === 'profit-simulator' && !window._simLoaded) initProfitSimulator();
   }
 
   // ─── Client Tasks ────────────────────────────────────────────────────────────

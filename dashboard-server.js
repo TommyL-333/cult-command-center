@@ -5087,6 +5087,30 @@ const OPS_APP_TOKEN_CLI = 'EsfBbIqfkauKozsxMHMuilDztod';
 const TASKS_TABLE_CLI   = 'tbl7XaSc37mtcBKg';
 const CLIENTS_TABLE_CLI = 'tblgM1L7myeAfYQm';
 
+// GET /api/client/simulator-params — brand-specific defaults for the profit simulator
+app.get('/api/client/simulator-params', requireClientSession, async (req, res) => {
+  try {
+    const brands = loadBrands();
+    const brand = (brands.clients || []).find(b => b.id === req.session.clientBrandId);
+    if (!brand) return res.status(404).json({ error: 'Brand not found' });
+    const od = brand.offerDetails || {};
+    res.json({
+      ok: true,
+      params: {
+        listPrice:      od.listPrice      ?? null,
+        cogs:           od.cogs           ?? null,
+        shipping:       od.shipping       ?? null,
+        commRate:       od.commRate       ?? (brand.commissionRate ? brand.commissionRate * 100 : null),
+        creatorBudgetK: od.creatorBudget  ? parseInt(od.creatorBudget) : null,
+        brandName:      brand.name        || null,
+      },
+    });
+  } catch (e) {
+    console.error('[simulator-params]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/api/client/tasks', requireClientSession, async (req, res) => {
   try {
     const brands = loadBrands();
