@@ -4420,26 +4420,60 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
       );
       if (data.code !== 0) throw new Error('team read: ' + data.code + ' ' + data.msg);
       const FORMER_MEMBERS = new Set(['hasan','hassan','shayan','daniel']);
+      // Canonical team with roles — looked up by email when not in the Lark table
+      const KNOWN_TEAM = [
+        { name: 'Jenna', email: 'jenna@cultcontent.cc', role: 'Affiliate Manager' },
+        { name: 'Jina',  email: 'jina@cultcontent.cc',  role: 'Creator Lead' },
+        { name: 'Becca', email: 'becca@cultcontent.cc', role: 'Affiliate Manager' },
+        { name: 'Gourab', email: 'gourab@cultcontent.cc', role: 'Shop Manager' },
+        { name: 'Gilbert', email: 'gilbert@cultcontent.cc', role: 'Video Editor' },
+      ];
+      // Look up open IDs for team members by email via Lark contact API
+      const emailLookup = await larkPost('/open-apis/contact/v3/users/batch_get_id', {
+        emails: KNOWN_TEAM.map(m => m.email),
+      }).catch(() => null);
+      const emailToOpenId = {};
+      if (emailLookup && emailLookup.data && emailLookup.data.email_users) {
+        for (const [email, users] of Object.entries(emailLookup.data.email_users)) {
+          if (Array.isArray(users) && users[0] && users[0].open_id) {
+            emailToOpenId[email.toLowerCase()] = users[0].open_id;
+          }
+        }
+      }
+
       const items = (data.data && data.data.items) || [];
+      const seenOpenIds = new Set();
       const team = [];
+
+      // Add from Lark table first
       for (const it of items) {
         const f = it.fields || {};
         if (f.Active === false) continue;
         const rawName = (textVal(f.Name) || textVal(f.name) || '').toLowerCase().split(' ')[0];
         if (FORMER_MEMBERS.has(rawName)) continue;
-        // Try every known field shape Lark might use for a user ID
         const openId = textVal(f['Open ID']) || textVal(f['open_id']) || textVal(f['OpenID']) ||
           (Array.isArray(f.Person) && f.Person[0] && f.Person[0].id) ||
           (Array.isArray(f['Lark User']) && f['Lark User'][0] && f['Lark User'][0].id) || '';
         if (!openId) continue;
+        seenOpenIds.add(openId);
+        // Override role with canonical role if known
+        const canonical = KNOWN_TEAM.find(m => m.name.toLowerCase() === rawName);
         team.push({
           name: textVal(f.Name) || textVal(f.name) ||
             (Array.isArray(f.Person) && f.Person[0] && (f.Person[0].name || f.Person[0].en_name)) ||
             (Array.isArray(f['Lark User']) && f['Lark User'][0] && (f['Lark User'][0].name || f['Lark User'][0].en_name)) || openId,
           openId,
-          role: textVal(f.Role) || textVal(f.role) || '',
+          role: (canonical && canonical.role) || textVal(f.Role) || textVal(f.role) || '',
         });
       }
+
+      // Add KNOWN_TEAM members not already in the list (resolved by email lookup)
+      for (const m of KNOWN_TEAM) {
+        const openId = emailToOpenId[m.email.toLowerCase()];
+        if (!openId || seenOpenIds.has(openId)) continue;
+        team.push({ name: m.name, openId, role: m.role });
+      }
+
       res.json({ team });
     } catch (e) {
       console.error('[ops-my-tasks] team error:', e.message);
