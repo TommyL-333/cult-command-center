@@ -4595,6 +4595,29 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
     }
   });
 
+  // ---------- ROUTE: POST /api/my-tasks/claude-queue ----------
+  // Directly enqueue a task for Claude Code. Auth: Bearer CLAUDE_CODE_SECRET.
+  app.post('/api/my-tasks/claude-queue', jsonBody, (req, res) => {
+    const secret = process.env.CLAUDE_CODE_SECRET;
+    const auth = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    if (!secret || auth !== secret) return res.status(401).json({ error: 'Unauthorized' });
+    const { task, productId, productName, priority, larkRecordId } = req.body || {};
+    if (!task) return res.status(400).json({ error: 'task is required' });
+    const id = larkRecordId || ('manual_' + Date.now());
+    const queue = readClaudeQueue();
+    const entry = {
+      id, status: 'pending', task,
+      larkRecordId: larkRecordId || null,
+      productId: productId || '', productName: productName || '',
+      priority: priority || '🟡 Normal',
+      createdAt: new Date().toISOString(), result: null,
+    };
+    const idx = queue.findIndex(q => q.id === id);
+    if (idx >= 0) queue[idx] = entry; else queue.push(entry);
+    writeClaudeQueue(queue);
+    res.json({ ok: true, task: entry });
+  });
+
   // ---------- ROUTE: GET /api/my-tasks/claude-queue ----------
   // Returns pending tasks for Claude Code. Auth: Bearer CLAUDE_CODE_SECRET.
   app.get('/api/my-tasks/claude-queue', (req, res) => {
