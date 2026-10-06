@@ -750,6 +750,11 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
       <select id="prioSel" style="width:100%;margin-top:6px;padding:10px;border-radius:8px;background:var(--panel2);color:var(--txt);border:1px solid var(--border)">
         <option value="🔴 Critical">🔴 Critical</option><option value="🟠 High">🟠 High</option><option value="🟡 Normal">🟡 Normal</option><option value="⚪ Low">⚪ Low</option>
       </select>
+      <div id="ccProductWrap" style="display:none;margin-top:14px;padding:12px;border-radius:8px;background:rgba(0,242,234,.06);border:1px solid rgba(0,242,234,.25)">
+        <div style="font-size:12px;font-weight:700;color:var(--cyan);margin-bottom:8px">🤖 Claude Code — Select product</div>
+        <select id="ccProductSel" style="width:100%;padding:10px;border-radius:8px;background:var(--panel2);color:var(--txt);border:1px solid var(--border)"><option value="">Choose product…</option></select>
+        <div style="font-size:11px;color:var(--muted);margin-top:6px">Claude will receive the task and product context via Lark.</div>
+      </div>
     </div>
     <label for="resultBox" id="modalLabel">Result / Output <span style="color:var(--red)">*</span> — what did you do?</label>
     <textarea id="resultBox" placeholder="Describe the outcome. Required."></textarea>
@@ -2077,7 +2082,25 @@ function openAssignModal(id){
   document.getElementById('modalLabel').style.display='none';document.getElementById('resultBox').style.display='none';
   document.getElementById('assignWrap').style.display='block';document.getElementById('modalErr').style.display='none';
   var btn=document.getElementById('confirmBtn');btn.textContent='Reassign';btn.disabled=true;
-  var fill=function(){var sel=document.getElementById('assignSel');sel.innerHTML='<option value="">Choose…</option>'+TEAM.map(function(m){return'<option value="'+m.openId+'">'+esc(m.name)+(m.role?' — '+esc(m.role):'')+'</option>';}).join('');sel.onchange=function(){btn.disabled=!this.value;};};
+  var fill=function(){
+    var sel=document.getElementById('assignSel');
+    sel.innerHTML='<option value="">Choose…</option>'
+      +'<option value="__claude_code__">🤖 Claude Code</option>'
+      +TEAM.map(function(m){return'<option value="'+m.openId+'">'+esc(m.name)+(m.role?' — '+esc(m.role):'')+'</option>';}).join('');
+    sel.onchange=function(){
+      var isClaude=this.value==='__claude_code__';
+      var wrap=document.getElementById('ccProductWrap');
+      wrap.style.display=isClaude?'block':'none';
+      if(isClaude){
+        var psel=document.getElementById('ccProductSel');
+        psel.innerHTML='<option value="">Choose product…</option>'+SP_PRODUCTS.map(function(p){return'<option value="'+p.id+'">'+p.emoji+' '+esc(p.name)+'</option>';}).join('');
+        psel.onchange=function(){btn.disabled=!this.value;};
+        btn.disabled=true;
+      }else{
+        btn.disabled=!this.value;
+      }
+    };
+  };
   var ps=document.getElementById('prioSel');var curP=(CURRENT.priority||'').trim();var match=['🔴 Critical','🟠 High','🟡 Normal','⚪ Low'].filter(function(p){return p===curP;});ps.value=match[0]||'🟡 Normal';
   if(TEAM.length){fill();}else{fetch('/api/my-tasks/team',{credentials:'include'}).then(function(r){return r.json();}).then(function(d){TEAM=d.team||[];fill();}).catch(function(){});}
   document.getElementById('overlay').classList.add('show');
@@ -2085,6 +2108,19 @@ function openAssignModal(id){
 function doReassign(){
   if(!CURRENT)return;var to=document.getElementById('assignSel').value;if(!to)return;
   var btn=document.getElementById('confirmBtn');btn.disabled=true;btn.textContent='Saving…';
+  if(to==='__claude_code__'){
+    var psel=document.getElementById('ccProductSel');
+    var productId=psel?psel.value:'';
+    var product=SP_PRODUCTS.filter(function(p){return p.id===productId;})[0]||null;
+    fetch('/api/my-tasks/reassign-claude',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({record_id:CURRENT.record_id,task:CURRENT.task||'',productId:productId,productName:product?product.name:'',priority:document.getElementById('prioSel').value})})
+    .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j};});}).then(function(x){
+      btn.textContent='Reassign';
+      if(x.ok&&x.j.ok){ALL=ALL.filter(function(t){return t.record_id!==CURRENT.record_id;});closeModal();renderFilters();render();document.getElementById('sub').textContent=ALL.length+' active task'+(ALL.length===1?'':'s');toast('🤖 Sent to Claude Code');}
+      else{document.getElementById('modalErr').style.display='block';document.getElementById('modalErr').textContent=(x.j&&x.j.error)||'Failed to ping Claude Code';btn.disabled=false;}
+    }).catch(function(e){document.getElementById('modalErr').style.display='block';document.getElementById('modalErr').textContent=''+e;btn.disabled=false;btn.textContent='Reassign';});
+    return;
+  }
   fetch('/api/my-tasks/reassign',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({record_id:CURRENT.record_id,to_open_id:to,priority:document.getElementById('prioSel').value})})
   .then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j};});}).then(function(x){
     btn.textContent='Reassign';
@@ -2098,7 +2134,7 @@ function openModal(id){
   var sl=document.getElementById('sisyLink');if(sl){var q='Help me work on this Ops Engine task: '+(CURRENT.task||'')+(CURRENT.client?' (client: '+CURRENT.client+')':'');sl.href='https://sisyphus.cultcontent.cc/?prefill='+encodeURIComponent(q);}
   var box=document.getElementById('resultBox');box.value='';document.getElementById('modalErr').style.display='none';document.getElementById('confirmBtn').disabled=true;document.getElementById('overlay').classList.add('show');setTimeout(function(){box.focus();},50);
 }
-function closeModal(){document.getElementById('overlay').classList.remove('show');CURRENT=null;}
+function closeModal(){document.getElementById('overlay').classList.remove('show');CURRENT=null;var w=document.getElementById('ccProductWrap');if(w)w.style.display='none';}
 document.getElementById('resultBox').addEventListener('input',function(){document.getElementById('confirmBtn').disabled=this.value.trim().length===0;});
 function doComplete(){
   if(!CURRENT)return;var result=document.getElementById('resultBox').value.trim();if(!result){document.getElementById('modalErr').style.display='block';return;}
@@ -3891,12 +3927,11 @@ loadAll();
 
 // ---------- DEV MODE ----------
 var DEV_MEMBERS=[
-  {name:'Gourab',email:'gourab@cultcontent.cc',role:'Brand Manager'},
+  {name:'Gourab',email:'gourab@cultcontent.cc',role:'Shop Manager'},
   {name:'Gilbert',email:'gilbert@cultcontent.cc',role:'Video Editor'},
-  {name:'Jina',email:'jina@cultcontent.cc',role:'Community Manager'},
-  {name:'Becca',email:'becca@cultcontent.cc',role:'Community Manager'},
-  {name:'Jenna',email:'jenna@cultcontent.cc',role:'Community Manager'},
-  {name:'Daniel',email:'daniel@cultcontent.cc',role:'Developer'},
+  {name:'Jina',email:'jina@cultcontent.cc',role:'Creator Lead'},
+  {name:'Becca',email:'becca@cultcontent.cc',role:'Affiliate Manager'},
+  {name:'Jenna',email:'jenna@cultcontent.cc',role:'Affiliate Manager'},
 ];
 function openDevMode(){
   var grid=document.getElementById('dev-member-grid');
@@ -4384,11 +4419,14 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
         { page_size: 100 }
       );
       if (data.code !== 0) throw new Error('team read: ' + data.code + ' ' + data.msg);
+      const FORMER_MEMBERS = new Set(['hasan','hassan','shayan','daniel']);
       const items = (data.data && data.data.items) || [];
       const team = [];
       for (const it of items) {
         const f = it.fields || {};
         if (f.Active === false) continue;
+        const rawName = (textVal(f.Name) || textVal(f.name) || '').toLowerCase().split(' ')[0];
+        if (FORMER_MEMBERS.has(rawName)) continue;
         // Try every known field shape Lark might use for a user ID
         const openId = textVal(f['Open ID']) || textVal(f['open_id']) || textVal(f['OpenID']) ||
           (Array.isArray(f.Person) && f.Person[0] && f.Person[0].id) ||
@@ -4464,6 +4502,36 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
     } catch (e) {
       console.error('[ops-my-tasks] reassign error:', e.message);
       res.status(500).json({ error: 'Failed to reassign task', detail: e.message });
+    }
+  });
+
+  // ---------- ROUTE: POST /api/my-tasks/reassign-claude ----------
+  // Reassign a task to Claude Code. Sends a Lark ping with task + product context.
+  app.post('/api/my-tasks/reassign-claude', requireAuth, jsonBody, async (req, res) => {
+    try {
+      const { record_id, task, productId, productName, priority } = req.body || {};
+      if (!record_id) return res.status(400).json({ error: 'record_id required' });
+      const RAILWAY_URL = process.env.RAILWAY_URL || 'https://cultcontent-server-production.up.railway.app';
+      const lines = [
+        '🤖 *Task assigned to Claude Code*',
+        '',
+        `*Task:* ${task || record_id}`,
+        productName ? `*Product:* ${productName}` : null,
+        productId ? `*Product ID:* ${productId}` : null,
+        `*Priority:* ${priority || '🟡 Normal'}`,
+        `*Record ID:* \`${record_id}\``,
+        '',
+        `Open: https://manifest.cultcontent.cc/my-tasks`,
+      ].filter(Boolean).join('\n');
+      await fetch(`${RAILWAY_URL}/command`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: lines }),
+      });
+      res.json({ ok: true });
+    } catch (e) {
+      console.error('[ops-my-tasks] reassign-claude error:', e.message);
+      res.status(500).json({ error: 'Failed to ping Claude Code', detail: e.message });
     }
   });
 
