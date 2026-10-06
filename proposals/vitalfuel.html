@@ -676,10 +676,10 @@ function calc() {
   document.getElementById('lbl-ctr').textContent  = (ctr*100).toFixed(1)+'%';
   document.getElementById('lbl-cvr').textContent  = (cvr*100).toFixed(1)+'%';
   document.getElementById('lbl-aov').textContent  = '$'+(aov).toFixed(2);
-  document.getElementById('lbl-cogs').textContent = '$'+cogs.toFixed(2);
+  document.getElementById('lbl-cogs').textContent = '$'+cogsPerUnit.toFixed(2);
   document.getElementById('lbl-aff').textContent  = (aff*100).toFixed(0)+'%';
   document.getElementById('bc-aff-pct').textContent = (aff*100).toFixed(0)+'%';
-  document.getElementById('bc-cogs-lbl').textContent = '$'+cogs.toFixed(0)+'/unit';
+  document.getElementById('bc-cogs-lbl').textContent = '$'+cogsPerUnit.toFixed(0)+'/unit';
 
   // fixed numbers
   const c1Vids  = 66;  // $10,000 / $150 = 66.67 → 66
