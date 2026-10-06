@@ -1,3 +1,4 @@
+// Claude Code queue verified and working.
 /**
  * Ops Engine "My Tasks" — per-person task UI for cult-command-center.
  *
