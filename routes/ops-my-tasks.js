@@ -4009,6 +4009,13 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
     try { return JSON.parse(fs.readFileSync(BRANDS_FILE_PATH, 'utf8')); }
     catch (_) { return { clients: [] }; }
   }
+  const CLAUDE_QUEUE_FILE = nodePath.join(DATA_DIR, 'claude-queue.json');
+  function readClaudeQueue() {
+    try { return JSON.parse(fs.readFileSync(CLAUDE_QUEUE_FILE, 'utf8')); } catch (_) { return []; }
+  }
+  function writeClaudeQueue(q) {
+    fs.writeFileSync(CLAUDE_QUEUE_FILE, JSON.stringify(q, null, 2));
+  }
   const WR_FILE = nodePath.join(DATA_DIR, 'weekly-reports.json');
   const ST_FILE = nodePath.join(DATA_DIR, 'subtasks.json');
   const NET_SALES_FILE = nodePath.join(DATA_DIR, 'net-sales.json');
@@ -4540,33 +4547,77 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
   });
 
   // ---------- ROUTE: POST /api/my-tasks/reassign-claude ----------
-  // Reassign a task to Claude Code. Sends a Lark ping with task + product context.
+  // Reassign a task to Claude Code. Pushes to the claude-queue + sends a Lark ping.
   app.post('/api/my-tasks/reassign-claude', requireAuth, jsonBody, async (req, res) => {
     try {
       const { record_id, task, productId, productName, priority } = req.body || {};
       if (!record_id) return res.status(400).json({ error: 'record_id required' });
+
+      // Push to persistent claude queue
+      const queue = readClaudeQueue();
+      const entry = {
+        id: record_id,
+        status: 'pending',
+        task: task || record_id,
+        larkRecordId: record_id,
+        productId: productId || '',
+        productName: productName || '',
+        priority: priority || '🟡 Normal',
+        createdAt: new Date().toISOString(),
+        result: null,
+      };
+      const idx = queue.findIndex(q => q.id === record_id);
+      if (idx >= 0) queue[idx] = entry; else queue.push(entry);
+      writeClaudeQueue(queue);
+
+      // Send Lark notification
       const RAILWAY_URL = process.env.RAILWAY_URL || 'https://cultcontent-server-production.up.railway.app';
       const lines = [
         '🤖 *Task assigned to Claude Code*',
         '',
         `*Task:* ${task || record_id}`,
         productName ? `*Product:* ${productName}` : null,
-        productId ? `*Product ID:* ${productId}` : null,
         `*Priority:* ${priority || '🟡 Normal'}`,
         `*Record ID:* \`${record_id}\``,
         '',
-        `Open: https://manifest.cultcontent.cc/my-tasks`,
+        'Claude Code will pick this up on its next check.',
       ].filter(Boolean).join('\n');
-      await fetch(`${RAILWAY_URL}/command`, {
+      fetch(`${RAILWAY_URL}/command`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: lines }),
-      });
+      }).catch(e => console.error('[ops-my-tasks] lark ping failed:', e.message));
+
       res.json({ ok: true });
     } catch (e) {
       console.error('[ops-my-tasks] reassign-claude error:', e.message);
-      res.status(500).json({ error: 'Failed to ping Claude Code', detail: e.message });
+      res.status(500).json({ error: 'Failed to queue task for Claude Code', detail: e.message });
     }
+  });
+
+  // ---------- ROUTE: GET /api/my-tasks/claude-queue ----------
+  // Returns pending tasks for Claude Code. Auth: Bearer CLAUDE_CODE_SECRET.
+  app.get('/api/my-tasks/claude-queue', (req, res) => {
+    const secret = process.env.CLAUDE_CODE_SECRET;
+    const auth = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    if (!secret || auth !== secret) return res.status(401).json({ error: 'Unauthorized' });
+    const queue = readClaudeQueue();
+    res.json({ queue: queue.filter(t => t.status === 'pending') });
+  });
+
+  // ---------- ROUTE: PATCH /api/my-tasks/claude-queue/:id ----------
+  // Claim or complete a task. Auth: Bearer CLAUDE_CODE_SECRET.
+  app.patch('/api/my-tasks/claude-queue/:id', jsonBody, (req, res) => {
+    const secret = process.env.CLAUDE_CODE_SECRET;
+    const auth = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    if (!secret || auth !== secret) return res.status(401).json({ error: 'Unauthorized' });
+    const queue = readClaudeQueue();
+    const task = queue.find(t => t.id === req.params.id);
+    if (!task) return res.status(404).json({ error: 'Task not found' });
+    const allowed = ['status', 'result', 'claimedAt', 'completedAt'];
+    for (const k of allowed) { if (req.body[k] !== undefined) task[k] = req.body[k]; }
+    writeClaudeQueue(queue);
+    res.json({ ok: true, task });
   });
 
   // ---------- HELPER: effectiveEmail ----------
