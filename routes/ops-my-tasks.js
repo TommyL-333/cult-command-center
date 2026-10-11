@@ -467,6 +467,25 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .vp-metric{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
   .vp-metric-val{font-size:20px;font-weight:800;color:var(--txt)}
   .vp-metric-lbl{font-size:10px;color:var(--muted);margin-top:3px;font-weight:600}
+  /* section tabs (Videos / Podcast) */
+  .vp-section-tabs{display:flex;gap:6px;margin-bottom:18px}
+  .vp-stab{font-size:12px;font-weight:700;padding:6px 16px;border-radius:8px;cursor:pointer;border:1px solid var(--border);background:none;color:var(--muted);font-family:inherit;transition:.1s;display:flex;align-items:center;gap:6px}
+  .vp-stab.active{background:var(--cyan);color:var(--dark);border-color:var(--cyan)}
+  .vp-stab-badge{background:var(--red);color:#fff;border-radius:8px;font-size:10px;padding:1px 6px;font-weight:800}
+  /* podcast cards */
+  .vp-pod-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:10px;transition:.15s}
+  .vp-pod-card:hover{border-color:rgba(0,242,234,.3)}
+  .vp-pod-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
+  .vp-pod-name{font-size:14px;font-weight:700}
+  .vp-pod-handle{font-size:11px;color:var(--muted);margin-top:2px}
+  .vp-pod-status{font-size:10px;font-weight:700;border-radius:5px;padding:2px 8px;white-space:nowrap}
+  .vp-pod-status-pending{background:rgba(154,160,181,.15);color:var(--muted)}
+  .vp-pod-status-approved{background:rgba(0,242,234,.12);color:var(--cyan)}
+  .vp-pod-status-scheduled{background:rgba(245,158,11,.15);color:#f59e0b}
+  .vp-pod-status-recorded{background:rgba(107,232,107,.12);color:#6be86b}
+  .vp-pod-status-rejected{background:rgba(255,59,48,.12);color:var(--red)}
+  .vp-pod-body{font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:10px}
+  .vp-pod-meta{font-size:11px;color:var(--muted);margin-bottom:10px}
   /* footage upload */
   .vq-footage-tabs{display:flex;gap:6px;margin-bottom:8px}
   .vq-ftab{font-size:11px;font-weight:700;padding:4px 12px;border-radius:6px;cursor:pointer;border:1px solid var(--border);background:none;color:var(--muted);font-family:inherit;transition:.1s}
@@ -612,35 +631,16 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     <div class="vp-stat-goal" id="vp-goal-line">0 / 1,000 posted</div>
   </div>
 
+  <!-- Section tabs: Videos | Podcast -->
+  <div class="vp-section-tabs" id="vp-section-tabs">
+    <button class="vp-stab active" id="vp-stab-videos" onclick="vpSwitchSection(\\'videos\\')">Videos</button>
+    <button class="vp-stab" id="vp-stab-podcast" onclick="vpSwitchSection(\\'podcast\\')">Podcast Applications <span class="vp-stab-badge" id="vp-podcast-badge" style="display:none">0</span></button>
+  </div>
+
+  <!-- VIDEOS SECTION -->
+  <div id="vp-section-videos">
   <div class="vq-submit" id="vq-submit-form" style="display:none">
-    <h3>Submit Video Request</h3>
-    <div class="fr">
-      <div class="fg"><label>Brand / Client</label>
-        <input type="text" id="vq-brand" list="vq-brand-list" placeholder="e.g. Lode WTR"/>
-        <datalist id="vq-brand-list"></datalist>
-      </div>
-      <div class="fg"><label>Priority</label>
-        <select id="vq-priority">
-          <option value="normal">Normal</option>
-          <option value="high">High</option>
-          <option value="low">Low</option>
-        </select>
-      </div>
-    </div>
-    <div class="fr">
-      <div class="fg"><label>Title / Short Description</label>
-        <input type="text" id="vq-title" placeholder="e.g. Product showcase edit, UGC compilation"/>
-      </div>
-      <div class="fg"><label>Due Date (optional)</label>
-        <input type="date" id="vq-due"/>
-      </div>
-    </div>
-    <div class="fr full"><div class="fg"><label>Brief / Context</label>
-      <textarea id="vq-desc" style="min-height:70px" placeholder="What needs to be edited? Hook direction, style notes, any must-includes…"></textarea>
-    </div></div>
-    <div class="fr full"><div class="fg"><label>Script (optional)</label>
-      <textarea id="vq-script" style="min-height:80px" placeholder="Paste the video script or hook here if you have one…"></textarea>
-    </div></div>
+    <h3 style="margin-bottom:14px">New Video</h3>
     <div class="fr full"><div class="fg">
       <label>Footage</label>
       <div class="vq-footage-tabs">
@@ -652,7 +652,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
           <div id="vq-drop-text">
             <span style="font-size:22px">📁</span><br>
             <span style="font-weight:700">Drop video or click to upload</span><br>
-            <span style="font-size:11px;color:var(--muted)">MP4, MOV, AVI — up to 500 MB</span>
+            <span style="font-size:11px;color:var(--muted)">MP4, MOV, AVI, podcast clips — up to 4 GB</span>
           </div>
           <div id="vq-upload-progress" style="display:none;margin-top:10px">
             <div style="font-size:12px;font-weight:600;margin-bottom:6px" id="vq-upload-label">Uploading…</div>
@@ -665,12 +665,15 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
             <button type="button" class="vq-btn" style="margin-left:8px;font-size:10px" onclick="event.stopPropagation();vqClearUpload()">✕ Remove</button>
           </div>
         </div>
-        <input type="file" id="vq-file-input" accept="video/*,.mp4,.mov,.avi,.mkv" style="display:none" onchange="vqUploadFootage(this.files[0])"/>
+        <input type="file" id="vq-file-input" accept="video/*,.mp4,.mov,.avi,.mkv,.m4v,.webm,.flv,.wmv,.m4a,.mp3,.aac,.wav" style="display:none" onchange="vqUploadFootage(this.files[0])"/>
       </div>
       <div id="vq-footage-link" style="display:none">
         <input type="url" id="vq-drive" placeholder="https://drive.google.com/drive/folders/…"/>
       </div>
       <input type="hidden" id="vq-footage-url"/>
+    </div></div>
+    <div class="fr full"><div class="fg"><label>Notes <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+      <textarea id="vq-desc" style="min-height:55px" placeholder="Any direction for the editor — hook ideas, vibe, must-include moments…"></textarea>
     </div></div>
     <div class="err" id="vq-err" style="margin-top:8px"></div>
     <div style="display:flex;justify-content:flex-end;margin-top:14px">
@@ -739,6 +742,46 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
       <span>Status</span>
     </div>
     <div id="vq-list-rows"></div>
+  </div>
+  </div><!-- /vp-section-videos -->
+
+  <!-- PODCAST SECTION -->
+  <div id="vp-section-podcast" style="display:none">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div>
+        <div style="font-size:14px;font-weight:700">Cult Commerce Podcast — Guest Applications</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px">New applications from <a href="https://cultcontent.cc/cult-commerce-podcast" target="_blank" style="color:var(--cyan)">cultcontent.cc/cult-commerce-podcast</a></div>
+      </div>
+    </div>
+    <div id="vp-podcast-tabs" style="display:flex;gap:6px;margin-bottom:14px">
+      <button class="vq-ftab active" id="vp-ptab-pending" onclick="vpPodcastFilter(\\'pending\\')">Pending</button>
+      <button class="vq-ftab" id="vp-ptab-approved" onclick="vpPodcastFilter(\\'approved\\')">Approved</button>
+      <button class="vq-ftab" id="vp-ptab-scheduled" onclick="vpPodcastFilter(\\'scheduled\\')">Scheduled</button>
+      <button class="vq-ftab" id="vp-ptab-recorded" onclick="vpPodcastFilter(\\'recorded\\')">Recorded</button>
+      <button class="vq-ftab" id="vp-ptab-all" onclick="vpPodcastFilter(\\'all\\')">All</button>
+    </div>
+    <div id="vp-podcast-list"><div class="vq-empty">Loading applications…</div></div>
+  </div>
+
+  <!-- Podcast schedule modal -->
+  <div id="vp-schedule-modal" class="vq-modal-overlay" style="display:none" onclick="if(event.target===this)vpCloseScheduleModal()">
+    <div class="vq-modal">
+      <h3>Schedule Episode</h3>
+      <div class="fg" style="margin-bottom:12px"><label>Recording Date & Time</label>
+        <input type="datetime-local" id="vp-sched-dt"/>
+      </div>
+      <div class="fg" style="margin-bottom:12px"><label>Riverside Room URL <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+        <input type="url" id="vp-sched-riverside" placeholder="https://riverside.fm/studio/…"/>
+      </div>
+      <div class="fg" style="margin-bottom:12px"><label>Notes to guest <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+        <textarea id="vp-sched-notes" style="min-height:60px" placeholder="Anything they should prepare…"></textarea>
+      </div>
+      <div id="vp-sched-err" class="err" style="display:none;margin-bottom:8px"></div>
+      <div class="vq-modal-actions">
+        <button class="btn" onclick="vpCloseScheduleModal()" style="background:none">Cancel</button>
+        <button class="btn" onclick="vpSubmitSchedule()">Confirm Schedule</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -2348,6 +2391,9 @@ function applyVqRole(){
   document.getElementById('vq-queue-wrap').style.display=isAdm?'':'none';
   document.getElementById('vq-tools-panel').style.display=isEd?'':'none';
   document.getElementById('vq-list-wrap').style.display=isEd?'':'none';
+  // Podcast tab only visible to admin (Tommy)
+  var sectionTabs=document.getElementById('vp-section-tabs');
+  if(sectionTabs)sectionTabs.style.display=isAdm?'':'none';
 }
 
 function loadVideoQueue(){
@@ -2596,31 +2642,126 @@ function vqUploadFootage(file){
   xhr.send(fd);
 }
 
+function vpSwitchSection(sec){
+  document.getElementById('vp-section-videos').style.display=sec==='videos'?'':'none';
+  document.getElementById('vp-section-podcast').style.display=sec==='podcast'?'':'none';
+  document.getElementById('vp-stab-videos').classList.toggle('active',sec==='videos');
+  document.getElementById('vp-stab-podcast').classList.toggle('active',sec==='podcast');
+  if(sec==='podcast')loadPodcastApplications();
+}
+
+var _vpPodFilter='pending';
+function vpPodcastFilter(status){
+  _vpPodFilter=status;
+  ['pending','approved','scheduled','recorded','all'].forEach(function(s){
+    var el=document.getElementById('vp-ptab-'+s);
+    if(el)el.classList.toggle('active',s===status);
+  });
+  renderPodcastApplications();
+}
+
+var VPP_DATA=[];
+function loadPodcastApplications(){
+  fetch('/api/podcast-applications',{credentials:'include'})
+  .then(function(r){return r.json();}).then(function(d){
+    VPP_DATA=d.applications||[];
+    var pending=VPP_DATA.filter(function(a){return a.status==='pending';}).length;
+    var badge=document.getElementById('vp-podcast-badge');
+    if(badge){badge.textContent=pending;badge.style.display=pending?'':'none';}
+    renderPodcastApplications();
+  }).catch(function(e){document.getElementById('vp-podcast-list').innerHTML='<div class="vq-empty">Could not load applications</div>';});
+}
+
+function renderPodcastApplications(){
+  var list=_vpPodFilter==='all'?VPP_DATA:VPP_DATA.filter(function(a){return a.status===_vpPodFilter;});
+  if(!list.length){document.getElementById('vp-podcast-list').innerHTML='<div class="vq-empty">No '+(_vpPodFilter==='all'?'':_vpPodFilter+' ')+'applications</div>';return;}
+  document.getElementById('vp-podcast-list').innerHTML=list.map(vpPodCardHtml).join('');
+}
+
+function vpPodCardHtml(a){
+  var id=esc(a.id||'');
+  var statusClass='vp-pod-status-'+(a.status||'pending');
+  var statusLabel=(a.status||'pending').charAt(0).toUpperCase()+(a.status||'pending').slice(1);
+  var date=a.submittedAt?new Date(a.submittedAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'';
+  var actions='';
+  if(a.status==='pending'){
+    actions='<button class="vq-btn vq-approve" onclick="vpApprovePod(\\''+id+'\\')">✓ Approve</button>'
+           +'<button class="vq-btn" style="color:var(--red)" onclick="vpRejectPod(\\''+id+'\\')">✕ Decline</button>';
+  }
+  if(a.status==='approved'){
+    actions='<button class="vq-btn vq-post" onclick="vpSchedulePod(\\''+id+'\\')">📅 Schedule</button>'
+           +'<button class="vq-btn" style="color:var(--red)" onclick="vpRejectPod(\\''+id+'\\')">✕ Decline</button>';
+  }
+  if(a.status==='scheduled'){
+    actions='<button class="vq-btn vq-done" onclick="vpMarkRecorded(\\''+id+'\\')">✓ Recorded</button>';
+    if(a.riversideUrl)actions+='<a href="'+esc(a.riversideUrl)+'" target="_blank" class="vq-btn vq-drive">🎙 Open Riverside</a>';
+  }
+  if(a.status==='recorded'){
+    actions='<button class="vq-btn vq-primary" onclick="vpSetPodStatus(\\''+id+'\\',\\'done\\')">→ Send to Gilbert</button>';
+  }
+  var schedLine=a.scheduledAt?'<div style="font-size:11px;color:#f59e0b;margin-bottom:6px">📅 Recording: '+new Date(a.scheduledAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+'</div>':'';
+  var topicLine=a.topics?'<div class="vp-pod-body">'+esc(a.topics)+'</div>':'';
+  var pitchLine=a.pitch?'<div class="vp-pod-body" style="font-style:italic">"'+esc(a.pitch)+'"</div>':'';
+  return '<div class="vp-pod-card">'
+    +'<div class="vp-pod-card-top">'
+    +'<div><div class="vp-pod-name">'+esc(a.name||'Unknown')+'</div>'
+    +'<div class="vp-pod-handle">'+esc(a.email||'')+(a.social?' · '+esc(a.social):'')+(a.role?' · '+esc(a.role):'')+'</div></div>'
+    +'<span class="vp-pod-status '+statusClass+'">'+statusLabel+'</span>'
+    +'</div>'
+    +schedLine+topicLine+pitchLine
+    +'<div class="vp-pod-meta">Applied '+date+'</div>'
+    +'<div class="vq-actions">'+actions+'</div>'
+    +'</div>';
+}
+
+function vpApprovePod(id){vpSetPodStatus(id,'approved');}
+function vpRejectPod(id){if(confirm('Decline this application?'))vpSetPodStatus(id,'rejected');}
+function vpMarkRecorded(id){vpSetPodStatus(id,'recorded');}
+function vpSetPodStatus(id,status){
+  fetch('/api/podcast-applications/'+id,{method:'PATCH',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:status})})
+  .then(function(r){return r.json();}).then(function(d){
+    if(d.ok){loadPodcastApplications();}else toast('Error: '+(d.error||'Failed'));
+  }).catch(function(e){toast(''+e);});
+}
+
+var _vpSchedId=null;
+function vpSchedulePod(id){
+  _vpSchedId=id;
+  document.getElementById('vp-sched-err').style.display='none';
+  document.getElementById('vp-schedule-modal').style.display='flex';
+}
+function vpCloseScheduleModal(){document.getElementById('vp-schedule-modal').style.display='none';_vpSchedId=null;}
+function vpSubmitSchedule(){
+  var dt=document.getElementById('vp-sched-dt').value;
+  var riverside=document.getElementById('vp-sched-riverside').value||'';
+  var notes=document.getElementById('vp-sched-notes').value||'';
+  var errEl=document.getElementById('vp-sched-err');
+  if(!dt){errEl.textContent='Please select a date and time';errEl.style.display='block';return;}
+  if(!_vpSchedId)return;
+  errEl.style.display='none';
+  fetch('/api/podcast-applications/'+_vpSchedId,{method:'PATCH',credentials:'include',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({status:'scheduled',scheduledAt:new Date(dt).toISOString(),riversideUrl:riverside,scheduleNotes:notes})
+  }).then(function(r){return r.json();}).then(function(d){
+    if(d.ok){vpCloseScheduleModal();toast('Episode scheduled!');loadPodcastApplications();}
+    else{errEl.textContent=d.error||'Failed';errEl.style.display='block';}
+  }).catch(function(e){errEl.textContent=''+e;errEl.style.display='block';});
+}
+
 function submitVideoRequest(){
   var errEl=document.getElementById('vq-err');errEl.style.display='none';
-  var brand=(document.getElementById('vq-brand').value||'').trim();
-  var title=(document.getElementById('vq-title').value||'').trim();
   var desc=(document.getElementById('vq-desc').value||'').trim();
-  var script=(document.getElementById('vq-script').value||'').trim();
   var uploadedUrl=(document.getElementById('vq-footage-url').value||'').trim();
   var pastedUrl=(document.getElementById('vq-drive').value||'').trim();
   var drive=uploadedUrl||pastedUrl;
-  var prio=document.getElementById('vq-priority').value||'normal';
-  var due=document.getElementById('vq-due').value||'';
-  if(!title){errEl.textContent='Title is required';errEl.style.display='block';return;}
-  var payload={brand:brand,title:title,description:desc,script:script,driveUrl:drive,priority:prio,dueDate:due};
+  var title=uploadedUrl?document.getElementById('vq-upload-name').textContent||('Video '+new Date().toLocaleDateString()):'Video '+new Date().toLocaleDateString();
+  var payload={title:title,description:desc,driveUrl:drive,priority:'normal'};
   fetch('/api/video-requests',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
   .then(function(r){return r.json();}).then(function(d){
     if(d.ok){
-      document.getElementById('vq-brand').value='';
-      document.getElementById('vq-title').value='';
       document.getElementById('vq-desc').value='';
-      document.getElementById('vq-script').value='';
       document.getElementById('vq-drive').value='';
-      document.getElementById('vq-due').value='';
-      document.getElementById('vq-priority').value='normal';
       vqClearUpload();
-      toast('Video request submitted!');
+      toast('Video submitted!');
       loadVideoQueue();
     } else {errEl.textContent=d.error||'Failed';errEl.style.display='block';}
   }).catch(function(e){errEl.textContent=''+e;errEl.style.display='block';});
@@ -6277,7 +6418,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
         cb(null, 'footage_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7) + ext);
       },
     }),
-    limits: { fileSize: 500 * 1024 * 1024 },
+    limits: { fileSize: (parseInt(process.env.FOOTAGE_MAX_MB) || 4096) * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
       const ok = file.mimetype.startsWith('video/') || /\.(mp4|mov|avi|mkv|m4v|webm|flv|wmv)$/i.test(file.originalname);
       cb(ok ? null : new Error('Only video files allowed'), ok);
@@ -6291,6 +6432,63 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       const url = `${PUBLIC_BASE}/uploads/footage/${req.file.filename}`;
       res.json({ ok: true, url, filename: req.file.filename });
     });
+  });
+
+  // ---------- PODCAST APPLICATION ROUTES ----------
+  const POD_FILE = nodePath.join(DATA_DIR, 'podcast-applications.json');
+
+  // Public POST — no auth required; called from cultcontent.cc application form
+  app.post('/api/podcast-applications', jsonBody, (req, res) => {
+    res.header('Access-Control-Allow-Origin', 'https://cultcontent.cc');
+    res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    try {
+      const { name, email, social, role, topics, pitch } = req.body || {};
+      if (!name || !email) return res.status(400).json({ error: 'Name and email are required' });
+      const all = readJsonFile(POD_FILE, []);
+      const id = 'pod_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+      all.push({ id, name: (name||'').trim(), email: (email||'').trim().toLowerCase(),
+        social: (social||'').trim(), role: (role||'').trim(),
+        topics: (topics||'').trim(), pitch: (pitch||'').trim(),
+        status: 'pending', submittedAt: Date.now() });
+      writeJsonFile(POD_FILE, all);
+      res.json({ ok: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+  app.options('/api/podcast-applications', (req, res) => {
+    res.header('Access-Control-Allow-Origin', 'https://cultcontent.cc');
+    res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type');
+    res.sendStatus(204);
+  });
+
+  // GET — admin only
+  app.get('/api/podcast-applications', requireAuth, (req, res) => {
+    try {
+      const email = (req.userEmail || '').toLowerCase();
+      if (!ADMIN_EMAILS.has(email)) return res.status(403).json({ error: 'Admin only' });
+      const all = readJsonFile(POD_FILE, []);
+      res.json({ applications: all.slice().reverse() });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  // PATCH — admin only
+  app.patch('/api/podcast-applications/:id', requireAuth, jsonBody, (req, res) => {
+    try {
+      const email = (req.userEmail || '').toLowerCase();
+      if (!ADMIN_EMAILS.has(email)) return res.status(403).json({ error: 'Admin only' });
+      const { id } = req.params;
+      const all = readJsonFile(POD_FILE, []);
+      const idx = all.findIndex(a => a.id === id);
+      if (idx < 0) return res.status(404).json({ error: 'Not found' });
+      const updates = req.body || {};
+      ['status','scheduledAt','riversideUrl','scheduleNotes'].forEach(k => {
+        if (updates[k] !== undefined) all[idx][k] = updates[k];
+      });
+      all[idx].updatedAt = Date.now();
+      writeJsonFile(POD_FILE, all);
+      res.json({ ok: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
   // ---------- ROUTE: POST /api/video-requests/:id/post-buffer ----------
