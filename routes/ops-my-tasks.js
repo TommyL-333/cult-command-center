@@ -441,6 +441,37 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .vq-row.expanded .vq-row-detail{display:block}
   .vq-chevron{color:var(--muted);font-size:11px;margin-left:auto;flex-shrink:0}
   @media(max-width:700px){.vq-list-hdr,.vq-row-summary{grid-template-columns:10px 90px 1fr 70px}.vq-row-summary>:nth-child(5),.vq-row-summary>:nth-child(6),.vq-list-hdr>:nth-child(5),.vq-list-hdr>:nth-child(6){display:none}}
+  /* 1000-video tracker */
+  .vp-tracker{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:20px}
+  .vp-tracker-title{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+  .vp-tracker-bar-wrap{height:8px;background:rgba(255,255,255,.07);border-radius:4px;overflow:hidden;margin-bottom:14px;position:relative}
+  .vp-tracker-bar{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--cyan),#a78bfa);transition:width .4s ease}
+  .vp-tracker-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .vp-stat{text-align:center;background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:10px 6px}
+  .vp-stat-num{font-size:22px;font-weight:800;letter-spacing:-.02em;color:var(--cyan)}
+  .vp-stat-lbl{font-size:10px;color:var(--muted);margin-top:2px;font-weight:600}
+  .vp-stat-goal{font-size:10px;color:var(--muted);margin-top:12px;text-align:center}
+  /* approval + posted status */
+  .vq-dot-review{background:#f59e0b}
+  .vq-dot-posted{background:#a78bfa}
+  .vq-btn.vq-approve{background:rgba(245,158,11,.15);color:#f59e0b;border-color:rgba(245,158,11,.3)}
+  .vq-btn.vq-post{background:rgba(167,139,250,.15);color:#a78bfa;border-color:rgba(167,139,250,.3)}
+  .vq-cols-5{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  @media(max-width:900px){.vq-cols-5{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:500px){.vq-cols-5{grid-template-columns:1fr}}
+  /* analytics panel */
+  .vp-analytics{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:20px}
+  .vp-analytics-title{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
+  .vp-analytics-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  @media(max-width:700px){.vp-analytics-grid{grid-template-columns:repeat(2,1fr)}}
+  .vp-metric{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
+  .vp-metric-val{font-size:20px;font-weight:800;color:var(--txt)}
+  .vp-metric-lbl{font-size:10px;color:var(--muted);margin-top:3px;font-weight:600}
+  /* buffer modal */
+  .vq-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9000;display:flex;align-items:center;justify-content:center}
+  .vq-modal{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:24px;width:min(420px,92vw);max-height:85vh;overflow-y:auto}
+  .vq-modal h3{margin:0 0 16px;font-size:16px;font-weight:700}
+  .vq-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
 </style>
 </head>
 <body>
@@ -551,6 +582,30 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
 
 <!-- Video Queue tab -->
 <div id="tab-video-queue" style="display:none">
+
+  <!-- 1000-video progress tracker -->
+  <div class="vp-tracker" id="vp-tracker">
+    <div class="vp-tracker-title">1,000 Video Challenge</div>
+    <div class="vp-tracker-bar-wrap">
+      <div class="vp-tracker-bar" id="vp-bar" style="width:0%"></div>
+    </div>
+    <div class="vp-tracker-stats">
+      <div class="vp-stat">
+        <div class="vp-stat-num" id="vp-cnt-submitted">0</div>
+        <div class="vp-stat-lbl">Submitted</div>
+      </div>
+      <div class="vp-stat">
+        <div class="vp-stat-num" id="vp-cnt-editing">0</div>
+        <div class="vp-stat-lbl">In Editing</div>
+      </div>
+      <div class="vp-stat">
+        <div class="vp-stat-num" id="vp-cnt-posted" style="color:#a78bfa">0</div>
+        <div class="vp-stat-lbl">Posted</div>
+      </div>
+    </div>
+    <div class="vp-stat-goal" id="vp-goal-line">0 / 1,000 posted</div>
+  </div>
+
   <div class="vq-submit" id="vq-submit-form" style="display:none">
     <h3>Submit Video Request</h3>
     <div class="fr">
@@ -585,22 +640,44 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     </div></div>
     <div class="err" id="vq-err" style="margin-top:8px"></div>
     <div style="display:flex;justify-content:flex-end;margin-top:14px">
-      <button class="btn" onclick="submitVideoRequest()">Submit Request</button>
+      <button class="btn" onclick="submitVideoRequest()">Submit Video</button>
     </div>
   </div>
 
-  <div class="vq-cols" id="vq-queue-wrap">
+  <div class="vq-cols-5" id="vq-queue-wrap">
     <div>
-      <div class="vq-col-hdr">Pending <span class="vq-col-count" id="vq-cnt-pending">0</span></div>
+      <div class="vq-col-hdr">Submitted <span class="vq-col-count" id="vq-cnt-pending">0</span></div>
       <div id="vq-col-pending"></div>
     </div>
     <div>
-      <div class="vq-col-hdr">In Progress <span class="vq-col-count" id="vq-cnt-inprogress">0</span></div>
+      <div class="vq-col-hdr">In Editing <span class="vq-col-count" id="vq-cnt-inprogress">0</span></div>
       <div id="vq-col-inprogress"></div>
     </div>
     <div>
-      <div class="vq-col-hdr">Done <span class="vq-col-count" id="vq-cnt-done">0</span></div>
+      <div class="vq-col-hdr">For Review <span class="vq-col-count" id="vq-cnt-done">0</span></div>
       <div id="vq-col-done"></div>
+    </div>
+    <div>
+      <div class="vq-col-hdr" style="color:#a78bfa">Posted <span class="vq-col-count" id="vq-cnt-posted">0</span></div>
+      <div id="vq-col-posted"></div>
+    </div>
+  </div>
+
+  <!-- Buffer posting modal -->
+  <div id="vq-buffer-modal" class="vq-modal-overlay" style="display:none" onclick="if(event.target===this)vqCloseBufferModal()">
+    <div class="vq-modal">
+      <h3>Post to Buffer</h3>
+      <div class="fg" style="margin-bottom:12px"><label>Caption</label>
+        <textarea id="vq-buf-caption" style="min-height:80px" placeholder="Write your caption…"></textarea>
+      </div>
+      <div class="fg" style="margin-bottom:12px"><label>Schedule (optional — blank = add to queue)</label>
+        <input type="datetime-local" id="vq-buf-schedule"/>
+      </div>
+      <div id="vq-buf-err" class="err" style="display:none;margin-bottom:8px"></div>
+      <div class="vq-modal-actions">
+        <button class="btn" onclick="vqCloseBufferModal()" style="background:none">Cancel</button>
+        <button class="btn" onclick="vqSubmitBuffer()">Send to Buffer</button>
+      </div>
     </div>
   </div>
 
@@ -2256,19 +2333,36 @@ function loadVideoQueue(){
 }
 
 function renderVideoQueue(){
+  vqUpdateTracker();
   if(window.__VQ_IS_EDITOR__){
     renderVqList();
     return;
   }
   var pending=VQ_DATA.filter(function(r){return r.status==='pending';});
   var inprog=VQ_DATA.filter(function(r){return r.status==='in-progress';});
-  var done=VQ_DATA.filter(function(r){return r.status==='done';});
+  var done=VQ_DATA.filter(function(r){return r.status==='done'||r.status==='approved';});
+  var posted=VQ_DATA.filter(function(r){return r.status==='posted';});
   document.getElementById('vq-cnt-pending').textContent=pending.length;
   document.getElementById('vq-cnt-inprogress').textContent=inprog.length;
   document.getElementById('vq-cnt-done').textContent=done.length;
-  document.getElementById('vq-col-pending').innerHTML=pending.map(vqCardHtml).join('')||'<div class="vq-empty">No pending requests</div>';
-  document.getElementById('vq-col-inprogress').innerHTML=inprog.map(vqCardHtml).join('')||'<div class="vq-empty">Nothing in progress</div>';
-  document.getElementById('vq-col-done').innerHTML=done.map(vqCardHtml).join('')||'<div class="vq-empty">Nothing done yet</div>';
+  document.getElementById('vq-cnt-posted').textContent=posted.length;
+  document.getElementById('vq-col-pending').innerHTML=pending.map(vqCardHtml).join('')||'<div class="vq-empty">Nothing submitted yet</div>';
+  document.getElementById('vq-col-inprogress').innerHTML=inprog.map(vqCardHtml).join('')||'<div class="vq-empty">Nothing in editing</div>';
+  document.getElementById('vq-col-done').innerHTML=done.map(vqCardHtml).join('')||'<div class="vq-empty">Nothing awaiting review</div>';
+  document.getElementById('vq-col-posted').innerHTML=posted.map(vqCardHtml).join('')||'<div class="vq-empty">Nothing posted yet</div>';
+}
+
+function vqUpdateTracker(){
+  var submitted=VQ_DATA.filter(function(r){return r.status==='pending';}).length;
+  var editing=VQ_DATA.filter(function(r){return r.status==='in-progress'||r.status==='done'||r.status==='approved';}).length;
+  var posted=VQ_DATA.filter(function(r){return r.status==='posted';}).length;
+  var goal=1000;
+  document.getElementById('vp-cnt-submitted').textContent=submitted;
+  document.getElementById('vp-cnt-editing').textContent=editing;
+  document.getElementById('vp-cnt-posted').textContent=posted;
+  document.getElementById('vp-goal-line').textContent=posted+' / '+goal.toLocaleString()+' posted';
+  var pct=Math.min(100,(posted/goal)*100);
+  document.getElementById('vp-bar').style.width=pct+'%';
 }
 
 function renderVqList(){
@@ -2285,14 +2379,15 @@ function vqRowHtml(r){
   var id=esc(r.id||'');
   var prioClass=r.priority==='high'?'vq-prio-high':r.priority==='low'?'vq-prio-low':'vq-prio-normal';
   var prioPretty=r.priority==='high'?'🔴 High':r.priority==='low'?'Low':'Normal';
-  var dotClass=r.status==='done'?'vq-dot-done':r.status==='in-progress'?'vq-dot-inprogress':'vq-dot-pending';
-  var statusPretty=r.status==='in-progress'?'In Progress':r.status==='done'?'Done':'Pending';
+  var dotClass=r.status==='done'||r.status==='approved'?'vq-dot-review':r.status==='in-progress'?'vq-dot-inprogress':r.status==='posted'?'vq-dot-posted':'vq-dot-pending';
+  var statusPretty=r.status==='in-progress'?'In Editing':r.status==='done'?'For Review':r.status==='approved'?'Approved':r.status==='posted'?'Posted':'Submitted';
   var due=r.dueDate||'—';
   var driveBtn=r.driveUrl?'<button class="vq-btn vq-drive" onclick="event.stopPropagation();vqOpenDrive(\\''+id+'\\')">📁 Open Footage</button>':'<span style="color:var(--muted);font-size:12px">No footage linked</span>';
   var actionBtn='';
   if(r.status==='pending') actionBtn='<button class="vq-btn vq-primary" onclick="event.stopPropagation();vqSetStatus(\\''+id+'\\',\\'in-progress\\')">▶ Start</button>';
-  if(r.status==='in-progress') actionBtn='<button class="vq-btn vq-done" onclick="event.stopPropagation();vqSetStatus(\\''+id+'\\',\\'done\\')">✓ Mark Done</button>';
-  if(r.status==='done') actionBtn='<button class="vq-btn" onclick="event.stopPropagation();vqSetStatus(\\''+id+'\\',\\'pending\\')">↩ Reopen</button>';
+  if(r.status==='in-progress') actionBtn='<button class="vq-btn vq-done" onclick="event.stopPropagation();vqSetStatus(\\''+id+'\\',\\'done\\')">✓ Ready for Review</button>';
+  if(r.status==='done') actionBtn='<button class="vq-btn vq-approve" onclick="event.stopPropagation();vqSetStatus(\\''+id+'\\',\\'approved\\')">✓ Approve</button>';
+  if(r.status==='approved') actionBtn='<button class="vq-btn vq-post" onclick="event.stopPropagation();vqOpenBufferModal(\\''+id+'\\')">→ Post to Buffer</button>';
   return '<div class="vq-row" id="vqrow-'+id+'">'
     +'<div class="vq-row-summary" onclick="vqToggleRow(\\''+id+'\\')">'
     +'<div class="vq-dot '+dotClass+'"></div>'
@@ -2322,11 +2417,16 @@ function vqCardHtml(r){
   var due=r.dueDate?'<span> · due '+esc(r.dueDate)+'</span>':'';
   var id=esc(r.id||'');
   var driveBtn=r.driveUrl?'<button class="vq-btn vq-drive" onclick="vqOpenDrive(\\''+id+'\\')">📁 Footage</button>':'';
-  var startBtn='',doneBtn='',reopenBtn='';
+  var startBtn='',doneBtn='',reopenBtn='',approveBtn='',postBtn='';
   if(VQ_IS_EDITOR||VQ_IS_ADMIN){
     if(r.status==='pending') startBtn='<button class="vq-btn vq-primary" onclick="vqSetStatus(\\''+id+'\\',\\'in-progress\\')">▶ Start</button>';
-    if(r.status==='in-progress') doneBtn='<button class="vq-btn vq-done" onclick="vqSetStatus(\\''+id+'\\',\\'done\\')">✓ Done</button>';
-    if(r.status==='done') reopenBtn='<button class="vq-btn" onclick="vqSetStatus(\\''+id+'\\',\\'pending\\')">↩ Reopen</button>';
+    if(r.status==='in-progress') doneBtn='<button class="vq-btn vq-done" onclick="vqSetStatus(\\''+id+'\\',\\'done\\')">✓ Ready for Review</button>';
+  }
+  if(VQ_IS_ADMIN){
+    if(r.status==='done') approveBtn='<button class="vq-btn vq-approve" onclick="vqSetStatus(\\''+id+'\\',\\'approved\\')">✓ Approve</button>';
+    if(r.status==='approved') postBtn='<button class="vq-btn vq-post" onclick="vqOpenBufferModal(\\''+id+'\\')">→ Post to Buffer</button>';
+    if(r.status==='done'||r.status==='approved') reopenBtn='<button class="vq-btn" onclick="vqSetStatus(\\''+id+'\\',\\'in-progress\\')">↩ Back</button>';
+    if(r.status==='posted') reopenBtn='<button class="vq-btn" onclick="vqSetStatus(\\''+id+'\\',\\'approved\\')">↩ Unpost</button>';
   }
   var deleteBtn=(VQ_IS_ADMIN||r.submittedBy===VQ_MY_EMAIL)?'<button class="vq-btn" style="margin-left:auto;color:var(--red)" onclick="vqDelete(\\''+id+'\\')">✕</button>':'';
   return '<div class="vq-card">'
@@ -2334,8 +2434,46 @@ function vqCardHtml(r){
     +'<div class="vq-title">'+esc(r.title||'Untitled request')+'</div>'
     +(r.description?'<div class="vq-desc">'+esc(r.description)+'</div>':'')
     +'<div class="vq-meta">by <strong>'+esc(r.submittedByName||r.submittedBy||'?')+'</strong> · '+date+due+'</div>'
-    +'<div class="vq-actions">'+driveBtn+startBtn+doneBtn+reopenBtn+deleteBtn+'</div>'
+    +'<div class="vq-actions">'+driveBtn+startBtn+doneBtn+approveBtn+postBtn+reopenBtn+deleteBtn+'</div>'
     +'</div>';
+}
+
+var _vqBufferId=null;
+function vqOpenBufferModal(id){
+  _vqBufferId=id;
+  var r=VQ_DATA.find(function(x){return x.id===id;});
+  if(r){
+    var caption=(r.title||'')+(r.description?' — '+r.description:'');
+    document.getElementById('vq-buf-caption').value=caption.slice(0,280);
+  }
+  document.getElementById('vq-buf-err').style.display='none';
+  document.getElementById('vq-buffer-modal').style.display='flex';
+}
+function vqCloseBufferModal(){
+  document.getElementById('vq-buffer-modal').style.display='none';
+  _vqBufferId=null;
+}
+function vqSubmitBuffer(){
+  var caption=(document.getElementById('vq-buf-caption').value||'').trim();
+  var scheduled=document.getElementById('vq-buf-schedule').value||'';
+  var errEl=document.getElementById('vq-buf-err');
+  if(!caption){errEl.textContent='Caption is required';errEl.style.display='block';return;}
+  if(!_vqBufferId)return;
+  errEl.style.display='none';
+  fetch('/api/video-requests/'+_vqBufferId+'/post-buffer',{
+    method:'POST',credentials:'include',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({caption:caption,scheduledAt:scheduled})
+  }).then(function(r){return r.json();}).then(function(d){
+    if(d.ok){
+      vqCloseBufferModal();
+      toast('Sent to Buffer!');
+      loadVideoQueue();
+    }else{
+      errEl.textContent=d.error||'Failed to post to Buffer';
+      errEl.style.display='block';
+    }
+  }).catch(function(e){errEl.textContent=''+e;errEl.style.display='block';});
 }
 
 function vqSetStatus(id,status){
@@ -5612,7 +5750,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
         : (ROLE_MODULES[role] || []);
       const isEditor = modules.includes('video-queue-editor');
       const hasVqAdmin = modules.includes('video-queue-admin') || isAdmin;
-      const tabLabel = isEditor ? 'Video Queue' : 'Submit Request';
+      const tabLabel = isEditor ? 'Video Queue' : 'Video Production';
       const html = MY_TASKS_HTML
         .replace('window.__VQ_IS_EDITOR__=false;', `window.__VQ_IS_EDITOR__=${isEditor};`)
         .replace('window.__VQ_IS_ADMIN__=false;', `window.__VQ_IS_ADMIN__=${hasVqAdmin};`)
@@ -6018,6 +6156,63 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       if (status) r.status = status;
       if (notes !== undefined) r.notes = notes;
       r.updatedAt = Date.now();
+      all[idx] = r;
+      writeJsonFile(VR_FILE, all);
+      res.json({ ok: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  // ---------- ROUTE: POST /api/video-requests/:id/post-buffer ----------
+  app.post('/api/video-requests/:id/post-buffer', requireAuth, jsonBody, async (req, res) => {
+    try {
+      const email = (req.userEmail || '').toLowerCase();
+      if (!ADMIN_EMAILS.has(email)) return res.status(403).json({ error: 'Admin only' });
+      const { id } = req.params;
+      const all = readJsonFile(VR_FILE, []);
+      const idx = all.findIndex(r => r.id === id);
+      if (idx < 0) return res.status(404).json({ error: 'Not found' });
+      const r = all[idx];
+      if (r.status !== 'approved') return res.status(400).json({ error: 'Video must be approved first' });
+      const { caption, scheduledAt } = req.body || {};
+      if (!caption) return res.status(400).json({ error: 'Caption required' });
+
+      const BUFFER_TOKEN = process.env.BUFFER_ACCESS_TOKEN;
+      const BUFFER_CHANNEL_ID = process.env.BUFFER_CHANNEL_ID;
+      if (!BUFFER_TOKEN || !BUFFER_CHANNEL_ID) {
+        // Mark posted anyway so the tracker updates; note the missing env vars
+        r.status = 'posted';
+        r.postedAt = Date.now();
+        r.bufferNote = 'BUFFER_ACCESS_TOKEN or BUFFER_CHANNEL_ID not set — post manually';
+        r.caption = caption;
+        all[idx] = r;
+        writeJsonFile(VR_FILE, all);
+        return res.json({ ok: true, warning: 'Buffer env vars not configured. Marked as posted manually.' });
+      }
+
+      // Call Buffer API to create a draft/scheduled post
+      const bufPayload = {
+        profile_ids: [BUFFER_CHANNEL_ID],
+        text: caption,
+      };
+      if (scheduledAt) bufPayload.scheduled_at = new Date(scheduledAt).toISOString();
+
+      const bufRes = await fetch('https://api.bufferapp.com/1/updates/create.json', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          access_token: BUFFER_TOKEN,
+          'profile_ids[]': BUFFER_CHANNEL_ID,
+          text: caption,
+          ...(scheduledAt ? { scheduled_at: new Date(scheduledAt).toISOString() } : {}),
+        }),
+      });
+      const bufData = await bufRes.json().catch(() => ({}));
+      if (!bufRes.ok) return res.status(500).json({ error: bufData.message || 'Buffer API error' });
+
+      r.status = 'posted';
+      r.postedAt = Date.now();
+      r.caption = caption;
+      r.bufferId = bufData.updates?.[0]?.id || null;
       all[idx] = r;
       writeJsonFile(VR_FILE, all);
       res.json({ ok: true });
