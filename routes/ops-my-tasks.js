@@ -484,6 +484,9 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .vp-pod-status-scheduled{background:rgba(245,158,11,.15);color:#f59e0b}
   .vp-pod-status-recorded{background:rgba(107,232,107,.12);color:#6be86b}
   .vp-pod-status-rejected{background:rgba(255,59,48,.12);color:var(--red)}
+  .vp-pod-status-processing{background:rgba(0,242,234,.08);color:var(--cyan);animation:vpPulse 1.8s infinite}
+  .vp-pod-status-processed{background:rgba(107,232,107,.12);color:#6be86b}
+  @keyframes vpPulse{0%,100%{opacity:1}50%{opacity:.5}}
   .vp-pod-body{font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:10px}
   .vp-pod-meta{font-size:11px;color:var(--muted);margin-bottom:10px}
   /* footage upload */
@@ -2697,7 +2700,15 @@ function vpPodCardHtml(a){
     if(a.riversideUrl)actions+='<a href="'+esc(a.riversideUrl)+'" target="_blank" class="vq-btn vq-drive">🎙 Open Riverside</a>';
   }
   if(a.status==='recorded'){
-    actions='<button class="vq-btn vq-primary" onclick="vpSetPodStatus(\\''+id+'\\',\\'done\\')">→ Send to Gilbert</button>';
+    actions='<button class="vq-btn" style="background:rgba(0,242,234,.12);color:var(--cyan);border-color:rgba(0,242,234,.3)" onclick="vpProcessEpisode(\\''+id+'\\')">🎬 Process Episode</button>'
+           +'<button class="vq-btn vq-primary" onclick="vpSetPodStatus(\\''+id+'\\',\\'done\\')">→ Send to Gilbert</button>';
+  }
+  if(a.status==='processing'){
+    actions='<div style="font-size:11px;color:var(--cyan);padding:4px 0">⏳ Claude is processing this episode…</div>';
+  }
+  if(a.status==='processed'){
+    actions='<div style="font-size:11px;color:#6be86b;margin-bottom:6px">✓ Post-production complete — clips in Video Queue</div>'
+           +'<button class="vq-btn vq-primary" onclick="vpSetPodStatus(\\''+id+'\\',\\'done\\')">→ Mark Done</button>';
   }
   var availMap={'weekday-morning':'Weekday mornings','weekday-afternoon':'Weekday afternoons','weekday-evening':'Weekday evenings','weekend-morning':'Weekend mornings','weekend-afternoon':'Weekend afternoons'};
   var availLine=(a.availability&&a.availability.length)?'<div style="font-size:11px;color:var(--muted);margin-bottom:6px">🕐 Available: '+a.availability.map(function(v){return availMap[v]||v;}).join(', ')+'</div>':'';
@@ -2719,6 +2730,14 @@ function vpPodCardHtml(a){
 function vpApprovePod(id){vpSetPodStatus(id,'approved');}
 function vpRejectPod(id){if(confirm('Decline this application?'))vpSetPodStatus(id,'rejected');}
 function vpMarkRecorded(id){vpSetPodStatus(id,'recorded');}
+function vpProcessEpisode(id){
+  if(!confirm('Queue this episode for automated post-production?\\n\\nClaude will:\\n• Find the Riverside recording\\n• Remove fillers, pauses, clean audio\\n• Apply brand, captions, color\\n• Export full episode to Riverside Hosting\\n• Extract 3–5 short clips → Video Queue'))return;
+  fetch('/api/podcast-applications/'+id+'/process-episode',{method:'POST',credentials:'include'})
+  .then(function(r){return r.json();}).then(function(d){
+    if(d.ok){toast('Episode queued for processing — Claude will pick it up shortly');loadPodcastApplications();}
+    else toast('Error: '+(d.error||'Failed'));
+  }).catch(function(e){toast(''+e);});
+}
 function vpSetPodStatus(id,status){
   fetch('/api/podcast-applications/'+id,{method:'PATCH',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:status})})
   .then(function(r){return r.json();}).then(function(d){
@@ -6362,12 +6381,19 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
   });
 
   // ---------- ROUTE: POST /api/video-requests ----------
-  app.post('/api/video-requests', requireAuth, jsonBody, (req, res) => {
+  app.post('/api/video-requests', jsonBody, (req, res) => {
     try {
-      const email = (req.userEmail || '').toLowerCase();
+      // Accept either session auth (dashboard users) or Bearer CLAUDE_CODE_SECRET (agent)
+      const secret = process.env.CLAUDE_CODE_SECRET;
+      const bearerToken = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+      const isAgent = secret && bearerToken === secret;
+      const sessionEmail = (req.userEmail || '').toLowerCase();
+      if (!isAgent && !sessionEmail) return res.status(401).json({ error: 'Unauthorized' });
+      const email = isAgent ? 'claude@cultcontent.cc' : sessionEmail;
       const names = { 'gilbert@cultcontent.cc':'Gilbert', 'jina@cultcontent.cc':'Jina',
         'becca@cultcontent.cc':'Becca', 'jenna@cultcontent.cc':'Jenna',
-        'gourab@cultcontent.cc':'Gourab', 'tommy@cultcontent.cc':'Tommy' };
+        'gourab@cultcontent.cc':'Gourab', 'tommy@cultcontent.cc':'Tommy',
+        'claude@cultcontent.cc':'Claude' };
       const { brand, title, description, script, driveUrl, priority, dueDate } = req.body || {};
       if (!title || !title.trim()) return res.status(400).json({ error: 'Title is required' });
       const all = readJsonFile(VR_FILE, []);
@@ -6545,6 +6571,89 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
     await ghlPost('/conversations/messages', { type: 'Email', conversationId, contactId, subject: "You're approved — book your recording time", message });
     console.log(`[podcast email] Approval email sent to ${guest.email}`);
   }
+
+  // ---------- ROUTE: POST /api/podcast-applications/:id/process-episode ----------
+  app.post('/api/podcast-applications/:id/process-episode', requireAuth, async (req, res) => {
+    try {
+      const email = (req.userEmail || '').toLowerCase();
+      if (!ADMIN_EMAILS.has(email)) return res.status(403).json({ error: 'Admin only' });
+      const { id } = req.params;
+      const all = readJsonFile(POD_FILE, []);
+      const idx = all.findIndex(a => a.id === id);
+      if (idx < 0) return res.status(404).json({ error: 'Not found' });
+      const app = all[idx];
+      if (!['recorded', 'done'].includes(app.status)) return res.status(400).json({ error: 'Episode must be in recorded status' });
+
+      // Mark as processing
+      all[idx].status = 'processing';
+      all[idx].processingQueuedAt = Date.now();
+      writeJsonFile(POD_FILE, all);
+
+      // Build a rich task description for Claude Code
+      const recordedDate = app.scheduledAt ? new Date(app.scheduledAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'recently';
+      const taskDescription = [
+        `Post-produce Cult Commerce Podcast episode.`,
+        `Guest: ${app.name}${app.role ? ` (${app.role})` : ''}`,
+        `Topics: ${app.topics || 'not specified'}`,
+        `Recorded: ${recordedDate}`,
+        ``,
+        `Steps (use Riverside MCP tools — prefix mcp__4323b63b-f8c8-438b-8cce-6d2f90e166fe__):`,
+        `1. platform_list_recordings → find the recording matching this guest name and date`,
+        `2. editing_create_edit_from_recording → create a new edit`,
+        `3. editing_remove_fillers + editing_remove_pauses → clean the audio`,
+        `4. editing_set_magic_audio → audio enhancement`,
+        `5. editing_apply_brand → apply Tommy's brand`,
+        `6. editing_set_captions → add captions (use default preset)`,
+        `7. editing_set_color_correction → color grade`,
+        `8. editing_apply_smart_layout → smart layout for the full episode`,
+        `9. exports_create_export → export the full episode (poll exports_get_export until ready)`,
+        `10. hosting_list_podcasts → find the Cult Commerce Podcast feed, then hosting_create_episode → publish the episode with guest name as title`,
+        `11. Read the transcript (platform_get_transcript or editing_read_aligned_transcript). Identify 3–5 high-value clips (punchy moments, strong takes, quotable lines — 30–90 seconds each). For each clip: editing_cut_time_ranges or editing_clone_edit to isolate it, exports_create_export, then POST to https://cult-command-center-production.up.railway.app/api/video-requests with body {title: "Clip: [guest] — [one-line description]", description: "[transcript excerpt]", driveUrl: "[export URL]", priority: "high"} using Bearer token from env CLAUDE_CODE_SECRET`,
+        `12. PATCH https://cult-command-center-production.up.railway.app/api/podcast-applications/${id} with {status: "processed"} using Bearer CLAUDE_CODE_SECRET — WAIT this route uses session auth, instead POST to /api/podcast-applications/${id}/mark-processed with Bearer CLAUDE_CODE_SECRET`,
+        ``,
+        `All Railway API calls: use base URL https://cult-command-center-production.up.railway.app and header Authorization: Bearer <CLAUDE_CODE_SECRET from /Users/tommylynch/.claude/claude-code-secret.txt>`,
+        `Application ID for status updates: ${id}`,
+      ].join('\n');
+
+      // Add to claude-queue
+      const queue = readClaudeQueue();
+      const queueId = 'podcast_' + id;
+      const entry = {
+        id: queueId, status: 'pending', task: taskDescription,
+        productId: 'podcast', productName: 'Cult Commerce Podcast',
+        priority: '🟠 High', larkRecordId: null,
+        podcastApplicationId: id, guestName: app.name,
+        createdAt: new Date().toISOString(), result: null,
+      };
+      const existing = queue.findIndex(q => q.id === queueId);
+      if (existing >= 0) queue[existing] = entry; else queue.push(entry);
+      writeClaudeQueue(queue);
+
+      res.json({ ok: true, queueId });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  // ---------- ROUTE: POST /api/podcast-applications/:id/mark-processed ----------
+  // Called by Claude Code agent after post-production is complete
+  app.post('/api/podcast-applications/:id/mark-processed', jsonBody, (req, res) => {
+    const secret = process.env.CLAUDE_CODE_SECRET;
+    const auth = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    if (!secret || auth !== secret) return res.status(401).json({ error: 'Unauthorized' });
+    const { id } = req.params;
+    const all = readJsonFile(POD_FILE, []);
+    const idx = all.findIndex(a => a.id === id);
+    if (idx < 0) return res.status(404).json({ error: 'Not found' });
+    all[idx].status = 'processed';
+    all[idx].processedAt = Date.now();
+    if (req.body && req.body.episodeUrl) all[idx].episodeUrl = req.body.episodeUrl;
+    if (req.body && req.body.clipCount) all[idx].clipCount = req.body.clipCount;
+    writeJsonFile(POD_FILE, all);
+    res.json({ ok: true });
+  });
+
+  // ---------- ROUTE: POST /api/video-requests ----------
+  // Also callable by Claude Code agent (Bearer CLAUDE_CODE_SECRET) for queuing clips
+  // (existing route may already exist — this is the claude-code-accessible version)
 
   // ---------- ROUTE: POST /api/video-requests/:id/post-buffer ----------
   app.post('/api/video-requests/:id/post-buffer', requireAuth, jsonBody, async (req, res) => {
