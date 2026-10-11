@@ -6297,8 +6297,28 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
   });
 
   // Alias: the portal-admin nav links to /ops/my-tasks — serve the same page there.
-  app.get('/ops/my-tasks', requireAuth, (req, res) => {
-    res.type('html').send(MY_TASKS_HTML);
+  app.get('/ops/my-tasks', requireAuth, async (req, res) => {
+    try {
+      const email = effectiveEmail(req).toLowerCase();
+      const isAdmin = ADMIN_EMAILS.has(email);
+      const role = await resolveUserRole(email);
+      const modules = isAdmin
+        ? (ROLE_MODULES[role] || []).concat(ROLE_MODULES['admin'] || [])
+        : (ROLE_MODULES[role] || []);
+      const isEditor = modules.includes('video-queue-editor');
+      const hasVqAdmin = modules.includes('video-queue-admin') || isAdmin;
+      const tabLabel = isEditor ? 'Video Queue' : 'Video Production';
+      const html = MY_TASKS_HTML
+        .replace('window.__VQ_IS_EDITOR__=false;', `window.__VQ_IS_EDITOR__=${isEditor};`)
+        .replace('window.__VQ_IS_ADMIN__=false;', `window.__VQ_IS_ADMIN__=${hasVqAdmin};`)
+        .replace('__VQ_TAB_LABEL__', tabLabel)
+        .replace('window.__USER_ROLE__="";', `window.__USER_ROLE__="${role}";`)
+        .replace('window.__USER_MODULES__=[];', `window.__USER_MODULES__=${JSON.stringify(modules)};`);
+      res.type('html').send(html);
+    } catch (e) {
+      console.error('[ops/my-tasks] page serve error:', e.message);
+      res.status(500).type('html').send('<p style="font-family:sans-serif;padding:40px">Error loading page. Try refreshing.</p>');
+    }
   });
 
   // ---------- ROLE MODULE SYSTEM ----------
