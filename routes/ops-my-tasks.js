@@ -467,6 +467,12 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .vp-metric{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:12px 14px}
   .vp-metric-val{font-size:20px;font-weight:800;color:var(--txt)}
   .vp-metric-lbl{font-size:10px;color:var(--muted);margin-top:3px;font-weight:600}
+  /* footage upload */
+  .vq-footage-tabs{display:flex;gap:6px;margin-bottom:8px}
+  .vq-ftab{font-size:11px;font-weight:700;padding:4px 12px;border-radius:6px;cursor:pointer;border:1px solid var(--border);background:none;color:var(--muted);font-family:inherit;transition:.1s}
+  .vq-ftab.active{background:var(--cyan);color:var(--dark);border-color:var(--cyan)}
+  .vq-drop-zone{border:2px dashed var(--border);border-radius:10px;padding:24px 16px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;min-height:90px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:13px}
+  .vq-drop-zone:hover,.vq-drop-zone.drag{border-color:var(--cyan);background:rgba(0,242,234,.05)}
   /* buffer modal */
   .vq-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9000;display:flex;align-items:center;justify-content:center}
   .vq-modal{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:24px;width:min(420px,92vw);max-height:85vh;overflow-y:auto}
@@ -635,8 +641,36 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     <div class="fr full"><div class="fg"><label>Script (optional)</label>
       <textarea id="vq-script" style="min-height:80px" placeholder="Paste the video script or hook here if you have one…"></textarea>
     </div></div>
-    <div class="fr full"><div class="fg"><label>Footage — Google Drive Folder URL</label>
-      <input type="url" id="vq-drive" placeholder="https://drive.google.com/drive/folders/…"/>
+    <div class="fr full"><div class="fg">
+      <label>Footage</label>
+      <div class="vq-footage-tabs">
+        <button type="button" class="vq-ftab active" id="vq-ftab-upload" onclick="vqFootageTab(\\'upload\\')">Upload File</button>
+        <button type="button" class="vq-ftab" id="vq-ftab-link" onclick="vqFootageTab(\\'link\\')">Paste Drive Link</button>
+      </div>
+      <div id="vq-footage-upload">
+        <div class="vq-drop-zone" id="vq-drop-zone" onclick="document.getElementById(\\'vq-file-input\\').click()" ondragover="event.preventDefault();this.classList.add(\\'drag\\')" ondragleave="this.classList.remove(\\'drag\\')" ondrop="vqHandleDrop(event)">
+          <div id="vq-drop-text">
+            <span style="font-size:22px">📁</span><br>
+            <span style="font-weight:700">Drop video or click to upload</span><br>
+            <span style="font-size:11px;color:var(--muted)">MP4, MOV, AVI — up to 500 MB</span>
+          </div>
+          <div id="vq-upload-progress" style="display:none;margin-top:10px">
+            <div style="font-size:12px;font-weight:600;margin-bottom:6px" id="vq-upload-label">Uploading…</div>
+            <div style="height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden">
+              <div id="vq-upload-bar" style="height:100%;background:var(--cyan);border-radius:3px;width:0%;transition:width .2s"></div>
+            </div>
+          </div>
+          <div id="vq-upload-done" style="display:none;margin-top:10px">
+            <span style="color:#6be86b;font-size:13px;font-weight:700" id="vq-upload-name"></span>
+            <button type="button" class="vq-btn" style="margin-left:8px;font-size:10px" onclick="event.stopPropagation();vqClearUpload()">✕ Remove</button>
+          </div>
+        </div>
+        <input type="file" id="vq-file-input" accept="video/*,.mp4,.mov,.avi,.mkv" style="display:none" onchange="vqUploadFootage(this.files[0])"/>
+      </div>
+      <div id="vq-footage-link" style="display:none">
+        <input type="url" id="vq-drive" placeholder="https://drive.google.com/drive/folders/…"/>
+      </div>
+      <input type="hidden" id="vq-footage-url"/>
     </div></div>
     <div class="err" id="vq-err" style="margin-top:8px"></div>
     <div style="display:flex;justify-content:flex-end;margin-top:14px">
@@ -2496,13 +2530,81 @@ function vqOpenDrive(id){
   if(r&&r.driveUrl)window.open(r.driveUrl,'_blank');
 }
 
+function vqFootageTab(mode){
+  var isUpload=mode==='upload';
+  document.getElementById('vq-footage-upload').style.display=isUpload?'':'none';
+  document.getElementById('vq-footage-link').style.display=isUpload?'none':'';
+  document.getElementById('vq-ftab-upload').classList.toggle('active',isUpload);
+  document.getElementById('vq-ftab-link').classList.toggle('active',!isUpload);
+}
+
+function vqHandleDrop(e){
+  e.preventDefault();
+  document.getElementById('vq-drop-zone').classList.remove('drag');
+  var file=e.dataTransfer.files&&e.dataTransfer.files[0];
+  if(file)vqUploadFootage(file);
+}
+
+function vqClearUpload(){
+  document.getElementById('vq-footage-url').value='';
+  document.getElementById('vq-upload-done').style.display='none';
+  document.getElementById('vq-drop-text').style.display='';
+  document.getElementById('vq-file-input').value='';
+}
+
+function vqUploadFootage(file){
+  if(!file)return;
+  var maxBytes=500*1024*1024;
+  if(file.size>maxBytes){toast('File too large — max 500 MB');return;}
+  var dropText=document.getElementById('vq-drop-text');
+  var progWrap=document.getElementById('vq-upload-progress');
+  var progBar=document.getElementById('vq-upload-bar');
+  var progLabel=document.getElementById('vq-upload-label');
+  var doneWrap=document.getElementById('vq-upload-done');
+  dropText.style.display='none';
+  doneWrap.style.display='none';
+  progWrap.style.display='';
+  progBar.style.width='0%';
+  progLabel.textContent='Uploading '+file.name+'…';
+  var fd=new FormData();
+  fd.append('footage',file);
+  var xhr=new XMLHttpRequest();
+  xhr.open('POST','/api/video-requests/upload-footage');
+  xhr.withCredentials=true;
+  xhr.upload.onprogress=function(ev){
+    if(ev.lengthComputable){
+      var pct=Math.round((ev.loaded/ev.total)*100);
+      progBar.style.width=pct+'%';
+      progLabel.textContent='Uploading '+pct+'%…';
+    }
+  };
+  xhr.onload=function(){
+    progWrap.style.display='none';
+    try{
+      var d=JSON.parse(xhr.responseText);
+      if(d.url){
+        document.getElementById('vq-footage-url').value=d.url;
+        document.getElementById('vq-upload-name').textContent=file.name;
+        doneWrap.style.display='';
+      }else{
+        dropText.style.display='';
+        toast('Upload failed: '+(d.error||'unknown error'));
+      }
+    }catch(e){dropText.style.display='';toast('Upload failed');}
+  };
+  xhr.onerror=function(){progWrap.style.display='none';dropText.style.display='';toast('Upload failed — network error');};
+  xhr.send(fd);
+}
+
 function submitVideoRequest(){
   var errEl=document.getElementById('vq-err');errEl.style.display='none';
   var brand=(document.getElementById('vq-brand').value||'').trim();
   var title=(document.getElementById('vq-title').value||'').trim();
   var desc=(document.getElementById('vq-desc').value||'').trim();
   var script=(document.getElementById('vq-script').value||'').trim();
-  var drive=(document.getElementById('vq-drive').value||'').trim();
+  var uploadedUrl=(document.getElementById('vq-footage-url').value||'').trim();
+  var pastedUrl=(document.getElementById('vq-drive').value||'').trim();
+  var drive=uploadedUrl||pastedUrl;
   var prio=document.getElementById('vq-priority').value||'normal';
   var due=document.getElementById('vq-due').value||'';
   if(!title){errEl.textContent='Title is required';errEl.style.display='block';return;}
@@ -2517,6 +2619,7 @@ function submitVideoRequest(){
       document.getElementById('vq-drive').value='';
       document.getElementById('vq-due').value='';
       document.getElementById('vq-priority').value='normal';
+      vqClearUpload();
       toast('Video request submitted!');
       loadVideoQueue();
     } else {errEl.textContent=d.error||'Failed';errEl.style.display='block';}
@@ -6160,6 +6263,34 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       writeJsonFile(VR_FILE, all);
       res.json({ ok: true });
     } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  // ---------- ROUTE: POST /api/video-requests/upload-footage ----------
+  const multer = require('multer');
+  const FOOTAGE_DIR = nodePath.join(DATA_DIR, 'uploads', 'footage');
+  if (!fs.existsSync(FOOTAGE_DIR)) fs.mkdirSync(FOOTAGE_DIR, { recursive: true });
+  const footageUpload = multer({
+    storage: multer.diskStorage({
+      destination: FOOTAGE_DIR,
+      filename: (req, file, cb) => {
+        const ext = nodePath.extname(file.originalname) || '.mp4';
+        cb(null, 'footage_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7) + ext);
+      },
+    }),
+    limits: { fileSize: 500 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+      const ok = file.mimetype.startsWith('video/') || /\.(mp4|mov|avi|mkv|m4v|webm|flv|wmv)$/i.test(file.originalname);
+      cb(ok ? null : new Error('Only video files allowed'), ok);
+    },
+  }).single('footage');
+  const PUBLIC_BASE = (process.env.PUBLIC_BASE_URL || process.env.DASHBOARD_URL || 'https://cult-command-center-production.up.railway.app').replace(/\/$/, '');
+  app.post('/api/video-requests/upload-footage', requireAuth, (req, res) => {
+    footageUpload(req, res, (err) => {
+      if (err) return res.status(400).json({ error: err.message });
+      if (!req.file) return res.status(400).json({ error: 'No file received' });
+      const url = `${PUBLIC_BASE}/uploads/footage/${req.file.filename}`;
+      res.json({ ok: true, url, filename: req.file.filename });
+    });
   });
 
   // ---------- ROUTE: POST /api/video-requests/:id/post-buffer ----------
