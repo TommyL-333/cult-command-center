@@ -2699,6 +2699,8 @@ function vpPodCardHtml(a){
   if(a.status==='recorded'){
     actions='<button class="vq-btn vq-primary" onclick="vpSetPodStatus(\\''+id+'\\',\\'done\\')">→ Send to Gilbert</button>';
   }
+  var availMap={'weekday-morning':'Weekday mornings','weekday-afternoon':'Weekday afternoons','weekday-evening':'Weekday evenings','weekend-morning':'Weekend mornings','weekend-afternoon':'Weekend afternoons'};
+  var availLine=(a.availability&&a.availability.length)?'<div style="font-size:11px;color:var(--muted);margin-bottom:6px">🕐 Available: '+a.availability.map(function(v){return availMap[v]||v;}).join(', ')+'</div>':'';
   var schedLine=a.scheduledAt?'<div style="font-size:11px;color:#f59e0b;margin-bottom:6px">📅 Recording: '+new Date(a.scheduledAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+'</div>':'';
   var topicLine=a.topics?'<div class="vp-pod-body">'+esc(a.topics)+'</div>':'';
   var pitchLine=a.pitch?'<div class="vp-pod-body" style="font-style:italic">"'+esc(a.pitch)+'"</div>':'';
@@ -2708,7 +2710,7 @@ function vpPodCardHtml(a){
     +'<div class="vp-pod-handle">'+esc(a.email||'')+(a.social?' · '+esc(a.social):'')+(a.role?' · '+esc(a.role):'')+'</div></div>'
     +'<span class="vp-pod-status '+statusClass+'">'+statusLabel+'</span>'
     +'</div>'
-    +schedLine+topicLine+pitchLine
+    +availLine+schedLine+topicLine+pitchLine
     +'<div class="vp-pod-meta">Applied '+date+'</div>'
     +'<div class="vq-actions">'+actions+'</div>'
     +'</div>';
@@ -6443,13 +6445,14 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
     res.header('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.header('Access-Control-Allow-Headers', 'Content-Type');
     try {
-      const { name, email, social, role, topics, pitch } = req.body || {};
+      const { name, email, social, role, topics, pitch, availability } = req.body || {};
       if (!name || !email) return res.status(400).json({ error: 'Name and email are required' });
       const all = readJsonFile(POD_FILE, []);
       const id = 'pod_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
       all.push({ id, name: (name||'').trim(), email: (email||'').trim().toLowerCase(),
         social: (social||'').trim(), role: (role||'').trim(),
         topics: (topics||'').trim(), pitch: (pitch||'').trim(),
+        availability: Array.isArray(availability) ? availability : [],
         status: 'pending', submittedAt: Date.now() });
       writeJsonFile(POD_FILE, all);
       res.json({ ok: true });
@@ -6473,7 +6476,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
   });
 
   // PATCH — admin only
-  app.patch('/api/podcast-applications/:id', requireAuth, jsonBody, (req, res) => {
+  app.patch('/api/podcast-applications/:id', requireAuth, jsonBody, async (req, res) => {
     try {
       const email = (req.userEmail || '').toLowerCase();
       if (!ADMIN_EMAILS.has(email)) return res.status(403).json({ error: 'Admin only' });
@@ -6482,14 +6485,66 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       const idx = all.findIndex(a => a.id === id);
       if (idx < 0) return res.status(404).json({ error: 'Not found' });
       const updates = req.body || {};
+      const wasApproved = all[idx].status !== 'approved' && updates.status === 'approved';
       ['status','scheduledAt','riversideUrl','scheduleNotes'].forEach(k => {
         if (updates[k] !== undefined) all[idx][k] = updates[k];
       });
       all[idx].updatedAt = Date.now();
       writeJsonFile(POD_FILE, all);
       res.json({ ok: true });
+
+      // Fire-and-forget GHL approval email
+      if (wasApproved) {
+        const guest = all[idx];
+        sendPodcastApprovalEmail(guest).catch(err => console.error('[podcast email]', err.message));
+      }
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
+
+  async function sendPodcastApprovalEmail(guest) {
+    const GHL_KEY = process.env.GHL_API_KEY;
+    const GHL_LOC = process.env.GHL_LOC_ID || process.env.GHL_LOCATION_ID;
+    const BOOKING_URL = process.env.PODCAST_BOOKING_URL || 'https://api.leadconnectorhq.com/widget/booking/kcHJd1uceIi0JhjWhEW3';
+    if (!GHL_KEY || !GHL_LOC) { console.warn('[podcast email] GHL_API_KEY or GHL_LOC_ID not set — skipping email'); return; }
+
+    const headers = { Authorization: `Bearer ${GHL_KEY}`, Version: '2021-07-28', 'Content-Type': 'application/json' };
+    const https = require('https');
+
+    function ghlPost(path, body) {
+      return new Promise((resolve, reject) => {
+        const data = JSON.stringify(body);
+        const opts = { hostname: 'services.leadconnectorhq.com', path, method: 'POST',
+          headers: { ...headers, 'Content-Length': Buffer.byteLength(data) } };
+        const req = https.request(opts, r => {
+          let buf = '';
+          r.on('data', c => buf += c);
+          r.on('end', () => { try { resolve(JSON.parse(buf)); } catch { resolve(buf); } });
+        });
+        req.on('error', reject);
+        req.write(data);
+        req.end();
+      });
+    }
+
+    // Upsert contact
+    const contactRes = await ghlPost('/contacts/', { locationId: GHL_LOC, firstName: guest.name.split(' ')[0], lastName: guest.name.split(' ').slice(1).join(' ') || '', email: guest.email });
+    const contactId = contactRes.contact?.id;
+    if (!contactId) { console.warn('[podcast email] Could not upsert GHL contact', contactRes); return; }
+
+    // Upsert conversation
+    const convRes = await ghlPost('/conversations/', { locationId: GHL_LOC, contactId });
+    const conversationId = convRes.conversation?.id;
+    if (!conversationId) { console.warn('[podcast email] Could not upsert conversation', convRes); return; }
+
+    // Build availability line
+    const availMap = { 'weekday-morning': 'Weekday mornings (9–12 ET)', 'weekday-afternoon': 'Weekday afternoons (12–5 ET)', 'weekday-evening': 'Weekday evenings (5–8 ET)', 'weekend-morning': 'Weekend mornings (9–12 ET)', 'weekend-afternoon': 'Weekend afternoons (12–5 ET)' };
+    const availLine = (guest.availability || []).map(v => availMap[v] || v).join(', ');
+
+    const message = `Hi ${guest.name.split(' ')[0]},\n\nGreat news — you've been approved to be a guest on the Cult Commerce Podcast!\n\nPlease use the link below to book your recording session. Pick a time that works for you and we'll record on Riverside (video call — no special setup needed).\n\nBook your session: ${BOOKING_URL}\n${availLine ? `\nYou mentioned you're generally available: ${availLine}. There should be slots that work.\n` : ''}\nLooking forward to the conversation.\n\n— Tommy\nCult Commerce Podcast`;
+
+    await ghlPost('/conversations/messages', { type: 'Email', conversationId, contactId, subject: "You're approved — book your recording time", message });
+    console.log(`[podcast email] Approval email sent to ${guest.email}`);
+  }
 
   // ---------- ROUTE: POST /api/video-requests/:id/post-buffer ----------
   app.post('/api/video-requests/:id/post-buffer', requireAuth, jsonBody, async (req, res) => {
