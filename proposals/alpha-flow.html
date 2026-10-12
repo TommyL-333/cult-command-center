@@ -278,7 +278,8 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;background:var(--acce
     <div class="grid3" style="margin-bottom:16px;">
       <div class="card tl">
         <div class="card-title">Sample Allocation</div>
-        <p style="font-size:.8rem;color:var(--light);line-height:1.65;">Units distributed to creators on a rolling basis. New creators get samples before they commit to posting — keeps the pipeline flowing and quality high without overextending per creator.</p>
+        <div style="font-size:1.6rem;font-weight:900;color:var(--accent);line-height:1;margin-bottom:4px;">100 <span style="font-size:.9rem;font-weight:700;">units/mo</span></div>
+        <p style="font-size:.8rem;color:var(--light);line-height:1.65;margin-top:10px;">Units distributed to creators on a rolling basis. New creators receive samples before committing to posting — keeps the pipeline moving and content quality high without overextending inventory per creator.</p>
       </div>
       <div class="card tl">
         <div class="card-title">Marketing Pages</div>
@@ -305,8 +306,9 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;background:var(--acce
         <div class="scenario-price">$5,000</div>
         <div class="scenario-price-lbl">Creator Spend / Month</div>
         <div class="scenario-stats">
-          <div class="scenario-row"><span>Active Creators (est.)</span><span>~10</span></div>
-          <div class="scenario-row"><span>Videos / Month (est.)</span><span>~60</span></div>
+          <div class="scenario-row"><span>Active Creators (est.)</span><span>~33</span></div>
+          <div class="scenario-row"><span>Videos / Month (est.)</span><span>~200</span></div>
+          <div class="scenario-row"><span>Product Samples / Month</span><span>~100 units</span></div>
           <div class="scenario-row"><span>Management Fee</span><span>$2,500</span></div>
           <div class="scenario-row"><span>Performance Fee</span><span>8% net sales</span></div>
           <div class="scenario-row total-row"><span>Fixed Monthly</span><span>$7,500</span></div>
@@ -321,8 +323,9 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;background:var(--acce
         <div class="scenario-price">$15,000</div>
         <div class="scenario-price-lbl">Creator Spend / Month</div>
         <div class="scenario-stats">
-          <div class="scenario-row"><span>Active Creators (est.)</span><span>~30</span></div>
-          <div class="scenario-row"><span>Videos / Month (est.)</span><span>~180</span></div>
+          <div class="scenario-row"><span>Active Creators (est.)</span><span>~100</span></div>
+          <div class="scenario-row"><span>Videos / Month (est.)</span><span>~600</span></div>
+          <div class="scenario-row"><span>Product Samples / Month</span><span>~100 units</span></div>
           <div class="scenario-row"><span>Management Fee</span><span>$2,500</span></div>
           <div class="scenario-row"><span>Performance Fee</span><span>8% net sales</span></div>
           <div class="scenario-row total-row"><span>Fixed Monthly</span><span>$17,500</span></div>
@@ -338,8 +341,9 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;background:var(--acce
         <div class="scenario-price">$25,000</div>
         <div class="scenario-price-lbl">Creator Spend / Month</div>
         <div class="scenario-stats">
-          <div class="scenario-row"><span>Active Creators (est.)</span><span>~50</span></div>
-          <div class="scenario-row"><span>Videos / Month (est.)</span><span>~300</span></div>
+          <div class="scenario-row"><span>Active Creators (est.)</span><span>~167</span></div>
+          <div class="scenario-row"><span>Videos / Month (est.)</span><span>~1,000</span></div>
+          <div class="scenario-row"><span>Product Samples / Month</span><span>~100 units</span></div>
           <div class="scenario-row"><span>Management Fee</span><span>$2,500</span></div>
           <div class="scenario-row"><span>Performance Fee</span><span>8% net sales</span></div>
           <div class="scenario-row total-row"><span>Fixed Monthly</span><span>$27,500</span></div>
@@ -350,7 +354,7 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;background:var(--acce
     </div>
     <div class="callout green" style="margin-top:18px;">
       <span class="ci">📊</span>
-      <div class="cb"><strong>Why Scenario C is the recommendation:</strong> Creator volume compounds. 300 videos in month 1 becomes 600+ indexed pieces of content by month 2 as the existing library keeps earning views. Scenario A's 60 videos/month barely seeds the algorithm — Scenario C dominates the shelf. The question is how fast you want to reach break-even.</div>
+      <div class="cb"><strong>Why Scenario C is the recommendation:</strong> Creator volume compounds. 1,000 videos in month 1 becomes 2,000+ indexed pieces of content by month 2 as the existing library keeps earning views. Scenario A's 200 videos/month seeds the algorithm — Scenario C dominates the shelf. The question is how fast you want to reach break-even.</div>
     </div>
   </div>
 
@@ -593,6 +597,11 @@ input[type=range]::-moz-range-thumb{width:14px;height:14px;background:var(--acce
     </div>
   </div>
 
+  <div class="callout green" style="margin-top:24px;">
+    <span class="ci">💳</span>
+    <div class="cb"><strong>Payment terms:</strong> The monthly management fee ($2,500) and creator budget are invoiced at the start of each month and due upon receipt. Performance fee (8% of net sales) is calculated and invoiced at month-end.</div>
+  </div>
+
 </div>
 
 <!-- footer -->
@@ -628,9 +637,9 @@ const fmtN = n => n>=1000000?(n/1000000).toFixed(1)+'M':n>=1000?(n/1000).toFixed
   ctx.scale(DPR, DPR);
 
   const data = {
-    A: [12000, 17000, 22000],
-    B: [37000, 52000, 67000],
-    C: [61000, 87000, 113000]
+    A: [40000, 57000, 74000],
+    B: [123000, 174000, 225000],
+    C: [203000, 290000, 377000]
   };
   const colors = {A:'#6366f1', B:'#f59e0b', C:'#20d5c4'};
   const months = ['Month 1','Month 2','Month 3'];
@@ -639,7 +648,7 @@ const fmtN = n => n>=1000000?(n/1000000).toFixed(1)+'M':n>=1000?(n/1000).toFixed
   const PAD_L = 62, PAD_R = 20, PAD_T = 20, PAD_B = 36;
   const cW = W - PAD_L - PAD_R;
   const cH = H - PAD_T - PAD_B;
-  const MAX_Y = 120000;
+  const MAX_Y = 400000;
 
   const groupW = cW / 3;
   const barW = 26;
@@ -649,14 +658,14 @@ const fmtN = n => n>=1000000?(n/1000000).toFixed(1)+'M':n>=1000?(n/1000).toFixed
   // Grid lines
   ctx.strokeStyle = '#1e1e30';
   ctx.lineWidth = 1;
-  const ySteps = [0, 30000, 60000, 90000, 120000];
+  const ySteps = [0, 100000, 200000, 300000, 400000];
   ySteps.forEach(v => {
     const y = PAD_T + cH - (v / MAX_Y) * cH;
     ctx.beginPath(); ctx.moveTo(PAD_L, y); ctx.lineTo(PAD_L + cW, y); ctx.stroke();
     ctx.fillStyle = '#64748b';
     ctx.font = '10px Inter, sans-serif';
     ctx.textAlign = 'right';
-    ctx.fillText(v === 0 ? '$0' : '$'+(v/1000)+'K', PAD_L - 6, y + 3.5);
+    ctx.fillText(v === 0 ? '$0' : '$'+(v/1000).toLocaleString()+'K', PAD_L - 6, y + 3.5);
   });
 
   // Bars
@@ -707,7 +716,7 @@ const fmtN = n => n>=1000000?(n/1000000).toFixed(1)+'M':n>=1000?(n/1000).toFixed
 // ── Simulator ──────────────────────────────────────────────────────────────
 function calc() {
   const budget          = parseInt(document.getElementById('sl-budget').value);
-  const totalVideos     = Math.round(budget / 83);
+  const totalVideos     = Math.round(budget / 25);
   const creators        = Math.round(totalVideos / 6);
   const avgViews        = 10100;
   const ctr             = parseFloat(document.getElementById('sl-ctr').value) / 100;
