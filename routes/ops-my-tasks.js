@@ -636,8 +636,8 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
 
   <!-- Section tabs: Videos | Podcast -->
   <div class="vp-section-tabs" id="vp-section-tabs">
-    <button class="vp-stab active" id="vp-stab-videos" onclick="vpSwitchSection(\\'videos\\')">Videos</button>
-    <button class="vp-stab" id="vp-stab-podcast" onclick="vpSwitchSection(\\'podcast\\')">Podcast Applications <span class="vp-stab-badge" id="vp-podcast-badge" style="display:none">0</span></button>
+    <button class="vp-stab active" id="vp-stab-videos" onclick="vpSwitchSection('videos')">Videos</button>
+    <button class="vp-stab" id="vp-stab-podcast" onclick="vpSwitchSection('podcast')">Podcast Applications <span class="vp-stab-badge" id="vp-podcast-badge" style="display:none">0</span></button>
   </div>
 
   <!-- VIDEOS SECTION -->
@@ -647,8 +647,8 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     <div class="fr full"><div class="fg">
       <label>Footage</label>
       <div class="vq-footage-tabs">
-        <button type="button" class="vq-ftab active" id="vq-ftab-upload" onclick="vqFootageTab(\\'upload\\')">Upload File</button>
-        <button type="button" class="vq-ftab" id="vq-ftab-link" onclick="vqFootageTab(\\'link\\')">Paste Drive Link</button>
+        <button type="button" class="vq-ftab active" id="vq-ftab-upload" onclick="vqFootageTab('upload')">Upload File</button>
+        <button type="button" class="vq-ftab" id="vq-ftab-link" onclick="vqFootageTab('link')">Paste Drive Link</button>
       </div>
       <div id="vq-footage-upload">
         <div class="vq-drop-zone" id="vq-drop-zone" onclick="document.getElementById(\\'vq-file-input\\').click()" ondragover="event.preventDefault();this.classList.add(\\'drag\\')" ondragleave="this.classList.remove(\\'drag\\')" ondrop="vqHandleDrop(event)">
@@ -757,11 +757,11 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
       </div>
     </div>
     <div id="vp-podcast-tabs" style="display:flex;gap:6px;margin-bottom:14px">
-      <button class="vq-ftab active" id="vp-ptab-pending" onclick="vpPodcastFilter(\\'pending\\')">Pending</button>
-      <button class="vq-ftab" id="vp-ptab-approved" onclick="vpPodcastFilter(\\'approved\\')">Approved</button>
-      <button class="vq-ftab" id="vp-ptab-scheduled" onclick="vpPodcastFilter(\\'scheduled\\')">Scheduled</button>
-      <button class="vq-ftab" id="vp-ptab-recorded" onclick="vpPodcastFilter(\\'recorded\\')">Recorded</button>
-      <button class="vq-ftab" id="vp-ptab-all" onclick="vpPodcastFilter(\\'all\\')">All</button>
+      <button class="vq-ftab active" id="vp-ptab-pending" onclick="vpPodcastFilter('pending')">Pending</button>
+      <button class="vq-ftab" id="vp-ptab-approved" onclick="vpPodcastFilter('approved')">Approved</button>
+      <button class="vq-ftab" id="vp-ptab-scheduled" onclick="vpPodcastFilter('scheduled')">Scheduled</button>
+      <button class="vq-ftab" id="vp-ptab-recorded" onclick="vpPodcastFilter('recorded')">Recorded</button>
+      <button class="vq-ftab" id="vp-ptab-all" onclick="vpPodcastFilter('all')">All</button>
     </div>
     <div id="vp-podcast-list"><div class="vq-empty">Loading applications…</div></div>
   </div>
