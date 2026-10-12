@@ -12494,6 +12494,39 @@ async function runOnboardingPipeline(formData, jobId) {
   });
 }
 
+// POST /api/podcast-applications — public, no auth
+app.post('/api/podcast-applications', express.json(), async (req, res) => {
+  const { name, email, role, social, topics, pitch } = req.body || {};
+  if (!name || !email) return res.status(400).json({ ok: false, error: 'Name and email required' });
+
+  const BASE_TOKEN = process.env.PODCAST_BASE_TOKEN;
+  const TABLE_ID   = process.env.PODCAST_TABLE_ID;
+
+  try {
+    const token = await getLarkTenantToken();
+    // Write record to Bitable
+    if (BASE_TOKEN && TABLE_ID) {
+      await axios.post(
+        `https://open.larksuite.com/open-apis/bitable/v1/apps/${BASE_TOKEN}/tables/${TABLE_ID}/records`,
+        { fields: { Name: name, Email: email, Role: role || '', Social: social || '', Topics: topics || '', Pitch: pitch || '', 'Submitted At': Date.now() } },
+        { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Send Lark alert
+    const alertText = `🎙️ *New Podcast Guest Application*\n\n👤 ${name}  |  ${email}\n💼 ${role || '—'}\n📲 ${social || '—'}\n\n*Topics:*\n${topics || '—'}\n\n*Pitch:*\n${pitch || '—'}\n\n→ View all: https://cedw5xj2shl.usttp.larksuite.com/base/LUoNb1pCbaRd6LsaDEZuEoz2tFn`;
+    await axios.post(`${CFG.railwayUrl}/command`,
+      { text: alertText, context: 'Podcast Application', source: 'cultcontent.cc' },
+      { timeout: 8000 }
+    ).catch(e => console.error('[podcast-apply] lark alert error:', e.message));
+
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[podcast-apply] error:', e.response?.data || e.message);
+    res.status(500).json({ ok: false, error: 'Failed to save application' });
+  }
+});
+
 // GET /api/onboard/pending
 app.get('/api/onboard/pending', requireAuth, (req, res) => res.json(loadPendingOnboards()));
 
