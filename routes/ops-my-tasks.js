@@ -149,7 +149,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   :root{--bg:#161823;--panel:#1e2030;--panel2:#252838;--border:#2f3346;--txt:#e8eaf2;--muted:#9aa0b5;--cyan:#00f2ea;--red:#ff0050;--p1:#ff0050;--p2:#ff9f0a;--p3:#ffd60a;--p4:#5a6072;}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
-  .wrap{max-width:860px;margin:0 auto;padding:28px 18px 80px}
+  .wrap{max-width:860px;margin:0 auto;padding:28px 36px 80px}
   header.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
   h1{font-size:24px;margin:0;font-weight:700;background:linear-gradient(90deg,var(--cyan),var(--red));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
   .sub{color:var(--muted);font-size:13px;margin:2px 0 16px}
