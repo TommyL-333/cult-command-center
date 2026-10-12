@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Alpha Flow × Cult Content — TikTok Shop Proposal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#07070d;--surface:#0e0e18;--card:#141420;--border:#1e1e30;
+  --accent:#20d5c4;--green:#10b981;--yellow:#f59e0b;--red:#ef4444;
+  --blue:#6366f1;
+  --text:#e2e8f0;--muted:#64748b;--light:#94a3b8;--radius:12px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif;font-size:14px;line-height:1.65;}
+
+.topbar{position:sticky;top:0;z-index:100;background:rgba(7,7,13,.92);backdrop-filter:blur(16px);border-bottom:1px solid var(--border);padding:10px 48px;display:flex;align-items:center;justify-content:space-between;}
+.topbar-logo img{height:32px;width:auto;}
+.topbar-links{display:flex;gap:24px;}
+.topbar-links a{color:var(--muted);font-size:.72rem;font-weight:600;text-decoration:none;letter-spacing:.05em;text-transform:uppercase;transition:color .15s;}
+.topbar-links a:hover{color:var(--accent);}
+
+.hero{padding:64px 48px 52px;background:linear-gradient(155deg,rgba(32,213,196,.05) 0%,transparent 55%);border-bottom:1px solid var(--border);max-width:940px;margin:0 auto;}
+.eyebrow{display:inline-flex;align-items:center;gap:7px;background:rgba(32,213,196,.1);border:1px solid rgba(32,213,196,.22);color:var(--accent);font-size:.67rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;padding:5px 12px;border-radius:20px;}
+.dot{width:6px;height:6px;background:var(--accent);border-radius:50%;animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+h1{font-size:2.7rem;font-weight:900;line-height:1.06;letter-spacing:-.025em;margin:18px 0 13px;}
+h1 span{color:var(--accent);}
+.hero-sub{font-size:.9rem;color:var(--light);max-width:560px;margin-bottom:32px;line-height:1.72;}
+.hero-meta{display:flex;gap:32px;flex-wrap:wrap;}
+.meta-item{display:flex;flex-direction:column;gap:2px;}
+.meta-label{font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;font-weight:600;}
+.meta-val{font-size:.87rem;font-weight:700;}
+
+.kpi-strip{max-width:940px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr);gap:1px;border:1px solid var(--border);border-top:none;background:var(--border);}
+.kpi{background:var(--surface);padding:22px 20px;}
+.kpi-val{font-size:1.85rem;font-weight:900;color:var(--accent);line-height:1;}
+.kpi-label{font-size:.66rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-top:4px;}
+
+.main{max-width:940px;margin:0 auto;padding:56px 48px;}
+.section{margin-bottom:60px;}
+.sec-label{display:flex;align-items:center;gap:10px;font-size:.62rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:10px;}
+.sec-label::after{content:"";flex:1;height:1px;background:var(--border);}
+.sec-title{font-size:1.45rem;font-weight:900;letter-spacing:-.01em;margin-bottom:8px;}
+.sec-sub{font-size:.85rem;color:var(--light);line-height:1.72;margin-bottom:24px;max-width:650px;}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:22px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px;}
+.card-title{font-size:.71rem;font-weight:800;color:var(--text);text-transform:uppercase;letter-spacing:.05em;margin-bottom:11px;}
+.card.tl{border-left:3px solid var(--accent);}
+.card.gl{border-left:3px solid var(--green);}
+.card.yl{border-left:3px solid var(--yellow);}
+.card.rl{border-left:3px solid var(--red);}
+
+.cklist{list-style:none;display:flex;flex-direction:column;gap:7px;}
+.cklist li{display:flex;align-items:flex-start;gap:8px;font-size:.8rem;color:var(--light);}
+.cklist li::before{content:"✓";color:var(--accent);font-weight:800;flex-shrink:0;margin-top:1px;}
+.blist{list-style:none;display:flex;flex-direction:column;gap:6px;}
+.blist li{display:flex;align-items:flex-start;gap:8px;font-size:.8rem;color:var(--light);}
+.blist li::before{content:"→";color:var(--accent);font-weight:700;flex-shrink:0;}
+
+.callout{display:flex;align-items:flex-start;gap:12px;background:rgba(32,213,196,.06);border:1px solid rgba(32,213,196,.18);border-radius:10px;padding:15px 17px;margin:14px 0;}
+.callout.warn{background:rgba(245,158,11,.06);border-color:rgba(245,158,11,.2);}
+.callout.green{background:rgba(16,185,129,.06);border-color:rgba(16,185,129,.2);}
+.callout.red{background:rgba(239,68,68,.06);border-color:rgba(239,68,68,.2);}
+.ci{font-size:1.05rem;flex-shrink:0;margin-top:1px;}
+.cb{font-size:.8rem;color:var(--light);line-height:1.65;}
+.cb strong{color:var(--text);}
+
+/* contrast comparison */
+.contrast-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:16px;}
+.contrast-side{background:var(--card);padding:24px;}
+.contrast-side.bad{border-top:3px solid var(--red);}
+.contrast-side.good{border-top:3px solid var(--green);}
+.contrast-tag{display:inline-flex;align-items:center;gap:6px;font-size:.62rem;font-weight:900;letter-spacing:.09em;text-transform:uppercase;padding:3px 9px;border-radius:20px;margin-bottom:14px;}
+.contrast-tag.bad{background:rgba(239,68,68,.1);color:var(--red);}
+.contrast-tag.good{background:rgba(16,185,129,.1);color:var(--green);}
+.contrast-name{font-size:1.1rem;font-weight:900;margin-bottom:4px;}
+.contrast-name.bad{color:var(--red);}
+.contrast-name.good{color:var(--green);}
+.contrast-detail{font-size:.78rem;color:var(--muted);margin-bottom:16px;line-height:1.5;}
+.contrast-row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:.78rem;}
+.contrast-row:last-child{border-bottom:none;}
+.contrast-row span:first-child{color:var(--muted);}
+.contrast-row span:last-child{font-weight:700;}
+.contrast-row span.bad-num{color:var(--red);}
+.contrast-row span.good-num{color:var(--green);}
+.contrast-verdict{margin-top:14px;padding:10px 13px;border-radius:8px;font-size:.78rem;font-weight:700;line-height:1.5;}
+.contrast-verdict.bad{background:rgba(239,68,68,.06);color:var(--red);}
+.contrast-verdict.good{background:rgba(16,185,129,.06);color:var(--green);}
+
+/* cohort cards */
+.cohort-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.cohort-card{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:22px;border-top:3px solid var(--accent);}
+.cohort-card.c2{border-top-color:var(--green);}
+.cohort-tag{display:inline-block;font-size:.62rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;padding:3px 9px;border-radius:20px;margin-bottom:12px;background:rgba(32,213,196,.1);color:var(--accent);}
+.cohort-card.c2 .cohort-tag{background:rgba(16,185,129,.1);color:var(--green);}
+.cohort-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px;}
+.cs-item .cs-val{font-size:1.45rem;font-weight:900;color:var(--accent);line-height:1;}
+.cohort-card.c2 .cs-item .cs-val{color:var(--green);}
+.cs-item .cs-lbl{font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:2px;}
+
+/* simulator */
+.sim-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-top:24px;}
+.sim-header{background:#090912;border-bottom:1px solid var(--border);padding:14px 22px;display:flex;align-items:center;gap:10px;}
+.sim-header h3{font-size:.87rem;font-weight:800;margin:0;}
+.sim-badge{font-size:.62rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;background:rgba(32,213,196,.12);color:var(--accent);padding:3px 8px;border-radius:4px;}
+.sim-body{display:grid;grid-template-columns:290px 1fr;}
+@media(max-width:680px){.sim-body{grid-template-columns:1fr;}}
+.sim-inputs{border-right:1px solid var(--border);padding:20px 22px;}
+@media(max-width:680px){.sim-inputs{border-right:none;border-bottom:1px solid var(--border);}}
+.sim-group{margin-bottom:16px;}
+.sim-group label{display:flex;justify-content:space-between;align-items:center;font-size:.75rem;color:var(--light);margin-bottom:7px;}
+.sim-group label strong{color:var(--text);font-weight:700;font-variant-numeric:tabular-nums;}
+input[type=range]{-webkit-appearance:none;width:100%;height:3px;background:var(--border);border-radius:2px;outline:none;cursor:pointer;}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;background:var(--accent);border-radius:50%;box-shadow:0 0 0 3px rgba(32,213,196,.18);}
+input[type=range]::-moz-range-thumb{width:14px;height:14px;background:var(--accent);border-radius:50%;border:none;}
+.fixed-inputs{margin-top:6px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:10px 13px;}
+.fi-row{display:flex;justify-content:space-between;font-size:.75rem;padding:4px 0;}
+.fi-row:not(:last-child){border-bottom:1px solid var(--border);}
+.fi-row span:first-child{color:var(--muted);}
+.fi-row span:last-child{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums;}
+.sim-outputs{padding:20px 22px;}
+.sim-kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px;}
+.sim-kpi-wide{grid-column:span 3;}
+.sim-kpi{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 15px;}
+.sim-kpi .sk-val{font-size:1.45rem;font-weight:900;line-height:1;font-variant-numeric:tabular-nums;color:var(--accent);}
+.sim-kpi .sk-val.green{color:var(--green);}
+.sim-kpi .sk-val.red{color:var(--red);}
+.sim-kpi .sk-val.muted{color:var(--muted);}
+.sim-kpi .sk-val.yellow{color:var(--yellow);}
+.sim-kpi .sk-lbl{font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-top:3px;}
+
+/* waterfall bar */
+.waterfall{margin-top:12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 15px;}
+.wf-title{font-size:.6rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+.wf-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.wf-label{font-size:.72rem;color:var(--muted);width:140px;flex-shrink:0;}
+.wf-bar-wrap{flex:1;background:var(--border);border-radius:3px;height:8px;overflow:hidden;}
+.wf-bar{height:100%;border-radius:3px;transition:width .3s ease;}
+.wf-amount{font-size:.72rem;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;width:72px;text-align:right;flex-shrink:0;}
+
+.sim-breakdown-cost{margin-top:12px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 15px;}
+.bc-section{font-size:.6rem;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-top:10px;margin-bottom:4px;}
+.bc-section:first-child{margin-top:0;}
+.bc-row{display:flex;justify-content:space-between;font-size:.75rem;padding:3px 0;}
+.bc-row span:first-child{color:var(--muted);}
+.bc-row span:last-child{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums;}
+.bc-total{display:flex;justify-content:space-between;font-size:.8rem;font-weight:800;padding:8px 0 2px;border-top:1px solid var(--border);margin-top:6px;}
+.bc-total span:last-child{color:var(--accent);font-variant-numeric:tabular-nums;}
+
+/* investment table */
+.inv-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+.inv-row{display:flex;justify-content:space-between;align-items:center;padding:12px 18px;border-bottom:1px solid var(--border);font-size:.82rem;}
+.inv-row:last-child{border-bottom:none;}
+.inv-row.sec-head{background:#090912;padding:7px 18px;}
+.inv-row.sec-head .il{font-size:.62rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;}
+.inv-row.total{background:rgba(32,213,196,.05);border-top:1px solid rgba(32,213,196,.18);}
+.il{color:var(--light);}
+.iv{font-variant-numeric:tabular-nums;font-weight:700;}
+.iv.accent{color:var(--accent);}
+.iv.muted{color:var(--muted);}
+
+/* footer */
+.footer{max-width:940px;margin:0 auto;padding:48px 48px 64px;border-top:1px solid var(--border);}
+.footer-cta{font-size:1.7rem;font-weight:900;letter-spacing:-.02em;margin-bottom:8px;}
+.footer-cta span{color:var(--accent);}
+.footer-sub{font-size:.85rem;color:var(--light);margin-bottom:24px;}
+.btn-primary{display:inline-flex;align-items:center;gap:8px;background:var(--accent);color:#000;font-weight:800;font-size:.82rem;padding:11px 22px;border-radius:8px;text-decoration:none;letter-spacing:.02em;transition:opacity .15s;}
+.btn-primary:hover{opacity:.88;}
+</style>
+</head>
+<body>
+
+<!-- topbar -->
+<div class="topbar">
+  <div class="topbar-logo"><img src="/proposal-assets/logo.webp" alt="Cult Content"/></div>
+  <div class="topbar-links">
+    <a href="#overview">Overview</a>
+    <a href="#strategy">Strategy</a>
+    <a href="#numbers">The Numbers</a>
+    <a href="#investment">Investment</a>
+    <a href="#longterm">Long-Term</a>
+    <a href="#nextsteps">Next Steps</a>
+  </div>
+</div>
+
+<!-- hero -->
+<div class="hero">
+  <div class="eyebrow"><span class="dot"></span>TikTok Shop Proposal · October 12, 2026</div>
+  <h1>Alpha Flow<br>× <span>Cult Content</span></h1>
+  <p class="hero-sub">You have 50,000–70,000 units ready to move, organic metrics that outperform paid campaigns at most agencies, and a product that converts without a single dollar of ad spend. The only thing missing is a creator system built to scale that signal. This is the plan.</p>
+  <div class="hero-meta">
+    <div class="meta-item"><span class="meta-label">Prepared for</span><span class="meta-val">Artem Bespalov, Mike Kushch, Alex Angel</span></div>
+    <div class="meta-item"><span class="meta-label">Brand</span><span class="meta-val">Alpha Flow</span></div>
+    <div class="meta-item"><span class="meta-label">Category</span><span class="meta-val">Supplements · TikTok Shop</span></div>
+    <div class="meta-item"><span class="meta-label">Date</span><span class="meta-val">October 12, 2026</span></div>
+  </div>
+</div>
+
+<!-- kpi strip — organic baseline (no paid, no seeding, <5k impressions) -->
+<div class="kpi-strip">
+  <div class="kpi"><div class="kpi-val">3.49%</div><div class="kpi-label">Organic CTR (No Ads)</div></div>
+  <div class="kpi"><div class="kpi-val">~11%</div><div class="kpi-label">Click-to-Order Rate</div></div>
+  <div class="kpi"><div class="kpi-val">$500+</div><div class="kpi-label">GMV from &lt;5K Impressions</div></div>
+  <div class="kpi"><div class="kpi-val">50–70K</div><div class="kpi-label">Units Ready to Scale</div></div>
+</div>
+
+<div class="main">
+
+  <!-- 01 · overview -->
+  <div class="section" id="overview">
+    <div class="sec-label">01 · The Opportunity</div>
+    <div class="sec-title">The product already converts. You just haven't turned on the engine.</div>
+    <p class="sec-sub">Most brands spend months — and tens of thousands of dollars — trying to prove TikTok Shop viability. Alpha Flow already has it. A 3.49% CTR and 11% click-to-order from organic content with fewer than 5,000 impressions is a signal most brands never reach. The baseline is set. Now it's about volume, velocity, and system.</p>
+    <div class="grid2">
+      <div class="card gl">
+        <div class="card-title" style="color:var(--green);">✓ What you already have</div>
+        <ul class="cklist">
+          <li>3.49% organic CTR — double the category average, zero paid amplification</li>
+          <li>~11% click-to-order rate proves the product and listing convert without optimization</li>
+          <li>50,000–70,000 units of inventory ready to fulfill at scale — no supply bottleneck</li>
+          <li>TikTok Shop admin access confirmed — Seller Center live, no setup delay</li>
+          <li>Alpha Flow and Joylee both accessible — dual-account flexibility from day one</li>
+        </ul>
+      </div>
+      <div class="card yl">
+        <div class="card-title" style="color:var(--yellow);">→ What's needed to scale it</div>
+        <ul class="blist">
+          <li>Creator volume — 30 active creators posting consistently, not 2–3 organically</li>
+          <li>A two-tier model that separates brand-authority creators from volume seeders</li>
+          <li>Marketing pages in Seller Center for clean attribution tracking</li>
+          <li>Sample distribution logistics — 100 units/month flowing to creators on schedule</li>
+          <li>An operator who knows TikTok Shop's affiliate center, promo tools, and creator levers</li>
+        </ul>
+      </div>
+    </div>
+    <div class="callout" style="margin-top:16px;">
+      <span class="ci">💡</span>
+      <div class="cb"><strong>TikTok Shop as a marketing channel.</strong> The goal isn't just TikTok revenue — it's brand awareness that spills over to Amazon, DTC, and every other channel you open. Break-even on TikTok with a growing Amazon halo effect is a strong business outcome. Profit on TikTok while building that halo is exceptional. The model below is built to hit both.</div>
+    </div>
+  </div>
+
+  <!-- 02 · why the model is different -->
+  <div class="section">
+    <div class="sec-label">02 · Why the Model Is Different</div>
+    <div class="sec-title">The last agency guaranteed one thing: a monthly loss.</div>
+    <p class="sec-sub">Quadrant's Joylee engagement was a fixed-fee structure where their incentive was retention, not your revenue. Ours is the opposite — we make money when you make money. Here's what that looks like in practice.</p>
+    <div class="contrast-grid">
+      <div class="contrast-side bad">
+        <span class="contrast-tag bad">Before · Quadrant on Joylee</span>
+        <div class="contrast-name bad">Guaranteed monthly loss</div>
+        <div class="contrast-detail">Flat retainer regardless of sales — the agency wins whether the product sells or not.</div>
+        <div class="contrast-row"><span>Monthly fee</span><span class="bad-num">$7,500 / mo</span></div>
+        <div class="contrast-row"><span>Best month in sales</span><span class="bad-num">~$3,000</span></div>
+        <div class="contrast-row"><span>Monthly P&amp;L</span><span class="bad-num">-$4,500</span></div>
+        <div class="contrast-row"><span>Agency's incentive to perform</span><span class="bad-num">None</span></div>
+        <div class="contrast-row"><span>Tommy's rating of the engagement</span><span class="bad-num">1 / 10</span></div>
+        <div class="contrast-verdict bad">Every month was a guaranteed loss. The agency kept getting paid regardless.</div>
+      </div>
+      <div class="contrast-side good">
+        <span class="contrast-tag good">Now · Cult Content</span>
+        <div class="contrast-name good">Aligned on your revenue</div>
+        <div class="contrast-detail">Low fixed base + performance fee — our upside is directly tied to your sales number.</div>
+        <div class="contrast-row"><span>Management fee</span><span class="good-num">$2,500 / mo</span></div>
+        <div class="contrast-row"><span>Performance fee</span><span class="good-num">8% of net sales</span></div>
+        <div class="contrast-row"><span>We make more when</span><span class="good-num">You make more</span></div>
+        <div class="contrast-row"><span>Incentive structure</span><span class="good-num">Full alignment</span></div>
+        <div class="contrast-row"><span>Break-even target</span><span class="good-num">3–6 months</span></div>
+        <div class="contrast-verdict good">If TikTok is brand marketing, the management fee alone beats paying $7,500 for zero.</div>
+      </div>
+    </div>
+    <div class="callout green">
+      <span class="ci">🤝</span>
+      <div class="cb"><strong>$2,500/mo is a brand awareness budget, not a sales gamble.</strong> Even if month 1 is pure brand awareness with minimal direct TikTok P&amp;L, you're spending $67/day to seed an audience, stack creator content, and build algorithm trust — all of which compound. Quadrant was charging $250/day for their best month of $3,000 in sales. The math has always been broken. This fixes it.</div>
+    </div>
+  </div>
+
+  <!-- 03 · strategy -->
+  <div class="section" id="strategy">
+    <div class="sec-label">03 · The Strategy</div>
+    <div class="sec-title">TikTok Shop first. Every dollar earned before Meta opens.</div>
+    <p class="sec-sub">No paid ads in month 1. No Meta until the site is live in Q1 2027. All energy goes into one channel, one system, and one goal: building a self-sustaining content engine on TikTok Shop that scales without proportional cost increases.</p>
+    <div class="cohort-grid" style="margin-bottom:16px;">
+      <div class="cohort-card">
+        <span class="cohort-tag">C1 — Brand Ambassadors</span>
+        <div class="card-title" style="margin-bottom:6px;">5 high-performing paid creators</div>
+        <p style="font-size:.8rem;color:var(--light);line-height:1.65;">Established supplement and wellness creators with proven GMV history. We source them, brief them, and pay per video — their content carries the brand authority signal that drives conversion and builds trust with new audiences. Each video is a paid asset Alpha Flow owns forever.</p>
+        <div class="cohort-stats">
+          <div class="cs-item"><div class="cs-val">$6,000</div><div class="cs-lbl">Monthly Spend</div></div>
+          <div class="cs-item"><div class="cs-val">20</div><div class="cs-lbl">Videos / Month</div></div>
+          <div class="cs-item"><div class="cs-val">$300</div><div class="cs-lbl">Per Video</div></div>
+          <div class="cs-item"><div class="cs-val">5</div><div class="cs-lbl">Active Creators</div></div>
+        </div>
+      </div>
+      <div class="cohort-card c2">
+        <span class="cohort-tag">C2 — Content Engine</span>
+        <div class="card-title" style="margin-bottom:6px;">25 developing creators, high frequency</div>
+        <p style="font-size:.8rem;color:var(--light);line-height:1.65;">A wide base of emerging creators posting consistently — 6 videos each per month. Volume signals broad creator adoption to TikTok's algorithm, accelerates SEO on the platform, and surfaces the next C1 stars. Minimum cost per video, maximum seeding surface area.</p>
+        <div class="cohort-stats">
+          <div class="cs-item"><div class="cs-val">$3,750</div><div class="cs-lbl">Monthly Spend</div></div>
+          <div class="cs-item"><div class="cs-val">150</div><div class="cs-lbl">Videos / Month</div></div>
+          <div class="cs-item"><div class="cs-val">$25</div><div class="cs-lbl">Per Video</div></div>
+          <div class="cs-item"><div class="cs-val">25</div><div class="cs-lbl">Active Creators</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="grid3" style="margin-bottom:16px;">
+      <div class="card tl">
+        <div class="card-title">Sample Allocation</div>
+        <p style="font-size:.8rem;color:var(--light);line-height:1.65;">100 units/month distributed to creators on a rolling basis. New creators get samples before they commit to posting — keeps the pipeline flowing and quality high without overextending per creator.</p>
+      </div>
+      <div class="card tl">
+        <div class="card-title">Marketing Pages</div>
+        <p style="font-size:.8rem;color:var(--light);line-height:1.65;">Up to 4 marketing pages + brand page in Seller Center. Each creator campaign gets its own attribution link — we know exactly which creators are driving orders, so budget flows to what's converting.</p>
+      </div>
+      <div class="card tl">
+        <div class="card-title">No Paid Ads — Month 1</div>
+        <p style="font-size:.8rem;color:var(--light);line-height:1.65;">Organic content volume is the engine. Paid amplification can be layered on top of proven hooks in month 2 or 3 — but only after we know which content formats and creators are working. We don't buy traffic before we have data.</p>
+      </div>
+    </div>
+    <div class="callout">
+      <span class="ci">📌</span>
+      <div class="cb"><strong>170 pieces of content in month 1.</strong> C1 posts 20 videos, C2 posts 150. Every one is a long-term organic asset for Alpha Flow — TikTok content has an indefinite shelf life and can resurface weeks or months after posting. The content you build in month 1 keeps earning in month 6.</div>
+    </div>
+  </div>
+
+  <!-- 04 · numbers / simulator -->
+  <div class="section" id="numbers">
+    <div class="sec-label">04 · The Numbers</div>
+    <div class="sec-title">Run your own P&amp;L.</div>
+    <p class="sec-sub">Defaults are set from Alpha Flow's own organic data — 3.49% CTR and ~11% CVR are your real baseline, not industry estimates. Adjust any variable to model different scenarios against the fixed creator and management costs.</p>
+    <div class="sim-wrap">
+      <div class="sim-header">
+        <h3>TikTok Shop Profit Simulator</h3>
+        <span class="sim-badge">Interactive</span>
+      </div>
+      <div class="sim-body">
+        <div class="sim-inputs">
+          <div style="font-size:.62rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:16px;">Adjust Assumptions</div>
+
+          <div class="sim-group">
+            <label>Active Creators <strong id="lbl-creators">30</strong></label>
+            <input type="range" id="sl-creators" min="10" max="100" step="1" value="30">
+          </div>
+          <div class="sim-group">
+            <label>Videos / Creator / Month <strong id="lbl-vids">4</strong></label>
+            <input type="range" id="sl-vids" min="2" max="10" step="1" value="4">
+          </div>
+          <div class="sim-group">
+            <label>Avg Views / Video <strong id="lbl-views">10,100</strong></label>
+            <input type="range" id="sl-views" min="1000" max="100000" step="500" value="10100">
+          </div>
+          <div class="sim-group">
+            <label>Click-Through Rate (CTR) <strong id="lbl-ctr">3.50%</strong></label>
+            <input type="range" id="sl-ctr" min="1" max="8" step="0.1" value="3.5">
+          </div>
+          <div class="sim-group">
+            <label>Conversion Rate (CVR) <strong id="lbl-cvr">5.84%</strong></label>
+            <input type="range" id="sl-cvr" min="1" max="15" step="0.1" value="5.84">
+          </div>
+          <div class="sim-group">
+            <label>List Price <strong id="lbl-price">$24.00</strong></label>
+            <input type="range" id="sl-price" min="10" max="60" step="1" value="24">
+          </div>
+          <div class="sim-group">
+            <label>Promo Discount <strong id="lbl-disc">10%</strong></label>
+            <input type="range" id="sl-disc" min="0" max="30" step="1" value="10">
+          </div>
+          <div class="sim-group">
+            <label>COGS / Unit <strong id="lbl-cogs">$7.00</strong></label>
+            <input type="range" id="sl-cogs" min="2" max="20" step="0.5" value="7">
+          </div>
+          <div class="sim-group">
+            <label>Shipping / Order <strong id="lbl-ship">$5.00</strong></label>
+            <input type="range" id="sl-ship" min="2" max="10" step="0.5" value="5">
+          </div>
+          <div class="sim-group">
+            <label>Affiliate Commission <strong id="lbl-aff">15%</strong></label>
+            <input type="range" id="sl-aff" min="5" max="25" step="1" value="15">
+          </div>
+
+          <div style="font-size:.62rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:10px;margin-top:4px;">Fixed Monthly Costs</div>
+          <div class="fixed-inputs">
+            <div class="fi-row"><span>C1 Brand Ambassadors</span><span>$6,000</span></div>
+            <div class="fi-row"><span>C2 Content Engine</span><span>$3,750</span></div>
+            <div class="fi-row"><span>Management fee</span><span>$2,500</span></div>
+            <div class="fi-row"><span>Performance fee</span><span>8% net revenue</span></div>
+          </div>
+        </div>
+
+        <div class="sim-outputs">
+          <div class="sim-kpis">
+            <div class="sim-kpi"><div class="sk-val green" id="out-gmv">—</div><div class="sk-lbl">Total GMV</div></div>
+            <div class="sim-kpi"><div class="sk-val" id="out-netrev">—</div><div class="sk-lbl">Net Revenue</div></div>
+            <div class="sim-kpi"><div class="sk-val muted" id="out-gross">—</div><div class="sk-lbl">Gross Profit</div></div>
+            <div class="sim-kpi"><div class="sk-val" id="out-invest">—</div><div class="sk-lbl">Total Investment</div></div>
+            <div class="sim-kpi"><div class="sk-val" id="out-pl">—</div><div class="sk-lbl">Net P&amp;L</div></div>
+            <div class="sim-kpi"><div class="sk-val yellow" id="out-roas">—</div><div class="sk-lbl">ROAS</div></div>
+          </div>
+
+          <div class="waterfall">
+            <div class="wf-title">Where the money goes</div>
+            <div class="wf-row">
+              <div class="wf-label">Gross GMV</div>
+              <div class="wf-bar-wrap"><div class="wf-bar" id="bar-gmv" style="background:var(--accent);width:100%;"></div></div>
+              <div class="wf-amount" id="wf-gmv">—</div>
+            </div>
+            <div class="wf-row">
+              <div class="wf-label">Affiliate cut</div>
+              <div class="wf-bar-wrap"><div class="wf-bar" id="bar-aff" style="background:var(--red);width:0%;"></div></div>
+              <div class="wf-amount" id="wf-aff">—</div>
+            </div>
+            <div class="wf-row">
+              <div class="wf-label">Returns / refunds</div>
+              <div class="wf-bar-wrap"><div class="wf-bar" id="bar-ref" style="background:var(--yellow);width:0%;"></div></div>
+              <div class="wf-amount" id="wf-ref">—</div>
+            </div>
+            <div class="wf-row">
+              <div class="wf-label">COGS</div>
+              <div class="wf-bar-wrap"><div class="wf-bar" id="bar-cogs" style="background:var(--blue);width:0%;"></div></div>
+              <div class="wf-amount" id="wf-cogs">—</div>
+            </div>
+            <div class="wf-row">
+              <div class="wf-label">Shipping</div>
+              <div class="wf-bar-wrap"><div class="wf-bar" id="bar-ship" style="background:#a855f7;width:0%;"></div></div>
+              <div class="wf-amount" id="wf-ship">—</div>
+            </div>
+            <div class="wf-row">
+              <div class="wf-label">Creator + Mgmt</div>
+              <div class="wf-bar-wrap"><div class="wf-bar" id="bar-mgmt" style="background:var(--muted);width:0%;"></div></div>
+              <div class="wf-amount" id="wf-mgmt">—</div>
+            </div>
+            <div class="wf-row">
+              <div class="wf-label" style="color:var(--green);font-weight:700;">Net P&amp;L</div>
+              <div class="wf-bar-wrap"><div class="wf-bar" id="bar-pl" style="background:var(--green);width:0%;"></div></div>
+              <div class="wf-amount" id="wf-pl" style="color:var(--green);font-weight:800;">—</div>
+            </div>
+          </div>
+
+          <div class="sim-breakdown-cost">
+            <div class="bc-section">Revenue Waterfall</div>
+            <div class="bc-row"><span>Gross GMV</span><span id="bc-gmv">—</span></div>
+            <div class="bc-row"><span>Promo discount (<span id="bc-disc-pct">10%</span>)</span><span id="bc-disc-amt">—</span></div>
+            <div class="bc-row"><span>Net GMV (after promo)</span><span id="bc-netgmv">—</span></div>
+            <div class="bc-row"><span>Affiliate commission (<span id="bc-aff-pct">15%</span>)</span><span id="bc-aff-amt">—</span></div>
+            <div class="bc-row"><span>Net revenue</span><span id="bc-netrev">—</span></div>
+            <div class="bc-row"><span>Returns (2% rate)</span><span id="bc-ref">—</span></div>
+            <div class="bc-row"><span>COGS (<span id="bc-cogs-lbl">$7/unit</span>)</span><span id="bc-cogs-amt">—</span></div>
+            <div class="bc-row"><span>Shipping (<span id="bc-ship-lbl">$5/order</span>)</span><span id="bc-ship-amt">—</span></div>
+            <div class="bc-row" style="font-weight:700;"><span style="color:var(--text);">Gross profit</span><span id="bc-gross">—</span></div>
+            <div class="bc-section" style="margin-top:14px;">Total Investment</div>
+            <div class="bc-row"><span>C1 Brand Ambassadors</span><span>$6,000</span></div>
+            <div class="bc-row"><span>C2 Content Engine</span><span>$3,750</span></div>
+            <div class="bc-row"><span>Management fee</span><span>$2,500</span></div>
+            <div class="bc-row"><span>Performance fee (8% net revenue)</span><span id="bc-perf">—</span></div>
+            <div class="bc-total"><span>Net P&amp;L</span><span id="bc-pl">—</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 05 · investment -->
+  <div class="section" id="investment">
+    <div class="sec-label">05 · Investment</div>
+    <div class="sec-title">Growth Partnership — TikTok Shop Management</div>
+    <p class="sec-sub">One engagement, end-to-end. Creator sourcing, onboarding, briefing, sample logistics, affiliate center management, marketing page setup, attribution tracking, and weekly reporting — all managed. Creator budgets billed at cost, no markup.</p>
+    <div class="inv-wrap">
+      <div class="inv-row sec-head"><span class="il">Management</span></div>
+      <div class="inv-row">
+        <div><span class="il">Monthly management retainer</span><div style="font-size:.7rem;color:var(--muted);margin-top:2px;">Strategy, creator ops, affiliate center management, marketing pages, weekly reporting</div></div>
+        <span class="iv accent">$2,500 / mo</span>
+      </div>
+      <div class="inv-row">
+        <div><span class="il">Performance fee</span><div style="font-size:.7rem;color:var(--muted);margin-top:2px;">8% of TikTok net sales — invoiced on the 5th of the following month from Seller Center data</div></div>
+        <span class="iv accent">8% net sales</span>
+      </div>
+      <div class="inv-row sec-head"><span class="il">Creator &amp; Content (billed at cost, no markup)</span></div>
+      <div class="inv-row">
+        <div><span class="il">C1 — Brand Ambassadors</span><div style="font-size:.7rem;color:var(--muted);margin-top:2px;">5 creators × 4 videos/mo × $300/video — verified supplement &amp; wellness creators</div></div>
+        <span class="iv accent">$6,000 / mo</span>
+      </div>
+      <div class="inv-row">
+        <div><span class="il">C2 — Content Engine</span><div style="font-size:.7rem;color:var(--muted);margin-top:2px;">25 creators × 6 videos/mo × $25/video — high-frequency volume seeding</div></div>
+        <span class="iv accent">$3,750 / mo</span>
+      </div>
+      <div class="inv-row">
+        <div><span class="il">Sample allocation</span><div style="font-size:.7rem;color:var(--muted);margin-top:2px;">100 units/month distributed to creators — billed at Alpha Flow COGS, no markup</div></div>
+        <span class="iv muted">At cost</span>
+      </div>
+      <div class="inv-row total">
+        <div>
+          <div style="font-weight:800;color:var(--text);font-size:.85rem;">Total fixed monthly investment</div>
+          <div style="font-size:.72rem;color:var(--muted);margin-top:2px;">Management retainer + creator budgets · performance fee billed separately on the 5th</div>
+        </div>
+        <span class="iv accent" style="font-size:1rem;">$12,250 / mo</span>
+      </div>
+    </div>
+    <div class="callout" style="margin-top:16px;">
+      <span class="ci">📋</span>
+      <div class="cb"><strong>How billing works:</strong> $12,250/mo covers management + all creator payments — one invoice, one wire. The 8% performance fee is calculated directly from TikTok Seller Center net sales data and invoiced separately on the 5th of the following month. Tommy already has admin access to Alpha Flow's Seller Center, so reporting is immediate and transparent.</div>
+    </div>
+    <div class="callout green" style="margin-top:0;">
+      <span class="ci">📊</span>
+      <div class="cb"><strong>Break-even math at modest performance:</strong> At 30 creators, 3.5% CTR, 5.84% CVR, and $24 list price — defaults you can verify in the simulator above — the model reaches gross profit positive within the first 3 months as creator momentum builds. Month 1 is investment. Month 6 is a compounding asset.</div>
+    </div>
+  </div>
+
+  <!-- 06 · long-term -->
+  <div class="section" id="longterm">
+    <div class="sec-label">06 · Long-Term Outlook</div>
+    <div class="sec-title">Month 1 builds the foundation. Month 6 runs itself.</div>
+    <p class="sec-sub">TikTok Shop rewards momentum — and Alpha Flow's organic data already proves the signal is there. The only question is how fast we scale it. Here's what the compounding looks like over six months.</p>
+    <div class="grid3" style="margin-bottom:16px;">
+      <div class="card" style="border-left:3px solid var(--yellow);">
+        <div class="card-title" style="color:var(--yellow);">Month 1–2</div>
+        <ul class="cklist" style="gap:5px;">
+          <li>30 creators sourced, briefed, posting — 170 videos live</li>
+          <li>Affiliate center configured: commissions, promos, attribution pages</li>
+          <li>Algorithm trust building — shop sales history accumulating</li>
+          <li>First performance data: top hooks, top creators, top formats identified</li>
+        </ul>
+      </div>
+      <div class="card tl">
+        <div class="card-title">Month 3–4</div>
+        <ul class="cklist" style="gap:5px;">
+          <li>Top 10 C2 creators promoted — C1 roster strengthened at no extra cost</li>
+          <li>Content volume compounds: 340+ videos posted in month 3 (old + new)</li>
+          <li>Break-even window — TikTok P&amp;L turning as creator stack matures</li>
+          <li>Amazon halo effect measurable — brand search and reviews lifting</li>
+        </ul>
+      </div>
+      <div class="card gl">
+        <div class="card-title" style="color:var(--green);">Month 6+</div>
+        <ul class="cklist" style="gap:5px;">
+          <li>100+ active creators on rotation — self-sustaining content engine</li>
+          <li>Algorithm trust established — organic reach amplified by sales history</li>
+          <li>Meta ads layer on (site live Q1 2027) with warm TikTok audience</li>
+          <li>Creator data drives product expansion — what to launch next is clear</li>
+        </ul>
+      </div>
+    </div>
+    <div class="grid2">
+      <div class="card tl">
+        <div class="card-title">TikTok rewards momentum</div>
+        <p style="font-size:.8rem;color:var(--light);line-height:1.65;margin-bottom:12px;">Every order through TikTok Shop builds algorithm trust — the platform surfaces products with sales history more aggressively than new listings. Brands that start fast own the feed. Brands that start slow spend 4–6 months catching up.</p>
+        <p style="font-size:.8rem;color:var(--light);line-height:1.65;">Alpha Flow's organic CTR already tells the algorithm this product belongs in more feeds. Giving it creator volume makes that signal undeniable.</p>
+      </div>
+      <div class="card tl">
+        <div class="card-title">Creator stacking compounds without proportional cost</div>
+        <p style="font-size:.8rem;color:var(--light);line-height:1.65;margin-bottom:12px;">Month 1: 30 creators, 170 videos. Month 2: those 30 post again — now with product familiarity and proven hooks — plus new creators layer on top. Active content count grows every month, reach expands, and cost per view falls.</p>
+        <p style="font-size:.8rem;color:var(--light);line-height:1.65;">C2 is also a talent pipeline. The creators who break out get promoted to C1 agreements — the system identifies its own stars and self-optimizes over time.</p>
+      </div>
+    </div>
+    <div class="callout green" style="margin-top:16px;">
+      <span class="ci">🔁</span>
+      <div class="cb"><strong>The Amazon flywheel is real.</strong> TikTok content drives brand name searches on Amazon. UGC and creator reviews reduce Amazon's ad cost. Amazon profitability funds next month's creator budget. TikTok and Amazon aren't separate channels — they're one engine. The brands that treat them that way win both.</div>
+    </div>
+    <div class="callout" style="margin-top:0;">
+      <span class="ci">🌐</span>
+      <div class="cb"><strong>Site + Meta in Q1 2027.</strong> When the Alpha Flow website goes live, TikTok's creator content becomes retargeting fuel for Meta ads — warm audiences, proven hooks, social proof already established. The TikTok build now makes the Meta launch faster and cheaper when you're ready for it.</div>
+    </div>
+  </div>
+
+  <!-- 07 · next steps -->
+  <div class="section" id="nextsteps">
+    <div class="sec-label">07 · Next Steps</div>
+    <div class="sec-title">The target is this week. Here's how we move.</div>
+    <p class="sec-sub">Seller Center access is already confirmed. Every day of setup we skip is content that won't be live by the time the creator pipeline is running. Here's the sequence from signed to active.</p>
+    <div class="card tl">
+      <ol style="list-style:none;display:flex;flex-direction:column;gap:14px;">
+        <li style="display:flex;gap:12px;font-size:.82rem;">
+          <span style="background:rgba(32,213,196,.15);color:var(--accent);font-weight:900;font-size:.72rem;padding:3px 9px;border-radius:4px;flex-shrink:0;height:22px;margin-top:2px;">1</span>
+          <div><strong>Agreement signed</strong> — Growth partnership agreement sent for review and signature. First month invoiced on signing.</div>
+        </li>
+        <li style="display:flex;gap:12px;font-size:.82rem;">
+          <span style="background:rgba(32,213,196,.15);color:var(--accent);font-weight:900;font-size:.72rem;padding:3px 9px;border-radius:4px;flex-shrink:0;height:22px;margin-top:2px;">2</span>
+          <div><strong>Onboarding form completed</strong> — Brand voice, product story, target creator profile, promo preferences, sample inventory allocation, and KPI targets. Takes 20 minutes. Unlocks everything else.</div>
+        </li>
+        <li style="display:flex;gap:12px;font-size:.82rem;">
+          <span style="background:rgba(32,213,196,.15);color:var(--accent);font-weight:900;font-size:.72rem;padding:3px 9px;border-radius:4px;flex-shrink:0;height:22px;margin-top:2px;">3</span>
+          <div><strong>Alpha Flow Slack channel created</strong> — Shared channel with Artem, Mike, Alex, and the Cult Content team. Weekly performance reports drop here. Real-time questions answered here. All communication in one place.</div>
+        </li>
+        <li style="display:flex;gap:12px;font-size:.82rem;">
+          <span style="background:rgba(32,213,196,.15);color:var(--accent);font-weight:900;font-size:.72rem;padding:3px 9px;border-radius:4px;flex-shrink:0;height:22px;margin-top:2px;">4</span>
+          <div><strong>Seller Center access confirmed</strong> — Tommy already has admin access. Affiliate center commission rates, promo structure, and marketing pages configured immediately — no delay waiting for access.</div>
+        </li>
+        <li style="display:flex;gap:12px;font-size:.82rem;">
+          <span style="background:rgba(32,213,196,.15);color:var(--accent);font-weight:900;font-size:.72rem;padding:3px 9px;border-radius:4px;flex-shrink:0;height:22px;margin-top:2px;">5</span>
+          <div><strong>Creator outreach begins — this week</strong> — C1 candidates identified and approached in parallel with Seller Center setup. C2 outreach opens immediately. First content should be live within 2 weeks of signing.</div>
+        </li>
+      </ol>
+    </div>
+  </div>
+
+</div>
+
+<!-- footer -->
+<div class="footer">
+  <div class="footer-cta">Ready to turn the signal into <span>a system?</span></div>
+  <div class="footer-sub">The organic proof is there. The inventory is ready. The only missing piece is activation. Let's move this week.</div>
+  <a class="btn-primary" href="mailto:tommy@cultcontent.cc">Get started → tommy@cultcontent.cc</a>
+</div>
+
+<script>
+const fmtK = n => {
+  const abs = Math.abs(n);
+  const sign = n < 0 ? '-' : '';
+  if(abs >= 1000000) return sign+'$'+(abs/1000000).toFixed(2)+'M';
+  if(abs >= 10000)   return sign+'$'+(abs/1000).toFixed(1)+'K';
+  if(abs >= 1000)    return sign+'$'+(abs/1000).toFixed(1)+'K';
+  return sign+'$'+Math.round(abs).toLocaleString();
+};
+const fmtN = n => n>=1000000?(n/1000000).toFixed(1)+'M':n>=1000?(n/1000).toFixed(1)+'K':String(Math.round(n));
+
+function calc() {
+  const creators       = parseInt(document.getElementById('sl-creators').value);
+  const vidsPerCreator = parseInt(document.getElementById('sl-vids').value);
+  const avgViews       = parseFloat(document.getElementById('sl-views').value);
+  const ctr            = parseFloat(document.getElementById('sl-ctr').value) / 100;
+  const cvr            = parseFloat(document.getElementById('sl-cvr').value) / 100;
+  const listPrice      = parseFloat(document.getElementById('sl-price').value);
+  const discount       = parseFloat(document.getElementById('sl-disc').value) / 100;
+  const cogsPerUnit    = parseFloat(document.getElementById('sl-cogs').value);
+  const shippingPerOrder = parseFloat(document.getElementById('sl-ship').value);
+  const affCommission  = parseFloat(document.getElementById('sl-aff').value) / 100;
+
+  // labels
+  document.getElementById('lbl-creators').textContent = creators;
+  document.getElementById('lbl-vids').textContent = vidsPerCreator;
+  document.getElementById('lbl-views').textContent = fmtN(avgViews);
+  document.getElementById('lbl-ctr').textContent = (ctr*100).toFixed(1)+'%';
+  document.getElementById('lbl-cvr').textContent = (cvr*100).toFixed(2)+'%';
+  document.getElementById('lbl-price').textContent = '$'+listPrice.toFixed(2);
+  document.getElementById('lbl-disc').textContent = (discount*100).toFixed(0)+'%';
+  document.getElementById('lbl-cogs').textContent = '$'+cogsPerUnit.toFixed(2);
+  document.getElementById('lbl-ship').textContent = '$'+shippingPerOrder.toFixed(2);
+  document.getElementById('lbl-aff').textContent = (affCommission*100).toFixed(0)+'%';
+  document.getElementById('bc-disc-pct').textContent = (discount*100).toFixed(0)+'%';
+  document.getElementById('bc-aff-pct').textContent = (affCommission*100).toFixed(0)+'%';
+  document.getElementById('bc-cogs-lbl').textContent = '$'+cogsPerUnit.toFixed(0)+'/unit';
+  document.getElementById('bc-ship-lbl').textContent = '$'+shippingPerOrder.toFixed(0)+'/order';
+
+  // core math (per the spec)
+  const totalVideos    = creators * vidsPerCreator;
+  const totalViews     = totalVideos * avgViews;
+  const clicks         = totalViews * ctr;
+  const orders         = clicks * cvr;
+  const grossGMV       = orders * listPrice;
+  const netGMV         = grossGMV * (1 - discount);
+  const affAmt         = netGMV * affCommission;
+  const netRevenue     = netGMV - affAmt;
+  const returnOrders   = orders * 0.02;
+  const refundAmt      = returnOrders * (listPrice * (1 - discount));
+  const netRevenueAfterReturns = netRevenue - refundAmt;
+  const cogsAmt        = orders * cogsPerUnit;
+  const shippingAmt    = (orders - returnOrders) * shippingPerOrder;
+  const grossProfit    = netRevenueAfterReturns - cogsAmt - shippingAmt;
+  const creatorSpend   = 9750;
+  const mgmtFee        = 2500;
+  const perfFee        = netRevenueAfterReturns * 0.08;
+  const totalInvestment = creatorSpend + mgmtFee + perfFee;
+  const netPL          = grossProfit - totalInvestment;
+  const discAmt        = grossGMV - netGMV;
+  const roas           = totalInvestment > 0 ? grossGMV / totalInvestment : 0;
+
+  // output KPIs
+  document.getElementById('out-gmv').textContent     = fmtK(grossGMV);
+  document.getElementById('out-netrev').textContent  = fmtK(netRevenueAfterReturns);
+  document.getElementById('out-gross').textContent   = fmtK(grossProfit);
+  document.getElementById('out-invest').textContent  = fmtK(totalInvestment);
+  document.getElementById('out-pl').textContent      = fmtK(netPL);
+  document.getElementById('out-roas').textContent    = roas.toFixed(2)+'x';
+
+  const plEl = document.getElementById('out-pl');
+  plEl.className = 'sk-val ' + (netPL >= 0 ? 'green' : 'red');
+
+  // waterfall bars (relative to grossGMV)
+  const max = grossGMV || 1;
+  const setBar = (id, val) => {
+    const pct = Math.min(100, Math.max(0, (Math.abs(val) / max) * 100));
+    document.getElementById(id).style.width = pct + '%';
+  };
+  setBar('bar-gmv',  grossGMV);
+  setBar('bar-aff',  affAmt);
+  setBar('bar-ref',  refundAmt);
+  setBar('bar-cogs', cogsAmt);
+  setBar('bar-ship', shippingAmt);
+  setBar('bar-mgmt', totalInvestment);
+  const plBar = document.getElementById('bar-pl');
+  const plPct = Math.min(100, Math.max(0, (Math.abs(netPL) / max) * 100));
+  plBar.style.width = plPct + '%';
+  plBar.style.background = netPL >= 0 ? 'var(--green)' : 'var(--red)';
+
+  document.getElementById('wf-gmv').textContent  = fmtK(grossGMV);
+  document.getElementById('wf-aff').textContent  = '-'+fmtK(affAmt);
+  document.getElementById('wf-ref').textContent  = '-'+fmtK(refundAmt);
+  document.getElementById('wf-cogs').textContent = '-'+fmtK(cogsAmt);
+  document.getElementById('wf-ship').textContent = '-'+fmtK(shippingAmt);
+  document.getElementById('wf-mgmt').textContent = '-'+fmtK(totalInvestment);
+  const wfPl = document.getElementById('wf-pl');
+  wfPl.textContent = fmtK(netPL);
+  wfPl.style.color = netPL >= 0 ? 'var(--green)' : 'var(--red)';
+
+  // waterfall breakdown
+  document.getElementById('bc-gmv').textContent     = fmtK(grossGMV);
+  document.getElementById('bc-disc-amt').textContent = '-'+fmtK(discAmt);
+  document.getElementById('bc-netgmv').textContent  = fmtK(netGMV);
+  document.getElementById('bc-aff-amt').textContent = '-'+fmtK(affAmt);
+  document.getElementById('bc-netrev').textContent  = fmtK(netRevenue);
+  document.getElementById('bc-ref').textContent     = '-'+fmtK(refundAmt);
+  document.getElementById('bc-cogs-amt').textContent = '-'+fmtK(cogsAmt);
+  document.getElementById('bc-ship-amt').textContent = '-'+fmtK(shippingAmt);
+  document.getElementById('bc-gross').textContent   = fmtK(grossProfit);
+  document.getElementById('bc-perf').textContent    = fmtK(perfFee);
+  const bcPl = document.getElementById('bc-pl');
+  bcPl.textContent = fmtK(netPL);
+  bcPl.style.color = netPL >= 0 ? 'var(--green)' : 'var(--red)';
+}
+
+['sl-creators','sl-vids','sl-views','sl-ctr','sl-cvr','sl-price','sl-disc','sl-cogs','sl-ship','sl-aff'].forEach(id => {
+  document.getElementById(id).addEventListener('input', calc);
+});
+calc();
+</script>
+</body>
+</html>
