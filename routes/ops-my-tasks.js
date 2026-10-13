@@ -2517,7 +2517,8 @@ function vqCardHtml(r){
 
   if(r.status==='pending'){
     var startBtn=(VQ_IS_EDITOR||VQ_IS_ADMIN)?'<button class="vq-btn vq-primary" onclick="vqMoveStatus(\\''+id+'\\',\\'in-progress\\')">▶ Start</button>':'';
-    body='<div class="vq-actions">'+driveBtn+startBtn+deleteBtn+'</div>';
+    var pendingNotes=(r.notes||r.description)?'<div style="font-size:12px;color:var(--muted);line-height:1.5;white-space:pre-wrap;margin-bottom:8px">'+esc(r.notes||r.description)+'</div>':'';
+    body=pendingNotes+'<div class="vq-actions">'+driveBtn+startBtn+deleteBtn+'</div>';
   }
 
   else if(r.status==='in-progress'){
@@ -2537,8 +2538,7 @@ function vqCardHtml(r){
       +'<button class="vq-btn" onclick="document.getElementById(\\'vqdraft-form-'+id+'\\').style.display=\\'none\\'">Cancel</button></div>'
       +'</div>';
     var uploadDraftBtn=(VQ_IS_EDITOR||VQ_IS_ADMIN)?'<button class="vq-btn vq-primary" onclick="document.getElementById(\\'vqdraft-form-'+id+'\\').style.display=document.getElementById(\\'vqdraft-form-'+id+'\\').style.display===\\'none\\'?\\'\\':\\'none\\'">📤 Upload Draft</button>':'';
-    var resetBtn=VQ_IS_ADMIN?'<button class="vq-btn" style="color:var(--muted);font-size:10px" onclick="vqMoveStatus(\\''+id+'\\',\\'pending\\')">↩ Reset</button>':'';
-    body=notesHtml+editNotesBtn+'<div class="vq-actions" style="margin-top:8px">'+driveBtn+uploadDraftBtn+resetBtn+'</div>'+draftForm;
+    body=notesHtml+editNotesBtn+'<div class="vq-actions" style="margin-top:8px">'+driveBtn+uploadDraftBtn+'</div>'+draftForm;
   }
 
   else if(r.status==='done'){
@@ -2556,8 +2556,7 @@ function vqCardHtml(r){
         +'<input type="datetime-local" id="vqsched-'+id+'" value="'+esc(r.scheduledAt?new Date(r.scheduledAt).toISOString().slice(0,16):'')+'" />'
         +'<button class="vq-btn vq-schedule" onclick="vqApproveSchedule(\\''+id+'\\')">✓ Approve &amp; Schedule</button>'
         +'</div>';
-      var backBtn='<button class="vq-btn" onclick="vqMoveStatus(\\''+id+'\\',\\'in-progress\\')">↩ Back</button>';
-      body='<div class="vq-actions">'+draftLink+backBtn+deleteBtn+'</div>'+reviewForm;
+      body='<div class="vq-actions">'+draftLink+deleteBtn+'</div>'+reviewForm;
     } else {
       body='<div class="vq-actions">'+draftLink+deleteBtn+'</div>';
     }
@@ -2567,14 +2566,12 @@ function vqCardHtml(r){
     var schedTime=r.scheduledAt?new Date(r.scheduledAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'—';
     var platDisplay=(r.platforms||[]).join(', ')||'—';
     var draftLink2=r.draftUrl?'<a href="'+esc(r.draftUrl)+'" target="_blank" class="vq-btn vq-drive">📄 Draft</a>':'';
-    var markPostedBtn=VQ_IS_ADMIN?'<button class="vq-btn vq-mark-posted" onclick="vqMoveStatus(\\''+id+'\\',\\'posted\\')">📤 Mark Posted</button>':'';
-    var backBtn2=VQ_IS_ADMIN?'<button class="vq-btn" onclick="vqMoveStatus(\\''+id+'\\',\\'done\\')">↩ Back</button>':'';
     body='<div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.7">'
       +'<strong style="color:var(--txt)">Scheduled:</strong> '+schedTime+'<br>'
       +(r.caption?'<strong style="color:var(--txt)">Caption:</strong> '+esc(r.caption.slice(0,60))+(r.caption.length>60?'…':'')+'<br>':'')
       +'<strong style="color:var(--txt)">Platforms:</strong> '+esc(platDisplay)
       +'</div>'
-      +'<div class="vq-actions">'+draftLink2+markPostedBtn+backBtn2+deleteBtn+'</div>';
+      +'<div class="vq-actions">'+draftLink2+deleteBtn+'</div>';
   }
 
   else if(r.status==='posted'){
@@ -7063,6 +7060,36 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       all.splice(idx, 1);
       writeJsonFile(VR_FILE, all);
       res.json({ ok: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  // ---------- ROUTE: POST /api/video-requests/:id/expand ----------
+  // Admin-only: immediately expand a pending card into N copies (simulates
+  // submitting with quantity N). Used to set up test data without re-submitting.
+  app.post('/api/video-requests/:id/expand', requireAuth, jsonBody, (req, res) => {
+    try {
+      const email = (req.userEmail || '').toLowerCase();
+      if (!ADMIN_EMAILS.has(email)) return res.status(403).json({ error: 'Admin only' });
+      const { id } = req.params;
+      const qty = Math.min(Math.max(parseInt((req.body || {}).quantity, 10) || 2, 2), 10);
+      const all = readJsonFile(VR_FILE, []);
+      const idx = all.findIndex(r => r.id === id);
+      if (idx < 0) return res.status(404).json({ error: 'Not found' });
+      const r = all[idx];
+      const dateLabel = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      r.title = `Video 1 — ${dateLabel}`;
+      r.status = 'pending';
+      r.quantity = qty;
+      all[idx] = r;
+      for (let n = 2; n <= qty; n++) {
+        all.push(Object.assign({}, r, {
+          id: 'vr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7) + n,
+          title: `Video ${n} — ${dateLabel}`,
+          quantity: qty,
+        }));
+      }
+      writeJsonFile(VR_FILE, all);
+      res.json({ ok: true, expanded: qty });
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
