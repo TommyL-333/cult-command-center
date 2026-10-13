@@ -442,15 +442,19 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .vq-chevron{color:var(--muted);font-size:11px;margin-left:auto;flex-shrink:0}
   @media(max-width:700px){.vq-list-hdr,.vq-row-summary{grid-template-columns:10px 90px 1fr 70px}.vq-row-summary>:nth-child(5),.vq-row-summary>:nth-child(6),.vq-list-hdr>:nth-child(5),.vq-list-hdr>:nth-child(6){display:none}}
   /* 1000-video tracker */
-  .vp-tracker{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:20px}
-  .vp-tracker-title{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
-  .vp-tracker-bar-wrap{height:8px;background:rgba(255,255,255,.07);border-radius:4px;overflow:hidden;margin-bottom:14px;position:relative}
-  .vp-tracker-bar{height:100%;border-radius:4px;background:linear-gradient(90deg,var(--cyan),#a78bfa);transition:width .4s ease}
-  .vp-tracker-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-  .vp-stat{text-align:center;background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:10px 6px}
-  .vp-stat-num{font-size:22px;font-weight:800;letter-spacing:-.02em;color:var(--cyan)}
-  .vp-stat-lbl{font-size:10px;color:var(--muted);margin-top:2px;font-weight:600}
-  .vp-stat-goal{font-size:10px;color:var(--muted);margin-top:12px;text-align:center}
+  .vp-tracker{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:20px 22px;margin-bottom:20px}
+  .vp-tracker-header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px}
+  .vp-tracker-title{font-size:20px;font-weight:800;letter-spacing:-.02em;color:var(--txt)}
+  .vp-stat-goal{font-size:13px;font-weight:700;color:var(--muted)}
+  .vp-tracker-bar-wrap{height:10px;background:rgba(255,255,255,.07);border-radius:6px;overflow:hidden;margin-bottom:14px;display:flex}
+  .vp-bar-seg{height:100%;transition:width .4s ease;min-width:0}
+  .vp-bar-submitted{background:#00f2ea}
+  .vp-bar-editing{background:#f59e0b}
+  .vp-bar-review{background:#f97316}
+  .vp-bar-posted{background:#a78bfa}
+  .vp-tracker-legend{display:flex;gap:14px;flex-wrap:wrap}
+  .vp-legend-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);font-weight:600}
+  .vp-legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
   /* approval + posted status */
   .vq-dot-review{background:#f59e0b}
   .vq-dot-posted{background:#a78bfa}
@@ -627,25 +631,22 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
 
   <!-- 1000-video progress tracker -->
   <div class="vp-tracker" id="vp-tracker">
-    <div class="vp-tracker-title">1,000 Video Challenge</div>
+    <div class="vp-tracker-header">
+      <div class="vp-tracker-title">1,000 Video Challenge</div>
+      <div class="vp-stat-goal" id="vp-goal-line">0/1,000</div>
+    </div>
     <div class="vp-tracker-bar-wrap">
-      <div class="vp-tracker-bar" id="vp-bar" style="width:0%"></div>
+      <div class="vp-bar-seg vp-bar-submitted" id="vp-bar-submitted" style="width:0%"></div>
+      <div class="vp-bar-seg vp-bar-editing" id="vp-bar-editing" style="width:0%"></div>
+      <div class="vp-bar-seg vp-bar-review" id="vp-bar-review" style="width:0%"></div>
+      <div class="vp-bar-seg vp-bar-posted" id="vp-bar-posted" style="width:0%"></div>
     </div>
-    <div class="vp-tracker-stats">
-      <div class="vp-stat">
-        <div class="vp-stat-num" id="vp-cnt-submitted">0</div>
-        <div class="vp-stat-lbl">Submitted</div>
-      </div>
-      <div class="vp-stat">
-        <div class="vp-stat-num" id="vp-cnt-editing">0</div>
-        <div class="vp-stat-lbl">In Editing</div>
-      </div>
-      <div class="vp-stat">
-        <div class="vp-stat-num" id="vp-cnt-posted" style="color:#a78bfa">0</div>
-        <div class="vp-stat-lbl">Posted</div>
-      </div>
+    <div class="vp-tracker-legend">
+      <div class="vp-legend-item"><div class="vp-legend-dot" style="background:#00f2ea"></div><span id="vp-cnt-submitted">0</span> Submitted</div>
+      <div class="vp-legend-item"><div class="vp-legend-dot" style="background:#f59e0b"></div><span id="vp-cnt-editing">0</span> Editing</div>
+      <div class="vp-legend-item"><div class="vp-legend-dot" style="background:#f97316"></div><span id="vp-cnt-review">0</span> For Review</div>
+      <div class="vp-legend-item"><div class="vp-legend-dot" style="background:#a78bfa"></div><span id="vp-cnt-posted">0</span> Posted</div>
     </div>
-    <div class="vp-stat-goal" id="vp-goal-line">0 / 1,000 posted</div>
   </div>
 
   <!-- Section tabs: Videos | Podcast -->
@@ -2450,16 +2451,22 @@ function renderVideoQueue(){
 }
 
 function vqUpdateTracker(){
-  var submitted=VQ_DATA.filter(function(r){return r.status==='pending';}).length;
-  var editing=VQ_DATA.filter(function(r){return r.status==='in-progress'||r.status==='done'||r.status==='approved';}).length;
-  var posted=VQ_DATA.filter(function(r){return r.status==='posted';}).length;
   var goal=1000;
+  var submitted=VQ_DATA.filter(function(r){return r.status==='pending';}).length;
+  var editing=VQ_DATA.filter(function(r){return r.status==='in-progress';}).length;
+  var review=VQ_DATA.filter(function(r){return r.status==='done'||r.status==='approved';}).length;
+  var posted=VQ_DATA.filter(function(r){return r.status==='posted';}).length;
   document.getElementById('vp-cnt-submitted').textContent=submitted;
   document.getElementById('vp-cnt-editing').textContent=editing;
+  document.getElementById('vp-cnt-review').textContent=review;
   document.getElementById('vp-cnt-posted').textContent=posted;
-  document.getElementById('vp-goal-line').textContent=posted+' / '+goal.toLocaleString()+' posted';
-  var pct=Math.min(100,(posted/goal)*100);
-  document.getElementById('vp-bar').style.width=pct+'%';
+  document.getElementById('vp-goal-line').textContent=posted+'/1,000';
+  var total=submitted+editing+review+posted;
+  var scale=total>goal?total:goal;
+  document.getElementById('vp-bar-submitted').style.width=((submitted/scale)*100)+'%';
+  document.getElementById('vp-bar-editing').style.width=((editing/scale)*100)+'%';
+  document.getElementById('vp-bar-review').style.width=((review/scale)*100)+'%';
+  document.getElementById('vp-bar-posted').style.width=((posted/scale)*100)+'%';
 }
 
 function renderVqList(){
