@@ -149,7 +149,9 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   :root{--bg:#161823;--panel:#1e2030;--panel2:#252838;--border:#2f3346;--txt:#e8eaf2;--muted:#9aa0b5;--cyan:#00f2ea;--red:#ff0050;--p1:#ff0050;--p2:#ff9f0a;--p3:#ffd60a;--p4:#5a6072;}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
-  .wrap{max-width:860px;margin:0 auto;padding:28px 36px 80px}
+  .wrap{max-width:1400px;margin:0 auto;padding:28px 40px 80px}
+  @media(max-width:900px){.wrap{padding:20px 20px 80px}}
+  @media(max-width:540px){.wrap{padding:16px 14px 80px}}
   header.top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
   h1{font-size:24px;margin:0;font-weight:700;background:linear-gradient(90deg,var(--cyan),var(--red));-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
   .sub{color:var(--muted);font-size:13px;margin:2px 0 16px}
@@ -537,7 +539,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   <div class="tabs">
     <button class="tab active" onclick="switchTab(0)">My Tasks</button>
     <button class="tab" onclick="switchTab(1)">Client Reports</button>
-    <button class="tab" onclick="switchTab(2)">Sprint</button>
+    <button class="tab" onclick="switchTab(2)">Software</button>
     <button class="tab" id="vq-tab-btn" onclick="switchTab(3)">__VQ_TAB_LABEL__</button>
     <button class="tab" id="tab-btn-content-studio" style="display:none" onclick="switchTab(4)">🎬 Content Studio</button>
   </div>
@@ -979,7 +981,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
 <!-- push task to sprint modal -->
 <div class="overlay" id="pushOverlay">
   <div class="modal" style="max-width:460px">
-    <h3>→ Send to Sprint</h3>
+    <h3>→ Send to Software</h3>
     <p class="mt" id="push-task-title" style="font-size:14px;font-weight:600;margin-bottom:4px"></p>
     <p id="push-task-meta" style="font-size:12px;color:var(--muted);margin:0 0 14px"></p>
     <label style="display:block;margin-bottom:6px">Product <span style="color:var(--muted);font-weight:400">(optional)</span></label>
@@ -989,7 +991,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     <div class="err" id="push-err" style="display:none"></div>
     <div class="modal-actions">
       <button class="btn ghost" onclick="closePushOverlay()">Cancel</button>
-      <button class="btn" onclick="doPushToSprint()">Add to sprint →</button>
+      <button class="btn" onclick="doPushToSprint()">Add to Software →</button>
     </div>
   </div>
 </div>
@@ -1506,7 +1508,7 @@ function renderPlanResult(){
   var r=SP_PLAN_RESULT;if(!r)return;
   var secMeta={product:{label:'Product',cls:'plan-sec-product'},architecture:{label:'Systems',cls:'plan-sec-architecture'},team:{label:'Team',cls:'plan-sec-team'}};
   var body=document.getElementById('plan-body');
-  var html='<div style="margin-bottom:16px"><div style="font-size:16px;font-weight:700;margin-bottom:6px">'+esc(r.title||'Sprint')+'</div>';
+  var html='<div style="margin-bottom:16px"><div style="font-size:16px;font-weight:700;margin-bottom:6px">'+esc(r.title||'Software')+'</div>';
   if(r.goal)html+='<p style="font-size:13px;color:var(--muted);margin:0">'+esc(r.goal)+'</p></div>';
   if(r.tasks&&r.tasks.length){
     html+='<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">'+r.tasks.length+' tasks to add</div>';
@@ -1533,7 +1535,7 @@ function approveSprintPlan(){
   });
   Promise.all(proms).then(function(results){
     results.forEach(function(d){if(d.ok&&d.item)SP_DATA.items.push(d.item);});
-    renderSprint();closePlanOverlay();toast('Sprint items added!');
+    renderSprint();closePlanOverlay();toast('Software items added!');
   }).catch(function(){btn.disabled=false;btn.textContent='Retry';});
 }
 
