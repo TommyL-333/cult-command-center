@@ -658,13 +658,13 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
         </div>
       </div>
       <div id="vq-footage-upload" style="display:none">
-        <label for="vq-file-input" class="vq-drop-zone" id="vq-drop-zone" style="display:flex;cursor:pointer" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="vqHandleDrop(event)">
-          <span style="font-size:22px">📁</span><br>
-          <span style="font-weight:700">Tap to add a video</span><br>
-          <span style="font-size:11px;color:var(--muted)">Under 100MB only — use Drive link for larger files</span>
+        <div id="vq-file-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+        <label for="vq-file-input" class="vq-drop-zone" id="vq-drop-zone" style="display:flex;cursor:pointer;padding:16px" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="vqHandleDrop(event)">
+          <span style="font-size:20px">＋</span>
+          <span style="font-weight:700;margin-left:8px" id="vq-add-label">Add a clip</span>
         </label>
-        <div id="vq-file-list" style="margin-top:8px;display:flex;flex-direction:column;gap:6px"></div>
-        <input type="file" id="vq-file-input" accept="video/*,.mp4,.mov,.avi,.mkv,.m4v,.webm,.flv,.wmv" multiple style="display:none" onchange="vqHandleFiles(this.files)"/>
+        <input type="file" id="vq-file-input" accept="video/*" style="display:none" onchange="vqHandleFiles(this.files)"/>
+        <p style="font-size:11px;color:var(--muted);margin-top:6px;text-align:center">Tap to add one clip at a time — all upload in parallel, submit once</p>
       </div>
     </div></div>
     <div class="fr full"><div class="fg"><label>Notes <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
