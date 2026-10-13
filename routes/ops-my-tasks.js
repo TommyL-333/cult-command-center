@@ -2336,7 +2336,7 @@ function doBlock(){
   }).catch(function(e){document.getElementById('modalErr').style.display='block';document.getElementById('modalErr').textContent=''+e;btn.disabled=false;btn.textContent='Mark blocked';});
 }
 function doConfirm(){if(MODE==='assign'){doReassign();}else if(MODE==='block'){doBlock();}else{doComplete();}}
-function toast(msg){var t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(function(){t.style.display='none';},2600);}
+function toast(msg,dur){var t=document.getElementById('toast');t.textContent=msg;t.style.display='block';setTimeout(function(){t.style.display='none';},(dur||3500));}
 
 /* delete modal */
 function openDelModal(id){
@@ -2607,11 +2607,11 @@ function vqAddFile(file){
     try{
       var d=JSON.parse(xhr.responseText);
       if(d.url){entry.url=d.url;entry.status='done';}
-      else{entry.status='error';entry.error=d.error||'Upload failed';}
-    }catch(e2){entry.status='error';entry.error='Upload failed';}
+      else{entry.status='error';entry.error=d.error||'Upload failed (status '+xhr.status+')';toast(file.name+' failed: '+(d.error||'Upload error'),6000);}
+    }catch(e2){entry.status='error';entry.error='Upload failed ('+xhr.status+')';toast(file.name+' failed to upload ('+xhr.status+')',6000);}
     vqRenderFileList();
   };
-  xhr.onerror=function(){entry.status='error';entry.error='Network error';vqRenderFileList();};
+  xhr.onerror=function(){entry.status='error';entry.error='Network error';toast(file.name+' — network error',6000);vqRenderFileList();};
   xhr.send(fd);
 }
 
@@ -2772,9 +2772,14 @@ function submitVideoRequest(){
   var btn=document.querySelector('#vq-submit-form .btn');
   var uploading=VQ_QUEUED_FILES.filter(function(f){return f.status==='uploading';});
   var doneFiles=VQ_QUEUED_FILES.filter(function(f){return f.status==='done';});
+  var errFiles=VQ_QUEUED_FILES.filter(function(f){return f.status==='error';});
   var pastedUrl=(document.getElementById('vq-drive').value||'').trim();
-  if(uploading.length){toast('Still uploading — please wait');return;}
-  if(!doneFiles.length&&!pastedUrl){toast('Add at least one video first');return;}
+  if(uploading.length){toast('Still uploading — please wait a moment',5000);return;}
+  if(!doneFiles.length&&!pastedUrl){
+    if(errFiles.length){toast('Upload failed — check your connection and try again',6000);}
+    else{toast('Add at least one video first',5000);}
+    return;
+  }
   var desc=(document.getElementById('vq-desc').value||'').trim();
   var requests=doneFiles.length
     ?doneFiles.map(function(f){return {title:f.name,description:desc,driveUrl:f.url,priority:'normal'};})
@@ -2783,7 +2788,7 @@ function submitVideoRequest(){
   if(btn){btn.disabled=true;btn.textContent='Submitting…';}
   function done(err){
     if(btn){btn.disabled=false;btn.textContent='Submit';}
-    if(err){toast('Error: '+err);return;}
+    if(err){toast('Error: '+err,8000);return;}
     document.getElementById('vq-desc').value='';
     document.getElementById('vq-drive').value='';
     vqClearUpload();
