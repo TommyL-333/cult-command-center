@@ -657,8 +657,13 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   <!-- VIDEOS SECTION -->
   <div id="vp-section-videos">
   <div class="vq-submit" id="vq-submit-form" style="display:none">
-    <h3 style="margin-bottom:14px">New Video</h3>
+    <h3 style="margin-bottom:14px">Submit New Footage</h3>
     <div class="fr full"><div class="fg">
+      <label>How many videos in this batch?</label>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px" id="vq-qty-row">
+        ${[1,2,3,4,5,6,7,8,9,10].map(n=>`<button type="button" class="vq-plat-chip${n===1?' on':''}" onclick="vqPickQty(${n})" id="vqqty-${n}">${n}</button>`).join('')}
+      </div>
+      <input type="hidden" id="vq-qty" value="1"/>
       <label>Footage</label>
       <div class="vq-footage-tabs">
         <button type="button" class="vq-ftab active" id="vq-ftab-link" onclick="vqFootageTab('link')">Paste Drive Link</button>
@@ -2532,7 +2537,8 @@ function vqCardHtml(r){
       +'<button class="vq-btn" onclick="document.getElementById(\\'vqdraft-form-'+id+'\\').style.display=\\'none\\'">Cancel</button></div>'
       +'</div>';
     var uploadDraftBtn=(VQ_IS_EDITOR||VQ_IS_ADMIN)?'<button class="vq-btn vq-primary" onclick="document.getElementById(\\'vqdraft-form-'+id+'\\').style.display=document.getElementById(\\'vqdraft-form-'+id+'\\').style.display===\\'none\\'?\\'\\':\\'none\\'">📤 Upload Draft</button>':'';
-    body=notesHtml+editNotesBtn+'<div class="vq-actions" style="margin-top:8px">'+driveBtn+uploadDraftBtn+'</div>'+draftForm;
+    var resetBtn=VQ_IS_ADMIN?'<button class="vq-btn" style="color:var(--muted);font-size:10px" onclick="vqMoveStatus(\\''+id+'\\',\\'pending\\')">↩ Reset</button>':'';
+    body=notesHtml+editNotesBtn+'<div class="vq-actions" style="margin-top:8px">'+driveBtn+uploadDraftBtn+resetBtn+'</div>'+draftForm;
   }
 
   else if(r.status==='done'){
@@ -2676,11 +2682,22 @@ function vqApproveSchedule(id){
   if(platContainer){
     platContainer.querySelectorAll('.vq-plat-chip.on').forEach(function(el){plats.push(el.dataset.plat);});
   }
-  vqPatch(id,{
-    status:'approved',
-    caption:(cap?cap.value:'').trim(),
-    platforms:plats,
-    scheduledAt:sched&&sched.value?new Date(sched.value).toISOString():null,
+  var caption=(cap?cap.value:'').trim();
+  var scheduledAt=sched&&sched.value?new Date(sched.value).toISOString():null;
+  // First approve + save metadata, then post to Buffer
+  vqPatch(id,{status:'approved',caption:caption,platforms:plats,scheduledAt:scheduledAt},function(){
+    // Post to Buffer so it can be tracked via webhook
+    fetch('/api/video-requests/'+id+'/post-buffer',{
+      method:'POST',credentials:'include',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({caption:caption,scheduledAt:scheduledAt}),
+    })
+    .then(function(r){return r.json();})
+    .then(function(d){
+      if(d.warning)toast(d.warning,6000);
+      loadVideoQueue();
+    })
+    .catch(function(){loadVideoQueue();});
   });
 }
 
@@ -2940,6 +2957,11 @@ function vqSetStatus(msg,color){
   el.style.color=color==='red'?'#ff4d6d':color==='green'?'#6be86b':'#ffd60a';
   el.textContent=msg;
 }
+function vqPickQty(n){
+  for(var i=1;i<=10;i++){var el=document.getElementById('vqqty-'+i);if(el)el.classList.toggle('on',i===n);}
+  var inp=document.getElementById('vq-qty');if(inp)inp.value=n;
+}
+
 function submitVideoRequest(){
   vqSetStatus(null);
   var btn=document.querySelector('#vq-submit-form .btn');
@@ -2954,9 +2976,10 @@ function submitVideoRequest(){
     return;
   }
   var desc=(document.getElementById('vq-desc').value||'').trim();
+  var qty=parseInt((document.getElementById('vq-qty')||{}).value||'1',10)||1;
   var requests=doneFiles.length
-    ?doneFiles.map(function(f){return {title:f.name,description:desc,driveUrl:f.url,priority:'normal'};})
-    :[{title:'Video '+new Date().toLocaleDateString(),description:desc,driveUrl:pastedUrl,priority:'normal'}];
+    ?doneFiles.map(function(f){return {title:f.name,description:desc,driveUrl:f.url,priority:'normal',quantity:1};})
+    :[{title:'Footage '+new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}),description:desc,driveUrl:pastedUrl,priority:'normal',quantity:qty}];
   var total=requests.length;
   if(btn){btn.disabled=true;btn.textContent='Submitting…';}
   function done(err){
@@ -6605,7 +6628,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
         'becca@cultcontent.cc':'Becca', 'jenna@cultcontent.cc':'Jenna',
         'gourab@cultcontent.cc':'Gourab', 'tommy@cultcontent.cc':'Tommy',
         'claude@cultcontent.cc':'Claude' };
-      const { brand, title, description, script, driveUrl, priority, dueDate } = req.body || {};
+      const { brand, title, description, script, driveUrl, priority, dueDate, quantity } = req.body || {};
       if (!title || !title.trim()) return res.status(400).json({ error: 'Title is required' });
       const all = readJsonFile(VR_FILE, []);
       const id = 'vr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
@@ -6615,6 +6638,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
         title: title.trim(), description: (description || '').trim(),
         script: (script || '').trim(), driveUrl: (driveUrl || '').trim(),
         priority: priority || 'normal', dueDate: dueDate || '', status: 'pending',
+        quantity: Math.min(Math.max(parseInt(quantity, 10) || 1, 1), 10),
       });
       writeJsonFile(VR_FILE, all);
       res.json({ ok: true, id });
@@ -6636,7 +6660,6 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       if (!isAdmin && !isEditor && r.submittedBy !== email)
         return res.status(403).json({ error: 'Not allowed' });
       const { status, notes, draftUrl, caption, platforms, scheduledAt, postedLinks } = req.body || {};
-      if (status) r.status = status;
       if (notes !== undefined) r.notes = notes;
       if (draftUrl !== undefined) r.draftUrl = draftUrl;
       if (caption !== undefined) r.caption = caption;
@@ -6644,7 +6667,28 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       if (scheduledAt !== undefined) r.scheduledAt = scheduledAt ? new Date(scheduledAt).getTime() : null;
       if (postedLinks !== undefined) r.postedLinks = postedLinks;
       r.updatedAt = Date.now();
-      all[idx] = r;
+
+      // When editor starts editing a multi-video batch, expand into N cards
+      if (status === 'in-progress' && r.status === 'pending' && (r.quantity || 1) > 1) {
+        const qty = Math.min(r.quantity, 10);
+        const dateLabel = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        r.status = 'in-progress';
+        r.title = `Video 1 — ${dateLabel}`;
+        r.expandedAt = Date.now();
+        all[idx] = r;
+        for (let n = 2; n <= qty; n++) {
+          const copy = Object.assign({}, r, {
+            id: 'vr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7) + n,
+            title: `Video ${n} — ${dateLabel}`,
+            submittedAt: r.submittedAt,
+            status: 'in-progress',
+          });
+          all.push(copy);
+        }
+      } else {
+        if (status) r.status = status;
+        all[idx] = r;
+      }
       writeJsonFile(VR_FILE, all);
       res.json({ ok: true });
     } catch (e) { res.status(500).json({ error: e.message }); }
@@ -6957,6 +7001,52 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       writeJsonFile(VR_FILE, all);
       res.json({ ok: true });
     } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  // ---------- ROUTE: POST /api/buffer-webhook ----------
+  // Buffer fires this when a post is sent. Matches by bufferId stored on
+  // the video request, marks it posted, and stores the live post URL.
+  app.post('/api/buffer-webhook', jsonBody, (req, res) => {
+    try {
+      const body = req.body || {};
+      // Buffer sends { updates: [{ id, service, service_update_id, status, statistics }] }
+      // or { update: { id, service, ... } } depending on webhook version
+      const updates = body.updates || (body.update ? [body.update] : []);
+      if (!updates.length) return res.json({ ok: true, note: 'no updates in payload' });
+
+      const all = readJsonFile(VR_FILE, []);
+      let changed = false;
+
+      for (const u of updates) {
+        if (u.status !== 'sent') continue;  // only care about published posts
+        const bufId = u.id;
+        const idx = all.findIndex(r =>
+          r.bufferId === bufId ||
+          (Array.isArray(r.bufferIds) && r.bufferIds.includes(bufId))
+        );
+        if (idx < 0) continue;
+        const r = all[idx];
+        const postUrl = u.service_link || u.statistics?.reach_url || null;
+        const platform = u.service || 'unknown';
+        if (r.status !== 'posted') {
+          r.status = 'posted';
+          r.postedAt = Date.now();
+        }
+        r.postedLinks = r.postedLinks || [];
+        if (postUrl && !r.postedLinks.find(l => l.url === postUrl)) {
+          r.postedLinks.push({ platform, url: postUrl });
+        }
+        r.updatedAt = Date.now();
+        all[idx] = r;
+        changed = true;
+      }
+
+      if (changed) writeJsonFile(VR_FILE, all);
+      res.json({ ok: true });
+    } catch (e) {
+      console.error('[buffer-webhook]', e.message);
+      res.status(500).json({ error: e.message });
+    }
   });
 
   // ---------- ROUTE: DELETE /api/video-requests/:id ----------
