@@ -493,8 +493,9 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .vq-footage-tabs{display:flex;gap:6px;margin-bottom:8px}
   .vq-ftab{font-size:11px;font-weight:700;padding:4px 12px;border-radius:6px;cursor:pointer;border:1px solid var(--border);background:none;color:var(--muted);font-family:inherit;transition:.1s}
   .vq-ftab.active{background:var(--cyan);color:var(--dark);border-color:var(--cyan)}
-  .vq-drop-zone{border:2px dashed var(--border);border-radius:10px;padding:24px 16px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;min-height:90px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:13px}
-  .vq-drop-zone:hover,.vq-drop-zone.drag{border-color:var(--cyan);background:rgba(0,242,234,.05)}
+  .vq-drop-zone{border:2px dashed var(--border);border-radius:10px;padding:24px 16px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;min-height:90px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:13px;user-select:none;-webkit-user-select:none}
+  label.vq-drop-zone{display:flex}
+  .vq-drop-zone:hover,.vq-drop-zone.drag,.vq-drop-zone:active{border-color:var(--cyan);background:rgba(0,242,234,.05)}
   /* buffer modal */
   .vq-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9000;display:flex;align-items:center;justify-content:center}
   .vq-modal{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:24px;width:min(420px,92vw);max-height:85vh;overflow-y:auto}
@@ -651,13 +652,13 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
         <button type="button" class="vq-ftab" id="vq-ftab-link" onclick="vqFootageTab('link')">Paste Drive Link</button>
       </div>
       <div id="vq-footage-upload">
-        <div class="vq-drop-zone" id="vq-drop-zone" onclick="document.getElementById('vq-file-input').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="vqHandleDrop(event)">
+        <label for="vq-file-input" class="vq-drop-zone" id="vq-drop-zone" style="display:block;cursor:pointer" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="vqHandleDrop(event)">
           <span style="font-size:22px">📁</span><br>
-          <span style="font-weight:700">Tap or drop to add videos</span><br>
-          <span style="font-size:11px;color:var(--muted)">MP4, MOV, AVI — select multiple at once</span>
-        </div>
+          <span style="font-weight:700">Tap to add videos</span><br>
+          <span style="font-size:11px;color:var(--muted)">MP4, MOV — select multiple at once</span>
+        </label>
         <div id="vq-file-list" style="margin-top:8px;display:flex;flex-direction:column;gap:6px"></div>
-        <input type="file" id="vq-file-input" accept="video/*,.mp4,.mov,.avi,.mkv,.m4v,.webm,.flv,.wmv,.m4a,.mp3,.aac,.wav" multiple style="display:none" onchange="vqHandleFiles(this.files);this.value=''"/>
+        <input type="file" id="vq-file-input" accept="video/*,.mp4,.mov,.avi,.mkv,.m4v,.webm,.flv,.wmv" multiple style="display:none" onchange="vqHandleFiles(this.files)"/>
       </div>
       <div id="vq-footage-link" style="display:none">
         <input type="url" id="vq-drive" placeholder="https://drive.google.com/drive/folders/…"/>
