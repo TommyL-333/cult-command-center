@@ -445,9 +445,8 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   @media(max-width:700px){.vq-list-hdr,.vq-row-summary{grid-template-columns:10px 90px 1fr 70px}.vq-row-summary>:nth-child(5),.vq-row-summary>:nth-child(6),.vq-list-hdr>:nth-child(5),.vq-list-hdr>:nth-child(6){display:none}}
   /* 1000-video tracker */
   .vp-tracker{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:20px 22px;margin-bottom:20px}
-  .vp-tracker-header{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:16px}
-  .vp-tracker-title{font-size:20px;font-weight:800;letter-spacing:-.02em;color:var(--txt)}
-  .vp-stat-goal{font-size:13px;font-weight:700;color:var(--muted)}
+  .vp-tracker-header{text-align:center;margin-bottom:16px}
+  .vp-tracker-title{font-size:32px;font-weight:900;letter-spacing:-.03em;background:linear-gradient(90deg,#00f2ea,#f59e0b,#ff0050,#3b82f6,#a78bfa);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;display:inline-block}
   .vp-tracker-bar-wrap{height:10px;background:rgba(255,255,255,.07);border-radius:6px;overflow:hidden;margin-bottom:14px;display:flex}
   .vp-bar-seg{height:100%;transition:width .4s ease;min-width:0}
   .vp-bar-submitted{background:#00f2ea}
@@ -636,7 +635,6 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   <div class="vp-tracker" id="vp-tracker">
     <div class="vp-tracker-header">
       <div class="vp-tracker-title">1,000 Video Challenge</div>
-      <div class="vp-stat-goal" id="vp-goal-line">0/1,000</div>
     </div>
     <div class="vp-tracker-bar-wrap">
       <div class="vp-bar-seg vp-bar-submitted" id="vp-bar-submitted" style="width:0%"></div>
@@ -2467,7 +2465,6 @@ function vqUpdateTracker(){
   document.getElementById('vp-cnt-review').textContent=review;
   document.getElementById('vp-cnt-scheduled-tracker').textContent=scheduled;
   document.getElementById('vp-cnt-posted').textContent=posted;
-  document.getElementById('vp-goal-line').textContent=posted+'/1,000';
   var total=submitted+editing+review+scheduled+posted;
   var scale=total>goal?total:goal;
   document.getElementById('vp-bar-submitted').style.width=((submitted/scale)*100)+'%';
