@@ -2531,7 +2531,7 @@ function vqCardHtml(r){
       +'<div style="display:flex;gap:6px"><button class="vq-btn vq-done" onclick="vqSubmitDraft(\\''+id+'\\')">Submit Draft</button>'
       +'<button class="vq-btn" onclick="document.getElementById(\\'vqdraft-form-'+id+'\\').style.display=\\'none\\'">Cancel</button></div>'
       +'</div>';
-    var uploadDraftBtn=(VQ_IS_EDITOR||VQ_IS_ADMIN)?'<button class="vq-btn vq-primary" onclick="document.getElementById(\\'vqdraft-form-'+id+'\\').style.display=document.getElementById(\\'vqdraft-form-'+id+'\\').style.display===\\'none\\'?\\'\\':\'none\'">📤 Upload Draft</button>':'';
+    var uploadDraftBtn=(VQ_IS_EDITOR||VQ_IS_ADMIN)?'<button class="vq-btn vq-primary" onclick="document.getElementById(\\'vqdraft-form-'+id+'\\').style.display=document.getElementById(\\'vqdraft-form-'+id+'\\').style.display===\\'none\\'?\\'\\':\\'none\\'">📤 Upload Draft</button>':'';
     body=notesHtml+editNotesBtn+'<div class="vq-actions" style="margin-top:8px">'+driveBtn+uploadDraftBtn+'</div>'+draftForm;
   }
 
@@ -2584,7 +2584,7 @@ function vqCardHtml(r){
       +'<div style="display:flex;gap:6px"><button class="vq-btn vq-done" onclick="vqAddPostedLink(\\''+id+'\\')">Save Link</button>'
       +'<button class="vq-btn" onclick="document.getElementById(\\'vqlink-form-'+id+'\\').style.display=\\'none\\'">Cancel</button></div>'
       +'</div>';
-    var addLinkBtn=VQ_IS_ADMIN?'<button class="vq-btn" onclick="document.getElementById(\\'vqlink-form-'+id+'\\').style.display=document.getElementById(\\'vqlink-form-'+id+'\\').style.display===\\'none\\'?\\'\\':\'none\'">+ Link</button>':'';
+    var addLinkBtn=VQ_IS_ADMIN?'<button class="vq-btn" onclick="document.getElementById(\\'vqlink-form-'+id+'\\').style.display=document.getElementById(\\'vqlink-form-'+id+'\\').style.display===\\'none\\'?\\'\\':\\'none\\'">+ Link</button>':'';
     body=linksHtml+'<div class="vq-actions" style="margin-top:6px">'+addLinkBtn+deleteBtn+'</div>'+addLinkForm;
   }
 
