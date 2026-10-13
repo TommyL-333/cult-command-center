@@ -414,7 +414,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .vq-actions{display:flex;gap:7px;flex-wrap:wrap}
   .vq-btn{font-size:11px;font-weight:600;padding:4px 10px;border-radius:6px;cursor:pointer;border:1px solid var(--border);background:none;color:var(--muted);font-family:inherit;transition:.1s}
   .vq-btn:hover{border-color:var(--cyan);color:var(--cyan)}
-  .vq-btn.vq-primary{background:var(--cyan);color:var(--dark);border-color:var(--cyan)}
+  .vq-btn.vq-primary{background:var(--cyan);color:#000;border-color:var(--cyan)}
   .vq-btn.vq-done{background:rgba(107,232,107,.15);color:#6be86b;border-color:rgba(107,232,107,.3)}
   .vq-btn.vq-drive{background:rgba(0,242,234,.1);color:var(--cyan);border-color:rgba(0,242,234,.3)}
   .vq-empty{color:var(--muted);font-size:12px;padding:20px 0;text-align:center}
@@ -487,7 +487,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   /* section tabs (Videos / Podcast) */
   .vp-section-tabs{display:flex;gap:6px;margin-bottom:18px}
   .vp-stab{font-size:12px;font-weight:700;padding:6px 16px;border-radius:8px;cursor:pointer;border:1px solid var(--border);background:none;color:var(--muted);font-family:inherit;transition:.1s;display:flex;align-items:center;gap:6px}
-  .vp-stab.active{background:var(--cyan);color:var(--dark);border-color:var(--cyan)}
+  .vp-stab.active{background:var(--cyan);color:#000;border-color:var(--cyan)}
   .vp-stab-badge{background:var(--red);color:#fff;border-radius:8px;font-size:10px;padding:1px 6px;font-weight:800}
   /* podcast cards */
   .vp-pod-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:10px;transition:.15s}
@@ -509,7 +509,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   /* footage upload */
   .vq-footage-tabs{display:flex;gap:6px;margin-bottom:8px}
   .vq-ftab{font-size:11px;font-weight:700;padding:4px 12px;border-radius:6px;cursor:pointer;border:1px solid var(--border);background:none;color:var(--muted);font-family:inherit;transition:.1s}
-  .vq-ftab.active{background:var(--cyan);color:var(--dark);border-color:var(--cyan)}
+  .vq-ftab.active{background:var(--cyan);color:#000;border-color:var(--cyan)}
   .vq-drop-zone{border:2px dashed var(--border);border-radius:10px;padding:24px 16px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;min-height:90px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:13px;user-select:none;-webkit-user-select:none}
   label.vq-drop-zone{display:flex}
   .vq-drop-zone:hover,.vq-drop-zone.drag,.vq-drop-zone:active{border-color:var(--cyan);background:rgba(0,242,234,.05)}
@@ -652,7 +652,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   <!-- Section tabs: Videos | Podcast -->
   <div class="vp-section-tabs" id="vp-section-tabs">
     <button class="vp-stab active" id="vp-stab-videos" onclick="vpSwitchSection('videos')">Videos</button>
-    <button class="vp-stab" id="vp-stab-podcast" onclick="vpSwitchSection('podcast')">Podcast Applications <span class="vp-stab-badge" id="vp-podcast-badge" style="display:none">0</span></button>
+    <button class="vp-stab" id="vp-stab-podcast" onclick="vpSwitchSection('podcast')">Podcast Management <span class="vp-stab-badge" id="vp-podcast-badge" style="display:none">0</span></button>
   </div>
 
   <!-- VIDEOS SECTION -->
@@ -762,20 +762,20 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
 
   <!-- PODCAST SECTION -->
   <div id="vp-section-podcast" style="display:none">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-      <div>
-        <div style="font-size:14px;font-weight:700">Cult Commerce Podcast — Guest Applications</div>
-        <div style="font-size:12px;color:var(--muted);margin-top:3px">New applications from <a href="https://cultcontent.cc/cult-commerce-podcast" target="_blank" style="color:var(--cyan)">cultcontent.cc/cult-commerce-podcast</a></div>
+    <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:16px">
+      <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px">
+        <div style="font-size:18px;font-weight:800;letter-spacing:-.02em">Podcast Management</div>
+        <div style="font-size:11px;color:var(--muted)"><a href="https://cultcontent.cc/cult-commerce-podcast" target="_blank" style="color:var(--cyan)">cultcontent.cc/cult-commerce-podcast</a></div>
       </div>
+      <div id="vp-podcast-tabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
+        <button class="vq-ftab active" id="vp-ptab-pending" onclick="vpPodcastFilter('pending')">Pending</button>
+        <button class="vq-ftab" id="vp-ptab-approved" onclick="vpPodcastFilter('approved')">Approved</button>
+        <button class="vq-ftab" id="vp-ptab-scheduled" onclick="vpPodcastFilter('scheduled')">Scheduled</button>
+        <button class="vq-ftab" id="vp-ptab-recorded" onclick="vpPodcastFilter('recorded')">Recorded</button>
+        <button class="vq-ftab" id="vp-ptab-all" onclick="vpPodcastFilter('all')">All</button>
+      </div>
+      <div id="vp-podcast-list"><div class="vq-empty">Loading applications…</div></div>
     </div>
-    <div id="vp-podcast-tabs" style="display:flex;gap:6px;margin-bottom:14px">
-      <button class="vq-ftab active" id="vp-ptab-pending" onclick="vpPodcastFilter('pending')">Pending</button>
-      <button class="vq-ftab" id="vp-ptab-approved" onclick="vpPodcastFilter('approved')">Approved</button>
-      <button class="vq-ftab" id="vp-ptab-scheduled" onclick="vpPodcastFilter('scheduled')">Scheduled</button>
-      <button class="vq-ftab" id="vp-ptab-recorded" onclick="vpPodcastFilter('recorded')">Recorded</button>
-      <button class="vq-ftab" id="vp-ptab-all" onclick="vpPodcastFilter('all')">All</button>
-    </div>
-    <div id="vp-podcast-list"><div class="vq-empty">Loading applications…</div></div>
   </div>
 
   <!-- Podcast schedule modal -->
@@ -2883,8 +2883,8 @@ function vpPodCardHtml(a){
     if(a.riversideUrl)actions+='<a href="'+esc(a.riversideUrl)+'" target="_blank" class="vq-btn vq-drive">🎙 Open Riverside</a>';
   }
   if(a.status==='recorded'){
-    actions='<button class="vq-btn" style="background:rgba(0,242,234,.12);color:var(--cyan);border-color:rgba(0,242,234,.3)" onclick="vpProcessEpisode(\\''+id+'\\')">🎬 Process Episode</button>'
-           +'<button class="vq-btn vq-primary" onclick="vpSetPodStatus(\\''+id+'\\',\\'done\\')">→ Send to Gilbert</button>';
+    actions='<button class="vq-btn vq-primary" onclick="vpEditScheduleEpisode(\\''+id+'\\')">✂️ Edit &amp; Schedule</button>'
+           +'<button class="vq-btn" style="background:rgba(0,242,234,.12);color:var(--cyan);border-color:rgba(0,242,234,.3)" onclick="vpProcessEpisode(\\''+id+'\\')">🎬 Process Episode</button>';
   }
   if(a.status==='processing'){
     actions='<div style="font-size:11px;color:var(--cyan);padding:4px 0">⏳ Claude is processing this episode…</div>';
@@ -2913,6 +2913,17 @@ function vpPodCardHtml(a){
 function vpApprovePod(id){vpSetPodStatus(id,'approved');}
 function vpRejectPod(id){if(confirm('Decline this application?'))vpSetPodStatus(id,'rejected');}
 function vpMarkRecorded(id){vpSetPodStatus(id,'recorded');}
+function vpEditScheduleEpisode(id){
+  // Open the schedule modal to set the clip release date / notes for Gilbert
+  _vpSchedId=id;
+  document.getElementById('vp-sched-err').style.display='none';
+  // Prefill datetime if already set
+  var a=VPP_DATA.find(function(x){return x.id===id;});
+  document.getElementById('vp-sched-dt').value=a&&a.scheduledAt?new Date(a.scheduledAt).toISOString().slice(0,16):'';
+  document.getElementById('vp-sched-riverside').value=a&&a.riversideUrl?a.riversideUrl:'';
+  document.getElementById('vp-sched-notes').value=a&&a.notes?a.notes:'';
+  document.getElementById('vp-schedule-modal').style.display='flex';
+}
 function vpProcessEpisode(id){
   if(!confirm('Queue this episode for automated post-production?\\n\\nClaude will:\\n• Find the Riverside recording\\n• Remove fillers, pauses, clean audio\\n• Apply brand, captions, color\\n• Export full episode to Riverside Hosting\\n• Extract 3–5 short clips → Video Queue'))return;
   fetch('/api/podcast-applications/'+id+'/process-episode',{method:'POST',credentials:'include'})
