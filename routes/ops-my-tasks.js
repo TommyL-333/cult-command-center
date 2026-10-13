@@ -648,20 +648,23 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     <div class="fr full"><div class="fg">
       <label>Footage</label>
       <div class="vq-footage-tabs">
-        <button type="button" class="vq-ftab active" id="vq-ftab-upload" onclick="vqFootageTab('upload')">Upload File</button>
-        <button type="button" class="vq-ftab" id="vq-ftab-link" onclick="vqFootageTab('link')">Paste Drive Link</button>
+        <button type="button" class="vq-ftab active" id="vq-ftab-link" onclick="vqFootageTab('link')">Paste Drive Link</button>
+        <button type="button" class="vq-ftab" id="vq-ftab-upload" onclick="vqFootageTab('upload')">Upload File <span style="font-size:10px;opacity:.6">&lt;100MB</span></button>
       </div>
-      <div id="vq-footage-upload">
-        <label for="vq-file-input" class="vq-drop-zone" id="vq-drop-zone" style="display:block;cursor:pointer" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="vqHandleDrop(event)">
+      <div id="vq-footage-link">
+        <input type="url" id="vq-drive" placeholder="https://drive.google.com/…"/>
+        <div style="margin-top:8px;padding:10px 12px;background:rgba(0,242,234,.05);border:1px solid rgba(0,242,234,.12);border-radius:8px;font-size:12px;color:var(--muted);line-height:1.6">
+          📱 <strong style="color:var(--txt)">From iPhone:</strong> Open the Photos app → share the clip → Save to Files → Google Drive, then copy the sharing link. Or use the Google Drive app to upload directly, then paste the link here.
+        </div>
+      </div>
+      <div id="vq-footage-upload" style="display:none">
+        <label for="vq-file-input" class="vq-drop-zone" id="vq-drop-zone" style="display:flex;cursor:pointer" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="vqHandleDrop(event)">
           <span style="font-size:22px">📁</span><br>
-          <span style="font-weight:700">Tap to add videos</span><br>
-          <span style="font-size:11px;color:var(--muted)">MP4, MOV — select multiple at once</span>
+          <span style="font-weight:700">Tap to add a video</span><br>
+          <span style="font-size:11px;color:var(--muted)">Under 100MB only — use Drive link for larger files</span>
         </label>
         <div id="vq-file-list" style="margin-top:8px;display:flex;flex-direction:column;gap:6px"></div>
         <input type="file" id="vq-file-input" accept="video/*,.mp4,.mov,.avi,.mkv,.m4v,.webm,.flv,.wmv" multiple style="display:none" onchange="vqHandleFiles(this.files)"/>
-      </div>
-      <div id="vq-footage-link" style="display:none">
-        <input type="url" id="vq-drive" placeholder="https://drive.google.com/drive/folders/…"/>
       </div>
     </div></div>
     <div class="fr full"><div class="fg"><label>Notes <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
