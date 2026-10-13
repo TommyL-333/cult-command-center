@@ -651,36 +651,24 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
         <button type="button" class="vq-ftab" id="vq-ftab-link" onclick="vqFootageTab('link')">Paste Drive Link</button>
       </div>
       <div id="vq-footage-upload">
-        <div class="vq-drop-zone" id="vq-drop-zone" onclick="document.getElementById(\\'vq-file-input\\').click()" ondragover="event.preventDefault();this.classList.add(\\'drag\\')" ondragleave="this.classList.remove(\\'drag\\')" ondrop="vqHandleDrop(event)">
-          <div id="vq-drop-text">
-            <span style="font-size:22px">📁</span><br>
-            <span style="font-weight:700">Drop video or click to upload</span><br>
-            <span style="font-size:11px;color:var(--muted)">MP4, MOV, AVI, podcast clips — up to 4 GB</span>
-          </div>
-          <div id="vq-upload-progress" style="display:none;margin-top:10px">
-            <div style="font-size:12px;font-weight:600;margin-bottom:6px" id="vq-upload-label">Uploading…</div>
-            <div style="height:6px;background:rgba(255,255,255,.1);border-radius:3px;overflow:hidden">
-              <div id="vq-upload-bar" style="height:100%;background:var(--cyan);border-radius:3px;width:0%;transition:width .2s"></div>
-            </div>
-          </div>
-          <div id="vq-upload-done" style="display:none;margin-top:10px">
-            <span style="color:#6be86b;font-size:13px;font-weight:700" id="vq-upload-name"></span>
-            <button type="button" class="vq-btn" style="margin-left:8px;font-size:10px" onclick="event.stopPropagation();vqClearUpload()">✕ Remove</button>
-          </div>
+        <div class="vq-drop-zone" id="vq-drop-zone" onclick="document.getElementById('vq-file-input').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="vqHandleDrop(event)">
+          <span style="font-size:22px">📁</span><br>
+          <span style="font-weight:700">Tap or drop to add videos</span><br>
+          <span style="font-size:11px;color:var(--muted)">MP4, MOV, AVI — select multiple at once</span>
         </div>
-        <input type="file" id="vq-file-input" accept="video/*,.mp4,.mov,.avi,.mkv,.m4v,.webm,.flv,.wmv,.m4a,.mp3,.aac,.wav" style="display:none" onchange="vqUploadFootage(this.files[0])"/>
+        <div id="vq-file-list" style="margin-top:8px;display:flex;flex-direction:column;gap:6px"></div>
+        <input type="file" id="vq-file-input" accept="video/*,.mp4,.mov,.avi,.mkv,.m4v,.webm,.flv,.wmv,.m4a,.mp3,.aac,.wav" multiple style="display:none" onchange="vqHandleFiles(this.files);this.value=''"/>
       </div>
       <div id="vq-footage-link" style="display:none">
         <input type="url" id="vq-drive" placeholder="https://drive.google.com/drive/folders/…"/>
       </div>
-      <input type="hidden" id="vq-footage-url"/>
     </div></div>
     <div class="fr full"><div class="fg"><label>Notes <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
       <textarea id="vq-desc" style="min-height:55px" placeholder="Any direction for the editor — hook ideas, vibe, must-include moments…"></textarea>
     </div></div>
     <div class="err" id="vq-err" style="margin-top:8px"></div>
     <div style="display:flex;justify-content:flex-end;margin-top:14px">
-      <button class="btn" onclick="submitVideoRequest()">Submit Video</button>
+      <button class="btn" onclick="submitVideoRequest()">Submit</button>
     </div>
   </div>
 
@@ -2587,62 +2575,74 @@ function vqFootageTab(mode){
   document.getElementById('vq-ftab-link').classList.toggle('active',!isUpload);
 }
 
+var VQ_QUEUED_FILES=[];
+var _vqFileId=0;
+
 function vqHandleDrop(e){
   e.preventDefault();
   document.getElementById('vq-drop-zone').classList.remove('drag');
-  var file=e.dataTransfer.files&&e.dataTransfer.files[0];
-  if(file)vqUploadFootage(file);
+  Array.from(e.dataTransfer.files).forEach(function(f){vqAddFile(f);});
 }
 
-function vqClearUpload(){
-  document.getElementById('vq-footage-url').value='';
-  document.getElementById('vq-upload-done').style.display='none';
-  document.getElementById('vq-drop-text').style.display='';
-  document.getElementById('vq-file-input').value='';
+function vqHandleFiles(fileList){
+  Array.from(fileList).forEach(function(f){vqAddFile(f);});
 }
 
-function vqUploadFootage(file){
-  if(!file)return;
+function vqAddFile(file){
   var maxBytes=500*1024*1024;
-  if(file.size>maxBytes){toast('File too large — max 500 MB');return;}
-  var dropText=document.getElementById('vq-drop-text');
-  var progWrap=document.getElementById('vq-upload-progress');
-  var progBar=document.getElementById('vq-upload-bar');
-  var progLabel=document.getElementById('vq-upload-label');
-  var doneWrap=document.getElementById('vq-upload-done');
-  dropText.style.display='none';
-  doneWrap.style.display='none';
-  progWrap.style.display='';
-  progBar.style.width='0%';
-  progLabel.textContent='Uploading '+file.name+'…';
+  if(file.size>maxBytes){toast(file.name+' is too large — max 500 MB');return;}
+  var id=_vqFileId++;
+  var entry={id:id,name:file.name,url:null,pct:0,status:'uploading'};
+  VQ_QUEUED_FILES.push(entry);
+  vqRenderFileList();
   var fd=new FormData();
   fd.append('footage',file);
   var xhr=new XMLHttpRequest();
   xhr.open('POST','/api/video-requests/upload-footage');
   xhr.withCredentials=true;
   xhr.upload.onprogress=function(ev){
-    if(ev.lengthComputable){
-      var pct=Math.round((ev.loaded/ev.total)*100);
-      progBar.style.width=pct+'%';
-      progLabel.textContent='Uploading '+pct+'%…';
-    }
+    if(ev.lengthComputable){entry.pct=Math.round((ev.loaded/ev.total)*100);vqRenderFileList();}
   };
   xhr.onload=function(){
-    progWrap.style.display='none';
     try{
       var d=JSON.parse(xhr.responseText);
-      if(d.url){
-        document.getElementById('vq-footage-url').value=d.url;
-        document.getElementById('vq-upload-name').textContent=file.name;
-        doneWrap.style.display='';
-      }else{
-        dropText.style.display='';
-        toast('Upload failed: '+(d.error||'unknown error'));
-      }
-    }catch(e){dropText.style.display='';toast('Upload failed');}
+      if(d.url){entry.url=d.url;entry.status='done';}
+      else{entry.status='error';entry.error=d.error||'Upload failed';}
+    }catch(e2){entry.status='error';entry.error='Upload failed';}
+    vqRenderFileList();
   };
-  xhr.onerror=function(){progWrap.style.display='none';dropText.style.display='';toast('Upload failed — network error');};
+  xhr.onerror=function(){entry.status='error';entry.error='Network error';vqRenderFileList();};
   xhr.send(fd);
+}
+
+function vqRemoveFile(id){
+  VQ_QUEUED_FILES=VQ_QUEUED_FILES.filter(function(f){return f.id!==id;});
+  vqRenderFileList();
+}
+
+function vqRenderFileList(){
+  var el=document.getElementById('vq-file-list');
+  if(!el)return;
+  if(!VQ_QUEUED_FILES.length){el.innerHTML='';return;}
+  el.innerHTML=VQ_QUEUED_FILES.map(function(f){
+    var statusHtml=f.status==='uploading'
+      ?'<span style="color:var(--cyan);font-size:11px;white-space:nowrap">'+f.pct+'%…</span>'
+      :f.status==='done'
+      ?'<span style="color:#6be86b;font-size:11px;white-space:nowrap">✓ Ready</span>'
+      :'<span style="color:var(--red);font-size:11px;white-space:nowrap">✕ '+esc(f.error||'Error')+'</span>';
+    return '<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:rgba(255,255,255,.05);border-radius:8px;font-size:13px">'
+      +'<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+esc(f.name)+'</span>'
+      +statusHtml
+      +'<button type="button" class="vq-btn" style="font-size:10px;padding:2px 8px;flex-shrink:0" onclick="vqRemoveFile('+f.id+')">✕</button>'
+      +'</div>';
+  }).join('');
+}
+
+function vqClearUpload(){
+  VQ_QUEUED_FILES=[];
+  vqRenderFileList();
+  var inp=document.getElementById('vq-file-input');
+  if(inp)inp.value='';
 }
 
 function vpSwitchSection(sec){
@@ -2771,21 +2771,31 @@ function vpSubmitSchedule(){
 function submitVideoRequest(){
   var errEl=document.getElementById('vq-err');errEl.style.display='none';
   var desc=(document.getElementById('vq-desc').value||'').trim();
-  var uploadedUrl=(document.getElementById('vq-footage-url').value||'').trim();
   var pastedUrl=(document.getElementById('vq-drive').value||'').trim();
-  var drive=uploadedUrl||pastedUrl;
-  var title=uploadedUrl?document.getElementById('vq-upload-name').textContent||('Video '+new Date().toLocaleDateString()):'Video '+new Date().toLocaleDateString();
-  var payload={title:title,description:desc,driveUrl:drive,priority:'normal'};
-  fetch('/api/video-requests',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)})
-  .then(function(r){return r.json();}).then(function(d){
-    if(d.ok){
+  var uploading=VQ_QUEUED_FILES.filter(function(f){return f.status==='uploading';});
+  var doneFiles=VQ_QUEUED_FILES.filter(function(f){return f.status==='done';});
+  if(uploading.length){errEl.textContent='Still uploading — please wait a moment';errEl.style.display='block';return;}
+  if(!doneFiles.length&&!pastedUrl){errEl.textContent='Add at least one video or paste a Drive link';errEl.style.display='block';return;}
+  var requests=doneFiles.length
+    ?doneFiles.map(function(f){return {title:f.name,description:desc,driveUrl:f.url,priority:'normal'};})
+    :[{title:'Video '+new Date().toLocaleDateString(),description:desc,driveUrl:pastedUrl,priority:'normal'}];
+  var total=requests.length;
+  function submitNext(i){
+    if(i>=total){
       document.getElementById('vq-desc').value='';
       document.getElementById('vq-drive').value='';
       vqClearUpload();
-      toast('Video submitted!');
+      toast(total===1?'Video submitted!':total+' videos submitted!');
       loadVideoQueue();
-    } else {errEl.textContent=d.error||'Failed';errEl.style.display='block';}
-  }).catch(function(e){errEl.textContent=''+e;errEl.style.display='block';});
+      return;
+    }
+    fetch('/api/video-requests',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(requests[i])})
+    .then(function(r){return r.json();}).then(function(d){
+      if(d.ok)submitNext(i+1);
+      else{errEl.textContent=d.error||'Failed';errEl.style.display='block';}
+    }).catch(function(e){errEl.textContent=''+e;errEl.style.display='block';});
+  }
+  submitNext(0);
 }
 
 /* ── Content Studio ─────────────────────────────────────────────────── */
