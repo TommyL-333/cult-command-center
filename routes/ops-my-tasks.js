@@ -2985,11 +2985,11 @@ function doBulkDuplicate(){
   var done=0,total=ids.length;
   ids.forEach(function(rid){
     var t=ALL.find(function(x){return x.record_id===rid;});
-    if(!t){if(++done===total){toast('Done');loadAll();}return;}
+    if(!t){if(++done===total){toast('Done');load();}return;}
     var body={task:'Copy: '+(t.task||'Untitled'),status:'To Do',priority:t.priority||'🟡 Normal',ownerOpenId:t.ownerOpenId||'',clientRecordId:t.clientRecordId||'',pillar:t.pillar||''};
     fetch('/api/admin/tasks/create',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
-    .then(function(){if(++done===total){toast('✅ Duplicated '+total+' task'+(total>1?'s':''));SELECTED.clear();loadAll();}})
-    .catch(function(){if(++done===total){toast('⚠ Some duplicates may have failed');SELECTED.clear();loadAll();}});
+    .then(function(){if(++done===total){toast('✅ Duplicated '+total+' task'+(total>1?'s':''));SELECTED.clear();load();}})
+    .catch(function(){if(++done===total){toast('⚠ Some duplicates may have failed');SELECTED.clear();load();}});
   });
 }
 function doBulkDelete(){
@@ -3006,7 +3006,7 @@ function doBulkDelete(){
   });
 }
 
-loadAll();
+load();
 
 // ---------- DEV MODE ----------
 var DEV_MEMBERS=[
