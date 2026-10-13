@@ -456,9 +456,22 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .vq-dot-posted{background:#a78bfa}
   .vq-btn.vq-approve{background:rgba(245,158,11,.15);color:#f59e0b;border-color:rgba(245,158,11,.3)}
   .vq-btn.vq-post{background:rgba(167,139,250,.15);color:#a78bfa;border-color:rgba(167,139,250,.3)}
-  .vq-cols-5{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
-  @media(max-width:900px){.vq-cols-5{grid-template-columns:repeat(2,1fr)}}
-  @media(max-width:500px){.vq-cols-5{grid-template-columns:1fr}}
+  .vq-btn.vq-primary{background:var(--cyan);color:#000;border-color:var(--cyan);font-weight:800;font-size:12px}
+  .vq-btn.vq-schedule{background:rgba(245,158,11,.15);color:#f59e0b;border-color:rgba(245,158,11,.3)}
+  .vq-btn.vq-mark-posted{background:rgba(167,139,250,.15);color:#a78bfa;border-color:rgba(167,139,250,.3)}
+  .vq-dot-scheduled{background:#f59e0b}
+  .vq-cols-5{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+  @media(max-width:1100px){.vq-cols-5{grid-template-columns:repeat(3,1fr)}}
+  @media(max-width:700px){.vq-cols-5{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:420px){.vq-cols-5{grid-template-columns:1fr}}
+  .vq-inline-form{margin-top:10px;padding:10px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;display:flex;flex-direction:column;gap:8px}
+  .vq-inline-form textarea,.vq-inline-form input[type=url],.vq-inline-form input[type=datetime-local]{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:7px 10px;color:var(--txt);font-size:12px;font-family:inherit;resize:vertical}
+  .vq-inline-form .plat-row{display:flex;flex-wrap:wrap;gap:6px}
+  .vq-plat-chip{display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border:1px solid var(--border);border-radius:20px;font-size:11px;cursor:pointer;background:none;color:var(--muted);font-family:inherit;transition:.1s}
+  .vq-plat-chip.on{border-color:var(--cyan);color:var(--cyan);background:rgba(0,242,234,.08)}
+  .vq-posted-links{margin-top:8px;display:flex;flex-direction:column;gap:4px}
+  .vq-posted-link{display:flex;align-items:center;gap:6px;font-size:11px}
+  .vq-posted-link a{color:var(--cyan);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
   /* analytics panel */
   .vp-analytics{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:20px}
   .vp-analytics-title{font-size:10px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:14px}
@@ -653,7 +666,6 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
       </div>
       <div id="vq-footage-link">
         <input type="url" id="vq-drive" placeholder="https://drive.google.com/…"/>
-        <p style="font-size:11px;color:var(--muted);margin-top:6px">Make sure the file is fully uploaded to Drive before pasting — Drive links to in-progress uploads won't work.</p>
       </div>
       <div id="vq-footage-upload" style="display:none">
         <div id="vq-file-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
@@ -686,6 +698,10 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     <div>
       <div class="vq-col-hdr">For Review <span class="vq-col-count" id="vq-cnt-done">0</span></div>
       <div id="vq-col-done"></div>
+    </div>
+    <div>
+      <div class="vq-col-hdr" style="color:#f59e0b">Scheduled <span class="vq-col-count" id="vq-cnt-scheduled">0</span></div>
+      <div id="vq-col-scheduled"></div>
     </div>
     <div>
       <div class="vq-col-hdr" style="color:#a78bfa">Posted <span class="vq-col-count" id="vq-cnt-posted">0</span></div>
@@ -2413,15 +2429,18 @@ function renderVideoQueue(){
   }
   var pending=VQ_DATA.filter(function(r){return r.status==='pending';});
   var inprog=VQ_DATA.filter(function(r){return r.status==='in-progress';});
-  var done=VQ_DATA.filter(function(r){return r.status==='done'||r.status==='approved';});
+  var done=VQ_DATA.filter(function(r){return r.status==='done';});
+  var scheduled=VQ_DATA.filter(function(r){return r.status==='approved';});
   var posted=VQ_DATA.filter(function(r){return r.status==='posted';});
   document.getElementById('vq-cnt-pending').textContent=pending.length;
   document.getElementById('vq-cnt-inprogress').textContent=inprog.length;
   document.getElementById('vq-cnt-done').textContent=done.length;
+  document.getElementById('vq-cnt-scheduled').textContent=scheduled.length;
   document.getElementById('vq-cnt-posted').textContent=posted.length;
   document.getElementById('vq-col-pending').innerHTML=pending.map(vqCardHtml).join('')||'<div class="vq-empty">Nothing submitted yet</div>';
   document.getElementById('vq-col-inprogress').innerHTML=inprog.map(vqCardHtml).join('')||'<div class="vq-empty">Nothing in editing</div>';
   document.getElementById('vq-col-done').innerHTML=done.map(vqCardHtml).join('')||'<div class="vq-empty">Nothing awaiting review</div>';
+  document.getElementById('vq-col-scheduled').innerHTML=scheduled.map(vqCardHtml).join('')||'<div class="vq-empty">Nothing scheduled</div>';
   document.getElementById('vq-col-posted').innerHTML=posted.map(vqCardHtml).join('')||'<div class="vq-empty">Nothing posted yet</div>';
 }
 
@@ -2452,15 +2471,15 @@ function vqRowHtml(r){
   var id=esc(r.id||'');
   var prioClass=r.priority==='high'?'vq-prio-high':r.priority==='low'?'vq-prio-low':'vq-prio-normal';
   var prioPretty=r.priority==='high'?'🔴 High':r.priority==='low'?'Low':'Normal';
-  var dotClass=r.status==='done'||r.status==='approved'?'vq-dot-review':r.status==='in-progress'?'vq-dot-inprogress':r.status==='posted'?'vq-dot-posted':'vq-dot-pending';
-  var statusPretty=r.status==='in-progress'?'In Editing':r.status==='done'?'For Review':r.status==='approved'?'Approved':r.status==='posted'?'Posted':'Submitted';
+  var dotClass=r.status==='done'?'vq-dot-review':r.status==='approved'?'vq-dot-scheduled':r.status==='in-progress'?'vq-dot-inprogress':r.status==='posted'?'vq-dot-posted':'vq-dot-pending';
+  var statusPretty=r.status==='in-progress'?'Editing':r.status==='done'?'For Review':r.status==='approved'?'Scheduled':r.status==='posted'?'Posted':'Submitted';
   var due=r.dueDate||'—';
   var driveBtn=r.driveUrl?'<button class="vq-btn vq-drive" onclick="event.stopPropagation();vqOpenDrive(\\''+id+'\\')">📁 Open Footage</button>':'<span style="color:var(--muted);font-size:12px">No footage linked</span>';
   var actionBtn='';
   if(r.status==='pending') actionBtn='<button class="vq-btn vq-primary" onclick="event.stopPropagation();vqSetStatus(\\''+id+'\\',\\'in-progress\\')">▶ Start</button>';
   if(r.status==='in-progress') actionBtn='<button class="vq-btn vq-done" onclick="event.stopPropagation();vqSetStatus(\\''+id+'\\',\\'done\\')">✓ Ready for Review</button>';
-  if(r.status==='done') actionBtn='<button class="vq-btn vq-approve" onclick="event.stopPropagation();vqSetStatus(\\''+id+'\\',\\'approved\\')">✓ Approve</button>';
-  if(r.status==='approved') actionBtn='<button class="vq-btn vq-post" onclick="event.stopPropagation();vqOpenBufferModal(\\''+id+'\\')">→ Post to Buffer</button>';
+  if(r.status==='done') actionBtn='<button class="vq-btn vq-schedule" onclick="event.stopPropagation();vqSetStatus(\\''+id+'\\',\\'approved\\')">→ Schedule</button>';
+  if(r.status==='approved') actionBtn='<button class="vq-btn vq-mark-posted" onclick="event.stopPropagation();vqSetStatus(\\''+id+'\\',\\'posted\\')">📤 Mark Posted</button>';
   return '<div class="vq-row" id="vqrow-'+id+'">'
     +'<div class="vq-row-summary" onclick="vqToggleRow(\\''+id+'\\')">'
     +'<div class="vq-dot '+dotClass+'"></div>'
@@ -2485,29 +2504,97 @@ function vqToggleRow(id){
 
 function vqCardHtml(r){
   var prioClass=r.priority==='high'?'vq-prio-high':r.priority==='low'?'vq-prio-low':'vq-prio-normal';
-  var prioPretty=r.priority==='high'?'High':r.priority==='low'?'Low':'Normal';
   var date=r.submittedAt?new Date(r.submittedAt).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
-  var due=r.dueDate?'<span> · due '+esc(r.dueDate)+'</span>':'';
   var id=esc(r.id||'');
-  var driveBtn=r.driveUrl?'<button class="vq-btn vq-drive" onclick="vqOpenDrive(\\''+id+'\\')">📁 Footage</button>':'';
-  var startBtn='',doneBtn='',reopenBtn='',approveBtn='',postBtn='';
-  if(VQ_IS_EDITOR||VQ_IS_ADMIN){
-    if(r.status==='pending') startBtn='<button class="vq-btn vq-primary" onclick="vqSetStatus(\\''+id+'\\',\\'in-progress\\')">▶ Start</button>';
-    if(r.status==='in-progress') doneBtn='<button class="vq-btn vq-done" onclick="vqSetStatus(\\''+id+'\\',\\'done\\')">✓ Ready for Review</button>';
-  }
-  if(VQ_IS_ADMIN){
-    if(r.status==='done') approveBtn='<button class="vq-btn vq-approve" onclick="vqSetStatus(\\''+id+'\\',\\'approved\\')">✓ Approve</button>';
-    if(r.status==='approved') postBtn='<button class="vq-btn vq-post" onclick="vqOpenBufferModal(\\''+id+'\\')">→ Post to Buffer</button>';
-    if(r.status==='done'||r.status==='approved') reopenBtn='<button class="vq-btn" onclick="vqSetStatus(\\''+id+'\\',\\'in-progress\\')">↩ Back</button>';
-    if(r.status==='posted') reopenBtn='<button class="vq-btn" onclick="vqSetStatus(\\''+id+'\\',\\'approved\\')">↩ Unpost</button>';
-  }
   var deleteBtn=(VQ_IS_ADMIN||r.submittedBy===VQ_MY_EMAIL)?'<button class="vq-btn" style="margin-left:auto;color:var(--red)" onclick="vqDelete(\\''+id+'\\')">✕</button>':'';
+  var driveBtn=r.driveUrl?'<button class="vq-btn vq-drive" onclick="vqOpenDrive(\\''+id+'\\')">📁 Footage</button>':'';
+  var body='';
+
+  if(r.status==='pending'){
+    var startBtn=(VQ_IS_EDITOR||VQ_IS_ADMIN)?'<button class="vq-btn vq-primary" onclick="vqSetStatus(\\''+id+'\\',\\'in-progress\\')">▶ Start</button>':'';
+    body='<div class="vq-actions">'+driveBtn+startBtn+deleteBtn+'</div>';
+  }
+
+  else if(r.status==='in-progress'){
+    var notesHtml='<div id="vqnotes-view-'+id+'" style="font-size:12px;color:var(--muted);line-height:1.5;white-space:pre-wrap;margin-bottom:6px">'
+      +(r.notes||r.description?esc(r.notes||r.description):'<em style="opacity:.5">No notes yet</em>')
+      +'</div>'
+      +'<div id="vqnotes-edit-'+id+'" style="display:none">'
+      +'<textarea rows="3" style="width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:7px 10px;color:var(--txt);font-size:12px;font-family:inherit;resize:vertical" id="vqnotes-ta-'+id+'">'+(esc(r.notes||r.description||''))+'</textarea>'
+      +'<div style="display:flex;gap:6px;margin-top:4px">'
+      +'<button class="vq-btn vq-done" onclick="vqSaveNotes(\\''+id+'\\')">Save</button>'
+      +'<button class="vq-btn" onclick="document.getElementById(\\'vqnotes-edit-'+id+'\\').style.display=\\'none\\';document.getElementById(\\'vqnotes-view-'+id+'\\').style.display=\\'\\'">Cancel</button>'
+      +'</div></div>';
+    var editNotesBtn='<button class="vq-btn" style="font-size:10px;padding:2px 7px" onclick="document.getElementById(\\'vqnotes-view-'+id+'\\').style.display=\\'none\\';document.getElementById(\\'vqnotes-edit-'+id+'\\').style.display=\\'\\';document.getElementById(\\'vqnotes-ta-'+id+'\\').focus()">✏ Edit notes</button>';
+    var draftForm='<div id="vqdraft-form-'+id+'" style="display:none" class="vq-inline-form">'
+      +'<input type="url" placeholder="Paste Google Drive link to edited draft…" id="vqdraft-url-'+id+'" />'
+      +'<div style="display:flex;gap:6px"><button class="vq-btn vq-done" onclick="vqSubmitDraft(\\''+id+'\\')">Submit Draft</button>'
+      +'<button class="vq-btn" onclick="document.getElementById(\\'vqdraft-form-'+id+'\\').style.display=\\'none\\'">Cancel</button></div>'
+      +'</div>';
+    var uploadDraftBtn=(VQ_IS_EDITOR||VQ_IS_ADMIN)?'<button class="vq-btn vq-primary" onclick="document.getElementById(\\'vqdraft-form-'+id+'\\').style.display=document.getElementById(\\'vqdraft-form-'+id+'\\').style.display===\\'none\\'?\\'\\':\'none\'">📤 Upload Draft</button>':'';
+    body=notesHtml+editNotesBtn+'<div class="vq-actions" style="margin-top:8px">'+driveBtn+uploadDraftBtn+'</div>'+draftForm;
+  }
+
+  else if(r.status==='done'){
+    var draftLink=r.draftUrl?'<a href="'+esc(r.draftUrl)+'" target="_blank" class="vq-btn vq-drive">📄 View Draft</a>':'<span style="font-size:11px;color:var(--muted)">No draft yet</span>';
+    var reviewForm='';
+    if(VQ_IS_ADMIN){
+      var platOpts=['TikTok','Instagram','YouTube','LinkedIn','Twitter','Facebook'];
+      var curPlats=r.platforms||[];
+      var platChips=platOpts.map(function(p){
+        return '<button class="vq-plat-chip'+(curPlats.indexOf(p)>=0?' on':'')+'" onclick="this.classList.toggle(\\'on\\')" data-plat="'+p+'">'+p+'</button>';
+      }).join('');
+      reviewForm='<div class="vq-inline-form" style="margin-top:10px">'
+        +'<textarea rows="2" placeholder="Caption…" id="vqcap-'+id+'" style="width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:7px 10px;color:var(--txt);font-size:12px;font-family:inherit;resize:vertical">'+esc(r.caption||'')+'</textarea>'
+        +'<div class="plat-row" id="vqplats-'+id+'">'+platChips+'</div>'
+        +'<input type="datetime-local" id="vqsched-'+id+'" value="'+esc(r.scheduledAt?new Date(r.scheduledAt).toISOString().slice(0,16):'')+'" />'
+        +'<button class="vq-btn vq-schedule" onclick="vqApproveSchedule(\\''+id+'\\')">✓ Approve &amp; Schedule</button>'
+        +'</div>';
+      var backBtn='<button class="vq-btn" onclick="vqSetStatus(\\''+id+'\\',\\'in-progress\\')">↩ Back</button>';
+      body='<div class="vq-actions">'+draftLink+backBtn+deleteBtn+'</div>'+reviewForm;
+    } else {
+      body='<div class="vq-actions">'+draftLink+deleteBtn+'</div>';
+    }
+  }
+
+  else if(r.status==='approved'){
+    var schedTime=r.scheduledAt?new Date(r.scheduledAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'—';
+    var platDisplay=(r.platforms||[]).join(', ')||'—';
+    var draftLink2=r.draftUrl?'<a href="'+esc(r.draftUrl)+'" target="_blank" class="vq-btn vq-drive">📄 Draft</a>':'';
+    var markPostedBtn=VQ_IS_ADMIN?'<button class="vq-btn vq-mark-posted" onclick="vqSetStatus(\\''+id+'\\',\\'posted\\')">📤 Mark Posted</button>':'';
+    var backBtn2=VQ_IS_ADMIN?'<button class="vq-btn" onclick="vqSetStatus(\\''+id+'\\',\\'done\\')">↩ Back</button>':'';
+    body='<div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.7">'
+      +'<strong style="color:var(--txt)">Scheduled:</strong> '+schedTime+'<br>'
+      +(r.caption?'<strong style="color:var(--txt)">Caption:</strong> '+esc(r.caption.slice(0,60))+(r.caption.length>60?'…':'')+'<br>':'')
+      +'<strong style="color:var(--txt)">Platforms:</strong> '+esc(platDisplay)
+      +'</div>'
+      +'<div class="vq-actions">'+draftLink2+markPostedBtn+backBtn2+deleteBtn+'</div>';
+  }
+
+  else if(r.status==='posted'){
+    var links=(r.postedLinks||[]);
+    var linksHtml=links.length?'<div class="vq-posted-links">'+links.map(function(l){
+      return '<div class="vq-posted-link"><span style="font-size:10px;color:var(--muted);min-width:60px">'+esc(l.platform)+'</span><a href="'+esc(l.url)+'" target="_blank">'+esc(l.url)+'</a></div>';
+    }).join('')+'</div>':'';
+    var addLinkForm='<div id="vqlink-form-'+id+'" style="display:none" class="vq-inline-form">'
+      +'<select id="vqlink-plat-'+id+'" style="width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:7px 10px;color:var(--txt);font-size:12px">'
+      +'<option>TikTok</option><option>Instagram</option><option>YouTube</option><option>LinkedIn</option><option>Twitter</option><option>Facebook</option>'
+      +'</select>'
+      +'<input type="url" placeholder="Post URL…" id="vqlink-url-'+id+'" />'
+      +'<div style="display:flex;gap:6px"><button class="vq-btn vq-done" onclick="vqAddPostedLink(\\''+id+'\\')">Save Link</button>'
+      +'<button class="vq-btn" onclick="document.getElementById(\\'vqlink-form-'+id+'\\').style.display=\\'none\\'">Cancel</button></div>'
+      +'</div>';
+    var addLinkBtn=VQ_IS_ADMIN?'<button class="vq-btn" onclick="document.getElementById(\\'vqlink-form-'+id+'\\').style.display=document.getElementById(\\'vqlink-form-'+id+'\\').style.display===\\'none\\'?\\'\\':\'none\'">+ Link</button>':'';
+    body=linksHtml+'<div class="vq-actions" style="margin-top:6px">'+addLinkBtn+deleteBtn+'</div>'+addLinkForm;
+  }
+
   return '<div class="vq-card">'
-    +'<div class="vq-card-top"><span class="vq-brand-chip">'+esc(r.brand||'—')+'</span><span class="vq-prio-chip '+prioClass+'">'+prioPretty+'</span></div>'
-    +'<div class="vq-title">'+esc(r.title||'Untitled request')+'</div>'
-    +(r.description?'<div class="vq-desc">'+esc(r.description)+'</div>':'')
-    +'<div class="vq-meta">by <strong>'+esc(r.submittedByName||r.submittedBy||'?')+'</strong> · '+date+due+'</div>'
-    +'<div class="vq-actions">'+driveBtn+startBtn+doneBtn+approveBtn+postBtn+reopenBtn+deleteBtn+'</div>'
+    +'<div class="vq-card-top"><span class="vq-brand-chip">'+esc(r.brand||'—')+'</span>'
+    +(r.priority==='high'?'<span class="vq-prio-chip vq-prio-high">High</span>':'')
+    +'</div>'
+    +'<div class="vq-title">'+esc(r.title||'Untitled')+'</div>'
+    +'<div class="vq-meta">'+date+'</div>'
+    +body
     +'</div>';
 }
 
@@ -2554,6 +2641,59 @@ function vqSetStatus(id,status){
   .then(function(r){return r.json();}).then(function(d){
     if(d.ok){loadVideoQueue();}else toast('Error: '+(d.error||'Failed'));
   }).catch(function(e){toast(''+e);});
+}
+
+function vqPatch(id,data,onOk){
+  fetch('/api/video-requests/'+id,{method:'PATCH',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})
+  .then(function(r){return r.json();}).then(function(d){
+    if(d.ok){if(onOk)onOk();else loadVideoQueue();}else toast('Error: '+(d.error||'Failed'));
+  }).catch(function(e){toast(''+e);});
+}
+
+function vqSaveNotes(id){
+  var ta=document.getElementById('vqnotes-ta-'+id);
+  if(!ta)return;
+  vqPatch(id,{notes:ta.value},function(){
+    var r=VQ_DATA.find(function(x){return x.id===id;});
+    if(r)r.notes=ta.value;
+    loadVideoQueue();
+  });
+}
+
+function vqSubmitDraft(id){
+  var inp=document.getElementById('vqdraft-url-'+id);
+  if(!inp)return;
+  var url=(inp.value||'').trim();
+  if(!url){toast('Paste the Drive link first','yellow');return;}
+  vqPatch(id,{status:'done',draftUrl:url});
+}
+
+function vqApproveSchedule(id){
+  var cap=document.getElementById('vqcap-'+id);
+  var sched=document.getElementById('vqsched-'+id);
+  var platContainer=document.getElementById('vqplats-'+id);
+  var plats=[];
+  if(platContainer){
+    platContainer.querySelectorAll('.vq-plat-chip.on').forEach(function(el){plats.push(el.dataset.plat);});
+  }
+  vqPatch(id,{
+    status:'approved',
+    caption:(cap?cap.value:'').trim(),
+    platforms:plats,
+    scheduledAt:sched&&sched.value?new Date(sched.value).toISOString():null,
+  });
+}
+
+function vqAddPostedLink(id){
+  var plat=document.getElementById('vqlink-plat-'+id);
+  var url=document.getElementById('vqlink-url-'+id);
+  if(!url)return;
+  var u=(url.value||'').trim();
+  if(!u){toast('Paste the post URL first');return;}
+  var r=VQ_DATA.find(function(x){return x.id===id;});
+  var existing=(r&&r.postedLinks)||[];
+  existing.push({platform:plat?plat.value:'Unknown',url:u});
+  vqPatch(id,{postedLinks:existing});
 }
 
 function vqDelete(id){
@@ -6495,9 +6635,14 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       const r = all[idx];
       if (!isAdmin && !isEditor && r.submittedBy !== email)
         return res.status(403).json({ error: 'Not allowed' });
-      const { status, notes } = req.body || {};
+      const { status, notes, draftUrl, caption, platforms, scheduledAt, postedLinks } = req.body || {};
       if (status) r.status = status;
       if (notes !== undefined) r.notes = notes;
+      if (draftUrl !== undefined) r.draftUrl = draftUrl;
+      if (caption !== undefined) r.caption = caption;
+      if (platforms !== undefined) r.platforms = platforms;
+      if (scheduledAt !== undefined) r.scheduledAt = scheduledAt ? new Date(scheduledAt).getTime() : null;
+      if (postedLinks !== undefined) r.postedLinks = postedLinks;
       r.updatedAt = Date.now();
       all[idx] = r;
       writeJsonFile(VR_FILE, all);
