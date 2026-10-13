@@ -2596,30 +2596,44 @@ function vqHandleFiles(fileList){
 }
 
 function vqAddFile(file){
-  var maxBytes=500*1024*1024;
-  if(file.size>maxBytes){toast(file.name+' is too large — max 500 MB');return;}
   var id=_vqFileId++;
   var entry={id:id,name:file.name,url:null,pct:0,status:'uploading'};
   VQ_QUEUED_FILES.push(entry);
   vqRenderFileList();
-  var fd=new FormData();
-  fd.append('footage',file);
-  var xhr=new XMLHttpRequest();
-  xhr.open('POST','/api/video-requests/upload-footage');
-  xhr.withCredentials=true;
-  xhr.upload.onprogress=function(ev){
-    if(ev.lengthComputable){entry.pct=Math.round((ev.loaded/ev.total)*100);vqRenderFileList();}
-  };
-  xhr.onload=function(){
-    try{
-      var d=JSON.parse(xhr.responseText);
-      if(d.url){entry.url=d.url;entry.status='done';vqSetStatus(null);}
-      else{entry.status='error';entry.error=d.error||'HTTP '+xhr.status;vqSetStatus(file.name+' upload failed: '+(d.error||'HTTP '+xhr.status),'red');}
-    }catch(e2){entry.status='error';entry.error='HTTP '+xhr.status+' (parse error)';vqSetStatus(file.name+' upload failed: HTTP '+xhr.status,'red');}
-    vqRenderFileList();
-  };
-  xhr.onerror=function(){entry.status='error';entry.error='Network error';vqSetStatus(file.name+' — network error during upload','red');vqRenderFileList();};
-  xhr.send(fd);
+  // Step 1: get a presigned R2 URL from our server
+  fetch('/api/video-requests/r2-upload-url?filename='+encodeURIComponent(file.name)+'&contentType='+encodeURIComponent(file.type||'video/mp4'),{credentials:'include'})
+  .then(function(r){return r.json();})
+  .then(function(d){
+    if(!d.uploadUrl){
+      entry.status='error';entry.error=d.error||'Could not get upload URL';
+      vqSetStatus(file.name+' — '+entry.error,'red');vqRenderFileList();return;
+    }
+    // Step 2: PUT directly to R2 (bypasses Cloudflare proxy, no size limit)
+    var xhr=new XMLHttpRequest();
+    xhr.open('PUT',d.uploadUrl);
+    xhr.setRequestHeader('Content-Type',file.type||'video/mp4');
+    xhr.upload.onprogress=function(ev){
+      if(ev.lengthComputable){entry.pct=Math.round((ev.loaded/ev.total)*100);vqRenderFileList();}
+    };
+    xhr.onload=function(){
+      if(xhr.status>=200&&xhr.status<300){
+        entry.url=d.fileUrl;entry.status='done';entry.pct=100;
+        vqSetStatus(null);vqRenderFileList();
+      }else{
+        entry.status='error';entry.error='R2 upload failed (HTTP '+xhr.status+')';
+        vqSetStatus(file.name+' upload failed — HTTP '+xhr.status,'red');vqRenderFileList();
+      }
+    };
+    xhr.onerror=function(){
+      entry.status='error';entry.error='Network error';
+      vqSetStatus(file.name+' — network error','red');vqRenderFileList();
+    };
+    xhr.send(file);
+  })
+  .catch(function(e){
+    entry.status='error';entry.error=''+e;
+    vqSetStatus(file.name+' — '+e,'red');vqRenderFileList();
+  });
 }
 
 function vqRemoveFile(id){
@@ -6516,6 +6530,37 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       const url = `${PUBLIC_BASE}/uploads/footage/${req.file.filename}`;
       res.json({ ok: true, url, filename: req.file.filename });
     });
+  });
+
+  // ---------- ROUTE: GET /api/video-requests/r2-upload-url ----------
+  // Returns a presigned R2 PUT URL so the browser can upload directly to R2,
+  // bypassing Cloudflare's proxy size limit entirely.
+  app.get('/api/video-requests/r2-upload-url', requireAuth, async (req, res) => {
+    try {
+      const accountId = process.env.R2_ACCOUNT_ID;
+      const accessKeyId = process.env.R2_ACCESS_KEY_ID;
+      const secretAccessKey = process.env.R2_SECRET_ACCESS_KEY;
+      const bucket = process.env.R2_BUCKET;
+      const publicUrl = (process.env.R2_PUBLIC_URL || '').replace(/\/$/, '');
+      if (!accountId || !accessKeyId || !secretAccessKey || !bucket) {
+        return res.status(503).json({ error: 'R2 not configured — set R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET in env' });
+      }
+      const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+      const { getSignedUrl } = require('@aws-sdk/s3-request-presigner');
+      const r2 = new S3Client({
+        region: 'auto',
+        endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+        credentials: { accessKeyId, secretAccessKey },
+      });
+      const filename = req.query.filename || 'footage.mp4';
+      const ext = nodePath.extname(filename) || '.mp4';
+      const key = `footage/${Date.now()}_${Math.random().toString(36).slice(2, 7)}${ext}`;
+      const contentType = req.query.contentType || 'video/mp4';
+      const cmd = new PutObjectCommand({ Bucket: bucket, Key: key, ContentType: contentType });
+      const uploadUrl = await getSignedUrl(r2, cmd, { expiresIn: 3600 });
+      const fileUrl = publicUrl ? `${publicUrl}/${key}` : uploadUrl.split('?')[0];
+      res.json({ ok: true, uploadUrl, fileUrl, key });
+    } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
   // ---------- PODCAST APPLICATION ROUTES ----------
