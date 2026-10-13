@@ -6993,8 +6993,8 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       const bufData = await bufRes.json().catch(() => ({}));
       if (!bufRes.ok) return res.status(500).json({ error: bufData.message || 'Buffer API error' });
 
-      r.status = 'posted';
-      r.postedAt = Date.now();
+      // Stay in 'approved' (Scheduled column) — polling job moves to 'posted' once Buffer publishes
+      r.status = 'approved';
       r.caption = caption;
       r.bufferId = bufData.updates?.[0]?.id || null;
       all[idx] = r;
@@ -7065,6 +7065,57 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       res.json({ ok: true });
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
+
+  // ---------- BUFFER POLL: auto-move Scheduled → Posted ----------
+  // Buffer doesn't expose webhook URLs on standard plans, so we poll their
+  // sent-updates API every hour. Any 'approved' card whose bufferId appears
+  // in the sent list gets moved to 'posted' with the live post URL.
+  async function pollBufferSent() {
+    const BUFFER_TOKEN = process.env.BUFFER_ACCESS_TOKEN;
+    const BUFFER_CHANNEL_ID = process.env.BUFFER_CHANNEL_ID;
+    if (!BUFFER_TOKEN || !BUFFER_CHANNEL_ID) return;
+    try {
+      const all = readJsonFile(VR_FILE, []);
+      const scheduled = all.filter(r => r.status === 'approved' && r.bufferId);
+      if (!scheduled.length) return;
+
+      const sentRes = await fetch(
+        `https://api.bufferapp.com/1/profiles/${BUFFER_CHANNEL_ID}/updates/sent.json?access_token=${BUFFER_TOKEN}&count=100`
+      );
+      if (!sentRes.ok) { console.error('[buffer-poll] API error', sentRes.status); return; }
+      const sentData = await sentRes.json().catch(() => ({}));
+      const sentUpdates = sentData.updates || [];
+      if (!sentUpdates.length) return;
+
+      const sentMap = new Map(sentUpdates.map(u => [u.id, u]));
+      let changed = false;
+      const fresh = readJsonFile(VR_FILE, []);  // re-read to avoid stale overwrite
+      for (let i = 0; i < fresh.length; i++) {
+        const r = fresh[i];
+        if (r.status !== 'approved' || !r.bufferId) continue;
+        const sent = sentMap.get(r.bufferId);
+        if (!sent) continue;
+        r.status = 'posted';
+        r.postedAt = sent.sent_at ? sent.sent_at * 1000 : Date.now();
+        r.postedLinks = r.postedLinks || [];
+        const postUrl = sent.service_link || null;
+        if (postUrl && !r.postedLinks.find(l => l.url === postUrl)) {
+          r.postedLinks.push({ platform: sent.profile_service || 'buffer', url: postUrl });
+        }
+        r.updatedAt = Date.now();
+        fresh[i] = r;
+        changed = true;
+        console.log(`[buffer-poll] marked posted: ${r.id} (${r.title})`);
+      }
+      if (changed) writeJsonFile(VR_FILE, fresh);
+    } catch (e) {
+      console.error('[buffer-poll] error:', e.message);
+    }
+  }
+
+  // Run once at startup (catches anything published while server was down), then every hour.
+  setTimeout(pollBufferSent, 30000);
+  setInterval(pollBufferSent, 60 * 60 * 1000);
 
   // Expose helpers for later steps / test harnesses.
   registerOpsMyTasks._helpers = {
