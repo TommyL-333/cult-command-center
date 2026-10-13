@@ -453,6 +453,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .vp-bar-submitted{background:#00f2ea}
   .vp-bar-editing{background:#f59e0b}
   .vp-bar-review{background:#f97316}
+  .vp-bar-scheduled{background:#3b82f6}
   .vp-bar-posted{background:#a78bfa}
   .vp-tracker-legend{display:flex;gap:14px;flex-wrap:wrap}
   .vp-legend-item{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted);font-weight:600}
@@ -641,12 +642,14 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
       <div class="vp-bar-seg vp-bar-submitted" id="vp-bar-submitted" style="width:0%"></div>
       <div class="vp-bar-seg vp-bar-editing" id="vp-bar-editing" style="width:0%"></div>
       <div class="vp-bar-seg vp-bar-review" id="vp-bar-review" style="width:0%"></div>
+      <div class="vp-bar-seg vp-bar-scheduled" id="vp-bar-scheduled" style="width:0%"></div>
       <div class="vp-bar-seg vp-bar-posted" id="vp-bar-posted" style="width:0%"></div>
     </div>
-    <div class="vp-tracker-legend">
+    <div class="vp-tracker-legend" style="justify-content:center">
       <div class="vp-legend-item"><div class="vp-legend-dot" style="background:#00f2ea"></div><span id="vp-cnt-submitted">0</span> Submitted</div>
       <div class="vp-legend-item"><div class="vp-legend-dot" style="background:#f59e0b"></div><span id="vp-cnt-editing">0</span> Editing</div>
       <div class="vp-legend-item"><div class="vp-legend-dot" style="background:#f97316"></div><span id="vp-cnt-review">0</span> For Review</div>
+      <div class="vp-legend-item"><div class="vp-legend-dot" style="background:#3b82f6"></div><span id="vp-cnt-scheduled-tracker">0</span> Scheduled</div>
       <div class="vp-legend-item"><div class="vp-legend-dot" style="background:#a78bfa"></div><span id="vp-cnt-posted">0</span> Posted</div>
     </div>
   </div>
@@ -696,19 +699,19 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
 
   <div class="vq-cols-5" id="vq-queue-wrap">
     <div>
-      <div class="vq-col-hdr">Submitted <span class="vq-col-count" id="vq-cnt-pending">0</span></div>
+      <div class="vq-col-hdr" style="color:#00f2ea">Submitted <span class="vq-col-count" id="vq-cnt-pending">0</span></div>
       <div id="vq-col-pending"></div>
     </div>
     <div>
-      <div class="vq-col-hdr">In Editing <span class="vq-col-count" id="vq-cnt-inprogress">0</span></div>
+      <div class="vq-col-hdr" style="color:#f59e0b">Editing <span class="vq-col-count" id="vq-cnt-inprogress">0</span></div>
       <div id="vq-col-inprogress"></div>
     </div>
     <div>
-      <div class="vq-col-hdr">For Review <span class="vq-col-count" id="vq-cnt-done">0</span></div>
+      <div class="vq-col-hdr" style="color:#f97316">For Review <span class="vq-col-count" id="vq-cnt-done">0</span></div>
       <div id="vq-col-done"></div>
     </div>
     <div>
-      <div class="vq-col-hdr" style="color:#f59e0b">Scheduled <span class="vq-col-count" id="vq-cnt-scheduled">0</span></div>
+      <div class="vq-col-hdr" style="color:#3b82f6">Scheduled <span class="vq-col-count" id="vq-cnt-scheduled">0</span></div>
       <div id="vq-col-scheduled"></div>
     </div>
     <div>
@@ -2456,18 +2459,21 @@ function vqUpdateTracker(){
   var goal=1000;
   var submitted=VQ_DATA.filter(function(r){return r.status==='pending';}).length;
   var editing=VQ_DATA.filter(function(r){return r.status==='in-progress';}).length;
-  var review=VQ_DATA.filter(function(r){return r.status==='done'||r.status==='approved';}).length;
+  var review=VQ_DATA.filter(function(r){return r.status==='done';}).length;
+  var scheduled=VQ_DATA.filter(function(r){return r.status==='approved';}).length;
   var posted=VQ_DATA.filter(function(r){return r.status==='posted';}).length;
   document.getElementById('vp-cnt-submitted').textContent=submitted;
   document.getElementById('vp-cnt-editing').textContent=editing;
   document.getElementById('vp-cnt-review').textContent=review;
+  document.getElementById('vp-cnt-scheduled-tracker').textContent=scheduled;
   document.getElementById('vp-cnt-posted').textContent=posted;
   document.getElementById('vp-goal-line').textContent=posted+'/1,000';
-  var total=submitted+editing+review+posted;
+  var total=submitted+editing+review+scheduled+posted;
   var scale=total>goal?total:goal;
   document.getElementById('vp-bar-submitted').style.width=((submitted/scale)*100)+'%';
   document.getElementById('vp-bar-editing').style.width=((editing/scale)*100)+'%';
   document.getElementById('vp-bar-review').style.width=((review/scale)*100)+'%';
+  document.getElementById('vp-bar-scheduled').style.width=((scheduled/scale)*100)+'%';
   document.getElementById('vp-bar-posted').style.width=((posted/scale)*100)+'%';
 }
 
