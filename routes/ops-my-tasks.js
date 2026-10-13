@@ -630,6 +630,19 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
 <!-- Video Queue tab -->
 <div id="tab-video-queue" style="display:none">
 
+  <!-- Gilbert tools panel (video_editor only) -->
+  <div id="vq-tools-panel" style="display:none" class="vq-tools-panel">
+    <div class="vq-tools-hdr">Your Tools</div>
+    <div class="vq-tool-links">
+      <a href="https://www.capcut.com" target="_blank" class="vq-tool-link">🎬 CapCut</a>
+      <a href="https://seedance.ai" target="_blank" class="vq-tool-link">✨ Seedance AI</a>
+      <a href="https://www.tiktok.com/studio" target="_blank" class="vq-tool-link">📱 TikTok Studio</a>
+      <a href="https://publish.buffer.com" target="_blank" class="vq-tool-link">📅 Buffer</a>
+      <a href="https://drive.google.com" target="_blank" class="vq-tool-link">📁 Google Drive</a>
+      <a href="https://manifest.cultcontent.cc" target="_blank" class="vq-tool-link">🖥 Content Pipeline →</a>
+    </div>
+  </div>
+
   <!-- 1000-video progress tracker -->
   <div class="vp-tracker" id="vp-tracker">
     <div class="vp-tracker-header">
@@ -732,19 +745,6 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
         <button class="btn" onclick="vqCloseBufferModal()" style="background:none">Cancel</button>
         <button class="btn" onclick="vqSubmitBuffer()">Send to Buffer</button>
       </div>
-    </div>
-  </div>
-
-  <!-- Gilbert tools panel (video_editor only) -->
-  <div id="vq-tools-panel" style="display:none" class="vq-tools-panel">
-    <div class="vq-tools-hdr">Your Tools</div>
-    <div class="vq-tool-links">
-      <a href="https://www.capcut.com" target="_blank" class="vq-tool-link">🎬 CapCut</a>
-      <a href="https://seedance.ai" target="_blank" class="vq-tool-link">✨ Seedance AI</a>
-      <a href="https://www.tiktok.com/studio" target="_blank" class="vq-tool-link">📱 TikTok Studio</a>
-      <a href="https://publish.buffer.com" target="_blank" class="vq-tool-link">📅 Buffer</a>
-      <a href="https://drive.google.com" target="_blank" class="vq-tool-link">📁 Google Drive</a>
-      <a href="https://manifest.cultcontent.cc" target="_blank" class="vq-tool-link">🖥 Content Pipeline →</a>
     </div>
   </div>
 
@@ -2410,14 +2410,14 @@ function vqCardHtml(r){
   var prioClass=r.priority==='high'?'vq-prio-high':r.priority==='low'?'vq-prio-low':'vq-prio-normal';
   var date=r.submittedAt?new Date(r.submittedAt).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
   var id=esc(r.id||'');
-  var deleteBtn=(VQ_IS_ADMIN||r.submittedBy===VQ_MY_EMAIL)?'<button class="vq-btn" style="margin-left:auto;color:var(--red)" onclick="vqDelete(\\''+id+'\\')">✕</button>':'';
+  var deleteBtn=(VQ_IS_ADMIN&&r.status==='done')?'<button class="vq-btn" style="margin-left:auto;color:var(--red)" onclick="vqDelete(\\''+id+'\\')">✕ Delete</button>':'';
   var driveBtn=r.driveUrl?'<button class="vq-btn vq-drive" onclick="vqOpenDrive(\\''+id+'\\')">📁 Footage</button>':'';
   var body='';
 
   if(r.status==='pending'){
     var startBtn=(VQ_IS_EDITOR||VQ_IS_ADMIN)?'<button class="vq-btn vq-primary" onclick="vqMoveStatus(\\''+id+'\\',\\'in-progress\\')">▶ Start</button>':'';
     var pendingNotes=(r.notes||r.description)?'<div style="font-size:12px;color:var(--muted);line-height:1.5;white-space:pre-wrap;margin-bottom:8px">'+esc(r.notes||r.description)+'</div>':'';
-    body=pendingNotes+'<div class="vq-actions">'+driveBtn+startBtn+deleteBtn+'</div>';
+    body=pendingNotes+'<div class="vq-actions">'+driveBtn+startBtn+'</div>';
   }
 
   else if(r.status==='in-progress'){
@@ -2470,7 +2470,7 @@ function vqCardHtml(r){
       +(r.caption?'<strong style="color:var(--txt)">Caption:</strong> '+esc(r.caption.slice(0,60))+(r.caption.length>60?'…':'')+'<br>':'')
       +'<strong style="color:var(--txt)">Platforms:</strong> '+esc(platDisplay)
       +'</div>'
-      +'<div class="vq-actions">'+draftLink2+deleteBtn+'</div>';
+      +'<div class="vq-actions">'+draftLink2+'</div>';
   }
 
   else if(r.status==='posted'){
@@ -2487,7 +2487,7 @@ function vqCardHtml(r){
       +'<button class="vq-btn" onclick="document.getElementById(\\'vqlink-form-'+id+'\\').style.display=\\'none\\'">Cancel</button></div>'
       +'</div>';
     var addLinkBtn=VQ_IS_ADMIN?'<button class="vq-btn" onclick="document.getElementById(\\'vqlink-form-'+id+'\\').style.display=document.getElementById(\\'vqlink-form-'+id+'\\').style.display===\\'none\\'?\\'\\':\\'none\\'">+ Link</button>':'';
-    body=linksHtml+'<div class="vq-actions" style="margin-top:6px">'+addLinkBtn+deleteBtn+'</div>'+addLinkForm;
+    body=linksHtml+'<div class="vq-actions" style="margin-top:6px">'+addLinkBtn+'</div>'+addLinkForm;
   }
 
   return '<div class="vq-card">'
@@ -3008,56 +3008,6 @@ function doBulkDelete(){
 
 load();
 
-// ---------- DEV MODE ----------
-var DEV_MEMBERS=[
-  {name:'Gourab',email:'gourab@cultcontent.cc',role:'Shop Manager'},
-  {name:'Gilbert',email:'gilbert@cultcontent.cc',role:'Video Editor'},
-  {name:'Jina',email:'jina@cultcontent.cc',role:'Creator Lead'},
-  {name:'Becca',email:'becca@cultcontent.cc',role:'Affiliate Manager'},
-  {name:'Jenna',email:'jenna@cultcontent.cc',role:'Affiliate Manager'},
-];
-function openDevMode(){
-  var grid=document.getElementById('dev-member-grid');
-  grid.innerHTML=DEV_MEMBERS.map(function(m){
-    return '<div class="dev-member-card" onclick="devLoadMember(\\''+m.email+'\\',\\''+m.name+'\\')">'
-      +'<div class="dev-member-name">'+m.name+'</div>'
-      +'<div class="dev-member-role">'+m.role+'</div>'
-      +'<div class="dev-member-email">'+m.email+'</div>'
-      +'</div>';
-  }).join('');
-  document.getElementById('dev-overlay').classList.add('show');
-}
-function closeDevMode(){document.getElementById('dev-overlay').classList.remove('show');}
-function devLoadMember(email,name){
-  closeDevMode();
-  window.open('/my-tasks?devAs='+encodeURIComponent(email),'_blank');
-}
-function closeDevIframe(){
-  document.getElementById('dev-iframe-overlay').classList.remove('show');
-  document.getElementById('dev-iframe-el').src='';
-}
-</script>
-
-<!-- Dev Mode: member picker overlay -->
-<div class="dev-overlay" id="dev-overlay" onclick="if(event.target===this)closeDevMode()">
-  <div class="dev-panel">
-    <div class="dev-panel-header">
-      <h3>👁 Developer Mode</h3>
-      <button class="dev-close-btn" onclick="closeDevMode()">×</button>
-    </div>
-    <p style="margin:12px 20px 0;color:var(--muted);font-size:13px">Select a team member to preview their exact My Tasks view — comp banner, report form, and tasks.</p>
-    <div class="dev-member-grid" id="dev-member-grid"></div>
-  </div>
-</div>
-
-<!-- Dev Mode: iframe overlay -->
-<div class="dev-iframe-overlay" id="dev-iframe-overlay">
-  <div class="dev-iframe-bar">
-    <span class="dev-iframe-label" id="dev-iframe-label"></span>
-    <button class="dev-iframe-back" onclick="closeDevIframe()">✕ Exit Dev Mode</button>
-  </div>
-  <iframe class="dev-iframe-el" id="dev-iframe-el" src="" allowfullscreen></iframe>
-</div>
 
 </body>
 </html>`;
@@ -5526,6 +5476,18 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       writeJsonFile(VR_FILE, all);
       res.json({ ok: true });
     } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  // ---------- ROUTE: POST /api/video-requests/admin/purge-pending ----------
+  // Admin-only one-shot: delete all video requests with status 'pending' (Submitted).
+  app.post('/api/video-requests/admin/purge-pending', requireAuth, (req, res) => {
+    const email = (req.userEmail || '').toLowerCase();
+    if (!ADMIN_EMAILS.has(email)) return res.status(403).json({ error: 'Admin only' });
+    const all = readJsonFile(VR_FILE, []);
+    const kept = all.filter(r => r.status !== 'pending');
+    const removed = all.length - kept.length;
+    writeJsonFile(VR_FILE, kept);
+    res.json({ ok: true, removed });
   });
 
   // ---------- ROUTE: POST /api/video-requests/:id/expand ----------
