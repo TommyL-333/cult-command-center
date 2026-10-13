@@ -2769,31 +2769,34 @@ function vpSubmitSchedule(){
 }
 
 function submitVideoRequest(){
-  var errEl=document.getElementById('vq-err');errEl.style.display='none';
-  var desc=(document.getElementById('vq-desc').value||'').trim();
-  var pastedUrl=(document.getElementById('vq-drive').value||'').trim();
+  var btn=document.querySelector('#vq-submit-form .btn');
   var uploading=VQ_QUEUED_FILES.filter(function(f){return f.status==='uploading';});
   var doneFiles=VQ_QUEUED_FILES.filter(function(f){return f.status==='done';});
-  if(uploading.length){errEl.textContent='Still uploading — please wait a moment';errEl.style.display='block';return;}
-  if(!doneFiles.length&&!pastedUrl){errEl.textContent='Add at least one video or paste a Drive link';errEl.style.display='block';return;}
+  var pastedUrl=(document.getElementById('vq-drive').value||'').trim();
+  if(uploading.length){toast('Still uploading — please wait');return;}
+  if(!doneFiles.length&&!pastedUrl){toast('Add at least one video first');return;}
+  var desc=(document.getElementById('vq-desc').value||'').trim();
   var requests=doneFiles.length
     ?doneFiles.map(function(f){return {title:f.name,description:desc,driveUrl:f.url,priority:'normal'};})
     :[{title:'Video '+new Date().toLocaleDateString(),description:desc,driveUrl:pastedUrl,priority:'normal'}];
   var total=requests.length;
+  if(btn){btn.disabled=true;btn.textContent='Submitting…';}
+  function done(err){
+    if(btn){btn.disabled=false;btn.textContent='Submit';}
+    if(err){toast('Error: '+err);return;}
+    document.getElementById('vq-desc').value='';
+    document.getElementById('vq-drive').value='';
+    vqClearUpload();
+    toast(total===1?'Video submitted!':total+' videos submitted!');
+    loadVideoQueue();
+  }
   function submitNext(i){
-    if(i>=total){
-      document.getElementById('vq-desc').value='';
-      document.getElementById('vq-drive').value='';
-      vqClearUpload();
-      toast(total===1?'Video submitted!':total+' videos submitted!');
-      loadVideoQueue();
-      return;
-    }
+    if(i>=total){done(null);return;}
     fetch('/api/video-requests',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(requests[i])})
     .then(function(r){return r.json();}).then(function(d){
       if(d.ok)submitNext(i+1);
-      else{errEl.textContent=d.error||'Failed';errEl.style.display='block';}
-    }).catch(function(e){errEl.textContent=''+e;errEl.style.display='block';});
+      else done(d.error||'Server error');
+    }).catch(function(e){done(''+e);});
   }
   submitNext(0);
 }
