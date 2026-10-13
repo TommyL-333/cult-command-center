@@ -6417,7 +6417,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       const secret = process.env.CLAUDE_CODE_SECRET;
       const bearerToken = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
       const isAgent = secret && bearerToken === secret;
-      const sessionEmail = (req.userEmail || '').toLowerCase();
+      const sessionEmail = (req.userEmail || (req.session && req.session.userEmail) || req.headers['cf-access-authenticated-user-email'] || '').toLowerCase();
       if (!isAgent && !sessionEmail) return res.status(401).json({ error: 'Unauthorized' });
       const email = isAgent ? 'claude@cultcontent.cc' : sessionEmail;
       const names = { 'gilbert@cultcontent.cc':'Gilbert', 'jina@cultcontent.cc':'Jina',
