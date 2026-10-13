@@ -3008,6 +3008,7 @@ function doBulkDelete(){
 
 load();
 
+</script>
 
 </body>
 </html>`;
