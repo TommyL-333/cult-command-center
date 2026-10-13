@@ -2476,10 +2476,10 @@ function vqRowHtml(r){
   var due=r.dueDate||'—';
   var driveBtn=r.driveUrl?'<button class="vq-btn vq-drive" onclick="event.stopPropagation();vqOpenDrive(\\''+id+'\\')">📁 Open Footage</button>':'<span style="color:var(--muted);font-size:12px">No footage linked</span>';
   var actionBtn='';
-  if(r.status==='pending') actionBtn='<button class="vq-btn vq-primary" onclick="event.stopPropagation();vqSetStatus(\\''+id+'\\',\\'in-progress\\')">▶ Start</button>';
-  if(r.status==='in-progress') actionBtn='<button class="vq-btn vq-done" onclick="event.stopPropagation();vqSetStatus(\\''+id+'\\',\\'done\\')">✓ Ready for Review</button>';
-  if(r.status==='done') actionBtn='<button class="vq-btn vq-schedule" onclick="event.stopPropagation();vqSetStatus(\\''+id+'\\',\\'approved\\')">→ Schedule</button>';
-  if(r.status==='approved') actionBtn='<button class="vq-btn vq-mark-posted" onclick="event.stopPropagation();vqSetStatus(\\''+id+'\\',\\'posted\\')">📤 Mark Posted</button>';
+  if(r.status==='pending') actionBtn='<button class="vq-btn vq-primary" onclick="event.stopPropagation();vqMoveStatus(\\''+id+'\\',\\'in-progress\\')">▶ Start</button>';
+  if(r.status==='in-progress') actionBtn='<button class="vq-btn vq-done" onclick="event.stopPropagation();vqMoveStatus(\\''+id+'\\',\\'done\\')">✓ Ready for Review</button>';
+  if(r.status==='done') actionBtn='<button class="vq-btn vq-schedule" onclick="event.stopPropagation();vqMoveStatus(\\''+id+'\\',\\'approved\\')">→ Schedule</button>';
+  if(r.status==='approved') actionBtn='<button class="vq-btn vq-mark-posted" onclick="event.stopPropagation();vqMoveStatus(\\''+id+'\\',\\'posted\\')">📤 Mark Posted</button>';
   return '<div class="vq-row" id="vqrow-'+id+'">'
     +'<div class="vq-row-summary" onclick="vqToggleRow(\\''+id+'\\')">'
     +'<div class="vq-dot '+dotClass+'"></div>'
@@ -2511,7 +2511,7 @@ function vqCardHtml(r){
   var body='';
 
   if(r.status==='pending'){
-    var startBtn=(VQ_IS_EDITOR||VQ_IS_ADMIN)?'<button class="vq-btn vq-primary" onclick="vqSetStatus(\\''+id+'\\',\\'in-progress\\')">▶ Start</button>':'';
+    var startBtn=(VQ_IS_EDITOR||VQ_IS_ADMIN)?'<button class="vq-btn vq-primary" onclick="vqMoveStatus(\\''+id+'\\',\\'in-progress\\')">▶ Start</button>':'';
     body='<div class="vq-actions">'+driveBtn+startBtn+deleteBtn+'</div>';
   }
 
@@ -2550,7 +2550,7 @@ function vqCardHtml(r){
         +'<input type="datetime-local" id="vqsched-'+id+'" value="'+esc(r.scheduledAt?new Date(r.scheduledAt).toISOString().slice(0,16):'')+'" />'
         +'<button class="vq-btn vq-schedule" onclick="vqApproveSchedule(\\''+id+'\\')">✓ Approve &amp; Schedule</button>'
         +'</div>';
-      var backBtn='<button class="vq-btn" onclick="vqSetStatus(\\''+id+'\\',\\'in-progress\\')">↩ Back</button>';
+      var backBtn='<button class="vq-btn" onclick="vqMoveStatus(\\''+id+'\\',\\'in-progress\\')">↩ Back</button>';
       body='<div class="vq-actions">'+draftLink+backBtn+deleteBtn+'</div>'+reviewForm;
     } else {
       body='<div class="vq-actions">'+draftLink+deleteBtn+'</div>';
@@ -2561,8 +2561,8 @@ function vqCardHtml(r){
     var schedTime=r.scheduledAt?new Date(r.scheduledAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'—';
     var platDisplay=(r.platforms||[]).join(', ')||'—';
     var draftLink2=r.draftUrl?'<a href="'+esc(r.draftUrl)+'" target="_blank" class="vq-btn vq-drive">📄 Draft</a>':'';
-    var markPostedBtn=VQ_IS_ADMIN?'<button class="vq-btn vq-mark-posted" onclick="vqSetStatus(\\''+id+'\\',\\'posted\\')">📤 Mark Posted</button>':'';
-    var backBtn2=VQ_IS_ADMIN?'<button class="vq-btn" onclick="vqSetStatus(\\''+id+'\\',\\'done\\')">↩ Back</button>':'';
+    var markPostedBtn=VQ_IS_ADMIN?'<button class="vq-btn vq-mark-posted" onclick="vqMoveStatus(\\''+id+'\\',\\'posted\\')">📤 Mark Posted</button>':'';
+    var backBtn2=VQ_IS_ADMIN?'<button class="vq-btn" onclick="vqMoveStatus(\\''+id+'\\',\\'done\\')">↩ Back</button>':'';
     body='<div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.7">'
       +'<strong style="color:var(--txt)">Scheduled:</strong> '+schedTime+'<br>'
       +(r.caption?'<strong style="color:var(--txt)">Caption:</strong> '+esc(r.caption.slice(0,60))+(r.caption.length>60?'…':'')+'<br>':'')
@@ -2636,7 +2636,7 @@ function vqSubmitBuffer(){
   }).catch(function(e){errEl.textContent=''+e;errEl.style.display='block';});
 }
 
-function vqSetStatus(id,status){
+function vqMoveStatus(id,status){
   fetch('/api/video-requests/'+id,{method:'PATCH',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({status:status})})
   .then(function(r){return r.json();}).then(function(d){
     if(d.ok){loadVideoQueue();}else toast('Error: '+(d.error||'Failed'));
