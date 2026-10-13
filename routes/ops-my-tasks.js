@@ -667,7 +667,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     <div class="fr full"><div class="fg"><label>Notes <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
       <textarea id="vq-desc" style="min-height:55px" placeholder="Any direction for the editor — hook ideas, vibe, must-include moments…"></textarea>
     </div></div>
-    <div class="err" id="vq-err" style="margin-top:8px"></div>
+    <div id="vq-status-banner" style="display:none;margin-top:10px;padding:10px 14px;border-radius:8px;font-size:13px;line-height:1.5;word-break:break-word"></div>
     <div style="display:flex;justify-content:flex-end;margin-top:14px">
       <button class="btn" onclick="submitVideoRequest()">Submit</button>
     </div>
@@ -2586,7 +2586,10 @@ function vqHandleDrop(e){
 }
 
 function vqHandleFiles(fileList){
-  Array.from(fileList).forEach(function(f){vqAddFile(f);});
+  var files=Array.from(fileList);
+  if(!files.length){vqSetStatus('No files received — try again','yellow');return;}
+  vqSetStatus('Adding '+files.length+' file'+(files.length>1?'s':'')+'…','yellow');
+  files.forEach(function(f){vqAddFile(f);});
 }
 
 function vqAddFile(file){
@@ -2607,12 +2610,12 @@ function vqAddFile(file){
   xhr.onload=function(){
     try{
       var d=JSON.parse(xhr.responseText);
-      if(d.url){entry.url=d.url;entry.status='done';}
-      else{entry.status='error';entry.error=d.error||'Upload failed (status '+xhr.status+')';toast(file.name+' failed: '+(d.error||'Upload error'),6000);}
-    }catch(e2){entry.status='error';entry.error='Upload failed ('+xhr.status+')';toast(file.name+' failed to upload ('+xhr.status+')',6000);}
+      if(d.url){entry.url=d.url;entry.status='done';vqSetStatus(null);}
+      else{entry.status='error';entry.error=d.error||'HTTP '+xhr.status;vqSetStatus(file.name+' upload failed: '+(d.error||'HTTP '+xhr.status),'red');}
+    }catch(e2){entry.status='error';entry.error='HTTP '+xhr.status+' (parse error)';vqSetStatus(file.name+' upload failed: HTTP '+xhr.status,'red');}
     vqRenderFileList();
   };
-  xhr.onerror=function(){entry.status='error';entry.error='Network error';toast(file.name+' — network error',6000);vqRenderFileList();};
+  xhr.onerror=function(){entry.status='error';entry.error='Network error';vqSetStatus(file.name+' — network error during upload','red');vqRenderFileList();};
   xhr.send(fd);
 }
 
@@ -2769,16 +2772,27 @@ function vpSubmitSchedule(){
   }).catch(function(e){errEl.textContent=''+e;errEl.style.display='block';});
 }
 
+function vqSetStatus(msg,color){
+  var el=document.getElementById('vq-status-banner');
+  if(!el)return;
+  if(!msg){el.style.display='none';el.textContent='';return;}
+  el.style.display='block';
+  el.style.background=color==='red'?'rgba(255,0,80,.12)':color==='green'?'rgba(0,242,100,.1)':'rgba(255,159,10,.1)';
+  el.style.border='1px solid '+(color==='red'?'rgba(255,0,80,.3)':color==='green'?'rgba(0,242,100,.25)':'rgba(255,159,10,.3)');
+  el.style.color=color==='red'?'#ff4d6d':color==='green'?'#6be86b':'#ffd60a';
+  el.textContent=msg;
+}
 function submitVideoRequest(){
+  vqSetStatus(null);
   var btn=document.querySelector('#vq-submit-form .btn');
   var uploading=VQ_QUEUED_FILES.filter(function(f){return f.status==='uploading';});
   var doneFiles=VQ_QUEUED_FILES.filter(function(f){return f.status==='done';});
   var errFiles=VQ_QUEUED_FILES.filter(function(f){return f.status==='error';});
   var pastedUrl=(document.getElementById('vq-drive').value||'').trim();
-  if(uploading.length){toast('Still uploading — please wait a moment',5000);return;}
+  if(uploading.length){vqSetStatus('Still uploading — please wait','yellow');return;}
   if(!doneFiles.length&&!pastedUrl){
-    if(errFiles.length){toast('Upload failed — check your connection and try again',6000);}
-    else{toast('Add at least one video first',5000);}
+    if(errFiles.length){vqSetStatus('Upload failed: '+errFiles.map(function(f){return f.error;}).join(', '),'red');}
+    else{vqSetStatus('Add at least one video or paste a Drive link','yellow');}
     return;
   }
   var desc=(document.getElementById('vq-desc').value||'').trim();
@@ -2789,7 +2803,7 @@ function submitVideoRequest(){
   if(btn){btn.disabled=true;btn.textContent='Submitting…';}
   function done(err){
     if(btn){btn.disabled=false;btn.textContent='Submit';}
-    if(err){toast('Error: '+err,8000);return;}
+    if(err){vqSetStatus('Submit failed: '+err,'red');toast('Error: '+err,8000);return;}
     document.getElementById('vq-desc').value='';
     document.getElementById('vq-drive').value='';
     vqClearUpload();
