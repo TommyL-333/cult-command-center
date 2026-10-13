@@ -653,9 +653,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
       </div>
       <div id="vq-footage-link">
         <input type="url" id="vq-drive" placeholder="https://drive.google.com/…"/>
-        <div style="margin-top:8px;padding:10px 12px;background:rgba(0,242,234,.05);border:1px solid rgba(0,242,234,.12);border-radius:8px;font-size:12px;color:var(--muted);line-height:1.6">
-          📱 <strong style="color:var(--txt)">From iPhone:</strong> Open the Photos app → share the clip → Save to Files → Google Drive, then copy the sharing link. Or use the Google Drive app to upload directly, then paste the link here.
-        </div>
+        <p style="font-size:11px;color:var(--muted);margin-top:6px">Make sure the file is fully uploaded to Drive before pasting — Drive links to in-progress uploads won't work.</p>
       </div>
       <div id="vq-footage-upload" style="display:none">
         <div id="vq-file-list" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
@@ -664,7 +662,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
           <span style="font-weight:700;margin-left:8px" id="vq-add-label">Add a clip</span>
         </label>
         <input type="file" id="vq-file-input" accept="video/*" style="display:none" onchange="vqHandleFiles(this.files)"/>
-        <p style="font-size:11px;color:var(--muted);margin-top:6px;text-align:center">Tap to add one clip at a time — all upload in parallel, submit once</p>
+        <p style="font-size:11px;color:var(--muted);margin-top:6px;text-align:center">Tap to add one clip at a time. After picking, swipe down to close Photos — clips upload in parallel, submit once.</p>
       </div>
     </div></div>
     <div class="fr full"><div class="fg"><label>Notes <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
@@ -2590,7 +2588,10 @@ function vqHandleDrop(e){
 
 function vqHandleFiles(fileList){
   var files=Array.from(fileList);
-  if(!files.length){vqSetStatus('No files received — try again','yellow');return;}
+  // Reset input so selecting the same file again re-triggers onchange
+  var inp=document.getElementById('vq-file-input');
+  if(inp)inp.value='';
+  if(!files.length){vqSetStatus('No files received — swipe down to close Photos and try again','yellow');return;}
   vqSetStatus('Adding '+files.length+' file'+(files.length>1?'s':'')+'…','yellow');
   files.forEach(function(f){vqAddFile(f);});
 }
