@@ -452,7 +452,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .vp-bar-seg{height:100%;transition:width .4s ease;min-width:0}
   .vp-bar-submitted{background:#00f2ea}
   .vp-bar-editing{background:#f59e0b}
-  .vp-bar-review{background:#f97316}
+  .vp-bar-review{background:#ff0050}
   .vp-bar-scheduled{background:#3b82f6}
   .vp-bar-posted{background:#a78bfa}
   .vp-tracker-legend{display:flex;gap:14px;flex-wrap:wrap}
@@ -648,7 +648,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     <div class="vp-tracker-legend" style="justify-content:center">
       <div class="vp-legend-item"><div class="vp-legend-dot" style="background:#00f2ea"></div><span id="vp-cnt-submitted">0</span> Submitted</div>
       <div class="vp-legend-item"><div class="vp-legend-dot" style="background:#f59e0b"></div><span id="vp-cnt-editing">0</span> Editing</div>
-      <div class="vp-legend-item"><div class="vp-legend-dot" style="background:#f97316"></div><span id="vp-cnt-review">0</span> For Review</div>
+      <div class="vp-legend-item"><div class="vp-legend-dot" style="background:#ff0050"></div><span id="vp-cnt-review">0</span> For Review</div>
       <div class="vp-legend-item"><div class="vp-legend-dot" style="background:#3b82f6"></div><span id="vp-cnt-scheduled-tracker">0</span> Scheduled</div>
       <div class="vp-legend-item"><div class="vp-legend-dot" style="background:#a78bfa"></div><span id="vp-cnt-posted">0</span> Posted</div>
     </div>
@@ -707,7 +707,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
       <div id="vq-col-inprogress"></div>
     </div>
     <div>
-      <div class="vq-col-hdr" style="color:#f97316">For Review <span class="vq-col-count" id="vq-cnt-done">0</span></div>
+      <div class="vq-col-hdr" style="color:#ff0050">For Review <span class="vq-col-count" id="vq-cnt-done">0</span></div>
       <div id="vq-col-done"></div>
     </div>
     <div>
