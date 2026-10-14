@@ -5503,10 +5503,10 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       // Schedule one post per channel via Buffer GraphQL API
       const GQL_URL = 'https://api.buffer.com/graphql';
       const CREATE_POST = `
-        mutation CreatePost($input: PostInput!) {
+        mutation CreatePost($input: CreatePostInput!) {
           createPost(input: $input) {
-            post { id scheduledAt status }
-            userFriendlyMessage
+            ... on PostActionSuccess { post { id status dueAt } }
+            ... on MutationError { message }
           }
         }
       `;
@@ -5522,9 +5522,11 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
         const input = {
           channelId: ch.channelId,
           text: ch.caption,
+          mode: 'customScheduled',
+          schedulingType: 'automatic',
+          needsApproval: false,
           dueAt: new Date(ch.scheduledAt).toISOString(),
-          // draftUrl as media asset if available
-          ...(r.draftUrl ? { assets: [{ url: r.draftUrl, mediaType: 'video' }] } : {}),
+          assets: [],
         };
         try {
           const gqlRes = await fetch(GQL_URL, {
@@ -5538,15 +5540,18 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
           const gqlData = await gqlRes.json().catch(() => ({}));
           console.log('[buffer] graphql createPost ch=' + ch.channelId, gqlRes.status, JSON.stringify(gqlData).slice(0, 300));
 
-          const post = gqlData?.data?.createPost?.post;
-          const friendlyMsg = gqlData?.data?.createPost?.userFriendlyMessage;
+          const result = gqlData?.data?.createPost;
           const gqlErrors = gqlData?.errors;
 
-          if (!gqlRes.ok || gqlErrors?.length || !post) {
-            const errMsg = friendlyMsg || gqlErrors?.[0]?.message || `Buffer API error (${gqlRes.status})`;
-            errors.push(`${ch.channelId}: ${errMsg}`);
+          if (!gqlRes.ok || gqlErrors?.length) {
+            errors.push(`${ch.channelId}: ${gqlErrors?.[0]?.message || `HTTP ${gqlRes.status}`}`);
+          } else if (result?.message) {
+            // MutationError fragment
+            errors.push(`${ch.channelId}: ${result.message}`);
+          } else if (result?.post) {
+            results.push({ channelId: ch.channelId, bufferId: result.post.id, scheduledAt: result.post.dueAt });
           } else {
-            results.push({ channelId: ch.channelId, bufferId: post.id, scheduledAt: post.scheduledAt });
+            errors.push(`${ch.channelId}: unexpected Buffer response`);
           }
         } catch (e) {
           errors.push(`${ch.channelId}: ${e.message}`);
@@ -5675,8 +5680,8 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
   });
 
   // ---------- BUFFER POLL: auto-move Scheduled → Posted ----------
-  // Polls Buffer GraphQL API every hour. Any 'approved' card whose bufferPosts
-  // entries all appear as sent gets moved to 'posted'.
+  // Polls Buffer GraphQL API every hour using post(input:{id}) per buffer post.
+  // A card moves to 'posted' once all its channels have been sent.
   async function pollBufferSent() {
     const BUFFER_TOKEN = process.env.BUFFER_ACCESS_TOKEN;
     if (!BUFFER_TOKEN) return;
@@ -5685,45 +5690,38 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       const scheduled = all.filter(r => r.status === 'approved' && r.bufferPosts?.length);
       if (!scheduled.length) return;
 
-      // Collect all buffer post IDs we care about
-      const allIds = scheduled.flatMap(r => r.bufferPosts.map(p => p.bufferId)).filter(Boolean);
-      if (!allIds.length) return;
-
-      // Query Buffer GraphQL for post statuses
       const GQL_URL = 'https://api.buffer.com/graphql';
-      const POSTS_QUERY = `
-        query GetPosts($ids: [ID!]!) {
-          posts(ids: $ids) { id status serviceLink sentAt }
-        }
-      `;
-      const gqlRes = await fetch(GQL_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${BUFFER_TOKEN}` },
-        body: JSON.stringify({ query: POSTS_QUERY, variables: { ids: allIds } }),
-      });
-      if (!gqlRes.ok) { console.error('[buffer-poll] GraphQL error', gqlRes.status); return; }
-      const gqlData = await gqlRes.json().catch(() => ({}));
-      const posts = gqlData?.data?.posts || [];
-      if (!posts.length) return;
+      const GET_POST = `query GetPost($input: PostInput!) { post(input: $input) { id sentAt status { ... on PostStatus { value } } } }`;
 
-      const sentMap = new Map(posts.filter(p => p.status === 'sent').map(p => [p.id, p]));
+      const sentMap = new Map();
+      for (const card of scheduled) {
+        for (const bp of card.bufferPosts) {
+          if (!bp.bufferId || sentMap.has(bp.bufferId)) continue;
+          try {
+            const r = await fetch(GQL_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${BUFFER_TOKEN}` },
+              body: JSON.stringify({ query: GET_POST, variables: { input: { id: bp.bufferId } } }),
+            });
+            const d = await r.json().catch(() => ({}));
+            const post = d?.data?.post;
+            if (post) sentMap.set(bp.bufferId, post);
+          } catch (_) { /* skip on network error */ }
+        }
+      }
+
       let changed = false;
       const fresh = readJsonFile(VR_FILE, []);
       for (let i = 0; i < fresh.length; i++) {
         const r = fresh[i];
         if (r.status !== 'approved' || !r.bufferPosts?.length) continue;
-        // Mark posted only when all scheduled channels have been sent
-        const allSent = r.bufferPosts.every(p => sentMap.has(p.bufferId));
+        const allSent = r.bufferPosts.every(bp => {
+          const p = sentMap.get(bp.bufferId);
+          return p && (p.status?.value === 'sent' || p.sentAt);
+        });
         if (!allSent) continue;
         r.status = 'posted';
         r.postedAt = Date.now();
-        r.postedLinks = r.postedLinks || [];
-        for (const p of r.bufferPosts) {
-          const sent = sentMap.get(p.bufferId);
-          if (sent?.serviceLink && !r.postedLinks.find(l => l.url === sent.serviceLink)) {
-            r.postedLinks.push({ channelId: p.channelId, url: sent.serviceLink });
-          }
-        }
         r.updatedAt = Date.now();
         fresh[i] = r;
         changed = true;
