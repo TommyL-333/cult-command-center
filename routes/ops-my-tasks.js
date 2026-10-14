@@ -2434,7 +2434,12 @@ function vqCardHtml(r){
   }
 
   else if(r.status==='in-progress'){
-    var notesHtml='<div id="vqnotes-view-'+id+'" style="font-size:12px;color:var(--muted);line-height:1.5;white-space:pre-wrap;margin-bottom:6px">'
+    var revBadge=r.revisionsRequested?'<div style="display:flex;align-items:flex-start;gap:8px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:8px;padding:8px 10px;margin-bottom:8px">'
+      +'<span style="font-size:14px;flex-shrink:0">↩</span>'
+      +'<div><div style="font-size:11px;font-weight:700;color:#fbbf24;margin-bottom:2px">Revisions requested</div>'
+      +'<div style="font-size:11px;color:rgba(251,191,36,.75);line-height:1.4;white-space:pre-wrap">'+esc(r.revisionNotes||'')+'</div>'
+      +'</div></div>':'';
+    var notesHtml=revBadge+'<div id="vqnotes-view-'+id+'" style="font-size:12px;color:var(--muted);line-height:1.5;white-space:pre-wrap;margin-bottom:6px">'
       +(r.notes||r.description?esc(r.notes||r.description):'<em style="opacity:.5">No notes yet</em>')
       +'</div>'
       +'<div id="vqnotes-edit-'+id+'" style="display:none">'
@@ -2491,6 +2496,11 @@ function vqCardHtml(r){
         +'<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">'+channelRows+'</div>'
         +'<div id="vqsched-err-'+id+'" style="font-size:11px;color:var(--red);display:none;margin-bottom:6px"></div>'
         +'<button class="vq-btn vq-schedule" onclick="vqApproveSchedule(\\''+id+'\\')">✓ Approve &amp; Schedule in Buffer</button>'
+        +'<div style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.07)">'
+        +'<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Request Revision</div>'
+        +'<textarea rows="2" placeholder="Describe what needs to change…" id="vqrev-'+id+'" style="width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:7px 10px;color:var(--txt);font-size:12px;font-family:inherit;resize:vertical;margin-bottom:6px"></textarea>'
+        +'<button class="vq-btn" style="background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.3);color:#fbbf24" onclick="vqRequestRevision(\\''+id+'\\')">↩ Request Revision</button>'
+        +'</div>'
         +'</div>';
       body='<div class="vq-actions">'+draftLink+deleteBtn+'</div>'+reviewForm;
     } else {
@@ -2713,6 +2723,16 @@ function vqApproveSchedule(id){
       vqPatch(id,{status:'done'},function(){loadVideoQueue();});
       showErr('Could not reach server: '+e);
     });
+  });
+}
+
+function vqRequestRevision(id){
+  var ta=document.getElementById('vqrev-'+id);
+  var notes=(ta?ta.value:'').trim();
+  if(!notes){toast('Describe what needs to change first');ta&&ta.focus();return;}
+  vqPatch(id,{status:'in-progress',revisionNotes:notes,revisionsRequested:true,revisionRequestedAt:Date.now()},function(){
+    toast('↩ Sent back for revision');
+    loadVideoQueue();
   });
 }
 
@@ -5191,13 +5211,20 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       const r = all[idx];
       if (!isAdmin && !isEditor && r.submittedBy !== email)
         return res.status(403).json({ error: 'Not allowed' });
-      const { status, notes, draftUrl, caption, platforms, scheduledAt, postedLinks } = req.body || {};
+      const { status, notes, draftUrl, caption, platforms, scheduledAt, postedLinks,
+              revisionNotes, revisionsRequested, revisionRequestedAt, channelSchedules } = req.body || {};
       if (notes !== undefined) r.notes = notes;
       if (draftUrl !== undefined) r.draftUrl = draftUrl;
       if (caption !== undefined) r.caption = caption;
       if (platforms !== undefined) r.platforms = platforms;
       if (scheduledAt !== undefined) r.scheduledAt = scheduledAt ? new Date(scheduledAt).getTime() : null;
       if (postedLinks !== undefined) r.postedLinks = postedLinks;
+      if (channelSchedules !== undefined) r.channelSchedules = channelSchedules;
+      if (revisionNotes !== undefined) r.revisionNotes = revisionNotes;
+      if (revisionsRequested !== undefined) r.revisionsRequested = revisionsRequested;
+      if (revisionRequestedAt !== undefined) r.revisionRequestedAt = revisionRequestedAt;
+      // Clear revision flag when editor marks as ready for review
+      if (status === 'done') { r.revisionsRequested = false; r.revisionNotes = null; }
       r.updatedAt = Date.now();
 
       // When editor starts editing a multi-video batch, expand into N cards
@@ -5220,6 +5247,11 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       } else {
         if (status) r.status = status;
         all[idx] = r;
+        // Revision: move card to front of the array so it appears at top of editing stack
+        if (status === 'in-progress' && revisionsRequested) {
+          all.splice(idx, 1);
+          all.unshift(r);
+        }
       }
       writeJsonFile(VR_FILE, all);
       res.json({ ok: true });
