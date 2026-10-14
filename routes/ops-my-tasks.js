@@ -5255,6 +5255,16 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       }
       writeJsonFile(VR_FILE, all);
       res.json({ ok: true });
+
+      // Fire-and-forget Lark DM to Gilbert when a revision is requested
+      if (status === 'in-progress' && revisionsRequested && revisionNotes) {
+        resolveOpenId('gilbert@cultcontent.cc').then(openId => {
+          if (!openId) return;
+          const title = r.title || 'a video';
+          const msg = `🔄 Revision requested on "${title}"\n\n${revisionNotes}\n\nCheck the Video Production queue: https://manifest.cultcontent.cc/my-tasks`;
+          return sendLarkMessage(openId, msg);
+        }).catch(e => console.error('[revision-notify] Lark DM failed:', e.message));
+      }
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
