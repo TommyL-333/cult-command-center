@@ -2289,6 +2289,19 @@ function doDelete(){
 var VQ_DATA=[], VQ_MY_EMAIL='', VQ_IS_EDITOR=false, VQ_IS_ADMIN=false, VQ_LOADED=false;
 var VQ_BRANDS=['Lode WTR','Roots by Genetic Art','Trip Visuals','Made Right','B NOOR','Elasco Skincare','Starlit Scribbles'];
 
+// Connected Buffer channels — IDs from api.buffer.com/graphql
+var VQ_BUFFER_CHANNELS=[
+  {id:'69d7f3cd031bfa423ce82b4a',service:'tiktok',   name:'tommylynch_'},
+  {id:'69d6de31031bfa423ce369cf',service:'instagram', name:'tommy.lynch_'},
+  {id:'69d70072031bfa423ce3fc25',service:'instagram', name:'cultcontent.cc'},
+  {id:'69d6de1e031bfa423ce368be',service:'youtube',   name:'Tommy Lynch'},
+  {id:'69d6de07031bfa423ce366fa',service:'youtube',   name:'Cult Content'},
+  {id:'69d700d7031bfa423ce3fd6f',service:'linkedin',  name:'tommy-lynch (personal)'},
+  {id:'69d70096031bfa423ce3fca1',service:'linkedin',  name:'cultcontent (org)'},
+  {id:'69d70154031bfa423ce3fefa',service:'facebook',  name:'Cult Content'},
+  {id:'69d7018f031bfa423ce3ffa5',service:'twitter',   name:'thlynch3'},
+];
+
 function applyVqRole(){
   var isEd=!!(window.__VQ_IS_EDITOR__);
   var isAdm=!!(window.__VQ_IS_ADMIN__);
@@ -2442,26 +2455,46 @@ function vqCardHtml(r){
 
   else if(r.status==='done'){
     var draftLink=r.draftUrl?'<a href="'+esc(r.draftUrl)+'" target="_blank" class="vq-btn vq-drive">📄 View Draft</a>':'<span style="font-size:11px;color:var(--muted)">No draft yet</span>';
-    var reviewForm='';
     if(VQ_IS_ADMIN){
-      var platOpts=['TikTok','Instagram','YouTube','LinkedIn','Twitter','Facebook'];
-      var curPlats=r.platforms||[];
-      var platChips=platOpts.map(function(p){
-        return '<button class="vq-plat-chip'+(curPlats.indexOf(p)>=0?' on':'')+'" onclick="this.classList.toggle(\\'on\\')" data-plat="'+p+'">'+p+'</button>';
+      var savedCap=esc(r.caption||'');
+      var savedSched=r.scheduledAt?new Date(r.scheduledAt).toISOString().slice(0,16):'';
+      var savedChannels=r.channelSchedules||[];
+      // Build per-channel rows
+      var channelRows=VQ_BUFFER_CHANNELS.map(function(ch){
+        var saved=savedChannels.find(function(s){return s.channelId===ch.id;})||{};
+        var isOn=saved.on||(savedChannels.length===0&&false);
+        var chCap=esc(saved.caption||'');
+        var chSched=saved.scheduledAt?new Date(saved.scheduledAt).toISOString().slice(0,16):'';
+        var svcIcon={'tiktok':'📱','instagram':'📸','youtube':'▶️','linkedin':'💼','twitter':'𝕏','facebook':'👤'}[ch.service]||'🌐';
+        var tagHint={'linkedin':'Tag people: type their name — Buffer will try to resolve. Companies may need the exact page name.','tiktok':'Tag with @username — must be their exact TikTok handle.','instagram':'Tag with @username in caption.'}[ch.service]||'';
+        return '<div class="vq-ch-row" id="vqch-'+id+'-'+ch.id+'" data-ch="'+ch.id+'" data-svc="'+ch.service+'">'
+          +'<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;font-weight:600">'
+          +'<input type="checkbox" class="vq-ch-check" '+(isOn?'checked':'')+' onchange="vqToggleChannel(\\''+id+'\\',\\''+ch.id+'\\',this)" style="accent-color:var(--cyan);width:14px;height:14px"/>'
+          +svcIcon+' '+esc(ch.name)+' <span style="font-size:10px;color:var(--muted);font-weight:400">'+ch.service+'</span>'
+          +'</label>'
+          +'<div class="vq-ch-detail" style="display:'+(isOn?'block':'none')+';margin-top:8px;padding-left:22px">'
+          +(tagHint?'<div style="font-size:10px;color:#f59e0b;margin-bottom:6px">⚠ '+tagHint+'</div>':'')
+          +'<textarea rows="2" placeholder="Caption for this channel…" class="vq-ch-cap" data-ch="'+ch.id+'" oninput="vqMarkCapEdited(this)" style="width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:6px 9px;color:var(--txt);font-size:11px;font-family:inherit;resize:vertical;margin-bottom:6px">'+chCap+'</textarea>'
+          +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
+          +'<span style="font-size:10px;color:var(--muted)">Override time:</span>'
+          +'<input type="datetime-local" class="vq-ch-sched" data-ch="'+ch.id+'" value="'+chSched+'" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:4px 8px;color:var(--txt);font-size:11px;flex:1;min-width:160px"/>'
+          +'</div>'
+          +'</div>'
+          +'</div>';
       }).join('');
-      reviewForm='<div class="vq-inline-form" style="margin-top:10px">'
-        +'<textarea rows="2" placeholder="Caption…" id="vqcap-'+id+'" style="width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:7px 10px;color:var(--txt);font-size:12px;font-family:inherit;resize:vertical">'+esc(r.caption||'')+'</textarea>'
-        +'<div class="plat-row" id="vqplats-'+id+'">'+platChips+'</div>'
-        +'<div style="display:flex;flex-direction:column;gap:4px">'
-        +'<label style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Schedule date &amp; time</label>'
-        +'<input type="datetime-local" id="vqsched-'+id+'" value="'+esc(r.scheduledAt?new Date(r.scheduledAt).toISOString().slice(0,16):'')+'" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:7px 10px;color:var(--txt);font-size:12px" />'
-        +'</div>'
-        +'<div id="vqsched-err-'+id+'" style="font-size:11px;color:var(--red);display:none"></div>'
+      var reviewForm='<div class="vq-inline-form" id="vqform-'+id+'" style="margin-top:10px">'
+        +'<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Master caption <span style="font-weight:400;text-transform:none;letter-spacing:0">(auto-fills each channel)</span></div>'
+        +'<textarea rows="2" placeholder="Write your caption…" id="vqcap-'+id+'" onkeyup="vqSyncCaptions(\\''+id+'\\')" style="width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:7px 10px;color:var(--txt);font-size:12px;font-family:inherit;resize:vertical;margin-bottom:10px">'+savedCap+'</textarea>'
+        +'<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Default date &amp; time</div>'
+        +'<input type="datetime-local" id="vqsched-'+id+'" value="'+savedSched+'" onchange="vqSyncSchedule(\\''+id+'\\')" style="width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:7px 10px;color:var(--txt);font-size:12px;margin-bottom:12px"/>'
+        +'<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Channels</div>'
+        +'<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">'+channelRows+'</div>'
+        +'<div id="vqsched-err-'+id+'" style="font-size:11px;color:var(--red);display:none;margin-bottom:6px"></div>'
         +'<button class="vq-btn vq-schedule" onclick="vqApproveSchedule(\\''+id+'\\')">✓ Approve &amp; Schedule in Buffer</button>'
         +'</div>';
       body='<div class="vq-actions">'+draftLink+deleteBtn+'</div>'+reviewForm;
     } else {
-      body='<div class="vq-actions">'+draftLink+deleteBtn+'</div>';
+      body='<div class="vq-actions">'+draftLink+'</div>';
     }
   }
 
@@ -2574,47 +2607,111 @@ function vqSubmitDraft(id){
   vqPatch(id,{status:'done',draftUrl:url});
 }
 
-function vqApproveSchedule(id){
-  var cap=document.getElementById('vqcap-'+id);
-  var sched=document.getElementById('vqsched-'+id);
-  var platContainer=document.getElementById('vqplats-'+id);
-  var errEl=document.getElementById('vqsched-err-'+id);
-  var plats=[];
-  if(platContainer){
-    platContainer.querySelectorAll('.vq-plat-chip.on').forEach(function(el){plats.push(el.dataset.plat);});
+// When master caption changes, sync to any channel caption that hasn't been manually edited
+function vqSyncCaptions(id){
+  var masterCap=document.getElementById('vqcap-'+id);
+  if(!masterCap)return;
+  var val=masterCap.value;
+  var form=document.getElementById('vqform-'+id);
+  if(!form)return;
+  form.querySelectorAll('.vq-ch-cap').forEach(function(ta){
+    // Only sync if the textarea is empty or still matches the previous master value
+    if(!ta.dataset.edited)ta.value=val;
+  });
+}
+// Mark a channel caption as manually edited so sync skips it
+function vqMarkCapEdited(ta){ta.dataset.edited='1';}
+
+// When default date changes, populate empty channel overrides
+function vqSyncSchedule(id){
+  var masterSched=document.getElementById('vqsched-'+id);
+  if(!masterSched)return;
+  var val=masterSched.value;
+  var form=document.getElementById('vqform-'+id);
+  if(!form)return;
+  form.querySelectorAll('.vq-ch-sched').forEach(function(inp){
+    if(!inp.value)inp.value=val;
+  });
+}
+
+// Show/hide per-channel detail when checkbox toggled; sync master caption in
+function vqToggleChannel(id,chId,chk){
+  var row=document.getElementById('vqch-'+id+'-'+chId);
+  if(!row)return;
+  var detail=row.querySelector('.vq-ch-detail');
+  if(detail)detail.style.display=chk.checked?'block':'none';
+  if(chk.checked){
+    // Sync master caption into this channel's textarea if it's empty
+    var masterCap=document.getElementById('vqcap-'+id);
+    var ta=row.querySelector('.vq-ch-cap');
+    if(ta&&masterCap&&!ta.value)ta.value=masterCap.value;
+    // Sync master schedule if empty
+    var masterSched=document.getElementById('vqsched-'+id);
+    var si=row.querySelector('.vq-ch-sched');
+    if(si&&masterSched&&!si.value)si.value=masterSched.value;
   }
-  var caption=(cap?cap.value:'').trim();
-  var schedVal=sched?sched.value:'';
-  var scheduledAt=schedVal?new Date(schedVal).toISOString():null;
+}
+
+function vqApproveSchedule(id){
+  var errEl=document.getElementById('vqsched-err-'+id);
+  var masterCap=(document.getElementById('vqcap-'+id)||{}).value||'';
+  var defaultSched=(document.getElementById('vqsched-'+id)||{}).value||'';
+  var form=document.getElementById('vqform-'+id);
+
+  // Collect checked channels with their per-channel caption + time
+  var channelSchedules=[];
+  if(form){
+    form.querySelectorAll('.vq-ch-row').forEach(function(row){
+      var chk=row.querySelector('.vq-ch-check');
+      if(!chk||!chk.checked)return;
+      var chId=row.dataset.ch;
+      var ta=row.querySelector('.vq-ch-cap');
+      var si=row.querySelector('.vq-ch-sched');
+      var cap=(ta?ta.value:masterCap).trim()||masterCap.trim();
+      var schedVal=si?si.value:defaultSched;
+      channelSchedules.push({
+        channelId:chId,
+        caption:cap,
+        scheduledAt:schedVal?new Date(schedVal).toISOString():null,
+      });
+    });
+  }
+
   // Validate
-  if(!caption){if(errEl){errEl.textContent='Caption is required';errEl.style.display='block';}toast('Add a caption first');return;}
-  if(!scheduledAt){if(errEl){errEl.textContent='Pick a schedule date & time';errEl.style.display='block';}toast('Pick a schedule date & time');return;}
-  if(plats.length===0){if(errEl){errEl.textContent='Select at least one platform';errEl.style.display='block';}toast('Select at least one platform');return;}
+  var showErr=function(msg){if(errEl){errEl.textContent=msg;errEl.style.display='block';}toast('⚠ '+msg);};
+  if(!masterCap.trim()){showErr('Write a caption first');return;}
+  if(!defaultSched){showErr('Pick a default date & time');return;}
+  if(channelSchedules.length===0){showErr('Select at least one channel');return;}
+  var missingTime=channelSchedules.filter(function(s){return !s.scheduledAt;});
+  if(missingTime.length){showErr('Missing schedule time for some channels');return;}
   if(errEl)errEl.style.display='none';
-  // First approve + save metadata
-  vqPatch(id,{status:'approved',caption:caption,platforms:plats,scheduledAt:scheduledAt},function(){
-    // Then schedule in Buffer
+
+  var platforms=channelSchedules.map(function(s){
+    var ch=VQ_BUFFER_CHANNELS.find(function(c){return c.id===s.channelId;});
+    return ch?ch.service:'unknown';
+  });
+
+  // Save metadata then send to Buffer
+  vqPatch(id,{status:'approved',caption:masterCap.trim(),platforms:platforms,scheduledAt:new Date(defaultSched).toISOString(),channelSchedules:channelSchedules},function(){
     fetch('/api/video-requests/'+id+'/post-buffer',{
       method:'POST',credentials:'include',
       headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({caption:caption,scheduledAt:scheduledAt}),
+      body:JSON.stringify({channelSchedules:channelSchedules}),
     })
     .then(function(r){return r.json();})
     .then(function(d){
       if(d.error){
-        // Buffer failed — revert to 'done' so admin can fix and retry
         vqPatch(id,{status:'done'},function(){loadVideoQueue();});
-        toast('⚠ Buffer error: '+d.error,8000);
-        if(errEl){errEl.textContent='Buffer error: '+d.error;errEl.style.display='block';}
+        showErr('Buffer error: '+d.error);
       } else {
-        if(d.warning)toast('⚠ '+d.warning,8000);
-        else toast('✓ Scheduled in Buffer');
+        var n=d.scheduled||channelSchedules.length;
+        toast('✓ Scheduled on '+n+' channel'+(n===1?'':'s')+' in Buffer');
         loadVideoQueue();
       }
     })
     .catch(function(e){
       vqPatch(id,{status:'done'},function(){loadVideoQueue();});
-      toast('⚠ Could not reach Buffer: '+e,8000);
+      showErr('Could not reach server: '+e);
     });
   });
 }
@@ -5392,48 +5489,83 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       if (idx < 0) return res.status(404).json({ error: 'Not found' });
       const r = all[idx];
       if (r.status !== 'approved') return res.status(400).json({ error: 'Video must be approved first' });
-      const { caption, scheduledAt } = req.body || {};
-      if (!caption) return res.status(400).json({ error: 'Caption required' });
+
+      const { channelSchedules } = req.body || {};
+      if (!channelSchedules || !channelSchedules.length) {
+        return res.status(400).json({ error: 'No channels selected' });
+      }
 
       const BUFFER_TOKEN = process.env.BUFFER_ACCESS_TOKEN;
-      const BUFFER_CHANNEL_ID = process.env.BUFFER_CHANNEL_ID;
-      if (!BUFFER_TOKEN || !BUFFER_CHANNEL_ID) {
-        const missing = [!BUFFER_TOKEN && 'BUFFER_ACCESS_TOKEN', !BUFFER_CHANNEL_ID && 'BUFFER_CHANNEL_ID'].filter(Boolean).join(', ');
-        return res.status(500).json({ error: `Buffer not configured — set ${missing} in Railway env vars` });
+      if (!BUFFER_TOKEN) {
+        return res.status(500).json({ error: 'Buffer not configured — set BUFFER_ACCESS_TOKEN in Railway env vars' });
       }
 
-      // Call Buffer API to create a scheduled post
-      const schedIso = scheduledAt ? new Date(scheduledAt).toISOString() : null;
-      const bufParams = new URLSearchParams({
-        access_token: BUFFER_TOKEN,
-        'profile_ids[]': BUFFER_CHANNEL_ID,
-        text: caption,
-        ...(schedIso ? { scheduled_at: schedIso } : {}),
-      });
-      // Attach the draft video URL as a media link if available
-      if (r.draftUrl) bufParams.append('media[link]', r.draftUrl);
+      // Schedule one post per channel via Buffer GraphQL API
+      const GQL_URL = 'https://api.buffer.com/graphql';
+      const CREATE_POST = `
+        mutation CreatePost($input: PostInput!) {
+          createPost(input: $input) {
+            post { id scheduledAt status }
+            userFriendlyMessage
+          }
+        }
+      `;
 
-      const bufRes = await fetch('https://api.bufferapp.com/1/updates/create.json', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: bufParams,
-      });
-      const bufData = await bufRes.json().catch(() => ({}));
-      console.log('[buffer] create response', bufRes.status, JSON.stringify(bufData).slice(0, 400));
-      if (!bufRes.ok || bufData.error) {
-        const errMsg = bufData.message || bufData.error || `Buffer API error (${bufRes.status})`;
-        console.error('[buffer] schedule failed:', errMsg, 'payload:', bufParams.toString().slice(0, 300));
-        return res.status(500).json({ error: errMsg, bufferRaw: bufData });
+      const results = [];
+      const errors = [];
+
+      for (const ch of channelSchedules) {
+        if (!ch.channelId || !ch.caption || !ch.scheduledAt) {
+          errors.push(`Channel ${ch.channelId}: missing caption or time`);
+          continue;
+        }
+        const input = {
+          channelId: ch.channelId,
+          text: ch.caption,
+          dueAt: new Date(ch.scheduledAt).toISOString(),
+          // draftUrl as media asset if available
+          ...(r.draftUrl ? { assets: [{ url: r.draftUrl, mediaType: 'video' }] } : {}),
+        };
+        try {
+          const gqlRes = await fetch(GQL_URL, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${BUFFER_TOKEN}`,
+            },
+            body: JSON.stringify({ query: CREATE_POST, variables: { input } }),
+          });
+          const gqlData = await gqlRes.json().catch(() => ({}));
+          console.log('[buffer] graphql createPost ch=' + ch.channelId, gqlRes.status, JSON.stringify(gqlData).slice(0, 300));
+
+          const post = gqlData?.data?.createPost?.post;
+          const friendlyMsg = gqlData?.data?.createPost?.userFriendlyMessage;
+          const gqlErrors = gqlData?.errors;
+
+          if (!gqlRes.ok || gqlErrors?.length || !post) {
+            const errMsg = friendlyMsg || gqlErrors?.[0]?.message || `Buffer API error (${gqlRes.status})`;
+            errors.push(`${ch.channelId}: ${errMsg}`);
+          } else {
+            results.push({ channelId: ch.channelId, bufferId: post.id, scheduledAt: post.scheduledAt });
+          }
+        } catch (e) {
+          errors.push(`${ch.channelId}: ${e.message}`);
+        }
       }
 
-      // Stay in 'approved' (Scheduled column) — polling job moves to 'posted' once Buffer publishes
-      r.status = 'approved';
-      r.caption = caption;
-      r.bufferId = bufData.updates?.[0]?.id || null;
-      r.bufferScheduledAt = schedIso;
+      if (results.length === 0) {
+        // All channels failed — revert status handled by client
+        return res.status(500).json({ error: 'All channels failed: ' + errors.join('; ') });
+      }
+
+      // Persist buffer post IDs back onto the record
+      r.bufferPosts = results;
+      if (errors.length) r.bufferErrors = errors;
       all[idx] = r;
       writeJsonFile(VR_FILE, all);
-      res.json({ ok: true, bufferId: r.bufferId, scheduledAt: schedIso });
+
+      const warnings = errors.length ? `Some channels failed: ${errors.join('; ')}` : null;
+      res.json({ ok: true, scheduled: results.length, posts: results, ...(warnings ? { warning: warnings } : {}) });
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
@@ -5543,40 +5675,54 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
   });
 
   // ---------- BUFFER POLL: auto-move Scheduled → Posted ----------
-  // Buffer doesn't expose webhook URLs on standard plans, so we poll their
-  // sent-updates API every hour. Any 'approved' card whose bufferId appears
-  // in the sent list gets moved to 'posted' with the live post URL.
+  // Polls Buffer GraphQL API every hour. Any 'approved' card whose bufferPosts
+  // entries all appear as sent gets moved to 'posted'.
   async function pollBufferSent() {
     const BUFFER_TOKEN = process.env.BUFFER_ACCESS_TOKEN;
-    const BUFFER_CHANNEL_ID = process.env.BUFFER_CHANNEL_ID;
-    if (!BUFFER_TOKEN || !BUFFER_CHANNEL_ID) return;
+    if (!BUFFER_TOKEN) return;
     try {
       const all = readJsonFile(VR_FILE, []);
-      const scheduled = all.filter(r => r.status === 'approved' && r.bufferId);
+      const scheduled = all.filter(r => r.status === 'approved' && r.bufferPosts?.length);
       if (!scheduled.length) return;
 
-      const sentRes = await fetch(
-        `https://api.bufferapp.com/1/profiles/${BUFFER_CHANNEL_ID}/updates/sent.json?access_token=${BUFFER_TOKEN}&count=100`
-      );
-      if (!sentRes.ok) { console.error('[buffer-poll] API error', sentRes.status); return; }
-      const sentData = await sentRes.json().catch(() => ({}));
-      const sentUpdates = sentData.updates || [];
-      if (!sentUpdates.length) return;
+      // Collect all buffer post IDs we care about
+      const allIds = scheduled.flatMap(r => r.bufferPosts.map(p => p.bufferId)).filter(Boolean);
+      if (!allIds.length) return;
 
-      const sentMap = new Map(sentUpdates.map(u => [u.id, u]));
+      // Query Buffer GraphQL for post statuses
+      const GQL_URL = 'https://api.buffer.com/graphql';
+      const POSTS_QUERY = `
+        query GetPosts($ids: [ID!]!) {
+          posts(ids: $ids) { id status serviceLink sentAt }
+        }
+      `;
+      const gqlRes = await fetch(GQL_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${BUFFER_TOKEN}` },
+        body: JSON.stringify({ query: POSTS_QUERY, variables: { ids: allIds } }),
+      });
+      if (!gqlRes.ok) { console.error('[buffer-poll] GraphQL error', gqlRes.status); return; }
+      const gqlData = await gqlRes.json().catch(() => ({}));
+      const posts = gqlData?.data?.posts || [];
+      if (!posts.length) return;
+
+      const sentMap = new Map(posts.filter(p => p.status === 'sent').map(p => [p.id, p]));
       let changed = false;
-      const fresh = readJsonFile(VR_FILE, []);  // re-read to avoid stale overwrite
+      const fresh = readJsonFile(VR_FILE, []);
       for (let i = 0; i < fresh.length; i++) {
         const r = fresh[i];
-        if (r.status !== 'approved' || !r.bufferId) continue;
-        const sent = sentMap.get(r.bufferId);
-        if (!sent) continue;
+        if (r.status !== 'approved' || !r.bufferPosts?.length) continue;
+        // Mark posted only when all scheduled channels have been sent
+        const allSent = r.bufferPosts.every(p => sentMap.has(p.bufferId));
+        if (!allSent) continue;
         r.status = 'posted';
-        r.postedAt = sent.sent_at ? sent.sent_at * 1000 : Date.now();
+        r.postedAt = Date.now();
         r.postedLinks = r.postedLinks || [];
-        const postUrl = sent.service_link || null;
-        if (postUrl && !r.postedLinks.find(l => l.url === postUrl)) {
-          r.postedLinks.push({ platform: sent.profile_service || 'buffer', url: postUrl });
+        for (const p of r.bufferPosts) {
+          const sent = sentMap.get(p.bufferId);
+          if (sent?.serviceLink && !r.postedLinks.find(l => l.url === sent.serviceLink)) {
+            r.postedLinks.push({ channelId: p.channelId, url: sent.serviceLink });
+          }
         }
         r.updatedAt = Date.now();
         fresh[i] = r;
