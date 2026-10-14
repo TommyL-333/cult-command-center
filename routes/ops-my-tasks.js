@@ -2452,8 +2452,12 @@ function vqCardHtml(r){
       reviewForm='<div class="vq-inline-form" style="margin-top:10px">'
         +'<textarea rows="2" placeholder="Caption…" id="vqcap-'+id+'" style="width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:7px 10px;color:var(--txt);font-size:12px;font-family:inherit;resize:vertical">'+esc(r.caption||'')+'</textarea>'
         +'<div class="plat-row" id="vqplats-'+id+'">'+platChips+'</div>'
-        +'<input type="datetime-local" id="vqsched-'+id+'" value="'+esc(r.scheduledAt?new Date(r.scheduledAt).toISOString().slice(0,16):'')+'" />'
-        +'<button class="vq-btn vq-schedule" onclick="vqApproveSchedule(\\''+id+'\\')">✓ Approve &amp; Schedule</button>'
+        +'<div style="display:flex;flex-direction:column;gap:4px">'
+        +'<label style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Schedule date &amp; time</label>'
+        +'<input type="datetime-local" id="vqsched-'+id+'" value="'+esc(r.scheduledAt?new Date(r.scheduledAt).toISOString().slice(0,16):'')+'" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:7px 10px;color:var(--txt);font-size:12px" />'
+        +'</div>'
+        +'<div id="vqsched-err-'+id+'" style="font-size:11px;color:var(--red);display:none"></div>'
+        +'<button class="vq-btn vq-schedule" onclick="vqApproveSchedule(\\''+id+'\\')">✓ Approve &amp; Schedule in Buffer</button>'
         +'</div>';
       body='<div class="vq-actions">'+draftLink+deleteBtn+'</div>'+reviewForm;
     } else {
@@ -2574,15 +2578,22 @@ function vqApproveSchedule(id){
   var cap=document.getElementById('vqcap-'+id);
   var sched=document.getElementById('vqsched-'+id);
   var platContainer=document.getElementById('vqplats-'+id);
+  var errEl=document.getElementById('vqsched-err-'+id);
   var plats=[];
   if(platContainer){
     platContainer.querySelectorAll('.vq-plat-chip.on').forEach(function(el){plats.push(el.dataset.plat);});
   }
   var caption=(cap?cap.value:'').trim();
-  var scheduledAt=sched&&sched.value?new Date(sched.value).toISOString():null;
-  // First approve + save metadata, then post to Buffer
+  var schedVal=sched?sched.value:'';
+  var scheduledAt=schedVal?new Date(schedVal).toISOString():null;
+  // Validate
+  if(!caption){if(errEl){errEl.textContent='Caption is required';errEl.style.display='block';}toast('Add a caption first');return;}
+  if(!scheduledAt){if(errEl){errEl.textContent='Pick a schedule date & time';errEl.style.display='block';}toast('Pick a schedule date & time');return;}
+  if(plats.length===0){if(errEl){errEl.textContent='Select at least one platform';errEl.style.display='block';}toast('Select at least one platform');return;}
+  if(errEl)errEl.style.display='none';
+  // First approve + save metadata
   vqPatch(id,{status:'approved',caption:caption,platforms:plats,scheduledAt:scheduledAt},function(){
-    // Post to Buffer so it can be tracked via webhook
+    // Then schedule in Buffer
     fetch('/api/video-requests/'+id+'/post-buffer',{
       method:'POST',credentials:'include',
       headers:{'Content-Type':'application/json'},
@@ -2590,10 +2601,21 @@ function vqApproveSchedule(id){
     })
     .then(function(r){return r.json();})
     .then(function(d){
-      if(d.warning)toast(d.warning,6000);
-      loadVideoQueue();
+      if(d.error){
+        // Buffer failed — revert to 'done' so admin can fix and retry
+        vqPatch(id,{status:'done'},function(){loadVideoQueue();});
+        toast('⚠ Buffer error: '+d.error,8000);
+        if(errEl){errEl.textContent='Buffer error: '+d.error;errEl.style.display='block';}
+      } else {
+        if(d.warning)toast('⚠ '+d.warning,8000);
+        else toast('✓ Scheduled in Buffer');
+        loadVideoQueue();
+      }
     })
-    .catch(function(){loadVideoQueue();});
+    .catch(function(e){
+      vqPatch(id,{status:'done'},function(){loadVideoQueue();});
+      toast('⚠ Could not reach Buffer: '+e,8000);
+    });
   });
 }
 
@@ -5376,43 +5398,42 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       const BUFFER_TOKEN = process.env.BUFFER_ACCESS_TOKEN;
       const BUFFER_CHANNEL_ID = process.env.BUFFER_CHANNEL_ID;
       if (!BUFFER_TOKEN || !BUFFER_CHANNEL_ID) {
-        // Mark posted anyway so the tracker updates; note the missing env vars
-        r.status = 'posted';
-        r.postedAt = Date.now();
-        r.bufferNote = 'BUFFER_ACCESS_TOKEN or BUFFER_CHANNEL_ID not set — post manually';
-        r.caption = caption;
-        all[idx] = r;
-        writeJsonFile(VR_FILE, all);
-        return res.json({ ok: true, warning: 'Buffer env vars not configured. Marked as posted manually.' });
+        const missing = [!BUFFER_TOKEN && 'BUFFER_ACCESS_TOKEN', !BUFFER_CHANNEL_ID && 'BUFFER_CHANNEL_ID'].filter(Boolean).join(', ');
+        return res.status(500).json({ error: `Buffer not configured — set ${missing} in Railway env vars` });
       }
 
-      // Call Buffer API to create a draft/scheduled post
-      const bufPayload = {
-        profile_ids: [BUFFER_CHANNEL_ID],
+      // Call Buffer API to create a scheduled post
+      const schedIso = scheduledAt ? new Date(scheduledAt).toISOString() : null;
+      const bufParams = new URLSearchParams({
+        access_token: BUFFER_TOKEN,
+        'profile_ids[]': BUFFER_CHANNEL_ID,
         text: caption,
-      };
-      if (scheduledAt) bufPayload.scheduled_at = new Date(scheduledAt).toISOString();
+        ...(schedIso ? { scheduled_at: schedIso } : {}),
+      });
+      // Attach the draft video URL as a media link if available
+      if (r.draftUrl) bufParams.append('media[link]', r.draftUrl);
 
       const bufRes = await fetch('https://api.bufferapp.com/1/updates/create.json', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: new URLSearchParams({
-          access_token: BUFFER_TOKEN,
-          'profile_ids[]': BUFFER_CHANNEL_ID,
-          text: caption,
-          ...(scheduledAt ? { scheduled_at: new Date(scheduledAt).toISOString() } : {}),
-        }),
+        body: bufParams,
       });
       const bufData = await bufRes.json().catch(() => ({}));
-      if (!bufRes.ok) return res.status(500).json({ error: bufData.message || 'Buffer API error' });
+      console.log('[buffer] create response', bufRes.status, JSON.stringify(bufData).slice(0, 400));
+      if (!bufRes.ok || bufData.error) {
+        const errMsg = bufData.message || bufData.error || `Buffer API error (${bufRes.status})`;
+        console.error('[buffer] schedule failed:', errMsg, 'payload:', bufParams.toString().slice(0, 300));
+        return res.status(500).json({ error: errMsg, bufferRaw: bufData });
+      }
 
       // Stay in 'approved' (Scheduled column) — polling job moves to 'posted' once Buffer publishes
       r.status = 'approved';
       r.caption = caption;
       r.bufferId = bufData.updates?.[0]?.id || null;
+      r.bufferScheduledAt = schedIso;
       all[idx] = r;
       writeJsonFile(VR_FILE, all);
-      res.json({ ok: true });
+      res.json({ ok: true, bufferId: r.bufferId, scheduledAt: schedIso });
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
