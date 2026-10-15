@@ -5924,7 +5924,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
           id
           externalLink
           sentAt
-          status { ... on PostStatus { value } }
+          status
         }
       }`;
 
@@ -5948,7 +5948,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
           } else if (!post) {
             errors.push(`${label}: post not found in Buffer`);
           } else {
-            const status = post.status?.value || 'unknown';
+            const status = post.status || 'unknown';
             if (post.externalLink) {
               links.push({ platform: label, url: post.externalLink });
             } else if (status === 'sent' || post.sentAt) {
@@ -6049,7 +6049,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       if (!scheduled.length) return;
 
       const GQL_URL = 'https://api.buffer.com/graphql';
-      const GET_POST = `query GetPost($input: PostInput!) { post(input: $input) { id sentAt status { ... on PostStatus { value } } } }`;
+      const GET_POST = `query GetPost($input: PostInput!) { post(input: $input) { id sentAt status } }`;
 
       const sentMap = new Map();
       for (const card of scheduled) {
@@ -6075,7 +6075,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
         if (r.status !== 'approved' || !r.bufferPosts?.length) continue;
         const allSent = r.bufferPosts.every(bp => {
           const p = sentMap.get(bp.bufferId);
-          return p && (p.status?.value === 'sent' || p.sentAt);
+          return p && (p.status === 'sent' || p.sentAt);
         });
         if (!allSent) continue;
         r.status = 'posted';
