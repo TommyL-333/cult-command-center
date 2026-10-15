@@ -673,15 +673,15 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     </div>
     <div style="display:flex;justify-content:center;gap:32px;margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.06)">
       <div style="text-align:center">
-        <div style="font-size:22px;font-weight:800;color:#00f2ea;letter-spacing:-.02em" id="vp-stat-views">0</div>
+        <div style="font-size:22px;font-weight:800;color:#fff;letter-spacing:-.02em" id="vp-stat-views">0</div>
         <div style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.07em;margin-top:2px">Total Views</div>
       </div>
       <div style="text-align:center">
-        <div style="font-size:22px;font-weight:800;color:#a78bfa;letter-spacing:-.02em" id="vp-stat-posts">0</div>
+        <div style="font-size:22px;font-weight:800;color:#fff;letter-spacing:-.02em" id="vp-stat-posts">0</div>
         <div style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.07em;margin-top:2px">Total Posts</div>
       </div>
       <div style="text-align:center">
-        <div style="font-size:22px;font-weight:800;color:#f59e0b;letter-spacing:-.02em" id="vp-stat-pct">0%</div>
+        <div style="font-size:22px;font-weight:800;color:#fff;letter-spacing:-.02em" id="vp-stat-pct">0%</div>
         <div style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.07em;margin-top:2px">To Goal</div>
       </div>
     </div>
@@ -2448,9 +2448,10 @@ function vqUpdateTracker(){
   document.getElementById('vp-bar-posted').style.width=((posted/scale)*100)+'%';
   // Summary stats
   var totalViews=VQ_DATA.filter(function(r){return r.status==='posted';}).reduce(function(s,r){return s+(r.totalViews||0);},0);
-  var pct=Math.round((posted/goal)*100);
+  var totalChannelPosts=VQ_DATA.filter(function(r){return r.status==='posted';}).reduce(function(s,r){return s+((r.bufferPosts&&r.bufferPosts.length)||0);},0);
+  var pct=Math.round((totalChannelPosts/goal)*1000)/10;
   document.getElementById('vp-stat-views').textContent=totalViews.toLocaleString();
-  document.getElementById('vp-stat-posts').textContent=posted.toLocaleString();
+  document.getElementById('vp-stat-posts').textContent=totalChannelPosts.toLocaleString();
   document.getElementById('vp-stat-pct').textContent=pct+'%';
 }
 
