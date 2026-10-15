@@ -2530,13 +2530,17 @@ function vqCardHtml(r){
     });
     var platDisplay=scheduledChannels.length?scheduledChannels.join(', '):(r.platforms||[]).join(', ')||'—';
     var draftLink2=r.draftUrl?'<a href="'+esc(r.draftUrl)+'" target="_blank" class="vq-btn vq-drive">📄 Draft</a>':'';
+    var errDetail=r.bufferErrors&&r.bufferErrors.length
+      ?'<details style="margin-top:6px"><summary style="font-size:10px;color:#f59e0b;cursor:pointer">⚠ '+r.bufferErrors.length+' channel(s) failed — click for details</summary>'
+        +'<div style="font-size:10px;color:rgba(251,191,36,.75);margin-top:4px;line-height:1.6;white-space:pre-wrap">'+esc(r.bufferErrors.join('\n'))+'</div></details>':''
+    var editSchedBtn=VQ_IS_ADMIN?'<button class="vq-btn" onclick="vqEditSchedule(\\''+id+'\\')" style="font-size:11px">✏ Edit Schedule</button>':'';
     body='<div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.7">'
       +'<strong style="color:var(--txt)">Scheduled:</strong> '+schedTime+'<br>'
       +(r.caption?'<strong style="color:var(--txt)">Caption:</strong> '+esc(r.caption.slice(0,60))+(r.caption.length>60?'…':'')+'<br>':'')
       +'<strong style="color:var(--txt)">Channels ('+scheduledChannels.length+'):</strong> '+esc(platDisplay)
-      +(r.bufferErrors&&r.bufferErrors.length?'<br><span style="color:#f59e0b">⚠ '+r.bufferErrors.length+' channel(s) failed to schedule</span>':'')
+      +errDetail
       +'</div>'
-      +'<div class="vq-actions">'+draftLink2+'</div>';
+      +'<div class="vq-actions">'+draftLink2+editSchedBtn+'</div>';
   }
 
   else if(r.status==='posted'){
@@ -2627,6 +2631,12 @@ function toLocalInputDT(val){
   if(isNaN(d.getTime()))return '';
   var pad=function(n){return String(n).padStart(2,'0');};
   return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());
+}
+
+// Move an approved (Scheduled) card back to For Review so the schedule can be edited
+function vqEditSchedule(id){
+  if(!confirm('Move this back to For Review so you can edit the schedule?'))return;
+  vqPatch(id,{status:'done'},function(){loadVideoQueue();});
 }
 
 function vqSaveNotes(id){
@@ -5631,19 +5641,21 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
         const VIDEO_SERVICES = new Set(['tiktok', 'instagram', 'youtube']);
         const isVideoService = VIDEO_SERVICES.has(service);
 
-        // Resolve a publicly fetchable video URL.
-        // Google Drive share links point to a viewer — convert them to the
-        // direct-download endpoint so Buffer's servers can actually fetch the file.
-        let videoUrl = r.draftUrl || '';
-        if (videoUrl) {
-          const driveMatch = videoUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
-          if (driveMatch) {
-            // Convert any Drive share URL to a direct download URL
-            videoUrl = `https://drive.usercontent.google.com/download?id=${driveMatch[1]}&export=download&confirm=t`;
+        // Text-only platforms work fine with no media asset.
+        // Video platforms (TikTok, Instagram, YouTube) require at least one asset —
+        // use the draft URL only when it's a direct public URL (R2/CDN).
+        // Google Drive URLs require auth that Buffer's servers don't have, so we
+        // skip the asset for Drive links; the post will still be created and the
+        // user can attach the video manually in Buffer before it sends.
+        const TEXT_ONLY_SERVICES = new Set(['linkedin', 'twitter', 'facebook']);
+        let assets = [];
+        if (!TEXT_ONLY_SERVICES.has(service)) {
+          const draftUrl = r.draftUrl || '';
+          const isDrive = draftUrl.includes('drive.google.com') || draftUrl.includes('docs.google.com');
+          if (draftUrl && !isDrive) {
+            assets = [{ video: { url: draftUrl } }];
           }
         }
-
-        const assets = videoUrl ? [{ video: { url: videoUrl } }] : [];
 
         const input = {
           channelId: ch.channelId,
