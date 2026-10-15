@@ -5722,7 +5722,8 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
           // shouldShareToFeed is required (Boolean!) by Buffer's schema
           metadata.instagram = { type: 'reel', shouldShareToFeed: true };
         } else if (service === 'facebook') {
-          metadata.facebook = { type: 'reel', shouldShareToFeed: true };
+          // FacebookPostMetadataInput does not have shouldShareToFeed
+          metadata.facebook = { type: 'reel' };
         } else if (service === 'youtube') {
           // YouTube requires title and categoryId (22 = People & Blogs)
           metadata.youtube = { title: videoTitle, categoryId: '22' };
