@@ -5605,6 +5605,36 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
           errors.push(`Channel ${ch.channelId}: missing caption or time`);
           continue;
         }
+        // Determine channel service so we can pick the right mode and assets
+        const CHANNEL_SERVICES = {
+          '69d7f3cd031bfa423ce82b4a': 'tiktok',
+          '69d6de31031bfa423ce369cf': 'instagram',
+          '69d70072031bfa423ce3fc25': 'instagram',
+          '69d6de1e031bfa423ce368be': 'youtube',
+          '69d6de07031bfa423ce366fa': 'youtube',
+          '69d700d7031bfa423ce3fd6f': 'linkedin',
+          '69d70096031bfa423ce3fca1': 'linkedin',
+          '69d70154031bfa423ce3fefa': 'facebook',
+          '69d7018f031bfa423ce3ffa5': 'twitter',
+        };
+        const service = CHANNEL_SERVICES[ch.channelId] || 'unknown';
+        const VIDEO_SERVICES = new Set(['tiktok', 'instagram', 'youtube']);
+        const isVideoService = VIDEO_SERVICES.has(service);
+
+        // Resolve a publicly fetchable video URL.
+        // Google Drive share links point to a viewer — convert them to the
+        // direct-download endpoint so Buffer's servers can actually fetch the file.
+        let videoUrl = r.draftUrl || '';
+        if (videoUrl) {
+          const driveMatch = videoUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
+          if (driveMatch) {
+            // Convert any Drive share URL to a direct download URL
+            videoUrl = `https://drive.usercontent.google.com/download?id=${driveMatch[1]}&export=download&confirm=t`;
+          }
+        }
+
+        const assets = videoUrl ? [{ video: { url: videoUrl } }] : [];
+
         const input = {
           channelId: ch.channelId,
           text: ch.caption,
@@ -5612,7 +5642,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
           schedulingType: 'automatic',
           needsApproval: false,
           dueAt: new Date(ch.scheduledAt).toISOString(),
-          assets: [],
+          assets,
         };
         try {
           const gqlRes = await fetch(GQL_URL, {
