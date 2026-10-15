@@ -2472,14 +2472,14 @@ function vqCardHtml(r){
     var draftLink=r.draftUrl?'<a href="'+esc(r.draftUrl)+'" target="_blank" class="vq-btn vq-drive">📄 View Draft</a>':'<span style="font-size:11px;color:var(--muted)">No draft yet</span>';
     if(VQ_IS_ADMIN){
       var savedCap=esc(r.caption||'');
-      var savedSched=r.scheduledAt?new Date(r.scheduledAt).toISOString().slice(0,16):'';
+      var savedSched=toLocalInputDT(r.scheduledAt);
       var savedChannels=r.channelSchedules||[];
       // Build per-channel rows
       var channelRows=VQ_BUFFER_CHANNELS.map(function(ch){
         var saved=savedChannels.find(function(s){return s.channelId===ch.id;})||{};
         var isOn=saved.on||(savedChannels.length===0&&false);
         var chCap=esc(saved.caption||'');
-        var chSched=saved.scheduledAt?new Date(saved.scheduledAt).toISOString().slice(0,16):'';
+        var chSched=toLocalInputDT(saved.scheduledAt);
         var svcIcon={'tiktok':'📱','instagram':'📸','youtube':'▶️','linkedin':'💼','twitter':'𝕏','facebook':'👤'}[ch.service]||'🌐';
         var tagHint={'linkedin':'Tag people: type their name — Buffer will try to resolve. Companies may need the exact page name.','tiktok':'Tag with @username — must be their exact TikTok handle.','instagram':'Tag with @username in caption.'}[ch.service]||'';
         return '<div class="vq-ch-row" id="vqch-'+id+'-'+ch.id+'" data-ch="'+ch.id+'" data-svc="'+ch.service+'">'
@@ -2522,7 +2522,7 @@ function vqCardHtml(r){
   }
 
   else if(r.status==='approved'){
-    var schedTime=r.scheduledAt?new Date(r.scheduledAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'—';
+    var schedTime=r.scheduledAt?new Date(r.scheduledAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'}):'—';
     // Show only the channels that actually got scheduled in Buffer
     var scheduledChannels=(r.bufferPosts||[]).map(function(p){
       var ch=VQ_BUFFER_CHANNELS.find(function(c){return c.id===p.channelId;});
@@ -2617,6 +2617,16 @@ function vqPatch(id,data,onOk){
   .then(function(r){return r.json();}).then(function(d){
     if(d.ok){if(onOk)onOk();else loadVideoQueue();}else toast('Error: '+(d.error||'Failed'));
   }).catch(function(e){toast(''+e);});
+}
+
+// Convert a stored timestamp/ISO string to the format datetime-local inputs expect,
+// using the device's local timezone (not UTC like .toISOString() would give).
+function toLocalInputDT(val){
+  if(!val)return '';
+  var d=new Date(val);
+  if(isNaN(d.getTime()))return '';
+  var pad=function(n){return String(n).padStart(2,'0');};
+  return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());
 }
 
 function vqSaveNotes(id){
