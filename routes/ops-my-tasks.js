@@ -2551,6 +2551,7 @@ function vqCardHtml(r){
     +(r.priority==='high'?'<span class="vq-prio-chip vq-prio-high">High</span>':'')
     +'</div>'
     +'<div class="vq-title">'+esc(r.title||'Untitled')+'</div>'
+    +(r.status==='pending'&&(r.quantity||1)>1?'<div style="display:inline-flex;align-items:center;gap:4px;background:rgba(0,242,234,.1);border:1px solid rgba(0,242,234,.2);border-radius:10px;padding:2px 8px;font-size:10px;font-weight:700;color:var(--cyan);margin-bottom:4px">📦 '+(r.quantity)+' videos</div>':'')
     +'<div class="vq-meta">'+date+'</div>'
     +body
     +'</div>';
