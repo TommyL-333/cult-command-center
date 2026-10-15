@@ -734,7 +734,13 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
       <div id="vq-col-scheduled"></div>
     </div>
     <div>
-      <div class="vq-col-hdr" style="color:#a78bfa">Posted <span class="vq-col-count" id="vq-cnt-posted">0</span></div>
+      <div class="vq-col-hdr" style="color:#a78bfa;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <span>Posted <span class="vq-col-count" id="vq-cnt-posted">0</span></span>
+        <span style="margin-left:auto;display:flex;gap:4px">
+          <button id="vq-sort-views" onclick="vqSetSort('views')" style="font-size:10px;padding:2px 7px;background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.3);border-radius:4px;color:#a78bfa;cursor:pointer">👁 Views</button>
+          <button id="vq-sort-date" onclick="vqSetSort('date')" style="font-size:10px;padding:2px 7px;background:none;border:1px solid rgba(255,255,255,.1);border-radius:4px;color:var(--muted);cursor:pointer">📅 Date</button>
+        </span>
+      </div>
       <div id="vq-col-posted"></div>
     </div>
   </div>
@@ -2296,6 +2302,15 @@ function doDelete(){
 
 /* ── Video Queue ─────────────────────────────────────────────────────── */
 var VQ_DATA=[], VQ_MY_EMAIL='', VQ_IS_EDITOR=false, VQ_IS_ADMIN=false, VQ_LOADED=false;
+var VQ_POSTED_SORT='views'; // 'views' | 'date'
+function vqSetSort(s){
+  VQ_POSTED_SORT=s;
+  document.getElementById('vq-sort-views').style.background=s==='views'?'rgba(167,139,250,.15)':'none';
+  document.getElementById('vq-sort-views').style.color=s==='views'?'#a78bfa':'var(--muted)';
+  document.getElementById('vq-sort-date').style.background=s==='date'?'rgba(167,139,250,.15)':'none';
+  document.getElementById('vq-sort-date').style.color=s==='date'?'#a78bfa':'var(--muted)';
+  renderVideoQueue();
+}
 var VQ_BRANDS=['Lode WTR','Roots by Genetic Art','Trip Visuals','Made Right','B NOOR','Elasco Skincare','Starlit Scribbles'];
 
 // Connected Buffer channels — IDs from api.buffer.com/graphql
@@ -2381,7 +2396,10 @@ function renderVideoQueue(){
   var inprog=VQ_DATA.filter(function(r){return r.status==='in-progress';});
   var done=VQ_DATA.filter(function(r){return r.status==='done';});
   var scheduled=VQ_DATA.filter(function(r){return r.status==='approved';});
-  var posted=VQ_DATA.filter(function(r){return r.status==='posted';});
+  var posted=VQ_DATA.filter(function(r){return r.status==='posted';}).sort(function(a,b){
+    if(VQ_POSTED_SORT==='views') return (b.totalViews||0)-(a.totalViews||0);
+    return (b.postedAt||b.scheduledAt&&new Date(b.scheduledAt).getTime()||0)-(a.postedAt||a.scheduledAt&&new Date(a.scheduledAt).getTime()||0);
+  });
   var pendingCount=pending.reduce(function(s,r){return s+(r.quantity||1);},0);
   document.getElementById('vq-cnt-pending').textContent=pendingCount;
   document.getElementById('vq-cnt-inprogress').textContent=inprog.length;
@@ -2581,13 +2599,23 @@ function vqCardHtml(r){
   else if(r.status==='posted'){
     var links=(r.postedLinks||[]);
     var linkErrors=(r.linkErrors||[]);
+    var totalViews=r.totalViews||links.reduce(function(s,l){return s+(l.views||0);},0);
+    var metricsAge=r.metricsUpdatedAt?'Updated '+new Date(r.metricsUpdatedAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'Never synced';
+    var viewsBadge=totalViews>0
+      ?'<div style="display:flex;align-items:center;gap:6px;margin-bottom:8px">'
+        +'<span style="font-size:20px;font-weight:800;color:var(--cyan)">'+totalViews.toLocaleString()+'</span>'
+        +'<span style="font-size:11px;color:var(--muted)">total views</span>'
+        +'<span style="font-size:9px;color:rgba(255,255,255,.2);margin-left:auto">'+metricsAge+'</span>'
+        +'</div>'
+      :'';
     var linksHtml=links.length?'<div class="vq-posted-links">'+links.map(function(l){
-      return '<div class="vq-posted-link"><span style="font-size:10px;color:var(--muted);min-width:80px;flex-shrink:0">'+esc(l.platform)+'</span><a href="'+esc(l.url)+'" target="_blank">'+esc(l.url)+'</a></div>';
+      var viewStr=l.views!=null&&l.views>0?'<span style="font-size:9px;color:var(--muted);margin-left:4px">'+Number(l.views).toLocaleString()+' views</span>':'';
+      return '<div class="vq-posted-link"><span style="font-size:10px;color:var(--muted);min-width:80px;flex-shrink:0">'+esc(l.platform)+'</span><a href="'+esc(l.url)+'" target="_blank">'+esc(l.url)+'</a>'+viewStr+'</div>';
     }).join('')+'</div>':'';
     var errorsHtml=linkErrors.length?'<div style="margin-top:6px">'+linkErrors.map(function(e){
       return '<div style="font-size:10px;color:#f87171;padding:2px 0">⚠ '+esc(e)+'</div>';
     }).join('')+'</div>':'';
-    var refreshBtn=VQ_IS_ADMIN?'<button class="vq-btn" onclick="vqRefreshLinks(\\''+id+'\\')">↻ Refresh Links</button>':'';
+    var refreshBtn=VQ_IS_ADMIN?'<button class="vq-btn" onclick="vqRefreshLinks(\\''+id+'\\')">↻ Refresh</button>':'';
     var addLinkForm='<div id="vqlink-form-'+id+'" style="display:none" class="vq-inline-form">'
       +'<select id="vqlink-plat-'+id+'" style="width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:7px 10px;color:var(--txt);font-size:12px">'
       +'<option>TikTok</option><option>Instagram</option><option>YouTube</option><option>LinkedIn</option><option>Twitter</option><option>Facebook</option>'
@@ -2597,7 +2625,7 @@ function vqCardHtml(r){
       +'<button class="vq-btn" onclick="document.getElementById(\\'vqlink-form-'+id+'\\').style.display=\\'none\\'">Cancel</button></div>'
       +'</div>';
     var addLinkBtn=VQ_IS_ADMIN?'<button class="vq-btn" onclick="document.getElementById(\\'vqlink-form-'+id+'\\').style.display=document.getElementById(\\'vqlink-form-'+id+'\\').style.display===\\'none\\'?\\'\\':\\'none\\'">+ Link</button>':'';
-    body=linksHtml+errorsHtml+'<div class="vq-actions" style="margin-top:6px">'+refreshBtn+addLinkBtn+'</div>'+addLinkForm;
+    body=viewsBadge+linksHtml+errorsHtml+'<div class="vq-actions" style="margin-top:6px">'+refreshBtn+addLinkBtn+'</div>'+addLinkForm;
   }
 
   return '<div class="vq-card">'
@@ -5925,6 +5953,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
           externalLink
           sentAt
           status
+          metrics { type value }
         }
       }`;
 
@@ -5949,8 +5978,9 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
             errors.push(`${label}: post not found in Buffer`);
           } else {
             const status = post.status || 'unknown';
+            const views = (post.metrics || []).find(m => m.type === 'views')?.value || 0;
             if (post.externalLink) {
-              links.push({ platform: label, url: post.externalLink });
+              links.push({ platform: label, url: post.externalLink, views });
             } else if (status === 'sent' || post.sentAt) {
               errors.push(`${label}: posted but no URL returned`);
             } else {
@@ -5962,19 +5992,23 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
         }
       }
 
-      // Merge links into existing postedLinks (avoid duplicates)
+      // Merge links into existing postedLinks (avoid duplicates; update views on match)
       const existing = r.postedLinks || [];
       const merged = [...existing];
       for (const l of links) {
-        if (!merged.find(e => e.url === l.url)) merged.push(l);
+        const ex = merged.find(e => e.url === l.url);
+        if (ex) { ex.views = l.views; }
+        else { merged.push(l); }
       }
       r.postedLinks = merged;
       r.linkErrors = errors;
+      r.totalViews = merged.reduce((s, l) => s + (l.views || 0), 0);
+      r.metricsUpdatedAt = Date.now();
       r.updatedAt = Date.now();
       all[idx] = r;
       writeJsonFile(VR_FILE, all);
 
-      res.json({ ok: true, links, errors });
+      res.json({ ok: true, links, errors, totalViews: r.totalViews });
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
@@ -6094,6 +6128,53 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
   // Run once at startup (catches anything published while server was down), then every hour.
   setTimeout(pollBufferSent, 30000);
   setInterval(pollBufferSent, 60 * 60 * 1000);
+
+  // ---------- METRICS POLL: update view counts every 12 hours ----------
+  const METRICS_GQL = `query GetPost($input: PostInput!) {
+    post(input: $input) { id metrics { type value } }
+  }`;
+
+  async function pollBufferMetrics() {
+    const BUFFER_TOKEN = process.env.BUFFER_ACCESS_TOKEN;
+    if (!BUFFER_TOKEN) return;
+    try {
+      const GQL_URL = 'https://api.buffer.com/graphql';
+      const all = readJsonFile(VR_FILE, []);
+      const posted = all.filter(r => r.status === 'posted' && r.bufferPosts?.length);
+      if (!posted.length) return;
+      let changed = false;
+      for (const r of posted) {
+        let totalViews = 0;
+        for (const bp of r.bufferPosts) {
+          if (!bp.bufferId) continue;
+          try {
+            const res = await fetch(GQL_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${BUFFER_TOKEN}` },
+              body: JSON.stringify({ query: METRICS_GQL, variables: { input: { id: bp.bufferId } } }),
+            });
+            const d = await res.json().catch(() => ({}));
+            const views = (d?.data?.post?.metrics || []).find(m => m.type === 'views')?.value || 0;
+            totalViews += views;
+            // Update views on the matching postedLink entry
+            const link = (r.postedLinks || []).find(l => l.bufferId === bp.bufferId);
+            if (link) link.views = views;
+          } catch (_) { /* skip individual failures */ }
+        }
+        r.totalViews = totalViews;
+        r.metricsUpdatedAt = Date.now();
+        changed = true;
+        console.log(`[metrics-poll] ${r.id} (${r.title}): ${totalViews} total views`);
+      }
+      if (changed) writeJsonFile(VR_FILE, all);
+    } catch (e) {
+      console.error('[metrics-poll] error:', e.message);
+    }
+  }
+
+  // First run 5 min after startup, then every 12 hours.
+  setTimeout(pollBufferMetrics, 5 * 60 * 1000);
+  setInterval(pollBufferMetrics, 12 * 60 * 60 * 1000);
 
   // Expose helpers for later steps / test harnesses.
   registerOpsMyTasks._helpers = {
