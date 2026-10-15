@@ -5985,11 +5985,13 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
 
       const links = [];
       const errors = [];
+      const sleep = ms => new Promise(r => setTimeout(r, ms));
 
       for (const bp of bufferPosts) {
         const ch = CHANNEL_MAP[bp.channelId] || {};
         const label = ch.name ? `${ch.service} (${ch.name})` : bp.channelId;
         try {
+          await sleep(300); // avoid Buffer rate limit (one req per 300ms)
           const gqlRes = await fetch(GQL_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${BUFFER_TOKEN}` },
@@ -6174,6 +6176,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
         for (const bp of r.bufferPosts) {
           if (!bp.bufferId) continue;
           try {
+            await new Promise(r => setTimeout(r, 400)); // avoid Buffer rate limit
             const res = await fetch(GQL_URL, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${BUFFER_TOKEN}` },
