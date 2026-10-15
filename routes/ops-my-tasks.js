@@ -2532,7 +2532,7 @@ function vqCardHtml(r){
     var draftLink2=r.draftUrl?'<a href="'+esc(r.draftUrl)+'" target="_blank" class="vq-btn vq-drive">📄 Draft</a>':'';
     var errDetail=r.bufferErrors&&r.bufferErrors.length
       ?'<details style="margin-top:6px"><summary style="font-size:10px;color:#f59e0b;cursor:pointer">⚠ '+r.bufferErrors.length+' channel(s) failed — click for details</summary>'
-        +'<div style="font-size:10px;color:rgba(251,191,36,.75);margin-top:4px;line-height:1.6;white-space:pre-wrap">'+esc(r.bufferErrors.join('\n'))+'</div></details>':''
+        +'<div style="font-size:10px;color:rgba(251,191,36,.75);margin-top:4px;line-height:1.6;white-space:pre-wrap">'+esc(r.bufferErrors.join('\\n'))+'</div></details>':''
     var editSchedBtn=VQ_IS_ADMIN?'<button class="vq-btn" onclick="vqEditSchedule(\\''+id+'\\')" style="font-size:11px">✏ Edit Schedule</button>':'';
     body='<div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.7">'
       +'<strong style="color:var(--txt)">Scheduled:</strong> '+schedTime+'<br>'
