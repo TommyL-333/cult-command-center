@@ -2914,7 +2914,8 @@ function vqRefreshLinks(id){
     }
     var got=d.links&&d.links.length;
     var views=d.totalViews||0;
-    toast(got?'✓ '+got+' link'+(got===1?'':'s')+' · '+views.toLocaleString()+' total views':'No live links yet — try again after posts go out');
+    var firstErr=d.errors&&d.errors.length?d.errors[0]:'';
+    toast(got?'✓ '+got+' link'+(got===1?'':'s')+' · '+views.toLocaleString()+' total views':firstErr?'⚠ '+firstErr:'No live links yet — try again after posts go out');
     renderVideoQueue();
   }).catch(function(e){toast('⚠ '+e);});
 }
