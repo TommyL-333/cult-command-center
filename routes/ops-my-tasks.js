@@ -5706,7 +5706,9 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
         // Text-only platforms: no media asset needed, caption only.
         // Video platforms: pass the resolved URL (R2 after Drive→R2 re-host, or
         // direct URL if already public). Empty assets only as a last resort.
-        const TEXT_ONLY_SERVICES = new Set(['linkedin', 'twitter', 'facebook']);
+        // linkedin and twitter are text-only; all video platforms (including facebook reels)
+        // need the video asset passed explicitly.
+        const TEXT_ONLY_SERVICES = new Set(['linkedin', 'twitter']);
         let assets = [];
         if (!TEXT_ONLY_SERVICES.has(service) && resolvedVideoUrl) {
           assets = [{ video: { url: resolvedVideoUrl } }];
@@ -5717,10 +5719,10 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
         const videoTitle = r.title || 'Video';
         const metadata = {};
         if (service === 'instagram') {
-          // Instagram requires a type; 'reel' is correct for video content
-          metadata.instagram = { type: 'reel' };
+          // shouldShareToFeed is required (Boolean!) by Buffer's schema
+          metadata.instagram = { type: 'reel', shouldShareToFeed: true };
         } else if (service === 'facebook') {
-          metadata.facebook = { type: 'reel' };
+          metadata.facebook = { type: 'reel', shouldShareToFeed: true };
         } else if (service === 'youtube') {
           // YouTube requires title and categoryId (22 = People & Blogs)
           metadata.youtube = { title: videoTitle, categoryId: '22' };
