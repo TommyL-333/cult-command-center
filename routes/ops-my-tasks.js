@@ -2885,12 +2885,15 @@ function vqRefreshLinks(id){
     if(r){
       if(d.links)d.links.forEach(function(l){
         r.postedLinks=r.postedLinks||[];
-        if(!r.postedLinks.find(function(e){return e.url===l.url;}))r.postedLinks.push(l);
+        var ex=r.postedLinks.find(function(e){return e.url===l.url;});
+        if(ex){ex.views=l.views;}else{r.postedLinks.push(l);}
       });
       if(d.errors)r.linkErrors=d.errors;
+      if(d.totalViews!=null)r.totalViews=d.totalViews;
     }
     var got=d.links&&d.links.length;
-    toast(got?'✓ Got '+got+' link'+(got===1?'':'s'):'No live links yet — try again after posts go out');
+    var views=d.totalViews||0;
+    toast(got?'✓ '+got+' link'+(got===1?'':'s')+' · '+views.toLocaleString()+' total views':'No live links yet — try again after posts go out');
     renderVideoQueue();
   }).catch(function(e){toast('⚠ '+e);});
 }
@@ -5958,6 +5961,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
           externalLink
           sentAt
           status
+          metrics { type value }
         }
       }`;
 
@@ -5980,7 +5984,8 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
             const msg = d?.errors?.[0]?.message || `HTTP ${gqlRes.status}`;
             errors.push(`${label}: ${msg}`);
           } else if (post.externalLink) {
-            links.push({ platform: label, url: post.externalLink });
+            const views = (post.metrics || []).find(m => m.type === 'views')?.value || 0;
+            links.push({ platform: label, url: post.externalLink, views });
           } else {
             const status = post.status || 'unknown';
             if (status === 'sent' || post.sentAt) {
@@ -5994,15 +5999,18 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
         }
       }
 
-      // Merge links into existing postedLinks (avoid duplicates)
+      // Merge links into existing postedLinks; update views on existing entries
       const existing = r.postedLinks || [];
       const merged = [...existing];
       for (const l of links) {
-        if (!merged.find(e => e.url === l.url)) merged.push(l);
+        const ex = merged.find(e => e.url === l.url);
+        if (ex) { ex.views = l.views; }
+        else { merged.push(l); }
       }
       r.postedLinks = merged;
       r.linkErrors = errors;
       r.totalViews = merged.reduce((s, l) => s + (l.views || 0), 0);
+      r.metricsUpdatedAt = Date.now();
       r.updatedAt = Date.now();
       all[idx] = r;
       writeJsonFile(VR_FILE, all);
