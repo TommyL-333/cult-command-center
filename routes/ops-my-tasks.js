@@ -2339,13 +2339,15 @@ function loadVideoQueue(){
     VQ_IS_EDITOR=!!d.isEditor;
     VQ_IS_ADMIN=!!d.isAdmin;
     VQ_LOADED=true;
-    // Auto-transition: any scheduled card whose time has passed moves to Posted
+    // Auto-transition: any scheduled card whose time has passed moves to Posted,
+    // then immediately fetches live post URLs from Buffer.
     var now=Date.now();
     var toPost=VQ_DATA.filter(function(r){
       return r.status==='approved'&&r.scheduledAt&&new Date(r.scheduledAt).getTime()<now;
     });
     if(toPost.length){
       var remaining=toPost.length;
+      var done=function(){remaining--;if(remaining===0)renderVideoQueue();};
       toPost.forEach(function(r){
         fetch('/api/video-requests/'+r.id,{
           method:'PATCH',credentials:'include',
@@ -2353,12 +2355,19 @@ function loadVideoQueue(){
           body:JSON.stringify({status:'posted'}),
         }).then(function(){
           r.status='posted';
-          remaining--;
-          if(remaining===0)renderVideoQueue();
-        }).catch(function(){
-          remaining--;
-          if(remaining===0)renderVideoQueue();
-        });
+          // Fetch live Buffer URLs; fire-and-forget then re-render
+          fetch('/api/video-requests/'+r.id+'/fetch-links',{
+            method:'POST',credentials:'include',
+            headers:{'Content-Type':'application/json'},
+          }).then(function(res){return res.json();}).then(function(ld){
+            if(ld.links)ld.links.forEach(function(l){
+              r.postedLinks=r.postedLinks||[];
+              if(!r.postedLinks.find(function(e){return e.url===l.url;}))r.postedLinks.push(l);
+            });
+            if(ld.errors)r.linkErrors=ld.errors;
+            done();
+          }).catch(function(){done();});
+        }).catch(function(){done();});
       });
     } else {
       renderVideoQueue();
@@ -2571,9 +2580,14 @@ function vqCardHtml(r){
 
   else if(r.status==='posted'){
     var links=(r.postedLinks||[]);
+    var linkErrors=(r.linkErrors||[]);
     var linksHtml=links.length?'<div class="vq-posted-links">'+links.map(function(l){
-      return '<div class="vq-posted-link"><span style="font-size:10px;color:var(--muted);min-width:60px">'+esc(l.platform)+'</span><a href="'+esc(l.url)+'" target="_blank">'+esc(l.url)+'</a></div>';
+      return '<div class="vq-posted-link"><span style="font-size:10px;color:var(--muted);min-width:80px;flex-shrink:0">'+esc(l.platform)+'</span><a href="'+esc(l.url)+'" target="_blank">'+esc(l.url)+'</a></div>';
     }).join('')+'</div>':'';
+    var errorsHtml=linkErrors.length?'<div style="margin-top:6px">'+linkErrors.map(function(e){
+      return '<div style="font-size:10px;color:#f87171;padding:2px 0">⚠ '+esc(e)+'</div>';
+    }).join('')+'</div>':'';
+    var refreshBtn=VQ_IS_ADMIN?'<button class="vq-btn" onclick="vqRefreshLinks(\\''+id+'\\')">↻ Refresh Links</button>':'';
     var addLinkForm='<div id="vqlink-form-'+id+'" style="display:none" class="vq-inline-form">'
       +'<select id="vqlink-plat-'+id+'" style="width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:7px 10px;color:var(--txt);font-size:12px">'
       +'<option>TikTok</option><option>Instagram</option><option>YouTube</option><option>LinkedIn</option><option>Twitter</option><option>Facebook</option>'
@@ -2583,7 +2597,7 @@ function vqCardHtml(r){
       +'<button class="vq-btn" onclick="document.getElementById(\\'vqlink-form-'+id+'\\').style.display=\\'none\\'">Cancel</button></div>'
       +'</div>';
     var addLinkBtn=VQ_IS_ADMIN?'<button class="vq-btn" onclick="document.getElementById(\\'vqlink-form-'+id+'\\').style.display=document.getElementById(\\'vqlink-form-'+id+'\\').style.display===\\'none\\'?\\'\\':\\'none\\'">+ Link</button>':'';
-    body=linksHtml+'<div class="vq-actions" style="margin-top:6px">'+addLinkBtn+'</div>'+addLinkForm;
+    body=linksHtml+errorsHtml+'<div class="vq-actions" style="margin-top:6px">'+refreshBtn+addLinkBtn+'</div>'+addLinkForm;
   }
 
   return '<div class="vq-card">'
@@ -2828,6 +2842,25 @@ function vqRequestRevision(id){
     toast('↩ Sent back for revision');
     loadVideoQueue();
   });
+}
+
+function vqRefreshLinks(id){
+  toast('Fetching links from Buffer…');
+  fetch('/api/video-requests/'+id+'/fetch-links',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'}})
+  .then(function(r){return r.json();}).then(function(d){
+    if(d.error){toast('⚠ '+d.error);return;}
+    var r=VQ_DATA.find(function(x){return x.id===id;});
+    if(r){
+      if(d.links)d.links.forEach(function(l){
+        r.postedLinks=r.postedLinks||[];
+        if(!r.postedLinks.find(function(e){return e.url===l.url;}))r.postedLinks.push(l);
+      });
+      if(d.errors)r.linkErrors=d.errors;
+    }
+    var got=d.links&&d.links.length;
+    toast(got?'✓ Got '+got+' link'+(got===1?'':'s'):'No live links yet — try again after posts go out');
+    renderVideoQueue();
+  }).catch(function(e){toast('⚠ '+e);});
 }
 
 function vqAddPostedLink(id){
@@ -5854,6 +5887,95 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       console.error('[buffer-webhook]', e.message);
       res.status(500).json({ error: e.message });
     }
+  });
+
+  // ---------- ROUTE: POST /api/video-requests/:id/fetch-links ----------
+  // Queries Buffer for the live externalLink of each scheduled post.
+  // Stores results in r.postedLinks and r.linkErrors on the record.
+  app.post('/api/video-requests/:id/fetch-links', requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const all = readJsonFile(VR_FILE, []);
+      const idx = all.findIndex(r => r.id === id);
+      if (idx < 0) return res.status(404).json({ error: 'Not found' });
+      const r = all[idx];
+      const bufferPosts = r.bufferPosts || [];
+      if (!bufferPosts.length) return res.json({ ok: true, links: [], errors: ['No Buffer posts on record'] });
+
+      const BUFFER_TOKEN = process.env.BUFFER_ACCESS_TOKEN;
+      if (!BUFFER_TOKEN) return res.status(500).json({ error: 'BUFFER_ACCESS_TOKEN not configured' });
+      const GQL_URL = 'https://api.buffer.com/graphql';
+
+      // VQ_BUFFER_CHANNELS duplicated here for service lookup (client-only constant)
+      const CHANNEL_MAP = {
+        '69d7f3cd031bfa423ce82b4a': { service: 'tiktok',    name: 'tommylynch_' },
+        '69d6de31031bfa423ce369cf': { service: 'instagram', name: 'tommy.lynch_' },
+        '69d70072031bfa423ce3fc25': { service: 'instagram', name: 'cultcontent.cc' },
+        '69d6de1e031bfa423ce368be': { service: 'youtube',   name: 'Tommy Lynch' },
+        '69d6de07031bfa423ce366fa': { service: 'youtube',   name: 'Cult Content' },
+        '69d700d7031bfa423ce3fd6f': { service: 'linkedin',  name: 'tommy-lynch' },
+        '69d70096031bfa423ce3fca1': { service: 'linkedin',  name: 'cultcontent' },
+        '69d70154031bfa423ce3fefa': { service: 'facebook',  name: 'Cult Content' },
+        '69d7018f031bfa423ce3ffa5': { service: 'twitter',   name: 'thlynch3' },
+      };
+
+      const GET_POST = `query GetPost($input: PostInput!) {
+        post(input: $input) {
+          id
+          externalLink
+          sentAt
+          status { ... on PostStatus { value } }
+        }
+      }`;
+
+      const links = [];
+      const errors = [];
+
+      for (const bp of bufferPosts) {
+        const ch = CHANNEL_MAP[bp.channelId] || {};
+        const label = ch.name ? `${ch.service} (${ch.name})` : bp.channelId;
+        try {
+          const gqlRes = await fetch(GQL_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${BUFFER_TOKEN}` },
+            body: JSON.stringify({ query: GET_POST, variables: { input: { id: bp.bufferId } } }),
+          });
+          const d = await gqlRes.json().catch(() => ({}));
+          const post = d?.data?.post;
+          const gqlErrors = d?.errors;
+          if (gqlErrors?.length) {
+            errors.push(`${label}: ${gqlErrors[0].message}`);
+          } else if (!post) {
+            errors.push(`${label}: post not found in Buffer`);
+          } else {
+            const status = post.status?.value || 'unknown';
+            if (post.externalLink) {
+              links.push({ platform: label, url: post.externalLink });
+            } else if (status === 'sent' || post.sentAt) {
+              errors.push(`${label}: posted but no URL returned`);
+            } else {
+              errors.push(`${label}: not yet posted (status: ${status})`);
+            }
+          }
+        } catch (e) {
+          errors.push(`${label}: ${e.message}`);
+        }
+      }
+
+      // Merge links into existing postedLinks (avoid duplicates)
+      const existing = r.postedLinks || [];
+      const merged = [...existing];
+      for (const l of links) {
+        if (!merged.find(e => e.url === l.url)) merged.push(l);
+      }
+      r.postedLinks = merged;
+      r.linkErrors = errors;
+      r.updatedAt = Date.now();
+      all[idx] = r;
+      writeJsonFile(VR_FILE, all);
+
+      res.json({ ok: true, links, errors });
+    } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
   // ---------- ROUTE: DELETE /api/video-requests/:id ----------
