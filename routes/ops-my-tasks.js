@@ -2443,10 +2443,10 @@ function vqCardHtml(r){
   }
 
   else if(r.status==='in-progress'){
-    var revBadge=r.revisionsRequested?'<div style="display:flex;align-items:flex-start;gap:8px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:8px;padding:8px 10px;margin-bottom:8px">'
+    var revBadge=r.revisionsRequested?'<div style="display:flex;align-items:flex-start;gap:8px;background:rgba(251,191,36,.08);border:1px solid rgba(251,191,36,.25);border-radius:8px;padding:8px 10px;margin-bottom:8px;min-width:0">'
       +'<span style="font-size:14px;flex-shrink:0">↩</span>'
-      +'<div><div style="font-size:11px;font-weight:700;color:#fbbf24;margin-bottom:2px">Revisions requested</div>'
-      +'<div style="font-size:11px;color:rgba(251,191,36,.75);line-height:1.4;white-space:pre-wrap">'+esc(r.revisionNotes||'')+'</div>'
+      +'<div style="min-width:0;flex:1"><div style="font-size:11px;font-weight:700;color:#fbbf24;margin-bottom:2px">Revisions requested</div>'
+      +'<div style="font-size:11px;color:rgba(251,191,36,.75);line-height:1.4;white-space:pre-wrap;word-break:break-word;overflow-wrap:anywhere">'+esc(r.revisionNotes||'')+'</div>'
       +'</div></div>':'';
     var notesHtml=revBadge+'<div id="vqnotes-view-'+id+'" style="font-size:12px;color:var(--muted);line-height:1.5;white-space:pre-wrap;margin-bottom:6px">'
       +(r.notes||r.description?esc(r.notes||r.description):'<em style="opacity:.5">No notes yet</em>')
