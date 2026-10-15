@@ -6170,6 +6170,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       let changed = false;
       for (const r of posted) {
         let totalViews = 0;
+        let metricsCount = 0; // posts that returned actual data (not skipped/errored)
         for (const bp of r.bufferPosts) {
           if (!bp.bufferId) continue;
           try {
@@ -6182,17 +6183,22 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
             const gqlErrs = d?.errors || [];
             const scopeErr = gqlErrs.some(e => e.message?.includes('insights:read'));
             if (scopeErr) continue; // token lacks insights scope — skip silently
-            const views = (d?.data?.post?.metrics || []).find(m => m.type === 'views')?.value || 0;
+            if (!d?.data?.post) continue; // post not found or no data — skip
+            const views = (d.data.post.metrics || []).find(m => m.type === 'views')?.value || 0;
             totalViews += views;
-            // Update views on the matching postedLink entry
-            const link = (r.postedLinks || []).find(l => l.bufferId === bp.bufferId);
-            if (link) link.views = views;
+            metricsCount++;
           } catch (_) { /* skip individual failures */ }
         }
-        r.totalViews = totalViews;
-        r.metricsUpdatedAt = Date.now();
-        changed = true;
-        console.log(`[metrics-poll] ${r.id} (${r.title}): ${totalViews} total views`);
+        // Only overwrite totalViews if we actually got metrics back — avoid zeroing a
+        // previously valid count when Buffer hasn't updated metrics yet after a deploy.
+        if (metricsCount > 0) {
+          r.totalViews = totalViews;
+          r.metricsUpdatedAt = Date.now();
+          changed = true;
+          console.log(`[metrics-poll] ${r.id} (${r.title}): ${totalViews} total views from ${metricsCount} posts`);
+        } else {
+          console.log(`[metrics-poll] ${r.id} (${r.title}): no metrics data returned — keeping existing totalViews`);
+        }
       }
       if (changed) writeJsonFile(VR_FILE, all);
     } catch (e) {
