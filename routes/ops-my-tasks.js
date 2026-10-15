@@ -2483,11 +2483,14 @@ function vqCardHtml(r){
         var svcIcon={'tiktok':'📱','instagram':'📸','youtube':'▶️','linkedin':'💼','twitter':'𝕏','facebook':'👤'}[ch.service]||'🌐';
         var tagHint={'linkedin':'Tag people: type their name — Buffer will try to resolve. Companies may need the exact page name.','tiktok':'Tag with @username — must be their exact TikTok handle.','instagram':'Tag with @username in caption.'}[ch.service]||'';
         return '<div class="vq-ch-row" id="vqch-'+id+'-'+ch.id+'" data-ch="'+ch.id+'" data-svc="'+ch.service+'">'
-          +'<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;font-weight:600">'
-          +'<input type="checkbox" class="vq-ch-check" '+(isOn?'checked':'')+' onchange="vqToggleChannel(\\''+id+'\\',\\''+ch.id+'\\',this)" style="accent-color:var(--cyan);width:14px;height:14px"/>'
+          +'<div style="display:flex;align-items:center;justify-content:space-between;gap:6px">'
+          +'<label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:12px;font-weight:600;flex:1;min-width:0">'
+          +'<input type="checkbox" class="vq-ch-check" '+(isOn?'checked':'')+' onchange="vqToggleChannel(\\''+id+'\\',\\''+ch.id+'\\',this)" style="accent-color:var(--cyan);width:14px;height:14px;flex-shrink:0"/>'
           +svcIcon+' '+esc(ch.name)+' <span style="font-size:10px;color:var(--muted);font-weight:400">'+ch.service+'</span>'
           +'</label>'
-          +'<div class="vq-ch-detail" style="display:'+(isOn?'block':'none')+';margin-top:8px;padding-left:22px">'
+          +'<button type="button" class="vq-ch-edit-btn" style="display:'+(isOn?'':'none')+';background:none;border:1px solid rgba(255,255,255,.12);border-radius:4px;color:var(--muted);font-size:10px;cursor:pointer;padding:2px 7px;flex-shrink:0;white-space:nowrap" onclick="vqExpandChannel(\\''+id+'\\',\\''+ch.id+'\\',this)">▾ Edit</button>'
+          +'</div>'
+          +'<div class="vq-ch-detail" style="display:none;margin-top:8px;padding-left:22px">'
           +(tagHint?'<div style="font-size:10px;color:#f59e0b;margin-bottom:6px">⚠ '+tagHint+'</div>':'')
           +'<textarea rows="2" placeholder="Caption for this channel…" class="vq-ch-cap" data-ch="'+ch.id+'" oninput="vqMarkCapEdited(this)" style="width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:6px 9px;color:var(--txt);font-size:11px;font-family:inherit;resize:vertical;margin-bottom:6px">'+chCap+'</textarea>'
           +'<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">'
@@ -2633,10 +2636,11 @@ function toLocalInputDT(val){
   return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+'T'+pad(d.getHours())+':'+pad(d.getMinutes());
 }
 
-// Move an approved (Scheduled) card back to For Review so the schedule can be edited
+// Move an approved (Scheduled) card back to For Review so the schedule can be edited.
+// Also clear channelSchedules so stale per-channel times don't pre-populate the form.
 function vqEditSchedule(id){
   if(!confirm('Move this back to For Review so you can edit the schedule?'))return;
-  vqPatch(id,{status:'done'},function(){loadVideoQueue();});
+  vqPatch(id,{status:'done',channelSchedules:[]},function(){loadVideoQueue();});
 }
 
 function vqSaveNotes(id){
@@ -2702,18 +2706,31 @@ function vqSelectAllChannels(id,btn){
 function vqToggleChannel(id,chId,chk){
   var row=document.getElementById('vqch-'+id+'-'+chId);
   if(!row)return;
+  // Show the Edit button when checked; hide detail and reset button when unchecked
+  var editBtn=row.querySelector('.vq-ch-edit-btn');
+  if(editBtn)editBtn.style.display=chk.checked?'':'none';
   var detail=row.querySelector('.vq-ch-detail');
-  if(detail)detail.style.display=chk.checked?'block':'none';
+  if(detail&&!chk.checked){detail.style.display='none';}
   if(chk.checked){
     // Sync master caption into this channel's textarea if it's empty
     var masterCap=document.getElementById('vqcap-'+id);
     var ta=row.querySelector('.vq-ch-cap');
     if(ta&&masterCap&&!ta.value)ta.value=masterCap.value;
-    // Sync master schedule if empty
+    // Sync master schedule if override is empty
     var masterSched=document.getElementById('vqsched-'+id);
     var si=row.querySelector('.vq-ch-sched');
     if(si&&masterSched&&!si.value)si.value=masterSched.value;
   }
+}
+
+function vqExpandChannel(id,chId,btn){
+  var row=document.getElementById('vqch-'+id+'-'+chId);
+  if(!row)return;
+  var detail=row.querySelector('.vq-ch-detail');
+  if(!detail)return;
+  var open=detail.style.display!=='none';
+  detail.style.display=open?'none':'block';
+  btn.textContent=open?'▾ Edit':'▴ Hide';
 }
 
 function vqApproveSchedule(id){
