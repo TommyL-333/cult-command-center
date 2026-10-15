@@ -2365,7 +2365,7 @@ function renderVideoQueue(){
 
 function vqUpdateTracker(){
   var goal=1000;
-  var submitted=VQ_DATA.filter(function(r){return r.status==='pending';}).length;
+  var submitted=VQ_DATA.filter(function(r){return r.status==='pending';}).reduce(function(s,r){return s+(r.quantity||1);},0);
   var editing=VQ_DATA.filter(function(r){return r.status==='in-progress';}).length;
   var review=VQ_DATA.filter(function(r){return r.status==='done';}).length;
   var scheduled=VQ_DATA.filter(function(r){return r.status==='approved';}).length;
