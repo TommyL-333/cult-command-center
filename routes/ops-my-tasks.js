@@ -468,8 +468,17 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .vq-dot-scheduled{background:#f59e0b}
   .vq-cols-5{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
   @media(max-width:1100px){.vq-cols-5{grid-template-columns:repeat(3,1fr)}}
-  @media(max-width:700px){.vq-cols-5{grid-template-columns:repeat(2,1fr)}}
-  @media(max-width:420px){.vq-cols-5{grid-template-columns:1fr}}
+  @media(max-width:700px){
+    .vq-cols-5{
+      display:flex;flex-direction:row;flex-wrap:nowrap;
+      gap:10px;overflow-x:auto;align-items:flex-start;
+      padding-bottom:12px;
+      -webkit-overflow-scrolling:touch;
+      scrollbar-width:none;
+    }
+    .vq-cols-5::-webkit-scrollbar{display:none}
+    .vq-cols-5>div{flex:0 0 72vw;min-width:220px;max-width:320px}
+  }
   .vq-inline-form{margin-top:10px;padding:10px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;display:flex;flex-direction:column;gap:8px}
   .vq-inline-form textarea,.vq-inline-form input[type=url],.vq-inline-form input[type=datetime-local]{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:7px 10px;color:var(--txt);font-size:12px;font-family:inherit;resize:vertical}
   .vq-inline-form .plat-row{display:flex;flex-wrap:wrap;gap:6px}
