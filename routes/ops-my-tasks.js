@@ -5205,6 +5205,16 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       });
       writeJsonFile(VR_FILE, all);
       res.json({ ok: true, id });
+
+      // Notify Gilbert on Lark
+      const qty = Math.min(Math.max(parseInt(quantity, 10) || 1, 1), 10);
+      resolveOpenId('gilbert@cultcontent.cc').then(openId => {
+        if (!openId) return;
+        const who = names[email] || email;
+        const videoWord = qty > 1 ? `${qty} videos` : 'a video';
+        const msg = `🎬 New video request from ${who}\n\n${title.trim()}${description ? '\n' + description : ''}\nQuantity: ${videoWord}${driveUrl ? '\nFootage: ' + driveUrl : ''}\n\nhttps://manifest.cultcontent.cc/my-tasks`;
+        return sendLarkMessage(openId, msg);
+      }).catch(e => console.error('[video-notify] Lark DM failed:', e.message));
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
