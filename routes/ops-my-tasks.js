@@ -5958,7 +5958,6 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
           externalLink
           sentAt
           status
-          metrics { type value }
         }
       }`;
 
@@ -5976,17 +5975,15 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
           });
           const d = await gqlRes.json().catch(() => ({}));
           const post = d?.data?.post;
-          const gqlErrors = d?.errors;
-          if (gqlErrors?.length) {
-            errors.push(`${label}: ${gqlErrors[0].message}`);
-          } else if (!post) {
-            errors.push(`${label}: post not found in Buffer`);
+          // Use data.post even if errors[] is non-empty (partial GraphQL response)
+          if (!post) {
+            const msg = d?.errors?.[0]?.message || `HTTP ${gqlRes.status}`;
+            errors.push(`${label}: ${msg}`);
+          } else if (post.externalLink) {
+            links.push({ platform: label, url: post.externalLink });
           } else {
             const status = post.status || 'unknown';
-            const views = (post.metrics || []).find(m => m.type === 'views')?.value || 0;
-            if (post.externalLink) {
-              links.push({ platform: label, url: post.externalLink, views });
-            } else if (status === 'sent' || post.sentAt) {
+            if (status === 'sent' || post.sentAt) {
               errors.push(`${label}: posted but no URL returned`);
             } else {
               errors.push(`${label}: not yet posted (status: ${status})`);
@@ -5997,18 +5994,15 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
         }
       }
 
-      // Merge links into existing postedLinks (avoid duplicates; update views on match)
+      // Merge links into existing postedLinks (avoid duplicates)
       const existing = r.postedLinks || [];
       const merged = [...existing];
       for (const l of links) {
-        const ex = merged.find(e => e.url === l.url);
-        if (ex) { ex.views = l.views; }
-        else { merged.push(l); }
+        if (!merged.find(e => e.url === l.url)) merged.push(l);
       }
       r.postedLinks = merged;
       r.linkErrors = errors;
       r.totalViews = merged.reduce((s, l) => s + (l.views || 0), 0);
-      r.metricsUpdatedAt = Date.now();
       r.updatedAt = Date.now();
       all[idx] = r;
       writeJsonFile(VR_FILE, all);
@@ -6159,6 +6153,9 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
               body: JSON.stringify({ query: METRICS_GQL, variables: { input: { id: bp.bufferId } } }),
             });
             const d = await res.json().catch(() => ({}));
+            const gqlErrs = d?.errors || [];
+            const scopeErr = gqlErrs.some(e => e.message?.includes('insights:read'));
+            if (scopeErr) continue; // token lacks insights scope — skip silently
             const views = (d?.data?.post?.metrics || []).find(m => m.type === 'views')?.value || 0;
             totalViews += views;
             // Update views on the matching postedLink entry
