@@ -5606,6 +5606,51 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
         return res.status(500).json({ error: 'Buffer not configured — set BUFFER_ACCESS_TOKEN in Railway env vars' });
       }
 
+      // If the draft is a Google Drive link, download the video and re-host on R2
+      // so Buffer's servers can fetch it directly. This runs once before the channel loop.
+      let resolvedVideoUrl = r.draftUrl || '';
+      const driveMatch = resolvedVideoUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      if (driveMatch) {
+        const fileId = driveMatch[1];
+        const r2AccountId = process.env.R2_ACCOUNT_ID;
+        const r2KeyId     = process.env.R2_ACCESS_KEY_ID;
+        const r2Secret    = process.env.R2_SECRET_ACCESS_KEY;
+        const r2Bucket    = process.env.R2_BUCKET;
+        const r2Public    = (process.env.R2_PUBLIC_URL || '').replace(/\/$/, '');
+
+        if (r2AccountId && r2KeyId && r2Secret && r2Bucket) {
+          try {
+            console.log('[buffer] Downloading Drive file', fileId, 'to re-host on R2…');
+            const dlUrl = `https://drive.usercontent.google.com/download?id=${fileId}&export=download&confirm=t`;
+            const dlRes = await fetch(dlUrl, { redirect: 'follow' });
+            if (!dlRes.ok) throw new Error(`Drive download HTTP ${dlRes.status}`);
+            const contentType = dlRes.headers.get('content-type') || 'video/mp4';
+            const buf = Buffer.from(await dlRes.arrayBuffer());
+            const ext = contentType.includes('quicktime') ? 'mov' : 'mp4';
+            const key = `drafts/${fileId}-${Date.now()}.${ext}`;
+
+            const { S3Client, PutObjectCommand } = require('@aws-sdk/client-s3');
+            const r2client = new S3Client({
+              region: 'auto',
+              endpoint: `https://${r2AccountId}.r2.cloudflarestorage.com`,
+              credentials: { accessKeyId: r2KeyId, secretAccessKey: r2Secret },
+            });
+            await r2client.send(new PutObjectCommand({
+              Bucket: r2Bucket, Key: key, Body: buf, ContentType: contentType,
+            }));
+            resolvedVideoUrl = r2Public ? `${r2Public}/${key}` : `https://${r2AccountId}.r2.cloudflarestorage.com/${r2Bucket}/${key}`;
+            // Persist the R2 URL so we don't re-download on future edits
+            r.draftUrl = resolvedVideoUrl;
+            console.log('[buffer] Re-hosted to R2:', resolvedVideoUrl);
+          } catch (dlErr) {
+            console.error('[buffer] Drive→R2 failed:', dlErr.message);
+            // Fall through — video platforms will fail but text platforms still schedule
+          }
+        } else {
+          console.warn('[buffer] R2 not configured — Drive URLs will fail for video platforms');
+        }
+      }
+
       // Schedule one post per channel via Buffer GraphQL API
       const GQL_URL = 'https://api.buffer.com/graphql';
       const CREATE_POST = `
@@ -5641,20 +5686,13 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
         const VIDEO_SERVICES = new Set(['tiktok', 'instagram', 'youtube']);
         const isVideoService = VIDEO_SERVICES.has(service);
 
-        // Text-only platforms work fine with no media asset.
-        // Video platforms (TikTok, Instagram, YouTube) require at least one asset —
-        // use the draft URL only when it's a direct public URL (R2/CDN).
-        // Google Drive URLs require auth that Buffer's servers don't have, so we
-        // skip the asset for Drive links; the post will still be created and the
-        // user can attach the video manually in Buffer before it sends.
+        // Text-only platforms: no media asset needed, caption only.
+        // Video platforms: pass the resolved URL (R2 after Drive→R2 re-host, or
+        // direct URL if already public). Empty assets only as a last resort.
         const TEXT_ONLY_SERVICES = new Set(['linkedin', 'twitter', 'facebook']);
         let assets = [];
-        if (!TEXT_ONLY_SERVICES.has(service)) {
-          const draftUrl = r.draftUrl || '';
-          const isDrive = draftUrl.includes('drive.google.com') || draftUrl.includes('docs.google.com');
-          if (draftUrl && !isDrive) {
-            assets = [{ video: { url: draftUrl } }];
-          }
+        if (!TEXT_ONLY_SERVICES.has(service) && resolvedVideoUrl) {
+          assets = [{ video: { url: resolvedVideoUrl } }];
         }
 
         const input = {
