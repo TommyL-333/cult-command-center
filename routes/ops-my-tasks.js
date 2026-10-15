@@ -5695,6 +5695,22 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
           assets = [{ video: { url: resolvedVideoUrl } }];
         }
 
+        // Platform-specific metadata required by Buffer's GraphQL API.
+        // Introspected from CreatePostInput → PostInputMetaData on 2026-10-15.
+        const videoTitle = r.title || 'Video';
+        const metadata = {};
+        if (service === 'instagram') {
+          // Instagram requires a type; 'reel' is correct for video content
+          metadata.instagram = { type: 'reel' };
+        } else if (service === 'facebook') {
+          metadata.facebook = { type: 'reel' };
+        } else if (service === 'youtube') {
+          // YouTube requires title and categoryId (22 = People & Blogs)
+          metadata.youtube = { title: videoTitle, categoryId: '22' };
+        } else if (service === 'tiktok') {
+          metadata.tiktok = { title: videoTitle };
+        }
+
         const input = {
           channelId: ch.channelId,
           text: ch.caption,
@@ -5703,6 +5719,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
           needsApproval: false,
           dueAt: new Date(ch.scheduledAt).toISOString(),
           assets,
+          ...(Object.keys(metadata).length ? { metadata } : {}),
         };
         try {
           const gqlRes = await fetch(GQL_URL, {
