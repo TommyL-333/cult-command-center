@@ -2479,7 +2479,7 @@ function vqCardHtml(r){
         var saved=savedChannels.find(function(s){return s.channelId===ch.id;})||{};
         var isOn=saved.on||(savedChannels.length===0&&false);
         var chCap=esc(saved.caption||'');
-        var chSched=toLocalInputDT(saved.scheduledAt);
+        var chSched=''; // always blank — master time is used; user sets per-channel override explicitly
         var svcIcon={'tiktok':'📱','instagram':'📸','youtube':'▶️','linkedin':'💼','twitter':'𝕏','facebook':'👤'}[ch.service]||'🌐';
         var tagHint={'linkedin':'Tag people: type their name — Buffer will try to resolve. Companies may need the exact page name.','tiktok':'Tag with @username — must be their exact TikTok handle.','instagram':'Tag with @username in caption.'}[ch.service]||'';
         return '<div class="vq-ch-row" id="vqch-'+id+'-'+ch.id+'" data-ch="'+ch.id+'" data-svc="'+ch.service+'">'
