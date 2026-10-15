@@ -2502,7 +2502,10 @@ function vqCardHtml(r){
         +'<textarea rows="2" placeholder="Write your caption…" id="vqcap-'+id+'" onkeyup="vqSyncCaptions(\\''+id+'\\')" style="width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:7px 10px;color:var(--txt);font-size:12px;font-family:inherit;resize:vertical;margin-bottom:10px">'+savedCap+'</textarea>'
         +'<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Default date &amp; time</div>'
         +'<input type="datetime-local" id="vqsched-'+id+'" value="'+savedSched+'" onchange="vqSyncSchedule(\\''+id+'\\')" style="width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:7px 10px;color:var(--txt);font-size:12px;margin-bottom:12px"/>'
-        +'<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Channels</div>'
+        +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
+        +'<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Channels</div>'
+        +'<button type="button" style="background:none;border:none;font-size:10px;color:var(--cyan);cursor:pointer;padding:0" onclick="vqSelectAllChannels(\\''+id+'\\',this)">Select all</button>'
+        +'</div>'
         +'<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">'+channelRows+'</div>'
         +'<div id="vqsched-err-'+id+'" style="font-size:11px;color:var(--red);display:none;margin-bottom:6px"></div>'
         +'<button class="vq-btn vq-schedule" onclick="vqApproveSchedule(\\''+id+'\\')">✓ Approve &amp; Schedule in Buffer</button>'
@@ -2520,12 +2523,18 @@ function vqCardHtml(r){
 
   else if(r.status==='approved'){
     var schedTime=r.scheduledAt?new Date(r.scheduledAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'—';
-    var platDisplay=(r.platforms||[]).join(', ')||'—';
+    // Show only the channels that actually got scheduled in Buffer
+    var scheduledChannels=(r.bufferPosts||[]).map(function(p){
+      var ch=VQ_BUFFER_CHANNELS.find(function(c){return c.id===p.channelId;});
+      return ch?ch.name:p.channelId;
+    });
+    var platDisplay=scheduledChannels.length?scheduledChannels.join(', '):(r.platforms||[]).join(', ')||'—';
     var draftLink2=r.draftUrl?'<a href="'+esc(r.draftUrl)+'" target="_blank" class="vq-btn vq-drive">📄 Draft</a>':'';
     body='<div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.7">'
       +'<strong style="color:var(--txt)">Scheduled:</strong> '+schedTime+'<br>'
       +(r.caption?'<strong style="color:var(--txt)">Caption:</strong> '+esc(r.caption.slice(0,60))+(r.caption.length>60?'…':'')+'<br>':'')
-      +'<strong style="color:var(--txt)">Platforms:</strong> '+esc(platDisplay)
+      +'<strong style="color:var(--txt)">Channels ('+scheduledChannels.length+'):</strong> '+esc(platDisplay)
+      +(r.bufferErrors&&r.bufferErrors.length?'<br><span style="color:#f59e0b">⚠ '+r.bufferErrors.length+' channel(s) failed to schedule</span>':'')
       +'</div>'
       +'<div class="vq-actions">'+draftLink2+'</div>';
   }
@@ -2656,6 +2665,20 @@ function vqSyncSchedule(id){
 }
 
 // Show/hide per-channel detail when checkbox toggled; sync master caption in
+function vqSelectAllChannels(id,btn){
+  var form=document.getElementById('vqform-'+id);
+  if(!form)return;
+  var checks=form.querySelectorAll('.vq-ch-check');
+  var allOn=Array.from(checks).every(function(c){return c.checked;});
+  checks.forEach(function(c){
+    if(c.checked===allOn){
+      c.checked=!allOn;
+      vqToggleChannel(id,c.closest('.vq-ch-row').dataset.ch,c);
+    }
+  });
+  btn.textContent=allOn?'Select all':'Deselect all';
+}
+
 function vqToggleChannel(id,chId,chk){
   var row=document.getElementById('vqch-'+id+'-'+chId);
   if(!row)return;
