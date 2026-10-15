@@ -5817,13 +5817,10 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
         const isVideoService = VIDEO_SERVICES.has(service);
 
         // Text-only platforms: no media asset needed, caption only.
-        // Video platforms: pass the resolved URL (R2 after Drive→R2 re-host, or
-        // direct URL if already public). Empty assets only as a last resort.
-        // linkedin and twitter are text-only; all video platforms (including facebook reels)
-        // need the video asset passed explicitly.
-        const TEXT_ONLY_SERVICES = new Set(['linkedin', 'twitter']);
+        // All platforms receive the video asset when a resolved URL is available.
+        // Buffer handles video for linkedin, twitter, instagram, facebook, youtube, tiktok.
         let assets = [];
-        if (!TEXT_ONLY_SERVICES.has(service) && resolvedVideoUrl) {
+        if (resolvedVideoUrl) {
           assets = [{ video: { url: resolvedVideoUrl } }];
         }
 
