@@ -2548,7 +2548,7 @@ function vqCardHtml(r){
   }
 
   return '<div class="vq-card">'
-    +'<div class="vq-card-top"><span class="vq-brand-chip">'+esc(r.brand||'—')+'</span>'
+    +'<div class="vq-card-top">'+(r.brand?'<span class="vq-brand-chip">'+esc(r.brand)+'</span>':'')
     +(r.priority==='high'?'<span class="vq-prio-chip vq-prio-high">High</span>':'')
     +'</div>'
     +'<div class="vq-title">'+esc(r.title||'Untitled')+'</div>'
