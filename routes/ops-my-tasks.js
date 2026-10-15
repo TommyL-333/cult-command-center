@@ -2523,6 +2523,7 @@ function vqCardHtml(r){
     if(VQ_IS_ADMIN){
       var savedCap=esc(r.caption||'');
       var savedSched=toLocalInputDT(r.scheduledAt);
+      var savedVideoTitle=esc(r.videoTitle||'');
       var savedChannels=r.channelSchedules||[];
       // Build per-channel rows
       var channelRows=VQ_BUFFER_CHANNELS.map(function(ch){
@@ -2551,6 +2552,8 @@ function vqCardHtml(r){
           +'</div>';
       }).join('');
       var reviewForm='<div class="vq-inline-form" id="vqform-'+id+'" style="margin-top:10px">'
+        +'<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Title <span style="font-weight:400;text-transform:none;letter-spacing:0;color:rgba(255,255,255,.3)">(YouTube — required)</span></div>'
+        +'<input type="text" id="vqvtitle-'+id+'" placeholder="Video title for YouTube…" value="'+savedVideoTitle+'" style="width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:7px 10px;color:var(--txt);font-size:12px;font-family:inherit;margin-bottom:10px"/>'
         +'<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Master caption <span style="font-weight:400;text-transform:none;letter-spacing:0">(auto-fills each channel)</span></div>'
         +'<textarea rows="2" placeholder="Write your caption…" id="vqcap-'+id+'" onkeyup="vqSyncCaptions(\\''+id+'\\')" style="width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:7px 10px;color:var(--txt);font-size:12px;font-family:inherit;resize:vertical;margin-bottom:10px">'+savedCap+'</textarea>'
         +'<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Default date &amp; time</div>'
@@ -2801,6 +2804,7 @@ function vqExpandChannel(id,chId,btn){
 function vqApproveSchedule(id){
   var errEl=document.getElementById('vqsched-err-'+id);
   var masterCap=(document.getElementById('vqcap-'+id)||{}).value||'';
+  var videoTitle=((document.getElementById('vqvtitle-'+id)||{}).value||'').trim();
   var defaultSched=(document.getElementById('vqsched-'+id)||{}).value||'';
   var form=document.getElementById('vqform-'+id);
 
@@ -2838,7 +2842,7 @@ function vqApproveSchedule(id){
   });
 
   // Save metadata then send to Buffer
-  vqPatch(id,{status:'approved',caption:masterCap.trim(),platforms:platforms,scheduledAt:new Date(defaultSched).toISOString(),channelSchedules:channelSchedules},function(){
+  vqPatch(id,{status:'approved',caption:masterCap.trim(),videoTitle:videoTitle||null,platforms:platforms,scheduledAt:new Date(defaultSched).toISOString(),channelSchedules:channelSchedules},function(){
     fetch('/api/video-requests/'+id+'/post-buffer',{
       method:'POST',credentials:'include',
       headers:{'Content-Type':'application/json'},
@@ -5376,11 +5380,12 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       const r = all[idx];
       if (!isAdmin && !isEditor && r.submittedBy !== email)
         return res.status(403).json({ error: 'Not allowed' });
-      const { status, notes, draftUrl, caption, platforms, scheduledAt, postedLinks,
+      const { status, notes, draftUrl, caption, videoTitle, platforms, scheduledAt, postedLinks,
               revisionNotes, revisionsRequested, revisionRequestedAt, channelSchedules } = req.body || {};
       if (notes !== undefined) r.notes = notes;
       if (draftUrl !== undefined) r.draftUrl = draftUrl;
       if (caption !== undefined) r.caption = caption;
+      if (videoTitle !== undefined) r.videoTitle = videoTitle;
       if (platforms !== undefined) r.platforms = platforms;
       if (scheduledAt !== undefined) r.scheduledAt = scheduledAt ? new Date(scheduledAt).getTime() : null;
       if (postedLinks !== undefined) r.postedLinks = postedLinks;
@@ -5800,7 +5805,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
 
         // Platform-specific metadata required by Buffer's GraphQL API.
         // Introspected from CreatePostInput → PostInputMetaData on 2026-10-15.
-        const videoTitle = r.title || 'Video';
+        const videoTitle = r.videoTitle || r.title || 'Video';
         const metadata = {};
         if (service === 'instagram') {
           // shouldShareToFeed is required (Boolean!) by Buffer's schema
