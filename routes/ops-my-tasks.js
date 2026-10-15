@@ -2350,7 +2350,8 @@ function renderVideoQueue(){
   var done=VQ_DATA.filter(function(r){return r.status==='done';});
   var scheduled=VQ_DATA.filter(function(r){return r.status==='approved';});
   var posted=VQ_DATA.filter(function(r){return r.status==='posted';});
-  document.getElementById('vq-cnt-pending').textContent=pending.length;
+  var pendingCount=pending.reduce(function(s,r){return s+(r.quantity||1);},0);
+  document.getElementById('vq-cnt-pending').textContent=pendingCount;
   document.getElementById('vq-cnt-inprogress').textContent=inprog.length;
   document.getElementById('vq-cnt-done').textContent=done.length;
   document.getElementById('vq-cnt-scheduled').textContent=scheduled.length;
