@@ -2339,7 +2339,30 @@ function loadVideoQueue(){
     VQ_IS_EDITOR=!!d.isEditor;
     VQ_IS_ADMIN=!!d.isAdmin;
     VQ_LOADED=true;
-    renderVideoQueue();
+    // Auto-transition: any scheduled card whose time has passed moves to Posted
+    var now=Date.now();
+    var toPost=VQ_DATA.filter(function(r){
+      return r.status==='approved'&&r.scheduledAt&&new Date(r.scheduledAt).getTime()<now;
+    });
+    if(toPost.length){
+      var remaining=toPost.length;
+      toPost.forEach(function(r){
+        fetch('/api/video-requests/'+r.id,{
+          method:'PATCH',credentials:'include',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({status:'posted'}),
+        }).then(function(){
+          r.status='posted';
+          remaining--;
+          if(remaining===0)renderVideoQueue();
+        }).catch(function(){
+          remaining--;
+          if(remaining===0)renderVideoQueue();
+        });
+      });
+    } else {
+      renderVideoQueue();
+    }
   }).catch(function(e){toast('Could not load video queue: '+e);});
 }
 
