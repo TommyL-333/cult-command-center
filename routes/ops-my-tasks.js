@@ -2449,7 +2449,7 @@ function vqUpdateTracker(){
   // Summary stats
   var totalViews=VQ_DATA.filter(function(r){return r.status==='posted';}).reduce(function(s,r){return s+(r.totalViews||0);},0);
   var totalChannelPosts=VQ_DATA.filter(function(r){return r.status==='posted';}).reduce(function(s,r){return s+((r.bufferPosts&&r.bufferPosts.length)||0);},0);
-  var pct=Math.round((totalChannelPosts/goal)*1000)/10;
+  var pct=Math.round((posted/goal)*1000)/10;
   document.getElementById('vp-stat-views').textContent=totalViews.toLocaleString();
   document.getElementById('vp-stat-posts').textContent=totalChannelPosts.toLocaleString();
   document.getElementById('vp-stat-pct').textContent=pct+'%';
