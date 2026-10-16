@@ -116,8 +116,8 @@ const COMP_MODEL = {
     { key: 'signups', label: 'Creator Signups',    floor: 15, hit: 30 },
   ]},
   'gourab@cultcontent.cc': { base: 1350, floorPct: 0.04, hitPct: 0.08, gates: [
-    { key: 'ratio',   label: 'Video/Sample Ratio', floor: 0.2, hit: 0.4 },
-  ], ratioTiers: [0.2, 0.3, 0.4] },
+    { key: 'ratio',   label: 'Video/Sample Ratio', floor: 2, hit: 4 },
+  ], ratioTiers: [2, 3, 4] },
   'gilbert@cultcontent.cc': { base: 1000, floorPct: 0.02, hitPct: 0.04, gates: [
     { key: 'videos',  label: 'Videos Edited',      floor: 30, hit: 60 },
   ]},
