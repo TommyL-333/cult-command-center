@@ -2585,7 +2585,7 @@ function vqCardHtml(r){
         +'</div>'
         +'<div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">'+channelRows+'</div>'
         +'<div id="vqsched-err-'+id+'" style="font-size:11px;color:var(--red);display:none;margin-bottom:6px"></div>'
-        +'<button class="vq-btn vq-schedule" onclick="vqApproveSchedule(\\''+id+'\\')">✓ Approve &amp; Schedule in Buffer</button>'
+        +'<button class="vq-btn vq-schedule" id="vqschedbtn-'+id+'" onclick="vqApproveSchedule(\\''+id+'\\',this)">✓ Approve &amp; Schedule in Buffer</button>'
         +'<div style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.07)">'
         +'<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Request Revision</div>'
         +'<textarea rows="2" placeholder="Describe what needs to change…" id="vqrev-'+id+'" style="width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:7px 10px;color:var(--txt);font-size:12px;font-family:inherit;resize:vertical;margin-bottom:6px"></textarea>'
@@ -2728,8 +2728,15 @@ function toLocalInputDT(val){
 // Move an approved (Scheduled) card back to For Review so the schedule can be edited.
 // Also clear channelSchedules so stale per-channel times don't pre-populate the form.
 function vqEditSchedule(id){
-  if(!confirm('Move this back to For Review so you can edit the schedule?'))return;
-  vqPatch(id,{status:'done',channelSchedules:[]},function(){loadVideoQueue();});
+  if(!confirm('Move this back to For Review so you can edit the schedule? The existing Buffer posts will be cancelled.'))return;
+  toast('Cancelling Buffer posts…');
+  fetch('/api/video-requests/'+id+'/cancel-buffer',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'}})
+  .then(function(r){return r.json();}).then(function(d){
+    if(d.cancelled>0)toast('Cancelled '+d.cancelled+' Buffer post'+(d.cancelled===1?'':'s'));
+    vqPatch(id,{status:'done',channelSchedules:[],bufferPosts:[]},function(){loadVideoQueue();});
+  }).catch(function(){
+    vqPatch(id,{status:'done',channelSchedules:[],bufferPosts:[]},function(){loadVideoQueue();});
+  });
 }
 
 function vqSaveNotes(id){
@@ -2822,12 +2829,13 @@ function vqExpandChannel(id,chId,btn){
   btn.textContent=open?'▾ Edit':'▴ Hide';
 }
 
-function vqApproveSchedule(id){
+function vqApproveSchedule(id,btn){
   var errEl=document.getElementById('vqsched-err-'+id);
   var masterCap=(document.getElementById('vqcap-'+id)||{}).value||'';
   var videoTitle=((document.getElementById('vqvtitle-'+id)||{}).value||'').trim();
   var defaultSched=(document.getElementById('vqsched-'+id)||{}).value||'';
   var form=document.getElementById('vqform-'+id);
+  var setLoading=function(on){if(btn){btn.disabled=on;btn.textContent=on?'⏳ Scheduling…':'✓ Approve & Schedule in Buffer';}};
 
   // Collect checked channels with their per-channel caption + time
   var channelSchedules=[];
@@ -2863,6 +2871,7 @@ function vqApproveSchedule(id){
   });
 
   // Save metadata then send to Buffer
+  setLoading(true);
   vqPatch(id,{status:'approved',caption:masterCap.trim(),videoTitle:videoTitle||null,platforms:platforms,scheduledAt:new Date(defaultSched).toISOString(),channelSchedules:channelSchedules},function(){
     fetch('/api/video-requests/'+id+'/post-buffer',{
       method:'POST',credentials:'include',
@@ -2874,6 +2883,7 @@ function vqApproveSchedule(id){
       if(d.error){
         vqPatch(id,{status:'done'},function(){loadVideoQueue();});
         showErr('Buffer error: '+d.error);
+        setLoading(false);
       } else {
         var n=d.scheduled||channelSchedules.length;
         toast('✓ Scheduled on '+n+' channel'+(n===1?'':'s')+' in Buffer');
@@ -2883,6 +2893,7 @@ function vqApproveSchedule(id){
     .catch(function(e){
       vqPatch(id,{status:'done'},function(){loadVideoQueue();});
       showErr('Could not reach server: '+e);
+      setLoading(false);
     });
   });
 }
@@ -5406,7 +5417,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       if (!isAdmin && !isEditor && r.submittedBy !== email)
         return res.status(403).json({ error: 'Not allowed' });
       const { status, notes, draftUrl, caption, videoTitle, platforms, scheduledAt, postedLinks,
-              revisionNotes, revisionsRequested, revisionRequestedAt, channelSchedules } = req.body || {};
+              revisionNotes, revisionsRequested, revisionRequestedAt, channelSchedules, bufferPosts } = req.body || {};
       if (notes !== undefined) r.notes = notes;
       if (draftUrl !== undefined) r.draftUrl = draftUrl;
       if (caption !== undefined) r.caption = caption;
@@ -5415,6 +5426,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       if (scheduledAt !== undefined) r.scheduledAt = scheduledAt ? new Date(scheduledAt).getTime() : null;
       if (postedLinks !== undefined) r.postedLinks = postedLinks;
       if (channelSchedules !== undefined) r.channelSchedules = channelSchedules;
+      if (bufferPosts !== undefined) r.bufferPosts = bufferPosts;
       if (revisionNotes !== undefined) r.revisionNotes = revisionNotes;
       if (revisionsRequested !== undefined) r.revisionsRequested = revisionsRequested;
       if (revisionRequestedAt !== undefined) r.revisionRequestedAt = revisionRequestedAt;
@@ -5942,6 +5954,44 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       console.error('[buffer-webhook]', e.message);
       res.status(500).json({ error: e.message });
     }
+  });
+
+  // ---------- ROUTE: POST /api/video-requests/:id/cancel-buffer ----------
+  // Deletes all scheduled Buffer posts for a card (called when moving back to For Review).
+  app.post('/api/video-requests/:id/cancel-buffer', requireAuth, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const all = readJsonFile(VR_FILE, []);
+      const r = all.find(r => r.id === id);
+      if (!r) return res.status(404).json({ error: 'Not found' });
+      const bufferPosts = r.bufferPosts || [];
+      if (!bufferPosts.length) return res.json({ ok: true, cancelled: 0 });
+
+      const BUFFER_TOKEN = process.env.BUFFER_ACCESS_TOKEN;
+      if (!BUFFER_TOKEN) return res.json({ ok: true, cancelled: 0, note: 'No Buffer token' });
+
+      const GQL_URL = 'https://api.buffer.com/graphql';
+      const DELETE_POST = `mutation DeletePost($input: DeletePostInput!) {
+        deletePost(input: $input) { deletedPostId }
+      }`;
+
+      let cancelled = 0;
+      const sleep = ms => new Promise(r => setTimeout(r, ms));
+      for (const bp of bufferPosts) {
+        if (!bp.bufferId) continue;
+        try {
+          await sleep(300);
+          const gqlRes = await fetch(GQL_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${BUFFER_TOKEN}` },
+            body: JSON.stringify({ query: DELETE_POST, variables: { input: { id: bp.bufferId } } }),
+          });
+          const d = await gqlRes.json().catch(() => ({}));
+          if (d?.data?.deletePost?.deletedPostId) cancelled++;
+        } catch (_) { /* skip individual failures */ }
+      }
+      res.json({ ok: true, cancelled });
+    } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
   // ---------- ROUTE: POST /api/video-requests/:id/fetch-links ----------
