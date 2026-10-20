@@ -89,34 +89,38 @@
     .stat-label{font-size:.78rem;color:var(--muted);line-height:1.55;}
 
     /* ──────────────────────────────────────────
-       Slide 3: Oligarchs
+       Slide 3: Oligarchs (8-person photo grid)
     ────────────────────────────────────────── */
     #oligarchs{background:var(--dark0);}
     .oligarchs-inner{position:relative;z-index:4;max-width:1060px;width:100%;}
-    .oligarchs-inner h2{font-size:clamp(1.6rem,3.5vw,3rem);margin-bottom:10px;}
-    .oligarchs-sub{font-size:.9rem;color:var(--light);line-height:1.75;
-      margin-bottom:38px;max-width:600px;}
-    .oligarch-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;}
-    @media(max-width:820px){.oligarch-grid{grid-template-columns:1fr;}}
-    .oligarch-card{background:rgba(255,255,255,.025);border:1px solid var(--border);
-      border-radius:18px;padding:30px 26px;position:relative;overflow:hidden;}
-    .oligarch-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
-    .oligarch-card.musk::before{background:linear-gradient(90deg,var(--teal),var(--purple));}
-    .oligarch-card.thiel::before{background:linear-gradient(90deg,var(--pink),var(--lavender));}
-    .oligarch-card.zuck::before{background:linear-gradient(90deg,var(--gold),var(--gold-lt));}
-    .olg-initials{font-family:'Montserrat',sans-serif;font-weight:900;font-size:3.5rem;
-      line-height:1;opacity:.1;position:absolute;top:20px;right:20px;color:#fff;}
-    .olg-name{font-family:'Montserrat',sans-serif;font-weight:900;font-size:1.25rem;
-      color:var(--text);margin-bottom:6px;}
-    .olg-worth{font-size:.7rem;font-weight:700;color:var(--gold);letter-spacing:.08em;
-      margin-bottom:20px;}
-    .olg-items{display:flex;flex-direction:column;gap:10px;}
-    .olg-item{font-size:.79rem;color:var(--light);line-height:1.5;
-      display:flex;align-items:flex-start;gap:8px;}
-    .olg-item::before{content:'→';color:var(--muted);flex-shrink:0;margin-top:1px;}
-    .olg-tag{font-size:.62rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
-      padding:4px 9px;border-radius:4px;margin-top:20px;display:inline-block;
-      background:rgba(239,68,68,.1);color:#ef4444;}
+    .oligarchs-inner h2{font-size:clamp(1.4rem,3vw,2.4rem);margin-bottom:10px;}
+    .oligarchs-sub{font-size:.84rem;color:var(--light);line-height:1.7;
+      margin-bottom:26px;max-width:800px;}
+    .olg-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;}
+    @media(max-width:900px){.olg-grid{grid-template-columns:repeat(2,1fr);}}
+    .olg-card{background:rgba(255,255,255,.025);border:1px solid var(--border);
+      border-radius:12px;padding:14px;position:relative;overflow:hidden;}
+    .olg-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;}
+    .olg-card.tech::before{background:linear-gradient(90deg,var(--teal),var(--purple));}
+    .olg-card.political::before{background:linear-gradient(90deg,var(--pink),var(--gold));}
+    .olg-card.finance::before{background:linear-gradient(90deg,var(--gold),var(--lavender));}
+    .olg-head{display:flex;align-items:center;gap:10px;margin-bottom:11px;}
+    .olg-avatar{width:50px;height:50px;border-radius:50%;object-fit:cover;
+      object-position:top center;flex-shrink:0;
+      filter:saturate(.75) brightness(.85);border:2px solid rgba(255,255,255,.08);}
+    .olg-name{font-family:'Montserrat',sans-serif;font-weight:900;
+      font-size:.8rem;color:var(--text);line-height:1.2;margin-bottom:3px;}
+    .olg-worth{font-size:.58rem;font-weight:700;color:var(--gold);letter-spacing:.05em;}
+    .olg-bullets{display:flex;flex-direction:column;gap:6px;margin-bottom:10px;}
+    .olg-bullet{font-size:.68rem;color:var(--light);line-height:1.45;
+      display:flex;gap:6px;}
+    .olg-bullet::before{content:'↗';font-size:.54rem;color:var(--pink);
+      flex-shrink:0;margin-top:2px;}
+    .olg-type{font-size:.54rem;font-weight:700;letter-spacing:.1em;
+      text-transform:uppercase;padding:2px 7px;border-radius:3px;display:inline-block;}
+    .olg-type.tech{background:rgba(0,242,234,.1);color:var(--teal);}
+    .olg-type.political{background:rgba(255,0,80,.1);color:var(--pink);}
+    .olg-type.finance{background:rgba(201,168,76,.1);color:var(--gold);}
 
     /* ──────────────────────────────────────────
        Slide 4: Bubble
@@ -389,7 +393,7 @@
       by the few —<br/>
       <span class="grad-gold">or by the many.</span>
     </h1>
-    <p class="cover-sub">Three tech oligarchs are building private city-states with public wealth they extracted. The creator economy — 200 million people producing real value — earns a median of $18K a year. Cult Commerce is the mechanism to reverse that ratio: capturing 30% of the $500B creator economy and routing the revenue through a distributed network, not a platform hierarchy.</p>
+    <p class="cover-sub">A class of billionaires — in tech, finance, and politics — is using extracted public wealth to insulate themselves from the systems everyone else depends on. The creator economy — 200 million people producing real value — earns a median of $18K a year. Cult Commerce is the mechanism to reverse that ratio: capturing 30% of the $500B creator economy and routing the revenue through a distributed network, not a platform hierarchy.</p>
     <div class="cover-pill">
       <span>Target: 30% of social commerce by 2031</span>
     </div>
@@ -429,43 +433,131 @@
 <section class="screen" id="oligarchs">
   <div class="glow" style="width:420px;height:420px;background:rgba(255,0,80,.07);top:60px;right:-60px;"></div>
   <div class="oligarchs-inner">
-    <div class="eyebrow">The Retreat</div>
-    <h2>They're not investing<br/>in you. They're building<br/><span class="grad-hot">cities for themselves.</span></h2>
-    <p class="oligarchs-sub">While creators grind the algorithm, the architects of the attention economy are quietly acquiring land, obtaining foreign citizenship, and funding private city-states — nationless territories designed for one cohort: themselves.</p>
-    <div class="oligarch-grid">
-      <div class="oligarch-card musk">
-        <div class="olg-initials">EM</div>
-        <div class="olg-name">Elon Musk</div>
-        <div class="olg-worth">~$250B net worth</div>
-        <div class="olg-items">
-          <div class="olg-item">Starbase, TX — SpaceX's private municipality, legally incorporated as a city in 2021. He controls its police, utilities, and land.</div>
-          <div class="olg-item">X (Twitter) — owns the global public square, sets the terms of discourse</div>
-          <div class="olg-item">Neuralink + Boring Company — infrastructure for the civilizational stack he's designing without you</div>
+    <div class="eyebrow">The Extraction Class</div>
+    <h2>They got rich building<br/>the system. Now they're<br/><span class="grad-hot">building their way out of it.</span></h2>
+    <p class="oligarchs-sub">Across tech, finance, and politics, a coordinated class is acquiring hard assets, securing private infrastructure, and capturing public institutions — while redirecting public resources toward private benefit. These are not isolated actors. This is a pattern.</p>
+    <div class="olg-grid">
+
+      <div class="olg-card tech">
+        <div class="olg-head">
+          <img class="olg-avatar" src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Elon_Musk_-_54820081119_%28cropped%29.jpg/330px-Elon_Musk_-_54820081119_%28cropped%29.jpg" alt="Elon Musk" onerror="this.style.display='none'"/>
+          <div class="olg-name-block">
+            <div class="olg-name">Elon Musk</div>
+            <div class="olg-worth">~$250B net worth</div>
+          </div>
         </div>
-        <div class="olg-tag">Building territory</div>
-      </div>
-      <div class="oligarch-card thiel">
-        <div class="olg-initials">PT</div>
-        <div class="olg-name">Peter Thiel</div>
-        <div class="olg-worth">~$10B net worth</div>
-        <div class="olg-items">
-          <div class="olg-item">Praxis — a funded startup city project in the Mediterranean for the tech elite to establish physical sovereignty</div>
-          <div class="olg-item">New Zealand citizenship (2017) — a physical escape hatch, before most people knew the term "network state"</div>
-          <div class="olg-item">Palantir — the surveillance infrastructure running inside most Western governments</div>
+        <div class="olg-bullets">
+          <div class="olg-bullet">Used DOGE to gut federal programs protecting working Americans — while his companies collect $15B+ in federal contracts annually</div>
+          <div class="olg-bullet">Starbase, TX: first legally incorporated private city owned and controlled by a single billionaire</div>
         </div>
-        <div class="olg-tag">Funding the exit</div>
+        <span class="olg-type tech">Tech / Political</span>
       </div>
-      <div class="oligarch-card zuck">
-        <div class="olg-initials">MZ</div>
-        <div class="olg-name">Mark Zuckerberg</div>
-        <div class="olg-worth">~$200B net worth</div>
-        <div class="olg-items">
-          <div class="olg-item">1,300+ acres in Kauai, Hawaii — private compound with reported underground bunker and self-contained power and water</div>
-          <div class="olg-item">Meta controls what 3B+ people see, share, and buy — including every creator's reach and monetization ceiling</div>
-          <div class="olg-item">Instagram/Threads — actively capturing the creator economy layer he depends on for engagement</div>
+
+      <div class="olg-card political">
+        <div class="olg-head">
+          <img class="olg-avatar" src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Peter_Thiel_by_Gage_Skidmore.jpg/330px-Peter_Thiel_by_Gage_Skidmore.jpg" alt="Peter Thiel" onerror="this.style.display='none'"/>
+          <div class="olg-name-block">
+            <div class="olg-name">Peter Thiel</div>
+            <div class="olg-worth">~$10B net worth</div>
+          </div>
         </div>
-        <div class="olg-tag">Owning attention</div>
+        <div class="olg-bullets">
+          <div class="olg-bullet">Wrote a manifesto declaring "freedom and democracy are incompatible" — then funded politicians who agreed</div>
+          <div class="olg-bullet">Palantir: surveillance infrastructure sold to immigration enforcement, military, and intelligence agencies globally</div>
+        </div>
+        <span class="olg-type political">Political / Tech</span>
       </div>
+
+      <div class="olg-card tech">
+        <div class="olg-head">
+          <img class="olg-avatar" src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/12/P20260929DT-1655_%2855561811540%29_%28cropped_2%29.jpg/330px-P20260929DT-1655_%2855561811540%29_%28cropped_2%29.jpg" alt="Mark Zuckerberg" onerror="this.style.display='none'"/>
+          <div class="olg-name-block">
+            <div class="olg-name">Mark Zuckerberg</div>
+            <div class="olg-worth">~$200B net worth</div>
+          </div>
+        </div>
+        <div class="olg-bullets">
+          <div class="olg-bullet">Meta shapes what 3B+ people see and believe — designed for engagement over truth, with documented links to violence and mental illness</div>
+          <div class="olg-bullet">1,300-acre Hawaii compound with underground bunker and self-contained water and power systems</div>
+        </div>
+        <span class="olg-type tech">Tech / Media</span>
+      </div>
+
+      <div class="olg-card finance">
+        <div class="olg-head">
+          <img class="olg-avatar" src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/fc/260202-D-PM193-2205_SECWAR_Arsenal_of_Freedom_Tour_-_Florida_%283x4_cropped_on_Bezos_and_rotated%29.jpg/330px-260202-D-PM193-2205_SECWAR_Arsenal_of_Freedom_Tour_-_Florida_%283x4_cropped_on_Bezos_and_rotated%29.jpg" alt="Jeff Bezos" onerror="this.style.display='none'"/>
+          <div class="olg-name-block">
+            <div class="olg-name">Jeff Bezos</div>
+            <div class="olg-worth">~$200B net worth</div>
+          </div>
+        </div>
+        <div class="olg-bullets">
+          <div class="olg-bullet">Made $75B during the pandemic while Amazon workers earned $18/hr under mass surveillance and systematic union suppression</div>
+          <div class="olg-bullet">Owns The Washington Post, Blue Origin, and a CIA cloud contract — capital, media, space, and state in one portfolio</div>
+        </div>
+        <span class="olg-type finance">Tech / Finance</span>
+      </div>
+
+      <div class="olg-card finance">
+        <div class="olg-head">
+          <img class="olg-avatar" src="https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/Larry_Ellison_2016.png/330px-Larry_Ellison_2016.png" alt="Larry Ellison" onerror="this.style.display='none'"/>
+          <div class="olg-name-block">
+            <div class="olg-name">Larry Ellison</div>
+            <div class="olg-worth">~$160B net worth</div>
+          </div>
+        </div>
+        <div class="olg-bullets">
+          <div class="olg-bullet">Owns 98% of Lanai, Hawaii — a private island with its own infrastructure, power, and water systems</div>
+          <div class="olg-bullet">Oracle sells government database infrastructure to US military, IRS, and law enforcement — surveillance-as-a-service</div>
+        </div>
+        <span class="olg-type finance">Tech / Finance</span>
+      </div>
+
+      <div class="olg-card political">
+        <div class="olg-head">
+          <img class="olg-avatar" src="https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Jared_Kushner_2025.jpg/330px-Jared_Kushner_2025.jpg" alt="Jared Kushner" onerror="this.style.display='none'"/>
+          <div class="olg-name-block">
+            <div class="olg-name">Jared Kushner</div>
+            <div class="olg-worth">~$800M+ fund</div>
+          </div>
+        </div>
+        <div class="olg-bullets">
+          <div class="olg-bullet">Received $2B from Saudi Arabia's sovereign wealth fund months after leaving the White House where he oversaw US-Saudi relations</div>
+          <div class="olg-bullet">The political-capital bridge: government access converted directly into private wealth for himself and his partners</div>
+        </div>
+        <span class="olg-type political">Political / Finance</span>
+      </div>
+
+      <div class="olg-card tech">
+        <div class="olg-head">
+          <img class="olg-avatar" src="https://upload.wikimedia.org/wikipedia/commons/thumb/5/5a/Meeting_with_Masayoshi_Son_and_Sam_Altman_%28February_3%2C_2025%29_%283x4_cropped_on_Altman%29.jpg/330px-Meeting_with_Masayoshi_Son_and_Sam_Altman_%28February_3%2C_2025%29_%28cropped_2%29.jpg" alt="Sam Altman" onerror="this.style.display='none'"/>
+          <div class="olg-name-block">
+            <div class="olg-name">Sam Altman</div>
+            <div class="olg-worth">~$1B+ personal</div>
+          </div>
+        </div>
+        <div class="olg-bullets">
+          <div class="olg-bullet">WorldID: collecting biometric iris scans from millions globally in exchange for crypto — building private infrastructure for global identity control</div>
+          <div class="olg-bullet">Raised $100B+ for OpenAI under nonprofit cover, then restructured to generate massive personal wealth</div>
+        </div>
+        <span class="olg-type tech">Tech / AI</span>
+      </div>
+
+      <div class="olg-card tech">
+        <div class="olg-head">
+          <img class="olg-avatar" src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2a/Larry_Page_in_the_European_Parliament%2C_17.06.2009_%28cropped_2%29.jpg/330px-Larry_Page_in_the_European_Parliament%2C_17.06.2009_%28cropped_2%29.jpg" alt="Larry Page" onerror="this.style.display='none'"/>
+          <div class="olg-name-block">
+            <div class="olg-name">Larry Page</div>
+            <div class="olg-worth">~$120B net worth</div>
+          </div>
+        </div>
+        <div class="olg-bullets">
+          <div class="olg-bullet">Secretly obtained New Zealand citizenship while Alphabet was under Congressional antitrust scrutiny</div>
+          <div class="olg-bullet">One of the most powerful people in tech — with essentially zero public accountability or transparency</div>
+        </div>
+        <span class="olg-type tech">Tech / Search</span>
+      </div>
+
     </div>
   </div>
 </section>
