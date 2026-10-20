@@ -238,7 +238,35 @@
     .beyond-note strong{color:#fff;}
 
     /* ──────────────────────────────────────────
-       Slide 9: Why Tommy
+       Slide 9: Partnerships
+    ────────────────────────────────────────── */
+    #partnerships{background:var(--dark1);}
+    .pship-inner{position:relative;z-index:4;max-width:1060px;width:100%;}
+    .pship-inner h2{font-size:clamp(1.5rem,3.2vw,2.6rem);margin-bottom:10px;}
+    .pship-sub{font-size:.85rem;color:var(--light);line-height:1.7;
+      margin-bottom:26px;max-width:700px;}
+    .pship-tiers{display:flex;flex-direction:column;gap:18px;}
+    .pship-tier{display:flex;flex-direction:column;gap:8px;}
+    .pship-tier-label{font-size:.56rem;font-weight:700;letter-spacing:.14em;
+      text-transform:uppercase;color:var(--muted);}
+    .pship-chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
+    .pship-chip{background:rgba(255,255,255,.03);border:1px solid var(--border);
+      border-radius:8px;padding:6px 12px;font-size:.75rem;color:var(--light);}
+    .pship-chip.tech{background:rgba(0,242,234,.04);border-color:rgba(0,242,234,.2);
+      color:var(--teal);}
+    .pship-chip.mission{background:rgba(201,168,76,.05);border-color:rgba(201,168,76,.2);
+      color:var(--gold-lt);}
+    .pship-chip.advocacy{background:rgba(123,47,255,.06);border-color:rgba(123,47,255,.25);
+      color:var(--lavender);}
+    .pship-chip.retreat{background:rgba(0,242,234,.03);border-color:rgba(0,242,234,.14);
+      color:rgba(0,242,234,.75);}
+    .pship-advocacy-note{background:rgba(123,47,255,.05);border:1px solid rgba(123,47,255,.2);
+      border-radius:10px;padding:13px 17px;margin-top:3px;max-width:760px;}
+    .pship-advocacy-note p{font-size:.79rem;color:var(--lavender);line-height:1.65;}
+    .pship-advocacy-note strong{color:#fff;}
+
+    /* ──────────────────────────────────────────
+       Slide 10: Why Tommy
     ────────────────────────────────────────── */
     #why-tommy{background:var(--dark0);}
     .why-inner{position:relative;z-index:4;max-width:1040px;width:100%;
@@ -375,10 +403,11 @@
   <button class="nav-dot" onclick="goTo(5)" title="The Mechanism"></button>
   <button class="nav-dot" onclick="goTo(6)" title="Dollar Velocity"></button>
   <button class="nav-dot" onclick="goTo(7)" title="Beyond Commerce"></button>
-  <button class="nav-dot" onclick="goTo(8)" title="Why Tommy"></button>
-  <button class="nav-dot" onclick="goTo(9)" title="The Investment"></button>
-  <button class="nav-dot" onclick="goTo(10)" title="Vision"></button>
-  <button class="nav-dot" onclick="goTo(11)" title="The Conversation"></button>
+  <button class="nav-dot" onclick="goTo(8)" title="Partnerships"></button>
+  <button class="nav-dot" onclick="goTo(9)" title="Why Tommy"></button>
+  <button class="nav-dot" onclick="goTo(10)" title="The Investment"></button>
+  <button class="nav-dot" onclick="goTo(11)" title="Vision"></button>
+  <button class="nav-dot" onclick="goTo(12)" title="The Conversation"></button>
 </nav>
 
 <!-- ── 01 Cover ──────────────────────────────────────────────────────────── -->
@@ -730,6 +759,10 @@
         <div class="bc-icon">🏕️</div>
         <div class="bc-title">Retreats &amp; Sanctuaries</div>
         <div class="bc-desc">Off-grid, spiritual, and wellness retreat centers — aggregated as partner nodes in the network. Access earned through participation, not purchase price.</div>
+        <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:6px;">
+          <span style="font-size:.65rem;background:rgba(0,242,234,.06);border:1px solid rgba(0,242,234,.15);border-radius:6px;padding:3px 9px;color:rgba(0,242,234,.8);">Royal Oak Retreat</span>
+          <span style="font-size:.65rem;background:rgba(0,242,234,.06);border:1px solid rgba(0,242,234,.15);border-radius:6px;padding:3px 9px;color:rgba(0,242,234,.8);">Live the Off Grid Dream</span>
+        </div>
       </div>
       <div class="beyond-card">
         <div class="bc-icon">🌿</div>
@@ -748,7 +781,62 @@
   </div>
 </section>
 
-<!-- ── 09 Why Tommy ───────────────────────────────────────────────────────── -->
+<!-- ── 09 Partnerships ───────────────────────────────────────────────────── -->
+<section class="screen" id="partnerships">
+  <div class="glow" style="width:400px;height:400px;background:rgba(123,47,255,.07);top:-60px;right:0;"></div>
+  <div class="pship-inner">
+    <div class="eyebrow">The Network Effect</div>
+    <h2>We don't build everything.<br/><span class="grad-hot">We aggregate the best.</span></h2>
+    <p class="pship-sub">The aggregator thesis runs through every layer — technology, service delivery, mission alignment, creator advocacy, and physical infrastructure. Each partnership makes the network more valuable for everyone in it.</p>
+    <div class="pship-tiers">
+
+      <div class="pship-tier">
+        <div class="pship-tier-label">Technology Partners</div>
+        <div class="pship-chips">
+          <span class="pship-chip tech">Reacher — Affiliate &amp; Creator Outreach</span>
+          <span class="pship-chip tech">Agentitive — AI Workflow Automation</span>
+          <span class="pship-chip tech">Buffer — Social Publishing</span>
+          <span class="pship-chip tech">GoHighLevel — CRM &amp; Marketing Automation</span>
+        </div>
+      </div>
+
+      <div class="pship-tier">
+        <div class="pship-tier-label">Agency &amp; Service Network</div>
+        <div class="pship-chips">
+          <span class="pship-chip">Movement Retail — Amazon &amp; Marketplace</span>
+          <span class="pship-chip">Sovereign Growth — Meta &amp; Google Ads</span>
+          <span class="pship-chip">Positive Sparks — Google Ads &amp; DTC Growth</span>
+          <span class="pship-chip">Praskozorje — Email &amp; Retention</span>
+          <span class="pship-chip">Byteout — Shopify DTC Builds</span>
+          <span class="pship-chip">AI UGC — Omnichannel Content at Scale</span>
+        </div>
+      </div>
+
+      <div class="pship-tier">
+        <div class="pship-tier-label">Mission Partners</div>
+        <div class="pship-chips">
+          <span class="pship-chip mission">Create On Purpose — Creator Nonprofit Incubator</span>
+          <span class="pship-chip mission">Social Currant — Creator × Nonprofit Matchmaking</span>
+          <span class="pship-chip mission">SSEL — Dollar Velocity Research</span>
+        </div>
+      </div>
+
+      <div class="pship-tier">
+        <div class="pship-tier-label">Creator Advocacy &amp; Mental Health</div>
+        <div class="pship-chips">
+          <span class="pship-chip advocacy">Creators Guild of America</span>
+          <span class="pship-chip advocacy">Congressional Creators Caucus</span>
+        </div>
+        <div class="pship-advocacy-note">
+          <p><strong>Creator Advocacy Day, Washington D.C.</strong> — Tommy met with multiple members of Congress to discuss the Congressional Creators Caucus, creator economy protections, and the systemic policy gaps facing 200 million independent digital workers. Mental health and financial equity for creators are central to the advocacy agenda.</p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ── 10 Why Tommy ───────────────────────────────────────────────────────── -->
 <section class="screen" id="why-tommy">
   <div class="glow" style="width:500px;height:500px;background:rgba(123,47,255,.14);top:-80px;left:-80px;"></div>
   <div class="glow" style="width:300px;height:300px;background:rgba(201,168,76,.08);bottom:60px;right:60px;"></div>
