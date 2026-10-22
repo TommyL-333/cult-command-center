@@ -266,6 +266,34 @@
     .pship-advocacy-note strong{color:#fff;}
 
     /* ──────────────────────────────────────────
+       Slide 9b: Digital Rights
+    ────────────────────────────────────────── */
+    #rights{background:var(--dark3);}
+    .rights-inner{position:relative;z-index:4;max-width:1000px;width:100%;}
+    .rights-inner h2{font-size:clamp(1.5rem,3.2vw,2.6rem);margin-bottom:10px;}
+    .rights-sub{font-size:.87rem;color:var(--light);line-height:1.75;
+      margin-bottom:26px;max-width:680px;}
+    .rights-ladder{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:22px;}
+    @media(max-width:820px){.rights-ladder{grid-template-columns:1fr 1fr;}}
+    .rights-step{background:rgba(123,47,255,.05);border:1px solid rgba(123,47,255,.22);
+      border-radius:10px;padding:16px;}
+    .rs-n{font-size:.54rem;font-weight:700;letter-spacing:.14em;color:var(--lavender);
+      opacity:.6;margin-bottom:8px;}
+    .rs-t{font-family:'Montserrat',sans-serif;font-weight:900;font-size:.84rem;
+      color:var(--text);line-height:1.4;}
+    .rights-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px;}
+    @media(max-width:820px){.rights-cols{grid-template-columns:1fr;}}
+    .rights-col{background:rgba(255,255,255,.025);border:1px solid var(--border);
+      border-radius:12px;padding:16px 18px;}
+    .rc-label{font-size:.58rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+      color:var(--muted);margin-bottom:7px;}
+    .rc-body{font-size:.76rem;color:var(--light);line-height:1.6;}
+    .rights-note{background:rgba(123,47,255,.05);border:1px solid rgba(123,47,255,.2);
+      border-radius:11px;padding:14px 18px;}
+    .rights-note p{font-size:.8rem;color:var(--lavender);line-height:1.65;}
+    .rights-note strong{color:#fff;}
+
+    /* ──────────────────────────────────────────
        Slide 10: Why Tommy
     ────────────────────────────────────────── */
     #why-tommy{background:var(--dark0);}
@@ -404,10 +432,11 @@
   <button class="nav-dot" onclick="goTo(6)" title="Dollar Velocity"></button>
   <button class="nav-dot" onclick="goTo(7)" title="Beyond Commerce"></button>
   <button class="nav-dot" onclick="goTo(8)" title="Partnerships"></button>
-  <button class="nav-dot" onclick="goTo(9)" title="Why Tommy"></button>
-  <button class="nav-dot" onclick="goTo(10)" title="The Investment"></button>
-  <button class="nav-dot" onclick="goTo(11)" title="Vision"></button>
-  <button class="nav-dot" onclick="goTo(12)" title="The Conversation"></button>
+  <button class="nav-dot" onclick="goTo(9)" title="Digital Rights"></button>
+  <button class="nav-dot" onclick="goTo(10)" title="Why Tommy"></button>
+  <button class="nav-dot" onclick="goTo(11)" title="The Investment"></button>
+  <button class="nav-dot" onclick="goTo(12)" title="Vision"></button>
+  <button class="nav-dot" onclick="goTo(13)" title="The Conversation"></button>
 </nav>
 
 <!-- ── 01 Cover ──────────────────────────────────────────────────────────── -->
@@ -832,6 +861,54 @@
         </div>
       </div>
 
+    </div>
+  </div>
+</section>
+
+<!-- ── 09b Digital Rights ─────────────────────────────────────────────────── -->
+<section class="screen" id="rights">
+  <div class="glow" style="width:420px;height:420px;background:rgba(123,47,255,.09);top:-40px;left:-60px;"></div>
+  <div class="rights-inner">
+    <div class="eyebrow">Digital Rights</div>
+    <h2>Creators are workers.<br/>Workers have <span class="grad-purple">rights.</span></h2>
+    <p class="rights-sub">Worker protections were written for employees. Most creators are independent contractors — digital by nature, working inside systems they don't own or control. The question starts with creators, but it doesn't end there. The legal precedents we set for them become the framework for how everyone's digital presence, labor, and identity is protected in the AI age.</p>
+
+    <div class="rights-ladder">
+      <div class="rights-step">
+        <div class="rs-n">01</div>
+        <div class="rs-t">Workers have rights.</div>
+      </div>
+      <div class="rights-step">
+        <div class="rs-n">02</div>
+        <div class="rs-t">Creators are workers.</div>
+      </div>
+      <div class="rights-step">
+        <div class="rs-n">03</div>
+        <div class="rs-t">Creators are inherently digital.</div>
+      </div>
+      <div class="rights-step">
+        <div class="rs-n">04</div>
+        <div class="rs-t">Creator rights open the question of digital rights for everyone.</div>
+      </div>
+    </div>
+
+    <div class="rights-cols">
+      <div class="rights-col">
+        <div class="rc-label">Likeness &amp; AI</div>
+        <div class="rc-body">Creators consent to — and earn royalties from — AI-generated use of their likeness. The network enforces consent first. This becomes the model for how anyone's digital identity is protected from unauthorized use.</div>
+      </div>
+      <div class="rights-col">
+        <div class="rc-label">Pay &amp; Contracts</div>
+        <div class="rc-body">Written agreements, split structures set by rule not side deals, payouts settled through Stripe Connect. Independent digital workers deserve the same contract protections as any employee — this is how we build toward that.</div>
+      </div>
+      <div class="rights-col">
+        <div class="rc-label">Platform Accountability</div>
+        <div class="rc-body">Platforms control creators' reach, income, and audience — with no obligation to explain or appeal decisions. Creator rights advocacy pushes for transparency rules that apply to any person whose livelihood depends on an algorithmic system.</div>
+      </div>
+    </div>
+
+    <div class="rights-note">
+      <p><strong>Where the rules get written.</strong> The Congressional Creators Caucus is the venue where creator protections are actively being shaped. Cult Commerce participates with real-world data — actual contracts, payout structures, consent flows — so the rules come from practice, not theory. Whatever holds for creators becomes the legal argument for everyone else's digital rights.</p>
     </div>
   </div>
 </section>
