@@ -6199,6 +6199,35 @@ app.get('/api/client/products', requireClientSession, async (req, res) => {
   }
 });
 
+// GET /api/client/reacher/creators — return Reacher affiliate creator list for this brand
+app.get('/api/client/reacher/creators', requireClientSession, async (req, res) => {
+  const brands = loadBrands();
+  const bi = brands.clients.findIndex(b => b.id === req.session.clientBrandId);
+  if (bi === -1) return res.status(404).json({ error: 'Brand not found' });
+  const brand = brands.clients[bi];
+  const reacherId = brand.reacherId || brand.reacherAccountId;
+  if (!reacherId) return res.json({ ok: true, creators: [] });
+  try {
+    const REACHER_KEY = process.env.REACHER_API_KEY;
+    if (!REACHER_KEY) return res.json({ ok: true, creators: [] });
+    const r = await fetch(`https://api.reachafluencer.com/v1/accounts/${reacherId}/affiliates?limit=200`, {
+      headers: { Authorization: `Bearer ${REACHER_KEY}` }
+    });
+    if (!r.ok) return res.json({ ok: true, creators: [] });
+    const data = await r.json();
+    const list = (data.affiliates || data.data || []).map(a => ({
+      handle: a.tiktok_handle || a.handle || a.username || '',
+      name: a.name || a.display_name || '',
+      followers: a.follower_count || a.followers || 0,
+      gmv: a.gmv_30d || a.gmv || 0,
+      videos: a.video_count || 0,
+    }));
+    res.json({ ok: true, creators: list });
+  } catch (e) {
+    res.json({ ok: true, creators: [] });
+  }
+});
+
 // GET /api/client/assets — list brand's saved content assets
 app.get('/api/client/assets', requireClientSession, (req, res) => {
   const brands = loadBrands();

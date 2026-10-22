@@ -478,15 +478,17 @@
 </header>
 
 <nav class="tab-bar">
-  <button class="tab-btn active" onclick="switchTab('overview')">Overview</button>
-  <button class="tab-btn" onclick="switchTab('content-studio')">Content Studio</button>
-  <button class="tab-btn" onclick="switchTab('billing')">Billing</button>
-  <button class="tab-btn" onclick="switchTab('inner-circle')">Inner Circle</button>
-  <button class="tab-btn" onclick="switchTab('marketplace')">Creator Marketplace</button>
-  <button class="tab-btn" onclick="switchTab('tasks')">Tasks</button>
-  <button class="tab-btn" id="tab-btn-reports" style="display:none" onclick="switchTab('reports')">Reports</button>
-  <button class="tab-btn" onclick="switchTab('profit-simulator')">Profit Simulator</button>
+  <button class="tab-btn active" onclick="switchTab('overview')">Profile</button>
+  <button class="tab-btn" onclick="switchTab('content-studio')">Short Video</button>
+  <button class="tab-btn" onclick="switchTab('creator-management')">Creator Management</button>
+  <button class="tab-btn" onclick="switchTab('profit-simulator')">Financial Calculator</button>
   <button class="tab-btn" onclick="switchTab('support')">Support</button>
+  <!-- hidden tabs kept in DOM -->
+  <button class="tab-btn" onclick="switchTab('billing')" style="display:none">Billing</button>
+  <button class="tab-btn" onclick="switchTab('inner-circle')" style="display:none">Inner Circle</button>
+  <button class="tab-btn" onclick="switchTab('marketplace')" style="display:none">Creator Marketplace</button>
+  <button class="tab-btn" onclick="switchTab('tasks')" style="display:none">Tasks</button>
+  <button class="tab-btn" id="tab-btn-reports" style="display:none" onclick="switchTab('reports')">Reports</button>
 </nav>
 
 <div id="tab-overview">
@@ -510,24 +512,60 @@
     <a href="/client/tiktok/auth" style="display:inline-block;background:#c9a84c;color:#12101a;font-weight:700;font-size:0.84rem;border-radius:8px;padding:9px 18px;text-decoration:none;white-space:nowrap;">Reconnect →</a>
   </div>
 
-  <!-- TikTok Stats -->
-  <div class="section-label mb-20">TikTok Shop · Last 30 Days</div>
-  <div class="stats-row mb-32">
-    <div class="stat-card"><div class="stat-label">GMV</div><div class="stat-value teal" id="sGmv">—</div><div class="stat-sub">Gross merchandise value</div></div>
-    <div class="stat-card"><div class="stat-label">Orders</div><div class="stat-value" id="sOrders">—</div><div class="stat-sub">Total orders placed</div></div>
-    <div class="stat-card"><div class="stat-label">Avg Order Value</div><div class="stat-value gold" id="sAov">—</div><div class="stat-sub">GMV ÷ orders</div></div>
-    <div class="stat-card"><div class="stat-label">Active Creators</div><div class="stat-value" id="sCreators">—</div><div class="stat-sub">Posting for your brand</div></div>
-  </div>
-
+  <!-- Brand Identity row -->
   <div class="two-col mb-32">
-    <div class="card"><div class="card-title"><span class="dot"></span>Top Creators</div><div id="topCreators"><span class="empty">Loading…</span></div></div>
-    <div class="card"><div class="card-title"><span class="dot" style="background:var(--gold)"></span>Top Videos</div><div id="topVideos"><span class="empty">Loading…</span></div></div>
+
+    <!-- Brand Logo + Color -->
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--teal)"></span>Brand Identity</div>
+      <div id="logoPreviewWrap" style="display:none;margin-bottom:14px">
+        <img id="logoPreview" src="" alt="Brand logo" style="max-height:72px;max-width:200px;object-fit:contain;border-radius:10px;border:1px solid var(--border);padding:10px">
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;">
+        <label class="save-btn" style="margin:0;padding:9px 18px;cursor:pointer;display:inline-block;width:auto;font-size:0.82rem">
+          Upload Logo
+          <input type="file" id="logoFileInput" accept="image/*" style="display:none" onchange="uploadLogo(this)">
+        </label>
+        <button id="logoRemoveBtn" onclick="removeLogo()" style="display:none;background:transparent;border:1px solid var(--border);color:var(--muted);font-size:0.78rem;padding:9px 14px;border-radius:7px;cursor:pointer">Remove</button>
+      </div>
+      <div class="save-status" id="logoStatus" style="margin-bottom:8px"></div>
+      <div style="font-size:0.72rem;color:var(--muted);margin-bottom:18px;">Shown on your creator signup page. PNG or JPG, max 10 MB.</div>
+
+      <div style="display:flex;align-items:center;gap:14px;">
+        <input type="color" id="brandColorInput" value="#00f2ea" oninput="onBrandColorInput(this.value)" style="width:44px;height:34px;padding:0;border:1px solid var(--border);border-radius:8px;background:#161823;cursor:pointer">
+        <div>
+          <div style="font-size:0.78rem;font-weight:600;color:var(--text);margin-bottom:2px;">Brand Color</div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <span id="brandColorHex" style="font-family:monospace;font-size:0.8rem;color:var(--muted);">#00F2EA</span>
+            <span id="brandColorSwatch" style="display:inline-block;width:20px;height:20px;border-radius:4px;border:1px solid var(--border);background:#00f2ea"></span>
+          </div>
+        </div>
+        <button class="save-btn" style="margin-left:auto;padding:8px 16px;font-size:0.8rem;" onclick="saveSettings()">Save</button>
+      </div>
+      <div class="save-status" id="saveStatus" style="margin-top:6px;"></div>
+    </div>
+
+    <!-- Billing -->
+    <div class="card">
+      <div class="card-title"><span class="dot" style="background:var(--gold)"></span>Billing</div>
+      <p style="font-size:0.82rem;color:var(--muted);line-height:1.6;margin-bottom:20px;">
+        To update your payment method, view invoices, or change your plan, contact your account manager.
+      </p>
+      <a href="mailto:billing@cultcontent.cc?subject=Billing%20Request" class="save-btn" style="display:inline-block;text-decoration:none;padding:10px 20px;font-size:0.84rem;">
+        Contact Billing →
+      </a>
+      <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
+        <div style="font-size:0.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:8px;">Your Plan</div>
+        <div id="profilePlanLabel" style="font-size:0.95rem;font-weight:600;color:var(--text);">Loading…</div>
+      </div>
+    </div>
+
   </div>
 
-  <!-- Referral + Controls -->
+  <!-- Recruit creators + Referral -->
   <!-- Affiliate Collaboration Page card -->
   <div class="affiliate-card">
-    <div class="affiliate-card-title"><span class="dot" style="background:var(--teal)"></span>Recruit Creators</div>
+    <div class="affiliate-card-title"><span class="dot" style="background:var(--teal)"></span>Creator Signup Page</div>
     <p class="affiliate-card-sub">Share this link so TikTok creators can find your products and apply to collaborate.</p>
     <div class="affiliate-url-row">
       <div class="affiliate-url-box" id="affiliateUrlBox">—</div>
@@ -542,7 +580,6 @@
   </div>
 
   <div class="two-col mb-32">
-
     <!-- Referral -->
     <div class="card">
       <div class="card-title"><span class="dot" style="background:var(--gold)"></span>Referral Program</div>
@@ -577,131 +614,18 @@
         <button class="ref-submit" onclick="addReferral()">Save Referral</button>
       </div>
     </div>
-
-    <!-- Campaign Controls -->
-    <div class="card">
-      <div class="card-title"><span class="dot" style="background:var(--gold)"></span>Campaign Controls</div>
-
-      <label class="field-label">Sample Budget</label>
-      <div class="budget-row">
-        <input class="num-input" type="number" id="sampleBudget" min="0" placeholder="0">
-        <span class="num-unit">units per product</span>
-      </div>
-
-      <label class="field-label" style="margin-bottom:12px;">Promotional Strategy</label>
-
-      <!-- Cashback -->
-      <div class="incentive-block" id="blockCashback">
-        <div class="incentive-header">
-          <div>
-            <div class="incentive-name">Cashback Offers</div>
-            <div class="incentive-desc">Creators earn a cash bonus when they hit a GMV target</div>
-          </div>
-          <label class="switch">
-            <input type="checkbox" id="tCashback" onchange="toggleIncentive('cashback')">
-            <span class="slider"></span>
-          </label>
-        </div>
-        <div class="incentive-fields" id="fieldsCashback">
-          <div class="sub-field"><label>Bonus Amount ($)</label><input class="sub-input" type="number" id="cashbackAmount" min="0" placeholder="e.g. 50"></div>
-          <div class="sub-field"><label>GMV Target ($)</label><input class="sub-input" type="number" id="cashbackTarget" min="0" placeholder="e.g. 500"></div>
-        </div>
-      </div>
-
-      <!-- Leaderboard -->
-      <div class="incentive-block" id="blockLeaderboard">
-        <div class="incentive-header">
-          <div>
-            <div class="incentive-name">Leaderboard Competition</div>
-            <div class="incentive-desc">Show creators a live GMV leaderboard with cash prizes</div>
-          </div>
-          <label class="switch">
-            <input type="checkbox" id="tLeaderboard" onchange="toggleIncentive('leaderboard')">
-            <span class="slider"></span>
-          </label>
-        </div>
-        <div class="incentive-fields" id="fieldsLeaderboard">
-          <div class="sub-field"><label>1st Place ($)</label><input class="sub-input" type="number" id="lb1" min="0" placeholder="e.g. 200"></div>
-          <div class="sub-field"><label>2nd Place ($)</label><input class="sub-input" type="number" id="lb2" min="0" placeholder="e.g. 100"></div>
-          <div class="sub-field"><label>3rd Place ($)</label><input class="sub-input" type="number" id="lb3" min="0" placeholder="e.g. 50"></div>
-          <div class="sub-field"><label>Min GMV Threshold ($)</label><input class="sub-input" type="number" id="lbThreshold" min="0" placeholder="e.g. 1000"></div>
-        </div>
-      </div>
-
-      <!-- Volume Bonus -->
-      <div class="incentive-block" id="blockVolumeBonus">
-        <div class="incentive-header">
-          <div>
-            <div class="incentive-name">Volume Bonus</div>
-            <div class="incentive-desc">Bonus paid when creators hit a video count milestone</div>
-          </div>
-          <label class="switch">
-            <input type="checkbox" id="tVolumeBonus" onchange="toggleIncentive('volumeBonus')">
-            <span class="slider"></span>
-          </label>
-        </div>
-        <div class="incentive-fields" id="fieldsVolumeBonus">
-          <div class="sub-field"><label>Videos Required</label><input class="sub-input" type="number" id="vbQuantity" min="1" placeholder="e.g. 5"></div>
-          <div class="sub-field"><label>Bonus Amount ($)</label><input class="sub-input" type="number" id="vbBonus" min="0" placeholder="e.g. 100"></div>
-        </div>
-      </div>
-
-      <!-- Inner Circle -->
-      <div class="incentive-block" id="blockInnerCircle">
-        <div class="incentive-header">
-          <div>
-            <div class="incentive-name">🌀 Inner Circle</div>
-            <div class="incentive-desc">Matched with dedicated creators posting 20+ videos/mo — 50% commission + 25% on ads. Changes apply next month.</div>
-          </div>
-          <label class="switch">
-            <input type="checkbox" id="tInnerCircle">
-            <span class="slider"></span>
-          </label>
-        </div>
-      </div>
-
-      <!-- Brand Color -->
-      <div class="incentive-block" id="blockBrandColor">
-        <div class="incentive-header">
-          <div>
-            <div class="incentive-name">🎨 Brand Color</div>
-            <div class="incentive-desc">Used on your Inner Circle brand card in the creator portal.</div>
-          </div>
-          <div style="display:flex;align-items:center;gap:12px">
-            <input type="color" id="brandColorInput" value="#00f2ea" oninput="onBrandColorInput(this.value)" style="width:44px;height:34px;padding:0;border:1px solid var(--border);border-radius:8px;background:#161823;cursor:pointer">
-            <span id="brandColorHex" style="font-family:monospace;font-size:0.82rem;color:var(--muted);min-width:72px">#00F2EA</span>
-            <span id="brandColorSwatch" style="display:inline-block;width:24px;height:24px;border-radius:6px;border:1px solid var(--border);background:#00f2ea"></span>
-          </div>
-        </div>
-      </div>
-
-      <button class="save-btn" onclick="saveSettings()">Save Changes</button>
-      <div class="save-status" id="saveStatus"></div>
-    </div>
-
-    <!-- Brand Logo -->
-    <div class="card">
-      <div class="card-title"><span class="dot" style="background:var(--teal)"></span>Brand Logo</div>
-      <div id="logoPreviewWrap" style="display:none;margin-bottom:12px">
-        <img id="logoPreview" src="" alt="Brand logo" style="max-height:64px;max-width:180px;object-fit:contain;border-radius:8px;border:1px solid var(--border);padding:8px">
-      </div>
-      <div style="display:flex;gap:10px;align-items:center">
-        <label class="save-btn" style="margin:0;padding:9px 18px;cursor:pointer;display:inline-block;width:auto;font-size:0.82rem">
-          Upload Logo
-          <input type="file" id="logoFileInput" accept="image/*" style="display:none" onchange="uploadLogo(this)">
-        </label>
-        <button id="logoRemoveBtn" onclick="removeLogo()" style="display:none;background:transparent;border:1px solid var(--border);color:var(--muted);font-size:0.78rem;padding:9px 14px;border-radius:7px;cursor:pointer">Remove</button>
-      </div>
-      <div class="save-status" id="logoStatus" style="margin-top:8px"></div>
-      <div style="font-size:0.72rem;color:var(--muted);margin-top:8px">Shown on your creator signup page. PNG or JPG, max 10 MB.</div>
-    </div>
-
   </div>
 
-  <!-- Task Feed -->
-  <div class="section-label mb-20">Program Progress</div>
-  <div class="card">
-    <div id="taskFeed"><span class="empty">Loading…</span></div>
+  <!-- hidden inputs kept for JS compatibility -->
+  <div style="display:none">
+    <input type="number" id="sampleBudget">
+    <input type="checkbox" id="tCashback"><input type="number" id="cashbackAmount"><input type="number" id="cashbackTarget">
+    <input type="checkbox" id="tLeaderboard"><input type="number" id="lb1"><input type="number" id="lb2"><input type="number" id="lb3"><input type="number" id="lbThreshold">
+    <input type="checkbox" id="tVolumeBonus"><input type="number" id="vbQuantity"><input type="number" id="vbBonus">
+    <input type="checkbox" id="tInnerCircle">
+    <div id="taskFeed"></div>
+    <div id="topCreators"></div><div id="topVideos"></div>
+    <div id="sGmv"></div><div id="sOrders"></div><div id="sAov"></div><div id="sCreators"></div>
   </div>
 
 </main>
@@ -1409,6 +1333,269 @@
   </a>
 </main>
 </div><!-- end #tab-reports -->
+
+<!-- ===== Creator Management Tab ===== -->
+<div id="tab-creator-management" style="display:none">
+<style>
+.cm-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:28px; }
+.cm-stat  { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:18px 20px; }
+.cm-stat-label { font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); margin-bottom:6px; }
+.cm-stat-value { font-size:1.6rem; font-weight:700; color:var(--teal); line-height:1; }
+.cm-stat-sub   { font-size:0.72rem; color:var(--muted); margin-top:4px; }
+.cm-toolbar    { display:flex; align-items:center; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
+.cm-search     { flex:1; min-width:220px; background:var(--card); border:1px solid var(--border); border-radius:8px; padding:9px 14px; color:var(--text); font-size:0.85rem; outline:none; }
+.cm-filter-btn { background:var(--card); border:1px solid var(--border); border-radius:8px; color:var(--muted); font-size:0.8rem; padding:9px 14px; cursor:pointer; transition:border-color .15s,color .15s; white-space:nowrap; }
+.cm-filter-btn.active { border-color:var(--teal); color:var(--teal); }
+.cm-add-btn    { background:var(--teal); color:#12101a; font-weight:700; font-size:0.82rem; border:none; border-radius:8px; padding:9px 16px; cursor:pointer; white-space:nowrap; }
+.cm-table-wrap { background:var(--card); border:1px solid var(--border); border-radius:12px; overflow:hidden; }
+.cm-table      { width:100%; border-collapse:collapse; }
+.cm-table th   { font-size:0.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); padding:12px 14px; text-align:left; border-bottom:1px solid var(--border); background:var(--dark-2); white-space:nowrap; }
+.cm-table td   { padding:12px 14px; font-size:0.83rem; border-bottom:1px solid var(--border); vertical-align:middle; }
+.cm-table tr:last-child td { border-bottom:none; }
+.cm-table tr:hover td { background:rgba(255,255,255,0.02); }
+.cm-handle     { font-weight:600; color:var(--text); }
+.cm-handle a   { color:var(--teal); text-decoration:none; }
+.cm-badge      { display:inline-block; font-size:0.68rem; font-weight:700; padding:2px 8px; border-radius:5px; text-transform:uppercase; letter-spacing:.04em; }
+.cm-badge-active   { background:rgba(0,210,122,.12); color:#00d27a; }
+.cm-badge-sample   { background:rgba(201,168,76,.1); color:#c9a84c; }
+.cm-badge-none     { background:rgba(100,116,139,.1); color:#64748b; }
+.cm-badge-applied  { background:rgba(0,242,234,.1); color:#00f2ea; }
+.cm-action-btn { background:transparent; border:1px solid var(--border); border-radius:6px; padding:5px 10px; font-size:0.74rem; cursor:pointer; color:var(--muted); transition:border-color .15s,color .15s; }
+.cm-action-btn:hover { border-color:var(--teal); color:var(--teal); }
+.cm-sms-btn    { background:rgba(0,229,195,.1); border-color:rgba(0,229,195,.3); color:var(--teal); }
+.cm-phone-input { background:transparent; border:none; border-bottom:1px solid var(--border); color:var(--text); font-size:0.8rem; padding:2px 4px; width:120px; outline:none; }
+.cm-phone-input::placeholder { color:var(--muted); }
+.cm-gmv-pos { color:var(--teal); font-weight:600; }
+.cm-empty   { text-align:center; padding:48px 24px; color:var(--muted); font-size:0.85rem; }
+/* Add Creator Modal */
+.cm-modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:999; display:flex; align-items:center; justify-content:center; }
+.cm-modal { background:var(--dark-2); border:1px solid var(--border); border-radius:14px; padding:28px 28px 24px; width:100%; max-width:480px; }
+.cm-modal h3 { margin:0 0 18px; font-size:1rem; color:var(--text); }
+.cm-modal label { display:block; font-size:0.74rem; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin:12px 0 5px; }
+.cm-modal input, .cm-modal select { width:100%; background:var(--card); border:1px solid var(--border); border-radius:8px; color:var(--text); padding:9px 12px; font-size:0.85rem; outline:none; box-sizing:border-box; }
+.cm-modal-row { display:flex; gap:10px; margin-top:18px; }
+@media(max-width:640px){ .cm-stats{grid-template-columns:repeat(2,1fr)} }
+</style>
+<main style="max-width:1200px;margin:0 auto;padding:36px 24px 60px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+    <div>
+      <div class="section-label">Creator Management</div>
+      <div style="font-size:0.82rem;color:var(--muted);margin-top:4px">Full-funnel view of every creator in your program.</div>
+    </div>
+    <button class="cm-add-btn" onclick="cmOpenAddModal()">+ Add Creator</button>
+  </div>
+
+  <!-- Stats row -->
+  <div class="cm-stats">
+    <div class="cm-stat"><div class="cm-stat-label">Total Creators</div><div class="cm-stat-value" id="cm-stat-total">—</div><div class="cm-stat-sub">in your program</div></div>
+    <div class="cm-stat"><div class="cm-stat-label">Generating GMV</div><div class="cm-stat-value" id="cm-stat-gmv" style="color:var(--teal)">—</div><div class="cm-stat-sub">made a sale</div></div>
+    <div class="cm-stat"><div class="cm-stat-label">Samples Sent</div><div class="cm-stat-value" id="cm-stat-samples" style="color:var(--gold)">—</div><div class="cm-stat-sub">products shipped</div></div>
+    <div class="cm-stat"><div class="cm-stat-label">Phone Numbers</div><div class="cm-stat-value" id="cm-stat-phones" style="color:#a78bfa">—</div><div class="cm-stat-sub">can text directly</div></div>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="cm-toolbar">
+    <input class="cm-search" type="text" id="cmSearch" placeholder="Search by handle, name, or status…" oninput="cmFilterTable()">
+    <button class="cm-filter-btn active" id="cmFAll" onclick="cmSetFilter('all',this)">All</button>
+    <button class="cm-filter-btn" id="cmFGmv" onclick="cmSetFilter('gmv',this)">Active GMV</button>
+    <button class="cm-filter-btn" id="cmFSample" onclick="cmSetFilter('sample',this)">Has Sample</button>
+    <button class="cm-filter-btn" id="cmFPhone" onclick="cmSetFilter('phone',this)">Has Phone</button>
+  </div>
+
+  <!-- Table -->
+  <div class="cm-table-wrap">
+    <table class="cm-table">
+      <thead>
+        <tr>
+          <th>Creator</th>
+          <th>Followers</th>
+          <th>GMV (30d)</th>
+          <th>Videos</th>
+          <th>Sample Status</th>
+          <th>Phone</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="cmTableBody">
+        <tr><td colspan="7" class="cm-empty">Loading creators…</td></tr>
+      </tbody>
+    </table>
+  </div>
+</main>
+
+<!-- Add Creator Modal -->
+<div class="cm-modal-overlay" id="cmAddModal" style="display:none" onclick="if(event.target===this)cmCloseAddModal()">
+  <div class="cm-modal">
+    <h3>Add Creator</h3>
+    <label>TikTok Handle</label>
+    <input id="cmAddHandle" type="text" placeholder="@username">
+    <label>Name (optional)</label>
+    <input id="cmAddName" type="text" placeholder="Full name">
+    <label>Phone Number</label>
+    <input id="cmAddPhone" type="tel" placeholder="+1 555 000 0000">
+    <label>Sample Status</label>
+    <select id="cmAddSample">
+      <option value="none">No Sample</option>
+      <option value="requested">Sample Requested</option>
+      <option value="sent">Sample Sent</option>
+      <option value="activated">Activated</option>
+    </select>
+    <div class="cm-modal-row">
+      <button class="save-btn" style="flex:1" onclick="cmSaveCreator()">Add Creator</button>
+      <button class="cm-action-btn" style="padding:9px 16px" onclick="cmCloseAddModal()">Cancel</button>
+    </div>
+    <div id="cmAddStatus" style="font-size:0.78rem;color:var(--muted);margin-top:8px;min-height:16px"></div>
+  </div>
+</div>
+
+<script>
+(function() {
+  var _cmData = [];
+  var _cmFilter = 'all';
+  window._cmLoaded = false;
+
+  window.loadCreatorManagement = function() {
+    if (window._cmLoaded) return;
+    window._cmLoaded = true;
+    Promise.all([
+      fetch('/api/client/reacher/creators', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/client/settings', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
+    ]).then(function([reacherRes, settingsRes]) {
+      var reacherCreators = reacherRes?.creators || [];
+      var storedCreators  = settingsRes?.brand?.creators || [];
+
+      // Merge: stored creators are source of truth for phone/sample; Reacher fills GMV/videos
+      var byHandle = {};
+      storedCreators.forEach(c => { byHandle[c.handle] = Object.assign({}, c); });
+      reacherCreators.forEach(function(rc) {
+        var h = (rc.handle || rc.nickname || '').toLowerCase().replace('@','');
+        if (!byHandle[h]) byHandle[h] = { handle: h };
+        byHandle[h].gmv    = rc.gmv    || byHandle[h].gmv    || 0;
+        byHandle[h].videos = rc.videos || byHandle[h].videos || 0;
+        byHandle[h].followers = rc.followers || byHandle[h].followers || 0;
+        if (!byHandle[h].sampleStatus) byHandle[h].sampleStatus = 'none';
+      });
+      _cmData = Object.values(byHandle);
+      cmRender();
+    }).catch(function() {
+      _cmData = [];
+      cmRender();
+    });
+  };
+
+  function cmRender() {
+    var search = (document.getElementById('cmSearch')?.value || '').toLowerCase();
+    var rows = _cmData.filter(function(c) {
+      if (search && !((c.handle||'').toLowerCase().includes(search) || (c.name||'').toLowerCase().includes(search))) return false;
+      if (_cmFilter === 'gmv'    && !(c.gmv > 0)) return false;
+      if (_cmFilter === 'sample' && !(c.sampleStatus && c.sampleStatus !== 'none')) return false;
+      if (_cmFilter === 'phone'  && !c.phone) return false;
+      return true;
+    });
+
+    var total   = _cmData.length;
+    var withGmv = _cmData.filter(c => c.gmv > 0).length;
+    var withSam = _cmData.filter(c => c.sampleStatus && c.sampleStatus !== 'none').length;
+    var withPh  = _cmData.filter(c => !!c.phone).length;
+    document.getElementById('cm-stat-total').textContent   = total;
+    document.getElementById('cm-stat-gmv').textContent     = withGmv;
+    document.getElementById('cm-stat-samples').textContent = withSam;
+    document.getElementById('cm-stat-phones').textContent  = withPh;
+
+    if (!rows.length) {
+      document.getElementById('cmTableBody').innerHTML = '<tr><td colspan="7" class="cm-empty">' + (_cmData.length ? 'No creators match this filter.' : 'No creators yet. Add one above, or connect TikTok Shop to import.') + '</td></tr>';
+      return;
+    }
+
+    function fmtGmv(v) { if (!v) return '<span style="color:var(--muted)">$0</span>'; return '<span class="cm-gmv-pos">$' + (v >= 1000 ? (v/1000).toFixed(1)+'k' : Math.round(v)) + '</span>'; }
+    function fmtFol(v) { if (!v) return '—'; return v >= 1000000 ? (v/1000000).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(1)+'k' : v; }
+    function sampleBadge(s) {
+      var map = { 'activated':'cm-badge-active', 'sent':'cm-badge-sample', 'requested':'cm-badge-applied', 'none':'cm-badge-none' };
+      var labels = { 'activated':'Activated', 'sent':'Sent', 'requested':'Requested', 'none':'None' };
+      return '<span class="cm-badge ' + (map[s]||'cm-badge-none') + '">' + (labels[s]||s) + '</span>';
+    }
+
+    var html = rows.map(function(c, i) {
+      var idx = _cmData.indexOf(c);
+      var handle = c.handle ? '@' + c.handle.replace('@','') : '—';
+      var tkLink = c.handle ? '<a href="https://www.tiktok.com/@' + c.handle.replace('@','') + '" target="_blank" rel="noopener">' + handle + '</a>' : handle;
+      var phoneCell = '<input class="cm-phone-input" type="tel" placeholder="Add phone…" value="' + (c.phone||'') + '" onblur="cmSavePhone(' + idx + ',this.value)" data-idx="' + idx + '">';
+      var smsBtn = c.phone ? '<a href="sms:' + encodeURIComponent(c.phone) + '" class="cm-action-btn cm-sms-btn" title="Text this creator">💬 Text</a>' : '';
+      var sampleSel = '<select class="cm-phone-input" style="width:100px" onchange="cmSaveSample(' + idx + ',this.value)">' +
+        ['none','requested','sent','activated'].map(s => '<option value="' + s + '"' + (c.sampleStatus===s?' selected':'') + '>' + s.charAt(0).toUpperCase()+s.slice(1) + '</option>').join('') + '</select>';
+      return '<tr>' +
+        '<td><div class="cm-handle">' + tkLink + '</div>' + (c.name ? '<div style="font-size:0.72rem;color:var(--muted)">' + c.name + '</div>' : '') + '</td>' +
+        '<td>' + fmtFol(c.followers) + '</td>' +
+        '<td>' + fmtGmv(c.gmv) + '</td>' +
+        '<td>' + (c.videos || '—') + '</td>' +
+        '<td>' + sampleSel + '</td>' +
+        '<td>' + phoneCell + '</td>' +
+        '<td style="display:flex;gap:6px;align-items:center">' + smsBtn + '</td>' +
+        '</tr>';
+    }).join('');
+    document.getElementById('cmTableBody').innerHTML = html;
+  }
+
+  window.cmFilterTable = function() { cmRender(); };
+  window.cmSetFilter = function(f, btn) {
+    _cmFilter = f;
+    document.querySelectorAll('.cm-filter-btn').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    cmRender();
+  };
+
+  window.cmSavePhone = async function(idx, phone) {
+    if (!_cmData[idx]) return;
+    _cmData[idx].phone = phone.trim();
+    await cmPersist();
+    cmRender();
+  };
+
+  window.cmSaveSample = async function(idx, status) {
+    if (!_cmData[idx]) return;
+    _cmData[idx].sampleStatus = status;
+    await cmPersist();
+    cmRender();
+  };
+
+  async function cmPersist() {
+    try {
+      await fetch('/api/client/settings', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ creators: _cmData }),
+      });
+    } catch(e) { console.warn('[cm] persist failed', e); }
+  }
+
+  window.cmOpenAddModal  = function() { document.getElementById('cmAddModal').style.display = 'flex'; document.getElementById('cmAddHandle').focus(); };
+  window.cmCloseAddModal = function() { document.getElementById('cmAddModal').style.display = 'none'; document.getElementById('cmAddStatus').textContent = ''; };
+
+  window.cmSaveCreator = async function() {
+    var handle = document.getElementById('cmAddHandle').value.trim().replace('@','');
+    if (!handle) { document.getElementById('cmAddStatus').textContent = 'Handle required.'; return; }
+    var existing = _cmData.find(c => c.handle === handle);
+    if (existing) { document.getElementById('cmAddStatus').textContent = 'Creator already exists.'; return; }
+    var creator = {
+      handle,
+      name:         document.getElementById('cmAddName').value.trim(),
+      phone:        document.getElementById('cmAddPhone').value.trim(),
+      sampleStatus: document.getElementById('cmAddSample').value,
+      gmv: 0, videos: 0, followers: 0,
+    };
+    _cmData.push(creator);
+    await cmPersist();
+    cmCloseAddModal();
+    document.getElementById('cmAddHandle').value = '';
+    document.getElementById('cmAddName').value = '';
+    document.getElementById('cmAddPhone').value = '';
+    document.getElementById('cmAddSample').value = 'none';
+    cmRender();
+  };
+})();
+</script>
+</div><!-- end #tab-creator-management -->
 
 <div id="tab-support" style="display:none">
 <main style="max-width:720px;margin:0 auto;padding:36px 24px 60px">
@@ -2566,7 +2753,7 @@ async function submitSupportTicket() {
     document.querySelectorAll('[id^="tab-"]').forEach(el => el.style.display = 'none');
     document.getElementById('tab-' + name).style.display = 'block';
     const btns = document.querySelectorAll('.tab-btn');
-    const labels = { 'overview': 'Overview', 'content-studio': 'Content Studio', 'billing': 'Billing', 'inner-circle': 'Inner Circle', 'marketplace': 'Creator Marketplace', 'tasks': 'Tasks', 'reports': 'Reports', 'profit-simulator': 'Profit Simulator', 'support': 'Support' };
+    const labels = { 'overview': 'Profile', 'content-studio': 'Short Video', 'creator-management': 'Creator Management', 'billing': 'Billing', 'inner-circle': 'Inner Circle', 'marketplace': 'Creator Marketplace', 'tasks': 'Tasks', 'reports': 'Reports', 'profit-simulator': 'Financial Calculator', 'support': 'Support' };
     btns.forEach(b => { if (b.textContent.trim() === labels[name]) b.classList.add('active'); });
     if (name === 'content-studio' && !window._channelsLoaded) loadChannels();
     if (name === 'content-studio' && !window._arcadsLoaded) loadArcads();
@@ -2574,6 +2761,7 @@ async function submitSupportTicket() {
     if (name === 'content-studio' && window._data?.brand) wizardInitBrandSummary();
     if (name === 'content-studio' && !window._storistaLoaded) initStorista(window._data?.brand);
     if (name === 'content-studio' && !window._csLoaded) loadContentStudioCore();
+    if (name === 'creator-management' && !window._cmLoaded) loadCreatorManagement();
     if (name === 'billing' && !window._billingLoaded) loadBilling();
     if (name === 'inner-circle' && !_icLoaded) loadInnerCircle();
     if (name === 'marketplace' && !_mktLoaded) loadMarketplace();
