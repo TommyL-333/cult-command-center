@@ -634,6 +634,43 @@
 <div id="tab-content-studio" style="display:none">
   <div style="max-width:1120px;margin:0 auto;padding:36px 24px 60px;">
 
+    <!-- ===== Short Video status ribbon ===== -->
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:28px;padding:16px 20px;background:#1c1828;border:1px solid #2a2540;border-radius:14px;">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span style="font-size:0.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin-right:4px;">Connections</span>
+        <span id="svBadgeBuffer" style="display:inline-flex;align-items:center;gap:5px;font-size:0.72rem;font-weight:600;padding:4px 10px;border-radius:20px;border:1px solid rgba(100,116,139,0.25);background:rgba(100,116,139,0.08);color:#64748b;">
+          <span style="width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block;flex-shrink:0"></span>Buffer
+        </span>
+        <span id="svBadgeStorista" style="display:inline-flex;align-items:center;gap:5px;font-size:0.72rem;font-weight:600;padding:4px 10px;border-radius:20px;border:1px solid rgba(100,116,139,0.25);background:rgba(100,116,139,0.08);color:#64748b;">
+          <span style="width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block;flex-shrink:0"></span>Storista
+        </span>
+        <span id="svBadgeArcads" style="display:inline-flex;align-items:center;gap:5px;font-size:0.72rem;font-weight:600;padding:4px 10px;border-radius:20px;border:1px solid rgba(100,116,139,0.25);background:rgba(100,116,139,0.08);color:#64748b;">
+          <span style="width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block;flex-shrink:0"></span>Arcads
+        </span>
+      </div>
+      <button onclick="document.getElementById('storistaDropZone')?.scrollIntoView({behavior:'smooth',block:'center'})"
+        style="background:#00f2ea;color:#12101a;border:none;border-radius:9px;font-size:0.82rem;font-weight:700;padding:9px 18px;cursor:pointer;font-family:inherit;white-space:nowrap;">
+        + Upload &amp; Schedule
+      </button>
+    </div>
+    <script>
+    (function svUpdateRibbon() {
+      function _sv() {
+        var b = window._data?.brand;
+        if (!b) { setTimeout(_sv, 800); return; }
+        function setBadge(id, on) {
+          var el = document.getElementById(id); if (!el) return;
+          if (on) { el.style.color='#00d27a'; el.style.borderColor='rgba(0,210,122,0.3)'; el.style.background='rgba(0,210,122,0.1)'; }
+          else     { el.style.color='#64748b'; el.style.borderColor='rgba(100,116,139,0.25)'; el.style.background='rgba(100,116,139,0.08)'; }
+        }
+        setBadge('svBadgeBuffer',  !!b.bufferConnected);
+        setBadge('svBadgeStorista',!!b.storistaConnected);
+        setBadge('svBadgeArcads',  !!b.arcadsConnected);
+      }
+      _sv();
+    })();
+    </script>
+
     <!-- ===== Cult AI Generator (live /api/client/content/*) — wired by Sisyphus ===== -->
     <div class="cs-section" id="csCoreSection">
       <div class="cs-card">
@@ -695,9 +732,9 @@
                     style="margin-top:10px;">📅 Schedule via Buffer</button>
             <div id="csBufferStatus" style="font-size:0.72rem;color:var(--muted);margin-top:6px;min-height:14px;">Generate a preview first, then schedule it to your Buffer channels.</div>
           </div>
-        <!-- ===== end reference/buffer (disabled) ===== -->
+        </div><!-- end reference/buffer 2-col grid -->
 
-        <div style="margin-top:26px;">
+        <div style="margin-top:26px;border-top:1px solid var(--border);padding-top:20px;">
           <div class="cs-card-title" style="font-size:0.95rem;margin-bottom:10px;">Recent generations</div>
           <div id="csHistory" class="video-list"><span class="empty">Loading…</span></div>
         </div>
@@ -1375,6 +1412,9 @@
 .cm-modal input, .cm-modal select { width:100%; background:var(--card); border:1px solid var(--border); border-radius:8px; color:var(--text); padding:9px 12px; font-size:0.85rem; outline:none; box-sizing:border-box; }
 .cm-modal-row { display:flex; gap:10px; margin-top:18px; }
 @media(max-width:640px){ .cm-stats{grid-template-columns:repeat(2,1fr)} }
+@keyframes cm-spin { to { transform: rotate(360deg); } }
+.cm-saved-flash { font-size:0.7rem; color:var(--teal); margin-left:4px; opacity:0; transition:opacity .2s; pointer-events:none; }
+.cm-saved-flash.show { opacity:1; }
 </style>
 <main style="max-width:1200px;margin:0 auto;padding:36px 24px 60px">
   <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
@@ -1417,7 +1457,10 @@
         </tr>
       </thead>
       <tbody id="cmTableBody">
-        <tr><td colspan="7" class="cm-empty">Loading creators…</td></tr>
+        <tr><td colspan="7" class="cm-empty" style="padding:56px 24px">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="animation:cm-spin 1s linear infinite;display:inline-block;vertical-align:middle;margin-right:8px;opacity:.5"><circle cx="12" cy="12" r="10" stroke-opacity=".25"/><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+          Loading creators…
+        </td></tr>
       </tbody>
     </table>
   </div>
@@ -1436,9 +1479,9 @@
     <label>Sample Status</label>
     <select id="cmAddSample">
       <option value="none">No Sample</option>
-      <option value="requested">Sample Requested</option>
-      <option value="sent">Sample Sent</option>
-      <option value="activated">Activated</option>
+      <option value="requested">Requested</option>
+      <option value="sent">Sent</option>
+      <option value="delivered">Delivered</option>
     </select>
     <div class="cm-modal-row">
       <button class="save-btn" style="flex:1" onclick="cmSaveCreator()">Add Creator</button>
@@ -1454,24 +1497,44 @@
   var _cmFilter = 'all';
   window._cmLoaded = false;
 
+  function fmtGmv(v) {
+    if (!v) return '<span style="color:var(--muted)">$0</span>';
+    var n = Math.round(v);
+    return '<span class="cm-gmv-pos">$' + n.toLocaleString('en-US') + '</span>';
+  }
+  function fmtFol(v) {
+    if (!v) return '—';
+    if (v >= 1000000) return (v / 1000000).toFixed(1) + 'M';
+    if (v >= 1000)    return (v / 1000).toFixed(1) + 'K';
+    return v;
+  }
+
+  var CM_SAMPLE_OPTIONS = [
+    { value: 'none',      label: 'No Sample' },
+    { value: 'requested', label: 'Requested'  },
+    { value: 'sent',      label: 'Sent'       },
+    { value: 'delivered', label: 'Delivered'  },
+  ];
+  var CM_BADGE_CLASS = { delivered:'cm-badge-active', sent:'cm-badge-sample', requested:'cm-badge-applied', none:'cm-badge-none' };
+
   window.loadCreatorManagement = function() {
     if (window._cmLoaded) return;
     window._cmLoaded = true;
+    // Keep loading state visible in tbody — it's already set in HTML
     Promise.all([
       fetch('/api/client/reacher/creators', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
       fetch('/api/client/settings', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
     ]).then(function([reacherRes, settingsRes]) {
-      var reacherCreators = reacherRes?.creators || [];
-      var storedCreators  = settingsRes?.brand?.creators || [];
-
-      // Merge: stored creators are source of truth for phone/sample; Reacher fills GMV/videos
+      var reacherCreators = (reacherRes && reacherRes.creators) || [];
+      var storedCreators  = (settingsRes && settingsRes.brand && settingsRes.brand.creators) || [];
       var byHandle = {};
-      storedCreators.forEach(c => { byHandle[c.handle] = Object.assign({}, c); });
+      storedCreators.forEach(function(c) { if (c.handle) byHandle[c.handle] = Object.assign({}, c); });
       reacherCreators.forEach(function(rc) {
         var h = (rc.handle || rc.nickname || '').toLowerCase().replace('@','');
+        if (!h) return;
         if (!byHandle[h]) byHandle[h] = { handle: h };
-        byHandle[h].gmv    = rc.gmv    || byHandle[h].gmv    || 0;
-        byHandle[h].videos = rc.videos || byHandle[h].videos || 0;
+        byHandle[h].gmv       = rc.gmv       || byHandle[h].gmv       || 0;
+        byHandle[h].videos    = rc.videos    || byHandle[h].videos    || 0;
         byHandle[h].followers = rc.followers || byHandle[h].followers || 0;
         if (!byHandle[h].sampleStatus) byHandle[h].sampleStatus = 'none';
       });
@@ -1483,46 +1546,62 @@
     });
   };
 
-  function cmRender() {
-    var search = (document.getElementById('cmSearch')?.value || '').toLowerCase();
-    var rows = _cmData.filter(function(c) {
-      if (search && !((c.handle||'').toLowerCase().includes(search) || (c.name||'').toLowerCase().includes(search))) return false;
-      if (_cmFilter === 'gmv'    && !(c.gmv > 0)) return false;
-      if (_cmFilter === 'sample' && !(c.sampleStatus && c.sampleStatus !== 'none')) return false;
-      if (_cmFilter === 'phone'  && !c.phone) return false;
-      return true;
-    });
-
+  function cmUpdateStats() {
     var total   = _cmData.length;
-    var withGmv = _cmData.filter(c => c.gmv > 0).length;
-    var withSam = _cmData.filter(c => c.sampleStatus && c.sampleStatus !== 'none').length;
-    var withPh  = _cmData.filter(c => !!c.phone).length;
+    var withGmv = _cmData.filter(function(c) { return c.gmv > 0; }).length;
+    var withSam = _cmData.filter(function(c) { return c.sampleStatus === 'sent' || c.sampleStatus === 'delivered'; }).length;
+    var withPh  = _cmData.filter(function(c) { return !!c.phone; }).length;
     document.getElementById('cm-stat-total').textContent   = total;
     document.getElementById('cm-stat-gmv').textContent     = withGmv;
     document.getElementById('cm-stat-samples').textContent = withSam;
     document.getElementById('cm-stat-phones').textContent  = withPh;
+  }
+
+  function cmRender() {
+    cmUpdateStats();
+    var search = ((document.getElementById('cmSearch') || {}).value || '').toLowerCase();
+    var rows = _cmData.filter(function(c) {
+      if (search && !((c.handle||'').toLowerCase().includes(search) || (c.name||'').toLowerCase().includes(search))) return false;
+      if (_cmFilter === 'gmv'    && !(c.gmv > 0)) return false;
+      if (_cmFilter === 'sample' && !(c.sampleStatus === 'sent' || c.sampleStatus === 'delivered')) return false;
+      if (_cmFilter === 'phone'  && !c.phone) return false;
+      return true;
+    });
 
     if (!rows.length) {
-      document.getElementById('cmTableBody').innerHTML = '<tr><td colspan="7" class="cm-empty">' + (_cmData.length ? 'No creators match this filter.' : 'No creators yet. Add one above, or connect TikTok Shop to import.') + '</td></tr>';
+      if (!_cmData.length) {
+        document.getElementById('cmTableBody').innerHTML =
+          '<tr><td colspan="7" class="cm-empty" style="padding:56px 24px">' +
+          '<div style="margin-bottom:14px;font-size:1.5rem;opacity:.3">👥</div>' +
+          '<div style="font-weight:600;color:var(--text);margin-bottom:6px">No creators yet</div>' +
+          '<div style="margin-bottom:16px">Add your first creator or connect TikTok Shop to import from Reacher.</div>' +
+          '<button class="cm-add-btn" onclick="cmOpenAddModal()" style="margin:0 auto">+ Add First Creator</button>' +
+          '</td></tr>';
+      } else {
+        document.getElementById('cmTableBody').innerHTML =
+          '<tr><td colspan="7" class="cm-empty">No creators match this filter.</td></tr>';
+      }
       return;
     }
 
-    function fmtGmv(v) { if (!v) return '<span style="color:var(--muted)">$0</span>'; return '<span class="cm-gmv-pos">$' + (v >= 1000 ? (v/1000).toFixed(1)+'k' : Math.round(v)) + '</span>'; }
-    function fmtFol(v) { if (!v) return '—'; return v >= 1000000 ? (v/1000000).toFixed(1)+'M' : v >= 1000 ? (v/1000).toFixed(1)+'k' : v; }
-    function sampleBadge(s) {
-      var map = { 'activated':'cm-badge-active', 'sent':'cm-badge-sample', 'requested':'cm-badge-applied', 'none':'cm-badge-none' };
-      var labels = { 'activated':'Activated', 'sent':'Sent', 'requested':'Requested', 'none':'None' };
-      return '<span class="cm-badge ' + (map[s]||'cm-badge-none') + '">' + (labels[s]||s) + '</span>';
-    }
-
-    var html = rows.map(function(c, i) {
+    var html = rows.map(function(c) {
       var idx = _cmData.indexOf(c);
       var handle = c.handle ? '@' + c.handle.replace('@','') : '—';
-      var tkLink = c.handle ? '<a href="https://www.tiktok.com/@' + c.handle.replace('@','') + '" target="_blank" rel="noopener">' + handle + '</a>' : handle;
-      var phoneCell = '<input class="cm-phone-input" type="tel" placeholder="Add phone…" value="' + (c.phone||'') + '" onblur="cmSavePhone(' + idx + ',this.value)" data-idx="' + idx + '">';
+      var tkLink = c.handle
+        ? '<a href="https://www.tiktok.com/@' + c.handle.replace('@','') + '" target="_blank" rel="noopener">' + handle + '</a>'
+        : handle;
+      var phoneCell =
+        '<span style="display:inline-flex;align-items:center;gap:4px">' +
+        '<input class="cm-phone-input" type="tel" placeholder="Add phone…" value="' + (c.phone||'') + '"' +
+        ' onblur="cmSavePhone(' + idx + ',this)" data-idx="' + idx + '">' +
+        '<span class="cm-saved-flash" id="cm-phone-flash-' + idx + '">✓</span>' +
+        '</span>';
       var smsBtn = c.phone ? '<a href="sms:' + encodeURIComponent(c.phone) + '" class="cm-action-btn cm-sms-btn" title="Text this creator">💬 Text</a>' : '';
-      var sampleSel = '<select class="cm-phone-input" style="width:100px" onchange="cmSaveSample(' + idx + ',this.value)">' +
-        ['none','requested','sent','activated'].map(s => '<option value="' + s + '"' + (c.sampleStatus===s?' selected':'') + '>' + s.charAt(0).toUpperCase()+s.slice(1) + '</option>').join('') + '</select>';
+      var curStatus = c.sampleStatus || 'none';
+      var sampleSel = '<select class="cm-phone-input" style="width:110px" onchange="cmSaveSample(' + idx + ',this.value)">' +
+        CM_SAMPLE_OPTIONS.map(function(o) {
+          return '<option value="' + o.value + '"' + (curStatus === o.value ? ' selected' : '') + '>' + o.label + '</option>';
+        }).join('') + '</select>';
       return '<tr>' +
         '<td><div class="cm-handle">' + tkLink + '</div>' + (c.name ? '<div style="font-size:0.72rem;color:var(--muted)">' + c.name + '</div>' : '') + '</td>' +
         '<td>' + fmtFol(c.followers) + '</td>' +
@@ -1539,23 +1618,30 @@
   window.cmFilterTable = function() { cmRender(); };
   window.cmSetFilter = function(f, btn) {
     _cmFilter = f;
-    document.querySelectorAll('.cm-filter-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.cm-filter-btn').forEach(function(b) { b.classList.remove('active'); });
     if (btn) btn.classList.add('active');
     cmRender();
   };
 
-  window.cmSavePhone = async function(idx, phone) {
+  window.cmSavePhone = async function(idx, inputEl) {
     if (!_cmData[idx]) return;
-    _cmData[idx].phone = phone.trim();
+    var phone = inputEl.value.trim();
+    _cmData[idx].phone = phone;
     await cmPersist();
-    cmRender();
+    // Show flash without re-rendering whole table
+    cmUpdateStats();
+    var flash = document.getElementById('cm-phone-flash-' + idx);
+    if (flash) {
+      flash.classList.add('show');
+      setTimeout(function() { flash.classList.remove('show'); }, 1500);
+    }
   };
 
   window.cmSaveSample = async function(idx, status) {
     if (!_cmData[idx]) return;
     _cmData[idx].sampleStatus = status;
     await cmPersist();
-    cmRender();
+    cmUpdateStats();
   };
 
   async function cmPersist() {
@@ -1575,8 +1661,9 @@
   window.cmSaveCreator = async function() {
     var handle = document.getElementById('cmAddHandle').value.trim().replace('@','');
     if (!handle) { document.getElementById('cmAddStatus').textContent = 'Handle required.'; return; }
-    var existing = _cmData.find(c => c.handle === handle);
-    if (existing) { document.getElementById('cmAddStatus').textContent = 'Creator already exists.'; return; }
+    if (_cmData.find(function(c) { return c.handle === handle; })) {
+      document.getElementById('cmAddStatus').textContent = 'Creator already exists.'; return;
+    }
     var creator = {
       handle,
       name:         document.getElementById('cmAddName').value.trim(),
