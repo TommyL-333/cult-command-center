@@ -2611,13 +2611,14 @@ function vqCardHtml(r){
       ?'<details style="margin-top:6px"><summary style="font-size:10px;color:#f59e0b;cursor:pointer">⚠ '+r.bufferErrors.length+' channel(s) failed — click for details</summary>'
         +'<div style="font-size:10px;color:rgba(251,191,36,.75);margin-top:4px;line-height:1.6;white-space:pre-wrap">'+esc(r.bufferErrors.join('\\n'))+'</div></details>':''
     var editSchedBtn=VQ_IS_ADMIN?'<button class="vq-btn" onclick="vqEditSchedule(\\''+id+'\\')" style="font-size:11px">✏ Edit Schedule</button>':'';
+    var cancelBufBtn=VQ_IS_ADMIN&&(r.bufferPosts||[]).length?'<button class="vq-btn" onclick="vqCancelBufferPosts(\\''+id+'\\')" style="font-size:11px;color:#f87171;border-color:rgba(248,113,113,.3)">✕ Cancel Buffer Posts</button>':'';
     body='<div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.7">'
       +'<strong style="color:var(--txt)">Scheduled:</strong> '+schedTime+'<br>'
       +(r.caption?'<strong style="color:var(--txt)">Caption:</strong> '+esc(r.caption.slice(0,60))+(r.caption.length>60?'…':'')+'<br>':'')
       +'<strong style="color:var(--txt)">Channels ('+scheduledChannels.length+'):</strong> '+esc(platDisplay)
       +errDetail
       +'</div>'
-      +'<div class="vq-actions">'+draftLink2+editSchedBtn+'</div>';
+      +'<div class="vq-actions">'+draftLink2+editSchedBtn+cancelBufBtn+'</div>';
   }
 
   else if(r.status==='posted'){
@@ -2727,6 +2728,17 @@ function toLocalInputDT(val){
 
 // Move an approved (Scheduled) card back to For Review so the schedule can be edited.
 // Also clear channelSchedules so stale per-channel times don't pre-populate the form.
+function vqCancelBufferPosts(id){
+  if(!confirm('Cancel the scheduled Buffer posts for this video? The card will stay in Scheduled but the posts will be deleted from Buffer.'))return;
+  toast('Cancelling Buffer posts…');
+  fetch('/api/video-requests/'+id+'/cancel-buffer',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'}})
+  .then(function(r){return r.json();}).then(function(d){
+    var n=d.cancelled||0;
+    toast(n>0?'✓ Cancelled '+n+' Buffer post'+(n===1?'':'s'):'No active Buffer posts found');
+    vqPatch(id,{bufferPosts:[]},function(){loadVideoQueue();});
+  }).catch(function(e){toast('⚠ '+e);});
+}
+
 function vqEditSchedule(id){
   if(!confirm('Move this back to For Review so you can edit the schedule? The existing Buffer posts will be cancelled.'))return;
   toast('Cancelling Buffer posts…');
