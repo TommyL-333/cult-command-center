@@ -2902,6 +2902,7 @@ app.get('/portal-admin/clients', requirePortalAdmin, async (req, res) => {
       cachedGmvAt:      b.cachedGmvAt || null,
       creatorPageSlug:  b.creatorPage?.slug || null,
       campaigns:        b.creatorPage?.campaigns || null,
+      offboarding:      b.offboarding || null,
     };
   });
   res.json({ ok: true, clients, window: { key: win.key, label: win.label, isCurrent: win.isCurrent }, availableMonths });
@@ -2932,6 +2933,33 @@ app.get('/portal-admin/clients', requirePortalAdmin, async (req, res) => {
       return res.status(500).json({ ok: false, error: 'Failed to load clients: ' + (err2 && err2.message) });
     }
   }
+});
+
+// GET /portal-admin/offboard/:brandId — get offboarding state
+app.get('/portal-admin/offboard/:brandId', requirePortalAdmin, (req, res) => {
+  const brands = loadBrands();
+  const brand = brands.clients.find(b => b.id === req.params.brandId);
+  if (!brand) return res.status(404).json({ ok: false, error: 'Brand not found' });
+  res.json({ ok: true, offboarding: brand.offboarding || null });
+});
+
+// PATCH /portal-admin/offboard/:brandId — save offboarding state
+app.patch('/portal-admin/offboard/:brandId', requirePortalAdmin, express.json(), (req, res) => {
+  const brands = loadBrands();
+  const bi = brands.clients.findIndex(b => b.id === req.params.brandId);
+  if (bi === -1) return res.status(404).json({ ok: false, error: 'Brand not found' });
+  const { noticeDate, finalServiceDate, checklist, completed } = req.body;
+  const existing = brands.clients[bi].offboarding || {};
+  brands.clients[bi].offboarding = {
+    ...existing,
+    ...(noticeDate !== undefined && { noticeDate }),
+    ...(finalServiceDate !== undefined && { finalServiceDate }),
+    ...(checklist !== undefined && { checklist: { ...(existing.checklist || {}), ...checklist } }),
+    ...(completed !== undefined && { completed, completedAt: completed ? new Date().toISOString() : (existing.completedAt || null) }),
+    startedAt: existing.startedAt || new Date().toISOString(),
+  };
+  saveBrands(brands);
+  res.json({ ok: true, offboarding: brands.clients[bi].offboarding });
 });
 
 // POST /portal-admin/impersonate — sets session as a client brand
