@@ -6227,6 +6227,70 @@ app.get('/api/client/products', requireClientSession, async (req, res) => {
   }
 });
 
+// ── Video Request proxy endpoints (client portal → Command Center) ──────────
+const CC_API = 'https://manifest.cultcontent.cc';
+
+async function ccFetch(path, opts = {}) {
+  const secret = process.env.CLAUDE_CODE_SECRET;
+  if (!secret) throw new Error('CC_VIDEO_SECRET not set');
+  return fetch(`${CC_API}${path}`, {
+    ...opts,
+    headers: { 'Authorization': `Bearer ${secret}`, 'Content-Type': 'application/json', ...(opts.headers || {}) },
+  });
+}
+
+// GET /api/client/video-requests — list this brand's submitted video requests
+app.get('/api/client/video-requests', requireClientSession, async (req, res) => {
+  const brands = loadBrands();
+  const brand = brands.clients.find(b => b.id === req.session.clientBrandId);
+  if (!brand) return res.status(404).json({ error: 'Brand not found' });
+  try {
+    const r = await ccFetch(`/api/video-requests?clientBrandId=${encodeURIComponent(brand.id)}`);
+    if (!r.ok) return res.json({ ok: true, requests: [] });
+    const data = await r.json();
+    res.json({ ok: true, requests: data.requests || data || [] });
+  } catch (e) {
+    res.json({ ok: true, requests: [] });
+  }
+});
+
+// POST /api/client/video-requests — submit a new video editing request
+app.post('/api/client/video-requests', requireClientSession, express.json(), async (req, res) => {
+  const brands = loadBrands();
+  const brand = brands.clients.find(b => b.id === req.session.clientBrandId);
+  if (!brand) return res.status(404).json({ error: 'Brand not found' });
+  const { title, description, driveUrl, quantity } = req.body;
+  if (!driveUrl) return res.status(400).json({ error: 'Drive link is required' });
+  const qty = Math.max(1, parseInt(quantity) || 1);
+  const record = {
+    id: `vr_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    submittedBy: brand.loginEmail || '',
+    submittedByName: brand.name,
+    submittedAt: Date.now(),
+    brand: brand.name,
+    clientBrandId: brand.id,
+    title: (title || '').trim() || 'Video request',
+    description: (description || '').trim(),
+    driveUrl: (driveUrl || '').trim(),
+    quantity: qty,
+    costUsd: qty * 20,
+    priority: 'normal',
+    status: 'pending',
+    source: 'client-portal',
+  };
+  try {
+    const r = await ccFetch('/api/video-requests', { method: 'POST', body: JSON.stringify(record) });
+    if (!r.ok) {
+      const err = await r.text();
+      return res.status(502).json({ error: 'Failed to submit request', detail: err });
+    }
+    const data = await r.json();
+    res.json({ ok: true, request: data.request || record });
+  } catch (e) {
+    res.status(502).json({ error: e.message });
+  }
+});
+
 // GET /api/client/reacher/creators — return Reacher affiliate creator list for this brand
 app.get('/api/client/reacher/creators', requireClientSession, async (req, res) => {
   const brands = loadBrands();

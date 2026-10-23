@@ -479,7 +479,7 @@
 
 <nav class="tab-bar">
   <button class="tab-btn active" onclick="switchTab('overview')">Profile</button>
-  <button class="tab-btn" onclick="switchTab('content-studio')">Short Video</button>
+  <button class="tab-btn" onclick="switchTab('content-studio')">Video Management</button>
   <button class="tab-btn" onclick="switchTab('creator-management')">Creator Management</button>
   <button class="tab-btn" onclick="switchTab('profit-simulator')">Financial Calculator</button>
   <button class="tab-btn" onclick="switchTab('support')">Support</button>
@@ -632,6 +632,199 @@
 </div><!-- end #tab-overview -->
 
 <div id="tab-content-studio" style="display:none">
+  <style>
+    /* Video Management tab */
+    .vm-wrap { max-width:900px; margin:0 auto; padding:36px 24px 60px; }
+    .vm-section-label { font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#64748b; margin-bottom:12px; }
+    .vm-submit-card { background:#1c1828; border:1px solid #2a2540; border-radius:14px; padding:28px 26px; margin-bottom:32px; }
+    .vm-submit-card h2 { font-size:1.05rem; font-weight:700; color:#e2e8f0; margin-bottom:6px; }
+    .vm-submit-card p { font-size:.8rem; color:#64748b; margin-bottom:22px; }
+    .vm-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .vm-field { display:flex; flex-direction:column; gap:5px; }
+    .vm-field.full { grid-column:1/-1; }
+    .vm-label { font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:#64748b; }
+    .vm-input, .vm-textarea { background:rgba(0,0,0,.3); border:1px solid #2a2540; border-radius:8px; color:#e2e8f0; font-size:.84rem; padding:9px 12px; font-family:inherit; outline:none; transition:border-color .15s; }
+    .vm-input:focus, .vm-textarea:focus { border-color:#00f2ea; }
+    .vm-textarea { resize:vertical; min-height:80px; }
+    .vm-qty-row { display:flex; align-items:center; gap:12px; }
+    .vm-qty-input { width:80px; }
+    .vm-cost-display { font-size:.84rem; color:#00f2ea; font-weight:700; }
+    .vm-cost-note { font-size:.72rem; color:#64748b; }
+    .vm-submit-btn { background:#00f2ea; color:#12101a; border:none; border-radius:9px; font-size:.88rem; font-weight:700; padding:11px 24px; cursor:pointer; transition:opacity .15s; font-family:inherit; margin-top:20px; }
+    .vm-submit-btn:hover { opacity:.88; }
+    .vm-submit-btn:disabled { opacity:.5; cursor:default; }
+    .vm-submit-error { font-size:.78rem; color:#ff5b5b; margin-top:8px; display:none; }
+    /* Pipeline */
+    .vm-pipeline { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:32px; }
+    @media(max-width:720px){ .vm-pipeline { grid-template-columns:1fr 1fr; } }
+    .vm-col-header { font-size:.65rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#64748b; padding:6px 10px 10px; }
+    .vm-col-body { min-height:80px; display:flex; flex-direction:column; gap:8px; }
+    .vm-card { background:#1c1828; border:1px solid #2a2540; border-radius:10px; padding:12px 14px; }
+    .vm-card-title { font-size:.82rem; font-weight:600; color:#e2e8f0; margin-bottom:4px; word-break:break-word; }
+    .vm-card-meta { font-size:.7rem; color:#64748b; }
+    .vm-card-cost { font-size:.75rem; font-weight:700; color:#00f2ea; margin-top:6px; }
+    .vm-status-pill { display:inline-block; font-size:.62rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em; padding:2px 8px; border-radius:20px; margin-bottom:6px; }
+    .vm-s-pending   { background:rgba(100,116,139,.15); color:#94a3b8; border:1px solid rgba(100,116,139,.25); }
+    .vm-s-in-progress{ background:rgba(201,168,76,.12); color:#c9a84c; border:1px solid rgba(201,168,76,.3); }
+    .vm-s-done      { background:rgba(0,242,234,.1);   color:#00f2ea; border:1px solid rgba(0,242,234,.25); }
+    .vm-s-approved  { background:rgba(0,210,122,.1);   color:#00d27a; border:1px solid rgba(0,210,122,.3); }
+    .vm-s-posted    { background:rgba(0,210,122,.2);   color:#00d27a; border:1px solid rgba(0,210,122,.4); }
+    .vm-empty-col { font-size:.75rem; color:#2a2540; font-style:italic; padding:8px 10px; }
+    .vm-loading { text-align:center; padding:40px; color:#64748b; font-size:.84rem; }
+  </style>
+  <div class="vm-wrap">
+    <h1 style="font-size:1.3rem;font-weight:700;color:#e2e8f0;margin-bottom:6px;">Video Management</h1>
+    <p style="font-size:.82rem;color:#64748b;margin-bottom:32px;">Request videos from the Cult Content team. Drop your Drive link and brief — we'll handle editing and publishing.</p>
+
+    <!-- Submit form -->
+    <div class="vm-submit-card">
+      <h2>Request Videos</h2>
+      <p>$20 per video edit &middot; Includes captions, hook optimization, and delivery within 5 business days</p>
+      <div class="vm-form-grid">
+        <div class="vm-field full">
+          <label class="vm-label">Google Drive Link *</label>
+          <input class="vm-input" id="vmDriveUrl" type="url" placeholder="https://drive.google.com/drive/folders/…">
+        </div>
+        <div class="vm-field">
+          <label class="vm-label">Request Title</label>
+          <input class="vm-input" id="vmTitle" type="text" placeholder="e.g. Product launch videos">
+        </div>
+        <div class="vm-field">
+          <label class="vm-label">Quantity</label>
+          <div class="vm-qty-row">
+            <input class="vm-input vm-qty-input" id="vmQty" type="number" min="1" max="100" value="1" oninput="vmUpdateCost()">
+            <div>
+              <div class="vm-cost-display" id="vmCostDisplay">$20</div>
+              <div class="vm-cost-note">total editing cost</div>
+            </div>
+          </div>
+        </div>
+        <div class="vm-field full">
+          <label class="vm-label">Brief / Notes</label>
+          <textarea class="vm-textarea" id="vmDesc" placeholder="Product being featured, hook style, any specific instructions for the editor…"></textarea>
+        </div>
+      </div>
+      <button class="vm-submit-btn" id="vmSubmitBtn" onclick="vmSubmit()">Submit Request →</button>
+      <div class="vm-submit-error" id="vmSubmitError"></div>
+    </div>
+
+    <!-- Pipeline -->
+    <div class="vm-section-label">Your Requests</div>
+    <div id="vmPipelineWrap">
+      <div class="vm-loading" id="vmLoading">Loading your requests…</div>
+      <div class="vm-pipeline" id="vmPipeline" style="display:none">
+        <div>
+          <div class="vm-col-header">Pending</div>
+          <div class="vm-col-body" id="vmCol-pending"></div>
+        </div>
+        <div>
+          <div class="vm-col-header">In Progress</div>
+          <div class="vm-col-body" id="vmCol-in-progress"></div>
+        </div>
+        <div>
+          <div class="vm-col-header">Done</div>
+          <div class="vm-col-body" id="vmCol-done"></div>
+        </div>
+        <div>
+          <div class="vm-col-header">Approved</div>
+          <div class="vm-col-body" id="vmCol-approved"></div>
+        </div>
+        <div>
+          <div class="vm-col-header">Posted</div>
+          <div class="vm-col-body" id="vmCol-posted"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    var _vmLoaded = false;
+
+    function vmUpdateCost() {
+      var qty = Math.max(1, parseInt(document.getElementById('vmQty').value) || 1);
+      document.getElementById('vmCostDisplay').textContent = '$' + (qty * 20).toLocaleString('en-US');
+    }
+    window.vmUpdateCost = vmUpdateCost;
+
+    async function vmSubmit() {
+      var btn = document.getElementById('vmSubmitBtn');
+      var errEl = document.getElementById('vmSubmitError');
+      var driveUrl = (document.getElementById('vmDriveUrl').value || '').trim();
+      if (!driveUrl) { errEl.textContent = 'Please paste your Google Drive link.'; errEl.style.display='block'; return; }
+      errEl.style.display = 'none';
+      btn.disabled = true; btn.textContent = 'Submitting…';
+      try {
+        var res = await fetch('/api/client/video-requests', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            driveUrl,
+            title: document.getElementById('vmTitle').value.trim(),
+            description: document.getElementById('vmDesc').value.trim(),
+            quantity: parseInt(document.getElementById('vmQty').value) || 1,
+          }),
+        });
+        var d = await res.json();
+        if (!d.ok) throw new Error(d.error || 'Submit failed');
+        // Clear form
+        document.getElementById('vmDriveUrl').value = '';
+        document.getElementById('vmTitle').value = '';
+        document.getElementById('vmDesc').value = '';
+        document.getElementById('vmQty').value = '1';
+        vmUpdateCost();
+        btn.textContent = 'Submitted ✓';
+        setTimeout(() => { btn.disabled = false; btn.textContent = 'Submit Request →'; }, 2500);
+        loadVmRequests();
+      } catch(e) {
+        errEl.textContent = e.message || 'Something went wrong — please try again.';
+        errEl.style.display = 'block';
+        btn.disabled = false; btn.textContent = 'Submit Request →';
+      }
+    }
+    window.vmSubmit = vmSubmit;
+
+    function vmRenderCard(r) {
+      var statusClass = 'vm-s-' + (r.status || 'pending');
+      var statusLabel = (r.status || 'pending').replace('-', ' ');
+      var date = r.submittedAt ? new Date(r.submittedAt).toLocaleDateString('en-US', {month:'short',day:'numeric'}) : '';
+      return '<div class="vm-card">'
+        + '<div class="vm-status-pill ' + statusClass + '">' + statusLabel + '</div>'
+        + '<div class="vm-card-title">' + (r.title || 'Video request') + '</div>'
+        + '<div class="vm-card-meta">' + (r.quantity||1) + ' video' + ((r.quantity||1)>1?'s':'')
+          + (date ? ' &middot; ' + date : '') + '</div>'
+        + '<div class="vm-card-cost">$' + ((r.costUsd || (r.quantity||1)*20)).toLocaleString('en-US') + '</div>'
+        + '</div>';
+    }
+
+    async function loadVmRequests() {
+      try {
+        var res = await fetch('/api/client/video-requests');
+        var d = await res.json();
+        var requests = d.requests || [];
+        document.getElementById('vmLoading').style.display = 'none';
+        document.getElementById('vmPipeline').style.display = 'grid';
+        var cols = { pending:[], 'in-progress':[], done:[], approved:[], posted:[] };
+        requests.forEach(function(r) { var s = r.status||'pending'; if (cols[s]) cols[s].push(r); });
+        Object.keys(cols).forEach(function(s) {
+          var el = document.getElementById('vmCol-' + s);
+          if (!el) return;
+          el.innerHTML = cols[s].length
+            ? cols[s].map(vmRenderCard).join('')
+            : '<div class="vm-empty-col">None</div>';
+        });
+      } catch(e) {
+        document.getElementById('vmLoading').textContent = 'Could not load requests.';
+      }
+    }
+
+    window._vmInit = function() {
+      if (_vmLoaded) return;
+      _vmLoaded = true;
+      loadVmRequests();
+    };
+  })();
+  </script>
   <div style="max-width:1120px;margin:0 auto;padding:36px 24px 60px;">
 
     <!-- ===== Short Video status ribbon ===== -->
@@ -2840,14 +3033,9 @@ async function submitSupportTicket() {
     document.querySelectorAll('[id^="tab-"]').forEach(el => el.style.display = 'none');
     document.getElementById('tab-' + name).style.display = 'block';
     const btns = document.querySelectorAll('.tab-btn');
-    const labels = { 'overview': 'Profile', 'content-studio': 'Short Video', 'creator-management': 'Creator Management', 'billing': 'Billing', 'inner-circle': 'Inner Circle', 'marketplace': 'Creator Marketplace', 'tasks': 'Tasks', 'reports': 'Reports', 'profit-simulator': 'Financial Calculator', 'support': 'Support' };
+    const labels = { 'overview': 'Profile', 'content-studio': 'Video Management', 'creator-management': 'Creator Management', 'billing': 'Billing', 'inner-circle': 'Inner Circle', 'marketplace': 'Creator Marketplace', 'tasks': 'Tasks', 'reports': 'Reports', 'profit-simulator': 'Financial Calculator', 'support': 'Support' };
     btns.forEach(b => { if (b.textContent.trim() === labels[name]) b.classList.add('active'); });
-    if (name === 'content-studio' && !window._channelsLoaded) loadChannels();
-    if (name === 'content-studio' && !window._arcadsLoaded) loadArcads();
-    if (name === 'content-studio' && !window._assetsLoaded) { window._assetsLoaded = true; loadBrandAssets(); }
-    if (name === 'content-studio' && window._data?.brand) wizardInitBrandSummary();
-    if (name === 'content-studio' && !window._storistaLoaded) initStorista(window._data?.brand);
-    if (name === 'content-studio' && !window._csLoaded) loadContentStudioCore();
+    if (name === 'content-studio' && window._vmInit) window._vmInit();
     if (name === 'creator-management' && !window._cmLoaded) loadCreatorManagement();
     if (name === 'billing' && !window._billingLoaded) loadBilling();
     if (name === 'inner-circle' && !_icLoaded) loadInnerCircle();
