@@ -5352,14 +5352,39 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
   }
 
   // ---------- ROUTE: GET /api/video-requests ----------
-  // Returns all video requests. Editor/admin see all; others see own.
+  // Returns video requests. Supports two auth paths:
+  //   1. CF Access session (staff/admin/editor) — full access with role-based filtering
+  //   2. Bearer CLAUDE_CODE_SECRET (portal server) — must supply ?clientBrandId= to scope to one brand
   // Honors ?devAs= so admin dev-mode previews show the correct role flags.
   const VIDEO_EDITOR_EMAILS = new Set(['gilbert@cultcontent.cc']);
-  app.get('/api/video-requests', requireAuth, (req, res) => {
+  app.get('/api/video-requests', (req, res) => {
     try {
+      // Allow portal server-to-server calls with Bearer CLAUDE_CODE_SECRET
+      const secret = process.env.CLAUDE_CODE_SECRET;
+      const bearerToken = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+      const isPortalAgent = secret && bearerToken === secret;
+
+      if (isPortalAgent) {
+        const clientBrandId = (req.query.clientBrandId || '').trim();
+        if (!clientBrandId) return res.status(400).json({ error: 'clientBrandId query param required for portal requests' });
+        const all = readJsonFile(VR_FILE, []);
+        const requests = all.filter(r => r.clientBrandId === clientBrandId || r.submittedBy === req.query.submittedBy);
+        return res.json({ requests });
+      }
+
+      // Fall through to CF Access session auth
+      if (!req.userEmail && !req.session?.isPortalAdmin) {
+        // Run requireAuth inline to keep the route handler self-contained
+        if (!process.env.CF_ACCESS_AUD) {
+          // local dev — no auth
+        } else {
+          return res.status(401).type('text').send('Session expired — please refresh the page');
+        }
+      }
+
       const callerEmail = (req.userEmail || '').toLowerCase();
       const email = effectiveEmail(req); // respects ?devAs for admin
-      const isAdmin = ADMIN_EMAILS.has(callerEmail) && callerEmail === email; // true only when not impersonating
+      const isAdmin = ADMIN_EMAILS.has(callerEmail) && callerEmail === email;
       const isEditor = VIDEO_EDITOR_EMAILS.has(email);
       const all = readJsonFile(VR_FILE, []);
       const requests = (isAdmin || isEditor)
@@ -5387,17 +5412,21 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
         'becca@cultcontent.cc':'Becca', 'jenna@cultcontent.cc':'Jenna',
         'gourab@cultcontent.cc':'Gourab', 'tommy@cultcontent.cc':'Tommy',
         'claude@cultcontent.cc':'Claude' };
-      const { brand, title, description, script, driveUrl, priority, dueDate, quantity } = req.body || {};
+      const { brand, title, description, script, driveUrl, priority, dueDate, quantity, clientBrandId, source } = req.body || {};
       if (!title || !title.trim()) return res.status(400).json({ error: 'Title is required' });
+      // Portal agent submittedBy should be the brand login email, not claude@
+      const resolvedEmail = (isAgent && req.body.submittedBy) ? req.body.submittedBy : email;
       const all = readJsonFile(VR_FILE, []);
       const id = 'vr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
       all.push({
-        id, submittedBy: email, submittedByName: names[email] || email,
+        id, submittedBy: resolvedEmail, submittedByName: names[resolvedEmail] || resolvedEmail,
         submittedAt: Date.now(), brand: (brand || '').trim(),
         title: title.trim(), description: (description || '').trim(),
         script: (script || '').trim(), driveUrl: (driveUrl || '').trim(),
         priority: priority || 'normal', dueDate: dueDate || '', status: 'pending',
         quantity: Math.min(Math.max(parseInt(quantity, 10) || 1, 1), 10),
+        ...(clientBrandId ? { clientBrandId: clientBrandId.trim() } : {}),
+        ...(source ? { source: source.trim() } : {}),
       });
       writeJsonFile(VR_FILE, all);
       res.json({ ok: true, id });
