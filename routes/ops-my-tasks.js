@@ -5372,11 +5372,13 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
         return res.json({ requests });
       }
 
-      // Fall through to CF Access session auth
-      if (!req.userEmail && !req.session?.isPortalAdmin) {
-        // Run requireAuth inline to keep the route handler self-contained
-        if (!process.env.CF_ACCESS_AUD) {
-          // local dev — no auth
+      // Staff UI path — set req.userEmail from CF Access header (requireAuth middleware not used here)
+      if (!req.userEmail) {
+        const cfEmail = req.headers['cf-access-authenticated-user-email'];
+        if (cfEmail) {
+          req.userEmail = cfEmail;
+        } else if (!process.env.CF_ACCESS_AUD) {
+          // local dev — no CF Access, allow through
         } else {
           return res.status(401).type('text').send('Session expired — please refresh the page');
         }
