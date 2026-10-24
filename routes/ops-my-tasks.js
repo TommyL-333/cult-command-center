@@ -172,6 +172,9 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .group h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 11px;display:flex;align-items:center;gap:8px}
   .dot{width:9px;height:9px;border-radius:50%}
   .card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:14px 15px;margin-bottom:10px;display:flex;justify-content:space-between;gap:14px;align-items:flex-start}
+  @keyframes tiktok-glow{0%{box-shadow:0 0 10px 3px rgba(254,44,85,.7),0 0 22px 6px rgba(37,244,238,.3);border-color:rgba(254,44,85,.8);}50%{box-shadow:0 0 14px 5px rgba(37,244,238,.7),0 0 28px 8px rgba(254,44,85,.3);border-color:rgba(37,244,238,.8);}100%{box-shadow:0 0 10px 3px rgba(254,44,85,.7),0 0 22px 6px rgba(37,244,238,.3);border-color:rgba(254,44,85,.8);}}
+  .card.matchmaking-glow{animation:tiktok-glow 2.2s ease-in-out infinite;border-width:1.5px;}
+  .tiktok-badge{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:20px;background:linear-gradient(90deg,rgba(254,44,85,.2),rgba(37,244,238,.2));border:1px solid rgba(254,44,85,.4);color:#fe2c55;margin-left:4px;vertical-align:middle;}
   .card .body{flex:1;min-width:0}
   .card .task-title{font-size:15px;font-weight:600;margin:0 0 5px;line-height:1.35;cursor:pointer}
   .card .task-title:hover{text-decoration:underline;text-decoration-style:dotted;text-underline-offset:2px}
@@ -1513,8 +1516,9 @@ function render(){
     html+='<div class="group"><h2><span class="dot" style="background:'+P.color+'"></span>'+P.label+' · '+g.length+'</h2>';
     g.forEach(function(t){
       var subs=SUBTASKS[t.record_id]||[];
-      html+='<div class="card" id="card-'+t.record_id+'"><div class="body">';
-      html+='<div class="task-title" id="ttl-'+t.record_id+'" onclick="startEditCardTitle(\\''+t.record_id+'\\')">'+esc(t.task||'(untitled)')+'</div>';
+      var isMatchmaking=t.source==='creator-matchmaking';
+      html+='<div class="card'+(isMatchmaking?' matchmaking-glow':'')+'" id="card-'+t.record_id+'"><div class="body">';
+      html+='<div class="task-title" id="ttl-'+t.record_id+'" onclick="startEditCardTitle(\\''+t.record_id+'\\')">'+esc(t.task||'(untitled)')+(isMatchmaking?'<span class="tiktok-badge">🎵 TikTok</span>':'')+'</div>';
       html+='<div class="meta">';
       if(t.client)html+='<span class="tag client">'+esc(t.client)+'</span>';
       if(t.pillar)html+='<span class="tag">'+esc(t.pillar)+'</span>';
@@ -4212,6 +4216,14 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
         });
       }
 
+      // Fire matchmaking completion email (non-fatal).
+      const taskTitleForEmail = textVal(afterFields.Task) || '';
+      const promptActionForEmail = textVal(afterFields['Prompt / Action']) || '';
+      if (textVal(existingFields.Source) === 'creator-matchmaking') {
+        sendMatchmakingCompleteEmail({ taskTitle: taskTitleForEmail, promptAction: promptActionForEmail })
+          .catch(e => console.error('[matchmaking complete email]', e.message));
+      }
+
       // Optional point award (Phase 8: point-based task management) — a NEW
       // local ledger (db/staff-points.js), layered on top of this already-
       // verified Lark completion, not a change to the Lark schema itself.
@@ -5641,6 +5653,60 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       }
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
+
+  async function sendMatchmakingCompleteEmail({ taskTitle, promptAction }) {
+    const GHL_KEY = process.env.GHL_API_KEY;
+    const GHL_LOC = process.env.GHL_LOC_ID || process.env.GHL_LOCATION_ID;
+    if (!GHL_KEY || !GHL_LOC) { console.warn('[matchmaking email] GHL_API_KEY or GHL_LOCATION_ID not set — skipping'); return; }
+
+    // Parse brand email from promptAction text: "Contact: email@example.com"
+    const emailMatch = promptAction.match(/Contact:\s*([^\n\r]+)/i);
+    const brandEmail = emailMatch ? emailMatch[1].trim() : null;
+    if (!brandEmail) { console.warn('[matchmaking email] No Contact email found in promptAction — skipping'); return; }
+
+    // Parse brand name from task title: "Generate affiliate link — BrandName"
+    const brandName = taskTitle.replace(/^Generate affiliate link\s*[—-]\s*/i, '').trim() || 'there';
+
+    const https = require('https');
+    const headers = { Authorization: `Bearer ${GHL_KEY}`, Version: '2021-07-28', 'Content-Type': 'application/json' };
+
+    function ghlPost(path, body) {
+      return new Promise((resolve, reject) => {
+        const data = JSON.stringify(body);
+        const opts = { hostname: 'services.leadconnectorhq.com', path, method: 'POST',
+          headers: { ...headers, 'Content-Length': Buffer.byteLength(data) } };
+        const req = https.request(opts, r => {
+          let buf = '';
+          r.on('data', c => buf += c);
+          r.on('end', () => { try { resolve(JSON.parse(buf)); } catch { resolve(buf); } });
+        });
+        req.on('error', reject);
+        req.write(data);
+        req.end();
+      });
+    }
+
+    const firstName = brandName.split(' ')[0];
+    const lastName = brandName.split(' ').slice(1).join(' ') || '';
+    const contactRes = await ghlPost('/contacts/', { locationId: GHL_LOC, firstName, lastName, email: brandEmail });
+    const contactId = contactRes.contact?.id;
+    if (!contactId) { console.warn('[matchmaking email] Could not upsert GHL contact', contactRes); return; }
+
+    const convRes = await ghlPost('/conversations/', { locationId: GHL_LOC, contactId });
+    const conversationId = convRes.conversation?.id;
+    if (!conversationId) { console.warn('[matchmaking email] Could not upsert conversation', convRes); return; }
+
+    const message = `Hi ${firstName},\n\nGreat news — your affiliate link for Cult Content has been set up and is live!\n\nYour creators can now start promoting your products through our community. You'll receive commission tracking and reporting as sales come in.\n\nIf you have any questions or want to discuss your campaign, just reply to this email.\n\n— Sisyphus\nCult Content`;
+
+    await ghlPost('/conversations/messages', {
+      type: 'Email',
+      conversationId,
+      contactId,
+      subject: `Your affiliate link is live — ${brandName}`,
+      message,
+    });
+    console.log(`[matchmaking email] Completion email sent to ${brandEmail} for ${brandName}`);
+  }
 
   async function sendPodcastApprovalEmail(guest) {
     const GHL_KEY = process.env.GHL_API_KEY;
