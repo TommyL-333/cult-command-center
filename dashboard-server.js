@@ -443,21 +443,40 @@ app.post('/api/webhooks/podcast-booking', async (req, res) => {
   if (secret && req.query.secret !== secret) return res.status(401).json({ error: 'Unauthorized' });
   try {
     const b = req.body || {};
-    const custom = b.customData || b.custom_data || {};
-    const get = (...keys) => { for (const k of keys) { const v = b[k] || custom[k]; if (v) return String(v).trim(); } return ''; };
 
-    // GHL sends contact + appointment fields; try several key spellings
-    const firstName = get('first_name', 'firstName', 'contact.firstName');
-    const lastName  = get('last_name',  'lastName',  'contact.lastName');
-    const name = [firstName, lastName].filter(Boolean).join(' ') || get('name', 'full_name', 'contact.name') || 'Unknown';
-    const email = get('email', 'contact.email');
-    // Appointment start time: ISO string or epoch
-    const startRaw = get('start_time', 'startTime', 'appointment.startTime', 'selectedSlot');
-    const scheduledAt = startRaw ? (isNaN(Number(startRaw)) ? startRaw : new Date(Number(startRaw)).toISOString()) : null;
+    // Log full payload so we can see exactly what GHL sends (truncated for safety)
+    console.log('[podcast-booking webhook] payload:', JSON.stringify(b).slice(0, 1000));
+
+    // GHL can nest fields under contact{}, appointmentInfo{}, or send them flat.
+    const contact = b.contact || {};
+    const appt    = b.appointmentInfo || b.appointment || {};
+    const custom  = b.customData || b.custom_data || {};
+
+    // Grab a value from any of these locations, first match wins
+    const pick = (...keys) => {
+      const sources = [b, contact, appt, custom];
+      for (const k of keys) {
+        for (const src of sources) {
+          const v = src[k];
+          if (v && String(v).trim()) return String(v).trim();
+        }
+      }
+      return '';
+    };
+
+    const firstName = pick('first_name', 'firstName');
+    const lastName  = pick('last_name',  'lastName');
+    const name = [firstName, lastName].filter(Boolean).join(' ') || pick('name', 'full_name', 'title') || 'Unknown';
+    const email = pick('email');
+
+    const startRaw = pick('startTime', 'start_time', 'selectedSlot', 'appointmentStartTime');
+    const scheduledAt = startRaw
+      ? (isNaN(Number(startRaw)) ? startRaw : new Date(Number(startRaw)).toISOString())
+      : null;
 
     if (!email) {
-      console.warn('[podcast-booking webhook] No email in payload:', JSON.stringify(b).slice(0, 400));
-      return res.status(400).json({ error: 'No email in payload' });
+      console.warn('[podcast-booking webhook] No email found in payload');
+      return res.status(400).json({ error: 'No email in payload', received: Object.keys(b) });
     }
 
     const helpers = opsMyTasksHelpers;
@@ -473,12 +492,12 @@ app.post('/api/webhooks/podcast-booking', async (req, res) => {
     });
 
     if (result.duplicate) {
-      console.log(`[podcast-booking webhook] Duplicate booking for ${email} — skipped`);
+      console.log(`[podcast-booking webhook] Duplicate for ${email} — skipped`);
     } else {
-      console.log(`[podcast-booking webhook] Added ${name} (${email})${scheduledAt ? ' scheduled ' + scheduledAt : ''}`);
+      console.log(`[podcast-booking webhook] Added ${name} (${email})${scheduledAt ? ' @ ' + scheduledAt : ''}`);
     }
 
-    res.json({ ok: true, ...result });
+    res.json({ ok: true, parsed: { name, email, scheduledAt }, ...result });
   } catch (e) {
     console.error('[podcast-booking webhook]', e.message);
     res.status(500).json({ error: e.message });
