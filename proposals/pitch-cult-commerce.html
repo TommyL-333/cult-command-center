@@ -357,6 +357,14 @@
     .ask-breakdown{flex:1 1 260px;}
     .ask-breakdown p{font-size:.82rem;color:var(--light);line-height:1.78;}
     .ask-breakdown strong{color:var(--gold-lt);}
+    .ask-uses{display:flex;flex-direction:column;gap:5px;margin-top:14px;
+      border-top:1px solid rgba(201,168,76,.15);padding-top:14px;}
+    .ask-use{display:flex;justify-content:space-between;align-items:baseline;gap:12px;
+      font-size:.76rem;}
+    .ask-use-label{color:var(--light);}
+    .ask-use-amount{color:var(--gold-lt);font-weight:700;font-family:'Montserrat',sans-serif;
+      white-space:nowrap;}
+    .ask-use.legal .ask-use-label::before{content:'⚖ ';font-style:normal;}
 
     /* ──────────────────────────────────────────
        Slide 10: Vision (sunset)
@@ -1006,6 +1014,13 @@
       <div class="ask-breakdown">
         <p>The founding partner cohort launches <strong>November 2026</strong>. First brand retainers are already live. The aggregator infrastructure is deployed. This capital goes against a working system, not a hypothesis.</p>
         <p style="margin-top:10px;"><strong>Return structure: 1.5× payout</strong> earned through a <strong>5% revenue royalty</strong> until each investor has received 1.5× their principal. No equity dilution, no subsequent round required — the network is designed to fund its own growth.</p>
+        <div class="ask-uses">
+          <div class="ask-use"><span class="ask-use-label">Head of Product + CMO + Head of Partnerships</span><span class="ask-use-amount">~$240K</span></div>
+          <div class="ask-use"><span class="ask-use-label">Platform infrastructure &amp; tooling (6 mo)</span><span class="ask-use-amount">~$55K</span></div>
+          <div class="ask-use legal"><span class="ask-use-label">Legal &amp; tax compliance — law firm + accounting (2027 target)</span><span class="ask-use-amount">~$60K</span></div>
+          <div class="ask-use"><span class="ask-use-label">Sales, marketing &amp; partner activation</span><span class="ask-use-amount">~$85K</span></div>
+          <div class="ask-use"><span class="ask-use-label">Reserve / operations</span><span class="ask-use-amount">~$60K</span></div>
+        </div>
       </div>
     </div>
   </div>
