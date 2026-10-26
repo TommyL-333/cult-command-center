@@ -799,7 +799,10 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     <div style="background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:16px">
       <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px">
         <div style="font-size:18px;font-weight:800;letter-spacing:-.02em">Podcast Management</div>
-        <div style="font-size:11px;color:var(--muted)"><a href="https://cultcontent.cc/cult-commerce-podcast" target="_blank" style="color:var(--cyan)">cultcontent.cc/cult-commerce-podcast</a></div>
+        <div style="display:flex;align-items:center;gap:12px">
+          <a href="https://cultcontent.cc/cult-commerce-podcast" target="_blank" style="color:var(--cyan);font-size:11px">cultcontent.cc/cult-commerce-podcast</a>
+          <button class="vq-btn vq-approve" style="font-size:11px;padding:4px 10px" onclick="vpOpenAddGuest()">+ Add Guest</button>
+        </div>
       </div>
       <div id="vp-podcast-tabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
         <button class="vq-ftab active" id="vp-ptab-pending" onclick="vpPodcastFilter('pending')">Pending</button>
@@ -809,6 +812,33 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
         <button class="vq-ftab" id="vp-ptab-all" onclick="vpPodcastFilter('all')">All</button>
       </div>
       <div id="vp-podcast-list"><div class="vq-empty">Loading applications…</div></div>
+    </div>
+  </div>
+
+  <!-- Podcast: Add Guest manually modal -->
+  <div id="vp-addguest-modal" class="vq-modal-overlay" style="display:none" onclick="if(event.target===this)vpCloseAddGuest()">
+    <div class="vq-modal">
+      <h3>Add Guest Manually</h3>
+      <div class="fg" style="margin-bottom:10px"><label>Name <span style="color:var(--red)">*</span></label><input type="text" id="vpag-name" placeholder="Full name"/></div>
+      <div class="fg" style="margin-bottom:10px"><label>Email <span style="color:var(--red)">*</span></label><input type="email" id="vpag-email" placeholder="guest@email.com"/></div>
+      <div class="fg" style="margin-bottom:10px"><label>Status</label>
+        <select id="vpag-status" onchange="vpagToggleScheduleFields()">
+          <option value="pending">Pending</option>
+          <option value="approved">Approved</option>
+          <option value="scheduled">Scheduled</option>
+        </select>
+      </div>
+      <div id="vpag-schedule-fields" style="display:none">
+        <div class="fg" style="margin-bottom:10px"><label>Recording Date & Time</label><input type="datetime-local" id="vpag-dt"/></div>
+        <div class="fg" style="margin-bottom:10px"><label>Riverside Room URL</label><input type="url" id="vpag-riverside" placeholder="https://riverside.fm/studio/…"/></div>
+      </div>
+      <div class="fg" style="margin-bottom:10px"><label>Topics / Notes <span style="font-weight:400;color:var(--muted)">(optional)</span></label><textarea id="vpag-notes" style="min-height:56px" placeholder="What they want to talk about, how they booked, etc."></textarea></div>
+      <div id="vpag-note" style="font-size:11px;color:var(--muted);margin-bottom:10px;display:none">📧 Adding as Scheduled + Riverside URL will automatically send the guest the recording link.</div>
+      <div id="vpag-err" class="err" style="display:none;margin-bottom:8px"></div>
+      <div class="vq-modal-actions">
+        <button class="btn" onclick="vpCloseAddGuest()" style="background:none">Cancel</button>
+        <button class="btn" onclick="vpSubmitAddGuest()">Add Guest</button>
+      </div>
     </div>
   </div>
 
@@ -3122,7 +3152,10 @@ function vpPodCardHtml(a){
   }
   if(a.status==='scheduled'){
     actions='<button class="vq-btn vq-done" onclick="vpMarkRecorded(\\''+id+'\\')">✓ Recorded</button>';
-    if(a.riversideUrl)actions+='<a href="'+esc(a.riversideUrl)+'" target="_blank" class="vq-btn vq-drive">🎙 Open Riverside</a>';
+    if(a.riversideUrl){
+      actions+='<a href="'+esc(a.riversideUrl)+'" target="_blank" class="vq-btn vq-drive">🎙 Open Riverside</a>';
+      actions+='<button class="vq-btn" style="font-size:11px" onclick="vpResendRiversideEmail(\\''+id+'\\')">📧 Resend Link</button>';
+    }
   }
   if(a.status==='recorded'){
     actions='<button class="vq-btn vq-primary" onclick="vpEditScheduleEpisode(\\''+id+'\\')">✂️ Edit &amp; Schedule</button>'
@@ -3155,6 +3188,13 @@ function vpPodCardHtml(a){
 function vpApprovePod(id){vpSetPodStatus(id,'approved');}
 function vpRejectPod(id){if(confirm('Decline this application?'))vpSetPodStatus(id,'rejected');}
 function vpMarkRecorded(id){vpSetPodStatus(id,'recorded');}
+function vpResendRiversideEmail(id){
+  if(!confirm('Re-send the Riverside recording link to this guest?'))return;
+  fetch('/api/podcast-applications/'+id+'/send-riverside',{method:'POST',credentials:'include'})
+  .then(function(r){return r.json();}).then(function(d){
+    toast(d.ok?'📧 Riverside link sent!':'Error: '+(d.error||'Failed'));
+  }).catch(function(e){toast(''+e);});
+}
 function vpEditScheduleEpisode(id){
   // Open the schedule modal to set the clip release date / notes for Gilbert
   _vpSchedId=id;
@@ -3188,6 +3228,47 @@ function vpSchedulePod(id){
   document.getElementById('vp-schedule-modal').style.display='flex';
 }
 function vpCloseScheduleModal(){document.getElementById('vp-schedule-modal').style.display='none';_vpSchedId=null;}
+
+function vpOpenAddGuest(){
+  document.getElementById('vpag-name').value='';
+  document.getElementById('vpag-email').value='';
+  document.getElementById('vpag-status').value='pending';
+  document.getElementById('vpag-dt').value='';
+  document.getElementById('vpag-riverside').value='';
+  document.getElementById('vpag-notes').value='';
+  document.getElementById('vpag-err').style.display='none';
+  vpagToggleScheduleFields();
+  document.getElementById('vp-addguest-modal').style.display='flex';
+}
+function vpCloseAddGuest(){document.getElementById('vp-addguest-modal').style.display='none';}
+function vpagToggleScheduleFields(){
+  var s=document.getElementById('vpag-status').value;
+  var show=s==='scheduled';
+  document.getElementById('vpag-schedule-fields').style.display=show?'':'none';
+  document.getElementById('vpag-note').style.display=show?'block':'none';
+}
+function vpSubmitAddGuest(){
+  var name=document.getElementById('vpag-name').value.trim();
+  var email=document.getElementById('vpag-email').value.trim();
+  var status=document.getElementById('vpag-status').value;
+  var dt=document.getElementById('vpag-dt').value;
+  var riverside=document.getElementById('vpag-riverside').value.trim();
+  var notes=document.getElementById('vpag-notes').value.trim();
+  var errEl=document.getElementById('vpag-err');
+  if(!name||!email){errEl.textContent='Name and email are required';errEl.style.display='block';return;}
+  errEl.style.display='none';
+  var body={name:name,email:email,status:status,notes:notes};
+  if(status==='scheduled'&&dt)body.scheduledAt=new Date(dt).toISOString();
+  if(riverside)body.riversideUrl=riverside;
+  fetch('/api/podcast-applications/manual-add',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+  .then(function(r){return r.json();}).then(function(d){
+    if(d.ok){
+      vpCloseAddGuest();
+      toast('Guest added'+(status==='scheduled'&&riverside?' — Riverside link emailed':''));
+      loadPodcastApplications();
+    }else{errEl.textContent=d.error||'Failed';errEl.style.display='block';}
+  }).catch(function(e){errEl.textContent=''+e;errEl.style.display='block';});
+}
 function vpSubmitSchedule(){
   var dt=document.getElementById('vp-sched-dt').value;
   var riverside=document.getElementById('vp-sched-riverside').value||'';
@@ -5618,6 +5699,35 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
     res.sendStatus(204);
   });
 
+  // Admin manual add (bypasses application form, allows pre-setting status)
+  app.post('/api/podcast-applications/manual-add', requireAuth, jsonBody, (req, res) => {
+    try {
+      const callerEmail = (req.userEmail || '').toLowerCase();
+      if (!ADMIN_EMAILS.has(callerEmail)) return res.status(403).json({ error: 'Admin only' });
+      const { name, email, status, scheduledAt, riversideUrl, topics, notes } = req.body || {};
+      if (!name || !email) return res.status(400).json({ error: 'Name and email required' });
+      const all = readJsonFile(POD_FILE, []);
+      const id = 'pod_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+      all.push({
+        id, name: name.trim(), email: email.trim().toLowerCase(),
+        status: status || 'pending',
+        topics: (topics || '').trim(),
+        scheduleNotes: (notes || '').trim(),
+        ...(scheduledAt ? { scheduledAt } : {}),
+        ...(riversideUrl ? { riversideUrl } : {}),
+        submittedAt: Date.now(), addedManually: true,
+      });
+      writeJsonFile(POD_FILE, all);
+      res.json({ ok: true, id });
+
+      // If added directly as scheduled + has a Riverside URL, send the link email
+      if ((status === 'scheduled') && riversideUrl) {
+        const guest = all[all.length - 1];
+        sendPodcastScheduleEmail(guest).catch(e => console.error('[podcast manual add email]', e.message));
+      }
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
   // GET — admin only
   app.get('/api/podcast-applications', requireAuth, (req, res) => {
     try {
@@ -5639,6 +5749,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       if (idx < 0) return res.status(404).json({ error: 'Not found' });
       const updates = req.body || {};
       const wasApproved = all[idx].status !== 'approved' && updates.status === 'approved';
+      const wasScheduled = all[idx].status !== 'scheduled' && updates.status === 'scheduled';
       ['status','scheduledAt','riversideUrl','scheduleNotes'].forEach(k => {
         if (updates[k] !== undefined) all[idx][k] = updates[k];
       });
@@ -5650,6 +5761,11 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       if (wasApproved) {
         const guest = all[idx];
         sendPodcastApprovalEmail(guest).catch(err => console.error('[podcast email]', err.message));
+      }
+      // Fire-and-forget Riverside / schedule confirmation email
+      if (wasScheduled && all[idx].riversideUrl) {
+        const guest = all[idx];
+        sendPodcastScheduleEmail(guest).catch(err => console.error('[podcast schedule email]', err.message));
       }
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
@@ -5752,6 +5868,65 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
     await ghlPost('/conversations/messages', { type: 'Email', conversationId, contactId, subject: "You're approved — book your recording time", message });
     console.log(`[podcast email] Approval email sent to ${guest.email}`);
   }
+
+  async function sendPodcastScheduleEmail(guest) {
+    const GHL_KEY = process.env.GHL_API_KEY;
+    const GHL_LOC = process.env.GHL_LOC_ID || process.env.GHL_LOCATION_ID;
+    if (!GHL_KEY || !GHL_LOC) { console.warn('[podcast schedule email] GHL creds missing — skipping'); return; }
+    if (!guest.email) { console.warn('[podcast schedule email] No guest email — skipping'); return; }
+
+    const headers = { Authorization: `Bearer ${GHL_KEY}`, Version: '2021-07-28', 'Content-Type': 'application/json' };
+    const https = require('https');
+    function ghlPost(path, body) {
+      return new Promise((resolve, reject) => {
+        const data = JSON.stringify(body);
+        const opts = { hostname: 'services.leadconnectorhq.com', path, method: 'POST',
+          headers: { ...headers, 'Content-Length': Buffer.byteLength(data) } };
+        const req = https.request(opts, r => { let buf = ''; r.on('data', c => buf += c); r.on('end', () => { try { resolve(JSON.parse(buf)); } catch { resolve(buf); } }); });
+        req.on('error', reject); req.write(data); req.end();
+      });
+    }
+
+    const firstName = guest.name.split(' ')[0];
+    const lastName = guest.name.split(' ').slice(1).join(' ') || '';
+    const contactRes = await ghlPost('/contacts/', { locationId: GHL_LOC, firstName, lastName, email: guest.email });
+    const contactId = contactRes.contact?.id;
+    if (!contactId) { console.warn('[podcast schedule email] Could not upsert contact', contactRes); return; }
+    const convRes = await ghlPost('/conversations/', { locationId: GHL_LOC, contactId });
+    const conversationId = convRes.conversation?.id;
+    if (!conversationId) { console.warn('[podcast schedule email] Could not upsert conversation', convRes); return; }
+
+    const dateStr = guest.scheduledAt
+      ? new Date(guest.scheduledAt).toLocaleString('en-US', { weekday:'long', month:'long', day:'numeric', year:'numeric', hour:'numeric', minute:'2-digit', timeZoneName:'short' })
+      : 'your scheduled time';
+
+    const notesLine = guest.scheduleNotes ? `\n\nA note from Tommy:\n${guest.scheduleNotes}` : '';
+
+    const message = `Hi ${firstName},\n\nYour Cult Commerce Podcast recording session is confirmed!\n\n📅 Date & time: ${dateStr}\n\n🎙 Join here on recording day:\n${guest.riversideUrl}\n\nRiverside works in your browser — no downloads needed. Join 2–3 minutes early so we can do a quick audio check before we start.${notesLine}\n\nLooking forward to the conversation!\n\n— Tommy\nCult Commerce Podcast`;
+
+    await ghlPost('/conversations/messages', {
+      type: 'Email',
+      conversationId,
+      contactId,
+      subject: `Your podcast recording is confirmed — join link inside`,
+      message,
+    });
+    console.log(`[podcast schedule email] Riverside link sent to ${guest.email}`);
+  }
+
+  // ---------- ROUTE: POST /api/podcast-applications/:id/send-riverside ----------
+  app.post('/api/podcast-applications/:id/send-riverside', requireAuth, async (req, res) => {
+    try {
+      const callerEmail = (req.userEmail || '').toLowerCase();
+      if (!ADMIN_EMAILS.has(callerEmail)) return res.status(403).json({ error: 'Admin only' });
+      const all = readJsonFile(POD_FILE, []);
+      const guest = all.find(a => a.id === req.params.id);
+      if (!guest) return res.status(404).json({ error: 'Not found' });
+      if (!guest.riversideUrl) return res.status(400).json({ error: 'No Riverside URL set — schedule the guest first' });
+      await sendPodcastScheduleEmail(guest);
+      res.json({ ok: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
 
   // ---------- ROUTE: POST /api/podcast-applications/:id/process-episode ----------
   app.post('/api/podcast-applications/:id/process-episode', requireAuth, async (req, res) => {
