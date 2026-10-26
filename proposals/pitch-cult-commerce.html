@@ -252,14 +252,24 @@
     .pship-chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center;}
     .pship-chip{background:rgba(255,255,255,.03);border:1px solid var(--border);
       border-radius:8px;padding:6px 12px;font-size:.75rem;color:var(--light);}
+    a.pship-chip{text-decoration:none;cursor:pointer;transition:border-color .15s,background .15s;}
+    a.pship-chip:hover{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.22);}
     .pship-chip.tech{background:rgba(0,242,234,.04);border-color:rgba(0,242,234,.2);
       color:var(--teal);}
+    a.pship-chip.tech:hover{background:rgba(0,242,234,.09);}
     .pship-chip.mission{background:rgba(201,168,76,.05);border-color:rgba(201,168,76,.2);
       color:var(--gold-lt);}
+    a.pship-chip.mission:hover{background:rgba(201,168,76,.1);}
     .pship-chip.advocacy{background:rgba(123,47,255,.06);border-color:rgba(123,47,255,.25);
       color:var(--lavender);}
+    a.pship-chip.advocacy:hover{background:rgba(123,47,255,.12);}
     .pship-chip.retreat{background:rgba(0,242,234,.03);border-color:rgba(0,242,234,.14);
       color:rgba(0,242,234,.75);}
+    .pship-chip.network{background:rgba(184,153,255,.05);border-color:rgba(184,153,255,.2);
+      color:var(--lavender);}
+    a.pship-chip.network:hover{background:rgba(184,153,255,.1);}
+    .pship-chip.stat{background:rgba(201,168,76,.06);border-color:rgba(201,168,76,.25);
+      color:var(--gold-lt);font-weight:700;}
     .pship-advocacy-note{background:rgba(123,47,255,.05);border:1px solid rgba(123,47,255,.2);
       border-radius:10px;padding:13px 17px;margin-top:3px;max-width:760px;}
     .pship-advocacy-note p{font-size:.79rem;color:var(--lavender);line-height:1.65;}
@@ -830,38 +840,51 @@
       <div class="pship-tier">
         <div class="pship-tier-label">Technology Partners</div>
         <div class="pship-chips">
-          <span class="pship-chip tech">Reacher — Affiliate &amp; Creator Outreach</span>
-          <span class="pship-chip tech">Agentitive — AI Workflow Automation</span>
-          <span class="pship-chip tech">Buffer — Social Publishing</span>
-          <span class="pship-chip tech">GoHighLevel — CRM &amp; Marketing Automation</span>
+          <a class="pship-chip tech" href="https://reacher.email" target="_blank" rel="noopener">Reacher — Affiliate &amp; Creator Outreach</a>
+          <a class="pship-chip tech" href="https://agentative.ai" target="_blank" rel="noopener">Agentative — AI Workflow Automation</a>
+          <a class="pship-chip tech" href="https://buffer.com" target="_blank" rel="noopener">Buffer — Social Publishing</a>
+          <a class="pship-chip tech" href="https://gohighlevel.com" target="_blank" rel="noopener">GoHighLevel — CRM &amp; Marketing Automation</a>
         </div>
       </div>
 
       <div class="pship-tier">
         <div class="pship-tier-label">Agency &amp; Service Network</div>
         <div class="pship-chips">
-          <span class="pship-chip">Movement Retail — Amazon &amp; Marketplace</span>
-          <span class="pship-chip">Sovereign Growth — Meta &amp; Google Ads</span>
-          <span class="pship-chip">Positive Sparks — Google Ads &amp; DTC Growth</span>
-          <span class="pship-chip">Praskozorje — Email &amp; Retention</span>
-          <span class="pship-chip">Byteout — Shopify DTC Builds</span>
+          <a class="pship-chip" href="https://movementretail.com" target="_blank" rel="noopener">Movement Retail — Amazon &amp; Marketplace</a>
+          <a class="pship-chip" href="https://sovereigngrowth.org" target="_blank" rel="noopener">Sovereign Growth — Meta &amp; Google Ads</a>
+          <a class="pship-chip" href="https://positivesparks.com" target="_blank" rel="noopener">Positive Sparks — Google Ads &amp; DTC Growth</a>
+          <a class="pship-chip" href="https://praskozorje.agency" target="_blank" rel="noopener">Praskozorje — Email &amp; Retention</a>
+          <a class="pship-chip" href="https://byteout.com" target="_blank" rel="noopener">Byteout — Shopify DTC Builds</a>
           <span class="pship-chip">AI UGC — Omnichannel Content at Scale</span>
+          <span class="pship-chip" style="color:var(--muted);font-style:italic;">+ 30 agency founder relationships</span>
         </div>
       </div>
 
       <div class="pship-tier">
         <div class="pship-tier-label">Mission Partners</div>
         <div class="pship-chips">
-          <span class="pship-chip mission">Create On Purpose — Creator Nonprofit Incubator</span>
-          <span class="pship-chip mission">Social Currant — Creator × Nonprofit Matchmaking</span>
-          <span class="pship-chip mission">SSEL — Dollar Velocity Research</span>
+          <a class="pship-chip mission" href="https://createonpurpose.org" target="_blank" rel="noopener">Create On Purpose — Creator Nonprofit Incubator</a>
+          <a class="pship-chip mission" href="https://socialcurrant.co" target="_blank" rel="noopener">Social Currant — Creator × Nonprofit Matchmaking</a>
+          <a class="pship-chip mission" href="https://ssel.info" target="_blank" rel="noopener">SSEL — Dollar Velocity Research</a>
+          <a class="pship-chip mission" href="https://creatorsformentalhealth.com" target="_blank" rel="noopener">Creators For Mental Health</a>
+        </div>
+      </div>
+
+      <div class="pship-tier">
+        <div class="pship-tier-label">Creator Network</div>
+        <div class="pship-chips">
+          <a class="pship-chip network" href="https://outlandish.com" target="_blank" rel="noopener">Outlandish</a>
+          <a class="pship-chip network" href="https://socialarmy.com" target="_blank" rel="noopener">Social Army</a>
+          <a class="pship-chip network" href="https://socoagency.com" target="_blank" rel="noopener">SOCO</a>
+          <span class="pship-chip stat">20K+ Creators — Proprietary Database</span>
+          <span class="pship-chip stat">3M+ Creators — 3rd-Party Databases</span>
         </div>
       </div>
 
       <div class="pship-tier">
         <div class="pship-tier-label">Creator Advocacy &amp; Mental Health</div>
         <div class="pship-chips">
-          <span class="pship-chip advocacy">Creators Guild of America</span>
+          <a class="pship-chip advocacy" href="https://creatorsguild.org" target="_blank" rel="noopener">Creators Guild of America</a>
           <span class="pship-chip advocacy">Congressional Creators Caucus</span>
         </div>
         <div class="pship-advocacy-note">
