@@ -435,6 +435,56 @@ app.post('/api/webhooks/ghl-to-instantly', async (req, res) => {
   }
 });
 
+// GHL webhook: fired when someone books on the Cult Commerce Podcast calendar.
+// Configure in GHL: Automation → Workflow → trigger "Appointment Created" on
+// calendar a7WEIKVtjnIVihywwHcX → webhook action → POST this URL with ?secret=WEBHOOK_SECRET
+app.post('/api/webhooks/podcast-booking', async (req, res) => {
+  const secret = process.env.WEBHOOK_SECRET;
+  if (secret && req.query.secret !== secret) return res.status(401).json({ error: 'Unauthorized' });
+  try {
+    const b = req.body || {};
+    const custom = b.customData || b.custom_data || {};
+    const get = (...keys) => { for (const k of keys) { const v = b[k] || custom[k]; if (v) return String(v).trim(); } return ''; };
+
+    // GHL sends contact + appointment fields; try several key spellings
+    const firstName = get('first_name', 'firstName', 'contact.firstName');
+    const lastName  = get('last_name',  'lastName',  'contact.lastName');
+    const name = [firstName, lastName].filter(Boolean).join(' ') || get('name', 'full_name', 'contact.name') || 'Unknown';
+    const email = get('email', 'contact.email');
+    // Appointment start time: ISO string or epoch
+    const startRaw = get('start_time', 'startTime', 'appointment.startTime', 'selectedSlot');
+    const scheduledAt = startRaw ? (isNaN(Number(startRaw)) ? startRaw : new Date(Number(startRaw)).toISOString()) : null;
+
+    if (!email) {
+      console.warn('[podcast-booking webhook] No email in payload:', JSON.stringify(b).slice(0, 400));
+      return res.status(400).json({ error: 'No email in payload' });
+    }
+
+    const helpers = opsMyTasksHelpers;
+    if (!helpers || !helpers.addPodcastGuest) {
+      return res.status(503).json({ error: 'ops-my-tasks helpers not yet loaded' });
+    }
+
+    const result = helpers.addPodcastGuest({
+      name, email,
+      status: 'scheduled',
+      ...(scheduledAt ? { scheduledAt } : {}),
+      source: 'ghl-booking',
+    });
+
+    if (result.duplicate) {
+      console.log(`[podcast-booking webhook] Duplicate booking for ${email} — skipped`);
+    } else {
+      console.log(`[podcast-booking webhook] Added ${name} (${email})${scheduledAt ? ' scheduled ' + scheduledAt : ''}`);
+    }
+
+    res.json({ ok: true, ...result });
+  } catch (e) {
+    console.error('[podcast-booking webhook]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // Public routes — registered BEFORE requireAuth so no login needed
 app.use('/uploads', express.static(UPLOAD_DIR));
 

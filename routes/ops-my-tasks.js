@@ -5673,6 +5673,24 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
   // ---------- PODCAST APPLICATION ROUTES ----------
   const POD_FILE = nodePath.join(DATA_DIR, 'podcast-applications.json');
 
+  function addPodcastGuest({ name, email, status = 'pending', scheduledAt, riversideUrl, topics, notes, source } = {}) {
+    if (!name || !email) throw new Error('name and email required');
+    const all = readJsonFile(POD_FILE, []);
+    const dupe = all.find(a => a.email.toLowerCase() === email.toLowerCase().trim());
+    if (dupe) return { ok: true, id: dupe.id, duplicate: true };
+    const id = 'pod_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+    all.push({
+      id, name: name.trim(), email: email.trim().toLowerCase(), status,
+      topics: (topics || '').trim(), scheduleNotes: (notes || '').trim(),
+      ...(scheduledAt ? { scheduledAt } : {}),
+      ...(riversideUrl ? { riversideUrl } : {}),
+      ...(source ? { source } : {}),
+      submittedAt: Date.now(), addedManually: true,
+    });
+    writeJsonFile(POD_FILE, all);
+    return { ok: true, id };
+  }
+
   // Public POST — no auth required; called from cultcontent.cc application form
   app.post('/api/podcast-applications', jsonBody, (req, res) => {
     res.header('Access-Control-Allow-Origin', 'https://cultcontent.cc');
@@ -6562,6 +6580,8 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
     ownerIds,
     textVal,
     STATUS,
+    addPodcastGuest,
+    sendPodcastScheduleEmail,
   };
   // Real, already-maintained staff-to-brand knowledge (see the "Trip Visuals
   // and Made Right" commit for evidence this list is actively kept current) —
