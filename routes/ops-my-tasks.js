@@ -845,14 +845,14 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   <!-- Podcast schedule modal -->
   <div id="vp-schedule-modal" class="vq-modal-overlay" style="display:none" onclick="if(event.target===this)vpCloseScheduleModal()">
     <div class="vq-modal">
-      <h3>Schedule Episode</h3>
-      <div class="fg" style="margin-bottom:12px"><label>Recording Date & Time</label>
+      <h3 id="vp-sched-modal-title">Schedule Recording</h3>
+      <div class="fg" style="margin-bottom:12px"><label id="vp-sched-dt-label">Recording Date &amp; Time</label>
         <input type="datetime-local" id="vp-sched-dt"/>
       </div>
-      <div class="fg" style="margin-bottom:12px"><label>Riverside Room URL <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+      <div class="fg" id="vp-sched-riverside-wrap" style="margin-bottom:12px"><label>Riverside Room URL <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
         <input type="url" id="vp-sched-riverside" placeholder="https://riverside.fm/studio/…"/>
       </div>
-      <div class="fg" style="margin-bottom:12px"><label>Notes to guest <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+      <div class="fg" style="margin-bottom:12px"><label id="vp-sched-notes-label">Notes to guest <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
         <textarea id="vp-sched-notes" style="min-height:60px" placeholder="Anything they should prepare…"></textarea>
       </div>
       <div id="vp-sched-err" class="err" style="display:none;margin-bottom:8px"></div>
@@ -3126,6 +3126,20 @@ function loadPodcastApplications(){
     var pending=VPP_DATA.filter(function(a){return a.status==='pending';}).length;
     var badge=document.getElementById('vp-podcast-badge');
     if(badge){badge.textContent=pending;badge.style.display=pending?'':'none';}
+    // Auto-transition: scheduled guests whose recording time passed > 30min ago → recorded
+    var now=Date.now();
+    var toRecord=VPP_DATA.filter(function(a){
+      return a.status==='scheduled'&&a.scheduledAt&&(now-new Date(a.scheduledAt).getTime())>30*60*1000;
+    });
+    if(toRecord.length){
+      Promise.all(toRecord.map(function(a){
+        return fetch('/api/podcast-applications/'+a.id,{method:'PATCH',credentials:'include',
+          headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'recorded'})}).catch(function(){});
+      })).then(function(){
+        if(_vpPodFilter==='scheduled'||_vpPodFilter==='recorded'||_vpPodFilter==='all')loadPodcastApplications();
+      });
+      return;
+    }
     renderPodcastApplications();
   }).catch(function(e){document.getElementById('vp-podcast-list').innerHTML='<div class="vq-empty">Could not load applications</div>';});
 }
@@ -3158,7 +3172,7 @@ function vpPodCardHtml(a){
     }
   }
   if(a.status==='recorded'){
-    actions='<button class="vq-btn vq-primary" onclick="vpEditScheduleEpisode(\\''+id+'\\')">✂️ Edit &amp; Schedule</button>'
+    actions='<button class="vq-btn vq-primary" onclick="vpEditScheduleEpisode(\\''+id+'\\')">📅 Schedule Release</button>'
            +'<button class="vq-btn" style="background:rgba(0,242,234,.12);color:var(--cyan);border-color:rgba(0,242,234,.3)" onclick="vpProcessEpisode(\\''+id+'\\')">🎬 Process Episode</button>';
   }
   if(a.status==='processing'){
@@ -3170,7 +3184,8 @@ function vpPodCardHtml(a){
   }
   var availMap={'weekday-morning':'Weekday mornings','weekday-afternoon':'Weekday afternoons','weekday-evening':'Weekday evenings','weekend-morning':'Weekend mornings','weekend-afternoon':'Weekend afternoons'};
   var availLine=(a.availability&&a.availability.length)?'<div style="font-size:11px;color:var(--muted);margin-bottom:6px">🕐 Available: '+a.availability.map(function(v){return availMap[v]||v;}).join(', ')+'</div>':'';
-  var schedLine=a.scheduledAt?'<div style="font-size:11px;color:#f59e0b;margin-bottom:6px">📅 Recording: '+new Date(a.scheduledAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+'</div>':'';
+  var schedLine=a.scheduledAt?'<div style="font-size:11px;color:#f59e0b;margin-bottom:6px">🎙 Recording: '+new Date(a.scheduledAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+'</div>':'';
+  var releaseLine=a.releaseDate?'<div style="font-size:11px;color:#6be86b;margin-bottom:6px">📅 Release: '+new Date(a.releaseDate).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+'</div>':'';
   var topicLine=a.topics?'<div class="vp-pod-body">'+esc(a.topics)+'</div>':'';
   var pitchLine=a.pitch?'<div class="vp-pod-body" style="font-style:italic">"'+esc(a.pitch)+'"</div>':'';
   return '<div class="vp-pod-card">'
@@ -3179,7 +3194,7 @@ function vpPodCardHtml(a){
     +'<div class="vp-pod-handle">'+esc(a.email||'')+(a.social?' · '+esc(a.social):'')+(a.role?' · '+esc(a.role):'')+'</div></div>'
     +'<span class="vp-pod-status '+statusClass+'">'+statusLabel+'</span>'
     +'</div>'
-    +availLine+schedLine+topicLine+pitchLine
+    +availLine+schedLine+releaseLine+topicLine+pitchLine
     +'<div class="vp-pod-meta">Applied '+date+'</div>'
     +'<div class="vq-actions">'+actions+'</div>'
     +'</div>';
@@ -3196,14 +3211,17 @@ function vpResendRiversideEmail(id){
   }).catch(function(e){toast(''+e);});
 }
 function vpEditScheduleEpisode(id){
-  // Open the schedule modal to set the clip release date / notes for Gilbert
   _vpSchedId=id;
+  _vpSchedMode='release';
+  document.getElementById('vp-sched-modal-title').textContent='Schedule Episode Release';
+  document.getElementById('vp-sched-dt-label').textContent='Release Date & Time';
+  document.getElementById('vp-sched-notes-label').innerHTML='Notes to editor <span style="font-weight:400;color:var(--muted)">(optional)</span>';
+  document.getElementById('vp-sched-riverside-wrap').style.display='none';
   document.getElementById('vp-sched-err').style.display='none';
-  // Prefill datetime if already set
   var a=VPP_DATA.find(function(x){return x.id===id;});
-  document.getElementById('vp-sched-dt').value=a&&a.scheduledAt?new Date(a.scheduledAt).toISOString().slice(0,16):'';
-  document.getElementById('vp-sched-riverside').value=a&&a.riversideUrl?a.riversideUrl:'';
-  document.getElementById('vp-sched-notes').value=a&&a.notes?a.notes:'';
+  document.getElementById('vp-sched-dt').value=a&&a.releaseDate?new Date(a.releaseDate).toISOString().slice(0,16):'';
+  document.getElementById('vp-sched-riverside').value='';
+  document.getElementById('vp-sched-notes').value=a&&a.editorNotes?a.editorNotes:'';
   document.getElementById('vp-schedule-modal').style.display='flex';
 }
 function vpProcessEpisode(id){
@@ -3222,9 +3240,18 @@ function vpSetPodStatus(id,status){
 }
 
 var _vpSchedId=null;
+var _vpSchedMode='schedule'; // 'schedule' = set recording time; 'release' = set episode release date
 function vpSchedulePod(id){
   _vpSchedId=id;
+  _vpSchedMode='schedule';
+  document.getElementById('vp-sched-modal-title').textContent='Schedule Recording';
+  document.getElementById('vp-sched-dt-label').textContent='Recording Date & Time';
+  document.getElementById('vp-sched-notes-label').innerHTML='Notes to guest <span style="font-weight:400;color:var(--muted)">(optional)</span>';
+  document.getElementById('vp-sched-riverside-wrap').style.display='';
   document.getElementById('vp-sched-err').style.display='none';
+  document.getElementById('vp-sched-dt').value='';
+  document.getElementById('vp-sched-riverside').value='';
+  document.getElementById('vp-sched-notes').value='';
   document.getElementById('vp-schedule-modal').style.display='flex';
 }
 function vpCloseScheduleModal(){document.getElementById('vp-schedule-modal').style.display='none';_vpSchedId=null;}
@@ -3277,10 +3304,13 @@ function vpSubmitSchedule(){
   if(!dt){errEl.textContent='Please select a date and time';errEl.style.display='block';return;}
   if(!_vpSchedId)return;
   errEl.style.display='none';
+  var payload=_vpSchedMode==='release'
+    ?{releaseDate:new Date(dt).toISOString(),editorNotes:notes}
+    :{status:'scheduled',scheduledAt:new Date(dt).toISOString(),riversideUrl:riverside,scheduleNotes:notes};
   fetch('/api/podcast-applications/'+_vpSchedId,{method:'PATCH',credentials:'include',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({status:'scheduled',scheduledAt:new Date(dt).toISOString(),riversideUrl:riverside,scheduleNotes:notes})
+    body:JSON.stringify(payload)
   }).then(function(r){return r.json();}).then(function(d){
-    if(d.ok){vpCloseScheduleModal();toast('Episode scheduled!');loadPodcastApplications();}
+    if(d.ok){vpCloseScheduleModal();toast(_vpSchedMode==='release'?'Release date set!':'Recording scheduled!');loadPodcastApplications();}
     else{errEl.textContent=d.error||'Failed';errEl.style.display='block';}
   }).catch(function(e){errEl.textContent=''+e;errEl.style.display='block';});
 }
@@ -5772,7 +5802,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       const updates = req.body || {};
       const wasApproved = all[idx].status !== 'approved' && updates.status === 'approved';
       const wasScheduled = all[idx].status !== 'scheduled' && updates.status === 'scheduled';
-      ['status','scheduledAt','riversideUrl','scheduleNotes'].forEach(k => {
+      ['status','scheduledAt','riversideUrl','scheduleNotes','releaseDate','editorNotes'].forEach(k => {
         if (updates[k] !== undefined) all[idx][k] = updates[k];
       });
       all[idx].updatedAt = Date.now();
