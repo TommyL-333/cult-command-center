@@ -5780,6 +5780,33 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
+  // ---------- ROUTE: POST /api/webhooks/add-video-request ----------
+  // Webhook-secret authenticated shortcut for adding video queue entries
+  // without requiring a session (CF Access bypass covers /api/webhooks/*)
+  app.post('/api/webhooks/add-video-request', jsonBody, (req, res) => {
+    try {
+      const webhookSecret = process.env.WEBHOOK_SECRET;
+      const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+      const isAuth = webhookSecret && (bearer === webhookSecret || req.query.secret === webhookSecret);
+      if (!isAuth) return res.status(401).json({ error: 'Unauthorized' });
+      const { title, description, driveUrl, riversideEditId, priority, source, brand } = req.body || {};
+      if (!title || !title.trim()) return res.status(400).json({ error: 'Title is required' });
+      const all = readJsonFile(VR_FILE, []);
+      const id = 'vr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+      all.push({
+        id, submittedBy: 'claude@cultcontent.cc', submittedByName: 'Claude',
+        submittedAt: Date.now(), brand: (brand || '').trim(),
+        title: title.trim(), description: (description || '').trim(),
+        driveUrl: (driveUrl || '').trim(),
+        priority: priority || 'normal', status: 'pending', quantity: 1,
+        ...(riversideEditId ? { riversideEditId: riversideEditId.trim() } : {}),
+        ...(source ? { source: source.trim() } : {}),
+      });
+      writeJsonFile(VR_FILE, all);
+      res.json({ ok: true, id });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
   // GET — admin only
   app.get('/api/podcast-applications', requireAuth, (req, res) => {
     try {
