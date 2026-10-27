@@ -5570,11 +5570,18 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
 
   // ---------- ROUTE: PATCH /api/video-requests/:id ----------
   // Editor or admin can update status; submitter can update their own.
-  app.patch('/api/video-requests/:id', requireAuth, jsonBody, (req, res) => {
+  // Also accepts WEBHOOK_SECRET as Bearer token for agent-submitted patches.
+  app.patch('/api/video-requests/:id', jsonBody, (req, res) => {
     try {
-      const email = (req.userEmail || '').toLowerCase();
-      const isAdmin = ADMIN_EMAILS.has(email);
-      const isEditor = VIDEO_EDITOR_EMAILS.has(email);
+      const webhookSecret = process.env.WEBHOOK_SECRET;
+      const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+      const isWebhookAuth = webhookSecret && bearer === webhookSecret;
+      if (!isWebhookAuth && !req.session?.userEmail && !req.headers['cf-access-authenticated-user-email']) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+      const email = isWebhookAuth ? 'claude@cultcontent.cc' : (req.userEmail || '').toLowerCase();
+      const isAdmin = ADMIN_EMAILS.has(email) || isWebhookAuth;
+      const isEditor = VIDEO_EDITOR_EMAILS.has(email) || isWebhookAuth;
       const { id } = req.params;
       const all = readJsonFile(VR_FILE, []);
       const idx = all.findIndex(r => r.id === id);
