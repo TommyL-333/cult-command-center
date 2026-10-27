@@ -5814,6 +5814,30 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
+  // ---------- ROUTE: PATCH /api/webhooks/patch-video-request/:id ----------
+  // WEBHOOK_SECRET-authenticated status update — bypasses CF Access
+  app.patch('/api/webhooks/patch-video-request/:id', jsonBody, (req, res) => {
+    try {
+      const webhookSecret = process.env.WEBHOOK_SECRET;
+      const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+      if (!webhookSecret || bearer !== webhookSecret) return res.status(401).json({ error: 'Unauthorized' });
+      const { id } = req.params;
+      const all = readJsonFile(VR_FILE, []);
+      const idx = all.findIndex(r => r.id === id);
+      if (idx < 0) return res.status(404).json({ error: 'Not found' });
+      const { status, notes, draftUrl, driveUrl, riversideEditId } = req.body || {};
+      if (status) all[idx].status = status;
+      if (notes !== undefined) all[idx].notes = notes;
+      if (draftUrl !== undefined) all[idx].draftUrl = draftUrl;
+      if (driveUrl !== undefined) all[idx].driveUrl = driveUrl;
+      if (riversideEditId !== undefined) all[idx].riversideEditId = riversideEditId;
+      if (status === 'done') { all[idx].revisionsRequested = false; all[idx].revisionNotes = null; }
+      all[idx].updatedAt = Date.now();
+      writeJsonFile(VR_FILE, all);
+      res.json({ ok: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
   // GET — admin only
   app.get('/api/podcast-applications', requireAuth, (req, res) => {
     try {
