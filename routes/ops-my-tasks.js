@@ -5718,10 +5718,14 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
   });
 
   // Admin manual add (bypasses application form, allows pre-setting status)
-  app.post('/api/podcast-applications/manual-add', requireAuth, jsonBody, (req, res) => {
+  // Accepts CF Access session (requireAuth) OR WEBHOOK_SECRET bearer/query param
+  app.post('/api/podcast-applications/manual-add', jsonBody, (req, res) => {
     try {
+      const webhookSecret = process.env.WEBHOOK_SECRET;
+      const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+      const isWebhookAuth = webhookSecret && (bearer === webhookSecret || req.query.secret === webhookSecret);
       const callerEmail = (req.userEmail || '').toLowerCase();
-      if (!ADMIN_EMAILS.has(callerEmail)) return res.status(403).json({ error: 'Admin only' });
+      if (!isWebhookAuth && !ADMIN_EMAILS.has(callerEmail)) return res.status(403).json({ error: 'Admin only' });
       const { name, email, status, scheduledAt, riversideUrl, topics, notes } = req.body || {};
       if (!name || !email) return res.status(400).json({ error: 'Name and email required' });
       const all = readJsonFile(POD_FILE, []);
