@@ -727,6 +727,12 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     <div class="fr full"><div class="fg"><label>Notes <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
       <textarea id="vq-desc" style="min-height:55px" placeholder="Any direction for the editor — hook ideas, vibe, must-include moments…"></textarea>
     </div></div>
+    <div class="fr full"><div class="fg" style="margin-top:4px">
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none">
+        <input type="checkbox" id="vq-shoppable" style="accent-color:var(--cyan);width:16px;height:16px;flex-shrink:0"/>
+        <span style="font-size:13px;font-weight:600">Is this video shoppable? <span style="font-size:11px;font-weight:400;color:var(--muted)">(TikTok Shop affiliate — posts manually in-app)</span></span>
+      </label>
+    </div></div>
     <div id="vq-status-banner" style="display:none;margin-top:10px;padding:10px 14px;border-radius:8px;font-size:13px;line-height:1.5;word-break:break-word"></div>
     <div style="display:flex;justify-content:flex-end;margin-top:14px">
       <button class="btn" onclick="submitVideoRequest()">Submit</button>
@@ -2575,7 +2581,29 @@ function vqCardHtml(r){
 
   else if(r.status==='done'){
     var draftLink=r.draftUrl?'<a href="'+esc(r.draftUrl)+'" target="_blank" class="vq-btn vq-drive">📄 View Draft</a>':'<span style="font-size:11px;color:var(--muted)">No draft yet</span>';
-    if(VQ_IS_ADMIN){
+    if(r.shoppable&&VQ_IS_ADMIN){
+      var shoppableForm='<div class="vq-inline-form" id="vqform-'+id+'" style="margin-top:10px">'
+        +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;background:rgba(0,242,234,.06);border:1px solid rgba(0,242,234,.2);border-radius:8px;padding:8px 10px">'
+        +'<span style="font-size:14px">🛒</span>'
+        +'<span style="font-size:11px;font-weight:700;color:var(--cyan)">TikTok Shop — Manual Post</span>'
+        +'<span style="font-size:10px;color:var(--muted);margin-left:4px">post directly in TikTok app</span>'
+        +'</div>'
+        +'<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px">Caption</div>'
+        +'<textarea rows="2" placeholder="Write your caption…" id="vqcap-'+id+'" style="width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:7px 10px;color:var(--txt);font-size:12px;font-family:inherit;resize:vertical;margin-bottom:10px">'+esc(r.caption||'')+'</textarea>'
+        +'<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">TikTok status</div>'
+        +'<div style="display:flex;gap:6px;margin-bottom:12px">'
+        +'<button class="vq-btn '+((!r.tiktokShopStatus||r.tiktokShopStatus==='scheduled')?'vq-schedule':'')+'" onclick="vqSetTiktokStatus(\\''+id+'\\',\\'scheduled\\')" id="vqtts-sched-'+id+'">📅 Scheduled</button>'
+        +'<button class="vq-btn '+(r.tiktokShopStatus==='posting'?'vq-primary':'')+'" onclick="vqSetTiktokStatus(\\''+id+'\\',\\'posting\\')" id="vqtts-post-'+id+'">📲 Posting Now</button>'
+        +'</div>'
+        +'<button class="vq-btn vq-schedule" onclick="vqApproveShoppable(\\''+id+'\\',this)">✓ Move to Scheduled</button>'
+        +'<div style="margin-top:16px;padding-top:14px;border-top:1px solid rgba(255,255,255,.07)">'
+        +'<div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Request Revision</div>'
+        +'<textarea rows="2" placeholder="Describe what needs to change…" id="vqrev-'+id+'" style="width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;padding:7px 10px;color:var(--txt);font-size:12px;font-family:inherit;resize:vertical;margin-bottom:6px"></textarea>'
+        +'<button class="vq-btn" style="background:rgba(251,191,36,.12);border-color:rgba(251,191,36,.3);color:#fbbf24" onclick="vqRequestRevision(\\''+id+'\\')">↩ Request Revision</button>'
+        +'</div>'
+        +'</div>';
+      body='<div class="vq-actions">'+draftLink+deleteBtn+'</div>'+shoppableForm;
+    } else if(VQ_IS_ADMIN){
       var savedCap=esc(r.caption||'');
       var savedSched=toLocalInputDT(r.scheduledAt);
       var savedVideoTitle=esc(r.videoTitle||'');
@@ -2633,6 +2661,35 @@ function vqCardHtml(r){
   }
 
   else if(r.status==='approved'){
+    var draftLink2=r.draftUrl?'<a href="'+esc(r.draftUrl)+'" target="_blank" class="vq-btn vq-drive">📄 Draft</a>':'';
+    if(r.shoppable){
+      var tsStatus=r.tiktokShopStatus||'scheduled';
+      var tsLabel=tsStatus==='posting'?'📲 Posting Now':'📅 Scheduled';
+      var tsBadgeColor=tsStatus==='posting'?'rgba(0,242,234,.15)':'rgba(59,130,246,.12)';
+      var tsBorderColor=tsStatus==='posting'?'rgba(0,242,234,.4)':'rgba(59,130,246,.3)';
+      var tsBadge='<span style="background:'+tsBadgeColor+';border:1px solid '+tsBorderColor+';border-radius:10px;padding:2px 9px;font-size:10px;font-weight:700;color:'+(tsStatus==='posting'?'var(--cyan)':'#60a5fa')+'">'+tsLabel+'</span>';
+      var tsToggle=VQ_IS_ADMIN
+        ?'<div style="display:flex;gap:6px;margin-top:8px">'
+          +'<button class="vq-btn '+(tsStatus==='scheduled'?'vq-schedule':'')+'" onclick="vqSetTiktokStatus(\\''+id+'\\',\\'scheduled\\')" style="font-size:11px">📅 Scheduled</button>'
+          +'<button class="vq-btn '+(tsStatus==='posting'?'vq-primary':'')+'" onclick="vqSetTiktokStatus(\\''+id+'\\',\\'posting\\')" style="font-size:11px">📲 Posting Now</button>'
+          +'</div>':''
+      var markPostedBtn=VQ_IS_ADMIN?'<button class="vq-btn vq-mark-posted" onclick="vqMarkPosted(\\''+id+'\\')" style="font-size:11px;margin-top:8px">📤 Mark Posted</button>':'';
+      body='<div style="font-size:11px;color:var(--muted);margin-bottom:8px;line-height:1.7">'
+        +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><span style="font-size:14px">🛒</span><span style="font-weight:700;color:var(--txt)">TikTok Shop</span>'+tsBadge+'</div>'
+        +(r.caption?'<strong style="color:var(--txt)">Caption:</strong> '+esc(r.caption.slice(0,80))+(r.caption.length>80?'…':''):'')
+        +'</div>'
+        +'<div class="vq-actions" style="flex-wrap:wrap;gap:6px">'+draftLink2+'</div>'
+        +tsToggle+markPostedBtn;
+      return '<div class="vq-card">'
+        +'<div class="vq-card-top">'+(r.brand?'<span class="vq-brand-chip">'+esc(r.brand)+'</span>':'')
+        +(r.priority==='high'?'<span class="vq-prio-chip vq-prio-high">High</span>':'')
+        +'<span class="vq-brand-chip" style="background:rgba(0,242,234,.08);border-color:rgba(0,242,234,.25);color:var(--cyan)">🛒 Shoppable</span>'
+        +'</div>'
+        +'<div class="vq-title">'+esc(r.title||'Untitled')+'</div>'
+        +'<div class="vq-meta">'+date+'</div>'
+        +body
+        +'</div>';
+    }
     var schedTime=r.scheduledAt?new Date(r.scheduledAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZoneName:'short'}):'—';
     // Show only the channels that actually got scheduled in Buffer
     var scheduledChannels=(r.bufferPosts||[]).map(function(p){
@@ -2640,7 +2697,6 @@ function vqCardHtml(r){
       return ch?ch.name:p.channelId;
     });
     var platDisplay=scheduledChannels.length?scheduledChannels.join(', '):(r.platforms||[]).join(', ')||'—';
-    var draftLink2=r.draftUrl?'<a href="'+esc(r.draftUrl)+'" target="_blank" class="vq-btn vq-drive">📄 Draft</a>':'';
     var errDetail=r.bufferErrors&&r.bufferErrors.length
       ?'<details style="margin-top:6px"><summary style="font-size:10px;color:#f59e0b;cursor:pointer">⚠ '+r.bufferErrors.length+' channel(s) failed — click for details</summary>'
         +'<div style="font-size:10px;color:rgba(251,191,36,.75);margin-top:4px;line-height:1.6;white-space:pre-wrap">'+esc(r.bufferErrors.join('\\n'))+'</div></details>':''
@@ -2690,6 +2746,7 @@ function vqCardHtml(r){
   return '<div class="vq-card">'
     +'<div class="vq-card-top">'+(r.brand?'<span class="vq-brand-chip">'+esc(r.brand)+'</span>':'')
     +(r.priority==='high'?'<span class="vq-prio-chip vq-prio-high">High</span>':'')
+    +(r.shoppable?'<span class="vq-brand-chip" style="background:rgba(0,242,234,.08);border-color:rgba(0,242,234,.25);color:var(--cyan)">🛒 Shoppable</span>':'')
     +'</div>'
     +'<div class="vq-title">'+esc(r.title||'Untitled')+'</div>'
     +(r.status==='pending'&&(r.quantity||1)>1?'<div style="display:inline-flex;align-items:center;gap:4px;background:rgba(0,242,234,.1);border:1px solid rgba(0,242,234,.2);border-radius:10px;padding:2px 8px;font-size:10px;font-weight:700;color:var(--cyan);margin-bottom:4px">📦 '+(r.quantity)+' videos</div>':'')
@@ -2712,6 +2769,42 @@ function vqOpenBufferModal(id){
 function vqCloseBufferModal(){
   document.getElementById('vq-buffer-modal').style.display='none';
   _vqBufferId=null;
+}
+function vqApproveShoppable(id,btn){
+  var caption=(document.getElementById('vqcap-'+id)||{}).value||'';
+  var status=document.getElementById('vqtts-post-'+id)&&document.getElementById('vqtts-post-'+id).classList.contains('vq-primary')?'posting':'scheduled';
+  if(btn){btn.disabled=true;btn.textContent='Moving…';}
+  fetch('/api/video-requests/'+id,{method:'PATCH',credentials:'include',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({status:'approved',caption:caption,tiktokShopStatus:status,platforms:['TikTok Shop']})})
+  .then(function(r){return r.json();}).then(function(d){
+    if(btn){btn.disabled=false;btn.textContent='✓ Move to Scheduled';}
+    if(d.ok){toast('Moved to Scheduled ✓');loadVideoQueue();}
+    else toast('Error: '+(d.error||'Server error'),8000);
+  }).catch(function(e){if(btn){btn.disabled=false;btn.textContent='✓ Move to Scheduled';}toast('Error: '+e,8000);});
+}
+function vqSetTiktokStatus(id,status){
+  var schedBtn=document.getElementById('vqtts-sched-'+id);
+  var postBtn=document.getElementById('vqtts-post-'+id);
+  if(schedBtn&&postBtn){
+    schedBtn.className='vq-btn'+(status==='scheduled'?' vq-schedule':'');
+    postBtn.className='vq-btn'+(status==='posting'?' vq-primary':'');
+  }
+  // If card is already in approved state, persist immediately
+  var r=VQ_DATA.find(function(x){return x.id===id;});
+  if(r&&r.status==='approved'){
+    fetch('/api/video-requests/'+id,{method:'PATCH',credentials:'include',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({tiktokShopStatus:status})})
+    .then(function(res){return res.json();}).then(function(d){if(d.ok)loadVideoQueue();});
+  }
+}
+function vqMarkPosted(id){
+  if(!confirm('Mark this TikTok Shop video as posted?'))return;
+  fetch('/api/video-requests/'+id,{method:'PATCH',credentials:'include',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({status:'posted'})})
+  .then(function(r){return r.json();}).then(function(d){
+    if(d.ok){toast('Marked as Posted ✓');loadVideoQueue();}
+    else toast('Error: '+(d.error||'Server error'),8000);
+  });
 }
 function vqSubmitBuffer(){
   var caption=(document.getElementById('vq-buf-caption').value||'').trim();
@@ -3345,9 +3438,10 @@ function submitVideoRequest(){
   }
   var desc=(document.getElementById('vq-desc').value||'').trim();
   var qty=parseInt((document.getElementById('vq-qty')||{}).value||'1',10)||1;
+  var shoppable=!!(document.getElementById('vq-shoppable')&&document.getElementById('vq-shoppable').checked);
   var requests=doneFiles.length
-    ?doneFiles.map(function(f){return {title:f.name,description:desc,driveUrl:f.url,priority:'normal',quantity:1};})
-    :[{title:'Footage '+new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}),description:desc,driveUrl:pastedUrl,priority:'normal',quantity:qty}];
+    ?doneFiles.map(function(f){return {title:f.name,description:desc,driveUrl:f.url,priority:'normal',quantity:1,shoppable:shoppable};})
+    :[{title:'Footage '+new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'}),description:desc,driveUrl:pastedUrl,priority:'normal',quantity:qty,shoppable:shoppable}];
   var total=requests.length;
   if(btn){btn.disabled=true;btn.textContent='Submitting…';}
   function done(err){
@@ -5537,7 +5631,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
         'becca@cultcontent.cc':'Becca', 'jenna@cultcontent.cc':'Jenna',
         'gourab@cultcontent.cc':'Gourab', 'tommy@cultcontent.cc':'Tommy',
         'claude@cultcontent.cc':'Claude' };
-      const { brand, title, description, script, driveUrl, priority, dueDate, quantity, clientBrandId, source } = req.body || {};
+      const { brand, title, description, script, driveUrl, priority, dueDate, quantity, clientBrandId, source, shoppable } = req.body || {};
       if (!title || !title.trim()) return res.status(400).json({ error: 'Title is required' });
       // Portal agent submittedBy should be the brand login email, not claude@
       const resolvedEmail = (isAgent && req.body.submittedBy) ? req.body.submittedBy : email;
@@ -5550,6 +5644,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
         script: (script || '').trim(), driveUrl: (driveUrl || '').trim(),
         priority: priority || 'normal', dueDate: dueDate || '', status: 'pending',
         quantity: Math.min(Math.max(parseInt(quantity, 10) || 1, 1), 10),
+        ...(shoppable ? { shoppable: true } : {}),
         ...(clientBrandId ? { clientBrandId: clientBrandId.trim() } : {}),
         ...(source ? { source: source.trim() } : {}),
       });
@@ -5590,7 +5685,8 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       if (!isAdmin && !isEditor && r.submittedBy !== email)
         return res.status(403).json({ error: 'Not allowed' });
       const { status, notes, draftUrl, caption, videoTitle, platforms, scheduledAt, postedLinks,
-              revisionNotes, revisionsRequested, revisionRequestedAt, channelSchedules, bufferPosts } = req.body || {};
+              revisionNotes, revisionsRequested, revisionRequestedAt, channelSchedules, bufferPosts,
+              tiktokShopStatus } = req.body || {};
       if (notes !== undefined) r.notes = notes;
       if (draftUrl !== undefined) r.draftUrl = draftUrl;
       if (caption !== undefined) r.caption = caption;
@@ -5600,6 +5696,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       if (postedLinks !== undefined) r.postedLinks = postedLinks;
       if (channelSchedules !== undefined) r.channelSchedules = channelSchedules;
       if (bufferPosts !== undefined) r.bufferPosts = bufferPosts;
+      if (tiktokShopStatus !== undefined) r.tiktokShopStatus = tiktokShopStatus;
       if (revisionNotes !== undefined) r.revisionNotes = revisionNotes;
       if (revisionsRequested !== undefined) r.revisionsRequested = revisionsRequested;
       if (revisionRequestedAt !== undefined) r.revisionRequestedAt = revisionRequestedAt;
