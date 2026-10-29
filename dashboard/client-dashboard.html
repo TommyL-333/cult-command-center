@@ -699,11 +699,11 @@
   .vm-card-drive a { color:#00f2ea; text-decoration:none; }
   .vm-card-drive a:hover { text-decoration:underline; }
   .vm-status-pill { display:inline-block; font-size:.62rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em; padding:2px 8px; border-radius:20px; margin-bottom:6px; }
-  .vm-s-pending    { background:rgba(100,116,139,.15); color:#94a3b8; border:1px solid rgba(100,116,139,.25); }
-  .vm-s-in-progress{ background:rgba(201,168,76,.12); color:#c9a84c; border:1px solid rgba(201,168,76,.3); }
-  .vm-s-done       { background:rgba(0,242,234,.1);  color:#00f2ea; border:1px solid rgba(0,242,234,.25); }
-  .vm-s-approved   { background:rgba(0,210,122,.1);  color:#00d27a; border:1px solid rgba(0,210,122,.3); }
-  .vm-s-posted     { background:rgba(0,210,122,.2);  color:#00d27a; border:1px solid rgba(0,210,122,.4); }
+  .vm-s-pending     { background:rgba(100,116,139,.15); color:#94a3b8; border:1px solid rgba(100,116,139,.25); }
+  .vm-s-in-progress { background:rgba(201,168,76,.12);  color:#c9a84c; border:1px solid rgba(201,168,76,.3); }
+  .vm-s-done        { background:rgba(0,242,234,.1);    color:#00f2ea; border:1px solid rgba(0,242,234,.25); }
+  .vm-s-approved    { background:rgba(0,210,122,.1);    color:#00d27a; border:1px solid rgba(0,210,122,.3); }
+  .vm-s-posted      { background:rgba(0,210,122,.2);    color:#00d27a; border:1px solid rgba(0,210,122,.4); }
   .vm-empty-col { font-size:.75rem; color:#2a2540; font-style:italic; padding:8px 10px; }
   .vm-loading { text-align:center; padding:40px; color:#64748b; font-size:.84rem; }
   .vm-drive-list { display:flex; flex-direction:column; gap:8px; margin-top:12px; }
@@ -711,20 +711,19 @@
   .vm-drive-item a { color:#00f2ea; text-decoration:none; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .vm-drive-item a:hover { text-decoration:underline; }
   .vm-drive-badge { font-size:.65rem; font-weight:700; text-transform:uppercase; background:rgba(0,242,234,.08); color:#64748b; border:1px solid #2a2540; border-radius:4px; padding:2px 6px; white-space:nowrap; }
-  .vm-upload-zone { border:1.5px dashed #2a2540; border-radius:10px; padding:32px 20px; text-align:center; color:#64748b; font-size:.84rem; cursor:pointer; transition:border-color .15s; margin-top:16px; }
+  .vm-upload-zone { border:1.5px dashed #2a2540; border-radius:10px; padding:28px 20px; text-align:center; color:#64748b; font-size:.84rem; cursor:pointer; transition:border-color .15s; margin-top:16px; }
   .vm-upload-zone:hover { border-color:#00f2ea; color:#94a3b8; }
-  .vm-gen-card { background:#1c1828; border:1px solid #2a2540; border-radius:14px; padding:28px 26px; margin-bottom:32px; }
-  .vm-gen-card h2 { font-size:1.05rem; font-weight:700; color:#e2e8f0; margin-bottom:6px; }
-  .vm-gen-card p { font-size:.8rem; color:#64748b; margin-bottom:22px; }
-  .vm-type-toggle { display:flex; gap:8px; margin-bottom:20px; }
+  .vm-gen-section { background:rgba(0,0,0,.2); border:1px solid #2a2540; border-radius:12px; padding:22px; margin-top:28px; }
+  .vm-gen-section h3 { font-size:.9rem; font-weight:700; color:#e2e8f0; margin-bottom:4px; }
+  .vm-gen-section > p { font-size:.78rem; color:#64748b; margin-bottom:18px; }
+  .vm-type-toggle { display:flex; gap:8px; margin-bottom:16px; }
   .vm-type-btn { background:none; border:1px solid #2a2540; border-radius:8px; color:#64748b; font-size:.82rem; font-weight:600; padding:8px 18px; cursor:pointer; font-family:inherit; transition:all .15s; }
   .vm-type-btn.active { background:rgba(0,242,234,.1); border-color:rgba(0,242,234,.3); color:#00f2ea; }
-  .vm-coming-soon { display:inline-block; font-size:.65rem; font-weight:700; text-transform:uppercase; background:rgba(201,168,76,.12); color:#c9a84c; border:1px solid rgba(201,168,76,.3); border-radius:4px; padding:2px 7px; margin-left:8px; vertical-align:middle; }
-  .vm-price-note { font-size:.78rem; color:#c9a84c; font-weight:600; margin-top:8px; }
+  .vm-coming-tag { font-size:.65rem; font-weight:700; text-transform:uppercase; background:rgba(201,168,76,.12); color:#c9a84c; border:1px solid rgba(201,168,76,.3); border-radius:4px; padding:2px 7px; margin-left:8px; vertical-align:middle; }
 </style>
 <div class="vm-wrap">
   <h1 style="font-size:1.3rem;font-weight:700;color:#e2e8f0;margin-bottom:6px;">Video Management</h1>
-  <p style="font-size:.82rem;color:#64748b;margin-bottom:32px;">Request video edits, manage your assets, and generate new creative — all in one place.</p>
+  <p style="font-size:.82rem;color:#64748b;margin-bottom:32px;">Request video edits, manage your assets, and generate new creative.</p>
 
   <div class="vm-card-outer">
     <div class="vm-subtab-bar">
@@ -732,13 +731,14 @@
       <button class="vm-subtab-btn" id="vmstbtn-assets" onclick="vmSwitchSubTab('assets')">Asset Management</button>
     </div>
 
+    <!-- Request Videos pane -->
     <div class="vm-subtab-pane" id="vmSub-request">
-      <h2 style="font-size:1.0rem;font-weight:700;color:#e2e8f0;margin-bottom:6px;">Request Videos</h2>
-      <p style="font-size:.8rem;color:#64748b;margin-bottom:22px;">$10 per video edit &middot; Captions, hook optimization, delivered within 5 business days.</p>
+      <h2 style="font-size:1.0rem;font-weight:700;color:#e2e8f0;margin-bottom:6px;">Request a Video Edit</h2>
+      <p style="font-size:.8rem;color:#64748b;margin-bottom:22px;">$10 per video &middot; Captions, hook optimization, delivered within 5 business days.</p>
       <div class="vm-form-grid">
         <div class="vm-field full">
           <label class="vm-label">Google Drive Link *</label>
-          <input class="vm-input" id="vmDriveUrl" type="url" placeholder="https://drive.google.com/drive/folders/â¦">
+          <input class="vm-input" id="vmDriveUrl" type="url" placeholder="https://drive.google.com/drive/folders/...">
         </div>
         <div class="vm-field">
           <label class="vm-label">Request Title</label>
@@ -756,15 +756,16 @@
         </div>
         <div class="vm-field full">
           <label class="vm-label">Brief / Notes</label>
-          <textarea class="vm-textarea" id="vmDesc" placeholder="Product being featured, hook style, any specific instructions for the editorâ¦"></textarea>
+          <textarea class="vm-textarea" id="vmDesc" placeholder="Product being featured, hook style, any specific instructions for the editor..."></textarea>
         </div>
       </div>
-      <button class="vm-submit-btn" id="vmSubmitBtn" onclick="vmSubmit()">Submit Request â</button>
+      <button class="vm-submit-btn" id="vmSubmitBtn" onclick="vmSubmit()">Submit Request</button>
       <div class="vm-submit-error" id="vmSubmitError"></div>
+
       <div style="margin-top:28px;">
         <div class="vm-section-label">Your Requests</div>
         <div id="vmPipelineWrap">
-          <div class="vm-loading" id="vmLoading">Loading your requestsâ¦</div>
+          <div class="vm-loading" id="vmLoading">Loading...</div>
           <div class="vm-pipeline" id="vmPipeline" style="display:none">
             <div><div class="vm-col-header">Pending</div><div class="vm-col-body" id="vmCol-pending"></div></div>
             <div><div class="vm-col-header">In Progress</div><div class="vm-col-body" id="vmCol-in-progress"></div></div>
@@ -776,71 +777,62 @@
       </div>
     </div>
 
+    <!-- Asset Management pane -->
     <div class="vm-subtab-pane" id="vmSub-assets" style="display:none">
       <h2 style="font-size:1.0rem;font-weight:700;color:#e2e8f0;margin-bottom:6px;">Asset Management</h2>
-      <p style="font-size:.8rem;color:#64748b;margin-bottom:20px;">All Drive folders shared with the team, plus any additional assets you upload.</p>
+      <p style="font-size:.8rem;color:#64748b;margin-bottom:20px;">Drive folders shared with the team are collected here automatically. Add extra links or upload files directly.</p>
+
       <div class="vm-section-label">Drive Links</div>
-      <div style="display:flex;gap:8px;align-items:stretch;margin-bottom:8px;">
-        <input class="vm-input" id="vmAssetDriveUrl" type="url" placeholder="https://drive.google.com/drive/folders/â¦" style="flex:1">
-        <button class="vm-submit-btn" style="margin-top:0;padding:9px 18px;white-space:nowrap;" onclick="vmAddDriveLink()">Add Link</button>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+        <input class="vm-input" id="vmAssetDriveUrl" type="url" placeholder="https://drive.google.com/drive/folders/..." style="flex:1">
+        <button class="vm-submit-btn" style="margin-top:0;padding:9px 18px;white-space:nowrap;" onclick="vmAddDriveLink()">Add</button>
       </div>
-      <p style="font-size:.75rem;color:#64748b;margin-bottom:16px;">Drive links are also automatically collected from your video requests.</p>
+      <p style="font-size:.72rem;color:#64748b;margin-bottom:12px;">Links are also collected automatically from every video request you submit.</p>
       <div id="vmDriveLinks" class="vm-drive-list">
-        <div style="font-size:.82rem;color:#2a2540;font-style:italic;padding:8px 0;">Loading drive linksâ¦</div>
+        <div style="font-size:.82rem;color:#3a3555;font-style:italic;padding:8px 0;">No Drive links yet.</div>
       </div>
+
       <div style="margin-top:28px;">
-        <div class="vm-section-label">Direct File Upload</div>
-        <div class="vm-upload-zone" onclick="document.getElementById('vmAssetFileInput').click()">
-          <div style="font-size:1.5rem;margin-bottom:8px;">ð</div>
-          <div style="font-weight:600;color:#e2e8f0;margin-bottom:4px;">Upload images or videos</div>
-          <div style="font-size:.75rem;">Click to browse â PNG, JPG, MP4, MOV</div>
-        </div>
+        <div class="vm-section-label">Upload Files</div>
+        <label class="vm-upload-zone" for="vmAssetFileInput">
+          <div style="font-size:.9rem;font-weight:600;color:#e2e8f0;margin-bottom:4px;">Click to upload images or video clips</div>
+          <div style="font-size:.75rem;">PNG, JPG, MP4, MOV</div>
+        </label>
         <input type="file" id="vmAssetFileInput" accept="image/*,video/*" multiple style="display:none" onchange="vmHandleAssetUpload(this)">
-        <div id="vmAssetUploadStatus" style="font-size:.78rem;color:var(--muted);margin-top:8px;min-height:14px;"></div>
-        <div id="vmUploadedAssets" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;"></div>
+        <div id="vmAssetUploadStatus" style="font-size:.78rem;color:#c9a84c;margin-top:8px;min-height:14px;"></div>
+      </div>
+
+      <div class="vm-gen-section">
+        <h3>Generate New Assets <span class="vm-coming-tag">Coming Soon</span></h3>
+        <p>Create product images and videos using Seedance AI, delivered to your Drive folder. Priced at cost x2.</p>
+
+        <div class="vm-section-label" style="margin-bottom:10px;">Output Type</div>
+        <div class="vm-type-toggle">
+          <button class="vm-type-btn active" id="vmGenTypeImg" onclick="vmSetGenType('image',this)">Images</button>
+          <button class="vm-type-btn" id="vmGenTypeVid" onclick="vmSetGenType('video',this)">Videos</button>
+        </div>
+
+        <div class="vm-field full" style="margin-bottom:14px;">
+          <label class="vm-label">Prompt / Direction</label>
+          <textarea class="vm-textarea" id="vmGenPrompt" placeholder="Describe the scene, style, or key visual. e.g. Product on white marble surface, soft studio lighting, close-up of texture, premium aesthetic"></textarea>
+        </div>
+
+        <div class="vm-field full" style="margin-bottom:18px;">
+          <label class="vm-label">Reference Images (optional)</label>
+          <label class="vm-upload-zone" for="vmGenRefInput" style="padding:16px;margin-top:0;">
+            <div style="font-size:.82rem;font-weight:600;color:#e2e8f0;margin-bottom:2px;">Upload reference files</div>
+            <div style="font-size:.72rem;">PNG, JPG -- max 10MB each</div>
+          </label>
+          <input type="file" id="vmGenRefInput" accept="image/*" multiple style="display:none" onchange="vmHandleGenRef(this)">
+          <div id="vmGenRefList" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;"></div>
+        </div>
+
+        <button class="vm-submit-btn" style="margin-top:0;opacity:.6;cursor:not-allowed;" disabled>Request Generation (Coming Soon)</button>
+        <div style="font-size:.75rem;color:#64748b;margin-top:8px;">We will reach out to confirm pricing before starting.</div>
       </div>
     </div>
   </div>
 
-  <div class="vm-gen-card">
-    <h2>â¨ Generate New Assets <span class="vm-coming-soon">Coming Soon</span></h2>
-    <p>Create product images and videos using Seedance AI â generated to your brief, billed at cost Ã 2.</p>
-    <div class="vm-form-grid" style="margin-bottom:18px;">
-      <div class="vm-field">
-        <label class="vm-label">Product</label>
-        <select class="vm-input" id="vmGenProduct">
-          <option value="">Select a productâ¦</option>
-        </select>
-      </div>
-      <div class="vm-field">
-        <label class="vm-label">Output Type</label>
-        <div class="vm-type-toggle" style="margin-bottom:0;">
-          <button class="vm-type-btn active" id="vmGenTypeImg" onclick="vmSetGenType('image',this)">ð¼ Images</button>
-          <button class="vm-type-btn" id="vmGenTypeVid" onclick="vmSetGenType('video',this)">ð¬ Videos</button>
-        </div>
-      </div>
-      <div class="vm-field full">
-        <label class="vm-label">Prompt / Direction</label>
-        <textarea class="vm-textarea" id="vmGenPrompt" placeholder="Describe the scene, style, or key visual you want. Be specific â e.g. 'product on white marble surface, soft studio lighting, close-up of texture, premium aesthetic'"></textarea>
-      </div>
-      <div class="vm-field full">
-        <label class="vm-label">Reference Images <span style="font-weight:400;text-transform:none;letter-spacing:0;color:#64748b">(optional â person, scene, style)</span></label>
-        <label class="vm-upload-zone" style="padding:20px;cursor:pointer;display:block;text-align:center;">
-          <div style="font-size:1.2rem;margin-bottom:4px;">+</div>
-          <div style="font-size:.8rem;font-weight:600;color:#e2e8f0;">Upload reference files</div>
-          <div style="font-size:.72rem;margin-top:2px;">PNG, JPG â max 10MB each</div>
-          <input type="file" id="vmGenRefInput" accept="image/*" multiple style="display:none" onchange="vmHandleGenRef(this)">
-        </label>
-        <div id="vmGenRefList" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;"></div>
-      </div>
-    </div>
-    <div class="vm-price-note" id="vmGenPriceNote">Estimated cost: â &nbsp;(calculated after you select a product and type)</div>
-    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:18px;">
-      <button class="vm-submit-btn" style="margin-top:0;opacity:.65;cursor:not-allowed;" disabled title="Coming soon â launching shortly">Request Generation â</button>
-      <span style="font-size:.78rem;color:#64748b;">We'll reach out to confirm pricing before starting.</span>
-    </div>
-    <div id="vmGenStatus" style="font-size:.78rem;color:var(--muted);margin-top:10px;min-height:14px;"></div>
-  </div>
 </div>
 
 <script>
@@ -873,7 +865,7 @@
     var driveUrl = (document.getElementById('vmDriveUrl').value || '').trim();
     if (!driveUrl) { errEl.textContent = 'Please paste your Google Drive link.'; errEl.style.display='block'; return; }
     errEl.style.display = 'none';
-    btn.disabled = true; btn.textContent = 'Submittingâ¦';
+    btn.disabled = true; btn.textContent = 'Submitting...';
     try {
       var res = await fetch('/api/client/video-requests', {
         method: 'POST',
@@ -892,13 +884,13 @@
       document.getElementById('vmDesc').value = '';
       document.getElementById('vmQty').value = '1';
       vmUpdateCost();
-      btn.textContent = 'Submitted â';
-      setTimeout(function() { btn.disabled = false; btn.textContent = 'Submit Request â'; }, 2500);
+      btn.textContent = 'Submitted';
+      setTimeout(function() { btn.disabled = false; btn.textContent = 'Submit Request'; }, 2500);
       loadVmRequests();
     } catch(e) {
-      errEl.textContent = e.message || 'Something went wrong â please try again.';
+      errEl.textContent = e.message || 'Something went wrong. Please try again.';
       errEl.style.display = 'block';
-      btn.disabled = false; btn.textContent = 'Submit Request â';
+      btn.disabled = false; btn.textContent = 'Submit Request';
     }
   }
   window.vmSubmit = vmSubmit;
@@ -907,13 +899,13 @@
     var statusClass = 'vm-s-' + (r.status || 'pending');
     var statusLabel = (r.status || 'pending').replace('-', ' ');
     var date = r.submittedAt ? new Date(r.submittedAt).toLocaleDateString('en-US', {month:'short',day:'numeric'}) : '';
-    var driveHtml = r.driveUrl ? '<div class="vm-card-drive"><a href="' + r.driveUrl + '" target="_blank" rel="noopener">ð Open Footage</a></div>' : '';
+    var driveHtml = r.driveUrl ? '<div class="vm-card-drive"><a href="' + r.driveUrl + '" target="_blank" rel="noopener">Open Footage</a></div>' : '';
     return '<div class="vm-card">'
       + '<div class="vm-status-pill ' + statusClass + '">' + statusLabel + '</div>'
       + '<div class="vm-card-title">' + (r.title || 'Video request') + '</div>'
       + '<div class="vm-card-meta">' + (r.quantity||1) + ' video' + ((r.quantity||1)>1?'s':'')
         + (date ? ' &middot; ' + date : '') + '</div>'
-      + '<div class="vm-card-cost">$' + ((r.costUsd || (r.quantity||1)*10)).toLocaleString('en-US') + '</div>'
+      + '<div class="vm-card-cost">$' + (r.costUsd || (r.quantity||1)*10).toLocaleString('en-US') + '</div>'
       + driveHtml
       + '</div>';
   }
@@ -943,7 +935,6 @@
     if (_vmLoaded) return;
     _vmLoaded = true;
     loadVmRequests();
-    vmPopulateGenProducts();
   };
 
   function vmRenderDriveLinks() {
@@ -952,7 +943,7 @@
     _vmRequests.forEach(function(r) {
       if (r.driveUrl && !seen.has(r.driveUrl)) {
         seen.add(r.driveUrl);
-        links.push({ url: r.driveUrl, label: r.title || 'Request', source: 'request', date: r.submittedAt });
+        links.push({ url: r.driveUrl, label: r.title || 'Footage folder', source: 'request', date: r.submittedAt });
       }
     });
     try {
@@ -967,7 +958,7 @@
     var el = document.getElementById('vmDriveLinks');
     if (!el) return;
     if (!links.length) {
-      el.innerHTML = '<div style="font-size:.82rem;color:#2a2540;font-style:italic;padding:8px 0;">No Drive links yet â submit a video request or add one above.</div>';
+      el.innerHTML = '<div style="font-size:.82rem;color:#3a3555;font-style:italic;padding:8px 0;">No Drive links yet. Submit a video request or add one above.</div>';
       return;
     }
     el.innerHTML = links.map(function(l) {
@@ -998,8 +989,7 @@
     var statusEl = document.getElementById('vmAssetUploadStatus');
     var files = Array.from(input.files);
     if (!files.length) return;
-    statusEl.textContent = files.length + ' file' + (files.length>1?'s':'') + ' ready â direct upload coming soon. Use Drive links above in the meantime.';
-    statusEl.style.color = '#c9a84c';
+    statusEl.textContent = files.length + ' file' + (files.length>1?'s':'') + ' selected. Direct upload coming soon -- use a Drive link in the meantime.';
     input.value = '';
   };
 
@@ -1009,33 +999,7 @@
       var el = document.getElementById(id);
       if (el) el.classList.toggle('active', el === btn);
     });
-    vmUpdateGenPrice();
   };
-
-  function vmUpdateGenPrice() {
-    var priceEl = document.getElementById('vmGenPriceNote');
-    if (!priceEl) return;
-    var prodSel = document.getElementById('vmGenProduct');
-    if (!prodSel || !prodSel.value) { priceEl.textContent = 'Estimated cost: â (calculated after you select a product and type)'; return; }
-    var base = _vmGenType === 'video' ? 4.00 : 0.80;
-    var markup = (base * 2).toFixed(2);
-    priceEl.textContent = 'Estimated cost: $' + markup + ' per ' + _vmGenType + ' (Seedance cost Ã 2 markup)';
-  }
-
-  async function vmPopulateGenProducts() {
-    try {
-      var res = await fetch('/api/client/products');
-      var d = await res.json();
-      var products = d.products || [];
-      var sel = document.getElementById('vmGenProduct');
-      if (!sel) return;
-      if (products.length) {
-        sel.innerHTML = '<option value="">Select a productâ¦</option>'
-          + products.map(function(p) { return '<option value="' + p.product_id + '">' + (p.title || p.product_name || p.product_id) + '</option>'; }).join('');
-      }
-      sel.addEventListener('change', vmUpdateGenPrice);
-    } catch(_) {}
-  }
 
   window.vmHandleGenRef = function(input) {
     var list = document.getElementById('vmGenRefList');
@@ -1045,7 +1009,7 @@
       var el = document.createElement('div');
       el.style.cssText = 'position:relative;width:64px;height:64px;';
       el.innerHTML = '<img src="' + url + '" style="width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid #2a2540;">'
-        + '<button onclick="this.parentNode.remove()" style="position:absolute;top:-6px;right:-6px;background:#1c1828;border:1px solid #2a2540;border-radius:50%;width:18px;height:18px;cursor:pointer;color:#64748b;font-size:10px;display:flex;align-items:center;justify-content:center;padding:0;">â</button>';
+        + '<button onclick="this.parentNode.remove()" style="position:absolute;top:-6px;right:-6px;background:#1c1828;border:1px solid #2a2540;border-radius:50%;width:18px;height:18px;cursor:pointer;color:#64748b;font-size:10px;padding:0;">x</button>';
       list.appendChild(el);
     });
     input.value = '';
@@ -1054,6 +1018,7 @@
 })();
 </script>
 </div><!-- end #tab-content-studio -->
+
 
 <!-- ───────────────────────── Billing tab ──────────────────────────────── -->
 <div id="tab-billing" style="display:none">
