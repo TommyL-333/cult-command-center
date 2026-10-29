@@ -7550,5 +7550,59 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
+  // ── More Tools routes ──────────────────────────────────
+  const GILBERT_SEED = [
+    { id:'tool_capcut',     emoji:'🎬', name:'CapCut',           url:'https://www.capcut.com' },
+    { id:'tool_seedance',   emoji:'✨', name:'Seedance AI',       url:'https://seedance.ai' },
+    { id:'tool_ttstudio',   emoji:'📱', name:'TikTok Studio',     url:'https://www.tiktok.com/studio' },
+    { id:'tool_buffer',     emoji:'📅', name:'Buffer',            url:'https://publish.buffer.com' },
+    { id:'tool_gdrive',     emoji:'📁', name:'Google Drive',      url:'https://drive.google.com' },
+    { id:'tool_manifest',   emoji:'🖥',  name:'Content Pipeline',  url:'https://manifest.cultcontent.cc' },
+  ];
+  function toolsFilePath(email) {
+    return nodePath.join(DATA_DIR, 'tools-' + email.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '.json');
+  }
+
+  app.get('/api/my-tasks/tools', requireAuth, (req, res) => {
+    try {
+      const email = (req.session && req.session.email) || '';
+      const fp = toolsFilePath(email);
+      let tools;
+      if (!require('fs').existsSync(fp) && email === 'gilbert@cultcontent.cc') {
+        tools = GILBERT_SEED;
+        writeJsonFile(fp, tools);
+      } else {
+        tools = readJsonFile(fp, []);
+      }
+      res.json({ ok: true, tools });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.post('/api/my-tasks/tools', requireAuth, jsonBody, (req, res) => {
+    try {
+      const email = (req.session && req.session.email) || '';
+      const { emoji, name, url } = req.body || {};
+      if (!name || !url) return res.status(400).json({ error: 'name and url required' });
+      if (!/^https?:\/\//.test(url)) return res.status(400).json({ error: 'url must start with https://' });
+      const fp = toolsFilePath(email);
+      const tools = readJsonFile(fp, []);
+      const id = 'tool_' + Date.now() + '_' + Math.random().toString(36).slice(2, 5);
+      tools.push({ id, emoji: (emoji || '🔧').trim(), name: name.trim(), url: url.trim() });
+      writeJsonFile(fp, tools);
+      res.json({ ok: true, tools });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.delete('/api/my-tasks/tools/:id', requireAuth, (req, res) => {
+    try {
+      const email = (req.session && req.session.email) || '';
+      const fp = toolsFilePath(email);
+      let tools = readJsonFile(fp, []);
+      tools = tools.filter(t => t.id !== req.params.id);
+      writeJsonFile(fp, tools);
+      res.json({ ok: true, tools });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
   return app;
 };
