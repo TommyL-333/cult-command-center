@@ -571,7 +571,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     <div><h1>My Tasks</h1></div>
     <div style="display:flex;gap:8px;align-items:center">
       <a class="chip sisy" href="https://sisyphus.cultcontent.cc" target="_blank" rel="noopener">🪨 Sisyphus</a>
-      <a class="chip" href="/task-management">⚙ Admin</a>
+      <button class="chip" onclick="switchTab(4)">⚙ Team</button>
       <button class="chip" onclick="openMtAdd()">+ Add Task</button>
       <button class="chip" onclick="load()" title="Refresh">↻</button>
     </div>
@@ -1594,7 +1594,7 @@ function load(){
     var db=document.getElementById('dev-banner');
     if(db){
       db.style.cssText='display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:rgba(255,0,80,.1);border:1px solid rgba(255,0,80,.35);border-radius:10px;padding:10px 14px;margin-bottom:12px;font-size:12.5px;color:var(--red)';
-      db.innerHTML='<strong>Dev Mode</strong> — viewing as <strong>'+DEV_AS+'</strong>. Read-only.<button onclick="window.close();setTimeout(function(){window.location.href=\\'/task-management\\';},200);" style="margin-left:auto;padding:4px 12px;border-radius:6px;border:1px solid rgba(255,0,80,.5);background:rgba(255,0,80,.12);color:var(--red);cursor:pointer;font-size:12px;font-weight:600">✕ Exit Dev Mode</button>';
+      db.innerHTML='<strong>Dev Mode</strong> — viewing as <strong>'+DEV_AS+'</strong>. Read-only.<button onclick="window.location.href=\\'/my-tasks\\';" style="margin-left:auto;padding:4px 12px;border-radius:6px;border:1px solid rgba(255,0,80,.5);background:rgba(255,0,80,.12);color:var(--red);cursor:pointer;font-size:12px;font-weight:600">✕ Exit Dev Mode</button>';
     }
   }
   document.getElementById('sub').textContent='Loading your Ops Engine tasks…';
@@ -3786,6 +3786,10 @@ function renderTeamGrid(){
       +'<div class="tm-stat"><div class="n" style="font-size:13px">'+anthropic+'</div><div class="l">Anthropic</div></div>'
       +'</div>'
       +kpiHtml
+      +'<div style="display:flex;gap:8px;margin-top:10px">'
+      +'<button class="vq-btn" style="flex:1;font-size:11px" onclick="event.stopPropagation();tmOpenModal(\\''+esc(m.email)+'\\')">👤 Profile</button>'
+      +'<a class="vq-btn vq-drive" style="flex:1;font-size:11px;text-align:center;text-decoration:none" href="/my-tasks?devAs='+encodeURIComponent(m.email)+'" target="_blank" onclick="event.stopPropagation()">👁 View Account</a>'
+      +'</div>'
       +'</div>';
   }).join('');
 }
