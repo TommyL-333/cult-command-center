@@ -843,11 +843,11 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
         </div>
       </div>
       <div id="vp-podcast-tabs" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">
-        <button class="vq-ftab active" id="vp-ptab-pending" onclick="vpPodcastFilter('pending')">Pending</button>
-        <button class="vq-ftab" id="vp-ptab-approved" onclick="vpPodcastFilter('approved')">Approved</button>
-        <button class="vq-ftab" id="vp-ptab-scheduled" onclick="vpPodcastFilter('scheduled')">Scheduled</button>
-        <button class="vq-ftab" id="vp-ptab-recorded" onclick="vpPodcastFilter('recorded')">Recorded</button>
-        <button class="vq-ftab" id="vp-ptab-all" onclick="vpPodcastFilter('all')">All</button>
+        <button class="vq-ftab active" id="vp-ptab-pending" onclick="vpPodcastFilter('pending')">Pending <span class="vq-col-count" id="vp-ptab-cnt-pending" style="display:none">0</span></button>
+        <button class="vq-ftab" id="vp-ptab-approved" onclick="vpPodcastFilter('approved')">Approved <span class="vq-col-count" id="vp-ptab-cnt-approved" style="display:none">0</span></button>
+        <button class="vq-ftab" id="vp-ptab-scheduled" onclick="vpPodcastFilter('scheduled')">Scheduled <span class="vq-col-count" id="vp-ptab-cnt-scheduled" style="display:none">0</span></button>
+        <button class="vq-ftab" id="vp-ptab-recorded" onclick="vpPodcastFilter('recorded')">Recorded <span class="vq-col-count" id="vp-ptab-cnt-recorded" style="display:none">0</span></button>
+        <button class="vq-ftab" id="vp-ptab-all" onclick="vpPodcastFilter('all')">All <span class="vq-col-count" id="vp-ptab-cnt-all" style="display:none">0</span></button>
       </div>
       <div id="vp-podcast-list"><div class="vq-empty">Loading applications…</div></div>
     </div>
@@ -3297,6 +3297,7 @@ function vpSwitchSection(sec){
 }
 
 var _vpPodFilter='pending';
+var VP_RECORDED_STATUSES=['recorded','processing','processed','done'];
 function vpPodcastFilter(status){
   _vpPodFilter=status;
   ['pending','approved','scheduled','recorded','all'].forEach(function(s){
@@ -3314,6 +3315,21 @@ function loadPodcastApplications(){
     var pending=VPP_DATA.filter(function(a){return a.status==='pending';}).length;
     var badge=document.getElementById('vp-podcast-badge');
     if(badge){badge.textContent=pending;badge.style.display=pending?'':'none';}
+    // Update tab counts
+    var countMap={pending:0,approved:0,scheduled:0,recorded:0,all:VPP_DATA.length};
+    VPP_DATA.forEach(function(a){
+      var s=a.status||'pending';
+      if(s==='pending')countMap.pending++;
+      else if(s==='approved')countMap.approved++;
+      else if(s==='scheduled')countMap.scheduled++;
+      else if(VP_RECORDED_STATUSES.indexOf(s)>=0)countMap.recorded++;
+    });
+    ['pending','approved','scheduled','recorded','all'].forEach(function(s){
+      var el=document.getElementById('vp-ptab-cnt-'+s);
+      if(!el)return;
+      var n=countMap[s]||0;
+      el.textContent=n;el.style.display=n?'':'none';
+    });
     // Auto-transition: scheduled guests whose recording time passed > 30min ago → recorded
     var now=Date.now();
     var toRecord=VPP_DATA.filter(function(a){
@@ -3333,7 +3349,10 @@ function loadPodcastApplications(){
 }
 
 function renderPodcastApplications(){
-  var list=_vpPodFilter==='all'?VPP_DATA:VPP_DATA.filter(function(a){return a.status===_vpPodFilter;});
+  var list=_vpPodFilter==='all'?VPP_DATA:VPP_DATA.filter(function(a){
+    if(_vpPodFilter==='recorded')return VP_RECORDED_STATUSES.indexOf(a.status)>=0;
+    return a.status===_vpPodFilter;
+  });
   if(!list.length){document.getElementById('vp-podcast-list').innerHTML='<div class="vq-empty">No '+(_vpPodFilter==='all'?'':_vpPodFilter+' ')+'applications</div>';return;}
   document.getElementById('vp-podcast-list').innerHTML=list.map(vpPodCardHtml).join('');
 }
@@ -3370,27 +3389,56 @@ function vpPodCardHtml(a){
     actions='<div style="font-size:11px;color:#6be86b;margin-bottom:6px">✓ Post-production complete — clips in Video Queue</div>'
            +'<button class="vq-btn vq-primary" onclick="vpSetPodStatus(\\''+id+'\\',\\'done\\')">→ Mark Done</button>';
   }
+  // Admin delete button (all statuses)
+  var deleteBtn='<button class="vq-btn" style="color:var(--red);margin-left:auto" onclick="vpDeletePod(\\''+id+'\\')">✕ Delete</button>';
+
   var availMap={'weekday-morning':'Weekday mornings','weekday-afternoon':'Weekday afternoons','weekday-evening':'Weekday evenings','weekend-morning':'Weekend mornings','weekend-afternoon':'Weekend afternoons'};
   var availLine=(a.availability&&a.availability.length)?'<div style="font-size:11px;color:var(--muted);margin-bottom:6px">🕐 Available: '+a.availability.map(function(v){return availMap[v]||v;}).join(', ')+'</div>':'';
   var schedLine=a.scheduledAt?'<div style="font-size:11px;color:#f59e0b;margin-bottom:6px">🎙 Recording: '+new Date(a.scheduledAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+'</div>':'';
   var releaseLine=a.releaseDate?'<div style="font-size:11px;color:#6be86b;margin-bottom:6px">📅 Release: '+new Date(a.releaseDate).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+'</div>':'';
   var topicLine=a.topics?'<div class="vp-pod-body">'+esc(a.topics)+'</div>':'';
   var pitchLine=a.pitch?'<div class="vp-pod-body" style="font-style:italic">"'+esc(a.pitch)+'"</div>':'';
+  // Episode links (shown for recorded/processing/processed)
+  var linksHtml='';
+  if(VP_RECORDED_STATUSES.indexOf(a.status)>=0){
+    var links=[];
+    if(a.ytVideoId)links.push('<a href="https://youtu.be/'+esc(a.ytVideoId)+'" target="_blank" class="vq-btn vq-drive" style="font-size:11px">▶ YouTube</a>');
+    if(a.spotifyUrl)links.push('<a href="'+esc(a.spotifyUrl)+'" target="_blank" class="vq-btn vq-drive" style="font-size:11px">🎵 Spotify</a>');
+    if(a.applePodcastUrl)links.push('<a href="'+esc(a.applePodcastUrl)+'" target="_blank" class="vq-btn vq-drive" style="font-size:11px">🎙 Apple</a>');
+    if(a.episodePageUrl)links.push('<a href="'+esc(a.episodePageUrl)+'" target="_blank" class="vq-btn vq-drive" style="font-size:11px">🌐 Page</a>');
+    if(links.length)linksHtml='<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">'+links.join('')+'</div>';
+    // Metrics
+    var metrics=[];
+    if(a.ytViews!=null)metrics.push('<span>▶ '+Number(a.ytViews).toLocaleString()+' views</span>');
+    if(a.ytLikes!=null)metrics.push('<span>👍 '+Number(a.ytLikes).toLocaleString()+'</span>');
+    if(a.ytComments!=null)metrics.push('<span>💬 '+Number(a.ytComments).toLocaleString()+'</span>');
+    if(metrics.length)linksHtml+='<div style="display:flex;gap:12px;font-size:11px;color:var(--muted);margin-bottom:6px">'+metrics.join('')+'</div>';
+  }
   return '<div class="vp-pod-card">'
     +'<div class="vp-pod-card-top">'
     +'<div><div class="vp-pod-name">'+esc(a.name||'Unknown')+'</div>'
     +'<div class="vp-pod-handle">'+esc(a.email||'')+(a.social?' · '+esc(a.social):'')+(a.role?' · '+esc(a.role):'')+'</div></div>'
     +'<span class="vp-pod-status '+statusClass+'">'+statusLabel+'</span>'
     +'</div>'
-    +availLine+schedLine+releaseLine+topicLine+pitchLine
+    +availLine+schedLine+releaseLine+topicLine+pitchLine+linksHtml
     +'<div class="vp-pod-meta">Applied '+date+'</div>'
-    +'<div class="vq-actions">'+actions+'</div>'
+    +'<div class="vq-actions" style="flex-wrap:wrap">'+actions+deleteBtn+'</div>'
     +'</div>';
 }
 
 function vpApprovePod(id){vpSetPodStatus(id,'approved');}
 function vpRejectPod(id){if(confirm('Decline this application?'))vpSetPodStatus(id,'rejected');}
 function vpMarkRecorded(id){vpSetPodStatus(id,'recorded');}
+function vpDeletePod(id){
+  var a=VPP_DATA.find(function(x){return x.id===id;});
+  if(!a)return;
+  if(!confirm('Permanently delete '+esc(a.name||'this applicant')+'? This cannot be undone.'))return;
+  fetch('/api/podcast-applications/'+id,{method:'DELETE',credentials:'include'})
+  .then(function(r){return r.json();}).then(function(d){
+    if(d.ok){toast('Deleted');VPP_DATA=VPP_DATA.filter(function(x){return x.id!==id;});renderPodcastApplications();}
+    else toast('Error: '+(d.error||'Failed'));
+  }).catch(function(e){toast(''+e);});
+}
 function vpResendRiversideEmail(id){
   if(!confirm('Re-send the Riverside recording link to this guest?'))return;
   fetch('/api/podcast-applications/'+id+'/send-riverside',{method:'POST',credentials:'include'})
@@ -6240,7 +6288,8 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       const updates = req.body || {};
       const wasApproved = all[idx].status !== 'approved' && updates.status === 'approved';
       const wasScheduled = all[idx].status !== 'scheduled' && updates.status === 'scheduled';
-      ['status','scheduledAt','riversideUrl','scheduleNotes','releaseDate','editorNotes'].forEach(k => {
+      ['status','scheduledAt','riversideUrl','scheduleNotes','releaseDate','editorNotes',
+       'ytVideoId','spotifyUrl','applePodcastUrl','episodePageUrl','ytViews','ytLikes','ytComments'].forEach(k => {
         if (updates[k] !== undefined) all[idx][k] = updates[k];
       });
       all[idx].updatedAt = Date.now();
@@ -6257,6 +6306,21 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
         const guest = all[idx];
         sendPodcastScheduleEmail(guest).catch(err => console.error('[podcast schedule email]', err.message));
       }
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  // DELETE /api/podcast-applications/:id — admin only
+  app.delete('/api/podcast-applications/:id', requireAuth, (req, res) => {
+    try {
+      const email = (req.userEmail || '').toLowerCase();
+      if (!ADMIN_EMAILS.has(email)) return res.status(403).json({ error: 'Admin only' });
+      const { id } = req.params;
+      const all = readJsonFile(POD_FILE, []);
+      const idx = all.findIndex(a => a.id === id);
+      if (idx < 0) return res.status(404).json({ error: 'Not found' });
+      all.splice(idx, 1);
+      writeJsonFile(POD_FILE, all);
+      res.json({ ok: true });
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
@@ -7094,8 +7158,9 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       const netSales = (netSalesData[monthKey] && netSalesData[monthKey].netSales) || 0;
       const allWr = readJsonFile(WR_FILE, []);
       const allVr = readJsonFile(VR_FILE, []);
-      const TASKS_FILE_TM = nodePath.join(DATA_DIR, 'tasks.json');
-      const allTasks = readJsonFile(TASKS_FILE_TM, []);
+      // Fetch live Lark tasks for accurate open task counts
+      let allLarkRecords = [];
+      try { allLarkRecords = await listAllTaskRecords(); } catch (_) {}
 
       const members = TEAM_ROSTER.map(member => {
         const { email, name, role, timezone } = member;
@@ -7127,11 +7192,16 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
           gateDetails = comp.gateDetails;
         }
 
-        // Open tasks: from tasks.json (assignee) + VR cards in-progress
-        const openLarkTasks = allTasks.filter(t => {
-          const assigned = (t.assignee_emails || []).map(e => e.toLowerCase());
-          return assigned.includes(email) && t.status !== 'done' && t.status !== 'completed';
-        }).length;
+        // Open tasks: live Lark records filtered by ownerOpenId + VR cards in-progress
+        const memberOpenId = SEED_EMAIL_OPENID[email] || null;
+        const openLarkTasks = memberOpenId ? allLarkRecords.filter(rec => {
+          const f = rec.fields || {};
+          const status = (f.Status && (Array.isArray(f.Status) ? f.Status[0] : f.Status)) || '';
+          const statusText = typeof status === 'object' ? (status.text || '') : status;
+          if (statusText === 'Completed') return false;
+          const owners = Array.isArray(f.Owner) ? f.Owner : (f.Owner ? [f.Owner] : []);
+          return owners.some(o => (typeof o === 'object' ? o.id : o) === memberOpenId);
+        }).length : 0;
         const openVr = allVr.filter(r =>
           (r.submittedBy || '').toLowerCase() === email &&
           ['pending', 'in-progress'].includes(r.status)
