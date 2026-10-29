@@ -3351,6 +3351,15 @@ function loadPodcastApplications(){
       });
       return;
     }
+    // Sync missing scheduledAt dates from GHL for any scheduled guests
+    var needsDate=VPP_DATA.filter(function(a){return a.status==='scheduled'&&!a.scheduledAt;});
+    if(needsDate.length){
+      fetch('/api/podcast-applications/sync-ghl-dates',{method:'POST',credentials:'include'})
+      .then(function(r){return r.json();}).then(function(r){
+        if(r.updated>0)loadPodcastApplications();else renderPodcastApplications();
+      }).catch(function(){renderPodcastApplications();});
+      return;
+    }
     renderPodcastApplications();
   }).catch(function(e){document.getElementById('vp-podcast-list').innerHTML='<div class="vq-empty">Could not load applications</div>';});
 }
@@ -3379,7 +3388,11 @@ function vpPodCardHtml(a){
            +'<button class="vq-btn" style="color:var(--red)" onclick="vpRejectPod(\\''+id+'\\')">✕ Decline</button>';
   }
   if(a.status==='scheduled'){
-    actions='<button class="vq-btn vq-done" onclick="vpMarkRecorded(\\''+id+'\\')">✓ Recorded</button>';
+    // Only show manual Recorded button if no date is set (can't auto-transition without it)
+    if(!a.scheduledAt){
+      actions='<button class="vq-btn vq-done" onclick="vpMarkRecorded(\\''+id+'\\')">✓ Recorded</button>'
+             +'<button class="vq-btn" style="font-size:11px" onclick="vpSyncGhlDate(\\''+id+'\\')" title="Pull appointment date from GHL">🔄 Sync Date</button>';
+    }
     if(a.riversideUrl){
       actions+='<a href="'+esc(a.riversideUrl)+'" target="_blank" class="vq-btn vq-drive">🎙 Open Riverside</a>';
       actions+='<button class="vq-btn" style="font-size:11px" onclick="vpResendRiversideEmail(\\''+id+'\\')">📧 Resend Link</button>';
@@ -3403,7 +3416,9 @@ function vpPodCardHtml(a){
 
   var availMap={'weekday-morning':'Weekday mornings','weekday-afternoon':'Weekday afternoons','weekday-evening':'Weekday evenings','weekend-morning':'Weekend mornings','weekend-afternoon':'Weekend afternoons'};
   var availLine=(a.availability&&a.availability.length)?'<div style="font-size:11px;color:var(--muted);margin-bottom:6px">🕐 Available: '+a.availability.map(function(v){return availMap[v]||v;}).join(', ')+'</div>':'';
-  var schedLine=a.scheduledAt?'<div style="font-size:11px;color:#f59e0b;margin-bottom:6px">🎙 Recording: '+new Date(a.scheduledAt).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+'</div>':'';
+  var schedLine=a.scheduledAt
+    ?'<div style="font-size:12px;font-weight:600;color:#f59e0b;margin-bottom:6px">🎙 Recording: '+new Date(a.scheduledAt).toLocaleString('en-US',{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+'</div>'
+    :(a.status==='scheduled'?'<div style="font-size:11px;color:var(--muted);margin-bottom:6px">📅 No recording date — use 🔄 Sync Date to pull from GHL</div>':'');
   var releaseLine=a.releaseDate?'<div style="font-size:11px;color:#6be86b;margin-bottom:6px">📅 Release: '+new Date(a.releaseDate).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'})+'</div>':'';
   var topicLine=a.topics?'<div class="vp-pod-body">'+esc(a.topics)+'</div>':'';
   var pitchLine=a.pitch?'<div class="vp-pod-body" style="font-style:italic">"'+esc(a.pitch)+'"</div>':'';
@@ -3438,6 +3453,14 @@ function vpPodCardHtml(a){
 function vpApprovePod(id){vpSetPodStatus(id,'approved');}
 function vpRejectPod(id){if(confirm('Decline this application?'))vpSetPodStatus(id,'rejected');}
 function vpMarkRecorded(id){vpSetPodStatus(id,'recorded');}
+function vpSyncGhlDate(id){
+  var btn=event.target;btn.textContent='Syncing…';btn.disabled=true;
+  fetch('/api/podcast-applications/sync-ghl-dates',{method:'POST',credentials:'include'})
+  .then(function(r){return r.json();}).then(function(d){
+    if(d.updated>0){toast('✓ Date synced from GHL');loadPodcastApplications();}
+    else{toast('No appointment found in GHL for this guest');btn.textContent='🔄 Sync Date';btn.disabled=false;}
+  }).catch(function(e){toast(''+e);btn.textContent='🔄 Sync Date';btn.disabled=false;});
+}
 function vpDeletePod(id){
   var a=VPP_DATA.find(function(x){return x.id===id;});
   if(!a)return;
@@ -6287,6 +6310,55 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       if (!ADMIN_EMAILS.has(email)) return res.status(403).json({ error: 'Admin only' });
       const all = readJsonFile(POD_FILE, []);
       res.json({ applications: all.slice().reverse() });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  // POST /api/podcast-applications/sync-ghl-dates — pull appointment dates from GHL for scheduled guests missing scheduledAt
+  app.post('/api/podcast-applications/sync-ghl-dates', requireAuth, async (req, res) => {
+    try {
+      const callerEmail = (req.userEmail || '').toLowerCase();
+      if (!ADMIN_EMAILS.has(callerEmail)) return res.status(403).json({ error: 'Admin only' });
+
+      const GHL_KEY = process.env.GHL_API_KEY;
+      const GHL_LOC = process.env.GHL_LOC_ID || process.env.GHL_LOCATION_ID;
+      if (!GHL_KEY || !GHL_LOC) return res.json({ updated: 0, reason: 'GHL not configured' });
+
+      const all = readJsonFile(POD_FILE, []);
+      const needsDate = all.filter(a => a.status === 'scheduled' && !a.scheduledAt && a.email);
+      if (!needsDate.length) return res.json({ updated: 0 });
+
+      const https = require('https');
+      function ghlGet(path) {
+        return new Promise((resolve, reject) => {
+          const opts = { hostname: 'services.leadconnectorhq.com', path, method: 'GET',
+            headers: { Authorization: `Bearer ${GHL_KEY}`, Version: '2021-07-28' } };
+          const req2 = https.request(opts, r => { let buf = ''; r.on('data', c => buf += c); r.on('end', () => { try { resolve(JSON.parse(buf)); } catch { resolve({}); } }); });
+          req2.on('error', reject); req2.end();
+        });
+      }
+
+      let updated = 0;
+      for (const guest of needsDate) {
+        try {
+          // Find contact by email
+          const search = await ghlGet(`/contacts/?locationId=${encodeURIComponent(GHL_LOC)}&query=${encodeURIComponent(guest.email)}&limit=1`);
+          const contactId = search.contacts?.[0]?.id;
+          if (!contactId) continue;
+          // Get their appointments (look ±90 days)
+          const start = Date.now() - 90 * 86400000;
+          const end   = Date.now() + 90 * 86400000;
+          const appts = await ghlGet(`/appointments/?locationId=${encodeURIComponent(GHL_LOC)}&contactId=${encodeURIComponent(contactId)}&startTime=${start}&endTime=${end}`);
+          const sorted = (appts.appointments || appts.events || []).sort((a, b) => new Date(a.startTime||a.start) - new Date(b.startTime||b.start));
+          const appt = sorted[0];
+          if (!appt) continue;
+          const scheduledAt = appt.startTime || appt.start;
+          if (!scheduledAt) continue;
+          const idx = all.findIndex(a => a.id === guest.id);
+          if (idx >= 0) { all[idx].scheduledAt = scheduledAt; all[idx].updatedAt = Date.now(); updated++; }
+        } catch (_) {}
+      }
+      if (updated) writeJsonFile(POD_FILE, all);
+      res.json({ updated });
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
