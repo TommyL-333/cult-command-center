@@ -554,7 +554,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   /* footage upload */
   .vq-footage-tabs{display:flex;gap:6px;margin-bottom:8px}
   .vq-ftab{font-size:11px;font-weight:700;padding:4px 12px;border-radius:6px;cursor:pointer;border:1px solid var(--border);background:none;color:var(--muted);font-family:inherit;transition:.1s}
-  .vq-ftab.active{background:var(--cyan);color:#000;border-color:var(--cyan)}
+  .vq-ftab.active{background:rgba(0,242,234,.15);color:var(--cyan);border-color:var(--cyan)}
   .vq-drop-zone{border:2px dashed var(--border);border-radius:10px;padding:24px 16px;text-align:center;cursor:pointer;transition:border-color .15s,background .15s;min-height:90px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:13px;user-select:none;-webkit-user-select:none}
   label.vq-drop-zone{display:flex}
   .vq-drop-zone:hover,.vq-drop-zone.drag,.vq-drop-zone:active{border-color:var(--cyan);background:rgba(0,242,234,.05)}
@@ -1758,8 +1758,7 @@ function loadCompBanner(){
     CB_IS_ADMIN=!!d.isAdmin;
     if(CB_IS_ADMIN){var tmBtn=document.getElementById('tm-tab-btn');if(tmBtn)tmBtn.style.display='';}
     if(!d.hasComp&&CB_IS_ADMIN&&!DEV_AS){
-      // Admin with no personal comp: show team payroll summary
-      loadTeamSummaryBanner();
+      // Admin with no personal comp: payroll lives only in Team Management tab, not here
     } else if(d.hasComp&&CB_IS_ADMIN&&!DEV_AS&&(!d.netSales||d.netSales===0)){
       // Has personal comp but no net sales set: auto-calculate
       fetch('/api/admin/comp/net-sales-auto',{credentials:'include'}).then(function(r){return r.json();}).then(function(auto){
@@ -3383,11 +3382,13 @@ function vpPodCardHtml(a){
            +'<button class="vq-btn" style="background:rgba(0,242,234,.12);color:var(--cyan);border-color:rgba(0,242,234,.3)" onclick="vpProcessEpisode(\\''+id+'\\')">🎬 Process Episode</button>';
   }
   if(a.status==='processing'){
-    actions='<div style="font-size:11px;color:var(--cyan);padding:4px 0">⏳ Claude is processing this episode…</div>';
+    actions='<div style="font-size:11px;color:var(--muted);padding:4px 0">✂️ Shorts being edited from this episode</div>';
+    if(a.episodePageUrl)actions+='<a href="'+esc(a.episodePageUrl)+'" target="_blank" class="vq-btn vq-drive">▶ View Episode</a>';
   }
   if(a.status==='processed'){
-    actions='<div style="font-size:11px;color:#6be86b;margin-bottom:6px">✓ Post-production complete — clips in Video Queue</div>'
-           +'<button class="vq-btn vq-primary" onclick="vpSetPodStatus(\\''+id+'\\',\\'done\\')">→ Mark Done</button>';
+    actions='<div style="font-size:11px;color:#6be86b;margin-bottom:6px">✓ Post-production complete — clips in Video Queue</div>';
+    if(a.episodePageUrl)actions+='<a href="'+esc(a.episodePageUrl)+'" target="_blank" class="vq-btn vq-drive">▶ View Episode</a> ';
+    actions+='<button class="vq-btn vq-primary" onclick="vpSetPodStatus(\\''+id+'\\',\\'done\\')">→ Mark Done</button>';
   }
   // Admin delete button (all statuses)
   var deleteBtn='<button class="vq-btn" style="color:var(--red);margin-left:auto" onclick="vpDeletePod(\\''+id+'\\')">✕ Delete</button>';
@@ -5516,12 +5517,9 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
     } catch (e) { console.error('[my-tasks/create]', e.message, e.response && e.response.data); res.status(500).json({ error: e.message }); }
   });
 
-  // ---------- ROUTE: GET /task-management (admin HTML) ----------
+  // ---------- ROUTE: GET /task-management → redirect to /my-tasks (admin tab) ----------
   app.get('/task-management', requireAuth, (req, res) => {
-    const email = (req.userEmail || (req.session && req.session.userEmail) || '').toLowerCase();
-    const isAdmin = !!(req.session && req.session.isPortalAdmin) || ADMIN_EMAILS.has(email);
-    if (!isAdmin) return res.status(403).type('html').send('<h2 style="font-family:sans-serif;padding:40px">Access restricted to admins.</h2>');
-    res.type('html').send(TASK_MANAGEMENT_HTML);
+    res.redirect('/my-tasks');
   });
 
   // ---------- ROUTE: GET /my-tasks (HTML page) ----------
@@ -6557,6 +6555,40 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
     all[idx].processedAt = Date.now();
     if (req.body && req.body.episodeUrl) all[idx].episodeUrl = req.body.episodeUrl;
     if (req.body && req.body.clipCount) all[idx].clipCount = req.body.clipCount;
+    writeJsonFile(POD_FILE, all);
+    res.json({ ok: true });
+  });
+
+  // ---------- ROUTE: PATCH /api/webhooks/patch-podcast-application/:id ----------
+  // Webhook-accessible (WEBHOOK_SECRET auth) for patching podcast application fields
+  app.patch('/api/webhooks/patch-podcast-application/:id', jsonBody, (req, res) => {
+    const secret = process.env.WEBHOOK_SECRET;
+    const auth = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    if (!secret || auth !== secret) return res.status(401).json({ error: 'Unauthorized' });
+    const { id } = req.params;
+    const all = readJsonFile(POD_FILE, []);
+    const idx = all.findIndex(a => a.id === id);
+    if (idx < 0) return res.status(404).json({ error: 'Not found' });
+    const updates = req.body || {};
+    ['status','episodePageUrl','ytVideoId','spotifyUrl','applePodcastUrl','ytViews','ytLikes','ytComments','scheduleNotes','editorNotes'].forEach(k => {
+      if (updates[k] !== undefined) all[idx][k] = updates[k];
+    });
+    all[idx].updatedAt = Date.now();
+    writeJsonFile(POD_FILE, all);
+    res.json({ ok: true });
+  });
+
+  // ---------- ROUTE: DELETE /api/webhooks/delete-podcast-application/:id ----------
+  // Webhook-accessible (WEBHOOK_SECRET auth) for removing test/spam applications
+  app.delete('/api/webhooks/delete-podcast-application/:id', (req, res) => {
+    const secret = process.env.WEBHOOK_SECRET;
+    const auth = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    if (!secret || auth !== secret) return res.status(401).json({ error: 'Unauthorized' });
+    const { id } = req.params;
+    const all = readJsonFile(POD_FILE, []);
+    const idx = all.findIndex(a => a.id === id);
+    if (idx < 0) return res.status(404).json({ error: 'Not found' });
+    all.splice(idx, 1);
     writeJsonFile(POD_FILE, all);
     res.json({ ok: true });
   });
