@@ -143,7 +143,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1"/>
-<title>My Tasks · Cult Content</title>
+<title>Command Center · Cult Content</title>
 <script>window.__VQ_IS_EDITOR__=false;window.__VQ_IS_ADMIN__=false;window.__USER_ROLE__="";window.__USER_MODULES__=[];</script>
 <style>
   :root{--bg:#161823;--panel:#1e2030;--panel2:#252838;--border:#2f3346;--txt:#e8eaf2;--muted:#9aa0b5;--cyan:#00f2ea;--red:#ff0050;--p1:#ff0050;--p2:#ff9f0a;--p3:#ffd60a;--p4:#5a6072;}
@@ -588,7 +588,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
 <body>
 <div class="wrap">
   <header class="top">
-    <div><h1>My Tasks</h1></div>
+    <div><h1>Command Center</h1></div>
     <div style="display:flex;gap:8px;align-items:center">
       <a class="chip sisy" href="https://sisyphus.cultcontent.cc" target="_blank" rel="noopener">🪨 Sisyphus</a>
       <button class="chip" id="hdr-team-chip" onclick="switchTab(4)" style="display:none">⚙ Team</button>
@@ -1820,8 +1820,9 @@ function loadCompBanner(){
 }
 function loadTeamSummaryBanner(){
   var el=document.getElementById('comp-banner');
-  if(el)el.innerHTML='<div class="tp"><div class="tp-hdr"><span class="tp-title">Team Payroll</span><span class="tp-est">ESTIMATED — settles monthly</span></div><div style="color:var(--muted);font-size:12px">Loading…</div></div>';
-  if(el)el.style.display='';
+  var tmPay=document.getElementById('tm-payroll-section');
+  if(tmPay)tmPay.innerHTML='<div class="tp"><div class="tp-hdr"><span class="tp-title">Team Payroll</span><span class="tp-est">ESTIMATED — settles monthly</span></div><div style="color:var(--muted);font-size:12px">Loading…</div></div>';
+  if(el)el.style.display='none';
   fetch('/api/admin/comp/net-sales-auto',{credentials:'include'}).then(function(r){return r.json();}).catch(function(){return{};}).then(function(){
     return fetch('/api/admin/comp/team-summary',{credentials:'include'}).then(function(r){return r.json();});
   }).then(function(d){
@@ -1934,7 +1935,7 @@ function renderTeamSummaryBanner(d){
   html+='<div class="tp-net">Net sales this month: <strong>'+nsStr+'</strong>'+sourceTag;
   html+=' &nbsp;<button class="cb-update-btn" onclick="openNsModal()">Override</button></div>';
   html+='</div>';
-  el.innerHTML=html;el.style.display='';
+  el.style.display='none';
   var tmPay=document.getElementById('tm-payroll-section');
   if(tmPay)tmPay.innerHTML=html;
 }
@@ -2656,7 +2657,9 @@ function vqRowHtml(r){
   var dotClass=r.status==='done'?'vq-dot-review':r.status==='approved'?'vq-dot-scheduled':r.status==='in-progress'?'vq-dot-inprogress':r.status==='posted'?'vq-dot-posted':'vq-dot-pending';
   var statusPretty=r.status==='in-progress'?'Editing':r.status==='done'?'For Review':r.status==='approved'?'Scheduled':r.status==='posted'?'Posted':'Submitted';
   var due=r.dueDate||'—';
-  var driveBtn=r.driveUrl?'<button class="vq-btn vq-drive" onclick="event.stopPropagation();vqOpenDrive(\\''+id+'\\')">📁 Open Footage</button>':'<span style="color:var(--muted);font-size:12px">No footage linked</span>';
+  var rowFootageLink=r.driveUrl?'<a href="'+esc(r.driveUrl)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:#00f2ea;text-decoration:none;font-size:.82rem;font-weight:600;">Open Footage</a>':'<span style="color:var(--muted);font-size:12px">No footage linked</span>';
+  var rowAssetsLink=r.assetsDriveUrl?'<a href="'+esc(r.assetsDriveUrl)+'" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="color:#c9a84c;text-decoration:none;font-size:.82rem;font-weight:600;">Brand Assets</a>':'';
+  var driveBtn=rowFootageLink+(rowAssetsLink?' &nbsp;&middot;&nbsp; '+rowAssetsLink:'');
   var actionBtn='';
   if(r.status==='pending') actionBtn='<button class="vq-btn vq-primary" onclick="event.stopPropagation();vqMoveStatus(\\''+id+'\\',\\'in-progress\\')">▶ Start</button>';
   if(r.status==='in-progress') actionBtn='<button class="vq-btn vq-done" onclick="event.stopPropagation();vqMoveStatus(\\''+id+'\\',\\'done\\')">✓ Ready for Review</button>';
@@ -2688,8 +2691,10 @@ function vqCardHtml(r){
   var prioClass=r.priority==='high'?'vq-prio-high':r.priority==='low'?'vq-prio-low':'vq-prio-normal';
   var date=r.submittedAt?new Date(r.submittedAt).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
   var id=esc(r.id||'');
-  var deleteBtn=(VQ_IS_ADMIN&&r.status==='done')?'<button class="vq-btn" style="margin-left:auto;color:var(--red)" onclick="vqDelete(\\''+id+'\\')">✕ Delete</button>':'';
-  var driveBtn=r.driveUrl?'<button class="vq-btn vq-drive" onclick="vqOpenDrive(\\''+id+'\\')">📁 Footage</button>':'';
+  var deleteBtn=VQ_IS_ADMIN?'<button class="vq-btn" style="margin-left:auto;color:var(--red)" onclick="vqDelete(\\''+id+'\\')">✕ Delete</button>':'';
+  var footageLink=r.driveUrl?'<a href="'+esc(r.driveUrl)+'" target="_blank" rel="noopener" style="color:#00f2ea;text-decoration:none;font-size:.75rem;">Footage</a>':'';
+  var assetsLink=r.assetsDriveUrl?'<a href="'+esc(r.assetsDriveUrl)+'" target="_blank" rel="noopener" style="color:#c9a84c;text-decoration:none;font-size:.75rem;">Brand Assets</a>':'';
+  var driveBtn=(footageLink||assetsLink)?'<div style="display:flex;gap:10px;margin-top:4px;">'+footageLink+assetsLink+'</div>':'';
   var body='';
 
   if(r.status==='pending'){
@@ -3806,8 +3811,7 @@ function tmTenure(startDate){
 var MT_DATA=null,MT_EDIT_ID=null;
 function loadMoreTools(){
   MT_DATA=null;
-  var url='/api/my-tasks/tools'+(DEV_AS?'?devAs='+encodeURIComponent(DEV_AS):'');
-  fetch(url,{credentials:'include'})
+  fetch('/api/my-tasks/tools',{credentials:'include'})
   .then(function(r){return r.json();}).then(function(d){
     MT_DATA=d.tools||[];
     renderMoreTools();
@@ -6377,7 +6381,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
       const isAuth = webhookSecret && (bearer === webhookSecret || req.query.secret === webhookSecret);
       if (!isAuth) return res.status(401).json({ error: 'Unauthorized' });
-      const { title, description, driveUrl, riversideEditId, priority, source, brand, quantity, costUsd, clientBrandId } = req.body || {};
+      const { title, description, driveUrl, assetsDriveUrl, riversideEditId, priority, source, brand, quantity, costUsd, clientBrandId } = req.body || {};
       if (!title || !title.trim()) return res.status(400).json({ error: 'Title is required' });
       const all = readJsonFile(VR_FILE, []);
       const id = 'vr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
@@ -6390,6 +6394,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
         driveUrl: (driveUrl || '').trim(),
         priority: priority || 'normal', status: 'pending', quantity: qty,
         costUsd: cost,
+        ...(assetsDriveUrl ? { assetsDriveUrl: assetsDriveUrl.trim() } : {}),
         ...(clientBrandId ? { clientBrandId: clientBrandId.trim() } : {}),
         ...(riversideEditId ? { riversideEditId: riversideEditId.trim() } : {}),
         ...(source ? { source: source.trim() } : {}),

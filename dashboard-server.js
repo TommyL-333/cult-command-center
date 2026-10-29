@@ -6300,6 +6300,27 @@ app.get('/api/client/products', requireClientSession, async (req, res) => {
   }
 });
 
+// ── Brand assets folder endpoints ────────────────────────────────────────────
+app.get('/api/client/brand/assets-folder', requireClientSession, (req, res) => {
+  const brands = loadBrands();
+  const brand = brands.clients.find(b => b.id === req.session.clientBrandId);
+  if (!brand) return res.status(404).json({ error: 'Brand not found' });
+  res.json({ ok: true, assetsDriveUrl: brand.assetsDriveUrl || '' });
+});
+
+app.put('/api/client/brand/assets-folder', requireClientSession, express.json(), (req, res) => {
+  const { assetsDriveUrl } = req.body || {};
+  if (!assetsDriveUrl || typeof assetsDriveUrl !== 'string') {
+    return res.status(400).json({ error: 'assetsDriveUrl is required' });
+  }
+  const brands = loadBrands();
+  const bi = brands.clients.findIndex(b => b.id === req.session.clientBrandId);
+  if (bi < 0) return res.status(404).json({ error: 'Brand not found' });
+  brands.clients[bi].assetsDriveUrl = assetsDriveUrl.trim();
+  saveBrands(brands);
+  res.json({ ok: true });
+});
+
 // ── Video Request endpoints (client portal → Command Center webhook) ─────────
 const CC_WEBHOOK_URL = 'https://manifest.cultcontent.cc/api/webhooks/add-video-request';
 
@@ -6330,6 +6351,7 @@ app.post('/api/client/video-requests', requireClientSession, express.json(), asy
     title: (title || '').trim() || 'Video request',
     description: (description || '').trim(),
     driveUrl: (driveUrl || '').trim(),
+    assetsDriveUrl: brand.assetsDriveUrl || '',
     quantity: qty,
     costUsd: qty * 10,
     priority: 'normal',
@@ -6346,8 +6368,10 @@ app.post('/api/client/video-requests', requireClientSession, express.json(), asy
         title: record.title,
         description: record.description,
         driveUrl: record.driveUrl,
+        assetsDriveUrl: record.assetsDriveUrl,
         priority: record.priority,
         submittedBy: record.submittedBy,
+        brand: record.brand,
         shoppable: false,
         quantity: record.quantity,
         clientBrandId: record.clientBrandId,
