@@ -6571,6 +6571,16 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
     res.json({ ok: true });
   });
 
+  // ---------- ROUTE: GET /api/webhooks/list-podcast-applications ----------
+  // Webhook-accessible (WEBHOOK_SECRET auth) — returns id, name, email, status for all applicants
+  app.get('/api/webhooks/list-podcast-applications', (req, res) => {
+    const secret = process.env.WEBHOOK_SECRET;
+    const auth = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+    if (!secret || auth !== secret) return res.status(401).json({ error: 'Unauthorized' });
+    const all = readJsonFile(POD_FILE, []);
+    res.json(all.map(a => ({ id: a.id, name: a.name, email: a.email, status: a.status, submittedAt: a.submittedAt })));
+  });
+
   // ---------- ROUTE: PATCH /api/webhooks/patch-podcast-application/:id ----------
   // Webhook-accessible (WEBHOOK_SECRET auth) for patching podcast application fields
   app.patch('/api/webhooks/patch-podcast-application/:id', jsonBody, (req, res) => {
