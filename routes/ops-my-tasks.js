@@ -571,7 +571,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     <div><h1>My Tasks</h1></div>
     <div style="display:flex;gap:8px;align-items:center">
       <a class="chip sisy" href="https://sisyphus.cultcontent.cc" target="_blank" rel="noopener">🪨 Sisyphus</a>
-      <button class="chip" onclick="switchTab(4)">⚙ Team</button>
+      <button class="chip" id="hdr-team-chip" onclick="switchTab(4)" style="display:none">⚙ Team</button>
       <button class="chip" onclick="openMtAdd()">+ Add Task</button>
       <button class="chip" onclick="load()" title="Refresh">↻</button>
     </div>
@@ -1756,7 +1756,7 @@ function loadCompBanner(){
   fetch('/api/comp/summary',{credentials:'include'}).then(function(r){return r.json();}).then(function(d){
     COMP_DATA=d;
     CB_IS_ADMIN=!!d.isAdmin;
-    if(CB_IS_ADMIN){var tmBtn=document.getElementById('tm-tab-btn');if(tmBtn)tmBtn.style.display='';}
+    if(CB_IS_ADMIN){var tmBtn=document.getElementById('tm-tab-btn');if(tmBtn)tmBtn.style.display='';var tmChip=document.getElementById('hdr-team-chip');if(tmChip)tmChip.style.display='';}
     if(!d.hasComp&&CB_IS_ADMIN&&!DEV_AS){
       // Admin with no personal comp: payroll lives only in Team Management tab, not here
     } else if(d.hasComp&&CB_IS_ADMIN&&!DEV_AS&&(!d.netSales||d.netSales===0)){

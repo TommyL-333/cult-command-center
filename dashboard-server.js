@@ -473,17 +473,7 @@ app.post('/api/webhooks/podcast-booking', async (req, res) => {
       'startTime', 'start_time', 'selectedSlot', 'appointmentStartTime',
       'start', 'startDatetime', 'scheduledTime', 'bookingTime', 'booking_time',
       'slot', 'appointmentTime', 'appointment_time', 'datetime', 'date_time',
-    ) || (() => {
-      // Last resort: scan all sources for any date-like string value
-      const sources = [b, contact, appt, custom];
-      for (const src of sources) {
-        for (const [k, v] of Object.entries(src || {})) {
-          if (typeof v === 'string' && /\d{4}-\d{2}-\d{2}/.test(v) && /time|date|slot|start|schedule/i.test(k)) return v;
-          if (typeof v === 'number' && v > 1e12) return new Date(v).toISOString(); // ms epoch
-        }
-      }
-      return '';
-    })();
+    );
     const scheduledAt = startRaw
       ? (isNaN(Number(startRaw)) ? startRaw : new Date(Number(startRaw)).toISOString())
       : null;
