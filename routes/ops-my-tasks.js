@@ -6395,7 +6395,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
   async function sendPodcastApprovalEmail(guest) {
     const GHL_KEY = process.env.GHL_API_KEY;
     const GHL_LOC = process.env.GHL_LOC_ID || process.env.GHL_LOCATION_ID;
-    const BOOKING_URL = process.env.PODCAST_BOOKING_URL || 'https://api.leadconnectorhq.com/widget/booking/kcHJd1uceIi0JhjWhEW3';
+    const BOOKING_URL = process.env.PODCAST_BOOKING_URL || 'https://cultcontent.cc/cult-commerce-podcast/book';
     if (!GHL_KEY || !GHL_LOC) { console.warn('[podcast email] GHL_API_KEY or GHL_LOC_ID not set — skipping email'); return; }
 
     const headers = { Authorization: `Bearer ${GHL_KEY}`, Version: '2021-07-28', 'Content-Type': 'application/json' };
