@@ -6296,38 +6296,23 @@ app.get('/api/client/products', requireClientSession, async (req, res) => {
   }
 });
 
-// ── Video Request proxy endpoints (client portal → Command Center) ──────────
-const CC_API = 'https://manifest.cultcontent.cc';
+// ── Video Request endpoints (client portal → Command Center webhook) ─────────
+const CC_WEBHOOK_URL = 'https://manifest.cultcontent.cc/api/webhooks/add-video-request';
 
-async function ccFetch(path, opts = {}) {
-  const secret = process.env.CLAUDE_CODE_SECRET;
-  if (!secret) throw new Error('CC_VIDEO_SECRET not set');
-  return fetch(`${CC_API}${path}`, {
-    ...opts,
-    headers: { 'Authorization': `Bearer ${secret}`, 'Content-Type': 'application/json', ...(opts.headers || {}) },
-  });
-}
-
-// GET /api/client/video-requests — list this brand's submitted video requests
-app.get('/api/client/video-requests', requireClientSession, async (req, res) => {
+// GET /api/client/video-requests — return brand's submitted video requests (stored locally)
+app.get('/api/client/video-requests', requireClientSession, (req, res) => {
   const brands = loadBrands();
   const brand = brands.clients.find(b => b.id === req.session.clientBrandId);
   if (!brand) return res.status(404).json({ error: 'Brand not found' });
-  try {
-    const r = await ccFetch(`/api/video-requests?clientBrandId=${encodeURIComponent(brand.id)}`);
-    if (!r.ok) return res.json({ ok: true, requests: [] });
-    const data = await r.json();
-    res.json({ ok: true, requests: data.requests || data || [] });
-  } catch (e) {
-    res.json({ ok: true, requests: [] });
-  }
+  res.json({ ok: true, requests: brand.videoRequests || [] });
 });
 
-// POST /api/client/video-requests — submit a new video editing request
+// POST /api/client/video-requests — submit video editing request to Command Center + store locally
 app.post('/api/client/video-requests', requireClientSession, express.json(), async (req, res) => {
   const brands = loadBrands();
-  const brand = brands.clients.find(b => b.id === req.session.clientBrandId);
-  if (!brand) return res.status(404).json({ error: 'Brand not found' });
+  const bi = brands.clients.findIndex(b => b.id === req.session.clientBrandId);
+  if (bi === -1) return res.status(404).json({ error: 'Brand not found' });
+  const brand = brands.clients[bi];
   const { title, description, driveUrl, quantity } = req.body;
   if (!driveUrl) return res.status(400).json({ error: 'Drive link is required' });
   const qty = Math.max(1, parseInt(quantity) || 1);
@@ -6347,17 +6332,31 @@ app.post('/api/client/video-requests', requireClientSession, express.json(), asy
     status: 'pending',
     source: 'client-portal',
   };
-  try {
-    const r = await ccFetch('/api/video-requests', { method: 'POST', body: JSON.stringify(record) });
-    if (!r.ok) {
-      const err = await r.text();
-      return res.status(502).json({ error: 'Failed to submit request', detail: err });
-    }
-    const data = await r.json();
-    res.json({ ok: true, request: data.request || record });
-  } catch (e) {
-    res.status(502).json({ error: e.message });
+  // Forward to Command Center via webhook (CF Access bypass path)
+  const secret = process.env.WEBHOOK_SECRET;
+  if (secret) {
+    fetch(CC_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${secret}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        title: record.title,
+        description: record.description,
+        driveUrl: record.driveUrl,
+        priority: record.priority,
+        submittedBy: record.submittedBy,
+        shoppable: false,
+        quantity: record.quantity,
+        clientBrandId: record.clientBrandId,
+        source: record.source,
+      }),
+    }).catch(e => console.error('[video-requests] webhook forward failed:', e.message));
+  } else {
+    console.warn('[video-requests] WEBHOOK_SECRET not set — request not forwarded to Command Center');
   }
+  // Always save locally so brand can see their requests
+  brands.clients[bi].videoRequests = [record, ...(brand.videoRequests || [])];
+  saveBrands(brands);
+  res.json({ ok: true, request: record });
 });
 
 // GET /api/client/reacher/creators — return Reacher affiliate creator list for this brand
