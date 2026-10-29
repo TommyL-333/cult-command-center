@@ -6321,6 +6321,159 @@ app.put('/api/client/brand/assets-folder', requireClientSession, express.json(),
   res.json({ ok: true });
 });
 
+// ── Google Drive OAuth per client ────────────────────────────────────────────
+const GOOGLE_SCOPES = [
+  'https://www.googleapis.com/auth/drive.file',
+  'https://www.googleapis.com/auth/userinfo.email'
+].join(' ');
+
+function googleAuthUrl(state) {
+  const params = new URLSearchParams({
+    client_id: process.env.GOOGLE_CLIENT_ID || '',
+    redirect_uri: process.env.GOOGLE_REDIRECT_URI || '',
+    response_type: 'code',
+    scope: GOOGLE_SCOPES,
+    access_type: 'offline',
+    prompt: 'consent',
+    state: state || ''
+  });
+  return 'https://accounts.google.com/o/oauth2/v2/auth?' + params.toString();
+}
+
+async function googleRefreshToken(refreshToken) {
+  const r = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: process.env.GOOGLE_CLIENT_ID || '',
+      client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
+      refresh_token: refreshToken,
+      grant_type: 'refresh_token'
+    }).toString()
+  });
+  if (!r.ok) throw new Error('Google token refresh failed: ' + r.status);
+  return r.json();
+}
+
+async function googleGetAccessToken(brand) {
+  const auth = brand.googleDriveAuth;
+  if (!auth || !auth.refresh_token) throw new Error('No Google auth for brand');
+  if (!auth.expires_at || Date.now() > auth.expires_at - 60000) {
+    const fresh = await googleRefreshToken(auth.refresh_token);
+    auth.access_token = fresh.access_token;
+    auth.expires_at = Date.now() + (fresh.expires_in || 3600) * 1000;
+    const brands = loadBrands();
+    const bi = brands.clients.findIndex(b => b.id === brand.id);
+    if (bi >= 0) {
+      brands.clients[bi].googleDriveAuth = auth;
+      saveBrands(brands);
+    }
+  }
+  return auth.access_token;
+}
+app._googleGetAccessToken = googleGetAccessToken;
+
+async function uploadFileToDrive(brand, folderId, filename, mimeType, buffer) {
+  const token = await googleGetAccessToken(brand);
+  const boundary = 'cult_drive_boundary_' + Date.now();
+  const metaJson = JSON.stringify({ name: filename, parents: [folderId] });
+  const bodyParts = [
+    '--' + boundary + '\r\n',
+    'Content-Type: application/json; charset=UTF-8\r\n\r\n',
+    metaJson + '\r\n',
+    '--' + boundary + '\r\n',
+    'Content-Type: ' + mimeType + '\r\n\r\n'
+  ];
+  const headerBuf = Buffer.from(bodyParts.join(''));
+  const footer = Buffer.from('\r\n--' + boundary + '--');
+  const body = Buffer.concat([headerBuf, buffer, footer]);
+  const r = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+    method: 'POST',
+    headers: {
+      Authorization: 'Bearer ' + token,
+      'Content-Type': 'multipart/related; boundary="' + boundary + '"',
+      'Content-Length': String(body.length)
+    },
+    body
+  });
+  if (!r.ok) throw new Error('Drive upload failed: ' + r.status + ' ' + await r.text());
+  return r.json();
+}
+app._uploadFileToDrive = uploadFileToDrive;
+
+// GET /api/client/auth/google — initiate OAuth
+app.get('/api/client/auth/google', requireClientSession, (req, res) => {
+  const state = req.session.clientBrandId;
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_REDIRECT_URI) {
+    return res.status(500).send('Google OAuth not configured');
+  }
+  res.redirect(googleAuthUrl(state));
+});
+
+// GET /api/client/auth/google/callback — exchange code, store tokens
+app.get('/api/client/auth/google/callback', async (req, res) => {
+  const { code, state, error } = req.query;
+  if (error) return res.redirect('/client-portal?tab=overview&googleError=' + encodeURIComponent(error));
+  if (!code || !state) return res.redirect('/client-portal?tab=overview&googleError=missing_code');
+  try {
+    const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        code,
+        client_id: process.env.GOOGLE_CLIENT_ID || '',
+        client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
+        redirect_uri: process.env.GOOGLE_REDIRECT_URI || '',
+        grant_type: 'authorization_code'
+      }).toString()
+    });
+    if (!tokenRes.ok) throw new Error('Token exchange failed: ' + tokenRes.status);
+    const tokens = await tokenRes.json();
+
+    // Get user email
+    const infoRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: 'Bearer ' + tokens.access_token }
+    });
+    const info = infoRes.ok ? await infoRes.json() : {};
+
+    const brands = loadBrands();
+    const bi = brands.clients.findIndex(b => b.id === state);
+    if (bi < 0) return res.redirect('/client-portal?tab=overview&googleError=brand_not_found');
+    brands.clients[bi].googleDriveAuth = {
+      access_token: tokens.access_token,
+      refresh_token: tokens.refresh_token,
+      expires_at: Date.now() + (tokens.expires_in || 3600) * 1000,
+      email: info.email || '',
+      connectedAt: new Date().toISOString()
+    };
+    saveBrands(brands);
+    res.redirect('/client-portal?tab=overview&googleConnected=1');
+  } catch (e) {
+    console.error('[google-oauth]', e.message);
+    res.redirect('/client-portal?tab=overview&googleError=' + encodeURIComponent(e.message));
+  }
+});
+
+// GET /api/client/auth/google/status
+app.get('/api/client/auth/google/status', requireClientSession, (req, res) => {
+  const brands = loadBrands();
+  const brand = brands.clients.find(b => b.id === req.session.clientBrandId);
+  if (!brand) return res.status(404).json({ error: 'Brand not found' });
+  const auth = brand.googleDriveAuth;
+  if (!auth || !auth.refresh_token) return res.json({ ok: true, connected: false });
+  res.json({ ok: true, connected: true, email: auth.email || '', connectedAt: auth.connectedAt || '' });
+});
+
+// DELETE /api/client/auth/google — disconnect
+app.delete('/api/client/auth/google', requireClientSession, (req, res) => {
+  const brands = loadBrands();
+  const bi = brands.clients.findIndex(b => b.id === req.session.clientBrandId);
+  if (bi < 0) return res.status(404).json({ error: 'Brand not found' });
+  delete brands.clients[bi].googleDriveAuth;
+  saveBrands(brands);
+  res.json({ ok: true });
+});
+
 // ── Video Request endpoints (client portal → Command Center webhook) ─────────
 const CC_WEBHOOK_URL = 'https://manifest.cultcontent.cc/api/webhooks/add-video-request';
 

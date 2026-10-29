@@ -616,6 +616,75 @@
     </div>
   </div>
 
+  <!-- Connected Accounts -->
+  <div style="margin-bottom:32px;">
+    <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin-bottom:14px;">Connected Accounts</div>
+    <div class="card" id="googleDriveCard" style="max-width:480px;">
+      <div class="card-title"><span class="dot" style="background:#34a853"></span>Google Drive</div>
+      <p style="font-size:.82rem;color:var(--muted);line-height:1.6;margin-bottom:16px;">
+        Connect your Google account so generated assets are automatically saved to your Drive folder.
+      </p>
+      <div id="googleDriveConnected" style="display:none;margin-bottom:14px;padding:10px 14px;background:rgba(52,168,83,.08);border:1px solid rgba(52,168,83,.25);border-radius:8px;">
+        <div style="color:#34a853;font-weight:700;font-size:.84rem;">Connected</div>
+        <div id="googleDriveEmail" style="font-size:.8rem;color:var(--muted);margin-top:2px;"></div>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <a id="googleDriveConnectBtn" href="/api/client/auth/google"
+          style="display:inline-block;background:rgba(52,168,83,0.1);border:1px solid rgba(52,168,83,0.3);color:#34a853;font-weight:700;font-size:.84rem;border-radius:8px;padding:10px 20px;text-decoration:none;transition:opacity .15s;"
+          onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'">
+          Connect Google
+        </a>
+        <button id="googleDriveDisconnectBtn" onclick="googleDriveDisconnect()" style="display:none;background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);color:#ef4444;font-weight:700;font-size:.84rem;border-radius:8px;padding:10px 20px;cursor:pointer;">
+          Disconnect
+        </button>
+      </div>
+      <div id="googleDriveStatus" style="font-size:.78rem;color:var(--muted);margin-top:10px;"></div>
+    </div>
+  </div>
+
+  <script>
+  async function googleDriveLoadStatus() {
+    try {
+      const r = await fetch('/api/client/auth/google/status');
+      const d = await r.json();
+      if (d.connected) {
+        document.getElementById('googleDriveConnected').style.display = 'block';
+        document.getElementById('googleDriveEmail').textContent = d.email || '';
+        document.getElementById('googleDriveConnectBtn').textContent = 'Reconnect';
+        document.getElementById('googleDriveDisconnectBtn').style.display = 'inline-block';
+      } else {
+        document.getElementById('googleDriveConnected').style.display = 'none';
+        document.getElementById('googleDriveConnectBtn').textContent = 'Connect Google';
+        document.getElementById('googleDriveDisconnectBtn').style.display = 'none';
+      }
+    } catch (e) {
+      document.getElementById('googleDriveStatus').textContent = 'Could not load status.';
+    }
+  }
+  async function googleDriveDisconnect() {
+    if (!confirm('Disconnect Google Drive?')) return;
+    try {
+      await fetch('/api/client/auth/google', { method: 'DELETE' });
+      await googleDriveLoadStatus();
+    } catch (e) {
+      document.getElementById('googleDriveStatus').textContent = 'Error disconnecting.';
+    }
+  }
+  (function() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('googleConnected') === '1') {
+      const s = document.getElementById('googleDriveStatus');
+      if (s) s.textContent = 'Google Drive connected!';
+      setTimeout(() => { if (s) s.textContent = ''; }, 4000);
+    }
+    if (params.get('googleError')) {
+      const s = document.getElementById('googleDriveStatus');
+      if (s) s.textContent = 'Error: ' + params.get('googleError');
+    }
+    googleDriveLoadStatus();
+  })();
+  </script>
+
   <!-- Recommended Tools -->
   <div style="margin-bottom:32px;">
     <div style="font-size:.68rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin-bottom:14px;">Recommended Tools</div>

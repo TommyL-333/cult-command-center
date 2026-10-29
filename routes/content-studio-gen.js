@@ -207,6 +207,24 @@ module.exports = function registerContentStudioGen(app, deps = {}) {
           if (upstream === 'completed' || upstream === 'succeeded') {
             const videoUrl = (d.outputs && d.outputs[0]) || d.output || d.video_url || null;
             queries.updateGenerationStatus.run('succeeded', videoUrl, gen.id);
+            // Auto-upload to client's Google Drive assets folder (non-fatal)
+            if (videoUrl) {
+              try {
+                const brand = brandFor(req);
+                if (brand && brand.googleDriveAuth && brand.googleDriveAuth.refresh_token && brand.assetsDriveUrl) {
+                  const folderMatch = brand.assetsDriveUrl.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+                  const folderId = folderMatch ? folderMatch[1] : null;
+                  if (folderId && app._uploadFileToDrive) {
+                    const fileRes = await fetch(videoUrl);
+                    const fileBuf = Buffer.from(await fileRes.arrayBuffer());
+                    const ext = videoUrl.split('?')[0].split('.').pop() || 'mp4';
+                    const fname = 'generated_' + Date.now() + '.' + ext;
+                    const mime = ext === 'mp4' ? 'video/mp4' : 'image/' + (ext === 'jpg' ? 'jpeg' : ext);
+                    await app._uploadFileToDrive(brand, folderId, fname, mime, fileBuf);
+                  }
+                }
+              } catch (driveErr) { console.error('[drive-upload]', driveErr.message); }
+            }
             return res.json({ ok: true, generation: { ...gen, status: 'succeeded', video_url: videoUrl } });
           }
           if (upstream === 'failed' || upstream === 'error') {
