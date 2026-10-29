@@ -1935,6 +1935,8 @@ function renderTeamSummaryBanner(d){
   html+=' &nbsp;<button class="cb-update-btn" onclick="openNsModal()">Override</button></div>';
   html+='</div>';
   el.innerHTML=html;el.style.display='';
+  var tmPay=document.getElementById('tm-payroll-section');
+  if(tmPay)tmPay.innerHTML=html;
 }
 
 function wrPrevWeekRange(){
@@ -3876,17 +3878,11 @@ function mtDelete(id){
 
 function loadTeamMgmt(){
   if(TM_DATA)return renderTeamGrid();
+  if(CB_IS_ADMIN&&!DEV_AS)loadTeamSummaryBanner();
   fetch('/api/admin/team/members',{credentials:'include'})
   .then(function(r){return r.json();}).then(function(d){
     TM_DATA=d.members||[];
     TM_IS_ADMIN=!!d.isAdmin;
-    // Move payroll into this tab
-    var payEl=document.getElementById('comp-banner');
-    var tmPay=document.getElementById('tm-payroll-section');
-    if(payEl&&tmPay&&payEl.innerHTML.trim()){
-      tmPay.innerHTML=payEl.innerHTML;
-      payEl.style.display='none';
-    }
     renderTeamGrid();
   }).catch(function(e){document.getElementById('tm-grid').innerHTML='<div style="color:var(--muted);font-size:12px">Failed to load team: '+e+'</div>';});
 }
@@ -7591,7 +7587,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
   app.get('/api/my-tasks/tools', requireAuth, (req, res) => {
     try {
       const sessionEmail = (req.session && req.session.email) || '';
-      const isAdmin = CB_ADMINS.includes(sessionEmail);
+      const isAdmin = ADMIN_EMAILS.has(sessionEmail);
       const devAs = req.query.devAs;
       const email = (isAdmin && devAs) ? devAs : sessionEmail;
       const fp = toolsFilePath(email);
