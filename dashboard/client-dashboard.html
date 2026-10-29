@@ -679,7 +679,7 @@
     <!-- Submit form -->
     <div class="vm-submit-card">
       <h2>Request Videos</h2>
-      <p>$20 per video edit &middot; Includes captions, hook optimization, and delivery within 5 business days</p>
+      <p>$10 per video edit &middot; Includes captions, hook optimization, and delivery within 5 business days</p>
       <div class="vm-form-grid">
         <div class="vm-field full">
           <label class="vm-label">Google Drive Link *</label>
@@ -743,7 +743,7 @@
 
     function vmUpdateCost() {
       var qty = Math.max(1, parseInt(document.getElementById('vmQty').value) || 1);
-      document.getElementById('vmCostDisplay').textContent = '$' + (qty * 20).toLocaleString('en-US');
+      document.getElementById('vmCostDisplay').textContent = '$' + (qty * 10).toLocaleString('en-US');
     }
     window.vmUpdateCost = vmUpdateCost;
 
@@ -793,7 +793,7 @@
         + '<div class="vm-card-title">' + (r.title || 'Video request') + '</div>'
         + '<div class="vm-card-meta">' + (r.quantity||1) + ' video' + ((r.quantity||1)>1?'s':'')
           + (date ? ' &middot; ' + date : '') + '</div>'
-        + '<div class="vm-card-cost">$' + ((r.costUsd || (r.quantity||1)*20)).toLocaleString('en-US') + '</div>'
+        + '<div class="vm-card-cost">$' + ((r.costUsd || (r.quantity||1)*10)).toLocaleString('en-US') + '</div>'
         + '</div>';
     }
 

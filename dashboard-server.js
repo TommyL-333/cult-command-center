@@ -6342,7 +6342,7 @@ app.post('/api/client/video-requests', requireClientSession, express.json(), asy
     description: (description || '').trim(),
     driveUrl: (driveUrl || '').trim(),
     quantity: qty,
-    costUsd: qty * 20,
+    costUsd: qty * 10,
     priority: 'normal',
     status: 'pending',
     source: 'client-portal',
