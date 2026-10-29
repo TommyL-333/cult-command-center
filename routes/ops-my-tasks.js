@@ -397,6 +397,37 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .tp-net{font-size:11px;color:var(--muted);margin-top:10px;padding-top:8px;border-top:1px solid var(--border);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .tp-net strong{color:var(--txt)}
   @media(max-width:540px){.tp-meta{grid-template-columns:1fr 1fr}}
+  /* ── Team Management ─────────────────────────────────── */
+  .tm-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:24px}
+  @media(max-width:900px){.tm-grid{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:540px){.tm-grid{grid-template-columns:1fr}}
+  .tm-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;cursor:pointer;transition:.15s}
+  .tm-card:hover{border-color:rgba(0,242,234,.4);transform:translateY(-1px)}
+  .tm-card-top{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+  .tm-avatar{width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;flex-shrink:0;background:linear-gradient(135deg,var(--purple),var(--cyan));color:#fff}
+  .tm-name{font-size:15px;font-weight:700}
+  .tm-role{font-size:11px;color:var(--muted);margin-top:1px}
+  .tm-stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .tm-stat{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:8px 10px;text-align:center}
+  .tm-stat .n{font-size:16px;font-weight:800;letter-spacing:-.02em}
+  .tm-stat .l{font-size:9px;color:var(--muted);margin-top:1px;text-transform:uppercase;letter-spacing:.05em}
+  .tm-kpi-row{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:11px}
+  .tm-kpi-bar-bg{flex:1;height:4px;background:var(--border);border-radius:2px;overflow:hidden}
+  .tm-kpi-bar-fill{height:100%;border-radius:2px;background:linear-gradient(90deg,var(--cyan),rgba(0,242,234,.4));transition:width .5s}
+  /* Modal */
+  .tm-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:999;padding:16px}
+  .tm-modal{background:var(--bg);border:1px solid var(--border);border-radius:18px;width:100%;max-width:580px;max-height:90vh;overflow-y:auto;padding:24px}
+  .tm-modal-hdr{display:flex;align-items:center;gap:14px;margin-bottom:20px}
+  .tm-modal-avatar{width:54px;height:54px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:800;background:linear-gradient(135deg,var(--purple),var(--cyan));color:#fff;flex-shrink:0}
+  .tm-section{margin-top:18px;padding-top:16px;border-top:1px solid rgba(255,255,255,.07)}
+  .tm-section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:10px}
+  .tm-call-item{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:6px}
+  .tm-call-title{font-size:12px;font-weight:600;margin-bottom:2px}
+  .tm-call-meta{font-size:10px;color:var(--muted)}
+  .tm-ai-overview{font-size:12px;line-height:1.7;color:rgba(255,255,255,.8);white-space:pre-wrap;background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px;min-height:60px}
+  .tm-notes-ta{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:10px 12px;color:var(--txt);font-size:12px;font-family:inherit;resize:vertical;min-height:80px}
+  .tm-contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .tm-contact-item{font-size:12px;color:var(--muted)}.tm-contact-item strong{color:var(--txt);display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
   /* ── Video Queue ──────────────────────────────────────── */
   .vq-submit{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;margin:0 auto 22px;max-width:640px}
   .vq-submit h3{margin:0 0 14px;font-size:15px;font-weight:700}
@@ -553,6 +584,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     <button class="tab" onclick="switchTab(1)">Client Reports</button>
     <button class="tab" onclick="switchTab(2)">Software</button>
     <button class="tab" id="vq-tab-btn" onclick="switchTab(3)">Video Production</button>
+    <button class="tab" id="tm-tab-btn" onclick="switchTab(4)" style="display:none">Team Management</button>
   </div>
 
   <div id="tab-tasks">
@@ -1035,6 +1067,66 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   </div>
 </div>
 
+<!-- Team Management tab -->
+<div id="tab-team-mgmt" style="display:none">
+  <div id="tm-payroll-section"></div>
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+    <div style="font-size:18px;font-weight:800;letter-spacing:-.02em">Team</div>
+    <button class="vq-btn" onclick="tmRefreshOverviews()" id="tm-refresh-btn" style="font-size:11px">↻ Refresh AI Overviews</button>
+  </div>
+  <div class="tm-grid" id="tm-grid"><div style="color:var(--muted);font-size:12px">Loading…</div></div>
+</div>
+
+<!-- Team member modal -->
+<div class="tm-modal-overlay" id="tm-modal" style="display:none" onclick="if(event.target===this)tmCloseModal()">
+  <div class="tm-modal">
+    <div class="tm-modal-hdr">
+      <div class="tm-modal-avatar" id="tmm-avatar"></div>
+      <div>
+        <div style="font-size:18px;font-weight:800" id="tmm-name"></div>
+        <div style="font-size:12px;color:var(--muted)" id="tmm-role"></div>
+      </div>
+      <button onclick="tmCloseModal()" style="margin-left:auto;background:none;border:none;font-size:20px;color:var(--muted);cursor:pointer">✕</button>
+    </div>
+    <!-- Contact -->
+    <div class="tm-section">
+      <div class="tm-section-title">Contact</div>
+      <div class="tm-contact-grid" id="tmm-contact"></div>
+    </div>
+    <!-- Stats detail -->
+    <div class="tm-section">
+      <div class="tm-section-title">Stats</div>
+      <div id="tmm-stats-detail"></div>
+    </div>
+    <!-- KPIs -->
+    <div class="tm-section" id="tmm-kpi-section">
+      <div class="tm-section-title">KPI Gates (this month)</div>
+      <div id="tmm-kpis"></div>
+    </div>
+    <!-- AI Overview -->
+    <div class="tm-section">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div class="tm-section-title" style="margin-bottom:0">AI Overview</div>
+        <span id="tmm-ai-updated" style="font-size:9px;color:var(--muted)"></span>
+      </div>
+      <div class="tm-ai-overview" id="tmm-ai-overview">No overview generated yet.</div>
+    </div>
+    <!-- Recent Calls -->
+    <div class="tm-section">
+      <div class="tm-section-title">Recent Calls</div>
+      <div id="tmm-calls"><div style="color:var(--muted);font-size:12px">Loading…</div></div>
+    </div>
+    <!-- Notes -->
+    <div class="tm-section" id="tmm-notes-section" style="display:none">
+      <div class="tm-section-title">Admin Notes</div>
+      <textarea class="tm-notes-ta" id="tmm-notes-ta" placeholder="Notes about this team member…"></textarea>
+      <div style="display:flex;gap:6px;margin-top:8px">
+        <button class="vq-btn vq-done" onclick="tmSaveNotes()">Save Notes</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 <!-- Net sales update modal (admin only) -->
 <div class="overlay" id="ns-overlay" onclick="if(event.target===this)closeNsModal()">
@@ -1122,9 +1214,11 @@ function switchTab(idx){
   document.getElementById('tab-report').style.display=idx===1?'':'none';
   document.getElementById('tab-sprint').style.display=idx===2?'':'none';
   document.getElementById('tab-video-queue').style.display=idx===3?'':'none';
+  document.getElementById('tab-team-mgmt').style.display=idx===4?'':'none';
   if(idx===1)loadReportTab();
   if(idx===2)loadSprint();
   if(idx===3){applyVqRole();loadVideoQueue();}
+  if(idx===4)loadTeamMgmt();
 }
 
 /* ── Sprint planner ──────────────────────────────────── */
@@ -1662,6 +1756,7 @@ function loadCompBanner(){
   fetch('/api/comp/summary',{credentials:'include'}).then(function(r){return r.json();}).then(function(d){
     COMP_DATA=d;
     CB_IS_ADMIN=!!d.isAdmin;
+    if(CB_IS_ADMIN){var tmBtn=document.getElementById('tm-tab-btn');if(tmBtn)tmBtn.style.display='';}
     if(!d.hasComp&&CB_IS_ADMIN&&!DEV_AS){
       // Admin with no personal comp: show team payroll summary
       loadTeamSummaryBanner();
@@ -3558,6 +3653,194 @@ function doBulkDelete(){
       if(++done===total){toast('🗑 Deleted '+total+' task'+(total>1?'s':''));SELECTED.clear();applyFilters();}
     })
     .catch(function(){if(++done===total){toast('⚠ Some deletes may have failed');SELECTED.clear();applyFilters();}});
+  });
+}
+
+load();
+
+/* ── Team Management ─────────────────────────────────── */
+var TM_DATA=null,TM_CURRENT_EMAIL=null,TM_IS_ADMIN=false;
+var TM_AVATAR_COLORS=['#7b2fff','#00f2ea','#ff0050','#f59e0b','#3b82f6','#ec4899','#10b981'];
+function tmAvatarColor(name){
+  var i=0;for(var c=0;c<name.length;c++)i+=name.charCodeAt(c);
+  return TM_AVATAR_COLORS[i%TM_AVATAR_COLORS.length];
+}
+function tmInitials(name){return (name||'?').split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase();}
+function tmTenure(startDate){
+  if(!startDate)return '—';
+  var s=new Date(startDate),n=new Date();
+  var months=(n.getFullYear()-s.getFullYear())*12+(n.getMonth()-s.getMonth());
+  if(months<1)return '<1 mo';
+  if(months<12)return months+' mo';
+  var yrs=Math.floor(months/12),mos=months%12;
+  return yrs+'y'+(mos?' '+mos+'m':'');
+}
+
+function loadTeamMgmt(){
+  if(TM_DATA)return renderTeamGrid();
+  fetch('/api/admin/team/members',{credentials:'include'})
+  .then(function(r){return r.json();}).then(function(d){
+    TM_DATA=d.members||[];
+    TM_IS_ADMIN=!!d.isAdmin;
+    // Move payroll into this tab
+    var payEl=document.getElementById('comp-banner');
+    var tmPay=document.getElementById('tm-payroll-section');
+    if(payEl&&tmPay&&payEl.innerHTML.trim()){
+      tmPay.innerHTML=payEl.innerHTML;
+      payEl.style.display='none';
+    }
+    renderTeamGrid();
+  }).catch(function(e){document.getElementById('tm-grid').innerHTML='<div style="color:var(--muted);font-size:12px">Failed to load team: '+e+'</div>';});
+}
+
+function renderTeamGrid(){
+  var grid=document.getElementById('tm-grid');
+  if(!TM_DATA||!TM_DATA.length){grid.innerHTML='<div style="color:var(--muted);font-size:12px">No team members found.</div>';return;}
+  grid.innerHTML=TM_DATA.map(function(m){
+    var color=tmAvatarColor(m.name);
+    var initials=tmInitials(m.name);
+    var tenure=tmTenure(m.startDate);
+    var spend=m.base?('$'+(m.base+(m.bonusDollars||0)).toLocaleString()):('$'+(m.bonusDollars||0).toLocaleString());
+    var openTasks=(m.openTasks||0);
+    var anthropic=m.anthropicUsage?('$'+Number(m.anthropicUsage).toFixed(0)):'—';
+    // KPI progress: take first gate as primary
+    var kpiHtml='';
+    var gates=m.gateDetails||[];
+    if(gates.length){
+      var g=gates[0];
+      var raw=g.value||0;
+      var maxVal=g.hit||1;
+      var pct=Math.min(100,Math.round((raw/maxVal)*100));
+      kpiHtml='<div class="tm-kpi-row">'
+        +'<span style="font-size:10px;color:var(--muted);min-width:80px;flex-shrink:0">'+esc(g.label)+'</span>'
+        +'<div class="tm-kpi-bar-bg"><div class="tm-kpi-bar-fill" style="width:'+pct+'%"></div></div>'
+        +'<span style="font-size:10px;color:var(--muted);min-width:40px;text-align:right">'+raw+' / '+g.hit+'</span>'
+        +'</div>';
+    }
+    return '<div class="tm-card" onclick="tmOpenModal(\\''+esc(m.email)+'\\')">'
+      +'<div class="tm-card-top">'
+      +'<div class="tm-avatar" style="background:'+color+'">'+initials+'</div>'
+      +'<div><div class="tm-name">'+esc(m.name)+'</div><div class="tm-role">'+esc(m.role||'—')+'</div></div>'
+      +'</div>'
+      +'<div class="tm-stats">'
+      +'<div class="tm-stat"><div class="n" style="font-size:13px">'+tenure+'</div><div class="l">Tenure</div></div>'
+      +'<div class="tm-stat"><div class="n" style="font-size:13px">'+spend+'</div><div class="l">Mo. Spend</div></div>'
+      +'<div class="tm-stat"><div class="n">'+openTasks+'</div><div class="l">Open Tasks</div></div>'
+      +'<div class="tm-stat"><div class="n" style="font-size:13px">'+anthropic+'</div><div class="l">Anthropic</div></div>'
+      +'</div>'
+      +kpiHtml
+      +'</div>';
+  }).join('');
+}
+
+function tmOpenModal(email){
+  TM_CURRENT_EMAIL=email;
+  var m=TM_DATA&&TM_DATA.find(function(x){return x.email===email;});
+  if(!m)return;
+  var color=tmAvatarColor(m.name);
+  document.getElementById('tmm-avatar').textContent=tmInitials(m.name);
+  document.getElementById('tmm-avatar').style.background=color;
+  document.getElementById('tmm-name').textContent=m.name;
+  document.getElementById('tmm-role').textContent=(m.role||'—')+(m.timezone?' · '+m.timezone:'');
+  // Contact
+  document.getElementById('tmm-contact').innerHTML=
+    '<div class="tm-contact-item"><strong>Email</strong>'+esc(m.email)+'</div>'
+    +'<div class="tm-contact-item"><strong>Timezone</strong>'+(m.timezone||'—')+'</div>'
+    +(m.phone?'<div class="tm-contact-item"><strong>Phone</strong>'+esc(m.phone)+'</div>':'')
+    +(m.startDate?'<div class="tm-contact-item"><strong>Start Date</strong>'+esc(m.startDate)+'</div>':'');
+  // Stats detail
+  var spend=(m.base||0)+(m.bonusDollars||0);
+  document.getElementById('tmm-stats-detail').innerHTML=
+    '<div class="tm-stats" style="grid-template-columns:1fr 1fr 1fr 1fr">'
+    +'<div class="tm-stat"><div class="n" style="font-size:13px">'+tmTenure(m.startDate)+'</div><div class="l">Tenure</div></div>'
+    +'<div class="tm-stat"><div class="n" style="font-size:13px">'+(m.base?'$'+m.base.toLocaleString():'—')+'</div><div class="l">Base</div></div>'
+    +'<div class="tm-stat"><div class="n" style="font-size:13px">'+(m.bonusDollars?'$'+m.bonusDollars.toLocaleString():'$0')+'</div><div class="l">Bonus</div></div>'
+    +'<div class="tm-stat"><div class="n">'+(m.openTasks||0)+'</div><div class="l">Open Tasks</div></div>'
+    +'</div>';
+  // KPI gates
+  var gates=m.gateDetails||[];
+  var kpiSec=document.getElementById('tmm-kpi-section');
+  var kpiEl=document.getElementById('tmm-kpis');
+  if(gates.length){
+    kpiSec.style.display='';
+    kpiEl.innerHTML=gates.map(function(g){
+      var raw=g.value||0;var maxVal=g.hit||1;
+      var pct=Math.min(100,Math.round((raw/maxVal)*100));
+      var floorPos=Math.round(((g.floor||0)/maxVal)*100);
+      var cls=g.score>=1?'var(--cyan)':g.score>=0.5?'#f59e0b':'var(--muted)';
+      return '<div style="margin-bottom:10px">'
+        +'<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px"><span>'+esc(g.label)+'</span><span style="color:'+cls+'">'+raw+' / '+g.hit+'</span></div>'
+        +'<div style="height:5px;background:var(--border);border-radius:3px;overflow:hidden;position:relative">'
+        +'<div style="height:100%;width:'+pct+'%;background:'+cls+';border-radius:3px;transition:width .5s"></div>'
+        +'<div style="position:absolute;top:0;bottom:0;left:'+floorPos+'%;width:1px;background:rgba(255,255,255,.3)"></div>'
+        +'</div></div>';
+    }).join('');
+  } else { kpiSec.style.display='none'; }
+  // AI Overview
+  document.getElementById('tmm-ai-overview').textContent=m.aiOverview||'No overview generated yet.';
+  var aiUp=document.getElementById('tmm-ai-updated');
+  aiUp.textContent=m.aiOverviewUpdatedAt?'Updated '+new Date(m.aiOverviewUpdatedAt).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
+  // Notes
+  var notesSec=document.getElementById('tmm-notes-section');
+  if(TM_IS_ADMIN){
+    notesSec.style.display='';
+    document.getElementById('tmm-notes-ta').value=m.notes||'';
+  } else { notesSec.style.display='none'; }
+  // Recent calls
+  document.getElementById('tmm-calls').innerHTML='<div style="color:var(--muted);font-size:12px">Loading…</div>';
+  document.getElementById('tm-modal').style.display='flex';
+  // Fetch calls async
+  fetch('/api/admin/team/members/'+encodeURIComponent(email)+'/calls',{credentials:'include'})
+  .then(function(r){return r.json();}).then(function(d){
+    var calls=d.calls||[];
+    var el=document.getElementById('tmm-calls');
+    if(!el)return;
+    if(!calls.length){el.innerHTML='<div style="color:var(--muted);font-size:12px">No recent calls found.</div>';return;}
+    el.innerHTML=calls.slice(0,6).map(function(c){
+      return '<div class="tm-call-item">'
+        +'<div class="tm-call-title">'+esc(c.title||'Untitled')+'</div>'
+        +'<div class="tm-call-meta">'+(c.date?new Date(c.date).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'')+' · '+(c.duration?Math.round(c.duration/60)+' min':'')+'</div>'
+        +(c.summary?'<div style="font-size:11px;color:rgba(255,255,255,.55);margin-top:4px;line-height:1.5">'+esc(c.summary.slice(0,200))+(c.summary.length>200?'…':'')+'</div>':'')
+        +'</div>';
+    }).join('');
+  }).catch(function(){
+    var el=document.getElementById('tmm-calls');
+    if(el)el.innerHTML='<div style="color:var(--muted);font-size:12px">Could not load calls.</div>';
+  });
+}
+
+function tmCloseModal(){
+  document.getElementById('tm-modal').style.display='none';
+  TM_CURRENT_EMAIL=null;
+}
+
+function tmSaveNotes(){
+  if(!TM_CURRENT_EMAIL)return;
+  var notes=document.getElementById('tmm-notes-ta').value||'';
+  fetch('/api/admin/team/members/'+encodeURIComponent(TM_CURRENT_EMAIL),{
+    method:'PATCH',credentials:'include',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({notes:notes})
+  }).then(function(r){return r.json();}).then(function(d){
+    if(d.ok){
+      var m=TM_DATA&&TM_DATA.find(function(x){return x.email===TM_CURRENT_EMAIL;});
+      if(m)m.notes=notes;
+      toast('Notes saved');
+    } else toast('Error: '+(d.error||'Failed'));
+  });
+}
+
+function tmRefreshOverviews(){
+  var btn=document.getElementById('tm-refresh-btn');
+  if(btn){btn.disabled=true;btn.textContent='Generating…';}
+  fetch('/api/admin/team/members/ai-overviews',{method:'POST',credentials:'include'})
+  .then(function(r){return r.json();}).then(function(d){
+    if(btn){btn.disabled=false;btn.textContent='↻ Refresh AI Overviews';}
+    if(d.ok){TM_DATA=null;loadTeamMgmt();toast('AI overviews updated ✓');}
+    else toast('Error: '+(d.error||'Failed'),8000);
+  }).catch(function(e){
+    if(btn){btn.disabled=false;btn.textContent='↻ Refresh AI Overviews';}
+    toast(''+e,8000);
   });
 }
 
@@ -6778,6 +7061,195 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
   // brand_assignments from the single source of truth instead of duplicating
   // this list somewhere that could drift out of sync with it.
   registerOpsMyTasks.BRAND_MANAGERS = BRAND_MANAGERS;
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // TEAM MANAGEMENT ROUTES
+  // ─────────────────────────────────────────────────────────────────────────
+  const TEAM_MGMT_FILE = nodePath.join(DATA_DIR, 'team-mgmt.json');
+
+  const TEAM_ROSTER = [
+    { email: 'tommy@cultcontent.cc',   name: 'Tommy',   role: 'CEO',               timezone: 'ET', color: '#7b2fff' },
+    { email: 'jina@cultcontent.cc',    name: 'Jina',    role: 'Account Manager',   timezone: 'ET' },
+    { email: 'gilbert@cultcontent.cc', name: 'Gilbert', role: 'Video Editor',      timezone: 'PT' },
+    { email: 'gourab@cultcontent.cc',  name: 'Gourab',  role: 'Developer',         timezone: 'IST' },
+    { email: 'becca@cultcontent.cc',   name: 'Becca',   role: 'Community Manager', timezone: 'ET' },
+    { email: 'jenna@cultcontent.cc',   name: 'Jenna',   role: 'Community Manager', timezone: 'ET' },
+  ];
+
+  // GET /api/admin/team/members — merged roster + comp + stored data + open task counts
+  app.get('/api/admin/team/members', requireAuth, async (req, res) => {
+    try {
+      const callerEmail = (req.userEmail || '').toLowerCase();
+      const isAdmin = !!(req.session && req.session.isPortalAdmin) || ADMIN_EMAILS.has(callerEmail);
+      if (!isAdmin) return res.status(403).json({ error: 'Admin only' });
+
+      const stored = readJsonFile(TEAM_MGMT_FILE, {});
+      const now = new Date();
+      const monthKey = now.toISOString().slice(0, 7);
+      const monthStartMs = new Date(monthKey + '-01T00:00:00.000Z').getTime();
+      const nextMonth = new Date(monthKey + '-01T00:00:00.000Z');
+      nextMonth.setUTCMonth(nextMonth.getUTCMonth() + 1);
+      const monthEndMs = nextMonth.getTime();
+      const netSalesData = readJsonFile(NET_SALES_FILE, {});
+      const netSales = (netSalesData[monthKey] && netSalesData[monthKey].netSales) || 0;
+      const allWr = readJsonFile(WR_FILE, []);
+      const allVr = readJsonFile(VR_FILE, []);
+      const TASKS_FILE_TM = nodePath.join(DATA_DIR, 'tasks.json');
+      const allTasks = readJsonFile(TASKS_FILE_TM, []);
+
+      const members = TEAM_ROSTER.map(member => {
+        const { email, name, role, timezone } = member;
+        const s = stored[email] || {};
+        const model = COMP_MODEL[email];
+        const reportType = REPORT_TYPES[email] || 'brand_manager';
+
+        // KPI / bonus from comp model
+        let bonusDollars = 0, gateDetails = [];
+        if (model) {
+          const myReports = allWr.filter(r =>
+            (r.submittedBy || '').toLowerCase() === email &&
+            r.submittedAt >= monthStartMs && r.submittedAt < monthEndMs
+          );
+          const kpis = {};
+          if (reportType === 'community_manager') {
+            kpis.calls   = myReports.reduce((s, r) => s + (Number(r.calls)   || 0), 0);
+            kpis.videos  = myReports.reduce((s, r) => s + (Number(r.videos)  || 0), 0);
+            kpis.signups = myReports.reduce((s, r) => s + (Number(r.signups) || 0), 0);
+          } else if (reportType === 'video_editor') {
+            kpis.videos = myReports.reduce((s, r) => s + (Number(r.videosEdited) || 0), 0);
+          } else if (reportType === 'brand_manager') {
+            const vids = myReports.reduce((s, r) => s + (Number(r.videosPosted) || 0), 0);
+            const samps = myReports.reduce((s, r) => s + (Number(r.samplesCount) || 0), 0);
+            kpis.ratio = samps > 0 ? vids / samps : 0;
+          }
+          const comp = computeCompTierSrv(model, kpis);
+          bonusDollars = Math.round(netSales * comp.bonusPct);
+          gateDetails = comp.gateDetails;
+        }
+
+        // Open tasks: from tasks.json (assignee) + VR cards in-progress
+        const openLarkTasks = allTasks.filter(t => {
+          const assigned = (t.assignee_emails || []).map(e => e.toLowerCase());
+          return assigned.includes(email) && t.status !== 'done' && t.status !== 'completed';
+        }).length;
+        const openVr = allVr.filter(r =>
+          (r.submittedBy || '').toLowerCase() === email &&
+          ['pending', 'in-progress'].includes(r.status)
+        ).length;
+
+        return {
+          email, name, role, timezone,
+          startDate: s.startDate || null,
+          notes: s.notes || '',
+          aiOverview: s.aiOverview || '',
+          aiOverviewUpdatedAt: s.aiOverviewUpdatedAt || null,
+          anthropicUsage: s.anthropicUsage || 0,
+          phone: s.phone || '',
+          base: model ? model.base : 0,
+          bonusDollars, gateDetails,
+          openTasks: openLarkTasks + openVr,
+        };
+      });
+
+      res.json({ members, isAdmin: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  // PATCH /api/admin/team/members/:email — update stored fields (notes, startDate, phone, anthropicUsage)
+  app.patch('/api/admin/team/members/:email', requireAuth, jsonBody, (req, res) => {
+    try {
+      const callerEmail = (req.userEmail || '').toLowerCase();
+      if (!ADMIN_EMAILS.has(callerEmail)) return res.status(403).json({ error: 'Admin only' });
+      const email = decodeURIComponent(req.params.email).toLowerCase();
+      const stored = readJsonFile(TEAM_MGMT_FILE, {});
+      if (!stored[email]) stored[email] = {};
+      const { notes, startDate, phone, anthropicUsage, aiOverview, aiOverviewUpdatedAt } = req.body || {};
+      if (notes !== undefined) stored[email].notes = notes;
+      if (startDate !== undefined) stored[email].startDate = startDate;
+      if (phone !== undefined) stored[email].phone = phone;
+      if (anthropicUsage !== undefined) stored[email].anthropicUsage = anthropicUsage;
+      if (aiOverview !== undefined) stored[email].aiOverview = aiOverview;
+      if (aiOverviewUpdatedAt !== undefined) stored[email].aiOverviewUpdatedAt = aiOverviewUpdatedAt;
+      writeJsonFile(TEAM_MGMT_FILE, stored);
+      res.json({ ok: true });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  // GET /api/admin/team/members/:email/calls — recent Fireflies transcripts for this person
+  app.get('/api/admin/team/members/:email/calls', requireAuth, async (req, res) => {
+    try {
+      const callerEmail = (req.userEmail || '').toLowerCase();
+      if (!ADMIN_EMAILS.has(callerEmail)) return res.status(403).json({ error: 'Admin only' });
+      const email = decodeURIComponent(req.params.email).toLowerCase();
+      const FIREFLIES_KEY = process.env.FIREFLIES_API_KEY;
+      if (!FIREFLIES_KEY) return res.json({ calls: [] });
+
+      const query = `query { transcripts(limit:10) { id title date duration participants { email } summary { action_items overview } } }`;
+      const r = await fetch('https://api.fireflies.ai/graphql', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${FIREFLIES_KEY}` },
+        body: JSON.stringify({ query }),
+      });
+      const d = await r.json();
+      const all = (d?.data?.transcripts || []);
+      const calls = all
+        .filter(t => (t.participants || []).some(p => (p.email || '').toLowerCase() === email))
+        .slice(0, 10)
+        .map(t => ({
+          id: t.id, title: t.title, date: t.date,
+          duration: t.duration,
+          summary: t.summary?.overview || '',
+        }));
+      res.json({ calls });
+    } catch (e) { res.json({ calls: [] }); }
+  });
+
+  // POST /api/admin/team/members/ai-overviews — regenerate AI overviews for all team members
+  app.post('/api/admin/team/members/ai-overviews', requireAuth, async (req, res) => {
+    try {
+      const callerEmail = (req.userEmail || '').toLowerCase();
+      if (!ADMIN_EMAILS.has(callerEmail)) return res.status(403).json({ error: 'Admin only' });
+      const FIREFLIES_KEY = process.env.FIREFLIES_API_KEY;
+      const stored = readJsonFile(TEAM_MGMT_FILE, {});
+      const updatedAt = new Date().toISOString();
+
+      for (const member of TEAM_ROSTER) {
+        const { email, name, role } = member;
+        let callContext = '';
+        if (FIREFLIES_KEY) {
+          try {
+            const q = `query { transcripts(limit:5) { id title date duration participants { email } summary { overview } } }`;
+            const r = await fetch('https://api.fireflies.ai/graphql', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${FIREFLIES_KEY}` },
+              body: JSON.stringify({ query: q }),
+            });
+            const d = await r.json();
+            const calls = (d?.data?.transcripts || [])
+              .filter(t => (t.participants || []).some(p => (p.email || '').toLowerCase() === email))
+              .slice(0, 5);
+            if (calls.length) {
+              callContext = calls.map(c => `- ${c.title} (${new Date(c.date).toLocaleDateString()}): ${c.summary?.overview || 'no summary'}`).join('\n');
+            }
+          } catch (_) {}
+        }
+        const notes = (stored[email] || {}).notes || '';
+        const prompt = `You are a brief, factual team summarizer for a CEO dashboard at Cult Content, a social commerce agency.\n\nTeam member: ${name} (${role})\nEmail: ${email}\n${notes ? `\nAdmin notes:\n${notes}\n` : ''}${callContext ? `\nRecent call summaries:\n${callContext}\n` : ''}\n\nWrite a 3-4 sentence AI overview of this team member covering: their role, current focus, notable recent activity, and any patterns. Be factual and concise. If there is little data, note that.`;
+        try {
+          const msg = await anthropic.messages.create({
+            model: 'claude-haiku-4-5', max_tokens: 300,
+            messages: [{ role: 'user', content: prompt }],
+          });
+          if (!stored[email]) stored[email] = {};
+          stored[email].aiOverview = msg.content[0].text;
+          stored[email].aiOverviewUpdatedAt = updatedAt;
+        } catch (_) {}
+      }
+
+      writeJsonFile(TEAM_MGMT_FILE, stored);
+      res.json({ ok: true, updatedAt });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
 
   return app;
 };
