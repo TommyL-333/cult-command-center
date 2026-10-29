@@ -3812,7 +3812,7 @@ function renderMoreTools(){
   var h='';
   (MT_DATA||[]).forEach(function(t){
     h+='<a href="'+esc(t.url)+'" target="_blank" rel="noopener" class="mt-card">'
-      +'<button class="mt-del" onclick="event.preventDefault();event.stopPropagation();mtDelete(\''+esc(t.id)+'\')" title="Remove">✕</button>'
+      +'<button class="mt-del" onclick="event.preventDefault();event.stopPropagation();mtDelete(\\''+esc(t.id)+'\\')" title="Remove">✕</button>'
       +'<div class="mt-card-emoji">'+esc(t.emoji||'🔧')+'</div>'
       +'<div class="mt-card-name">'+esc(t.name)+'</div>'
       +'</a>';
