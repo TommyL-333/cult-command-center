@@ -6428,6 +6428,63 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
+  // Webhook-auth list for admin tooling (no CF Access session needed)
+  app.get('/api/webhooks/list-podcast-applications', (req, res) => {
+    try {
+      const webhookSecret = process.env.WEBHOOK_SECRET;
+      const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+      const isAuth = webhookSecret && (bearer === webhookSecret || req.query.secret === webhookSecret);
+      if (!isAuth) return res.status(401).json({ error: 'Unauthorized' });
+      const all = readJsonFile(POD_FILE, []);
+      res.json({ ok: true, applications: all });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  // Webhook-auth list + delete for video requests (no CF Access session needed)
+  app.get('/api/webhooks/list-video-requests', (req, res) => {
+    try {
+      const webhookSecret = process.env.WEBHOOK_SECRET;
+      const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+      const isAuth = webhookSecret && (bearer === webhookSecret || req.query.secret === webhookSecret);
+      if (!isAuth) return res.status(401).json({ error: 'Unauthorized' });
+      const all = readJsonFile(VR_FILE, []);
+      res.json({ ok: true, requests: all });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.delete('/api/webhooks/video-request/:id', (req, res) => {
+    try {
+      const webhookSecret = process.env.WEBHOOK_SECRET;
+      const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+      const isAuth = webhookSecret && (bearer === webhookSecret || req.query.secret === webhookSecret);
+      if (!isAuth) return res.status(401).json({ error: 'Unauthorized' });
+      let all = readJsonFile(VR_FILE, []);
+      const before = all.length;
+      all = all.filter(r => r.id !== req.params.id);
+      if (all.length === before) return res.status(404).json({ error: 'Not found' });
+      writeJsonFile(VR_FILE, all);
+      res.json({ ok: true, removed: before - all.length });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  // Webhook-auth patch for podcast applications (find + fix specific records)
+  app.patch('/api/webhooks/patch-podcast-application/:id', jsonBody, (req, res) => {
+    try {
+      const webhookSecret = process.env.WEBHOOK_SECRET;
+      const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
+      const isAuth = webhookSecret && (bearer === webhookSecret || req.query.secret === webhookSecret);
+      if (!isAuth) return res.status(401).json({ error: 'Unauthorized' });
+      const all = readJsonFile(POD_FILE, []);
+      const idx = all.findIndex(r => r.id === req.params.id);
+      if (idx < 0) return res.status(404).json({ error: 'Not found' });
+      const allowed = ['status','scheduledAt','episodePageUrl','ytVideoId','spotifyUrl','applePodcastUrl','ytViews','ytLikes','ytComments','scheduleNotes','editorNotes'];
+      allowed.forEach(k => { if (req.body[k] !== undefined) all[idx][k] = req.body[k]; });
+      all[idx].updatedAt = Date.now();
+      writeJsonFile(POD_FILE, all);
+      res.json({ ok: true, record: all[idx] });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
   // GET — admin only
   app.get('/api/podcast-applications', requireAuth, (req, res) => {
     try {
