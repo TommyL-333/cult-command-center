@@ -6175,7 +6175,13 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
     if (!name || !email) throw new Error('name and email required');
     const all = readJsonFile(POD_FILE, []);
     const dupe = all.find(a => a.email.toLowerCase() === email.toLowerCase().trim());
-    if (dupe) return { ok: true, id: dupe.id, duplicate: true };
+    if (dupe) {
+      let updated = false;
+      if (scheduledAt && !dupe.scheduledAt) { dupe.scheduledAt = scheduledAt; updated = true; }
+      if (scheduledAt && dupe.status === 'approved') { dupe.status = 'scheduled'; updated = true; }
+      if (updated) writeJsonFile(POD_FILE, all);
+      return { ok: true, id: dupe.id, duplicate: true, updated };
+    }
     const id = 'pod_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
     all.push({
       id, name: name.trim(), email: email.trim().toLowerCase(), status,
