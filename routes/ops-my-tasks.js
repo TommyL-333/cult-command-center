@@ -454,12 +454,28 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .vq-btn.vq-done{background:rgba(107,232,107,.15);color:#6be86b;border-color:rgba(107,232,107,.3)}
   .vq-btn.vq-drive{background:rgba(0,242,234,.1);color:var(--cyan);border-color:rgba(0,242,234,.3)}
   .vq-empty{color:var(--muted);font-size:12px;padding:20px 0;text-align:center}
-  /* Gilbert tools panel */
+  /* Gilbert tools panel (legacy, kept for video tab) */
   .vq-tools-panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:16px 20px;margin-bottom:18px}
   .vq-tools-hdr{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:12px}
   .vq-tool-links{display:flex;flex-wrap:wrap;gap:8px}
   .vq-tool-link{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border:1px solid var(--border);border-radius:8px;font-size:12px;font-weight:600;color:var(--txt);text-decoration:none;background:var(--panel2);transition:.15s}
   .vq-tool-link:hover{border-color:var(--cyan);color:var(--cyan)}
+  /* More Tools tab */
+  .mt-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;padding:4px 0}
+  .mt-card{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px 14px;display:flex;flex-direction:column;align-items:center;gap:8px;text-decoration:none;color:inherit;transition:.15s;cursor:pointer;position:relative;text-align:center}
+  .mt-card:hover{border-color:var(--cyan);background:rgba(0,242,234,.06)}
+  .mt-card-emoji{font-size:28px;line-height:1}
+  .mt-card-name{font-size:13px;font-weight:700;color:#fff;word-break:break-word}
+  .mt-card-add{border:1px dashed var(--border);color:var(--muted);background:none}
+  .mt-card-add:hover{border-color:var(--cyan);color:var(--cyan);background:rgba(0,242,234,.04)}
+  .mt-del{position:absolute;top:7px;right:9px;background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;line-height:1;padding:2px;opacity:0;transition:.1s}
+  .mt-card:hover .mt-del{opacity:1}
+  .mt-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;display:flex;align-items:center;justify-content:center}
+  .mt-modal{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:24px;width:100%;max-width:380px}
+  .mt-modal h3{margin:0 0 18px;font-size:16px;font-weight:800}
+  .mt-modal label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:5px}
+  .mt-modal input{width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:#fff;font-size:13px;font-family:inherit;margin-bottom:14px}
+  .mt-modal-btns{display:flex;gap:8px;margin-top:4px}
   /* Gilbert list view */
   .vq-list-hdr{display:grid;grid-template-columns:10px 110px 1fr 80px 80px 80px;gap:12px;align-items:center;padding:0 16px 8px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);border-bottom:1px solid var(--border);margin-bottom:8px}
   .vq-row{border:1px solid var(--border);border-radius:10px;margin-bottom:7px;overflow:hidden;transition:.15s}
@@ -585,6 +601,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     <button class="tab" onclick="switchTab(2)">Software</button>
     <button class="tab" id="vq-tab-btn" onclick="switchTab(3)">Video Production</button>
     <button class="tab" id="tm-tab-btn" onclick="switchTab(4)" style="display:none">Team Management</button>
+    <button class="tab" onclick="switchTab(5)">More Tools</button>
   </div>
 
   <div id="tab-tasks">
@@ -1077,6 +1094,31 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   <div class="tm-grid" id="tm-grid"><div style="color:var(--muted);font-size:12px">Loading…</div></div>
 </div>
 
+<!-- More Tools tab -->
+<div id="tab-more-tools" style="display:none">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+    <div style="font-size:18px;font-weight:800;letter-spacing:-.02em">More Tools</div>
+  </div>
+  <div class="mt-grid" id="mt-grid"><div style="color:var(--muted);font-size:12px">Loading…</div></div>
+</div>
+
+<!-- Add Tool modal -->
+<div class="mt-modal-overlay" id="mt-modal" style="display:none" onclick="if(event.target===this)mtCloseModal()">
+  <div class="mt-modal">
+    <h3>Add a Tool</h3>
+    <label>Emoji Icon</label>
+    <input id="mt-emoji" type="text" placeholder="🔧" maxlength="4" style="width:80px;margin-bottom:14px">
+    <label>Name</label>
+    <input id="mt-name" type="text" placeholder="CapCut" maxlength="40">
+    <label>Link</label>
+    <input id="mt-url" type="url" placeholder="https://..." maxlength="500">
+    <div class="mt-modal-btns">
+      <button class="vq-btn vq-done" style="flex:1" onclick="mtSave()">Add Tool</button>
+      <button class="vq-btn" onclick="mtCloseModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <!-- Team member modal -->
 <div class="tm-modal-overlay" id="tm-modal" style="display:none" onclick="if(event.target===this)tmCloseModal()">
   <div class="tm-modal">
@@ -1215,10 +1257,12 @@ function switchTab(idx){
   document.getElementById('tab-sprint').style.display=idx===2?'':'none';
   document.getElementById('tab-video-queue').style.display=idx===3?'':'none';
   document.getElementById('tab-team-mgmt').style.display=idx===4?'':'none';
+  document.getElementById('tab-more-tools').style.display=idx===5?'':'none';
   if(idx===1)loadReportTab();
   if(idx===2)loadSprint();
   if(idx===3){applyVqRole();loadVideoQueue();}
   if(idx===4)loadTeamMgmt();
+  if(idx===5)loadMoreTools();
 }
 
 /* ── Sprint planner ──────────────────────────────────── */
@@ -2775,16 +2819,14 @@ function vqCardHtml(r){
         +'<div class="vq-actions" style="flex-wrap:wrap;gap:6px">'+draftLink2+'</div>'
         +tsToggle+markPostedBtn;
       var isClientVideoS=r.source==='client-portal';
-      var editorPayS=isClientVideoS&&r.costUsd?'<div style="font-size:11px;color:var(--muted);margin-bottom:6px">💰 <strong style="color:#fbbf24">$'+Math.round((r.costUsd||0)*0.8)+'</strong> your cut &nbsp;·&nbsp; <span style="color:var(--muted)">$'+Math.round((r.costUsd||0)*0.2)+' CC</span></div>':'';
       return '<div class="vq-card">'
-        +'<div class="vq-card-top">'+(r.brand?'<span class="vq-brand-chip">'+esc(r.brand)+'</span>':'')
-        +(isClientVideoS?'<span class="vq-prio-chip" style="background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.3);color:#fbbf24">🧾 Client</span>':'')
+        +'<div class="vq-card-top">'+(r.brand&&!isClientVideoS?'<span class="vq-brand-chip">'+esc(r.brand)+'</span>':'')
+        +(isClientVideoS?'<span class="vq-prio-chip" style="background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.3);color:#fbbf24">🧾 '+esc(r.brand||'Client')+'</span>':'')
         +(r.priority==='high'?'<span class="vq-prio-chip vq-prio-high">High</span>':'')
         +'<span class="vq-brand-chip" style="background:rgba(0,242,234,.08);border-color:rgba(0,242,234,.25);color:var(--cyan)">🛒 Shoppable</span>'
         +'</div>'
         +'<div class="vq-title">'+esc(r.title||'Untitled')+'</div>'
         +'<div class="vq-meta">'+date+'</div>'
-        +editorPayS
         +body
         +'</div>';
     }
@@ -2842,17 +2884,15 @@ function vqCardHtml(r){
   }
 
   var isClientVideo=r.source==='client-portal';
-  var editorPay=isClientVideo&&r.costUsd?'<div style="font-size:11px;color:var(--muted);margin-bottom:6px">💰 <strong style="color:#fbbf24">$'+Math.round((r.costUsd||0)*0.8)+'</strong> your cut &nbsp;·&nbsp; <span style="color:var(--muted)">$'+Math.round((r.costUsd||0)*0.2)+' CC</span></div>':'';
   return '<div class="vq-card">'
-    +'<div class="vq-card-top">'+(r.brand?'<span class="vq-brand-chip">'+esc(r.brand)+'</span>':'')
-    +(isClientVideo?'<span class="vq-prio-chip" style="background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.3);color:#fbbf24">🧾 Client</span>':'')
+    +'<div class="vq-card-top">'+(r.brand&&!isClientVideo?'<span class="vq-brand-chip">'+esc(r.brand)+'</span>':'')
+    +(isClientVideo?'<span class="vq-prio-chip" style="background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.3);color:#fbbf24">🧾 '+esc(r.brand||'Client')+'</span>':'')
     +(r.priority==='high'?'<span class="vq-prio-chip vq-prio-high">High</span>':'')
     +(r.shoppable?'<span class="vq-brand-chip" style="background:rgba(0,242,234,.08);border-color:rgba(0,242,234,.25);color:var(--cyan)">🛒 Shoppable</span>':'')
     +'</div>'
     +'<div class="vq-title">'+esc(r.title||'Untitled')+'</div>'
     +(r.status==='pending'&&(r.quantity||1)>1?'<div style="display:inline-flex;align-items:center;gap:4px;background:rgba(0,242,234,.1);border:1px solid rgba(0,242,234,.2);border-radius:10px;padding:2px 8px;font-size:10px;font-weight:700;color:var(--cyan);margin-bottom:4px">📦 '+(r.quantity)+' videos</div>':'')
     +'<div class="vq-meta">'+date+'</div>'
-    +editorPay
     +body
     +'</div>';
 }
@@ -3754,6 +3794,59 @@ function tmTenure(startDate){
   if(months<12)return months+' mo';
   var yrs=Math.floor(months/12),mos=months%12;
   return yrs+'y'+(mos?' '+mos+'m':'');
+}
+
+/* ── More Tools ───────────────────────────────────────── */
+var MT_DATA=null;
+function loadMoreTools(){
+  if(MT_DATA)return renderMoreTools();
+  fetch('/api/my-tasks/tools',{credentials:'include'})
+  .then(function(r){return r.json();}).then(function(d){
+    MT_DATA=d.tools||[];
+    renderMoreTools();
+  }).catch(function(){document.getElementById('mt-grid').innerHTML='<div style="color:var(--muted);font-size:12px">Failed to load tools</div>';});
+}
+function renderMoreTools(){
+  var g=document.getElementById('mt-grid');
+  if(!g)return;
+  var h='';
+  (MT_DATA||[]).forEach(function(t){
+    h+='<a href="'+esc(t.url)+'" target="_blank" rel="noopener" class="mt-card">'
+      +'<button class="mt-del" onclick="event.preventDefault();event.stopPropagation();mtDelete(\''+esc(t.id)+'\')" title="Remove">✕</button>'
+      +'<div class="mt-card-emoji">'+esc(t.emoji||'🔧')+'</div>'
+      +'<div class="mt-card-name">'+esc(t.name)+'</div>'
+      +'</a>';
+  });
+  h+='<button class="mt-card mt-card-add" onclick="mtOpenModal()">'
+    +'<div class="mt-card-emoji">＋</div>'
+    +'<div class="mt-card-name" style="color:inherit">Add a Tool</div>'
+    +'</button>';
+  g.innerHTML=h;
+}
+function mtOpenModal(){document.getElementById('mt-modal').style.display='flex';}
+function mtCloseModal(){document.getElementById('mt-modal').style.display='none';document.getElementById('mt-emoji').value='';document.getElementById('mt-name').value='';document.getElementById('mt-url').value='';}
+function mtSave(){
+  var emoji=document.getElementById('mt-emoji').value.trim()||'🔧';
+  var name=document.getElementById('mt-name').value.trim();
+  var url=document.getElementById('mt-url').value.trim();
+  if(!name||!url)return alert('Name and link are required');
+  if(!/^https?:\/\//.test(url))return alert('Link must start with https://');
+  fetch('/api/my-tasks/tools',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({emoji,name,url})})
+  .then(function(r){return r.json();}).then(function(d){
+    if(!d.ok)return alert(d.error||'Failed to save');
+    MT_DATA=d.tools;
+    mtCloseModal();
+    renderMoreTools();
+  }).catch(function(){alert('Failed to save tool');});
+}
+function mtDelete(id){
+  if(!confirm('Remove this tool?'))return;
+  fetch('/api/my-tasks/tools/'+encodeURIComponent(id),{method:'DELETE',credentials:'include'})
+  .then(function(r){return r.json();}).then(function(d){
+    if(!d.ok)return alert(d.error||'Failed');
+    MT_DATA=d.tools;
+    renderMoreTools();
+  }).catch(function(){alert('Failed to remove tool');});
 }
 
 function loadTeamMgmt(){
