@@ -3830,7 +3830,7 @@ function mtSave(){
   var name=document.getElementById('mt-name').value.trim();
   var url=document.getElementById('mt-url').value.trim();
   if(!name||!url)return alert('Name and link are required');
-  if(!/^https?:\/\//.test(url))return alert('Link must start with https://');
+  if(url.slice(0,4)!=='http')return alert('Link must start with https://');
   fetch('/api/my-tasks/tools',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({emoji,name,url})})
   .then(function(r){return r.json();}).then(function(d){
     if(!d.ok)return alert(d.error||'Failed to save');
