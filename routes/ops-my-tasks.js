@@ -2774,13 +2774,17 @@ function vqCardHtml(r){
         +'</div>'
         +'<div class="vq-actions" style="flex-wrap:wrap;gap:6px">'+draftLink2+'</div>'
         +tsToggle+markPostedBtn;
+      var isClientVideoS=r.source==='client-portal';
+      var editorPayS=isClientVideoS&&r.costUsd?'<div style="font-size:11px;color:var(--muted);margin-bottom:6px">💰 <strong style="color:#fbbf24">$'+Math.round((r.costUsd||0)*0.8)+'</strong> your cut &nbsp;·&nbsp; <span style="color:var(--muted)">$'+Math.round((r.costUsd||0)*0.2)+' CC</span></div>':'';
       return '<div class="vq-card">'
         +'<div class="vq-card-top">'+(r.brand?'<span class="vq-brand-chip">'+esc(r.brand)+'</span>':'')
+        +(isClientVideoS?'<span class="vq-prio-chip" style="background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.3);color:#fbbf24">🧾 Client</span>':'')
         +(r.priority==='high'?'<span class="vq-prio-chip vq-prio-high">High</span>':'')
         +'<span class="vq-brand-chip" style="background:rgba(0,242,234,.08);border-color:rgba(0,242,234,.25);color:var(--cyan)">🛒 Shoppable</span>'
         +'</div>'
         +'<div class="vq-title">'+esc(r.title||'Untitled')+'</div>'
         +'<div class="vq-meta">'+date+'</div>'
+        +editorPayS
         +body
         +'</div>';
     }
@@ -2837,14 +2841,18 @@ function vqCardHtml(r){
     body=viewsBadge+linksHtml+errorsHtml+'<div class="vq-actions" style="margin-top:6px">'+refreshBtn+addLinkBtn+'</div>'+addLinkForm;
   }
 
+  var isClientVideo=r.source==='client-portal';
+  var editorPay=isClientVideo&&r.costUsd?'<div style="font-size:11px;color:var(--muted);margin-bottom:6px">💰 <strong style="color:#fbbf24">$'+Math.round((r.costUsd||0)*0.8)+'</strong> your cut &nbsp;·&nbsp; <span style="color:var(--muted)">$'+Math.round((r.costUsd||0)*0.2)+' CC</span></div>':'';
   return '<div class="vq-card">'
     +'<div class="vq-card-top">'+(r.brand?'<span class="vq-brand-chip">'+esc(r.brand)+'</span>':'')
+    +(isClientVideo?'<span class="vq-prio-chip" style="background:rgba(251,191,36,.12);border:1px solid rgba(251,191,36,.3);color:#fbbf24">🧾 Client</span>':'')
     +(r.priority==='high'?'<span class="vq-prio-chip vq-prio-high">High</span>':'')
     +(r.shoppable?'<span class="vq-brand-chip" style="background:rgba(0,242,234,.08);border-color:rgba(0,242,234,.25);color:var(--cyan)">🛒 Shoppable</span>':'')
     +'</div>'
     +'<div class="vq-title">'+esc(r.title||'Untitled')+'</div>'
     +(r.status==='pending'&&(r.quantity||1)>1?'<div style="display:inline-flex;align-items:center;gap:4px;background:rgba(0,242,234,.1);border:1px solid rgba(0,242,234,.2);border-radius:10px;padding:2px 8px;font-size:10px;font-weight:700;color:var(--cyan);margin-bottom:4px">📦 '+(r.quantity)+' videos</div>':'')
     +'<div class="vq-meta">'+date+'</div>'
+    +editorPay
     +body
     +'</div>';
 }
@@ -6222,16 +6230,20 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       const bearer = (req.headers.authorization || '').replace(/^Bearer\s+/i, '');
       const isAuth = webhookSecret && (bearer === webhookSecret || req.query.secret === webhookSecret);
       if (!isAuth) return res.status(401).json({ error: 'Unauthorized' });
-      const { title, description, driveUrl, riversideEditId, priority, source, brand } = req.body || {};
+      const { title, description, driveUrl, riversideEditId, priority, source, brand, quantity, costUsd, clientBrandId } = req.body || {};
       if (!title || !title.trim()) return res.status(400).json({ error: 'Title is required' });
       const all = readJsonFile(VR_FILE, []);
       const id = 'vr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+      const qty = Math.max(1, parseInt(quantity) || 1);
+      const cost = costUsd != null ? Number(costUsd) : qty * 10;
       all.push({
         id, submittedBy: 'claude@cultcontent.cc', submittedByName: 'Claude',
         submittedAt: Date.now(), brand: (brand || '').trim(),
         title: title.trim(), description: (description || '').trim(),
         driveUrl: (driveUrl || '').trim(),
-        priority: priority || 'normal', status: 'pending', quantity: 1,
+        priority: priority || 'normal', status: 'pending', quantity: qty,
+        costUsd: cost,
+        ...(clientBrandId ? { clientBrandId: clientBrandId.trim() } : {}),
         ...(riversideEditId ? { riversideEditId: riversideEditId.trim() } : {}),
         ...(source ? { source: source.trim() } : {}),
       });
