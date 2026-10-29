@@ -468,8 +468,12 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .mt-card-name{font-size:13px;font-weight:700;color:#fff;word-break:break-word}
   .mt-card-add{border:1px dashed var(--border);color:var(--muted);background:none}
   .mt-card-add:hover{border-color:var(--cyan);color:var(--cyan);background:rgba(0,242,234,.04)}
-  .mt-del{position:absolute;top:7px;right:9px;background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;line-height:1;padding:2px;opacity:0;transition:.1s}
-  .mt-card:hover .mt-del{opacity:1}
+  .mt-dots{position:absolute;top:6px;right:8px;background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;line-height:1;padding:2px 5px;opacity:0;transition:.1s;border-radius:6px}
+  .mt-card:hover .mt-dots{opacity:1}
+  .mt-dots:hover{background:rgba(255,255,255,.1);color:#fff}
+  .mt-menu{position:absolute;top:28px;right:6px;background:var(--panel2);border:1px solid var(--border);border-radius:8px;z-index:50;min-width:100px;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.4)}
+  .mt-menu-item{display:block;width:100%;padding:9px 14px;font-size:12px;font-weight:600;cursor:pointer;background:none;border:none;color:var(--txt);text-align:left;font-family:inherit;transition:.1s}
+  .mt-menu-item:hover{background:rgba(0,242,234,.1);color:var(--cyan)}
   .mt-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:1000;display:flex;align-items:center;justify-content:center}
   .mt-modal{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:24px;width:100%;max-width:380px}
   .mt-modal h3{margin:0 0 18px;font-size:16px;font-weight:800}
@@ -1105,7 +1109,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
 <!-- Add Tool modal -->
 <div class="mt-modal-overlay" id="mt-modal" style="display:none" onclick="if(event.target===this)mtCloseModal()">
   <div class="mt-modal">
-    <h3>Add a Tool</h3>
+    <h3 id="mt-modal-title">Add a Tool</h3>
     <label>Emoji Icon</label>
     <input id="mt-emoji" type="text" placeholder="🔧" maxlength="4" style="width:80px;margin-bottom:14px">
     <label>Name</label>
@@ -1800,7 +1804,7 @@ function loadCompBanner(){
   fetch('/api/comp/summary',{credentials:'include'}).then(function(r){return r.json();}).then(function(d){
     COMP_DATA=d;
     CB_IS_ADMIN=!!d.isAdmin;
-    if(CB_IS_ADMIN){var tmBtn=document.getElementById('tm-tab-btn');if(tmBtn)tmBtn.style.display='';var tmChip=document.getElementById('hdr-team-chip');if(tmChip)tmChip.style.display='';}
+    if(CB_IS_ADMIN&&!DEV_AS){var tmBtn=document.getElementById('tm-tab-btn');if(tmBtn)tmBtn.style.display='';var tmChip=document.getElementById('hdr-team-chip');if(tmChip)tmChip.style.display='';}
     if(!d.hasComp&&CB_IS_ADMIN&&!DEV_AS){
       // Admin with no personal comp: payroll lives only in Team Management tab, not here
     } else if(d.hasComp&&CB_IS_ADMIN&&!DEV_AS&&(!d.netSales||d.netSales===0)){
@@ -3797,10 +3801,11 @@ function tmTenure(startDate){
 }
 
 /* ── More Tools ───────────────────────────────────────── */
-var MT_DATA=null;
+var MT_DATA=null,MT_EDIT_ID=null;
 function loadMoreTools(){
-  if(MT_DATA)return renderMoreTools();
-  fetch('/api/my-tasks/tools',{credentials:'include'})
+  MT_DATA=null;
+  var url='/api/my-tasks/tools'+(DEV_AS?'?devAs='+encodeURIComponent(DEV_AS):'');
+  fetch(url,{credentials:'include'})
   .then(function(r){return r.json();}).then(function(d){
     MT_DATA=d.tools||[];
     renderMoreTools();
@@ -3809,34 +3814,55 @@ function loadMoreTools(){
 function renderMoreTools(){
   var g=document.getElementById('mt-grid');
   if(!g)return;
+  var readOnly=!!DEV_AS;
   var h='';
   (MT_DATA||[]).forEach(function(t){
-    h+='<a href="'+esc(t.url)+'" target="_blank" rel="noopener" class="mt-card">'
-      +'<button class="mt-del" onclick="event.preventDefault();event.stopPropagation();mtDelete(\\''+esc(t.id)+'\\')" title="Remove">✕</button>'
-      +'<div class="mt-card-emoji">'+esc(t.emoji||'🔧')+'</div>'
+    h+='<a href="'+esc(t.url)+'" target="_blank" rel="noopener" class="mt-card" style="position:relative">';
+    if(!readOnly){
+      h+='<button class="mt-dots" onclick="event.preventDefault();event.stopPropagation();mtToggleMenu(\\''+esc(t.id)+'\\')" title="Options">⋯</button>'
+        +'<div class="mt-menu" id="mt-menu-'+esc(t.id)+'" style="display:none">'
+        +'<button class="mt-menu-item" onclick="event.preventDefault();event.stopPropagation();mtOpenEdit(\\''+esc(t.id)+'\\')">✏ Edit</button>'
+        +'<button class="mt-menu-item" style="color:var(--red)" onclick="event.preventDefault();event.stopPropagation();mtDelete(\\''+esc(t.id)+'\\')">✕ Delete</button>'
+        +'</div>';
+    }
+    h+='<div class="mt-card-emoji">'+esc(t.emoji||'🔧')+'</div>'
       +'<div class="mt-card-name">'+esc(t.name)+'</div>'
       +'</a>';
   });
-  h+='<button class="mt-card mt-card-add" onclick="mtOpenModal()">'
-    +'<div class="mt-card-emoji">＋</div>'
-    +'<div class="mt-card-name" style="color:inherit">Add a Tool</div>'
-    +'</button>';
+  if(!readOnly){
+    h+='<button class="mt-card mt-card-add" onclick="mtOpenModal()">'
+      +'<div class="mt-card-emoji">+</div>'
+      +'<div class="mt-card-name" style="color:inherit">Add a Tool</div>'
+      +'</button>';
+  }
   g.innerHTML=h;
 }
-function mtOpenModal(){document.getElementById('mt-modal').style.display='flex';}
-function mtCloseModal(){document.getElementById('mt-modal').style.display='none';document.getElementById('mt-emoji').value='';document.getElementById('mt-name').value='';document.getElementById('mt-url').value='';}
+function mtCloseMenus(){document.querySelectorAll('.mt-menu').forEach(function(m){m.style.display='none';});}
+function mtToggleMenu(id){
+  var m=document.getElementById('mt-menu-'+id);if(!m)return;
+  var wasOpen=m.style.display!=='none';mtCloseMenus();
+  if(!wasOpen){m.style.display='block';setTimeout(function(){document.addEventListener('click',mtCloseMenus,{once:true});},0);}
+}
+function mtOpenModal(){MT_EDIT_ID=null;document.getElementById('mt-modal-title').textContent='Add a Tool';document.getElementById('mt-emoji').value='';document.getElementById('mt-name').value='';document.getElementById('mt-url').value='';document.getElementById('mt-modal').style.display='flex';}
+function mtOpenEdit(id){
+  var t=(MT_DATA||[]).find(function(x){return x.id===id;});if(!t)return;
+  MT_EDIT_ID=id;document.getElementById('mt-modal-title').textContent='Edit Tool';
+  document.getElementById('mt-emoji').value=t.emoji||'';document.getElementById('mt-name').value=t.name||'';document.getElementById('mt-url').value=t.url||'';
+  document.getElementById('mt-modal').style.display='flex';
+}
+function mtCloseModal(){document.getElementById('mt-modal').style.display='none';MT_EDIT_ID=null;}
 function mtSave(){
   var emoji=document.getElementById('mt-emoji').value.trim()||'🔧';
   var name=document.getElementById('mt-name').value.trim();
   var url=document.getElementById('mt-url').value.trim();
   if(!name||!url)return alert('Name and link are required');
   if(url.slice(0,4)!=='http')return alert('Link must start with https://');
-  fetch('/api/my-tasks/tools',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({emoji,name,url})})
+  var method=MT_EDIT_ID?'PUT':'POST';
+  var ep=MT_EDIT_ID?'/api/my-tasks/tools/'+encodeURIComponent(MT_EDIT_ID):'/api/my-tasks/tools';
+  fetch(ep,{method:method,credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify({emoji:emoji,name:name,url:url})})
   .then(function(r){return r.json();}).then(function(d){
     if(!d.ok)return alert(d.error||'Failed to save');
-    MT_DATA=d.tools;
-    mtCloseModal();
-    renderMoreTools();
+    MT_DATA=d.tools;mtCloseModal();renderMoreTools();
   }).catch(function(){alert('Failed to save tool');});
 }
 function mtDelete(id){
@@ -3844,8 +3870,7 @@ function mtDelete(id){
   fetch('/api/my-tasks/tools/'+encodeURIComponent(id),{method:'DELETE',credentials:'include'})
   .then(function(r){return r.json();}).then(function(d){
     if(!d.ok)return alert(d.error||'Failed');
-    MT_DATA=d.tools;
-    renderMoreTools();
+    MT_DATA=d.tools;renderMoreTools();
   }).catch(function(){alert('Failed to remove tool');});
 }
 
@@ -6767,7 +6792,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
     const idx = all.findIndex(a => a.id === id);
     if (idx < 0) return res.status(404).json({ error: 'Not found' });
     const updates = req.body || {};
-    ['status','episodePageUrl','ytVideoId','spotifyUrl','applePodcastUrl','ytViews','ytLikes','ytComments','scheduleNotes','editorNotes'].forEach(k => {
+    ['status','scheduledAt','episodePageUrl','ytVideoId','spotifyUrl','applePodcastUrl','ytViews','ytLikes','ytComments','scheduleNotes','editorNotes'].forEach(k => {
       if (updates[k] !== undefined) all[idx][k] = updates[k];
     });
     all[idx].updatedAt = Date.now();
@@ -7565,7 +7590,10 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
 
   app.get('/api/my-tasks/tools', requireAuth, (req, res) => {
     try {
-      const email = (req.session && req.session.email) || '';
+      const sessionEmail = (req.session && req.session.email) || '';
+      const isAdmin = CB_ADMINS.includes(sessionEmail);
+      const devAs = req.query.devAs;
+      const email = (isAdmin && devAs) ? devAs : sessionEmail;
       const fp = toolsFilePath(email);
       let tools;
       if (!require('fs').existsSync(fp) && email === 'gilbert@cultcontent.cc') {
@@ -7574,6 +7602,22 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       } else {
         tools = readJsonFile(fp, []);
       }
+      res.json({ ok: true, tools });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.put('/api/my-tasks/tools/:id', requireAuth, jsonBody, (req, res) => {
+    try {
+      const email = (req.session && req.session.email) || '';
+      const { emoji, name, url } = req.body || {};
+      if (!name || !url) return res.status(400).json({ error: 'name and url required' });
+      if (!/^https?:\/\//.test(url)) return res.status(400).json({ error: 'url must start with https://' });
+      const fp = toolsFilePath(email);
+      let tools = readJsonFile(fp, []);
+      const idx = tools.findIndex(t => t.id === req.params.id);
+      if (idx === -1) return res.status(404).json({ error: 'Tool not found' });
+      tools[idx] = { ...tools[idx], emoji: (emoji || '🔧').trim(), name: name.trim(), url: url.trim() };
+      writeJsonFile(fp, tools);
       res.json({ ok: true, tools });
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
