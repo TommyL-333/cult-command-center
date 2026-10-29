@@ -6327,10 +6327,11 @@ const GOOGLE_SCOPES = [
   'https://www.googleapis.com/auth/userinfo.email'
 ].join(' ');
 
+const GOOGLE_REDIRECT_URI_DEFAULT = 'https://portal.cultcontent.cc/api/client/auth/google/callback';
 function googleAuthUrl(state) {
   const params = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID || '',
-    redirect_uri: process.env.GOOGLE_REDIRECT_URI || '',
+    redirect_uri: process.env.GOOGLE_REDIRECT_URI || GOOGLE_REDIRECT_URI_DEFAULT,
     response_type: 'code',
     scope: GOOGLE_SCOPES,
     access_type: 'offline',
@@ -6413,8 +6414,8 @@ app.get('/api/client/auth/google', requireClientSession, (req, res) => {
 // GET /api/client/auth/google/callback — exchange code, store tokens
 app.get('/api/client/auth/google/callback', async (req, res) => {
   const { code, state, error } = req.query;
-  if (error) return res.redirect('/client-portal?tab=overview&googleError=' + encodeURIComponent(error));
-  if (!code || !state) return res.redirect('/client-portal?tab=overview&googleError=missing_code');
+  if (error) return res.redirect('/client/dashboard?tab=overview&googleError=' + encodeURIComponent(error));
+  if (!code || !state) return res.redirect('/client/dashboard?tab=overview&googleError=missing_code');
   try {
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
@@ -6423,12 +6424,13 @@ app.get('/api/client/auth/google/callback', async (req, res) => {
         code,
         client_id: process.env.GOOGLE_CLIENT_ID || '',
         client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
-        redirect_uri: process.env.GOOGLE_REDIRECT_URI || '',
+        redirect_uri: process.env.GOOGLE_REDIRECT_URI || GOOGLE_REDIRECT_URI_DEFAULT,
         grant_type: 'authorization_code'
       }).toString()
     });
-    if (!tokenRes.ok) throw new Error('Token exchange failed: ' + tokenRes.status);
     const tokens = await tokenRes.json();
+    console.log('[google-oauth] token exchange status:', tokenRes.status, 'error:', tokens.error || 'none');
+    if (!tokens.access_token) throw new Error('Token exchange failed: ' + tokenRes.status + ' ' + (tokens.error_description || tokens.error || 'no access_token'));
 
     // Get user email
     const infoRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
@@ -6438,7 +6440,7 @@ app.get('/api/client/auth/google/callback', async (req, res) => {
 
     const brands = loadBrands();
     const bi = brands.clients.findIndex(b => b.id === state);
-    if (bi < 0) return res.redirect('/client-portal?tab=overview&googleError=brand_not_found');
+    if (bi < 0) return res.redirect('/client/dashboard?tab=overview&googleError=brand_not_found');
     brands.clients[bi].googleDriveAuth = {
       access_token: tokens.access_token,
       refresh_token: tokens.refresh_token,
@@ -6447,10 +6449,10 @@ app.get('/api/client/auth/google/callback', async (req, res) => {
       connectedAt: new Date().toISOString()
     };
     saveBrands(brands);
-    res.redirect('/client-portal?tab=overview&googleConnected=1');
+    res.redirect('/client/dashboard?tab=overview&googleConnected=1');
   } catch (e) {
     console.error('[google-oauth]', e.message);
-    res.redirect('/client-portal?tab=overview&googleError=' + encodeURIComponent(e.message));
+    res.redirect('/client/dashboard?tab=overview&googleError=' + encodeURIComponent(e.message));
   }
 });
 
