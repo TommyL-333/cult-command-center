@@ -575,6 +575,24 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
           <div class="hint">Rate for open / open-plan affiliate collabs</div>
         </div>
       </div>
+      <div class="row">
+        <div class="field">
+          <label>Target Club Ads Commission</label>
+          <div style="position:relative">
+            <input type="number" id="targetClubAdsCommission" placeholder="e.g. 10" min="1" max="80" step="0.5" style="padding-right:30px">
+            <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px">%</span>
+          </div>
+          <div class="hint">Commission rate for Target Club ad campaigns</div>
+        </div>
+        <div class="field">
+          <label>Open Club Ads Commission</label>
+          <div style="position:relative">
+            <input type="number" id="openClubAdsCommission" placeholder="e.g. 15" min="1" max="80" step="0.5" style="padding-right:30px">
+            <span style="position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:13px">%</span>
+          </div>
+          <div class="hint">Commission rate for Open Club ad campaigns</div>
+        </div>
+      </div>
     </div>
 
     <!-- Creator Network: Matchmaking commission -->
@@ -733,8 +751,33 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
         </div>
       </div>
     </div>
-    <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:8px">Brand Logo <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:9.5px">— used as your TikTok Shop &amp; CRM profile picture</span></div>
-    <div id="logo-asset-upload" class="asset-uploader" data-offer="logo" style="margin-bottom:20px"></div>
+    <div class="row full" style="margin-bottom:20px">
+      <div class="field">
+        <label>Secondary Brand Color <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">(optional)</span></label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="color" id="brandColorPicker2" value="#ffffff" oninput="document.getElementById('brandColorHex2').value=this.value" style="width:44px;height:40px;padding:2px 4px;border-radius:8px;cursor:pointer;background:rgba(255,255,255,.05);border:1px solid var(--border)">
+          <input type="text" id="brandColorHex2" placeholder="e.g. #ffffff" style="flex:1" oninput="var h=this.value.trim();if(/^#[0-9a-fA-F]{6}$/.test(h))document.getElementById('brandColorPicker2').value=h">
+        </div>
+      </div>
+    </div>
+    <div class="row full" style="margin-bottom:20px">
+      <div class="field">
+        <label>Third Brand Color <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">(optional)</span></label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="color" id="brandColorPicker3" value="#ffffff" oninput="document.getElementById('brandColorHex3').value=this.value" style="width:44px;height:40px;padding:2px 4px;border-radius:8px;cursor:pointer;background:rgba(255,255,255,.05);border:1px solid var(--border)">
+          <input type="text" id="brandColorHex3" placeholder="e.g. #ffffff" style="flex:1" oninput="var h=this.value.trim();if(/^#[0-9a-fA-F]{6}$/.test(h))document.getElementById('brandColorPicker3').value=h">
+        </div>
+      </div>
+    </div>
+    <div class="row full" style="margin-bottom:20px">
+      <div class="field">
+        <label>Fourth Brand Color <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">(optional)</span></label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="color" id="brandColorPicker4" value="#ffffff" oninput="document.getElementById('brandColorHex4').value=this.value" style="width:44px;height:40px;padding:2px 4px;border-radius:8px;cursor:pointer;background:rgba(255,255,255,.05);border:1px solid var(--border)">
+          <input type="text" id="brandColorHex4" placeholder="e.g. #ffffff" style="flex:1" oninput="var h=this.value.trim();if(/^#[0-9a-fA-F]{6}$/.test(h))document.getElementById('brandColorPicker4').value=h">
+        </div>
+      </div>
+    </div>
     <div style="font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:8px">Brand Assets <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted);font-size:9.5px">— deck, product info, brand guidelines, marketing materials</span></div>
     <div id="shared-asset-upload" class="asset-uploader" data-offer="shared"></div>
   </div>
@@ -849,14 +892,6 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 
       <div class="info-box">
         <strong>Monthly strategy call + async chat support.</strong> Your Growth Partner includes one monthly strategy session and ongoing async support via your dedicated Lark channel. Additional calls can be booked as needed.
-      </div>
-
-      <div class="row full">
-        <div class="field">
-          <label>Creative Direction <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">(optional)</span></label>
-          <textarea id="gp-creativeDirection" placeholder="TikTok links you love, creators you admire, vibe description — e.g. 'educational but fun, not pushy, skincare-girl aesthetic'"></textarea>
-          <div class="hint">Helps us match the right creators and set the right brief</div>
-        </div>
       </div>
 
       <!-- Add-ons -->
@@ -981,63 +1016,6 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
           <div class="hint">Find your Shop Code in TikTok Seller Center → your profile icon → Shop Code. It's a short alphanumeric code unique to your store.</div>
         </div>
       </div>
-    </div>
-  </div>
-
-  <!-- ─── SHARED COHORTS (Growth / Scale / Network) ─── -->
-  <div id="cond-cohorts" style="display:none">
-
-    <!-- ── Cohort 1 — Creator Retainers ── -->
-    <div class="card">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
-        <span style="background:var(--teal);color:#0d0b14;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;padding:3px 9px;border-radius:100px">Cohort 1</span>
-        <div class="card-title" style="margin:0">Creator Retainers</div>
-      </div>
-      <div class="card-sub">Hand-picked creators on monthly retainer agreements. We match, pitch, and manage them for you.</div>
-
-      <div style="margin-bottom:18px">
-        <label style="font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);display:block;margin-bottom:10px">Monthly Retainer Budget</label>
-        <div class="budget-slider-wrap">
-          <div class="budget-display" id="c1-budget-display">$0<small>/mo</small></div>
-          <input type="range" id="c1-budgetSlider" min="0" max="10000" step="1000" value="0" oninput="updateBudgetDisplay()">
-          <div class="range-labels" id="c1-range-labels"><span>$0</span><span>$10,000</span></div>
-        </div>
-        <input type="hidden" id="c1-budget" value="0">
-      </div>
-
-      <div class="row">
-        <div class="field">
-          <label>Preferred Creator Niches</label>
-          <input type="text" id="c1-niches" placeholder="e.g. skincare, wellness, lifestyle, mom creators">
-        </div>
-        <div class="field">
-          <label>Products to Feature</label>
-          <div id="c1-product-picker" class="product-chip-picker"></div>
-          <div class="hint">Select the products retainer creators should focus on</div>
-        </div>
-      </div>
-
-      <div class="row full">
-        <div class="field">
-          <label>Specific Creators in Mind? <span style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--muted)">(optional)</span></label>
-          <textarea id="c1-specificCreators" style="min-height:60px" placeholder="TikTok handles or names — we'll check fit and availability"></textarea>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── Cohort 2 — Mass Community ── -->
-    <div class="card">
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:4px">
-        <span style="background:linear-gradient(135deg,var(--teal),#7b2fff);color:#fff;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;padding:3px 9px;border-radius:100px">Cohort 2</span>
-        <div class="card-title" style="margin:0">Mass Community</div>
-      </div>
-      <div class="card-sub">Creators purchase your product, post authentic content, and get reimbursed $25 per video. Set how many creators you want per product — we handle the rest.</div>
-
-      <!-- Per-product creator count rows — populated from step 2 selections -->
-      <div id="c2-products-list"></div>
-
-      <!-- Live cost calculator -->
-      <div class="cost-card" id="costCalc" style="display:none"></div>
     </div>
   </div>
 
@@ -1878,6 +1856,11 @@ async function handleSubmit() {
     sampleAutoApprove:      v('sampleAutoApprove'),
     sampleApprovalCriteria: v('sampleApprovalCriteria'),
     brandColor:             v('brandColorHex'),
+    brandColor2:            v('brandColorHex2'),
+    brandColor3:            v('brandColorHex3'),
+    brandColor4:            v('brandColorHex4'),
+    targetClubAdsCommission: v('targetClubAdsCommission'),
+    openClubAdsCommission:   v('openClubAdsCommission'),
     // Offer-specific
     offerDetails: collectOfferDetails(),
     // Assets
