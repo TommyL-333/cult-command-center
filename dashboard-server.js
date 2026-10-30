@@ -6404,7 +6404,7 @@ async function uploadFileToDrive(brand, folderId, filename, mimeType, buffer) {
 }
 // uploadFileToDrive available internally for Drive uploads
 
-// GET /api/client/auth/google — initiate OAuth
+// GET /api/client/auth/google — initiate OAuth (connect, requires existing session)
 app.get('/api/client/auth/google', requireClientSession, (req, res) => {
   const state = req.session.clientBrandId;
   if (!process.env.GOOGLE_CLIENT_ID) {
@@ -6413,11 +6413,30 @@ app.get('/api/client/auth/google', requireClientSession, (req, res) => {
   res.redirect(googleAuthUrl(state));
 });
 
+// GET /api/client/auth/google/login — unauthenticated Google sign-in (login flow, no session needed)
+app.get('/api/client/auth/google/login', (req, res) => {
+  if (!process.env.GOOGLE_CLIENT_ID) return res.status(500).send('Google OAuth not configured');
+  const nonce = 'login:' + crypto.randomBytes(16).toString('hex');
+  req.session.googleLoginNonce = nonce;
+  const params = new URLSearchParams({
+    client_id: process.env.GOOGLE_CLIENT_ID || '',
+    redirect_uri: GOOGLE_REDIRECT_URI,
+    response_type: 'code',
+    scope: GOOGLE_SCOPES,
+    access_type: 'offline',
+    prompt: 'select_account',
+    state: nonce
+  });
+  res.redirect('https://accounts.google.com/o/oauth2/v2/auth?' + params.toString());
+});
+
 // GET /api/client/auth/google/callback — exchange code, store tokens, auto-create Drive folder
 app.get('/api/client/auth/google/callback', async (req, res) => {
   const { code, state, error } = req.query;
-  if (error) return res.redirect('/client/dashboard?tab=overview&googleError=' + encodeURIComponent(error));
-  if (!code || !state) return res.redirect('/client/dashboard?tab=overview&googleError=missing_code');
+  const isLoginFlow = (state || '').startsWith('login:');
+  const errBase = isLoginFlow ? '/client/login' : '/client/dashboard?tab=overview';
+  if (error) return res.redirect(errBase + (isLoginFlow ? '?' : '&') + 'googleError=' + encodeURIComponent(error));
+  if (!code || !state) return res.redirect(errBase + (isLoginFlow ? '?' : '&') + 'googleError=missing_code');
   try {
     console.log('[google-oauth] callback code received, exchanging...');
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
@@ -6442,8 +6461,22 @@ app.get('/api/client/auth/google/callback', async (req, res) => {
     const info = infoRes.ok ? await infoRes.json() : {};
 
     const brands = loadBrands();
-    const bi = brands.clients.findIndex(b => b.id === state);
-    if (bi < 0) return res.redirect('/client/dashboard?tab=overview&googleError=brand_not_found');
+    let bi = -1;
+    if (isLoginFlow) {
+      // Login flow: find brand by Google email
+      const emailNorm = (info.email || '').toLowerCase().trim();
+      if (!emailNorm) return res.redirect('/client/login?googleError=no_email_returned');
+      bi = brands.clients.findIndex(b =>
+        (b.loginEmail || b.email || '').toLowerCase() === emailNorm
+      );
+      if (bi < 0) {
+        return res.redirect('/client/login?googleError=' + encodeURIComponent('No account found for ' + info.email + '. Please contact your account manager.'));
+      }
+    } else {
+      // Connect flow: state = brandId
+      bi = brands.clients.findIndex(b => b.id === state);
+      if (bi < 0) return res.redirect('/client/dashboard?tab=overview&googleError=brand_not_found');
+    }
 
     brands.clients[bi].googleDriveAuth = {
       access_token: tokens.access_token,
@@ -6486,10 +6519,16 @@ app.get('/api/client/auth/google/callback', async (req, res) => {
     }
 
     saveBrands(brands);
-    res.redirect('/client/dashboard?tab=overview&googleConnected=1');
+    if (isLoginFlow) {
+      req.session.clientBrandId = brands.clients[bi].id;
+      res.redirect('/client/dashboard');
+    } else {
+      res.redirect('/client/dashboard?tab=overview&googleConnected=1');
+    }
   } catch (e) {
     console.error('[google-oauth]', e.message);
-    res.redirect('/client/dashboard?tab=overview&googleError=' + encodeURIComponent(e.message));
+    const errRedir = isLoginFlow ? '/client/login' : '/client/dashboard?tab=overview';
+    res.redirect(errRedir + (isLoginFlow ? '?' : '&') + 'googleError=' + encodeURIComponent(e.message));
   }
 });
 

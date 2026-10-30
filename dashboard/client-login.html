@@ -102,6 +102,41 @@
       font-size: 0.75rem;
       color: #94a3b8;
     }
+    .google-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      background: #fff;
+      color: #1a1a1a;
+      border: 1px solid #d1d5db;
+      border-radius: 9px;
+      padding: 12px 20px;
+      text-decoration: none;
+      font-size: 0.92rem;
+      font-weight: 600;
+      font-family: inherit;
+      transition: background 0.15s;
+      width: 100%;
+      box-sizing: border-box;
+      cursor: pointer;
+      margin-bottom: 18px;
+    }
+    .google-btn:hover { background: #f3f4f6; }
+    .or-divider {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      color: #3a3555;
+      font-size: 0.78rem;
+    }
+    .or-divider::before, .or-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #2a2540;
+    }
   </style>
 </head>
 <body>
@@ -113,6 +148,18 @@
     <p class="subtitle" id="subtitle">Sign in to view your brand dashboard</p>
 
     <div class="error" id="err"></div>
+
+    <!-- Google sign-in -->
+    <a href="/api/client/auth/google/login" class="google-btn">
+      <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.565 2.684-3.875 2.684-6.615z" fill="#4285F4"/>
+        <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z" fill="#34A853"/>
+        <path d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z" fill="#FBBC05"/>
+        <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+      </svg>
+      Continue with Google
+    </a>
+    <div class="or-divider"><span>or</span></div>
 
     <!-- Sign in form -->
     <form id="form-login" autocomplete="on">
@@ -157,6 +204,12 @@
       if (params.get('new') === '1') {
         const email = params.get('email') || '';
         showSetupForm(null, email);
+      }
+      const googleErr = params.get('googleError');
+      if (googleErr) {
+        const err = document.getElementById('err');
+        err.textContent = decodeURIComponent(googleErr);
+        err.style.display = 'block';
       }
     })();
 
@@ -257,10 +310,10 @@
       const btn = document.getElementById('btn-setup');
       const err = document.getElementById('err');
       let attempts = 0;
-      const maxAttempts = 18; // 18 × 10s = 3 minutes
+      const maxAttempts = 6; // 6 x 8s = 48 seconds
 
       function updateMsg() {
-        const remaining = Math.round((maxAttempts - attempts) * 10);
+        const remaining = Math.round((maxAttempts - attempts) * 8);
         err.style.color = '#f59e0b';
         err.textContent = '⏳ Setting up your account… checking again in a moment (' + remaining + 's remaining)';
         err.style.display = 'block';
@@ -299,7 +352,7 @@
           }
           // Still "being set up" → keep polling
         } catch (_) { /* network blip — keep polling */ }
-      }, 10000);
+      }, 8000);
     }
   </script>
 </body>
