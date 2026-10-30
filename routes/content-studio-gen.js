@@ -276,15 +276,31 @@ module.exports = function registerContentStudioGen(app, deps = {}) {
         aspect_ratio: '16:9',
         ...(referenceUrl ? { image_url: referenceUrl } : {}),
       };
+      console.log('[fal-submit] submitting to', FAL_VIDEO_MODEL, 'payload:', JSON.stringify(falPayload));
       const submitRes = await fetch('https://queue.fal.run/' + FAL_VIDEO_MODEL, {
         method: 'POST',
         headers: { Authorization: 'Key ' + falKey, 'Content-Type': 'application/json' },
         body: JSON.stringify(falPayload),
       });
-      const submitData = await submitRes.json();
+      const submitText = await submitRes.text();
+      console.log('[fal-submit] status', submitRes.status, 'response:', submitText.slice(0, 500));
+      let submitData;
+      try { submitData = JSON.parse(submitText); } catch (e) { submitData = {}; }
+      if (!submitRes.ok || submitData.detail || submitData.error) {
+        const errMsg = submitData.detail || submitData.error || submitData.message || ('HTTP ' + submitRes.status);
+        console.error('[fal-submit] error from fal.ai:', errMsg);
+        const info = queries.insertGeneration.run(clientId, product_id, null, 'failed', 0, 0);
+        return res.status(502).json({ error: 'Video generation failed: ' + errMsg, generation_id: info.lastInsertRowid });
+      }
       const jobId = submitData.request_id || null;
+      if (!jobId) {
+        console.error('[fal-submit] no request_id in response:', submitText.slice(0, 200));
+        const info = queries.insertGeneration.run(clientId, product_id, null, 'failed', 0, 0);
+        return res.status(502).json({ error: 'fal.ai did not return a request_id', raw: submitText.slice(0, 200) });
+      }
       const videoCostCents = CHARGE_CENTS * quantity;
       const info = queries.insertGeneration.run(clientId, product_id, jobId, 'processing', 0, videoCostCents);
+      console.log('[fal-submit] job', jobId, 'stored as generation', info.lastInsertRowid);
       res.status(202).json({
         ok: true, generation_id: info.lastInsertRowid, fal_request_id: jobId,
         status: 'processing', billed_cents: videoCostCents,
