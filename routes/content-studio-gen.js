@@ -23,9 +23,9 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 
-// Default price (cents) charged to a client per generation. Overridable via env.
-const CHARGE_CENTS = parseInt(process.env.CONTENT_GEN_CHARGE_CENTS || '500', 10); // $5.00
-const SEEDANCE_BASE = process.env.SEEDANCE_BASE || 'https://api.wavespeed.ai';
+// Default price (cents) charged to a client per video. Overridable via env.
+const CHARGE_CENTS = parseInt(process.env.CONTENT_GEN_CHARGE_CENTS || '50', 10); // $0.50/video
+const FAL_VIDEO_MODEL = process.env.FAL_VIDEO_MODEL || 'fal-ai/kling-video/v1.6/standard/text-to-video';
 
 // ── Auto-upload to client's Google Drive assets folder ───────────────────────
 async function autoUploadToDrive(brand, filename, mimeType, buffer) {
@@ -260,45 +260,39 @@ module.exports = function registerContentStudioGen(app, deps = {}) {
       }
     }
 
-    // ── VIDEO: Seedance / WaveSpeed ─────────────────────────────────────────
-    const credRow = queries.getCredit.get(clientId);
-    const balance = credRow ? credRow.balance_cents : 0;
-    if (process.env.SEEDANCE_API_KEY && balance < CHARGE_CENTS) {
-      return res.status(402).json({ error: 'Insufficient credits', balance_cents: balance, needed_cents: CHARGE_CENTS });
-    }
-    if (!process.env.SEEDANCE_API_KEY) {
+    // ── VIDEO: fal.ai (Kling) ───────────────────────────────────────────────
+    const falKey = process.env.FAL_API_KEY;
+    if (!falKey) {
       const info = queries.insertGeneration.run(clientId, product_id, null, 'pending', 0, 0);
       return res.status(202).json({
         ok: true, generation_id: info.lastInsertRowid, status: 'pending', billed_cents: 0,
-        message: 'SEEDANCE_API_KEY not configured — queued without charge.',
+        message: 'FAL_API_KEY not configured — queued without charge.',
       });
     }
     try {
-      const payload = {
+      const falPayload = {
         prompt: String(prompt).trim(),
-        ...(referenceUrl ? { image: referenceUrl } : {}),
-        duration: parseInt(process.env.SEEDANCE_DURATION || '5', 10),
+        duration: '5',
+        aspect_ratio: '16:9',
+        ...(referenceUrl ? { image_url: referenceUrl } : {}),
       };
-      const submit = await axios.post(
-        `${SEEDANCE_BASE}/api/v3/bytedance/seedance-v1-lite-t2v-480p`,
-        payload,
-        { headers: { Authorization: `Bearer ${process.env.SEEDANCE_API_KEY}`, 'Content-Type': 'application/json' }, timeout: 30000 }
-      );
-      const jobId = submit.data?.data?.id || submit.data?.id || submit.data?.request_id || null;
+      const submitRes = await fetch('https://queue.fal.run/' + FAL_VIDEO_MODEL, {
+        method: 'POST',
+        headers: { Authorization: 'Key ' + falKey, 'Content-Type': 'application/json' },
+        body: JSON.stringify(falPayload),
+      });
+      const submitData = await submitRes.json();
+      const jobId = submitData.request_id || null;
       const videoCostCents = CHARGE_CENTS * quantity;
-      const debit = queries.debitCredit.run(videoCostCents, clientId, videoCostCents);
-      const billed = debit.changes > 0 ? videoCostCents : 0;
-      const info = queries.insertGeneration.run(clientId, product_id, jobId, 'processing', 0, billed);
+      const info = queries.insertGeneration.run(clientId, product_id, jobId, 'processing', 0, videoCostCents);
       res.status(202).json({
-        ok: true, generation_id: info.lastInsertRowid, seedance_job_id: jobId,
-        status: 'processing', billed_cents: billed,
-        new_balance_cents: balance - billed,
+        ok: true, generation_id: info.lastInsertRowid, fal_request_id: jobId,
+        status: 'processing', billed_cents: videoCostCents,
         message: 'Video generation started. Poll /api/client/content/generate/' + info.lastInsertRowid + ' for status.',
       });
     } catch (e) {
-      const detail = e.response?.data?.message || e.response?.data?.error || e.message;
       queries.insertGeneration.run(clientId, product_id, null, 'failed', 0, 0);
-      res.status(502).json({ error: 'Generation request failed', detail });
+      res.status(502).json({ error: 'Video generation request failed', detail: e.message });
     }
   });
 
@@ -316,29 +310,34 @@ module.exports = function registerContentStudioGen(app, deps = {}) {
         return res.json({ ok: true, generation: gen });
       }
 
-      // If we have a Seedance job and a key, poll the upstream status.
-      if (gen.seedance_job_id && process.env.SEEDANCE_API_KEY) {
+      // If we have a fal.ai job, poll its queue status.
+      if (gen.seedance_job_id && process.env.FAL_API_KEY) {
         try {
-          const r = await axios.get(
-            `${SEEDANCE_BASE}/api/v3/predictions/${gen.seedance_job_id}/result`,
-            { headers: { Authorization: `Bearer ${process.env.SEEDANCE_API_KEY}` }, timeout: 20000 }
+          const statusRes = await fetch(
+            'https://queue.fal.run/' + FAL_VIDEO_MODEL + '/requests/' + gen.seedance_job_id + '/status',
+            { headers: { Authorization: 'Key ' + process.env.FAL_API_KEY } }
           );
-          const d = r.data?.data || r.data || {};
-          const upstream = (d.status || '').toLowerCase();
-          if (upstream === 'completed' || upstream === 'succeeded') {
-            const videoUrl = (d.outputs && d.outputs[0]) || d.output || d.video_url || null;
+          const statusData = await statusRes.json();
+          const upstream = (statusData.status || '').toLowerCase();
+          if (upstream === 'completed') {
+            // Fetch the result
+            const resultRes = await fetch(
+              'https://queue.fal.run/' + FAL_VIDEO_MODEL + '/requests/' + gen.seedance_job_id,
+              { headers: { Authorization: 'Key ' + process.env.FAL_API_KEY } }
+            );
+            const resultData = await resultRes.json();
+            const videoUrl = (resultData.video && resultData.video.url)
+              || (resultData.videos && resultData.videos[0] && resultData.videos[0].url)
+              || null;
             queries.updateGenerationStatus.run('succeeded', videoUrl, gen.id);
-            // Auto-upload to client's Google Drive assets folder (non-fatal)
             if (videoUrl) {
               try {
                 const brand = brandFor(req);
                 if (brand) {
                   const fileRes = await fetch(videoUrl);
                   const fileBuf = Buffer.from(await fileRes.arrayBuffer());
-                  const ext = videoUrl.split('?')[0].split('.').pop() || 'mp4';
-                  const fname = 'generated_' + Date.now() + '.' + ext;
-                  const mime = ext === 'mp4' ? 'video/mp4' : 'image/' + (ext === 'jpg' ? 'jpeg' : ext);
-                  await autoUploadToDrive(brand, fname, mime, fileBuf);
+                  const fname = 'generated_' + Date.now() + '.mp4';
+                  await autoUploadToDrive(brand, fname, 'video/mp4', fileBuf);
                 }
               } catch (driveErr) { console.error('[drive-upload]', driveErr.message); }
             }
@@ -348,11 +347,9 @@ module.exports = function registerContentStudioGen(app, deps = {}) {
             queries.updateGenerationStatus.run('failed', null, gen.id);
             return res.json({ ok: true, generation: { ...gen, status: 'failed' } });
           }
-          // still processing
           return res.json({ ok: true, generation: { ...gen, status: 'processing' } });
         } catch (e) {
-          // Upstream poll failed — don't flip the row, just report current state.
-          return res.json({ ok: true, generation: gen, poll_error: e.response?.data?.message || e.message });
+          return res.json({ ok: true, generation: gen, poll_error: e.message });
         }
       }
 
