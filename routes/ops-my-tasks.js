@@ -6156,7 +6156,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       if (!isWebhookAuth && !req.session?.userEmail && !req.headers['cf-access-authenticated-user-email']) {
         return res.status(401).json({ error: 'Unauthorized' });
       }
-      const email = isWebhookAuth ? 'claude@cultcontent.cc' : (req.userEmail || '').toLowerCase();
+      const email = isWebhookAuth ? 'claude@cultcontent.cc' : (req.userEmail || (req.session && req.session.userEmail) || '').toLowerCase();
       const isAdmin = ADMIN_EMAILS.has(email) || isWebhookAuth;
       const isEditor = VIDEO_EDITOR_EMAILS.has(email) || isWebhookAuth;
       const { id } = req.params;
