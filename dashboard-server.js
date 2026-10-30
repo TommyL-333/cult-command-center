@@ -25,6 +25,65 @@ const stripe = process.env.STRIPE_SECRET_KEY
   ? require('stripe')(process.env.STRIPE_SECRET_KEY)
   : null;
 
+// ─── Google Drive Service Account ────────────────────────────────────────────
+async function getServiceAccountToken() {
+  const saKeyRaw = process.env.GOOGLE_SA_KEY;
+  if (!saKeyRaw) return null;
+  let sa;
+  try { sa = JSON.parse(saKeyRaw); } catch(_) { return null; }
+  const now = Math.floor(Date.now() / 1000);
+  const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
+  const claim  = Buffer.from(JSON.stringify({
+    iss: sa.client_email,
+    scope: 'https://www.googleapis.com/auth/drive',
+    aud: 'https://oauth2.googleapis.com/token',
+    iat: now,
+    exp: now + 3600,
+  })).toString('base64url');
+  const sigInput = header + '.' + claim;
+  const signer = crypto.createSign('RSA-SHA256');
+  signer.update(sigInput);
+  const sig = signer.sign(sa.private_key, 'base64url');
+  const jwt = sigInput + '.' + sig;
+  const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: jwt }).toString(),
+  });
+  const tok = await tokenRes.json();
+  return tok.access_token || null;
+}
+
+async function createClientDriveFolder(brandName) {
+  const token = await getServiceAccountToken();
+  if (!token) return null;
+  try {
+    const createRes = await fetch('https://www.googleapis.com/drive/v3/files?fields=id,webViewLink', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: brandName + ' - Assets', mimeType: 'application/vnd.google-apps.folder' }),
+    });
+    const folder = await createRes.json();
+    if (!folder.id) return null;
+    await fetch('https://www.googleapis.com/drive/v3/files/' + folder.id + '/permissions', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: 'writer', type: 'anyone' }),
+    });
+    const adminEmail = process.env.ADMIN_EMAIL || 'Tommy@cultcontent.cc';
+    await fetch('https://www.googleapis.com/drive/v3/files/' + folder.id + '/permissions?sendNotificationEmail=false', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: 'writer', type: 'user', emailAddress: adminEmail }),
+    });
+    return folder.webViewLink || ('https://drive.google.com/drive/folders/' + folder.id);
+  } catch(e) {
+    console.error('[drive] createClientDriveFolder error:', e.message);
+    return null;
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 // ─── Data directory — use Railway Volume in prod, __dirname locally ───────────
 const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : __dirname;
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -302,6 +361,16 @@ app.post('/api/webhooks/ghl-client-onboard', async (req, res) => {
     };
     brandsData.clients.push(newBrand);
     saveBrands(brandsData);
+
+    // Auto-create Google Drive assets folder for new client (non-blocking)
+    if (!newBrand.assetsDriveUrl) {
+      createClientDriveFolder(newBrand.name || newBrand.contactName || 'Client').then(function(url) {
+        if (!url) return;
+        var b2 = loadBrands();
+        var idx = b2.clients.findIndex(function(c){ return c.id === newBrand.id; });
+        if (idx >= 0) { b2.clients[idx].assetsDriveUrl = url; saveBrands(b2); }
+      }).catch(function(){});
+    }
 
     // ── Pre-check Growth Partners tasks based on form answers ────────────────
     // Map "yes" / "Yes" / checkbox truthy values

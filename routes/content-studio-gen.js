@@ -27,6 +27,32 @@ const path = require('path');
 const CHARGE_CENTS = parseInt(process.env.CONTENT_GEN_CHARGE_CENTS || '500', 10); // $5.00
 const SEEDANCE_BASE = process.env.SEEDANCE_BASE || 'https://api.wavespeed.ai';
 
+// ── Flux image generation via fal.ai ─────────────────────────────────────────
+// Flux Dev: ~$0.025/image. We bill clients 2x = $0.05/image.
+const FLUX_COST_PER_IMAGE_CENTS = 5; // $0.05 billed to client per image
+async function generateWithFlux(prompt, quantity, referenceUrl) {
+  const apiKey = process.env.FAL_API_KEY;
+  if (!apiKey) throw new Error('FAL_API_KEY not configured');
+  const body = {
+    prompt: String(prompt).trim(),
+    num_images: Math.min(Math.max(1, parseInt(quantity) || 1), 10),
+    image_size: 'landscape_4_3',
+    enable_safety_checker: false,
+  };
+  if (referenceUrl) body.image_url = referenceUrl;
+  const res = await fetch('https://fal.run/fal-ai/flux/dev', {
+    method: 'POST',
+    headers: { Authorization: 'Key ' + apiKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  const result = await res.json();
+  if (!result.images || !result.images.length) {
+    throw new Error(result.error || result.detail || 'Flux generation failed');
+  }
+  return result.images.map(function(img){ return img.url; });
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 // Reference uploads live on the same Railway volume + /uploads static mount that
 // dashboard-server.js already exposes (UPLOAD_DIR = DATA_DIR/uploads, served at /uploads).
 const DATA_DIR = process.env.DATA_DIR || '/data';
@@ -112,44 +138,100 @@ module.exports = function registerContentStudioGen(app, deps = {}) {
   });
 
   // ── POST /api/client/content/generate ──────────────────────────────────────
-  // body: { product_id, prompt, reference_url? }
-  app.post('/api/client/content/generate', requireClientSession, require('express').json(), async (req, res) => {
+  // Accepts multipart/form-data OR application/json.
+  // Fields: product_id, prompt, type (image|video), quantity (1-10), reference (file upload)
+  // Routes: type=image => Flux (fal.ai), type=video => Seedance (WaveSpeed)
+  const multer = require('multer');
+  const genUpload = multer({
+    storage: multer.diskStorage({
+      destination: (_, __, cb) => cb(null, UPLOAD_DIR),
+      filename: (_, file, cb) => {
+        const ext = path.extname(file.originalname) || '.jpg';
+        cb(null, 'genref_' + Date.now() + ext);
+      },
+    }),
+    limits: { fileSize: 10 * 1024 * 1024 },
+    fileFilter: (_, file, cb) => {
+      if (/^image\//.test(file.mimetype)) return cb(null, true);
+      cb(null, false);
+    },
+  }).single('reference');
+
+  app.post('/api/client/content/generate', requireClientSession, (req, res, next) => {
+    const ct = req.headers['content-type'] || '';
+    if (ct.includes('multipart')) {
+      genUpload(req, res, next);
+    } else {
+      require('express').json()(req, res, next);
+    }
+  }, async (req, res) => {
     const clientId = req.session.clientBrandId;
-    const { product_id = null, prompt, reference_url = null } = req.body || {};
+    const body = req.body || {};
+    const product_id = body.product_id || null;
+    const prompt = body.prompt || '';
+    const genType = (body.type || 'image').toLowerCase().replace(/s$/, ''); // 'image' or 'video'
+    const quantity = Math.min(Math.max(1, parseInt(body.quantity) || 1), 10);
+
     if (!prompt || !String(prompt).trim()) {
-      return res.status(400).json({ error: 'A prompt is required to generate a video.' });
+      return res.status(400).json({ error: 'A prompt is required.' });
     }
     const brand = brandFor(req);
     if (!brand) return res.status(404).json({ error: 'Brand not found' });
 
-    // Pre-flight credit check (honest: don't start a paid job the client can't afford)
+    // Reference image URL — from uploaded file or fallback body field
+    let referenceUrl = body.reference_url || null;
+    if (req.file) {
+      referenceUrl = PUBLIC_BASE_URL + '/uploads/' + req.file.filename;
+    }
+
+    // ── IMAGE: Flux via fal.ai ──────────────────────────────────────────────
+    if (genType === 'image') {
+      const hasFlux = !!process.env.FAL_API_KEY;
+      if (!hasFlux) {
+        // Queue without billing
+        const info = queries.insertGeneration.run(clientId, product_id, null, 'pending', 0, 0);
+        return res.status(202).json({
+          ok: true, generation_id: info.lastInsertRowid, status: 'pending', billed_cents: 0,
+          message: 'FAL_API_KEY not configured — queued without charge.',
+        });
+      }
+      try {
+        const urls = await generateWithFlux(prompt, quantity, referenceUrl);
+        const costCents = quantity * FLUX_COST_PER_IMAGE_CENTS;
+        const outputUrls = [];
+        for (const url of urls) {
+          const info = queries.insertGeneration.run(clientId, product_id, null, 'completed', 0, costCents);
+          // Store output_url via update (status completed, video_url = image url)
+          queries.updateGenerationStatus.run('completed', url, info.lastInsertRowid);
+          outputUrls.push(url);
+        }
+        return res.json({
+          ok: true, outputUrls, costUsd: (costCents / 100).toFixed(2),
+          message: quantity + ' image' + (quantity > 1 ? 's' : '') + ' generated successfully.',
+        });
+      } catch (e) {
+        queries.insertGeneration.run(clientId, product_id, null, 'failed', 0, 0);
+        return res.status(502).json({ error: 'Image generation failed', detail: e.message });
+      }
+    }
+
+    // ── VIDEO: Seedance / WaveSpeed ─────────────────────────────────────────
     const credRow = queries.getCredit.get(clientId);
     const balance = credRow ? credRow.balance_cents : 0;
     if (process.env.SEEDANCE_API_KEY && balance < CHARGE_CENTS) {
-      return res.status(402).json({
-        error: 'Insufficient credits',
-        balance_cents: balance,
-        needed_cents: CHARGE_CENTS,
-      });
+      return res.status(402).json({ error: 'Insufficient credits', balance_cents: balance, needed_cents: CHARGE_CENTS });
     }
-
-    // If Seedance isn't configured, record an honest 'pending' job and DO NOT bill.
     if (!process.env.SEEDANCE_API_KEY) {
       const info = queries.insertGeneration.run(clientId, product_id, null, 'pending', 0, 0);
       return res.status(202).json({
-        ok: true,
-        generation_id: info.lastInsertRowid,
-        status: 'pending',
-        billed_cents: 0,
-        message: 'Generation engine is not yet configured (SEEDANCE_API_KEY missing). Your request was queued and you were NOT charged. Direct generation goes live once the key is set.',
+        ok: true, generation_id: info.lastInsertRowid, status: 'pending', billed_cents: 0,
+        message: 'SEEDANCE_API_KEY not configured — queued without charge.',
       });
     }
-
-    // Real Seedance / WaveSpeed call.
     try {
       const payload = {
         prompt: String(prompt).trim(),
-        ...(reference_url ? { image: reference_url } : {}),
+        ...(referenceUrl ? { image: referenceUrl } : {}),
         duration: parseInt(process.env.SEEDANCE_DURATION || '5', 10),
       };
       const submit = await axios.post(
@@ -158,24 +240,18 @@ module.exports = function registerContentStudioGen(app, deps = {}) {
         { headers: { Authorization: `Bearer ${process.env.SEEDANCE_API_KEY}`, 'Content-Type': 'application/json' }, timeout: 30000 }
       );
       const jobId = submit.data?.data?.id || submit.data?.id || submit.data?.request_id || null;
-
-      // Record the job. Bill the client up-front (job accepted by Seedance).
-      const debit = queries.debitCredit.run(CHARGE_CENTS, clientId, CHARGE_CENTS);
-      const billed = debit.changes > 0 ? CHARGE_CENTS : 0;
+      const videoCostCents = CHARGE_CENTS * quantity;
+      const debit = queries.debitCredit.run(videoCostCents, clientId, videoCostCents);
+      const billed = debit.changes > 0 ? videoCostCents : 0;
       const info = queries.insertGeneration.run(clientId, product_id, jobId, 'processing', 0, billed);
-
       res.status(202).json({
-        ok: true,
-        generation_id: info.lastInsertRowid,
-        seedance_job_id: jobId,
-        status: 'processing',
-        billed_cents: billed,
-        new_balance_cents: (credRow ? credRow.balance_cents : 0) - billed,
-        message: 'Generation started. Poll /api/client/content/generate/' + info.lastInsertRowid + ' for status.',
+        ok: true, generation_id: info.lastInsertRowid, seedance_job_id: jobId,
+        status: 'processing', billed_cents: billed,
+        new_balance_cents: balance - billed,
+        message: 'Video generation started. Poll /api/client/content/generate/' + info.lastInsertRowid + ' for status.',
       });
     } catch (e) {
       const detail = e.response?.data?.message || e.response?.data?.error || e.message;
-      // Record the failure honestly; nothing was billed.
       queries.insertGeneration.run(clientId, product_id, null, 'failed', 0, 0);
       res.status(502).json({ error: 'Generation request failed', detail });
     }

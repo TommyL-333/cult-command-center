@@ -734,7 +734,7 @@
 <div id="tab-content-studio" style="display:none">
 <style>
   .vm-wrap { max-width:900px; margin:0 auto; padding:36px 24px 60px; }
-  .vm-section-label { font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#64748b; margin-bottom:12px; }
+  .vm-section-label { font-size:.68rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#64748b; margin-bottom:10px; }
   .vm-card-outer { background:#1c1828; border:1px solid #2a2540; border-radius:14px; margin-bottom:32px; overflow:hidden; }
   .vm-subtab-bar { display:flex; border-bottom:1px solid #2a2540; }
   .vm-subtab-btn { background:none; border:none; border-bottom:2px solid transparent; color:#64748b; font-size:.84rem; font-weight:600; padding:12px 20px; cursor:pointer; font-family:inherit; transition:all .15s; margin-bottom:-1px; }
@@ -745,28 +745,34 @@
   .vm-field { display:flex; flex-direction:column; gap:5px; }
   .vm-field.full { grid-column:1/-1; }
   .vm-label { font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em; color:#64748b; }
-  .vm-input, .vm-textarea { background:rgba(0,0,0,.3); border:1px solid #2a2540; border-radius:8px; color:#e2e8f0; font-size:.84rem; padding:9px 12px; font-family:inherit; outline:none; transition:border-color .15s; width:100%; box-sizing:border-box; }
-  .vm-input:focus, .vm-textarea:focus { border-color:#00f2ea; }
+  .vm-input, .vm-textarea, .vm-select { background:rgba(0,0,0,.3); border:1px solid #2a2540; border-radius:8px; color:#e2e8f0; font-size:.84rem; padding:9px 12px; font-family:inherit; outline:none; transition:border-color .15s; width:100%; box-sizing:border-box; }
+  .vm-input:focus, .vm-textarea:focus, .vm-select:focus { border-color:#00f2ea; }
   .vm-textarea { resize:vertical; min-height:80px; }
+  .vm-select option { background:#1c1828; color:#e2e8f0; }
   .vm-qty-row { display:flex; align-items:center; gap:12px; }
   .vm-qty-input { width:80px !important; }
   .vm-cost-display { font-size:.84rem; color:#00f2ea; font-weight:700; }
   .vm-cost-note { font-size:.72rem; color:#64748b; }
-  .vm-submit-btn { background:#00f2ea; color:#12101a; border:none; border-radius:9px; font-size:.88rem; font-weight:700; padding:11px 24px; cursor:pointer; transition:opacity .15s; font-family:inherit; margin-top:20px; }
-  .vm-submit-btn:hover { opacity:.88; }
-  .vm-submit-btn:disabled { opacity:.5; cursor:default; }
-  .vm-submit-error { font-size:.78rem; color:#ff5b5b; margin-top:8px; display:none; }
+  .vm-btn { background:#00f2ea; color:#12101a; border:none; border-radius:9px; font-size:.88rem; font-weight:700; padding:11px 24px; cursor:pointer; transition:opacity .15s; font-family:inherit; }
+  .vm-btn:hover { opacity:.88; }
+  .vm-btn:disabled { opacity:.5; cursor:default; }
+  .vm-btn-secondary { background:none; border:1px solid #2a2540; color:#94a3b8; border-radius:9px; font-size:.84rem; font-weight:600; padding:10px 20px; cursor:pointer; font-family:inherit; transition:all .15s; }
+  .vm-btn-secondary:hover { border-color:#00f2ea; color:#00f2ea; }
+  .vm-error { font-size:.78rem; color:#ff5b5b; margin-top:8px; display:none; }
+  .vm-success { font-size:.78rem; color:#00d27a; margin-top:8px; display:none; }
   .vm-pipeline { display:grid; grid-template-columns:repeat(5,1fr); gap:12px; margin-bottom:8px; }
   @media(max-width:720px){ .vm-pipeline { grid-template-columns:1fr 1fr; } }
   .vm-col-header { font-size:.65rem; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#64748b; padding:6px 10px 10px; }
   .vm-col-body { min-height:80px; display:flex; flex-direction:column; gap:8px; }
-  .vm-card { background:#161420; border:1px solid #2a2540; border-radius:10px; padding:12px 14px; }
-  .vm-card-title { font-size:.82rem; font-weight:600; color:#e2e8f0; margin-bottom:4px; word-break:break-word; }
-  .vm-card-meta { font-size:.7rem; color:#64748b; }
-  .vm-card-cost { font-size:.75rem; font-weight:700; color:#00f2ea; margin-top:6px; }
-  .vm-card-drive { font-size:.72rem; color:#64748b; margin-top:4px; }
-  .vm-card-drive a { color:#00f2ea; text-decoration:none; }
-  .vm-card-drive a:hover { text-decoration:underline; }
+  .vm-vcard { background:#161420; border:1px solid #2a2540; border-radius:10px; padding:12px 14px; }
+  .vm-vcard-title { font-size:.82rem; font-weight:600; color:#e2e8f0; margin-bottom:4px; word-break:break-word; }
+  .vm-vcard-meta { font-size:.7rem; color:#64748b; }
+  .vm-vcard-cost { font-size:.75rem; font-weight:700; color:#00f2ea; margin-top:6px; }
+  .vm-vcard-links { display:flex; gap:10px; margin-top:6px; }
+  .vm-vcard-links a { font-size:.75rem; text-decoration:none; }
+  .vm-vcard-links a.footage { color:#00f2ea; }
+  .vm-vcard-links a.assets { color:#c9a84c; }
+  .vm-vcard-links a:hover { text-decoration:underline; }
   .vm-status-pill { display:inline-block; font-size:.62rem; font-weight:700; text-transform:uppercase; letter-spacing:.07em; padding:2px 8px; border-radius:20px; margin-bottom:6px; }
   .vm-s-pending     { background:rgba(100,116,139,.15); color:#94a3b8; border:1px solid rgba(100,116,139,.25); }
   .vm-s-in-progress { background:rgba(201,168,76,.12);  color:#c9a84c; border:1px solid rgba(201,168,76,.3); }
@@ -775,20 +781,26 @@
   .vm-s-posted      { background:rgba(0,210,122,.2);    color:#00d27a; border:1px solid rgba(0,210,122,.4); }
   .vm-empty-col { font-size:.75rem; color:#2a2540; font-style:italic; padding:8px 10px; }
   .vm-loading { text-align:center; padding:40px; color:#64748b; font-size:.84rem; }
-  .vm-drive-list { display:flex; flex-direction:column; gap:8px; margin-top:12px; }
-  .vm-drive-item { display:flex; align-items:center; gap:8px; background:rgba(0,0,0,.25); border:1px solid #2a2540; border-radius:8px; padding:9px 12px; font-size:.82rem; }
-  .vm-drive-item a { color:#00f2ea; text-decoration:none; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .vm-drive-item a:hover { text-decoration:underline; }
-  .vm-drive-badge { font-size:.65rem; font-weight:700; text-transform:uppercase; background:rgba(0,242,234,.08); color:#64748b; border:1px solid #2a2540; border-radius:4px; padding:2px 6px; white-space:nowrap; }
-  .vm-upload-zone { border:1.5px dashed #2a2540; border-radius:10px; padding:28px 20px; text-align:center; color:#64748b; font-size:.84rem; cursor:pointer; transition:border-color .15s; margin-top:16px; }
-  .vm-upload-zone:hover { border-color:#00f2ea; color:#94a3b8; }
-  .vm-gen-section { background:rgba(0,0,0,.2); border:1px solid #2a2540; border-radius:12px; padding:22px; margin-top:28px; }
-  .vm-gen-section h3 { font-size:.9rem; font-weight:700; color:#e2e8f0; margin-bottom:4px; }
-  .vm-gen-section > p { font-size:.78rem; color:#64748b; margin-bottom:18px; }
-  .vm-type-toggle { display:flex; gap:8px; margin-bottom:16px; }
+  .vm-assets-hero { background:rgba(0,242,234,.04); border:1px solid rgba(0,242,234,.12); border-radius:12px; padding:22px 24px; margin-bottom:24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px; }
+  .vm-assets-hero h3 { font-size:.9rem; font-weight:700; color:#e2e8f0; margin:0 0 4px; }
+  .vm-assets-hero p { font-size:.78rem; color:#64748b; margin:0; }
+  .vm-gen-section { background:rgba(0,0,0,.18); border:1px solid #2a2540; border-radius:12px; padding:24px; margin-top:28px; }
+  .vm-gen-section h3 { font-size:.92rem; font-weight:700; color:#e2e8f0; margin:0 0 4px; }
+  .vm-gen-section > p { font-size:.78rem; color:#64748b; margin:0 0 20px; }
+  .vm-type-toggle { display:flex; gap:8px; }
   .vm-type-btn { background:none; border:1px solid #2a2540; border-radius:8px; color:#64748b; font-size:.82rem; font-weight:600; padding:8px 18px; cursor:pointer; font-family:inherit; transition:all .15s; }
   .vm-type-btn.active { background:rgba(0,242,234,.1); border-color:rgba(0,242,234,.3); color:#00f2ea; }
-  .vm-coming-tag { font-size:.65rem; font-weight:700; text-transform:uppercase; background:rgba(201,168,76,.12); color:#c9a84c; border:1px solid rgba(201,168,76,.3); border-radius:4px; padding:2px 7px; margin-left:8px; vertical-align:middle; }
+  .vm-dropzone { border:1.5px dashed #2a2540; border-radius:10px; padding:24px; text-align:center; color:#64748b; font-size:.84rem; cursor:pointer; transition:all .15s; position:relative; }
+  .vm-dropzone.drag-over { border-color:#00f2ea; background:rgba(0,242,234,.04); color:#94a3b8; }
+  .vm-dropzone input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+  .vm-gen-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:10px; margin-top:12px; }
+  .vm-gen-thumb-card { background:#161420; border:1px solid #2a2540; border-radius:8px; overflow:hidden; }
+  .vm-gen-thumb-img { width:100%; aspect-ratio:4/3; object-fit:cover; display:block; }
+  .vm-gen-thumb-info { padding:8px 10px; }
+  .vm-gen-thumb-meta { font-size:.7rem; color:#64748b; }
+  .vm-gen-thumb-dl { font-size:.72rem; color:#00f2ea; text-decoration:none; display:block; margin-top:3px; }
+  .vm-gen-thumb-dl:hover { text-decoration:underline; }
+  .vm-price-chip { font-size:.72rem; font-weight:700; color:#c9a84c; background:rgba(201,168,76,.1); border:1px solid rgba(201,168,76,.25); border-radius:4px; padding:2px 7px; }
 </style>
 <div class="vm-wrap">
   <h1 style="font-size:1.3rem;font-weight:700;color:#e2e8f0;margin-bottom:6px;">Video Management</h1>
@@ -800,14 +812,14 @@
       <button class="vm-subtab-btn" id="vmstbtn-assets" onclick="vmSwitchSubTab('assets')">Asset Management</button>
     </div>
 
-    <!-- Request Videos pane -->
     <div class="vm-subtab-pane" id="vmSub-request">
       <h2 style="font-size:1.0rem;font-weight:700;color:#e2e8f0;margin-bottom:6px;">Request a Video Edit</h2>
-      <p style="font-size:.8rem;color:#64748b;margin-bottom:22px;">$10 per video &middot; Captions, hook optimization, delivered within 5 business days.</p>
+      <p style="font-size:.8rem;color:#64748b;margin-bottom:20px;">$10 per video -- captions, hook optimization, delivered within 5 business days.</p>
       <div class="vm-form-grid">
         <div class="vm-field full">
-          <label class="vm-label">Google Drive Link *</label>
+          <label class="vm-label">Footage Link (Google Drive) *</label>
           <input class="vm-input" id="vmDriveUrl" type="url" placeholder="https://drive.google.com/drive/folders/...">
+          <div style="font-size:.72rem;color:#64748b;margin-top:3px;" id="vmAssetsNote"></div>
         </div>
         <div class="vm-field">
           <label class="vm-label">Request Title</label>
@@ -828,8 +840,8 @@
           <textarea class="vm-textarea" id="vmDesc" placeholder="Product being featured, hook style, any specific instructions for the editor..."></textarea>
         </div>
       </div>
-      <button class="vm-submit-btn" id="vmSubmitBtn" onclick="vmSubmit()">Submit Request</button>
-      <div class="vm-submit-error" id="vmSubmitError"></div>
+      <button class="vm-btn" id="vmSubmitBtn" onclick="vmSubmit()" style="margin-top:18px;">Submit Request</button>
+      <div class="vm-error" id="vmSubmitError"></div>
 
       <div style="margin-top:28px;">
         <div class="vm-section-label">Your Requests</div>
@@ -846,76 +858,82 @@
       </div>
     </div>
 
-    <!-- Asset Management pane -->
     <div class="vm-subtab-pane" id="vmSub-assets" style="display:none">
-      <h2 style="font-size:1.0rem;font-weight:700;color:#e2e8f0;margin-bottom:6px;">Asset Management</h2>
-      <p style="font-size:.8rem;color:#64748b;margin-bottom:20px;">Set your brand assets folder once -- it will automatically attach to every video request you submit.</p>
 
-      <div class="vm-section-label">Brand Assets Folder</div>
-      <p style="font-size:.72rem;color:#64748b;margin-bottom:10px;">This Google Drive folder is shared with the editor on every video request. Store your logos, fonts, product images, and brand guidelines here.</p>
-      <div id="vmAssetsFolderDisplay" style="display:none;margin-bottom:12px;">
-        <div style="display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.25);border:1px solid rgba(201,168,76,.25);border-radius:8px;padding:9px 12px;">
-          <span style="font-size:1rem;">📁</span>
-          <a id="vmAssetsFolderLink" href="#" target="_blank" rel="noopener" style="color:#c9a84c;text-decoration:none;font-size:.84rem;font-weight:600;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">Brand Assets Folder</a>
-          <button onclick="vmEditAssetsFolder()" style="background:none;border:none;color:#64748b;font-size:.75rem;cursor:pointer;white-space:nowrap;">Change</button>
+      <div class="vm-assets-hero" id="vmAssetsHero">
+        <div>
+          <h3 id="vmAssetsFolderName">Brand Assets</h3>
+          <p id="vmAssetsFolderStatus">Loading your assets folder...</p>
         </div>
-      </div>
-      <div id="vmAssetsFolderForm">
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
-          <input class="vm-input" id="vmAssetsFolderUrl" type="url" placeholder="https://drive.google.com/drive/folders/..." style="flex:1">
-          <button class="vm-submit-btn" style="margin-top:0;padding:9px 18px;white-space:nowrap;" onclick="vmSaveAssetsFolder()">Save</button>
-        </div>
-        <div id="vmAssetsFolderError" style="font-size:.75rem;color:#ff5b5b;display:none;margin-bottom:8px;"></div>
+        <a id="vmAssetsViewBtn" href="#" target="_blank" rel="noopener" class="vm-btn" style="text-decoration:none;display:none;">View Assets</a>
       </div>
 
-      <div style="margin-top:28px;">
-        <div class="vm-section-label">Drive Links (per request)</div>
-        <p style="font-size:.72rem;color:#64748b;margin-bottom:12px;">Footage links from each video request appear here automatically.</p>
-        <div id="vmDriveLinks" class="vm-drive-list">
-          <div style="font-size:.82rem;color:#3a3555;font-style:italic;padding:8px 0;">No footage links yet. Submit a video request to see them here.</div>
-        </div>
+      <div class="vm-section-label">Footage Folders (from Requests)</div>
+      <div id="vmDriveLinks" style="display:flex;flex-direction:column;gap:8px;margin-bottom:24px;">
+        <div style="font-size:.82rem;color:#3a3555;font-style:italic;padding:6px 0;">No footage links yet.</div>
       </div>
 
       <div class="vm-gen-section">
         <h3>Generate New Assets</h3>
-        <p>Create product images and videos using AI, priced at cost x2. Uses your TikTok Shop products as reference.</p>
+        <p>Images via Flux AI -- Videos via Seedance. Billed at cost x2. Results saved to your assets folder automatically.</p>
 
-        <div class="vm-section-label" style="margin-bottom:10px;">Output Type</div>
-        <div class="vm-type-toggle">
-          <button class="vm-type-btn active" id="vmGenTypeImg" onclick="vmSetGenType('image',this)">Images</button>
-          <button class="vm-type-btn" id="vmGenTypeVid" onclick="vmSetGenType('video',this)">Videos</button>
+        <div class="vm-form-grid" style="margin-bottom:16px;">
+          <div class="vm-field">
+            <label class="vm-label">Product</label>
+            <select class="vm-select" id="vmGenProduct" onchange="vmUpdateGenPrice()">
+              <option value="">Loading products...</option>
+            </select>
+          </div>
+          <div class="vm-field">
+            <label class="vm-label">Output Type</label>
+            <div class="vm-type-toggle">
+              <button class="vm-type-btn active" id="vmGenTypeImg" onclick="vmSetGenType('image',this)">Images</button>
+              <button class="vm-type-btn" id="vmGenTypeVid" onclick="vmSetGenType('video',this)">Videos</button>
+            </div>
+          </div>
+          <div class="vm-field">
+            <label class="vm-label">Quantity</label>
+            <div class="vm-qty-row">
+              <input class="vm-input vm-qty-input" id="vmGenQty" type="number" min="1" max="10" value="1" oninput="vmUpdateGenPrice()">
+              <div id="vmGenPriceChip" class="vm-price-chip" style="display:none;"></div>
+            </div>
+          </div>
+          <div class="vm-field full">
+            <label class="vm-label">Prompt / Direction</label>
+            <textarea class="vm-textarea" id="vmGenPrompt" placeholder="Describe the scene, style, or key visual. e.g. Product on white marble surface, soft studio lighting, close-up of texture, premium aesthetic"></textarea>
+          </div>
+          <div class="vm-field full">
+            <label class="vm-label">Reference Image (optional -- drag and drop or click to upload)</label>
+            <div class="vm-dropzone" id="vmGenDropzone"
+              ondragover="event.preventDefault();this.classList.add('drag-over')"
+              ondragleave="this.classList.remove('drag-over')"
+              ondrop="vmHandleGenDrop(event)">
+              <input type="file" id="vmGenRefInput" accept="image/*" onchange="vmHandleGenRef(this.files)">
+              <div style="pointer-events:none;">
+                <div style="font-size:.84rem;font-weight:600;color:#e2e8f0;margin-bottom:3px;">Drop an image here or click to browse</div>
+                <div style="font-size:.72rem;">PNG, JPG -- max 10MB</div>
+              </div>
+            </div>
+            <div id="vmGenRefPreview" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;"></div>
+          </div>
         </div>
 
-        <div class="vm-field full" style="margin-bottom:14px;">
-          <label class="vm-label">Product (optional)</label>
-          <select class="vm-input" id="vmGenProduct">
-            <option value="">-- Loading products...</option>
-          </select>
+        <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap;">
+          <button class="vm-btn" id="vmGenSubmitBtn" onclick="vmGenSubmit()">Generate Assets</button>
+          <div id="vmGenPriceNote" style="font-size:.78rem;color:#64748b;"></div>
         </div>
-
-        <div class="vm-field full" style="margin-bottom:14px;">
-          <label class="vm-label">Prompt / Direction</label>
-          <textarea class="vm-textarea" id="vmGenPrompt" placeholder="Describe the scene, style, or key visual. e.g. Product on white marble surface, soft studio lighting, close-up of texture, premium aesthetic"></textarea>
-        </div>
-
-        <div class="vm-field full" style="margin-bottom:18px;">
-          <label class="vm-label">Reference Image URL (optional)</label>
-          <input class="vm-input" id="vmGenRefUrl" type="url" placeholder="https://... (direct image link)">
-        </div>
-
-        <button class="vm-submit-btn" id="vmGenSubmitBtn" style="margin-top:0;" onclick="vmGenSubmit()">Request Generation</button>
-        <div id="vmGenError" style="font-size:.75rem;color:#ff5b5b;margin-top:8px;display:none;"></div>
-        <div id="vmGenSuccess" style="font-size:.75rem;color:#00d27a;margin-top:8px;display:none;"></div>
-        <div style="font-size:.72rem;color:#64748b;margin-top:8px;">We will confirm pricing before starting any paid generation.</div>
+        <div class="vm-error" id="vmGenError"></div>
+        <div class="vm-success" id="vmGenSuccess"></div>
 
         <div style="margin-top:24px;">
-          <div class="vm-section-label">Past Generations</div>
-          <div id="vmGenHistory" style="font-size:.8rem;color:#3a3555;font-style:italic;padding:8px 0;">Loading...</div>
+          <div class="vm-section-label">Recent Generations</div>
+          <div id="vmGenHistory">
+            <div style="font-size:.8rem;color:#3a3555;font-style:italic;padding:8px 0;">No generations yet.</div>
+          </div>
         </div>
       </div>
     </div>
   </div>
-
 </div>
 
 <script>
@@ -923,286 +941,276 @@
   var _vmLoaded = false;
   var _vmRequests = [];
   var _vmGenType = 'image';
-  var _vmAssetsFolder = '';
+  var _vmGenRefFile = null;
+  var _vmAssetsUrl = '';
 
   window.vmSwitchSubTab = function(tab) {
-    ['request','assets'].forEach(function(t) {
+    ['request','assets'].forEach(function(t){
       var pane = document.getElementById('vmSub-'+t);
       var btn  = document.getElementById('vmstbtn-'+t);
-      if (!pane || !btn) return;
-      var active = t === tab;
-      pane.style.display = active ? '' : 'none';
-      btn.classList.toggle('active', active);
+      if(!pane||!btn) return;
+      pane.style.display = t===tab ? '' : 'none';
+      btn.classList.toggle('active', t===tab);
     });
-    if (tab === 'assets') {
-      vmRenderDriveLinks();
-      vmLoadAssetsFolder();
-      vmPopulateGenProducts();
-      vmLoadGenerations();
-    }
+    if(tab==='assets') { vmRenderDriveLinks(); vmLoadGenerations(); }
   };
 
   function vmUpdateCost() {
-    var qty = Math.max(1, parseInt(document.getElementById('vmQty').value) || 1);
-    document.getElementById('vmCostDisplay').textContent = '$' + (qty * 10).toLocaleString('en-US');
+    var qty = Math.max(1, parseInt((document.getElementById('vmQty')||{}).value)||1);
+    var el = document.getElementById('vmCostDisplay');
+    if(el) el.textContent = '$'+(qty*10).toLocaleString('en-US');
   }
   window.vmUpdateCost = vmUpdateCost;
+
+  function vmUpdateGenPrice() {
+    var qty = Math.max(1, Math.min(10, parseInt((document.getElementById('vmGenQty')||{}).value)||1));
+    var chip = document.getElementById('vmGenPriceChip');
+    var note = document.getElementById('vmGenPriceNote');
+    var perUnit = _vmGenType === 'video' ? 0.10 : 0.05;
+    var total = (qty * perUnit).toFixed(2);
+    if(chip) { chip.textContent = '$'+total; chip.style.display='inline-block'; }
+    if(note) note.textContent = '$'+perUnit.toFixed(2)+' per '+_vmGenType+' x '+qty+' = $'+total+' total';
+  }
+  window.vmUpdateGenPrice = vmUpdateGenPrice;
+
+  window.vmSetGenType = function(type, btn) {
+    _vmGenType = type;
+    ['vmGenTypeImg','vmGenTypeVid'].forEach(function(id){
+      var el=document.getElementById(id);
+      if(el) el.classList.toggle('active',el===btn);
+    });
+    vmUpdateGenPrice();
+  };
+
+  async function vmLoadAssetsFolder() {
+    try {
+      var res = await fetch('/api/client/brand/assets-folder');
+      var d = await res.json();
+      _vmAssetsUrl = d.assetsDriveUrl || '';
+      var statusEl = document.getElementById('vmAssetsFolderStatus');
+      var viewBtn = document.getElementById('vmAssetsViewBtn');
+      var noteEl = document.getElementById('vmAssetsNote');
+      if(_vmAssetsUrl) {
+        if(viewBtn) { viewBtn.href = _vmAssetsUrl; viewBtn.style.display='inline-block'; }
+        if(statusEl) statusEl.textContent = 'Your shared assets folder -- clients and editors can view and upload here.';
+        if(noteEl) noteEl.textContent = 'Your brand assets folder is included automatically with every video request.';
+      } else {
+        if(viewBtn) viewBtn.style.display='none';
+        if(statusEl) statusEl.textContent = 'Your assets folder is being set up -- check back shortly.';
+      }
+    } catch(_) {}
+  }
 
   async function vmSubmit() {
     var btn = document.getElementById('vmSubmitBtn');
     var errEl = document.getElementById('vmSubmitError');
-    var driveUrl = (document.getElementById('vmDriveUrl').value || '').trim();
-    if (!driveUrl) { errEl.textContent = 'Please paste your Google Drive link.'; errEl.style.display='block'; return; }
-    errEl.style.display = 'none';
-    btn.disabled = true; btn.textContent = 'Submitting...';
+    var driveUrl = ((document.getElementById('vmDriveUrl')||{}).value||'').trim();
+    if(!driveUrl) { errEl.textContent='Please paste your footage Drive link.'; errEl.style.display='block'; return; }
+    errEl.style.display='none';
+    btn.disabled=true; btn.textContent='Submitting...';
     try {
-      var res = await fetch('/api/client/video-requests', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      var res = await fetch('/api/client/video-requests',{
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({
           driveUrl,
-          title: document.getElementById('vmTitle').value.trim(),
-          description: document.getElementById('vmDesc').value.trim(),
-          quantity: parseInt(document.getElementById('vmQty').value) || 1,
+          title: ((document.getElementById('vmTitle')||{}).value||'').trim(),
+          description: ((document.getElementById('vmDesc')||{}).value||'').trim(),
+          quantity: parseInt(((document.getElementById('vmQty')||{}).value)||'1')||1,
         }),
       });
       var d = await res.json();
-      if (!d.ok) throw new Error(d.error || 'Submit failed');
-      document.getElementById('vmDriveUrl').value = '';
-      document.getElementById('vmTitle').value = '';
-      document.getElementById('vmDesc').value = '';
-      document.getElementById('vmQty').value = '1';
+      if(!d.ok) throw new Error(d.error||'Submit failed');
+      document.getElementById('vmDriveUrl').value='';
+      document.getElementById('vmTitle').value='';
+      document.getElementById('vmDesc').value='';
+      document.getElementById('vmQty').value='1';
       vmUpdateCost();
-      btn.textContent = 'Submitted';
-      setTimeout(function() { btn.disabled = false; btn.textContent = 'Submit Request'; }, 2500);
+      btn.textContent='Submitted';
+      setTimeout(function(){btn.disabled=false;btn.textContent='Submit Request';},2500);
       loadVmRequests();
     } catch(e) {
-      errEl.textContent = e.message || 'Something went wrong. Please try again.';
-      errEl.style.display = 'block';
-      btn.disabled = false; btn.textContent = 'Submit Request';
+      errEl.textContent=e.message||'Something went wrong. Please try again.';
+      errEl.style.display='block';
+      btn.disabled=false; btn.textContent='Submit Request';
     }
   }
   window.vmSubmit = vmSubmit;
 
   function vmRenderCard(r) {
-    var statusClass = 'vm-s-' + (r.status || 'pending');
-    var statusLabel = (r.status || 'pending').replace('-', ' ');
-    var date = r.submittedAt ? new Date(r.submittedAt).toLocaleDateString('en-US', {month:'short',day:'numeric'}) : '';
-    var footageLink = r.driveUrl ? '<a href="' + r.driveUrl + '" target="_blank" rel="noopener" style="color:#00f2ea;text-decoration:none;">Footage</a>' : '';
-    var assetsLink = r.assetsDriveUrl ? '<a href="' + r.assetsDriveUrl + '" target="_blank" rel="noopener" style="color:#c9a84c;text-decoration:none;">Brand Assets</a>' : '';
-    var driveHtml = (footageLink || assetsLink)
-      ? '<div class="vm-card-drive" style="display:flex;gap:10px;margin-top:6px;">' + footageLink + assetsLink + '</div>'
-      : '';
-    return '<div class="vm-card">'
-      + '<div class="vm-status-pill ' + statusClass + '">' + statusLabel + '</div>'
-      + '<div class="vm-card-title">' + (r.title || 'Video request') + '</div>'
-      + '<div class="vm-card-meta">' + (r.quantity||1) + ' video' + ((r.quantity||1)>1?'s':'')
-        + (date ? ' &middot; ' + date : '') + '</div>'
-      + '<div class="vm-card-cost">$' + (r.costUsd || (r.quantity||1)*10).toLocaleString('en-US') + '</div>'
-      + driveHtml
-      + '</div>';
+    var sc='vm-s-'+(r.status||'pending');
+    var sl=(r.status||'pending').replace('-',' ');
+    var date=r.submittedAt?new Date(r.submittedAt).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
+    var footageLink=r.driveUrl?'<a href="'+r.driveUrl+'" target="_blank" rel="noopener" class="footage">Footage</a>':'';
+    var assetsLink=r.assetsDriveUrl?'<a href="'+r.assetsDriveUrl+'" target="_blank" rel="noopener" class="assets">Brand Assets</a>':'';
+    var linksHtml=(footageLink||assetsLink)?'<div class="vm-vcard-links">'+footageLink+assetsLink+'</div>':'';
+    return '<div class="vm-vcard">'
+      +'<div class="vm-status-pill '+sc+'">'+sl+'</div>'
+      +'<div class="vm-vcard-title">'+(r.title||'Video request')+'</div>'
+      +'<div class="vm-vcard-meta">'+(r.quantity||1)+' video'+((r.quantity||1)>1?'s':'')+(date?' &middot; '+date:'')+'</div>'
+      +'<div class="vm-vcard-cost">$'+(r.costUsd||(r.quantity||1)*10).toLocaleString('en-US')+'</div>'
+      +linksHtml+'</div>';
   }
 
   async function loadVmRequests() {
     try {
       var res = await fetch('/api/client/video-requests');
       var d = await res.json();
-      _vmRequests = d.requests || [];
-      document.getElementById('vmLoading').style.display = 'none';
-      document.getElementById('vmPipeline').style.display = 'grid';
-      var cols = { pending:[], 'in-progress':[], done:[], approved:[], posted:[] };
-      _vmRequests.forEach(function(r) { var s = r.status||'pending'; if (cols[s]) cols[s].push(r); });
-      Object.keys(cols).forEach(function(s) {
-        var el = document.getElementById('vmCol-' + s);
-        if (!el) return;
-        el.innerHTML = cols[s].length
-          ? cols[s].map(vmRenderCard).join('')
-          : '<div class="vm-empty-col">None</div>';
+      _vmRequests = d.requests||[];
+      var loadEl=document.getElementById('vmLoading');
+      var pipEl=document.getElementById('vmPipeline');
+      if(loadEl) loadEl.style.display='none';
+      if(pipEl) pipEl.style.display='grid';
+      var cols={pending:[],'in-progress':[],done:[],approved:[],posted:[]};
+      _vmRequests.forEach(function(r){ var s=r.status||'pending'; if(cols[s]) cols[s].push(r); });
+      Object.keys(cols).forEach(function(s){
+        var el=document.getElementById('vmCol-'+s);
+        if(!el) return;
+        el.innerHTML=cols[s].length?cols[s].map(vmRenderCard).join(''):'<div class="vm-empty-col">None</div>';
       });
     } catch(e) {
-      document.getElementById('vmLoading').textContent = 'Could not load requests.';
+      var loadEl=document.getElementById('vmLoading');
+      if(loadEl) loadEl.textContent='Could not load requests.';
     }
   }
 
   window._vmInit = function() {
-    if (_vmLoaded) return;
-    _vmLoaded = true;
+    if(_vmLoaded) return;
+    _vmLoaded=true;
     loadVmRequests();
+    vmLoadAssetsFolder();
+    vmPopulateGenProducts();
+    vmUpdateGenPrice();
   };
 
   function vmRenderDriveLinks() {
-    var links = [];
-    var seen = new Set();
-    _vmRequests.forEach(function(r) {
-      if (r.driveUrl && !seen.has(r.driveUrl)) {
+    var links=[];
+    var seen=new Set();
+    _vmRequests.forEach(function(r){
+      if(r.driveUrl&&!seen.has(r.driveUrl)){
         seen.add(r.driveUrl);
-        links.push({ url: r.driveUrl, label: r.title || 'Footage folder', source: 'footage', date: r.submittedAt });
+        links.push({url:r.driveUrl,label:r.title||'Footage folder',date:r.submittedAt});
       }
     });
-    var el = document.getElementById('vmDriveLinks');
-    if (!el) return;
-    if (!links.length) {
-      el.innerHTML = '<div style="font-size:.82rem;color:#3a3555;font-style:italic;padding:8px 0;">No footage links yet. Submit a video request to see them here.</div>';
-      return;
-    }
-    el.innerHTML = links.map(function(l) {
-      var date = l.date ? new Date(l.date).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
-      return '<div class="vm-drive-item">'
-        + '<a href="' + l.url + '" target="_blank" rel="noopener">' + (l.label || l.url) + '</a>'
-        + '<span class="vm-drive-badge">' + l.source + '</span>'
-        + (date ? '<span style="font-size:.7rem;color:#64748b;white-space:nowrap;">' + date + '</span>' : '')
-        + '</div>';
+    var el=document.getElementById('vmDriveLinks');
+    if(!el) return;
+    if(!links.length){ el.innerHTML='<div style="font-size:.82rem;color:#3a3555;font-style:italic;padding:6px 0;">No footage links yet.</div>'; return; }
+    el.innerHTML=links.map(function(l){
+      var date=l.date?new Date(l.date).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
+      return '<div style="display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.25);border:1px solid #2a2540;border-radius:8px;padding:9px 12px;">'
+        +'<a href="'+l.url+'" target="_blank" rel="noopener" style="color:#00f2ea;text-decoration:none;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.82rem;">'+(l.label||l.url)+'</a>'
+        +(date?'<span style="font-size:.7rem;color:#64748b;white-space:nowrap;">'+date+'</span>':'')
+        +'</div>';
     }).join('');
   }
 
-  async function vmLoadAssetsFolder() {
-    try {
-      var res = await fetch('/api/client/brand/assets-folder');
-      var d = await res.json();
-      _vmAssetsFolder = d.assetsDriveUrl || '';
-    } catch(_) { _vmAssetsFolder = ''; }
-    vmRenderAssetsFolder();
-  }
-
-  function vmRenderAssetsFolder() {
-    var displayEl = document.getElementById('vmAssetsFolderDisplay');
-    var formEl = document.getElementById('vmAssetsFolderForm');
-    var linkEl = document.getElementById('vmAssetsFolderLink');
-    if (!displayEl || !formEl) return;
-    if (_vmAssetsFolder) {
-      displayEl.style.display = '';
-      formEl.style.display = 'none';
-      if (linkEl) { linkEl.href = _vmAssetsFolder; linkEl.textContent = _vmAssetsFolder; }
-    } else {
-      displayEl.style.display = 'none';
-      formEl.style.display = '';
-    }
-  }
-
-  window.vmEditAssetsFolder = function() {
-    var displayEl = document.getElementById('vmAssetsFolderDisplay');
-    var formEl = document.getElementById('vmAssetsFolderForm');
-    var input = document.getElementById('vmAssetsFolderUrl');
-    if (displayEl) displayEl.style.display = 'none';
-    if (formEl) formEl.style.display = '';
-    if (input) input.value = _vmAssetsFolder;
-  };
-
-  window.vmSaveAssetsFolder = async function() {
-    var input = document.getElementById('vmAssetsFolderUrl');
-    var errEl = document.getElementById('vmAssetsFolderError');
-    var url = (input.value || '').trim();
-    if (!url) { errEl.textContent = 'Please enter a Drive folder URL.'; errEl.style.display=''; return; }
-    errEl.style.display = 'none';
-    try {
-      var res = await fetch('/api/client/brand/assets-folder', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assetsDriveUrl: url }),
-      });
-      var d = await res.json();
-      if (!d.ok) throw new Error(d.error || 'Save failed');
-      _vmAssetsFolder = url;
-      vmRenderAssetsFolder();
-    } catch(e) {
-      errEl.textContent = e.message || 'Could not save. Please try again.';
-      errEl.style.display = '';
-    }
-  };
-
   async function vmPopulateGenProducts() {
-    var sel = document.getElementById('vmGenProduct');
-    if (!sel) return;
+    var sel=document.getElementById('vmGenProduct');
+    if(!sel) return;
     try {
-      var res = await fetch('/api/client/products');
-      var d = await res.json();
-      var products = (d.products || d || []);
-      if (!Array.isArray(products) || !products.length) {
-        sel.innerHTML = '<option value="">-- No products found (connect TikTok Shop in Profile)</option>';
-        return;
+      var res=await fetch('/api/client/products');
+      var d=await res.json();
+      var products=d.products||[];
+      if(products.length){
+        sel.innerHTML='<option value="">Select a product...</option>'
+          +products.map(function(p){ return '<option value="'+p.id+'">'+p.name+'</option>'; }).join('');
+      } else {
+        sel.innerHTML='<option value="">No products -- connect TikTok Shop first</option>';
       }
-      sel.innerHTML = '<option value="">-- Select a product (optional)</option>'
-        + products.map(function(p) {
-          return '<option value="' + p.id + '">' + (p.name || p.id) + '</option>';
-        }).join('');
-    } catch(_) {
-      sel.innerHTML = '<option value="">-- Could not load products</option>';
+    } catch(_){
+      sel.innerHTML='<option value="">Could not load products</option>';
     }
+    vmUpdateGenPrice();
   }
 
-  window.vmGenSubmit = async function() {
+  function vmSetGenRef(files) {
+    if(!files||!files.length) return;
+    _vmGenRefFile = files[0];
+    var preview = document.getElementById('vmGenRefPreview');
+    var zone = document.getElementById('vmGenDropzone');
+    if(preview) {
+      var url = URL.createObjectURL(_vmGenRefFile);
+      preview.innerHTML = '<div style="position:relative;width:72px;height:72px;">'
+        +'<img src="'+url+'" style="width:72px;height:72px;object-fit:cover;border-radius:8px;border:1px solid #2a2540;">'
+        +'<button onclick="_vmGenRefFile=null;document.getElementById(\'vmGenRefPreview\').innerHTML=\'\'" '
+        +'style="position:absolute;top:-6px;right:-6px;background:#1c1828;border:1px solid #2a2540;border-radius:50%;width:18px;height:18px;cursor:pointer;color:#94a3b8;font-size:10px;padding:0;">x</button>'
+        +'</div>';
+    }
+    if(zone) { var inner=zone.querySelector('div'); if(inner) inner.style.display='none'; }
+  }
+  window.vmHandleGenRef = function(files) { vmSetGenRef(files); };
+  window.vmHandleGenDrop = function(e) {
+    e.preventDefault();
+    document.getElementById('vmGenDropzone').classList.remove('drag-over');
+    vmSetGenRef(e.dataTransfer.files);
+  };
+
+  async function vmGenSubmit() {
     var btn = document.getElementById('vmGenSubmitBtn');
     var errEl = document.getElementById('vmGenError');
     var sucEl = document.getElementById('vmGenSuccess');
-    var prompt = (document.getElementById('vmGenPrompt').value || '').trim();
-    if (!prompt) { errEl.textContent = 'Please enter a prompt.'; errEl.style.display=''; sucEl.style.display='none'; return; }
-    errEl.style.display = 'none';
-    sucEl.style.display = 'none';
-    btn.disabled = true; btn.textContent = 'Submitting...';
+    var prodSel = document.getElementById('vmGenProduct');
+    var prompt = ((document.getElementById('vmGenPrompt')||{}).value||'').trim();
+    var qty = Math.max(1, Math.min(10, parseInt(((document.getElementById('vmGenQty')||{}).value)||'1')||1));
+    errEl.style.display='none'; sucEl.style.display='none';
+    if(!prodSel||!prodSel.value){ errEl.textContent='Please select a product.'; errEl.style.display='block'; return; }
+    if(!prompt){ errEl.textContent='Please enter a prompt describing what to generate.'; errEl.style.display='block'; return; }
+    btn.disabled=true; btn.textContent='Generating...';
     try {
-      var productId = (document.getElementById('vmGenProduct').value || '').trim();
-      var referenceUrl = (document.getElementById('vmGenRefUrl').value || '').trim();
-      var body = { prompt: prompt, type: _vmGenType };
-      if (productId) body.product_id = productId;
-      if (referenceUrl) body.reference_url = referenceUrl;
-      var res = await fetch('/api/client/content/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
+      var fd = new FormData();
+      fd.append('product_id', prodSel.value);
+      fd.append('prompt', prompt);
+      fd.append('type', _vmGenType);
+      fd.append('quantity', String(qty));
+      if(_vmGenRefFile) fd.append('reference', _vmGenRefFile);
+      var res = await fetch('/api/client/content/generate',{ method:'POST', body:fd });
       var d = await res.json();
-      if (!d.ok && !d.id) throw new Error(d.error || 'Generation request failed');
-      sucEl.textContent = 'Generation queued! We will follow up with results and pricing confirmation.';
-      sucEl.style.display = '';
-      document.getElementById('vmGenPrompt').value = '';
-      document.getElementById('vmGenRefUrl').value = '';
-      btn.textContent = 'Submitted';
-      setTimeout(function() { btn.disabled = false; btn.textContent = 'Request Generation'; sucEl.style.display='none'; }, 4000);
+      if(!d.ok) throw new Error(d.error||'Generation failed');
+      sucEl.textContent = d.message || ('Generation complete -- check Recent Generations below.');
+      sucEl.style.display='block';
+      btn.textContent='Done';
+      setTimeout(function(){btn.disabled=false;btn.textContent='Generate Assets';},3000);
       vmLoadGenerations();
-    } catch(e) {
-      errEl.textContent = e.message || 'Something went wrong. Please try again.';
-      errEl.style.display = '';
-      btn.disabled = false; btn.textContent = 'Request Generation';
-    }
-  };
-
-  async function vmLoadGenerations() {
-    var el = document.getElementById('vmGenHistory');
-    if (!el) return;
-    try {
-      var res = await fetch('/api/client/content/generations');
-      var d = await res.json();
-      var gens = d.generations || d || [];
-      if (!Array.isArray(gens) || !gens.length) {
-        el.innerHTML = '<span style="color:#3a3555;font-style:italic;">No generations yet.</span>';
-        return;
-      }
-      el.innerHTML = gens.slice(0, 10).map(function(g) {
-        var date = g.createdAt ? new Date(g.createdAt).toLocaleDateString('en-US',{month:'short',day:'numeric'}) : '';
-        var statusColor = g.status === 'completed' ? '#00d27a' : g.status === 'failed' ? '#f87171' : '#c9a84c';
-        return '<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid #1a1727;">'
-          + '<span style="font-size:.75rem;color:' + statusColor + ';font-weight:700;text-transform:uppercase;min-width:60px;">' + (g.status || 'pending') + '</span>'
-          + '<span style="font-size:.8rem;color:#e2e8f0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">' + (g.prompt || 'Generation') + '</span>'
-          + (date ? '<span style="font-size:.7rem;color:#64748b;white-space:nowrap;">' + date + '</span>' : '')
-          + (g.outputUrl ? '<a href="' + g.outputUrl + '" target="_blank" rel="noopener" style="color:#00f2ea;font-size:.75rem;text-decoration:none;white-space:nowrap;">View</a>' : '')
-          + '</div>';
-      }).join('');
-    } catch(_) {
-      el.innerHTML = '<span style="color:#3a3555;font-style:italic;">Could not load history.</span>';
+    } catch(e){
+      errEl.textContent=e.message||'Generation failed. Please try again.';
+      errEl.style.display='block';
+      btn.disabled=false; btn.textContent='Generate Assets';
     }
   }
+  window.vmGenSubmit=vmGenSubmit;
 
-  window.vmSetGenType = function(type, btn) {
-    _vmGenType = type;
-    ['vmGenTypeImg','vmGenTypeVid'].forEach(function(id) {
-      var el = document.getElementById(id);
-      if (el) el.classList.toggle('active', el === btn);
-    });
-  };
+  async function vmLoadGenerations() {
+    var el=document.getElementById('vmGenHistory');
+    if(!el) return;
+    try {
+      var res=await fetch('/api/client/content/generations');
+      var d=await res.json();
+      var gens=d.generations||[];
+      if(!gens.length){ el.innerHTML='<div style="font-size:.8rem;color:#3a3555;font-style:italic;padding:8px 0;">No generations yet.</div>'; return; }
+      el.innerHTML='<div class="vm-gen-grid">'
+        +gens.slice(0,20).map(function(g){
+          var date=g.createdAt||g.created_at;
+          var dateStr=date?new Date(date).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
+          var statusColor=g.status==='completed'||g.status==='succeeded'?'#00d27a':g.status==='failed'?'#ff5b5b':'#c9a84c';
+          var outUrl=g.outputUrl||g.video_url||g.output_url||'';
+          var imgHtml=outUrl?'<img src="'+outUrl+'" class="vm-gen-thumb-img" onerror="this.style.display=\'none\'">':'<div class="vm-gen-thumb-img" style="background:#0d0b12;display:flex;align-items:center;justify-content:center;font-size:.7rem;color:#3a3555;">'+g.status+'</div>';
+          var dlLink=outUrl?'<a href="'+outUrl+'" download target="_blank" rel="noopener" class="vm-gen-thumb-dl">Download</a>':'';
+          var cost=g.costUsd||g.billed_cents?(g.costUsd||((g.billed_cents||0)/100)).toFixed(2):null;
+          return '<div class="vm-gen-thumb-card">'+imgHtml+'<div class="vm-gen-thumb-info">'
+            +'<div class="vm-gen-thumb-meta" style="color:'+statusColor+'">'+g.status+(dateStr?' &middot; '+dateStr:'')+'</div>'
+            +(cost?'<div class="vm-gen-thumb-meta">$'+cost+'</div>':'')
+            +dlLink+'</div></div>';
+        }).join('')
+        +'</div>';
+    } catch(_){
+      el.innerHTML='<div style="font-size:.8rem;color:#3a3555;font-style:italic;padding:8px 0;">Could not load.</div>';
+    }
+  }
+  window.vmLoadGenerations=vmLoadGenerations;
 
 })();
 </script>
 </div><!-- end #tab-content-studio -->
+
 
 
 <!-- ───────────────────────── Billing tab ──────────────────────────────── -->
