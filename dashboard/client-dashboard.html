@@ -826,6 +826,7 @@
   .vm-gen-thumb-dl { font-size:.72rem; color:#00f2ea; text-decoration:none; display:block; margin-top:3px; }
   .vm-gen-thumb-dl:hover { text-decoration:underline; }
   .vm-price-chip { font-size:.72rem; font-weight:700; color:#c9a84c; background:rgba(201,168,76,.1); border:1px solid rgba(201,168,76,.25); border-radius:4px; padding:2px 7px; }
+  @keyframes vm-spin { to { transform: rotate(360deg); } }
 </style>
 <div class="vm-wrap">
   <h1 style="font-size:1.3rem;font-weight:700;color:#e2e8f0;margin-bottom:6px;">Video Management</h1>
@@ -1169,6 +1170,20 @@
     vmSetGenRef(e.dataTransfer.files);
   };
 
+  var _vmPollTimer = null;
+
+  function vmShowGenSpinner(msg) {
+    var sucEl = document.getElementById('vmGenSuccess');
+    if(sucEl) {
+      sucEl.innerHTML = '<span style="display:inline-flex;align-items:center;gap:8px;">'
+        +'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="animation:vm-spin 1s linear infinite;flex-shrink:0">'
+        +'<circle cx="12" cy="12" r="10" stroke="rgba(0,242,234,.3)" stroke-width="3"/>'
+        +'<path d="M12 2a10 10 0 0 1 10 10" stroke="#00f2ea" stroke-width="3" stroke-linecap="round"/>'
+        +'</svg>'+(msg||'Generating...')+'</span>';
+      sucEl.style.display='block';
+    }
+  }
+
   async function vmGenSubmit() {
     var btn = document.getElementById('vmGenSubmitBtn');
     var errEl = document.getElementById('vmGenError');
@@ -1180,6 +1195,7 @@
     if(!prodSel||!prodSel.value){ errEl.textContent='Please select a product.'; errEl.style.display='block'; return; }
     if(!prompt){ errEl.textContent='Please enter a prompt describing what to generate.'; errEl.style.display='block'; return; }
     btn.disabled=true; btn.textContent='Generating...';
+    if(_vmPollTimer){ clearTimeout(_vmPollTimer); _vmPollTimer=null; }
     try {
       var fd = new FormData();
       fd.append('product_id', prodSel.value);
@@ -1190,11 +1206,18 @@
       var res = await fetch('/api/client/content/generate',{ method:'POST', body:fd });
       var d = await res.json();
       if(!d.ok) throw new Error(d.error||'Generation failed');
-      sucEl.textContent = d.message || ('Generation complete -- check Recent Generations below.');
-      sucEl.style.display='block';
-      btn.textContent='Done';
-      setTimeout(function(){btn.disabled=false;btn.textContent='Generate Assets';},3000);
-      vmLoadGenerations();
+      // Images: synchronous — done immediately
+      if(d.outputUrls && d.outputUrls.length) {
+        sucEl.textContent = qty + ' image' + (qty>1?'s':'') + ' ready.';
+        sucEl.style.display='block';
+        btn.disabled=false; btn.textContent='Generate Assets';
+        vmLoadGenerations();
+        return;
+      }
+      // Videos: async — show spinner and poll
+      var genId = d.generation_id;
+      vmShowGenSpinner(_vmGenType==='video' ? 'Generating video (this takes ~2 min)...' : 'Generating...');
+      vmPollGeneration(genId, btn);
     } catch(e){
       errEl.textContent=e.message||'Generation failed. Please try again.';
       errEl.style.display='block';
@@ -1202,6 +1225,34 @@
     }
   }
   window.vmGenSubmit=vmGenSubmit;
+
+  function vmPollGeneration(genId, btn) {
+    if(!genId) return;
+    _vmPollTimer = setTimeout(async function poll() {
+      try {
+        var r = await fetch('/api/client/content/generate/'+genId);
+        var data = await r.json();
+        var gen = data.generation || {};
+        var status = gen.status || '';
+        if(status === 'succeeded' || status === 'completed') {
+          var sucEl = document.getElementById('vmGenSuccess');
+          if(sucEl) { sucEl.textContent = 'Done! Check Recent Generations below.'; sucEl.style.display='block'; }
+          if(btn) { btn.disabled=false; btn.textContent='Generate Assets'; }
+          vmLoadGenerations();
+        } else if(status === 'failed') {
+          var sucEl = document.getElementById('vmGenSuccess');
+          var errEl = document.getElementById('vmGenError');
+          if(sucEl) sucEl.style.display='none';
+          if(errEl) { errEl.textContent='Generation failed. Please try again.'; errEl.style.display='block'; }
+          if(btn) { btn.disabled=false; btn.textContent='Generate Assets'; }
+        } else {
+          _vmPollTimer = setTimeout(poll, 8000);
+        }
+      } catch(_) {
+        _vmPollTimer = setTimeout(poll, 10000);
+      }
+    }, 8000);
+  }
 
   async function vmLoadGenerations() {
     var el=document.getElementById('vmGenHistory');
@@ -1215,12 +1266,21 @@
         +gens.slice(0,20).map(function(g){
           var date=g.createdAt||g.created_at;
           var dateStr=date?new Date(date).toLocaleDateString('en-US',{month:'short',day:'numeric'}):'';
-          var statusColor=g.status==='completed'||g.status==='succeeded'?'#00d27a':g.status==='failed'?'#ff5b5b':'#c9a84c';
+          var isDone=g.status==='completed'||g.status==='succeeded';
+          var isFail=g.status==='failed';
+          var statusColor=isDone?'#00d27a':isFail?'#ff5b5b':'#c9a84c';
           var outUrl=g.outputUrl||g.video_url||g.output_url||'';
-          var imgHtml=outUrl?'<img src="'+outUrl+'" class="vm-gen-thumb-img" onerror="this.style.display=\'none\'">':'<div class="vm-gen-thumb-img" style="background:#0d0b12;display:flex;align-items:center;justify-content:center;font-size:.7rem;color:#3a3555;">'+g.status+'</div>';
+          var thumbHtml=outUrl
+            ?'<img src="'+outUrl+'" class="vm-gen-thumb-img" onerror="this.style.display=\'none\'">'
+            :'<div class="vm-gen-thumb-img" style="background:#0d0b12;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:4px;">'
+              +(isDone||isFail
+                ?'<span style="font-size:.7rem;color:'+(isFail?'#ff5b5b':'#3a3555')+'">'+(isFail?'Failed':'No preview')+'</span>'
+                :'<svg width="20" height="20" viewBox="0 0 24 24" fill="none" style="animation:vm-spin 1s linear infinite"><circle cx="12" cy="12" r="10" stroke="rgba(0,242,234,.2)" stroke-width="3"/><path d="M12 2a10 10 0 0 1 10 10" stroke="#00f2ea" stroke-width="3" stroke-linecap="round"/></svg>'
+                +'<span style="font-size:.65rem;color:#64748b;">processing</span>')
+              +'</div>';
           var dlLink=outUrl?'<a href="'+outUrl+'" download target="_blank" rel="noopener" class="vm-gen-thumb-dl">Download</a>':'';
-          var cost=g.costUsd||g.billed_cents?(g.costUsd||((g.billed_cents||0)/100)).toFixed(2):null;
-          return '<div class="vm-gen-thumb-card">'+imgHtml+'<div class="vm-gen-thumb-info">'
+          var cost=g.billed_cents?((g.billed_cents||0)/100).toFixed(2):null;
+          return '<div class="vm-gen-thumb-card">'+thumbHtml+'<div class="vm-gen-thumb-info">'
             +'<div class="vm-gen-thumb-meta" style="color:'+statusColor+'">'+g.status+(dateStr?' &middot; '+dateStr:'')+'</div>'
             +(cost?'<div class="vm-gen-thumb-meta">$'+cost+'</div>':'')
             +dlLink+'</div></div>';
