@@ -312,20 +312,19 @@ module.exports = function registerContentStudioGen(app, deps = {}) {
 
       // If we have a fal.ai job, poll its queue status.
       if (gen.seedance_job_id && process.env.FAL_API_KEY) {
+        const jobId = gen.seedance_job_id;
+        const statusUrl = 'https://queue.fal.run/' + FAL_VIDEO_MODEL + '/requests/' + jobId + '/status';
+        console.log('[fal-poll] checking job', jobId, 'at', statusUrl);
         try {
-          const statusRes = await fetch(
-            'https://queue.fal.run/' + FAL_VIDEO_MODEL + '/requests/' + gen.seedance_job_id + '/status',
-            { headers: { Authorization: 'Key ' + process.env.FAL_API_KEY } }
-          );
+          const statusRes = await fetch(statusUrl, { headers: { Authorization: 'Key ' + process.env.FAL_API_KEY } });
           const statusData = await statusRes.json();
+          console.log('[fal-poll] status response:', JSON.stringify(statusData));
           const upstream = (statusData.status || '').toLowerCase();
           if (upstream === 'completed') {
-            // Fetch the result
-            const resultRes = await fetch(
-              'https://queue.fal.run/' + FAL_VIDEO_MODEL + '/requests/' + gen.seedance_job_id,
-              { headers: { Authorization: 'Key ' + process.env.FAL_API_KEY } }
-            );
+            const resultUrl = 'https://queue.fal.run/' + FAL_VIDEO_MODEL + '/requests/' + jobId;
+            const resultRes = await fetch(resultUrl, { headers: { Authorization: 'Key ' + process.env.FAL_API_KEY } });
             const resultData = await resultRes.json();
+            console.log('[fal-poll] result response:', JSON.stringify(resultData).slice(0, 400));
             const videoUrl = (resultData.video && resultData.video.url)
               || (resultData.videos && resultData.videos[0] && resultData.videos[0].url)
               || null;
@@ -343,12 +342,15 @@ module.exports = function registerContentStudioGen(app, deps = {}) {
             }
             return res.json({ ok: true, generation: { ...gen, status: 'succeeded', video_url: videoUrl } });
           }
-          if (upstream === 'failed' || upstream === 'error') {
+          if (upstream === 'failed' || upstream === 'error' || statusData.error) {
+            console.log('[fal-poll] job failed:', JSON.stringify(statusData));
             queries.updateGenerationStatus.run('failed', null, gen.id);
             return res.json({ ok: true, generation: { ...gen, status: 'failed' } });
           }
+          // IN_QUEUE or IN_PROGRESS
           return res.json({ ok: true, generation: { ...gen, status: 'processing' } });
         } catch (e) {
+          console.error('[fal-poll] error for job', jobId, ':', e.message);
           return res.json({ ok: true, generation: gen, poll_error: e.message });
         }
       }
