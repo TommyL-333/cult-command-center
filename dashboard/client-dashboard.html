@@ -622,11 +622,20 @@
     <div class="card" id="googleDriveCard" style="max-width:480px;">
       <div class="card-title"><span class="dot" style="background:#34a853"></span>Google Drive</div>
       <p style="font-size:.82rem;color:var(--muted);line-height:1.6;margin-bottom:16px;">
-        Connect your Google account so generated assets are automatically saved to your Drive folder.
+        Connect Google Drive to auto-create your assets folder and sync generated content directly to your Drive.
       </p>
       <div id="googleDriveConnected" style="display:none;margin-bottom:14px;padding:10px 14px;background:rgba(52,168,83,.08);border:1px solid rgba(52,168,83,.25);border-radius:8px;">
         <div style="color:#34a853;font-weight:700;font-size:.84rem;">Connected</div>
         <div id="googleDriveEmail" style="font-size:.8rem;color:var(--muted);margin-top:2px;"></div>
+        <div id="googleDriveFolderWrap" style="margin-top:8px;display:none;">
+          <a id="googleDriveFolderLink" href="#" target="_blank" rel="noopener"
+            style="font-size:.8rem;color:#00f2ea;text-decoration:none;font-weight:600;">
+            View Assets Folder
+          </a>
+        </div>
+        <div id="googleDriveFolderPending" style="font-size:.78rem;color:var(--muted);margin-top:6px;display:none;">
+          Creating your assets folder...
+        </div>
       </div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
         <a id="googleDriveConnectBtn" href="/api/client/auth/google"
@@ -649,9 +658,25 @@
       const d = await r.json();
       if (d.connected) {
         document.getElementById('googleDriveConnected').style.display = 'block';
-        document.getElementById('googleDriveEmail').textContent = d.email || '';
+        document.getElementById('googleDriveEmail').textContent = d.email ? d.email + ' - connected' : 'Connected';
         document.getElementById('googleDriveConnectBtn').textContent = 'Reconnect';
         document.getElementById('googleDriveDisconnectBtn').style.display = 'inline-block';
+        // Check assets folder
+        try {
+          const fr = await fetch('/api/client/brand/assets-folder');
+          const fd = await fr.json();
+          var folderWrap = document.getElementById('googleDriveFolderWrap');
+          var folderPending = document.getElementById('googleDriveFolderPending');
+          var folderLink = document.getElementById('googleDriveFolderLink');
+          if (fd.assetsDriveUrl) {
+            if (folderWrap) { folderWrap.style.display = 'block'; }
+            if (folderLink) { folderLink.href = fd.assetsDriveUrl; }
+            if (folderPending) { folderPending.style.display = 'none'; }
+          } else {
+            if (folderWrap) { folderWrap.style.display = 'none'; }
+            if (folderPending) { folderPending.style.display = 'block'; }
+          }
+        } catch(_) {}
       } else {
         document.getElementById('googleDriveConnected').style.display = 'none';
         document.getElementById('googleDriveConnectBtn').textContent = 'Connect Google';
@@ -674,8 +699,8 @@
     const params = new URLSearchParams(window.location.search);
     if (params.get('googleConnected') === '1') {
       const s = document.getElementById('googleDriveStatus');
-      if (s) s.textContent = 'Google Drive connected!';
-      setTimeout(() => { if (s) s.textContent = ''; }, 4000);
+      if (s) s.textContent = 'Google Drive connected -- your assets folder has been created.';
+      setTimeout(function() { if (s) s.textContent = ''; }, 5000);
     }
     if (params.get('googleError')) {
       const s = document.getElementById('googleDriveStatus');

@@ -25,64 +25,6 @@ const stripe = process.env.STRIPE_SECRET_KEY
   ? require('stripe')(process.env.STRIPE_SECRET_KEY)
   : null;
 
-// ─── Google Drive Service Account ────────────────────────────────────────────
-async function getServiceAccountToken() {
-  const saKeyRaw = process.env.GOOGLE_SA_KEY;
-  if (!saKeyRaw) return null;
-  let sa;
-  try { sa = JSON.parse(saKeyRaw); } catch(_) { return null; }
-  const now = Math.floor(Date.now() / 1000);
-  const header = Buffer.from(JSON.stringify({ alg: 'RS256', typ: 'JWT' })).toString('base64url');
-  const claim  = Buffer.from(JSON.stringify({
-    iss: sa.client_email,
-    scope: 'https://www.googleapis.com/auth/drive',
-    aud: 'https://oauth2.googleapis.com/token',
-    iat: now,
-    exp: now + 3600,
-  })).toString('base64url');
-  const sigInput = header + '.' + claim;
-  const signer = crypto.createSign('RSA-SHA256');
-  signer.update(sigInput);
-  const sig = signer.sign(sa.private_key, 'base64url');
-  const jwt = sigInput + '.' + sig;
-  const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer', assertion: jwt }).toString(),
-  });
-  const tok = await tokenRes.json();
-  return tok.access_token || null;
-}
-
-async function createClientDriveFolder(brandName) {
-  const token = await getServiceAccountToken();
-  if (!token) return null;
-  try {
-    const createRes = await fetch('https://www.googleapis.com/drive/v3/files?fields=id,webViewLink', {
-      method: 'POST',
-      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: brandName + ' - Assets', mimeType: 'application/vnd.google-apps.folder' }),
-    });
-    const folder = await createRes.json();
-    if (!folder.id) return null;
-    await fetch('https://www.googleapis.com/drive/v3/files/' + folder.id + '/permissions', {
-      method: 'POST',
-      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role: 'writer', type: 'anyone' }),
-    });
-    const adminEmail = process.env.ADMIN_EMAIL || 'Tommy@cultcontent.cc';
-    await fetch('https://www.googleapis.com/drive/v3/files/' + folder.id + '/permissions?sendNotificationEmail=false', {
-      method: 'POST',
-      headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role: 'writer', type: 'user', emailAddress: adminEmail }),
-    });
-    return folder.webViewLink || ('https://drive.google.com/drive/folders/' + folder.id);
-  } catch(e) {
-    console.error('[drive] createClientDriveFolder error:', e.message);
-    return null;
-  }
-}
-// ─────────────────────────────────────────────────────────────────────────────
 
 // ─── Data directory — use Railway Volume in prod, __dirname locally ───────────
 const DATA_DIR = process.env.DATA_DIR ? path.resolve(process.env.DATA_DIR) : __dirname;
@@ -361,16 +303,6 @@ app.post('/api/webhooks/ghl-client-onboard', async (req, res) => {
     };
     brandsData.clients.push(newBrand);
     saveBrands(brandsData);
-
-    // Auto-create Google Drive assets folder for new client (non-blocking)
-    if (!newBrand.assetsDriveUrl) {
-      createClientDriveFolder(newBrand.name || newBrand.contactName || 'Client').then(function(url) {
-        if (!url) return;
-        var b2 = loadBrands();
-        var idx = b2.clients.findIndex(function(c){ return c.id === newBrand.id; });
-        if (idx >= 0) { b2.clients[idx].assetsDriveUrl = url; saveBrands(b2); }
-      }).catch(function(){});
-    }
 
     // ── Pre-check Growth Partners tasks based on form answers ────────────────
     // Map "yes" / "Yes" / checkbox truthy values
@@ -6392,15 +6324,16 @@ app.put('/api/client/brand/assets-folder', requireClientSession, express.json(),
 
 // ── Google Drive OAuth per client ────────────────────────────────────────────
 const GOOGLE_SCOPES = [
-  'https://www.googleapis.com/auth/drive.file',
+  'https://www.googleapis.com/auth/drive',
   'https://www.googleapis.com/auth/userinfo.email'
 ].join(' ');
 
-const GOOGLE_REDIRECT_URI_DEFAULT = 'https://portal.cultcontent.cc/api/client/auth/google/callback';
+const GOOGLE_REDIRECT_URI = process.env.GOOGLE_REDIRECT_URI || 'https://manifest.cultcontent.cc/api/client/auth/google/callback';
+const GOOGLE_REDIRECT_URI_DEFAULT = GOOGLE_REDIRECT_URI; // kept for compatibility
 function googleAuthUrl(state) {
   const params = new URLSearchParams({
     client_id: process.env.GOOGLE_CLIENT_ID || '',
-    redirect_uri: process.env.GOOGLE_REDIRECT_URI || GOOGLE_REDIRECT_URI_DEFAULT,
+    redirect_uri: GOOGLE_REDIRECT_URI,
     response_type: 'code',
     scope: GOOGLE_SCOPES,
     access_type: 'offline',
@@ -6469,23 +6402,24 @@ async function uploadFileToDrive(brand, folderId, filename, mimeType, buffer) {
   if (!r.ok) throw new Error('Drive upload failed: ' + r.status + ' ' + await r.text());
   return r.json();
 }
-app._uploadFileToDrive = uploadFileToDrive;
+// uploadFileToDrive available internally for Drive uploads
 
 // GET /api/client/auth/google — initiate OAuth
 app.get('/api/client/auth/google', requireClientSession, (req, res) => {
   const state = req.session.clientBrandId;
-  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_REDIRECT_URI) {
+  if (!process.env.GOOGLE_CLIENT_ID) {
     return res.status(500).send('Google OAuth not configured');
   }
   res.redirect(googleAuthUrl(state));
 });
 
-// GET /api/client/auth/google/callback — exchange code, store tokens
+// GET /api/client/auth/google/callback — exchange code, store tokens, auto-create Drive folder
 app.get('/api/client/auth/google/callback', async (req, res) => {
   const { code, state, error } = req.query;
   if (error) return res.redirect('/client/dashboard?tab=overview&googleError=' + encodeURIComponent(error));
   if (!code || !state) return res.redirect('/client/dashboard?tab=overview&googleError=missing_code');
   try {
+    console.log('[google-oauth] callback code received, exchanging...');
     const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -6493,7 +6427,7 @@ app.get('/api/client/auth/google/callback', async (req, res) => {
         code,
         client_id: process.env.GOOGLE_CLIENT_ID || '',
         client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
-        redirect_uri: process.env.GOOGLE_REDIRECT_URI || GOOGLE_REDIRECT_URI_DEFAULT,
+        redirect_uri: GOOGLE_REDIRECT_URI,
         grant_type: 'authorization_code'
       }).toString()
     });
@@ -6510,6 +6444,7 @@ app.get('/api/client/auth/google/callback', async (req, res) => {
     const brands = loadBrands();
     const bi = brands.clients.findIndex(b => b.id === state);
     if (bi < 0) return res.redirect('/client/dashboard?tab=overview&googleError=brand_not_found');
+
     brands.clients[bi].googleDriveAuth = {
       access_token: tokens.access_token,
       refresh_token: tokens.refresh_token,
@@ -6517,6 +6452,39 @@ app.get('/api/client/auth/google/callback', async (req, res) => {
       email: info.email || '',
       connectedAt: new Date().toISOString()
     };
+
+    // Auto-create Drive folder in client's own Google Drive (if not already set)
+    if (!brands.clients[bi].assetsDriveUrl) {
+      try {
+        const brand = brands.clients[bi];
+        const folderName = (brand.name || brand.contactName || 'Assets') + ' - Assets';
+        const createRes = await fetch('https://www.googleapis.com/drive/v3/files?fields=id,webViewLink', {
+          method: 'POST',
+          headers: {
+            Authorization: 'Bearer ' + tokens.access_token,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ name: folderName, mimeType: 'application/vnd.google-apps.folder' }),
+        });
+        const folder = await createRes.json();
+        if (folder.id) {
+          await fetch('https://www.googleapis.com/drive/v3/files/' + folder.id + '/permissions', {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + tokens.access_token,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ role: 'writer', type: 'anyone' }),
+          });
+          brands.clients[bi].assetsDriveUrl = folder.webViewLink || ('https://drive.google.com/drive/folders/' + folder.id);
+          console.log('[google-oauth] created Drive folder for', brand.name, ':', brands.clients[bi].assetsDriveUrl);
+        }
+      } catch (e) {
+        console.error('[google-oauth] folder creation error:', e.message);
+        // Non-fatal — continue with connect flow
+      }
+    }
+
     saveBrands(brands);
     res.redirect('/client/dashboard?tab=overview&googleConnected=1');
   } catch (e) {

@@ -27,6 +27,51 @@ const path = require('path');
 const CHARGE_CENTS = parseInt(process.env.CONTENT_GEN_CHARGE_CENTS || '500', 10); // $5.00
 const SEEDANCE_BASE = process.env.SEEDANCE_BASE || 'https://api.wavespeed.ai';
 
+// ── Auto-upload to client's Google Drive assets folder ───────────────────────
+async function autoUploadToDrive(brand, filename, mimeType, buffer) {
+  if (!brand || !brand.googleDriveAuth || !brand.assetsDriveUrl) return;
+  try {
+    const folderMatch = brand.assetsDriveUrl.match(/[-\w]{25,}/);
+    if (!folderMatch) return;
+    const folderId = folderMatch[0];
+    let accessToken = brand.googleDriveAuth.access_token;
+    if (brand.googleDriveAuth.expires_at && Date.now() > brand.googleDriveAuth.expires_at - 60000) {
+      const refreshRes = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          client_id: process.env.GOOGLE_CLIENT_ID || '',
+          client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
+          refresh_token: brand.googleDriveAuth.refresh_token,
+          grant_type: 'refresh_token',
+        }).toString(),
+      });
+      const refreshed = await refreshRes.json();
+      if (refreshed.access_token) accessToken = refreshed.access_token;
+    }
+    const boundary = 'cult_boundary_' + Date.now();
+    const meta = JSON.stringify({ name: filename, parents: [folderId] });
+    const body = Buffer.concat([
+      Buffer.from('--' + boundary + '\r\nContent-Type: application/json\r\n\r\n' + meta + '\r\n--' + boundary + '\r\nContent-Type: ' + mimeType + '\r\n\r\n'),
+      buffer,
+      Buffer.from('\r\n--' + boundary + '--'),
+    ]);
+    await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer ' + accessToken,
+        'Content-Type': 'multipart/related; boundary=' + boundary,
+        'Content-Length': String(body.length),
+      },
+      body,
+    });
+    console.log('[drive-upload] uploaded', filename, 'to folder', folderId);
+  } catch (e) {
+    console.error('[drive-upload] error:', e.message);
+  }
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 // ── Flux image generation via fal.ai ─────────────────────────────────────────
 // Flux Dev: ~$0.025/image. We bill clients 2x = $0.05/image.
 const FLUX_COST_PER_IMAGE_CENTS = 5; // $0.05 billed to client per image
@@ -287,17 +332,13 @@ module.exports = function registerContentStudioGen(app, deps = {}) {
             if (videoUrl) {
               try {
                 const brand = brandFor(req);
-                if (brand && brand.googleDriveAuth && brand.googleDriveAuth.refresh_token && brand.assetsDriveUrl) {
-                  const folderMatch = brand.assetsDriveUrl.match(/\/folders\/([a-zA-Z0-9_-]+)/);
-                  const folderId = folderMatch ? folderMatch[1] : null;
-                  if (folderId && app._uploadFileToDrive) {
-                    const fileRes = await fetch(videoUrl);
-                    const fileBuf = Buffer.from(await fileRes.arrayBuffer());
-                    const ext = videoUrl.split('?')[0].split('.').pop() || 'mp4';
-                    const fname = 'generated_' + Date.now() + '.' + ext;
-                    const mime = ext === 'mp4' ? 'video/mp4' : 'image/' + (ext === 'jpg' ? 'jpeg' : ext);
-                    await app._uploadFileToDrive(brand, folderId, fname, mime, fileBuf);
-                  }
+                if (brand) {
+                  const fileRes = await fetch(videoUrl);
+                  const fileBuf = Buffer.from(await fileRes.arrayBuffer());
+                  const ext = videoUrl.split('?')[0].split('.').pop() || 'mp4';
+                  const fname = 'generated_' + Date.now() + '.' + ext;
+                  const mime = ext === 'mp4' ? 'video/mp4' : 'image/' + (ext === 'jpg' ? 'jpeg' : ext);
+                  await autoUploadToDrive(brand, fname, mime, fileBuf);
                 }
               } catch (driveErr) { console.error('[drive-upload]', driveErr.message); }
             }
