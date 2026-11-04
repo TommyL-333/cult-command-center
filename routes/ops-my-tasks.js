@@ -4150,7 +4150,7 @@ function renderCM(){
         +(r.shopCode?'· Shop Code: <code style="font-size:11px;background:rgba(255,255,255,.07);padding:1px 5px;border-radius:4px">'+esc(r.shopCode)+'</code>  ':'')
         +(r.campaignLink?'· <a href="'+esc(r.campaignLink)+'" target="_blank" style="color:var(--cyan)">Campaign Link ↗</a>':'')
       +'</div>'
-      +(r.contentBrief?'<div class="cm-brief"><div class="cm-brief-label">Creator Brief</div>'+esc(r.contentBrief)+'</div>':'')
+      +(r.contentBrief?'<div style="margin-bottom:10px"><span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)">Creator Brief  </span><a href="'+esc(r.contentBrief)+'" target="_blank" style="font-size:12px;color:var(--cyan)">View Brief ↗</a></div>':'')
       +(r.tapLink&&r.status!=='accepted'?'<div style="font-size:11px;color:var(--muted);margin-bottom:10px">TAP: <a href="'+esc(r.tapLink)+'" target="_blank" style="color:var(--cyan)">'+esc(r.tapLink)+'</a></div>':'')
       +'<div class="cm-actions">'+actions+'</div>'
       +'</div>';
@@ -7950,7 +7950,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
           `🛒 Shop Code: ${shopCode}`,
           `👤 ${contactName} · ${email} · ${phone}`,
           `🔗 Campaign: ${campaignLink}`,
-          `📝 Brief: ${(contentBrief || '').slice(0, 300)}`,
+          `📝 Brief: ${contentBrief}`,
           ``,
           `⚡️ Next: add to TikTok Partner Center → Cult Content Community campaign`,
           `👉 https://manifest.cultcontent.cc`,
@@ -8018,7 +8018,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
         const msg = [
           `🎯 **New Creator Opportunity — ${r.shopName}**`,
           ``,
-          r.contentBrief ? `📝 **Creator Brief**\n${r.contentBrief}` : '',
+          r.contentBrief ? `📝 **Creator Brief:** ${r.contentBrief}` : '',
           ``,
           r.campaignLink ? `🔗 **Campaign Link:** ${r.campaignLink}` : '',
           `💰 **TAP Link:** ${r.tapLink}`,
