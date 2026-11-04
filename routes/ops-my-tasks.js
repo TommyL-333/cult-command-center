@@ -583,6 +583,32 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .vq-modal{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:24px;width:min(420px,92vw);max-height:85vh;overflow-y:auto}
   .vq-modal h3{margin:0 0 16px;font-size:16px;font-weight:700}
   .vq-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+  .cm-card{background:var(--panel2);border:1px solid var(--border);border-radius:14px;padding:18px 20px;margin-bottom:12px}
+  .cm-card-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:10px}
+  .cm-shop-name{font-size:15px;font-weight:800}
+  .cm-status-badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:100px;letter-spacing:.04em;text-transform:uppercase}
+  .cm-status-submitted{background:rgba(255,200,0,.12);color:#ffc800}
+  .cm-status-added{background:rgba(0,242,234,.12);color:var(--cyan)}
+  .cm-status-accepted{background:rgba(123,47,255,.15);color:#b899ff}
+  .cm-status-tap-ready{background:rgba(0,242,234,.18);color:var(--cyan)}
+  .cm-status-launched{background:rgba(0,200,80,.12);color:#00c850}
+  .cm-meta{font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6}
+  .cm-brief{font-size:12px;color:var(--txt);background:rgba(255,255,255,.04);border-radius:8px;padding:10px 12px;margin-bottom:12px;line-height:1.6}
+  .cm-brief-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:4px}
+  .cm-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .cm-btn{padding:7px 14px;border-radius:8px;border:none;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;transition:.1s}
+  .cm-btn-primary{background:var(--cyan);color:#0a0a0a}
+  .cm-btn-primary:hover{opacity:.85}
+  .cm-btn-ghost{background:rgba(255,255,255,.07);color:var(--txt);border:1px solid var(--border)}
+  .cm-btn-ghost:hover{background:rgba(255,255,255,.12)}
+  .cm-btn-launch{background:linear-gradient(135deg,#7b2fff,#b899ff);color:#fff}
+  .cm-btn-launch:hover{opacity:.85}
+  .cm-btn-danger{background:rgba(255,60,60,.12);color:var(--red);border:1px solid rgba(255,60,60,.2)}
+  .cm-tap-row{display:flex;gap:8px;align-items:center;width:100%;margin-top:8px}
+  .cm-tap-input{flex:1;background:rgba(255,255,255,.05);border:1px solid var(--border);border-radius:8px;color:var(--txt);font-size:12px;padding:8px 12px;font-family:inherit}
+  .cm-tap-input:focus{outline:none;border-color:rgba(0,242,234,.4)}
+  .cm-copy-pill{font-size:11px;font-weight:700;padding:4px 10px;border-radius:6px;background:rgba(255,255,255,.07);border:none;color:var(--muted);cursor:pointer;font-family:inherit}
+  .cm-copy-pill:hover{background:rgba(255,255,255,.12);color:var(--txt)}
 </style>
 </head>
 <body>
@@ -606,6 +632,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     <button class="tab" id="vq-tab-btn" onclick="switchTab(3)">Video Production</button>
     <button class="tab" id="tm-tab-btn" onclick="switchTab(4)" style="display:none">Team Management</button>
     <button class="tab" onclick="switchTab(5)">More Tools</button>
+    <button class="tab" id="cm-tab-btn" onclick="switchTab(6)" style="display:none">Creator Matchmaking</button>
   </div>
 
   <div id="tab-tasks">
@@ -1106,6 +1133,22 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   <div class="mt-grid" id="mt-grid"><div style="color:var(--muted);font-size:12px">Loading…</div></div>
 </div>
 
+<!-- Creator Matchmaking tab -->
+<div id="tab-creator-matchmaking" style="display:none">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+    <div style="font-size:18px;font-weight:800;letter-spacing:-.02em">Creator Matchmaking</div>
+    <div style="display:flex;gap:8px">
+      <button class="vq-ftab active" id="cm-filter-submitted" onclick="cmFilter('submitted')">Submitted</button>
+      <button class="vq-ftab" id="cm-filter-added" onclick="cmFilter('added')">Added to Campaign</button>
+      <button class="vq-ftab" id="cm-filter-accepted" onclick="cmFilter('accepted')">Accepted</button>
+      <button class="vq-ftab" id="cm-filter-tap-ready" onclick="cmFilter('tap-ready')">TAP Ready</button>
+      <button class="vq-ftab" id="cm-filter-launched" onclick="cmFilter('launched')">Launched</button>
+      <button class="vq-ftab" id="cm-filter-all" onclick="cmFilter('all')">All</button>
+    </div>
+  </div>
+  <div id="cm-grid"></div>
+</div>
+
 <!-- Add Tool modal -->
 <div class="mt-modal-overlay" id="mt-modal" style="display:none" onclick="if(event.target===this)mtCloseModal()">
   <div class="mt-modal">
@@ -1262,11 +1305,13 @@ function switchTab(idx){
   document.getElementById('tab-video-queue').style.display=idx===3?'':'none';
   document.getElementById('tab-team-mgmt').style.display=idx===4?'':'none';
   document.getElementById('tab-more-tools').style.display=idx===5?'':'none';
+  document.getElementById('tab-creator-matchmaking').style.display=idx===6?'':'none';
   if(idx===1)loadReportTab();
   if(idx===2)loadSprint();
   if(idx===3){applyVqRole();loadVideoQueue();}
   if(idx===4)loadTeamMgmt();
   if(idx===5)loadMoreTools();
+  if(idx===6)loadCreatorMatchmaking();
 }
 
 /* ── Sprint planner ──────────────────────────────────── */
@@ -1804,7 +1849,7 @@ function loadCompBanner(){
   fetch('/api/comp/summary',{credentials:'include'}).then(function(r){return r.json();}).then(function(d){
     COMP_DATA=d;
     CB_IS_ADMIN=!!d.isAdmin;
-    if(CB_IS_ADMIN&&!DEV_AS){var tmBtn=document.getElementById('tm-tab-btn');if(tmBtn)tmBtn.style.display='';var tmChip=document.getElementById('hdr-team-chip');if(tmChip)tmChip.style.display='';}
+    if(CB_IS_ADMIN&&!DEV_AS){var tmBtn=document.getElementById('tm-tab-btn');if(tmBtn)tmBtn.style.display='';var tmChip=document.getElementById('hdr-team-chip');if(tmChip)tmChip.style.display='';var cmBtn=document.getElementById('cm-tab-btn');if(cmBtn)cmBtn.style.display='';}
     if(!d.hasComp&&CB_IS_ADMIN&&!DEV_AS){
       // Admin with no personal comp: payroll lives only in Team Management tab, not here
     } else if(d.hasComp&&CB_IS_ADMIN&&!DEV_AS&&(!d.netSales||d.netSales===0)){
@@ -4046,6 +4091,115 @@ function tmRefreshOverviews(){
   });
 }
 
+var CM_DATA=null,_cmFilter='submitted';
+function loadCreatorMatchmaking(){
+  if(CM_DATA!==null)return renderCM();
+  fetch('/api/creator-matchmaking',{credentials:'include'})
+  .then(function(r){return r.json();}).then(function(d){
+    CM_DATA=d.submissions||[];
+    renderCM();
+  }).catch(function(){document.getElementById('cm-grid').innerHTML='<div style="color:var(--muted);font-size:12px">Failed to load</div>';});
+}
+function cmFilter(f){
+  _cmFilter=f;
+  ['submitted','added','accepted','tap-ready','launched','all'].forEach(function(s){
+    var b=document.getElementById('cm-filter-'+s);if(b)b.classList.toggle('active',s===f);
+  });
+  renderCM();
+}
+function renderCM(){
+  var g=document.getElementById('cm-grid');if(!g)return;
+  var rows=CM_DATA||[];
+  if(_cmFilter!=='all')rows=rows.filter(function(r){return r.status===_cmFilter;});
+  if(!rows.length){g.innerHTML='<div style="color:var(--muted);font-size:12px;padding:20px 0">Nothing here yet.</div>';return;}
+  var statusLabel={submitted:'Submitted',added:'Added to Campaign',accepted:'Accepted',
+    'tap-ready':'TAP Ready',launched:'Launched'};
+  var h='';
+  rows.forEach(function(r){
+    var submitted=r.submittedAt?new Date(r.submittedAt).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'';
+    var statusClass='cm-status-'+(r.status||'submitted').replace('-','_');
+    var actions='';
+    if(r.status==='submitted'){
+      actions='<button class="cm-btn cm-btn-ghost cm-copy-pill" onclick="cmCopy(\\''+esc(r.shopCode)+'\\',this)">Copy Shop Code</button>'
+        +'<button class="cm-btn cm-btn-primary" onclick="cmMarkAdded(\\''+esc(r.id)+'\\')">✓ Mark Added + Send Email</button>';
+    } else if(r.status==='added'){
+      actions='<span style="font-size:11px;color:var(--muted)">Waiting for brand to accept…</span>'
+        +'<button class="cm-btn cm-btn-ghost" style="margin-left:auto" onclick="cmMarkAccepted(\\''+esc(r.id)+'\\')">Mark Accepted</button>';
+    } else if(r.status==='accepted'){
+      actions='<div class="cm-tap-row">'
+        +'<input class="cm-tap-input" id="cm-tap-'+esc(r.id)+'" placeholder="Paste TAP link from TikTok Partner Center…" value="'+esc(r.tapLink||'')+'">'
+        +'<button class="cm-btn cm-btn-primary" onclick="cmSaveTap(\\''+esc(r.id)+'\\')">Save TAP Link</button>'
+        +'</div>';
+    } else if(r.status==='tap-ready'){
+      actions='<button class="cm-btn cm-btn-ghost cm-copy-pill" onclick="cmCopy(\\''+esc(r.tapLink||'')+'\\',this)">Copy TAP Link</button>'
+        +'<button class="cm-btn cm-btn-launch" onclick="cmLaunch(\\''+esc(r.id)+'\\')">🚀 Launch Campaign</button>';
+    } else if(r.status==='launched'){
+      actions='<span style="font-size:11px;color:#00c850">✓ Launched</span>';
+      if(r.tapLink)actions+='<button class="cm-btn cm-btn-ghost cm-copy-pill" onclick="cmCopy(\\''+esc(r.tapLink)+'\\',this)" style="margin-left:8px">Copy TAP</button>';
+    }
+    h+='<div class="cm-card">'
+      +'<div class="cm-card-header">'
+        +'<div>'
+          +'<div class="cm-shop-name">'+esc(r.shopName)+'</div>'
+          +'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+esc(r.contactName)+' · '+esc(r.email)+'</div>'
+        +'</div>'
+        +'<span class="cm-status-badge '+statusClass+'">'+esc(statusLabel[r.status]||r.status)+'</span>'
+      +'</div>'
+      +'<div class="cm-meta">'
+        +(submitted?'Submitted '+submitted+'  ':'')
+        +(r.shopCode?'· Shop Code: <code style="font-size:11px;background:rgba(255,255,255,.07);padding:1px 5px;border-radius:4px">'+esc(r.shopCode)+'</code>  ':'')
+        +(r.campaignLink?'· <a href="'+esc(r.campaignLink)+'" target="_blank" style="color:var(--cyan)">Campaign Link ↗</a>':'')
+      +'</div>'
+      +(r.contentBrief?'<div class="cm-brief"><div class="cm-brief-label">Creator Brief</div>'+esc(r.contentBrief)+'</div>':'')
+      +(r.tapLink&&r.status!=='accepted'?'<div style="font-size:11px;color:var(--muted);margin-bottom:10px">TAP: <a href="'+esc(r.tapLink)+'" target="_blank" style="color:var(--cyan)">'+esc(r.tapLink)+'</a></div>':'')
+      +'<div class="cm-actions">'+actions+'</div>'
+      +'</div>';
+  });
+  g.innerHTML=h;
+}
+function cmCopy(text,btn){
+  navigator.clipboard.writeText(text).then(function(){
+    var orig=btn.textContent;btn.textContent='Copied!';
+    setTimeout(function(){btn.textContent=orig;},1500);
+  });
+}
+function cmMarkAdded(id){
+  if(!confirm('This will mark the brand as added to the campaign and send them the TikTok instructions email. Continue?'))return;
+  fetch('/api/creator-matchmaking/'+encodeURIComponent(id)+'/mark-added',{method:'POST',credentials:'include'})
+  .then(function(r){return r.json();}).then(function(d){
+    if(!d.ok)return alert(d.error||'Failed');
+    CM_DATA=d.submissions;renderCM();
+  }).catch(function(){alert('Failed');});
+}
+function cmMarkAccepted(id){
+  fetch('/api/creator-matchmaking/'+encodeURIComponent(id),{method:'PATCH',credentials:'include',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify({status:'accepted'})})
+  .then(function(r){return r.json();}).then(function(d){
+    if(!d.ok)return alert(d.error||'Failed');
+    CM_DATA=d.submissions;renderCM();
+  }).catch(function(){alert('Failed');});
+}
+function cmSaveTap(id){
+  var inp=document.getElementById('cm-tap-'+id);
+  var tapLink=(inp&&inp.value||'').trim();
+  if(!tapLink)return alert('Paste the TAP link first');
+  if(tapLink.slice(0,4)!=='http')return alert('TAP link must start with https://');
+  fetch('/api/creator-matchmaking/'+encodeURIComponent(id),{method:'PATCH',credentials:'include',
+    headers:{'Content-Type':'application/json'},body:JSON.stringify({tapLink:tapLink,status:'tap-ready'})})
+  .then(function(r){return r.json();}).then(function(d){
+    if(!d.ok)return alert(d.error||'Failed');
+    CM_DATA=d.submissions;renderCM();
+  }).catch(function(){alert('Failed');});
+}
+function cmLaunch(id){
+  if(!confirm('Send the Discord announcement to the creator community?'))return;
+  fetch('/api/creator-matchmaking/'+encodeURIComponent(id)+'/launch',{method:'POST',credentials:'include'})
+  .then(function(r){return r.json();}).then(function(d){
+    if(!d.ok)return alert(d.error||'Failed: '+(d.error||''));
+    CM_DATA=d.submissions;renderCM();
+  }).catch(function(){alert('Failed');});
+}
+
 load();
 
 </script>
@@ -4094,6 +4248,9 @@ module.exports = function registerOpsMyTasks(app, deps = {}) {
   const ST_FILE = nodePath.join(DATA_DIR, 'subtasks.json');
   const NET_SALES_FILE = nodePath.join(DATA_DIR, 'net-sales.json');
   const VR_FILE = nodePath.join(DATA_DIR, 'video-requests.json');
+  const CM_FILE = nodePath.join(DATA_DIR, 'creator-matchmaking.json');
+  function readCM() { return readJsonFile(CM_FILE, []); }
+  function writeCM(rows) { writeJsonFile(CM_FILE, rows); }
 
   function readJsonFile(file, def) {
     try { return JSON.parse(fs.readFileSync(file, 'utf8')); } catch (_) { return def; }
@@ -6736,6 +6893,60 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
     console.log(`[podcast schedule email] Riverside link sent to ${guest.email}`);
   }
 
+  async function sendCMInstructionsEmail(r) {
+    const GHL_KEY = process.env.GHL_API_KEY;
+    const GHL_LOC = process.env.GHL_LOC_ID || process.env.GHL_LOCATION_ID;
+    if (!GHL_KEY || !GHL_LOC) { console.warn('[cm email] GHL creds missing — skipping'); return; }
+
+    const headers = { Authorization: `Bearer ${GHL_KEY}`, Version: '2021-07-28', 'Content-Type': 'application/json' };
+    const https = require('https');
+
+    function ghlPost(path, body) {
+      return new Promise((resolve, reject) => {
+        const data = JSON.stringify(body);
+        const opts = { hostname: 'services.leadconnectorhq.com', path, method: 'POST',
+          headers: { ...headers, 'Content-Length': Buffer.byteLength(data) } };
+        const req = https.request(opts, resp => {
+          let buf = '';
+          resp.on('data', c => buf += c);
+          resp.on('end', () => { try { resolve(JSON.parse(buf)); } catch { resolve(buf); } });
+        });
+        req.on('error', reject);
+        req.write(data);
+        req.end();
+      });
+    }
+
+    const firstName = (r.contactName || '').split(' ')[0];
+    const lastName = (r.contactName || '').split(' ').slice(1).join(' ') || '';
+    const contactRes = await ghlPost('/contacts/', { locationId: GHL_LOC, firstName, lastName, email: r.email, phone: r.phone });
+    const contactId = contactRes.contact?.id;
+    if (!contactId) { console.warn('[cm email] Could not upsert contact', contactRes); return; }
+
+    const convRes = await ghlPost('/conversations/', { locationId: GHL_LOC, contactId });
+    const conversationId = convRes.conversation?.id;
+    if (!conversationId) { console.warn('[cm email] Could not upsert conversation', convRes); return; }
+
+    const html = `<p>Hi ${firstName},</p>
+<p>Great news — we've added <strong>${r.shopName}</strong> to the <strong>Cult Content Community</strong> campaign in TikTok Partner Center. Here's how to accept and get your products in front of our creator network:</p>
+<ol>
+  <li>Go to your <strong>TikTok Affiliate Center</strong></li>
+  <li>Click on the <strong>Work with Partners</strong> tab</li>
+  <li>Click <strong>Partner Collabs</strong></li>
+  <li>Click <strong>Discover</strong></li>
+  <li>Search by collaboration name: <strong>Cult Content Community</strong></li>
+  <li>Click to join the collaboration</li>
+  <li>Add the products you want creators to sample</li>
+  <li>Set how many samples you're willing to provide</li>
+</ol>
+<p>Once you've completed these steps, <strong>reply to this email</strong> to let us know and we'll generate your affiliate link and launch your opportunity to the entire creator community.</p>
+<p>— Tommy<br>Cult Content</p>`;
+
+    await ghlPost('/conversations/messages', { type: 'Email', conversationId, contactId,
+      subject: `You're in — here's how to accept your spot in the Cult Content Community`, html });
+    console.log(`[cm email] Instructions email sent to ${r.email}`);
+  }
+
   // ---------- ROUTE: POST /api/podcast-applications/:id/send-riverside ----------
   app.post('/api/podcast-applications/:id/send-riverside', requireAuth, async (req, res) => {
     try {
@@ -7703,6 +7914,128 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
       tools = tools.filter(t => t.id !== req.params.id);
       writeJsonFile(fp, tools);
       res.json({ ok: true, tools });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  // ---- CREATOR MATCHMAKING ROUTES ----
+
+  // OPTIONS preflight for cross-origin form
+  app.options('/api/creator-matchmaking/submit', (req, res) => {
+    res.set('Access-Control-Allow-Origin', 'https://cultcontent.cc');
+    res.set('Access-Control-Allow-Methods', 'POST,OPTIONS');
+    res.set('Access-Control-Allow-Headers', 'Content-Type');
+    res.sendStatus(204);
+  });
+
+  app.post('/api/creator-matchmaking/submit', jsonBody, async (req, res) => {
+    res.set('Access-Control-Allow-Origin', 'https://cultcontent.cc');
+    try {
+      const { shopName, shopCode, contactName, email, phone, campaignLink, contentBrief } = req.body || {};
+      if (!shopName || !shopCode || !contactName || !email || !phone || !campaignLink || !contentBrief) {
+        return res.status(400).json({ ok: false, error: 'Missing required fields.' });
+      }
+      const id = 'cm_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
+      const entry = { id, shopName, shopCode, contactName, email, phone, campaignLink, contentBrief,
+        status: 'submitted', submittedAt: new Date().toISOString(), tapLink: null, launchedAt: null };
+      const rows = readCM();
+      rows.unshift(entry);
+      writeCM(rows);
+
+      // Lark alert to Tommy
+      const tommyOpenId = SEED_EMAIL_OPENID['tommy@cultcontent.cc'];
+      if (tommyOpenId) {
+        const text = [
+          `🎯 New Creator Matchmaking submission!`,
+          `🏷  Shop: ${shopName}`,
+          `🛒 Shop Code: ${shopCode}`,
+          `👤 ${contactName} · ${email} · ${phone}`,
+          `🔗 Campaign: ${campaignLink}`,
+          `📝 Brief: ${(contentBrief || '').slice(0, 300)}`,
+          ``,
+          `⚡️ Next: add to TikTok Partner Center → Cult Content Community campaign`,
+          `👉 https://manifest.cultcontent.cc`,
+        ].join('\n');
+        sendLarkMessage(tommyOpenId, text).catch(e => console.error('[cm] Lark alert failed:', e.message));
+      }
+      res.json({ ok: true, id });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.get('/api/creator-matchmaking', requireAuth, (req, res) => {
+    try {
+      const email = (req.userEmail || (req.session && req.session.portalUserEmail) || '').toLowerCase();
+      if (!ADMIN_EMAILS.has(email)) return res.status(403).json({ error: 'Admin only' });
+      res.json({ ok: true, submissions: readCM() });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.patch('/api/creator-matchmaking/:id', requireAuth, jsonBody, (req, res) => {
+    try {
+      const email = (req.userEmail || (req.session && req.session.portalUserEmail) || '').toLowerCase();
+      if (!ADMIN_EMAILS.has(email)) return res.status(403).json({ error: 'Admin only' });
+      const rows = readCM();
+      const idx = rows.findIndex(r => r.id === req.params.id);
+      if (idx < 0) return res.status(404).json({ error: 'Not found' });
+      const { status, tapLink } = req.body || {};
+      if (status !== undefined) rows[idx].status = status;
+      if (tapLink !== undefined) rows[idx].tapLink = tapLink;
+      rows[idx].updatedAt = new Date().toISOString();
+      writeCM(rows);
+      res.json({ ok: true, submissions: rows });
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.post('/api/creator-matchmaking/:id/mark-added', requireAuth, (req, res) => {
+    try {
+      const email = (req.userEmail || (req.session && req.session.portalUserEmail) || '').toLowerCase();
+      if (!ADMIN_EMAILS.has(email)) return res.status(403).json({ error: 'Admin only' });
+      const rows = readCM();
+      const idx = rows.findIndex(r => r.id === req.params.id);
+      if (idx < 0) return res.status(404).json({ error: 'Not found' });
+      rows[idx].status = 'added';
+      rows[idx].addedAt = new Date().toISOString();
+      writeCM(rows);
+      res.json({ ok: true, submissions: rows });
+      // Fire GHL email (non-fatal)
+      sendCMInstructionsEmail(rows[idx]).catch(e => console.error('[cm] instructions email failed:', e.message));
+    } catch (e) { res.status(500).json({ error: e.message }); }
+  });
+
+  app.post('/api/creator-matchmaking/:id/launch', requireAuth, async (req, res) => {
+    try {
+      const email = (req.userEmail || (req.session && req.session.portalUserEmail) || '').toLowerCase();
+      if (!ADMIN_EMAILS.has(email)) return res.status(403).json({ error: 'Admin only' });
+      const rows = readCM();
+      const idx = rows.findIndex(r => r.id === req.params.id);
+      if (idx < 0) return res.status(404).json({ error: 'Not found' });
+      const r = rows[idx];
+      if (!r.tapLink) return res.status(400).json({ error: 'TAP link not set yet' });
+
+      // Post Discord message
+      const botToken = process.env.DISCORD_BOT_TOKEN;
+      const channelId = process.env.DISCORD_MATCHMAKING_CHANNEL_ID || process.env.DISCORD_ANNOUNCE_CHANNEL_ID;
+      if (botToken && channelId) {
+        const msg = [
+          `🎯 **New Creator Opportunity — ${r.shopName}**`,
+          ``,
+          r.contentBrief ? `📝 **Creator Brief**\n${r.contentBrief}` : '',
+          ``,
+          r.campaignLink ? `🔗 **Campaign Link:** ${r.campaignLink}` : '',
+          `💰 **TAP Link:** ${r.tapLink}`,
+          ``,
+          `React with ✅ if you want to collab!`,
+        ].filter(l => l !== undefined).join('\n').trim();
+
+        await axios.post(`https://discord.com/api/v10/channels/${channelId}/messages`,
+          { content: msg },
+          { headers: { Authorization: `Bot ${botToken}`, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      rows[idx].status = 'launched';
+      rows[idx].launchedAt = new Date().toISOString();
+      writeCM(rows);
+      res.json({ ok: true, submissions: rows });
     } catch (e) { res.status(500).json({ error: e.message }); }
   });
 
