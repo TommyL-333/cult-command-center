@@ -2880,6 +2880,11 @@ app.post('/portal-admin/login', express.json(), (req, res) => {
 let portalTeamAuth = null;
 try { portalTeamAuth = require('./routes/portal-team-auth')(app, { express }); } catch (e) { console.error('[portal-team-auth] registration failed:', e.message); }
 
+// MCP door — must be before requireAuth wall so /mcp is reachable with bearer token only.
+// CF Access bypass for /mcp* must be set in Cloudflare dashboard (see spec §1).
+try { require('./routes/mcp-server')(app, { express }); } catch (e) { console.error('[mcp-server] registration failed:', e.message); }
+try { require('./routes/mcp-admin')(app, { express, requireAuth }); } catch (e) { console.error('[mcp-admin] registration failed:', e.message); }
+
 // Employee/Ops portal (Phase 8, first pass): My Clients, teammate roster,
 // points leaderboard. Depends on portal-team-auth's user-lookup helpers, so
 // mounted right after it. Support Inbox and CRM/sales tooling reuse existing

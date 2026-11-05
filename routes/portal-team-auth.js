@@ -33,6 +33,13 @@ const ALL_PERMISSIONS = [
   'inner_circle',    // inner circle admin
   'billing',         // financials / invoicing
   'user_admin',      // manage other portal users
+  // ── AI tool access (MCP door) ──────────────────────────────────────────────
+  'mcp_access',          // may connect to the MCP server at all
+  'tools_creator_data',  // Reacher + FastMoss + CRM roster reads
+  'tools_crm',           // GoHighLevel
+  'tools_content',       // Storista, Arcads, Omni Agent
+  'tools_analytics',     // shop / GMV / campaign reporting
+  'tools_finance',       // Stripe, payouts — grant deliberately
 ];
 
 // ── low-level json io ────────────────────────────────────────────────────────

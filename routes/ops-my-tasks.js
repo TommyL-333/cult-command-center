@@ -146,7 +146,7 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
 <title>Command Center · Cult Content</title>
 <script>window.__VQ_IS_EDITOR__=false;window.__VQ_IS_ADMIN__=false;window.__USER_ROLE__="";window.__USER_MODULES__=[];</script>
 <style>
-  :root{--bg:#161823;--panel:#1e2030;--panel2:#252838;--border:#2f3346;--txt:#e8eaf2;--muted:#9aa0b5;--cyan:#00f2ea;--red:#ff0050;--p1:#ff0050;--p2:#ff9f0a;--p3:#ffd60a;--p4:#5a6072;}
+  :root{--bg:#161823;--panel:#1e2030;--panel2:#252838;--border:#2f3346;--txt:#e8eaf2;--muted:#9aa0b5;--cyan:#00f2ea;--red:#ff0050;--p1:#ff0050;--p2:#ff9f0a;--p3:#ffd60a;--p4:#5a6072;--purple:#7c3aed;}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
   .wrap{max-width:1400px;margin:0 auto;padding:28px 40px 80px}
@@ -428,6 +428,44 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   .tm-notes-ta{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:8px;padding:10px 12px;color:var(--txt);font-size:12px;font-family:inherit;resize:vertical;min-height:80px}
   .tm-contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
   .tm-contact-item{font-size:12px;color:var(--muted)}.tm-contact-item strong{color:var(--txt);display:block;font-size:11px;text-transform:uppercase;letter-spacing:.04em;margin-bottom:2px}
+  /* ── MCP / Profile ───────────────────────────────────── */
+  .mcp-pill{display:inline-flex;align-items:center;gap:4px;font-size:9px;font-weight:700;padding:2px 7px;border-radius:999px;background:rgba(0,242,234,.1);color:var(--cyan);border:1px solid rgba(0,242,234,.2);letter-spacing:.04em}
+  .mcp-pill.off{background:rgba(255,255,255,.04);color:var(--muted);border-color:rgba(255,255,255,.08)}
+  .mcp-dot{width:5px;height:5px;border-radius:50%;background:var(--cyan);display:inline-block}
+  .mcp-dot.off{background:var(--muted)}
+  .profile-avatar-wrap{position:relative;cursor:pointer;flex-shrink:0}
+  .profile-avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--cyan));color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;user-select:none}
+  .profile-status-dot{position:absolute;bottom:0;right:0;width:10px;height:10px;border-radius:50%;background:var(--muted);border:2px solid var(--bg)}
+  .profile-status-dot.connected{background:var(--cyan)}
+  .profile-panel-overlay{position:fixed;inset:0;z-index:1000;display:flex;align-items:flex-start;justify-content:flex-end;padding:60px 20px 0}
+  .profile-panel{background:var(--bg);border:1px solid var(--border);border-radius:16px;width:340px;max-height:85vh;overflow-y:auto;padding:20px;box-shadow:0 8px 40px rgba(0,0,0,.5)}
+  .profile-panel-hdr{display:flex;align-items:center;gap:12px;margin-bottom:16px}
+  .profile-panel-avatar{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--purple),var(--cyan));color:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;flex-shrink:0}
+  .profile-panel-name{font-size:15px;font-weight:700;line-height:1.2}
+  .profile-panel-email{font-size:11px;color:var(--muted);margin-top:2px}
+  .profile-divider{height:1px;background:rgba(255,255,255,.07);margin:14px 0}
+  .profile-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;font-size:12px}
+  .profile-label{color:var(--muted);font-size:11px}
+  .profile-perm-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:10px 0}
+  .profile-perm{font-size:11px;display:flex;align-items:center;gap:5px;color:var(--muted)}
+  .profile-perm.on{color:var(--txt)}
+  .profile-perm-check{font-size:11px}
+  .token-box{background:rgba(255,255,255,.04);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:11px;font-family:monospace;color:var(--cyan);word-break:break-all;margin:8px 0}
+  .token-cmd{background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:10px;font-family:monospace;color:var(--txt);word-break:break-all;margin:6px 0;line-height:1.5}
+  .mcp-toggle-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:12px}
+  .mcp-toggle-row:last-child{border-bottom:none}
+  .mcp-toggle-label{color:var(--txt)}
+  .mcp-toggle-sub{font-size:10px;color:var(--muted);margin-top:1px}
+  .mcp-toggle{position:relative;width:36px;height:20px;flex-shrink:0}
+  .mcp-toggle input{opacity:0;width:0;height:0}
+  .mcp-toggle-track{position:absolute;inset:0;background:rgba(255,255,255,.1);border-radius:10px;cursor:pointer;transition:.2s}
+  .mcp-toggle input:checked+.mcp-toggle-track{background:var(--cyan)}
+  .mcp-toggle-track:before{content:"";position:absolute;width:14px;height:14px;border-radius:50%;background:#fff;top:3px;left:3px;transition:.2s}
+  .mcp-toggle input:checked+.mcp-toggle-track:before{transform:translateX(16px)}
+  .mcp-activity-row{display:flex;align-items:center;gap:10px;padding:5px 0;font-size:11px;color:var(--muted);border-bottom:1px solid rgba(255,255,255,.04)}
+  .mcp-activity-row:last-child{border-bottom:none}
+  .mcp-activity-tool{color:var(--txt);font-family:monospace;font-size:10px}
+  .mcp-activity-ts{font-size:10px;min-width:40px;text-align:right}
   /* ── Video Queue ──────────────────────────────────────── */
   .vq-submit{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;margin:0 auto 22px;max-width:640px}
   .vq-submit h3{margin:0 0 14px;font-size:15px;font-weight:700}
@@ -620,8 +658,29 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
       <button class="chip" id="hdr-team-chip" onclick="switchTab(4)" style="display:none">⚙ Team</button>
       <button class="chip" onclick="openMtAdd()">+ Add Task</button>
       <button class="chip" onclick="load()" title="Refresh">↻</button>
+      <div class="profile-avatar-wrap" id="profile-avatar-wrap" onclick="profilePanelOpen()" title="Your profile & AI tools">
+        <div class="profile-avatar" id="profile-avatar-initials">?</div>
+        <div class="profile-status-dot" id="profile-status-dot"></div>
+      </div>
     </div>
   </header>
+  <!-- Profile panel overlay -->
+  <div class="profile-panel-overlay" id="profile-panel-overlay" style="display:none" onclick="if(event.target===this)profilePanelClose()">
+    <div class="profile-panel" id="profile-panel">
+      <div class="profile-panel-hdr">
+        <div class="profile-panel-avatar" id="pp-avatar">?</div>
+        <div>
+          <div class="profile-panel-name" id="pp-name">Loading…</div>
+          <div class="profile-panel-email" id="pp-email"></div>
+        </div>
+        <button onclick="profilePanelClose()" style="margin-left:auto;background:none;border:none;font-size:18px;color:var(--muted);cursor:pointer">✕</button>
+      </div>
+      <div class="profile-divider"></div>
+      <div id="pp-mcp-body">
+        <div style="color:var(--muted);font-size:12px">Loading…</div>
+      </div>
+    </div>
+  </div>
   <div class="sub" id="sub">Loading…</div>
   <div id="dev-banner" style="display:none"></div>
   <div id="comp-banner" style="display:none"></div>
@@ -1212,6 +1271,11 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
       <div style="display:flex;gap:6px;margin-top:8px">
         <button class="vq-btn vq-done" onclick="tmSaveNotes()">Save Notes</button>
       </div>
+    </div>
+    <!-- AI Tools Access (admin only) -->
+    <div class="tm-section" id="tmm-mcp-section" style="display:none">
+      <div class="tm-section-title">AI Tools Access</div>
+      <div id="tmm-mcp-body"><div style="color:var(--muted);font-size:12px">Loading…</div></div>
     </div>
   </div>
 </div>
@@ -3835,7 +3899,7 @@ function doBulkDelete(){
 load();
 
 /* ── Team Management ─────────────────────────────────── */
-var TM_DATA=null,TM_CURRENT_EMAIL=null,TM_IS_ADMIN=false;
+var TM_DATA=null,TM_CURRENT_EMAIL=null,TM_IS_ADMIN=false,TM_MCP_DATA=null;
 var TM_AVATAR_COLORS=['#7b2fff','#00f2ea','#ff0050','#f59e0b','#3b82f6','#ec4899','#10b981'];
 function tmAvatarColor(name){
   var i=0;for(var c=0;c<name.length;c++)i+=name.charCodeAt(c);
@@ -3928,10 +3992,15 @@ function mtDelete(id){
 function loadTeamMgmt(){
   if(TM_DATA)return renderTeamGrid();
   if(CB_IS_ADMIN&&!DEV_AS)loadTeamSummaryBanner();
-  fetch('/api/admin/team/members',{credentials:'include'})
-  .then(function(r){return r.json();}).then(function(d){
+  var membersP=fetch('/api/admin/team/members',{credentials:'include'}).then(function(r){return r.json();});
+  var mcpP=fetch('/api/mcp/users',{credentials:'include'}).then(function(r){return r.json();}).catch(function(){return {users:[]};});
+  Promise.all([membersP,mcpP]).then(function(results){
+    var d=results[0],mcpD=results[1];
     TM_DATA=d.members||[];
     TM_IS_ADMIN=!!d.isAdmin;
+    // Build MCP lookup by email
+    TM_MCP_DATA={};
+    (mcpD.users||[]).forEach(function(u){if(u.email)TM_MCP_DATA[u.email.toLowerCase()]={connected:!!(u.mcp&&u.mcp.connected),lastUsedAt:u.mcp&&u.mcp.lastUsedAt,tokenId:u.mcp&&u.mcp.tokenId,id:u.id,permissions:u.permissions||[]};});
     renderTeamGrid();
   }).catch(function(e){document.getElementById('tm-grid').innerHTML='<div style="color:var(--muted);font-size:12px">Failed to load team: '+e+'</div>';});
 }
@@ -3960,10 +4029,14 @@ function renderTeamGrid(){
         +'<span style="font-size:10px;color:var(--muted);min-width:40px;text-align:right">'+raw+' / '+g.hit+'</span>'
         +'</div>';
     }
+    var mcpConnected=TM_MCP_DATA&&TM_MCP_DATA[m.email]&&TM_MCP_DATA[m.email].connected;
+    var mcpPill=mcpConnected
+      ?'<span class="mcp-pill"><span class="mcp-dot"></span>MCP</span>'
+      :'<span class="mcp-pill off"><span class="mcp-dot off"></span>MCP</span>';
     return '<div class="tm-card" onclick="tmOpenModal(\\''+esc(m.email)+'\\')">'
       +'<div class="tm-card-top">'
       +'<div class="tm-avatar" style="background:'+color+'">'+initials+'</div>'
-      +'<div><div class="tm-name">'+esc(m.name)+'</div><div class="tm-role">'+esc(m.role||'—')+'</div></div>'
+      +'<div><div class="tm-name">'+esc(m.name)+'</div><div style="display:flex;align-items:center;gap:6px;margin-top:2px"><div class="tm-role">'+esc(m.role||'—')+'</div>'+mcpPill+'</div></div>'
       +'</div>'
       +'<div class="tm-stats">'
       +'<div class="tm-stat"><div class="n" style="font-size:13px">'+tenure+'</div><div class="l">Tenure</div></div>'
@@ -4033,6 +4106,12 @@ function tmOpenModal(email){
     notesSec.style.display='';
     document.getElementById('tmm-notes-ta').value=m.notes||'';
   } else { notesSec.style.display='none'; }
+  // AI Tools Access (admin only)
+  var mcpSec=document.getElementById('tmm-mcp-section');
+  if(TM_IS_ADMIN){
+    mcpSec.style.display='';
+    tmLoadMcpSection(email);
+  } else { mcpSec.style.display='none'; }
   // Recent calls
   document.getElementById('tmm-calls').innerHTML='<div style="color:var(--muted);font-size:12px">Loading…</div>';
   document.getElementById('tm-modal').style.display='flex';
@@ -4199,6 +4278,242 @@ function cmLaunch(id){
     CM_DATA=d.submissions;renderCM();
   }).catch(function(){alert('Failed');});
 }
+
+load();
+
+/* ── Profile Panel ─────────────────────────────────── */
+var PP_DATA=null;
+function profilePanelOpen(){
+  document.getElementById('profile-panel-overlay').style.display='flex';
+  if(PP_DATA)return renderProfilePanel(PP_DATA);
+  document.getElementById('pp-mcp-body').innerHTML='<div style="color:var(--muted);font-size:12px">Loading…</div>';
+  fetch('/api/mcp/me',{credentials:'include'})
+  .then(function(r){return r.json();}).then(function(d){
+    PP_DATA=d;
+    renderProfilePanel(d);
+  }).catch(function(){
+    document.getElementById('pp-mcp-body').innerHTML='<div style="color:var(--muted);font-size:12px">Could not load MCP status.</div>';
+  });
+}
+function profilePanelClose(){
+  document.getElementById('profile-panel-overlay').style.display='none';
+}
+function renderProfilePanel(d){
+  // Set initials in both avatar elements
+  var email=WHOAMI_EMAIL||'';
+  var nameParts=(email.split('@')[0]||'').split(/[._\-]/).filter(Boolean);
+  var displayName=nameParts.map(function(w){return w.charAt(0).toUpperCase()+w.slice(1);}).join(' ')||email;
+  var initials=(nameParts[0]&&nameParts[0][0]||'?').toUpperCase()+(nameParts[1]&&nameParts[1][0]||'').toUpperCase();
+  document.getElementById('pp-avatar').textContent=initials||'?';
+  document.getElementById('pp-name').textContent=displayName;
+  document.getElementById('pp-email').textContent=email;
+  document.getElementById('profile-avatar-initials').textContent=initials||'?';
+  var dot=document.getElementById('profile-status-dot');
+  if(dot){dot.className='profile-status-dot'+(d.connected?' connected':'');}
+
+  var toolGroups=[
+    {key:'tools_creator_data',label:'Creator Data'},
+    {key:'tools_crm',label:'CRM'},
+    {key:'tools_content',label:'Content'},
+    {key:'tools_analytics',label:'Analytics'},
+    {key:'tools_finance',label:'Finance'},
+  ];
+  var perms=d.permissions||[];
+  var permGrid=toolGroups.map(function(g){
+    var on=perms.indexOf(g.key)>=0;
+    return '<div class="profile-perm '+(on?'on':'')+'">'
+      +'<span class="profile-perm-check">'+(on?'✓':'—')+'</span>'
+      +esc(g.label)+'</div>';
+  }).join('');
+
+  var lastUsed=d.lastUsedAt?new Date(d.lastUsedAt).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}):'never';
+  var statusLine=d.connected
+    ?'<span style="color:var(--cyan)">● Connected</span> · last used '+lastUsed
+    :'<span style="color:var(--muted)">○ Not connected</span>';
+
+  var actionBtns='';
+  if(d.connected){
+    actionBtns='<div style="display:flex;gap:8px;margin-top:12px">'
+      +'<button class="vq-btn" style="font-size:11px;flex:1" onclick="profileReconnect()">Reconnect</button>'
+      +'<button class="vq-btn" style="font-size:11px;flex:1;color:var(--muted)" onclick="profileDisconnect()">Disconnect</button>'
+      +'</div>';
+  } else {
+    actionBtns='<div style="margin-top:12px">'
+      +(d.hasMcpAccess
+        ?'<button class="vq-btn vq-done" style="font-size:11px;width:100%" onclick="profileConnect()">Connect Claude Code</button>'
+        :'<div style="font-size:11px;color:var(--muted)">Ask an admin to enable mcp_access on your account.</div>')
+      +'</div>';
+  }
+
+  document.getElementById('pp-mcp-body').innerHTML=
+    '<div class="profile-row"><span style="font-weight:700;font-size:13px">AI Tools</span>'
+    +'<span style="font-size:12px">'+statusLine+'</span></div>'
+    +'<div class="profile-perm-grid">'+permGrid+'</div>'
+    +actionBtns
+    +'<div id="pp-token-reveal"></div>';
+}
+
+function profileConnect(){
+  document.getElementById('pp-token-reveal').innerHTML='<div style="color:var(--muted);font-size:12px;margin-top:8px">Generating token…</div>';
+  fetch('/api/mcp/token',{method:'POST',credentials:'include'})
+  .then(function(r){return r.json();}).then(function(d){
+    if(d.error){document.getElementById('pp-token-reveal').innerHTML='<div style="color:var(--red);font-size:12px">'+esc(d.error)+'</div>';return;}
+    PP_DATA=null; // force refresh
+    var dot=document.getElementById('profile-status-dot');
+    if(dot)dot.className='profile-status-dot connected';
+    document.getElementById('pp-token-reveal').innerHTML=
+      '<div style="margin-top:12px">'
+      +'<div class="tm-section-title" style="margin-bottom:6px">Your token (shown once)</div>'
+      +'<div class="token-box" id="pp-token-val">'+esc(d.token)+'</div>'
+      +'<button class="vq-btn" style="font-size:11px;width:100%;margin-bottom:8px" onclick="ppCopy(\\''+esc(d.token)+'\\')">Copy Token</button>'
+      +'<div class="tm-section-title" style="margin-bottom:6px">Run this in your terminal</div>'
+      +'<div class="token-cmd" id="pp-cmd-val">'+esc(d.setupCommand)+'</div>'
+      +'<button class="vq-btn" style="font-size:11px;width:100%;margin-bottom:8px" onclick="ppCopy(\\''+esc(d.setupCommand)+'\\')">Copy Command</button>'
+      +'<div style="font-size:10px;color:var(--muted)">Then run <code>/mcp</code> in Claude Code to confirm connection. Token shown once — Reconnect to rotate.</div>'
+      +'</div>';
+  }).catch(function(){document.getElementById('pp-token-reveal').innerHTML='<div style="color:var(--red);font-size:12px">Failed to generate token.</div>';});
+}
+
+function profileReconnect(){
+  PP_DATA=null;
+  profileConnect();
+}
+
+function profileDisconnect(){
+  if(!confirm('Revoke your MCP token? You will need to reconnect to use AI tools.'))return;
+  fetch('/api/mcp/token',{method:'DELETE',credentials:'include'})
+  .then(function(r){return r.json();}).then(function(d){
+    PP_DATA=null;
+    var dot=document.getElementById('profile-status-dot');
+    if(dot)dot.className='profile-status-dot';
+    profilePanelOpen();
+  }).catch(function(){alert('Failed to revoke token.');});
+}
+
+function ppCopy(text){
+  navigator.clipboard.writeText(text).then(function(){toast('Copied!');}).catch(function(){
+    var ta=document.createElement('textarea');ta.value=text;document.body.appendChild(ta);ta.select();document.execCommand('copy');document.body.removeChild(ta);toast('Copied!');
+  });
+}
+
+/* ── Team MCP section ─────────────────────────────── */
+function tmLoadMcpSection(email){
+  var el=document.getElementById('tmm-mcp-body');
+  if(!el)return;
+  el.innerHTML='<div style="color:var(--muted);font-size:12px">Loading…</div>';
+  var mcpInfo=TM_MCP_DATA&&TM_MCP_DATA[email.toLowerCase()];
+  var userId=mcpInfo&&mcpInfo.id;
+
+  var toolGroups=[
+    {key:'tools_creator_data',label:'Creator Data',sub:'Reacher, FastMoss, CRM roster'},
+    {key:'tools_crm',label:'CRM',sub:'GoHighLevel'},
+    {key:'tools_content',label:'Content',sub:'Storista, Arcads, Omni Agent'},
+    {key:'tools_analytics',label:'Analytics',sub:'Shop + GMV reporting'},
+    {key:'tools_finance',label:'Finance',sub:'Stripe, payouts'},
+  ];
+
+  var perms=(mcpInfo&&mcpInfo.permissions)||[];
+  var connected=mcpInfo&&mcpInfo.connected;
+  var lastUsed=mcpInfo&&mcpInfo.lastUsedAt?new Date(mcpInfo.lastUsedAt).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}):'never';
+  var statusLine=connected
+    ?'<span style="color:var(--cyan)">● Connected</span> · last used '+lastUsed
+    :'<span style="color:var(--muted)">○ Not connected</span>';
+
+  var toggleRows=toolGroups.map(function(g){
+    var on=perms.indexOf(g.key)>=0;
+    var toggleId='mcp-toggle-'+g.key;
+    return '<div class="mcp-toggle-row">'
+      +'<div><div class="mcp-toggle-label">'+esc(g.label)+'</div><div class="mcp-toggle-sub">'+esc(g.sub)+'</div></div>'
+      +'<label class="mcp-toggle"><input type="checkbox" id="'+toggleId+'"'+(on?' checked':'')
+      +' onchange="tmTogglePerm(\\''+esc(email)+'\\',\\''+esc(g.key)+'\\',this.checked)">'
+      +'<div class="mcp-toggle-track"></div></label>'
+      +'</div>';
+  }).join('');
+
+  var revokeBtn=connected&&userId
+    ?'<button class="vq-btn" style="font-size:11px;color:var(--muted)" onclick="tmRevokeMcp(\\''+esc(userId)+'\\',\\''+esc(email)+'\\')">Revoke Access</button>'
+    :'<span style="font-size:11px;color:var(--muted)">No active token</span>';
+
+  el.innerHTML=
+    '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
+    +'<span style="font-size:12px">'+statusLine+'</span>'+revokeBtn+'</div>'
+    +toggleRows
+    +'<div style="margin-top:12px"><div class="tm-section-title" style="margin-bottom:6px">Recent Activity</div>'
+    +'<div id="tmm-mcp-activity"><div style="color:var(--muted);font-size:11px">Loading…</div></div></div>';
+
+  // Fetch recent activity
+  fetch('/api/mcp/audit?user='+encodeURIComponent(email)+'&limit=5',{credentials:'include'})
+  .then(function(r){return r.json();}).then(function(d){
+    var entries=d.entries||[];
+    var actEl=document.getElementById('tmm-mcp-activity');
+    if(!actEl)return;
+    if(!entries.length){actEl.innerHTML='<div style="color:var(--muted);font-size:11px">No recent activity.</div>';return;}
+    actEl.innerHTML=entries.map(function(e){
+      var t=e.ts?new Date(e.ts).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}):'';
+      return '<div class="mcp-activity-row">'
+        +'<span class="mcp-activity-ts">'+t+'</span>'
+        +'<span class="mcp-activity-tool">'+esc(e.tool||'')+'</span>'
+        +'<span style="color:'+(e.ok?'var(--cyan)':'var(--red)')+'">'+( e.ok?'✓':'✗')+'</span>'
+        +'<span class="mcp-activity-ts" style="color:var(--muted)">'+((e.ms||0)+'ms')+'</span>'
+        +'</div>';
+    }).join('');
+  }).catch(function(){var actEl=document.getElementById('tmm-mcp-activity');if(actEl)actEl.innerHTML='';});
+}
+
+function tmTogglePerm(email,permission,enabled){
+  var mcpInfo=TM_MCP_DATA&&TM_MCP_DATA[email.toLowerCase()];
+  if(!mcpInfo||!mcpInfo.id)return;
+  fetch('/api/mcp/users/'+encodeURIComponent(mcpInfo.id)+'/permissions',{
+    method:'PATCH',credentials:'include',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({permission:permission,enabled:!!enabled})
+  }).then(function(r){return r.json();}).then(function(d){
+    if(!d.ok){alert(d.error||'Failed');return;}
+    // Update local cache
+    if(mcpInfo){
+      var perms=mcpInfo.permissions||[];
+      if(enabled&&perms.indexOf(permission)<0)perms.push(permission);
+      else if(!enabled){var i=perms.indexOf(permission);if(i>=0)perms.splice(i,1);}
+      mcpInfo.permissions=perms;
+    }
+    toast('Permission updated');
+  }).catch(function(){alert('Failed to update permission.');});
+}
+
+function tmRevokeMcp(userId,email){
+  if(!confirm('Revoke MCP access for '+email+'? Their next tool call will fail.'))return;
+  fetch('/api/mcp/admin/revoke/'+encodeURIComponent(userId),{method:'POST',credentials:'include'})
+  .then(function(r){return r.json();}).then(function(d){
+    if(!d.ok){alert(d.error||'Failed');return;}
+    // Update local cache
+    var mcpInfo=TM_MCP_DATA&&TM_MCP_DATA[email.toLowerCase()];
+    if(mcpInfo){mcpInfo.connected=false;mcpInfo.tokenId=null;}
+    tmLoadMcpSection(email);
+    toast('Token revoked');
+  }).catch(function(){alert('Failed to revoke.');});
+}
+
+/* ── Profile init ─────────────────────────────────── */
+var WHOAMI_EMAIL='';
+function initProfileAvatar(){
+  fetch('/api/my-tasks/whoami',{credentials:'include'})
+  .then(function(r){return r.json();}).then(function(d){
+    WHOAMI_EMAIL=(d.email||d.username||'').toLowerCase();
+    if(!WHOAMI_EMAIL)return;
+    var nameParts=(WHOAMI_EMAIL.split('@')[0]||'').split(/[._\-]/).filter(Boolean);
+    var initials=(nameParts[0]&&nameParts[0][0]||'?').toUpperCase()+(nameParts[1]&&nameParts[1][0]||'').toUpperCase();
+    var el=document.getElementById('profile-avatar-initials');
+    if(el)el.textContent=initials||'?';
+    // Check MCP status for dot
+    fetch('/api/mcp/me',{credentials:'include'})
+    .then(function(r){return r.json();}).then(function(m){
+      PP_DATA=m;
+      var dot=document.getElementById('profile-status-dot');
+      if(dot)dot.className='profile-status-dot'+(m.connected?' connected':'');
+    }).catch(function(){});
+  }).catch(function(){});
+}
+initProfileAvatar();
 
 load();
 
