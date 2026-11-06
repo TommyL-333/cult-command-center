@@ -1,14 +1,14 @@
 /**
  * routes/mcp-server.js — Cult Content Command Center MCP Server ("the door")
  *
- * Implements the MCP Streamable HTTP transport (JSON-RPC 2.0 over POST /mcp).
- * Each team member authenticates with a per-user bearer token issued from
- * /api/mcp/token (routes/mcp-admin.js). The token is hashed, looked up in
- * DATA_DIR/mcp-tokens.json, and the matching portal user is attached as
- * req.mcpUser.
+ * Platform-based proxy architecture: tools are DATA (not functions). Each tool
+ * entry describes an upstream REST API call. The single callTool() function
+ * handles all proxy logic — path param substitution, query string / body
+ * building, auth headers. Buffer is a special case that forwards JSON-RPC
+ * directly to Buffer's MCP endpoint.
  *
- * Tools are declared in TOOLS[] and filtered per-caller based on the
- * permission field. tools/list only shows tools the caller has access to.
+ * Implements MCP Streamable HTTP transport (JSON-RPC 2.0 over POST /mcp).
+ * Bearer tokens issued from /api/mcp/token (routes/mcp-admin.js).
  *
  * Audit log: DATA_DIR/mcp-audit.jsonl — one line per tool call.
  * Args are NEVER logged (they may contain PII/credentials).
@@ -21,19 +21,35 @@
 'use strict';
 
 const crypto = require('crypto');
-const fs = require('fs');
-const path = require('path');
+const fs     = require('fs');
+const path   = require('path');
 
 const DATA_DIR = process.env.DATA_DIR
   ? path.resolve(process.env.DATA_DIR)
   : (fs.existsSync('/data') ? '/data' : path.join(__dirname, '..', 'data'));
 
-const TOKENS_FILE = path.join(DATA_DIR, 'mcp-tokens.json');
-const USERS_FILE  = path.join(DATA_DIR, 'portal-users.json');
-const AUDIT_FILE  = path.join(DATA_DIR, 'mcp-audit.jsonl');
+const TOKENS_FILE    = path.join(DATA_DIR, 'mcp-tokens.json');
+const USERS_FILE     = path.join(DATA_DIR, 'portal-users.json');
+const AUDIT_FILE     = path.join(DATA_DIR, 'mcp-audit.jsonl');
 const AUDIT_MAX_BYTES = 50 * 1024 * 1024; // 50 MB
 
 const { scryptVerify } = require('../middleware/password');
+
+// ── Platform base URLs / auth builders ───────────────────────────────────────
+const REACHER_BASE = 'https://api.reacherapp.com/public/v1';
+const GHL_BASE     = 'https://services.leadconnectorhq.com';
+const BUFFER_MCP   = 'https://mcp.buffer.com/mcp';
+
+function reacherAuth(env) {
+  return { 'x-api-key': env.REACHER_API_KEY || '', 'Content-Type': 'application/json' };
+}
+function ghlAuth(env) {
+  return {
+    Authorization: `Bearer ${env.GHL_API_KEY || ''}`,
+    Version: '2021-07-28',
+    'Content-Type': 'application/json',
+  };
+}
 
 // ── JSON file helpers ─────────────────────────────────────────────────────────
 function readJson(file, fallback) {
@@ -47,17 +63,12 @@ function readJson(file, fallback) {
 function auditLog(user, tool, ok, ms) {
   try {
     const line = JSON.stringify({ ts: new Date().toISOString(), user, tool, ok, ms }) + '\n';
-    // Rotate if over 50 MB
     try {
       const stat = fs.statSync(AUDIT_FILE);
-      if (stat.size >= AUDIT_MAX_BYTES) {
-        fs.renameSync(AUDIT_FILE, AUDIT_FILE + '.1');
-      }
-    } catch (_) { /* file doesn't exist yet */ }
+      if (stat.size >= AUDIT_MAX_BYTES) fs.renameSync(AUDIT_FILE, AUDIT_FILE + '.1');
+    } catch (_) {}
     fs.appendFileSync(AUDIT_FILE, line);
-  } catch (e) {
-    console.error('[mcp-audit] write failed:', e.message);
-  }
+  } catch (e) { console.error('[mcp-audit] write failed:', e.message); }
 }
 
 // ── Token auth ────────────────────────────────────────────────────────────────
@@ -73,11 +84,9 @@ function resolveToken(authHeader) {
     if (tok.revokedAt) continue;
     if (!tok.tokenHash || !tok.salt) continue;
     if (!scryptVerify(plaintext, tok.tokenHash, tok.salt)) continue;
-    // matched — find the user
     const user = users.find(u => u.id === tok.userId);
     if (!user || !user.active) continue;
     if (!Array.isArray(user.permissions) || !user.permissions.includes('mcp_access')) continue;
-    // update lastUsedAt
     tok.lastUsedAt = Date.now();
     try { fs.writeFileSync(TOKENS_FILE, JSON.stringify(tokens, null, 2)); } catch (_) {}
     return { user, tokenRecord: tok };
@@ -85,37 +94,16 @@ function resolveToken(authHeader) {
   return null;
 }
 
-// ── Tool registry ─────────────────────────────────────────────────────────────
-const REACHER_BASE = 'https://api.reacherapp.com/public/v1';
-const GHL_BASE = 'https://services.leadconnectorhq.com';
-
-function reacherHeaders() {
-  return {
-    'x-api-key': process.env.REACHER_API_KEY || '',
-    'Content-Type': 'application/json',
-    Accept: 'application/json',
-  };
-}
-function ghlHeaders() {
-  return {
-    Authorization: `Bearer ${process.env.GHL_API_KEY || ''}`,
-    Version: '2021-07-28',
-    'Content-Type': 'application/json',
-    Accept: 'application/json',
-  };
-}
-
+// ── HTTP fetch helper ─────────────────────────────────────────────────────────
 async function httpFetch(url, opts = {}) {
-  // Use native fetch (Node 18+) or fall back to https module
   if (typeof fetch !== 'undefined') {
     const r = await fetch(url, { ...opts, signal: AbortSignal.timeout(20000) });
     const text = await r.text();
     try { return { status: r.status, body: JSON.parse(text) }; }
     catch { return { status: r.status, body: text }; }
   }
-  // https fallback
   return new Promise((resolve, reject) => {
-    const { https } = require('https');
+    const https = require('https');
     const u = new URL(url);
     const req = https.request({
       hostname: u.hostname,
@@ -137,66 +125,239 @@ async function httpFetch(url, opts = {}) {
   });
 }
 
+// ── Tool registry ─────────────────────────────────────────────────────────────
+//
+// Each entry:
+//   name         — tool name in MCP namespace
+//   platform     — permission name that gates access ('reacher', 'ghl', etc.)
+//   description  — shown to Claude
+//   method       — HTTP method
+//   path         — URL path; :param tokens are replaced from args
+//   baseUrl      — upstream base URL
+//   authHeader   — fn(env) → headers object
+//   inputSchema  — JSON Schema for args
+//   queryParams  — array of arg names → query string (GET); undefined = all remaining
+//   bodyParams   — array of arg names → request body (POST/PUT); undefined = all remaining
+//   envQuery     — fn(env) → extra query params from env (not from user args)
+//   envBody      — fn(env) → extra body params from env (not from user args)
+//   confirm      — bool: first call returns summary, second call with confirmed:true executes
+//
 const TOOLS = [
-  // ── Creator data ─────────────────────────────────────────────────────────────
+
+  // ── Reacher ──────────────────────────────────────────────────────────────────
   {
-    name: 'reacher_list_creators',
-    description: 'List creators on a Reacher shop roster. Pass shopId to scope to one shop. Read-only.',
-    permission: 'tools_creator_data',
+    name: 'reacher_shops_list',
+    platform: 'reacher',
+    description: 'List all Reacher shops connected to this account.',
+    method: 'GET',
+    path: '/shops',
+    baseUrl: REACHER_BASE,
+    authHeader: reacherAuth,
+    inputSchema: { type: 'object', properties: {} },
+    queryParams: [],
+    confirm: false,
+  },
+
+  {
+    name: 'reacher_creators_list',
+    platform: 'reacher',
+    description: 'List creators on a Reacher shop roster. Filter by status, page, or search term.',
+    method: 'GET',
+    path: '/shops/:shopId/creators',
+    baseUrl: REACHER_BASE,
+    authHeader: reacherAuth,
     inputSchema: {
       type: 'object',
       properties: {
-        shopId: { type: 'string', description: 'Reacher shop ID to list creators for' },
-        limit:  { type: 'number', description: 'Max results to return (default 50)', default: 50 },
+        shopId: { type: 'string', description: 'Reacher shop ID' },
+        limit:  { type: 'number', description: 'Max results (default 50)', default: 50 },
         page:   { type: 'number', description: 'Page number (default 1)', default: 1 },
+        search: { type: 'string', description: 'Search by name or handle' },
+        status: { type: 'string', description: 'Filter by status' },
       },
-      required: [],
+      required: ['shopId'],
     },
-    handler: async (args, ctx) => {
-      const { shopId, limit = 50, page = 1 } = args;
-      const path = shopId
-        ? `/shops/${shopId}/creators?limit=${limit}&page=${page}`
-        : `/creators?limit=${limit}&page=${page}`;
-      const { status, body } = await httpFetch(`${REACHER_BASE}${path}`, {
-        method: 'GET',
-        headers: reacherHeaders(),
-      });
-      if (status >= 400) throw new Error(`Reacher API error ${status}: ${JSON.stringify(body)}`);
-      return body;
-    },
+    queryParams: ['limit', 'page', 'search', 'status'],
+    confirm: false,
   },
 
   {
     name: 'reacher_creator_detail',
-    description: 'Get full detail for a single Reacher creator by ID.',
-    permission: 'tools_creator_data',
+    platform: 'reacher',
+    description: 'Get full detail for a single Reacher creator.',
+    method: 'GET',
+    path: '/shops/:shopId/creators/:creatorId',
+    baseUrl: REACHER_BASE,
+    authHeader: reacherAuth,
     inputSchema: {
       type: 'object',
       properties: {
-        shopId:    { type: 'string', description: 'Reacher shop ID' },
-        creatorId: { type: 'string', description: 'Creator ID' },
+        shopId:    { type: 'string' },
+        creatorId: { type: 'string' },
       },
-      required: ['creatorId'],
+      required: ['shopId', 'creatorId'],
     },
-    handler: async (args, ctx) => {
-      const { shopId, creatorId } = args;
-      const urlPath = shopId
-        ? `/shops/${shopId}/creators/${creatorId}`
-        : `/creators/${creatorId}`;
-      const { status, body } = await httpFetch(`${REACHER_BASE}${urlPath}`, {
-        method: 'GET',
-        headers: reacherHeaders(),
-      });
-      if (status >= 400) throw new Error(`Reacher API error ${status}: ${JSON.stringify(body)}`);
-      return body;
-    },
+    queryParams: [],
+    confirm: false,
   },
 
-  // ── CRM ───────────────────────────────────────────────────────────────────────
   {
-    name: 'ghl_search_contacts',
-    description: 'Search GoHighLevel contacts by name, email, or phone. Returns matching contacts.',
-    permission: 'tools_crm',
+    name: 'reacher_creator_videos',
+    platform: 'reacher',
+    description: 'Get videos posted by a Reacher creator.',
+    method: 'GET',
+    path: '/shops/:shopId/creators/:creatorId/videos',
+    baseUrl: REACHER_BASE,
+    authHeader: reacherAuth,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        shopId:    { type: 'string' },
+        creatorId: { type: 'string' },
+        limit:     { type: 'number' },
+        page:      { type: 'number' },
+      },
+      required: ['shopId', 'creatorId'],
+    },
+    queryParams: ['limit', 'page'],
+    confirm: false,
+  },
+
+  {
+    name: 'reacher_campaigns_list',
+    platform: 'reacher',
+    description: 'List campaigns for a Reacher shop.',
+    method: 'GET',
+    path: '/shops/:shopId/campaigns',
+    baseUrl: REACHER_BASE,
+    authHeader: reacherAuth,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        shopId: { type: 'string' },
+        limit:  { type: 'number' },
+        page:   { type: 'number' },
+      },
+      required: ['shopId'],
+    },
+    queryParams: ['limit', 'page'],
+    confirm: false,
+  },
+
+  {
+    name: 'reacher_campaign_detail',
+    platform: 'reacher',
+    description: 'Get full detail for a Reacher campaign.',
+    method: 'GET',
+    path: '/shops/:shopId/campaigns/:campaignId',
+    baseUrl: REACHER_BASE,
+    authHeader: reacherAuth,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        shopId:     { type: 'string' },
+        campaignId: { type: 'string' },
+      },
+      required: ['shopId', 'campaignId'],
+    },
+    queryParams: [],
+    confirm: false,
+  },
+
+  {
+    name: 'reacher_campaign_creators_list',
+    platform: 'reacher',
+    description: 'List creators enrolled in a Reacher campaign.',
+    method: 'GET',
+    path: '/shops/:shopId/campaigns/:campaignId/creators',
+    baseUrl: REACHER_BASE,
+    authHeader: reacherAuth,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        shopId:     { type: 'string' },
+        campaignId: { type: 'string' },
+        limit:      { type: 'number' },
+        page:       { type: 'number' },
+      },
+      required: ['shopId', 'campaignId'],
+    },
+    queryParams: ['limit', 'page'],
+    confirm: false,
+  },
+
+  {
+    name: 'reacher_automations_list',
+    platform: 'reacher',
+    description: 'List automations for a Reacher shop.',
+    method: 'GET',
+    path: '/shops/:shopId/automations',
+    baseUrl: REACHER_BASE,
+    authHeader: reacherAuth,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        shopId: { type: 'string' },
+      },
+      required: ['shopId'],
+    },
+    queryParams: [],
+    confirm: false,
+  },
+
+  {
+    name: 'reacher_send_creator_message',
+    platform: 'reacher',
+    description: 'Send a message to a creator via Reacher. Requires confirmation before sending.',
+    method: 'POST',
+    path: '/shops/:shopId/creators/:creatorId/messages',
+    baseUrl: REACHER_BASE,
+    authHeader: reacherAuth,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        shopId:    { type: 'string' },
+        creatorId: { type: 'string' },
+        message:   { type: 'string', description: 'Message text to send' },
+        confirmed: { type: 'boolean', description: 'Set true to confirm and send', default: false },
+      },
+      required: ['shopId', 'creatorId', 'message'],
+    },
+    bodyParams: ['message'],
+    confirm: true,
+  },
+
+  {
+    name: 'reacher_samples_list',
+    platform: 'reacher',
+    description: 'List product sample requests for a Reacher shop.',
+    method: 'GET',
+    path: '/shops/:shopId/samples',
+    baseUrl: REACHER_BASE,
+    authHeader: reacherAuth,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        shopId: { type: 'string' },
+        limit:  { type: 'number' },
+        page:   { type: 'number' },
+        status: { type: 'string' },
+      },
+      required: ['shopId'],
+    },
+    queryParams: ['limit', 'page', 'status'],
+    confirm: false,
+  },
+
+  // ── GoHighLevel ───────────────────────────────────────────────────────────────
+  {
+    name: 'ghl_contacts_search',
+    platform: 'ghl',
+    description: 'Search GoHighLevel contacts by name, email, or phone.',
+    method: 'POST',
+    path: '/contacts/search',
+    baseUrl: GHL_BASE,
+    authHeader: ghlAuth,
     inputSchema: {
       type: 'object',
       properties: {
@@ -205,101 +366,332 @@ const TOOLS = [
       },
       required: ['query'],
     },
-    handler: async (args, ctx) => {
-      const { query, limit = 20 } = args;
-      const locationId = process.env.GHL_LOCATION_ID || process.env.GHL_LOC_ID || '';
-      const url = `${GHL_BASE}/contacts/?locationId=${encodeURIComponent(locationId)}&query=${encodeURIComponent(query)}&limit=${limit}`;
-      const { status, body } = await httpFetch(url, {
-        method: 'GET',
-        headers: ghlHeaders(),
-      });
-      if (status >= 400) throw new Error(`GHL API error ${status}: ${JSON.stringify(body)}`);
-      return body;
-    },
+    bodyParams: ['query', 'limit'],
+    envBody: (env) => ({ locationId: env.GHL_LOCATION_ID || env.GHL_LOC_ID || '' }),
+    confirm: false,
   },
 
   {
-    name: 'ghl_contact_detail',
+    name: 'ghl_contact_get',
+    platform: 'ghl',
     description: 'Get full detail for a single GoHighLevel contact by ID.',
-    permission: 'tools_crm',
+    method: 'GET',
+    path: '/contacts/:contactId',
+    baseUrl: GHL_BASE,
+    authHeader: ghlAuth,
     inputSchema: {
       type: 'object',
       properties: {
-        contactId: { type: 'string', description: 'GHL contact ID' },
+        contactId: { type: 'string' },
       },
       required: ['contactId'],
     },
-    handler: async (args, ctx) => {
-      const { contactId } = args;
-      const { status, body } = await httpFetch(`${GHL_BASE}/contacts/${contactId}`, {
-        method: 'GET',
-        headers: ghlHeaders(),
-      });
-      if (status >= 400) throw new Error(`GHL API error ${status}: ${JSON.stringify(body)}`);
-      return body;
-    },
+    queryParams: [],
+    confirm: false,
   },
 
-  // ── Content ───────────────────────────────────────────────────────────────────
   {
-    name: 'storista_schedule_post',
-    description: 'Schedule a social post via Storista. First call returns a summary for confirmation. Pass confirmed: true to actually post.',
-    permission: 'tools_content',
+    name: 'ghl_contact_create',
+    platform: 'ghl',
+    description: 'Create a new GoHighLevel contact. Requires confirmation.',
+    method: 'POST',
+    path: '/contacts/',
+    baseUrl: GHL_BASE,
+    authHeader: ghlAuth,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        firstName: { type: 'string' },
+        lastName:  { type: 'string' },
+        email:     { type: 'string' },
+        phone:     { type: 'string' },
+        name:      { type: 'string' },
+        confirmed: { type: 'boolean', default: false },
+      },
+    },
+    // bodyParams undefined → all remaining args go to body (plus envBody locationId)
+    envBody: (env) => ({ locationId: env.GHL_LOCATION_ID || env.GHL_LOC_ID || '' }),
     confirm: true,
-    inputSchema: {
-      type: 'object',
-      properties: {
-        caption:   { type: 'string', description: 'Post caption text' },
-        mediaUrl:  { type: 'string', description: 'URL of media to post' },
-        platforms: {
-          type: 'array',
-          items: { type: 'string' },
-          description: 'Platforms to post to (e.g. ["instagram", "tiktok"])',
-        },
-        scheduleAt: { type: 'string', description: 'ISO 8601 datetime to schedule (omit for immediate)' },
-        confirmed:  { type: 'boolean', description: 'Set to true to confirm and actually post', default: false },
-      },
-      required: ['caption', 'platforms'],
-    },
-    handler: async (args, ctx) => {
-      const { caption, mediaUrl, platforms, scheduleAt, confirmed } = args;
-      if (!confirmed) {
-        const when = scheduleAt ? `at ${scheduleAt}` : 'immediately';
-        const summary = `Will post to ${(platforms || []).join(', ')} ${when}.\nCaption: "${(caption || '').slice(0, 120)}${caption && caption.length > 120 ? '…' : ''}"`;
-        return { _requiresConfirmation: true, summary };
-      }
-      // Actual post
-      const STORISTA_KEY = process.env.STORISTA_API_KEY;
-      if (!STORISTA_KEY) throw new Error('STORISTA_API_KEY not configured');
-      const { status, body } = await httpFetch('https://app.storista.io/api/v1/posts', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${STORISTA_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ caption, mediaUrl, platforms, scheduleAt }),
-      });
-      if (status >= 400) throw new Error(`Storista API error ${status}: ${JSON.stringify(body)}`);
-      return body;
-    },
   },
 
   {
-    name: 'omni_agent_generate',
-    description: 'Generate content using the Omni Agent (stub — API shape not yet defined).',
-    permission: 'tools_content',
+    name: 'ghl_contact_update',
+    platform: 'ghl',
+    description: 'Update a GoHighLevel contact by ID. Requires confirmation.',
+    method: 'PUT',
+    path: '/contacts/:contactId',
+    baseUrl: GHL_BASE,
+    authHeader: ghlAuth,
     inputSchema: {
       type: 'object',
       properties: {
-        prompt: { type: 'string', description: 'Content generation prompt' },
+        contactId: { type: 'string' },
+        firstName: { type: 'string' },
+        lastName:  { type: 'string' },
+        email:     { type: 'string' },
+        phone:     { type: 'string' },
+        confirmed: { type: 'boolean', default: false },
       },
-      required: ['prompt'],
+      required: ['contactId'],
     },
-    handler: async (args, ctx) => {
-      return { ok: false, error: 'Omni Agent API shape not yet defined — check back soon.' };
+    // bodyParams undefined → all remaining args go to body
+    confirm: true,
+  },
+
+  {
+    name: 'ghl_conversations_list',
+    platform: 'ghl',
+    description: 'List GoHighLevel conversations, optionally filtered by contact.',
+    method: 'GET',
+    path: '/conversations/search',
+    baseUrl: GHL_BASE,
+    authHeader: ghlAuth,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        contactId: { type: 'string' },
+        limit:     { type: 'number', default: 20 },
+      },
     },
+    queryParams: ['contactId', 'limit'],
+    envQuery: (env) => ({ locationId: env.GHL_LOCATION_ID || env.GHL_LOC_ID || '' }),
+    confirm: false,
+  },
+
+  {
+    name: 'ghl_conversation_messages',
+    platform: 'ghl',
+    description: 'Get all messages in a GoHighLevel conversation.',
+    method: 'GET',
+    path: '/conversations/:conversationId/messages',
+    baseUrl: GHL_BASE,
+    authHeader: ghlAuth,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        conversationId: { type: 'string' },
+      },
+      required: ['conversationId'],
+    },
+    queryParams: [],
+    confirm: false,
+  },
+
+  {
+    name: 'ghl_send_message',
+    platform: 'ghl',
+    description: 'Send a message via GoHighLevel (Email, SMS, etc.). Requires confirmation.',
+    method: 'POST',
+    path: '/conversations/messages',
+    baseUrl: GHL_BASE,
+    authHeader: ghlAuth,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        type:           { type: 'string', enum: ['Email', 'SMS', 'IG', 'FB', 'Custom', 'WhatsApp'] },
+        conversationId: { type: 'string' },
+        contactId:      { type: 'string' },
+        subject:        { type: 'string', description: 'Email subject' },
+        html:           { type: 'string', description: 'Email body HTML' },
+        confirmed:      { type: 'boolean', default: false },
+      },
+      required: ['type', 'conversationId', 'contactId'],
+    },
+    bodyParams: ['type', 'conversationId', 'contactId', 'subject', 'html'],
+    confirm: true,
+  },
+
+  {
+    name: 'ghl_opportunities_search',
+    platform: 'ghl',
+    description: 'Search GoHighLevel opportunities by keyword.',
+    method: 'GET',
+    path: '/opportunities/search',
+    baseUrl: GHL_BASE,
+    authHeader: ghlAuth,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        q:     { type: 'string', description: 'Search query' },
+        limit: { type: 'number', default: 20 },
+      },
+    },
+    queryParams: ['q', 'limit'],
+    // GHL uses location_id (underscore) for the opportunities endpoint
+    envQuery: (env) => ({ location_id: env.GHL_LOCATION_ID || env.GHL_LOC_ID || '' }),
+    confirm: false,
+  },
+
+  {
+    name: 'ghl_pipelines_list',
+    platform: 'ghl',
+    description: 'List all GoHighLevel pipelines.',
+    method: 'GET',
+    path: '/opportunities/pipelines',
+    baseUrl: GHL_BASE,
+    authHeader: ghlAuth,
+    inputSchema: { type: 'object', properties: {} },
+    queryParams: [],
+    envQuery: (env) => ({ locationId: env.GHL_LOCATION_ID || env.GHL_LOC_ID || '' }),
+    confirm: false,
   },
 ];
+
+// ── Buffer dynamic tools ───────────────────────────────────────────────────────
+// Fetched from Buffer's HTTP MCP endpoint, cached 5 min.
+let _bufferToolsCache = null;
+let _bufferToolsCacheTs = 0;
+
+async function getBufferTools() {
+  const token = process.env.BUFFER_ACCESS_TOKEN;
+  if (!token) return [];
+  if (_bufferToolsCache && Date.now() - _bufferToolsCacheTs < 300_000) return _bufferToolsCache;
+  try {
+    const { status, body } = await httpFetch(BUFFER_MCP, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 'list-1', method: 'tools/list', params: {} }),
+    });
+    if (status >= 400) return [];
+    const tools = (body?.result?.tools || []).map(t => ({
+      ...t,
+      name: 'buffer_' + t.name,
+      _isBuffer: true,
+      _bufferOriginalName: t.name,
+    }));
+    _bufferToolsCache = tools;
+    _bufferToolsCacheTs = Date.now();
+    return tools;
+  } catch (e) {
+    console.error('[mcp-server] Buffer tools/list failed:', e.message);
+    return [];
+  }
+}
+
+async function callBufferTool(originalName, args) {
+  const token = process.env.BUFFER_ACCESS_TOKEN;
+  if (!token) throw new Error('BUFFER_ACCESS_TOKEN not configured');
+  const { status, body } = await httpFetch(BUFFER_MCP, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: `call-${Date.now()}`,
+      method: 'tools/call',
+      params: { name: originalName, arguments: args },
+    }),
+  });
+  if (status >= 400) {
+    return { ok: false, error: `Buffer MCP error ${status}`, status };
+  }
+  if (body && body.error) {
+    return { ok: false, error: body.error.message || JSON.stringify(body.error), code: body.error.code };
+  }
+  return body?.result ?? body;
+}
+
+// ── Proxy callTool ─────────────────────────────────────────────────────────────
+//
+// Rules:
+//   - :param tokens in path → replaced from args; those arg keys are "used in path"
+//   - GET: remaining args → query string; filtered by queryParams if defined
+//   - POST/PUT/PATCH: remaining args → body; filtered by bodyParams if defined
+//   - envQuery(env) → extra query params injected from environment
+//   - envBody(env)  → extra body params injected from environment
+//   - 'confirmed' arg is always stripped (never forwarded)
+//   - Non-2xx upstream → { ok: false, error, status } instead of throwing
+//
+async function callTool(toolDef, args) {
+  const env = process.env;
+
+  // 1. Substitute :param tokens from args into path
+  let urlPath = toolDef.path;
+  const usedInPath = new Set();
+  urlPath = urlPath.replace(/:([a-zA-Z_]+)/g, (_, key) => {
+    usedInPath.add(key);
+    const val = args[key];
+    if (val === undefined || val === null) {
+      throw new Error(`Missing required path parameter: ${key}`);
+    }
+    return encodeURIComponent(String(val));
+  });
+
+  const fullUrl = new URL(toolDef.baseUrl + urlPath);
+
+  // Collect remaining args (not used in path, not 'confirmed')
+  const remaining = {};
+  for (const [k, v] of Object.entries(args)) {
+    if (!usedInPath.has(k) && k !== 'confirmed' && v !== undefined && v !== null) {
+      remaining[k] = v;
+    }
+  }
+
+  const headers = { ...toolDef.authHeader(env) };
+  let fetchBody = undefined;
+
+  if (toolDef.method === 'GET') {
+    // Env-sourced query params
+    const envQ = toolDef.envQuery ? toolDef.envQuery(env) : {};
+    for (const [k, v] of Object.entries(envQ)) {
+      if (v !== undefined && v !== null && v !== '') {
+        fullUrl.searchParams.set(k, String(v));
+      }
+    }
+    // Remaining args → query string (filtered by queryParams if defined)
+    const qp = toolDef.queryParams; // undefined = all, [] = none, ['a'] = specific
+    for (const [k, v] of Object.entries(remaining)) {
+      if (qp === undefined || qp.includes(k)) {
+        fullUrl.searchParams.set(k, String(v));
+      }
+    }
+  } else {
+    // POST / PUT / PATCH / DELETE — build body
+    const body = {};
+    // Env-sourced body params
+    const envB = toolDef.envBody ? toolDef.envBody(env) : {};
+    Object.assign(body, envB);
+    // Remaining args → body (filtered by bodyParams if defined)
+    const bp = toolDef.bodyParams; // undefined = all, [] = none, ['a'] = specific
+    for (const [k, v] of Object.entries(remaining)) {
+      if (bp === undefined || bp.includes(k)) {
+        body[k] = v;
+      }
+    }
+    fetchBody = JSON.stringify(body);
+  }
+
+  const { status, body: respBody } = await httpFetch(fullUrl.toString(), {
+    method: toolDef.method,
+    headers,
+    body: fetchBody,
+  });
+
+  if (status >= 400) {
+    const errText = typeof respBody === 'string'
+      ? respBody.slice(0, 300)
+      : JSON.stringify(respBody).slice(0, 300);
+    return { ok: false, error: `Upstream error ${status}: ${errText}`, status };
+  }
+  return respBody;
+}
+
+// ── Pending confirmations ─────────────────────────────────────────────────────
+// Key: `${userId}:${toolName}`, value: { args, expiresAt }
+const PENDING_CONFIRMS = new Map();
+
+function buildConfirmSummary(toolDef, args) {
+  const argStr = Object.entries(args)
+    .filter(([k]) => k !== 'confirmed')
+    .map(([k, v]) => `${k}=${JSON.stringify(v)}`)
+    .join(', ');
+  return `Will call ${toolDef.name}(${argStr})`;
+}
 
 // ── MCP JSON-RPC handler ──────────────────────────────────────────────────────
 function jsonRpcError(id, code, message) {
@@ -309,72 +701,102 @@ function jsonRpcResult(id, result) {
   return { jsonrpc: '2.0', id, result };
 }
 
-function toolsForUser(user) {
-  const perms = user.permissions || [];
-  return TOOLS.filter(t => perms.includes(t.permission));
-}
-
 function toolPublicShape(tool) {
-  return {
-    name: tool.name,
-    description: tool.description,
-    inputSchema: tool.inputSchema,
-  };
+  return { name: tool.name, description: tool.description, inputSchema: tool.inputSchema };
 }
 
 async function handleRequest(rpcReq, user) {
   const { method, id, params } = rpcReq;
 
-  // Notifications (no id) — just acknowledge
-  if (id === undefined || id === null) {
-    return null; // no response for notifications
-  }
+  if (id === undefined || id === null) return null; // notification — no response
 
   if (method === 'initialize') {
     return jsonRpcResult(id, {
       protocolVersion: '2024-11-05',
       capabilities: { tools: {} },
-      serverInfo: { name: 'cultcontent', version: '1.0.0' },
+      serverInfo: { name: 'cultcontent', version: '2.0.0' },
     });
   }
 
-  if (method === 'ping') {
-    return jsonRpcResult(id, {});
-  }
+  if (method === 'ping') return jsonRpcResult(id, {});
 
   if (method === 'tools/list') {
-    const tools = toolsForUser(user).map(toolPublicShape);
-    return jsonRpcResult(id, { tools });
+    const perms = user.permissions || [];
+    const staticTools = TOOLS.filter(t => perms.includes(t.platform)).map(toolPublicShape);
+
+    let bufferTools = [];
+    if (perms.includes('buffer') && process.env.BUFFER_ACCESS_TOKEN) {
+      try { bufferTools = (await getBufferTools()).map(toolPublicShape); }
+      catch (e) { console.error('[mcp-server] Buffer tools fetch error:', e.message); }
+    }
+
+    return jsonRpcResult(id, { tools: [...staticTools, ...bufferTools] });
   }
 
   if (method === 'tools/call') {
     const { name, arguments: args = {} } = params || {};
-    const tool = TOOLS.find(t => t.name === name);
-    if (!tool) return jsonRpcError(id, -32601, `Unknown tool: ${name}`);
+
+    // ── Buffer tool ──────────────────────────────────────────────────────────
+    if (typeof name === 'string' && name.startsWith('buffer_')) {
+      const perms = user.permissions || [];
+      if (!perms.includes('buffer')) {
+        return jsonRpcError(id, -32603, 'Permission denied: buffer platform access required');
+      }
+      const start = Date.now();
+      try {
+        // Find original name from cache (if loaded) or strip prefix
+        const cached = _bufferToolsCache && _bufferToolsCache.find(t => t.name === name);
+        const originalName = cached ? cached._bufferOriginalName : name.slice('buffer_'.length);
+        const result = await callBufferTool(originalName, args);
+        auditLog(user.email || user.username, name, true, Date.now() - start);
+        const text = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+        return jsonRpcResult(id, { content: [{ type: 'text', text }] });
+      } catch (err) {
+        auditLog(user.email || user.username, name, false, Date.now() - start);
+        return jsonRpcError(id, -32603, err.message || 'Buffer tool call failed');
+      }
+    }
+
+    // ── Static tool ──────────────────────────────────────────────────────────
+    const toolDef = TOOLS.find(t => t.name === name);
+    if (!toolDef) return jsonRpcError(id, -32601, `Unknown tool: ${name}`);
 
     const perms = user.permissions || [];
-    if (!perms.includes(tool.permission)) {
-      return jsonRpcError(id, -32603, `Permission denied: ${tool.permission} required`);
+    if (!perms.includes(toolDef.platform)) {
+      return jsonRpcError(id, -32603, `Permission denied: ${toolDef.platform} platform access required`);
+    }
+
+    // Confirmation gate
+    const confirmKey = `${user.id}:${name}`;
+    if (toolDef.confirm) {
+      if (!args.confirmed) {
+        // First call: generate summary and store pending confirmation
+        const summary = buildConfirmSummary(toolDef, args);
+        PENDING_CONFIRMS.set(confirmKey, { args, expiresAt: Date.now() + 60_000 });
+        // Auto-cleanup after 70s
+        setTimeout(() => {
+          const p = PENDING_CONFIRMS.get(confirmKey);
+          if (p) PENDING_CONFIRMS.delete(confirmKey);
+        }, 70_000);
+        const text = `⚠️ Confirmation required\n\n${summary}\n\nTo proceed, call ${name} again with confirmed: true (within 60 seconds).`;
+        return jsonRpcResult(id, { content: [{ type: 'text', text }] });
+      } else {
+        // Second call: verify pending confirmation exists and hasn't expired
+        const pending = PENDING_CONFIRMS.get(confirmKey);
+        if (!pending || Date.now() > pending.expiresAt) {
+          PENDING_CONFIRMS.delete(confirmKey);
+          return jsonRpcError(id, -32603, 'Confirmation expired or not found. Call without confirmed: true first.');
+        }
+        PENDING_CONFIRMS.delete(confirmKey);
+        // Fall through to execute
+      }
     }
 
     const start = Date.now();
-    let ok = false;
     try {
-      const ctx = {
-        user,
-        log: (msg) => console.log(`[mcp] ${user.email || user.username} / ${name}: ${msg}`),
-      };
-      const result = await tool.handler(args, ctx);
-      ok = true;
+      const result = await callTool(toolDef, args);
       const ms = Date.now() - start;
       auditLog(user.email || user.username, name, true, ms);
-
-      // Handle confirm: true pattern
-      if (result && result._requiresConfirmation) {
-        const text = `⚠️ Confirmation required\n\n${result.summary}\n\nTo proceed, call ${name} again with confirmed: true.`;
-        return jsonRpcResult(id, { content: [{ type: 'text', text }] });
-      }
-
       const text = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
       return jsonRpcResult(id, { content: [{ type: 'text', text }] });
     } catch (err) {
@@ -392,12 +814,13 @@ module.exports = function registerMcpServer(app, deps = {}) {
   const express = deps.express || require('express');
   const jsonBody = express.json({ limit: '1mb' });
 
-  // Auth middleware for /mcp
   function mcpAuth(req, res, next) {
     const authHeader = req.headers['authorization'] || '';
     const resolved = resolveToken(authHeader);
     if (!resolved) {
-      return res.status(401).json({ error: 'Invalid or missing MCP bearer token. Issue one at /api/mcp/token.' });
+      return res.status(401).json({
+        error: 'Invalid or missing MCP bearer token. Issue one at /api/mcp/token.',
+      });
     }
     req.mcpUser = resolved.user;
     req.mcpToken = resolved.tokenRecord;
@@ -409,7 +832,6 @@ module.exports = function registerMcpServer(app, deps = {}) {
     const body = req.body;
     if (!body) return res.status(400).json(jsonRpcError(null, -32700, 'Parse error'));
 
-    // Batch or single
     if (Array.isArray(body)) {
       const responses = [];
       for (const rpc of body) {
@@ -420,20 +842,17 @@ module.exports = function registerMcpServer(app, deps = {}) {
     }
 
     const response = await handleRequest(body, req.mcpUser);
-    if (response === null) return res.status(202).end(); // notification ACK
+    if (response === null) return res.status(202).end();
     return res.json(response);
   });
 
-  // GET /mcp — required for Streamable HTTP (SSE capabilities probe)
+  // GET /mcp — Streamable HTTP probe
   app.get('/mcp', (req, res) => {
-    // Respond with 405 — we support POST only (no SSE push needed for this use case)
     res.set('Allow', 'POST').status(405).json({ error: 'Use POST for MCP requests' });
   });
 
-  // DELETE /mcp — session cleanup (no-op for stateless implementation)
-  app.delete('/mcp', mcpAuth, (req, res) => {
-    res.json({ ok: true });
-  });
+  // DELETE /mcp — session cleanup (stateless — no-op)
+  app.delete('/mcp', mcpAuth, (req, res) => { res.json({ ok: true }); });
 
-  console.log('[mcp-server] registered — POST /mcp');
+  console.log('[mcp-server] registered — POST /mcp (platform-proxy architecture)');
 };

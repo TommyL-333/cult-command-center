@@ -101,9 +101,9 @@ module.exports = function registerMcpAdmin(app, deps = {}) {
 
       const tok = getTokenForUser(user.id);
       const connected = !!(tok);
-      const perms = (user.permissions || []).filter(p =>
-        ['mcp_access', 'tools_creator_data', 'tools_crm', 'tools_content', 'tools_analytics', 'tools_finance'].includes(p)
-      );
+      // Platform-based permissions returned to the UI
+      const PLATFORM_PERMS = ['mcp_access', 'reacher', 'ghl', 'buffer', 'storista', 'discord'];
+      const perms = (user.permissions || []).filter(p => PLATFORM_PERMS.includes(p));
       const setupCommand = connected
         ? `claude mcp add --transport http cultcontent https://manifest.cultcontent.cc/mcp --header "Authorization: Bearer <your-token>"`
         : null;

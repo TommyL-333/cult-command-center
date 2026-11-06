@@ -4312,11 +4312,11 @@ function renderProfilePanel(d){
   if(dot){dot.className='profile-status-dot'+(d.connected?' connected':'');}
 
   var toolGroups=[
-    {key:'tools_creator_data',label:'Creator Data'},
-    {key:'tools_crm',label:'CRM'},
-    {key:'tools_content',label:'Content'},
-    {key:'tools_analytics',label:'Analytics'},
-    {key:'tools_finance',label:'Finance'},
+    {key:'reacher',label:'Reacher'},
+    {key:'ghl',label:'GoHighLevel'},
+    {key:'buffer',label:'Buffer'},
+    {key:'storista',label:'Storista'},
+    {key:'discord',label:'Discord'},
   ];
   var perms=d.permissions||[];
   var permGrid=toolGroups.map(function(g){
@@ -4405,11 +4405,11 @@ function tmLoadMcpSection(email){
   var userId=mcpInfo&&mcpInfo.id;
 
   var toolGroups=[
-    {key:'tools_creator_data',label:'Creator Data',sub:'Reacher, FastMoss, CRM roster'},
-    {key:'tools_crm',label:'CRM',sub:'GoHighLevel'},
-    {key:'tools_content',label:'Content',sub:'Storista, Arcads, Omni Agent'},
-    {key:'tools_analytics',label:'Analytics',sub:'Shop + GMV reporting'},
-    {key:'tools_finance',label:'Finance',sub:'Stripe, payouts'},
+    {key:'reacher',label:'Reacher',sub:'Creator + campaign tools'},
+    {key:'ghl',label:'GoHighLevel',sub:'CRM contacts + conversations'},
+    {key:'buffer',label:'Buffer',sub:'Social scheduling'},
+    {key:'storista',label:'Storista',sub:'Content management'},
+    {key:'discord',label:'Discord',sub:'Community tools'},
   ];
 
   var perms=(mcpInfo&&mcpInfo.permissions)||[];
