@@ -96,12 +96,24 @@ module.exports = function registerMcpAdmin(app, deps = {}) {
   app.get('/api/mcp/me', requireAuth, (req, res) => {
     try {
       const email = callerEmail(req);
+      const isAdmin = ADMIN_EMAILS.has(email);
       const user = findUserByEmail(email);
-      if (!user) return res.json({ connected: false, permissions: [], setupCommand: null });
+      if (!user) return res.json({ connected: false, permissions: [], setupCommand: null, hasMcpAccess: false });
+
+      // Admins automatically have mcp_access — grant it persistently if missing
+      if (isAdmin && !(user.permissions || []).includes('mcp_access')) {
+        const users = readJson(USERS_FILE, []);
+        const idx = users.findIndex(u => u.id === user.id);
+        if (idx >= 0) {
+          if (!users[idx].permissions) users[idx].permissions = [];
+          users[idx].permissions.push('mcp_access');
+          writeJson(USERS_FILE, users);
+          user.permissions = users[idx].permissions;
+        }
+      }
 
       const tok = getTokenForUser(user.id);
       const connected = !!(tok);
-      // Platform-based permissions returned to the UI
       const PLATFORM_PERMS = ['mcp_access', 'reacher', 'ghl', 'buffer', 'storista', 'discord'];
       const perms = (user.permissions || []).filter(p => PLATFORM_PERMS.includes(p));
       const setupCommand = connected
@@ -122,9 +134,10 @@ module.exports = function registerMcpAdmin(app, deps = {}) {
   app.post('/api/mcp/token', requireAuth, (req, res) => {
     try {
       const email = callerEmail(req);
+      const admin = ADMIN_EMAILS.has(email);
       const user = findUserByEmail(email);
       if (!user) return res.status(404).json({ error: 'Portal user not found — log in via portal first' });
-      if (!(user.permissions || []).includes('mcp_access')) {
+      if (!admin && !(user.permissions || []).includes('mcp_access')) {
         return res.status(403).json({ error: 'mcp_access permission required — ask an admin to enable it' });
       }
 
