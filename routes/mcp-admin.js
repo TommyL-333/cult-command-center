@@ -63,6 +63,18 @@ function isAdmin(req) {
   const email = callerEmail(req);
   return !!(req.session && req.session.isPortalAdmin) || ADMIN_EMAILS.has(email);
 }
+function findCaller(req) {
+  // Try email first, fall back to portalUserId for users without an email field
+  const email = callerEmail(req);
+  const users = readJson(USERS_FILE, []);
+  if (email) {
+    const byEmail = users.find(u => (u.email || '').toLowerCase() === email || (u.username || '').toLowerCase() === email);
+    if (byEmail) return byEmail;
+  }
+  const uid = req.session && req.session.portalUserId;
+  if (uid) return users.find(u => u.id === uid) || null;
+  return null;
+}
 function findUserByEmail(email) {
   const users = readJson(USERS_FILE, []);
   const e = (email || '').toLowerCase();
@@ -97,7 +109,7 @@ module.exports = function registerMcpAdmin(app, deps = {}) {
     try {
       const email = callerEmail(req);
       const isAdmin = ADMIN_EMAILS.has(email);
-      const user = findUserByEmail(email);
+      const user = findCaller(req);
       if (!user) return res.json({ connected: false, permissions: [], setupCommand: null, hasMcpAccess: false });
 
       // All portal users get mcp_access — grant it persistently if missing
@@ -135,7 +147,7 @@ module.exports = function registerMcpAdmin(app, deps = {}) {
     try {
       const email = callerEmail(req);
       const admin = ADMIN_EMAILS.has(email);
-      const user = findUserByEmail(email);
+      const user = findCaller(req);
       if (!user) return res.status(404).json({ error: 'Portal user not found — log in via portal first' });
       // mcp_access is granted to all portal users — no gate needed
 
