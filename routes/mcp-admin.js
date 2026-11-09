@@ -100,8 +100,8 @@ module.exports = function registerMcpAdmin(app, deps = {}) {
       const user = findUserByEmail(email);
       if (!user) return res.json({ connected: false, permissions: [], setupCommand: null, hasMcpAccess: false });
 
-      // Admins automatically have mcp_access — grant it persistently if missing
-      if (isAdmin && !(user.permissions || []).includes('mcp_access')) {
+      // All portal users get mcp_access — grant it persistently if missing
+      if (!(user.permissions || []).includes('mcp_access')) {
         const users = readJson(USERS_FILE, []);
         const idx = users.findIndex(u => u.id === user.id);
         if (idx >= 0) {
@@ -137,9 +137,7 @@ module.exports = function registerMcpAdmin(app, deps = {}) {
       const admin = ADMIN_EMAILS.has(email);
       const user = findUserByEmail(email);
       if (!user) return res.status(404).json({ error: 'Portal user not found — log in via portal first' });
-      if (!admin && !(user.permissions || []).includes('mcp_access')) {
-        return res.status(403).json({ error: 'mcp_access permission required — ask an admin to enable it' });
-      }
+      // mcp_access is granted to all portal users — no gate needed
 
       // Generate token
       const rawToken = 'ccmcp_' + crypto.randomBytes(32).toString('base64url');

@@ -4406,7 +4406,6 @@ function tmLoadMcpSection(email){
   var userId=mcpInfo&&mcpInfo.id;
 
   var toolGroups=[
-    {key:'mcp_access',label:'MCP Access',sub:'Allow connecting Claude Code at all'},
     {key:'reacher',label:'Reacher',sub:'Creator + campaign tools'},
     {key:'ghl',label:'GoHighLevel',sub:'CRM contacts + conversations'},
     {key:'buffer',label:'Buffer',sub:'Social scheduling'},
