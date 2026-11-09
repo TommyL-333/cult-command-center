@@ -75,6 +75,29 @@ function findCaller(req) {
   if (uid) return users.find(u => u.id === uid) || null;
   return null;
 }
+function getOrCreateCaller(req) {
+  // For CF Access / Google SSO users who are authenticated but have no portal account yet,
+  // auto-create a minimal portal record so they can connect to the MCP server.
+  const existing = findCaller(req);
+  if (existing) return existing;
+  const email = callerEmail(req);
+  if (!email) return null;
+  const users = readJson(USERS_FILE, []);
+  const newUser = {
+    id: crypto.randomBytes(8).toString('hex'),
+    email,
+    username: email,
+    name: email.split('@')[0],
+    permissions: ['mcp_access'],
+    active: true,
+    createdAt: Date.now(),
+    createdBy: 'mcp-auto',
+  };
+  users.push(newUser);
+  writeJson(USERS_FILE, users);
+  console.log('[mcp-admin] auto-created portal record for', email);
+  return newUser;
+}
 function findUserByEmail(email) {
   const users = readJson(USERS_FILE, []);
   const e = (email || '').toLowerCase();
@@ -109,7 +132,7 @@ module.exports = function registerMcpAdmin(app, deps = {}) {
     try {
       const email = callerEmail(req);
       const isAdmin = ADMIN_EMAILS.has(email);
-      const user = findCaller(req);
+      const user = getOrCreateCaller(req);
       if (!user) return res.json({ connected: false, permissions: [], setupCommand: null, hasMcpAccess: false });
 
       // All portal users get mcp_access — grant it persistently if missing
@@ -147,8 +170,8 @@ module.exports = function registerMcpAdmin(app, deps = {}) {
     try {
       const email = callerEmail(req);
       const admin = ADMIN_EMAILS.has(email);
-      const user = findCaller(req);
-      if (!user) return res.status(404).json({ error: 'Portal user not found — log in via portal first' });
+      const user = getOrCreateCaller(req);
+      if (!user) return res.status(404).json({ error: 'Portal user not found — no authenticated email in session' });
       // mcp_access is granted to all portal users — no gate needed
 
       // Generate token
