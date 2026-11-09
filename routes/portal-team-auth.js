@@ -38,7 +38,8 @@ const ALL_PERMISSIONS = [
   'reacher',     // Reacher creator + campaign tools
   'ghl',         // GoHighLevel CRM
   'buffer',      // Buffer social scheduling
-  'storista',    // Storista content
+  'storista',    // Storista content scheduling
+  'omni',        // Omni Agent AI content pipeline
   'discord',     // Discord community tools
 ];
 

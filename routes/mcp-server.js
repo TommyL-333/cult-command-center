@@ -36,12 +36,17 @@ const AUDIT_MAX_BYTES = 50 * 1024 * 1024; // 50 MB
 const { scryptVerify } = require('../middleware/password');
 
 // ── Platform base URLs / auth builders ───────────────────────────────────────
-const REACHER_BASE = 'https://api.reacherapp.com/public/v1';
-const GHL_BASE     = 'https://services.leadconnectorhq.com';
-const BUFFER_MCP   = 'https://mcp.buffer.com/mcp';
+const REACHER_BASE  = 'https://api.reacherapp.com/public/v1';
+const GHL_BASE      = 'https://services.leadconnectorhq.com';
+const STORISTA_BASE = 'https://api-v2.storista.io/v1';
+const BUFFER_MCP    = 'https://mcp.buffer.com/mcp';
+const OMNI_MCP      = 'https://omniagent.cc/api/mcp';
 
 function reacherAuth(env) {
   return { 'x-api-key': env.REACHER_API_KEY || '', 'Content-Type': 'application/json' };
+}
+function storistaAuth(env) {
+  return { 'x-api-key': env.STORISTA_API_KEY || '', 'Content-Type': 'application/json' };
 }
 function ghlAuth(env) {
   return {
@@ -535,6 +540,54 @@ const TOOLS = [
     envQuery: (env) => ({ locationId: env.GHL_LOCATION_ID || env.GHL_LOC_ID || '' }),
     confirm: false,
   },
+
+  // ── Storista ────────────────────────────────────────────────────────────────
+  {
+    name: 'storista_accounts_list',
+    platform: 'storista',
+    description: 'List TikTok accounts connected to this Storista workspace.',
+    method: 'GET',
+    path: '/tiktok/accounts',
+    baseUrl: STORISTA_BASE,
+    authHeader: storistaAuth,
+    inputSchema: { type: 'object', properties: {} },
+    confirm: false,
+  },
+  {
+    name: 'storista_products_list',
+    platform: 'storista',
+    description: 'List products available on a TikTok account in Storista.',
+    method: 'GET',
+    path: '/tiktok/accounts/:account/products',
+    baseUrl: STORISTA_BASE,
+    authHeader: storistaAuth,
+    inputSchema: {
+      type: 'object',
+      properties: { account: { type: 'string', description: 'TikTok account ID from storista_accounts_list' } },
+      required: ['account'],
+    },
+    confirm: false,
+  },
+  {
+    name: 'storista_schedule_post',
+    platform: 'storista',
+    description: 'Schedule a TikTok post via Storista. Requires confirmation before sending.',
+    method: 'POST',
+    path: '/tiktok/accounts/:account/posts',
+    baseUrl: STORISTA_BASE,
+    authHeader: storistaAuth,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        account:     { type: 'string', description: 'TikTok account ID' },
+        video_url:   { type: 'string', description: 'URL of the video to post' },
+        caption:     { type: 'string', description: 'Caption / description for the post' },
+        schedule_at: { type: 'string', description: 'ISO 8601 datetime to publish (omit for immediate)' },
+      },
+      required: ['account', 'video_url', 'caption'],
+    },
+    confirm: true,
+  },
 ];
 
 // ── Buffer dynamic tools ───────────────────────────────────────────────────────
@@ -589,6 +642,65 @@ async function callBufferTool(originalName, args) {
   });
   if (status >= 400) {
     return { ok: false, error: `Buffer MCP error ${status}`, status };
+  }
+  if (body && body.error) {
+    return { ok: false, error: body.error.message || JSON.stringify(body.error), code: body.error.code };
+  }
+  return body?.result ?? body;
+}
+
+// ── Omni Agent dynamic tools ───────────────────────────────────────────────────
+// Fetched from Omni Agent's HTTP MCP endpoint, cached 5 min.
+let _omniToolsCache = null;
+let _omniToolsCacheTs = 0;
+
+async function getOmniTools() {
+  const token = process.env.OMNI_AGENT_API_KEY;
+  if (!token) return [];
+  if (_omniToolsCache && Date.now() - _omniToolsCacheTs < 300_000) return _omniToolsCache;
+  try {
+    const { status, body } = await httpFetch(OMNI_MCP, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 'list-1', method: 'tools/list', params: {} }),
+    });
+    if (status >= 400) return [];
+    const tools = (body?.result?.tools || []).map(t => ({
+      ...t,
+      name: 'omni_' + t.name,
+      _isOmni: true,
+      _omniOriginalName: t.name,
+    }));
+    _omniToolsCache = tools;
+    _omniToolsCacheTs = Date.now();
+    return tools;
+  } catch (e) {
+    console.error('[mcp-server] Omni tools/list failed:', e.message);
+    return [];
+  }
+}
+
+async function callOmniTool(originalName, args) {
+  const token = process.env.OMNI_AGENT_API_KEY;
+  if (!token) throw new Error('OMNI_AGENT_API_KEY not configured');
+  const { status, body } = await httpFetch(OMNI_MCP, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      jsonrpc: '2.0',
+      id: `call-${Date.now()}`,
+      method: 'tools/call',
+      params: { name: originalName, arguments: args },
+    }),
+  });
+  if (status >= 400) {
+    return { ok: false, error: `Omni Agent MCP error ${status}`, status };
   }
   if (body && body.error) {
     return { ok: false, error: body.error.message || JSON.stringify(body.error), code: body.error.code };
@@ -730,11 +842,37 @@ async function handleRequest(rpcReq, user) {
       catch (e) { console.error('[mcp-server] Buffer tools fetch error:', e.message); }
     }
 
-    return jsonRpcResult(id, { tools: [...staticTools, ...bufferTools] });
+    let omniTools = [];
+    if (perms.includes('omni') && process.env.OMNI_AGENT_API_KEY) {
+      try { omniTools = (await getOmniTools()).map(toolPublicShape); }
+      catch (e) { console.error('[mcp-server] Omni tools fetch error:', e.message); }
+    }
+
+    return jsonRpcResult(id, { tools: [...staticTools, ...bufferTools, ...omniTools] });
   }
 
   if (method === 'tools/call') {
     const { name, arguments: args = {} } = params || {};
+
+    // ── Omni Agent tool ──────────────────────────────────────────────────────
+    if (typeof name === 'string' && name.startsWith('omni_')) {
+      const perms = user.permissions || [];
+      if (!perms.includes('omni')) {
+        return jsonRpcError(id, -32603, 'Permission denied: omni platform access required');
+      }
+      const start = Date.now();
+      try {
+        const cached = _omniToolsCache && _omniToolsCache.find(t => t.name === name);
+        const originalName = cached ? cached._omniOriginalName : name.slice('omni_'.length);
+        const result = await callOmniTool(originalName, args);
+        auditLog(user.email || user.username, name, true, Date.now() - start);
+        const text = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+        return jsonRpcResult(id, { content: [{ type: 'text', text }] });
+      } catch (err) {
+        auditLog(user.email || user.username, name, false, Date.now() - start);
+        return jsonRpcError(id, -32603, err.message || 'Omni Agent tool call failed');
+      }
+    }
 
     // ── Buffer tool ──────────────────────────────────────────────────────────
     if (typeof name === 'string' && name.startsWith('buffer_')) {
