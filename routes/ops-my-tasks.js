@@ -4316,6 +4316,7 @@ function renderProfilePanel(d){
     {key:'ghl',label:'GoHighLevel'},
     {key:'buffer',label:'Buffer'},
     {key:'storista',label:'Storista'},
+    {key:'omni',label:'Omni Agent'},
     {key:'discord',label:'Discord'},
   ];
   var perms=d.permissions||[];
@@ -4409,6 +4410,7 @@ function tmLoadMcpSection(email){
     {key:'ghl',label:'GoHighLevel',sub:'CRM contacts + conversations'},
     {key:'buffer',label:'Buffer',sub:'Social scheduling'},
     {key:'storista',label:'Storista',sub:'Content management'},
+    {key:'omni',label:'Omni Agent',sub:'AI content pipeline'},
     {key:'discord',label:'Discord',sub:'Community tools'},
   ];
 
