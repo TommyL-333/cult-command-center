@@ -690,8 +690,8 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     <button class="tab" onclick="switchTab(2)">Software</button>
     <button class="tab" id="vq-tab-btn" onclick="switchTab(3)">Video Production</button>
     <button class="tab" id="tm-tab-btn" onclick="switchTab(4)" style="display:none">Team Management</button>
-    <button class="tab" onclick="switchTab(5)">More Tools</button>
-    <button class="tab" id="cm-tab-btn" onclick="switchTab(6)" style="display:none">Creator Matchmaking</button>
+    <button class="tab" id="cm-tab-btn" onclick="switchTab(5)" style="display:none">Creator Matchmaking</button>
+    <button class="tab" onclick="switchTab(6)">More Tools</button>
   </div>
 
   <div id="tab-tasks">
@@ -1368,14 +1368,14 @@ function switchTab(idx){
   document.getElementById('tab-sprint').style.display=idx===2?'':'none';
   document.getElementById('tab-video-queue').style.display=idx===3?'':'none';
   document.getElementById('tab-team-mgmt').style.display=idx===4?'':'none';
-  document.getElementById('tab-more-tools').style.display=idx===5?'':'none';
-  document.getElementById('tab-creator-matchmaking').style.display=idx===6?'':'none';
+  document.getElementById('tab-creator-matchmaking').style.display=idx===5?'':'none';
+  document.getElementById('tab-more-tools').style.display=idx===6?'':'none';
   if(idx===1)loadReportTab();
   if(idx===2)loadSprint();
   if(idx===3){applyVqRole();loadVideoQueue();}
   if(idx===4)loadTeamMgmt();
-  if(idx===5)loadMoreTools();
-  if(idx===6)loadCreatorMatchmaking();
+  if(idx===5)loadCreatorMatchmaking();
+  if(idx===6)loadMoreTools();
 }
 
 /* ── Sprint planner ──────────────────────────────────── */
