@@ -747,6 +747,9 @@ async function callTool(toolDef, args) {
   const headers = { ...toolDef.authHeader(env) };
   let fetchBody = undefined;
 
+  // GET requests have no body — Content-Type confuses some APIs (e.g. Storista returns JSON Decode Error)
+  if (toolDef.method === 'GET') delete headers['Content-Type'];
+
   if (toolDef.method === 'GET') {
     // Env-sourced query params
     const envQ = toolDef.envQuery ? toolDef.envQuery(env) : {};
