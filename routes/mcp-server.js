@@ -665,6 +665,7 @@ async function getOmniTools() {
       headers: {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
+        Accept: 'application/json, text/event-stream',
       },
       body: JSON.stringify({ jsonrpc: '2.0', id: 'list-1', method: 'tools/list', params: {} }),
     });
@@ -696,6 +697,7 @@ async function callOmniTool(originalName, args) {
     headers: {
       Authorization: `Bearer ${token}`,
       'Content-Type': 'application/json',
+      Accept: 'application/json, text/event-stream',
     },
     body: JSON.stringify({
       jsonrpc: '2.0',
