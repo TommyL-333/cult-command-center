@@ -46,7 +46,7 @@ function reacherAuth(env) {
   return { 'x-api-key': env.REACHER_API_KEY || '', 'Content-Type': 'application/json' };
 }
 function storistaAuth(env) {
-  return { 'x-api-key': env.STORISTA_API_KEY || '', 'Content-Type': 'application/json' };
+  return { Authorization: `Bearer ${env.STORISTA_API_KEY || ''}`, 'Content-Type': 'application/json' };
 }
 function ghlAuth(env) {
   return {
@@ -94,6 +94,7 @@ function resolveToken(authHeader) {
     if (!Array.isArray(user.permissions) || !user.permissions.includes('mcp_access')) continue;
     tok.lastUsedAt = Date.now();
     try { fs.writeFileSync(TOKENS_FILE, JSON.stringify(tokens, null, 2)); } catch (_) {}
+    console.log(`[mcp-server] token resolved: user=${user.email||user.username} perms=${JSON.stringify(user.permissions||[])}`);
     return { user, tokenRecord: tok };
   }
   return null;
