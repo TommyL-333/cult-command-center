@@ -10344,6 +10344,117 @@ try {
   console.error('[brands] SQLite mirror backfill failed:', e.message);
 }
 
+// ── Startup seed: AlphaFlow brand onboarding ──────────────────────────────────
+// Idempotent: adds AlphaFlow to brands.json on the volume if not already present.
+// Safe to leave in place — becomes a no-op after first successful deploy.
+try {
+  const _seedBrands = loadBrands();
+  if (!(_seedBrands.clients || []).find(c => c.creatorPage?.slug === 'alphaflow')) {
+    _seedBrands.clients = _seedBrands.clients || [];
+    _seedBrands.clients.push({
+      id: 'alphaflow2026',
+      createdAt: '2026-11-12T00:00:00.000Z',
+      name: 'AlphaFlow',
+      contactName: 'Mike Kushch',
+      email: '',
+      loginEmail: '',
+      phone: '',
+      website: 'https://www.tiktok.com/@alpha.flow',
+      industry: 'Supplements',
+      products: 'Chlorophyll Capsules',
+      audience: 'Women 18-35, wellness & lifestyle',
+      voice: 'Real, relatable, educational',
+      tiktokHandle: '@alpha.flow',
+      tiktokShop: true,
+      shopify: false,
+      notes: '2% CTR, 10% CTOR on TikTok Shop. No Shopify store yet. Contacts: Mike Kushch & Alex Angel. Onboarded Nov 2026.',
+      creatorPage: {
+        slug: 'alphaflow',
+        active: true,
+        accentColor: '#00C896',
+        brandName: 'AlphaFlow',
+        tagline: 'The supplement that works from the inside out',
+        heroHeadline: 'Earn with AlphaFlow',
+        heroSubheadline: 'Chlorophyll capsules your audience is already searching for — be the creator who shows them why.',
+        products: [
+          {
+            id: 'chlorophyll-capsules',
+            name: 'AlphaFlow Chlorophyll Capsules',
+            description: 'Daily chlorophyll supplement for body odor neutralization, energy, and internal detox',
+            imageUrl: null,
+          },
+        ],
+        usps: [
+          '2% CTR — above category benchmark',
+          '10% CTOR (click-to-order rate)',
+          'Trending category with proven TikTok virality',
+          'Body odor angle converts across all demographics',
+          'Plant-based, no harsh chemicals',
+        ],
+        talkingPoints: [
+          'Chlorophyll neutralizes body odor from the inside — not just on the surface',
+          'Showering alone is not enough — this is what is actually causing the smell',
+          'Natural, plant-based daily supplement',
+          'Deodorizes from the inside out in 7-14 days of consistent use',
+          'Pairs perfectly with wellness, feminine hygiene, and lifestyle content',
+          'Your audience has already seen the viral clips — you give them the real thing',
+        ],
+        tcCommission: 15,
+        incentives: [
+          {
+            label: '$250 flat fee',
+            description: 'Complete 10 qualifying TikTok Shop videos',
+            type: 'flat',
+          },
+        ],
+        brief: {
+          hooks: [
+            { type: 'curiosity', text: 'What happens to your body odor when you take this every single day?' },
+            { type: 'pain_point', text: 'Showering is not enough... this is what is actually causing the smell.' },
+            { type: 'social_proof', text: 'Cardi B put the girls on and I finally tried it... she was not lying.' },
+            { type: 'testimonial', text: 'An actual game changer. Worth every single penny.' },
+            { type: 'relatable', text: 'She stays helping the girls out this one actually works.' },
+            { type: 'lifestyle', text: 'My daily wellness routine that changed how I smell all day.' },
+            { type: 'viral', text: 'How to smell GOOD AF (internal, not a spray)' },
+            { type: 'reply', text: 'Replying to: what do you use for body odor? — girl, let me show you.' },
+          ],
+          frameworks: [
+            {
+              name: 'The Testimony',
+              description: 'I tried AlphaFlow for 7 days. Here is what actually changed about my smell. Show confidence shift, not physical appearance. Close with the link.',
+            },
+            {
+              name: 'The Comparison',
+              description: 'I was spending $40/month on deodorant until I found this. Lead with the problem you solved, reveal the product mid-video, close with the price point.',
+            },
+            {
+              name: 'The Routine',
+              description: 'Film your morning stack — water, greens, AlphaFlow capsule. Keep it casual. The product sells itself when it looks like your real habit.',
+            },
+            {
+              name: 'The Reply',
+              description: 'Reply to any comment asking about body odor, feminine hygiene, or smelling good. These videos punch way above their view count in conversions.',
+            },
+            {
+              name: 'The Science Drop',
+              description: 'Chlorophyll does not just color your food green — here is what it actually does inside your body. Educational hooks spike saves and shares.',
+            },
+          ],
+        },
+        competitorVideos: [],
+        campaigns: {},
+        updatedAt: '2026-11-12T00:00:00.000Z',
+      },
+    });
+    saveBrands(_seedBrands);
+    console.log('[seed] AlphaFlow brand added to brands.json');
+  } else {
+    console.log('[seed] AlphaFlow already present — skipping');
+  }
+} catch (e) {
+  console.error('[seed] AlphaFlow seed failed:', e.message);
+}
+
 function loadMeetingIntel() {
   try { return JSON.parse(fs.readFileSync(MEETING_INTEL_FILE, 'utf8')); }
   catch(_) { return { meetings: [] }; }
