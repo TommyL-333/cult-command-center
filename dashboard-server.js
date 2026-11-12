@@ -10471,6 +10471,63 @@ try {
       _af.creatorPage.brief.frameworks = correctFrameworks;
       _afDirty = true;
     }
+    // seed example scripts derived from top competitor video patterns
+    if (!Array.isArray(_af.creatorPage.brief?.sampleScripts) || _af.creatorPage.brief.sampleScripts.length === 0) {
+      if (!_af.creatorPage.brief) _af.creatorPage.brief = {};
+      _af.creatorPage.brief.sampleScripts = [
+        {
+          framework: 'The Testimony',
+          title: 'An actual game changer',
+          duration: '~30s',
+          script: `[Open on yourself in the mirror or getting ready]
+"Okay I need to talk about this because I've been struggling with body odor for years and nothing was working. Like I was showering twice a day, spending $40 a month on deodorant — and still."
+
+[Hold up the AlphaFlow bottle to camera]
+"Someone put me on to chlorophyll capsules. Specifically these. I've been taking them every morning for two weeks."
+
+[Pause for effect]
+"The smell is gone. Not masked. Gone. It works from the inside — that's why nothing topical was actually fixing it."
+
+[Point to link]
+"Link in bio. Worth every single penny."`,
+        },
+        {
+          framework: 'The Reply',
+          title: 'Replying to: how do I smell good naturally',
+          duration: '~25s',
+          script: `[Open on a comment that says something like "what actually works for body odor?"]
+"Replying to this because I had this exact problem and the answer is not more deodorant."
+
+[Cut to holding the AlphaFlow bottle]
+"Chlorophyll. You take it once a day and it deodorizes from the inside out. I know it sounds weird. I didn't believe it either."
+
+[Cut to 7 days later card or just say it]
+"Seven days. That's how long it took. No more worrying at the gym, no more double-showering. Just... nothing."
+
+"Link is in my bio. Thank me later."`,
+        },
+        {
+          framework: 'The Science Drop',
+          title: 'Why your deodorant isn\'t working',
+          duration: '~35s',
+          script: `[Hook — straight to camera, confident]
+"The reason your deodorant isn't working is because body odor doesn't start on your skin."
+
+[Beat]
+"It starts in your gut. What you're smelling is bacteria breaking down compounds in your body — and no amount of deodorant gets rid of that at the source."
+
+[Introduce product naturally]
+"Chlorophyll is the thing that actually works because it goes inside. I take AlphaFlow every morning. It's chlorophyll capsules — one a day."
+
+[Results]
+"Two weeks in and the difference is real. Less odor, skin looks clearer, and I'm not thinking about it anymore."
+
+[CTA]
+"Link in bio if you want to try it. They've got thousands of reviews saying the same thing."`,
+        },
+      ];
+      _afDirty = true;
+    }
     // seed competitor reference videos from FastMoss top performers (sorted by units sold)
     if (!Array.isArray(_af.creatorPage.competitorVideos) || _af.creatorPage.competitorVideos.length === 0) {
       _af.creatorPage.competitorVideos = [
