@@ -10471,6 +10471,20 @@ try {
       _af.creatorPage.brief.frameworks = correctFrameworks;
       _afDirty = true;
     }
+    // seed competitor reference videos from FastMoss top performers (sorted by units sold)
+    if (!Array.isArray(_af.creatorPage.competitorVideos) || _af.creatorPage.competitorVideos.length === 0) {
+      _af.creatorPage.competitorVideos = [
+        'https://www.tiktok.com/@notgabbysanmiguel/video/7693711221064830221',  // 968K views — @notgabbysanmiguel
+        'https://www.tiktok.com/@diamondscastle/video/7494735055072415006',      // 885K views — @diamondscastle
+        'https://www.tiktok.com/@herfantasybox/video/7685943934450699550',       // 420K views — @herfantasybox
+        'https://www.tiktok.com/@dessiixcakes/video/7685662850530037005',        // 303K views — @dessiixcakes
+        'https://www.tiktok.com/@dessiixcakes/video/7690084526835404046',        // 241K views — @dessiixcakes
+        'https://www.tiktok.com/@dessiixcakes/video/7696784717999361293',        // 217K views — @dessiixcakes
+        'https://www.tiktok.com/@herfantasybox/video/7691823410724277535',       // 197K views — @herfantasybox
+        'https://www.tiktok.com/@leci.bby/video/7629996217228922143',            // 133K views — @leci.bby
+      ];
+      _afDirty = true;
+    }
     if (_afDirty) {
       saveBrands(_mb);
       console.log('[migrate] AlphaFlow data shape corrected');
@@ -14101,9 +14115,9 @@ ${videosHtml ? `
 <hr class="page-divider">
 <div class="section">
   <div class="section-inner">
-    <div class="section-label" style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:${accent};margin-bottom:10px">Content That Converts</div>
-    <div class="section-title">Examples to inspire your videos</div>
-    <div class="section-sub">High-performing content formats for this niche.</div>
+    <div class="section-label" style="font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:${accent};margin-bottom:10px">Competitor Research</div>
+    <div class="section-title">Reference videos from top competitors</div>
+    <div class="section-sub">These are the highest-performing videos in this niche right now — not AlphaFlow content. Study the hooks, pacing, and angles. Your job is to do it better.</div>
     <div class="videos-scroll">${videosHtml}</div>
   </div>
 </div>` : ''}
