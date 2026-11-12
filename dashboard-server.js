@@ -10448,17 +10448,36 @@ try {
   console.error('[seed] AlphaFlow seed failed:', e.message);
 }
 
-// ── Migration: fix AlphaFlow talkingPoints array → string ────────────────────
+// ── Migration: fix AlphaFlow data shape ──────────────────────────────────────
 try {
   const _mb = loadBrands();
   const _af = (_mb.clients || []).find(c => c.creatorPage?.slug === 'alphaflow');
-  if (_af && Array.isArray(_af.creatorPage.talkingPoints)) {
-    _af.creatorPage.talkingPoints = _af.creatorPage.talkingPoints.join('\n');
-    saveBrands(_mb);
-    console.log('[migrate] AlphaFlow talkingPoints fixed to string');
+  let _afDirty = false;
+  if (_af) {
+    // talkingPoints must be a newline-joined string
+    if (Array.isArray(_af.creatorPage.talkingPoints)) {
+      _af.creatorPage.talkingPoints = _af.creatorPage.talkingPoints.join('\n');
+      _afDirty = true;
+    }
+    // frameworks must have {name, why, outline[]} shape
+    if (Array.isArray(_af.creatorPage.brief?.frameworks)) {
+      const correctFrameworks = [
+        { name: 'The Testimony', why: 'Real before/after stories convert — viewers trust felt experience over product claims.', outline: ['Open on the problem: "I had bad body odor no matter what I tried."', 'Introduce AlphaFlow as the unexpected fix.', 'Share one specific change you noticed after 7 days.', 'Close with the link and "I never thought a supplement would do this."'] },
+        { name: 'The Comparison', why: 'Price anchoring against existing spend (deodorant) makes the product feel like a no-brainer trade-off.', outline: ['Lead with what you were spending before: "$40/month on deodorant."', 'Reveal AlphaFlow mid-video as the alternative.', 'State the price point.', 'Close: "One bottle lasts a month and it works from the inside."'] },
+        { name: 'The Routine', why: 'Habit-stack content gets saves, and saves drive the algorithm — "real routine" framing removes the ad feel.', outline: ['Film your morning: water, greens, AlphaFlow capsule.', 'Keep it casual — no script.', 'Mention it off-hand: "been taking this for body odor and it actually works."', 'Link in bio.'] },
+        { name: 'The Reply', why: 'Reply videos punch way above their view count in conversions because the original comment provides social context.', outline: ['Find a comment asking about body odor or smelling good.', 'Reply with a video response.', 'Show or mention AlphaFlow as your answer.', 'Keep it under 30 seconds — the question does the hook work for you.'] },
+        { name: 'The Science Drop', why: 'Educational hooks spike saves and shares, increasing organic reach without ad spend.', outline: ['Hook: "Chlorophyll does not just turn food green."', 'Drop one fact about how chlorophyll works inside the body.', 'Connect it to body odor neutralization.', 'CTA: "Link in bio — take it once daily."'] },
+      ];
+      _af.creatorPage.brief.frameworks = correctFrameworks;
+      _afDirty = true;
+    }
+    if (_afDirty) {
+      saveBrands(_mb);
+      console.log('[migrate] AlphaFlow data shape corrected');
+    }
   }
 } catch (e) {
-  console.error('[migrate] AlphaFlow talkingPoints fix failed:', e.message);
+  console.error('[migrate] AlphaFlow data fix failed:', e.message);
 }
 
 function loadMeetingIntel() {
