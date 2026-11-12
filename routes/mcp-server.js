@@ -668,7 +668,10 @@ async function getOmniTools() {
       },
       body: JSON.stringify({ jsonrpc: '2.0', id: 'list-1', method: 'tools/list', params: {} }),
     });
-    if (status >= 400) return [];
+    if (status >= 400) {
+      console.error(`[mcp-server] Omni tools/list HTTP ${status}:`, typeof body === 'string' ? body.slice(0, 200) : JSON.stringify(body).slice(0, 200));
+      return [];
+    }
     const tools = (body?.result?.tools || []).map(t => ({
       ...t,
       name: 'omni_' + t.name,
@@ -677,6 +680,7 @@ async function getOmniTools() {
     }));
     _omniToolsCache = tools;
     _omniToolsCacheTs = Date.now();
+    console.log(`[mcp-server] Omni tools/list OK: ${tools.length} tools`);
     return tools;
   } catch (e) {
     console.error('[mcp-server] Omni tools/list failed:', e.message);
