@@ -10391,14 +10391,7 @@ try {
           'Body odor angle converts across all demographics',
           'Plant-based, no harsh chemicals',
         ],
-        talkingPoints: [
-          'Chlorophyll neutralizes body odor from the inside — not just on the surface',
-          'Showering alone is not enough — this is what is actually causing the smell',
-          'Natural, plant-based daily supplement',
-          'Deodorizes from the inside out in 7-14 days of consistent use',
-          'Pairs perfectly with wellness, feminine hygiene, and lifestyle content',
-          'Your audience has already seen the viral clips — you give them the real thing',
-        ],
+        talkingPoints: 'Chlorophyll neutralizes body odor from the inside — not just on the surface\nShowering alone is not enough — this is what is actually causing the smell\nNatural, plant-based daily supplement\nDeodorizes from the inside out in 7-14 days of consistent use\nPairs perfectly with wellness, feminine hygiene, and lifestyle content\nYour audience has already seen the viral clips — you give them the real thing',
         tcCommission: 15,
         incentives: [
           {
@@ -10453,6 +10446,19 @@ try {
   }
 } catch (e) {
   console.error('[seed] AlphaFlow seed failed:', e.message);
+}
+
+// ── Migration: fix AlphaFlow talkingPoints array → string ────────────────────
+try {
+  const _mb = loadBrands();
+  const _af = (_mb.clients || []).find(c => c.creatorPage?.slug === 'alphaflow');
+  if (_af && Array.isArray(_af.creatorPage.talkingPoints)) {
+    _af.creatorPage.talkingPoints = _af.creatorPage.talkingPoints.join('\n');
+    saveBrands(_mb);
+    console.log('[migrate] AlphaFlow talkingPoints fixed to string');
+  }
+} catch (e) {
+  console.error('[migrate] AlphaFlow talkingPoints fix failed:', e.message);
 }
 
 function loadMeetingIntel() {
