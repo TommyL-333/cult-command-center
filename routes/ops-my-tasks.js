@@ -473,6 +473,8 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
   @media(max-width:720px){.vq-cols{grid-template-columns:1fr}}
   .vq-col-hdr{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);padding-bottom:8px;border-bottom:1px solid var(--border);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between}
   .vq-col-count{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:0 7px;font-size:10px;font-weight:700}
+  .vq-add-btn{background:none;border:1px solid rgba(255,255,255,.18);border-radius:50%;width:18px;height:18px;font-size:14px;line-height:1;color:rgba(255,255,255,.5);cursor:pointer;padding:0;display:inline-flex;align-items:center;justify-content:center;margin-left:auto;flex-shrink:0;transition:color .15s,border-color .15s}
+  .vq-add-btn:hover{color:#fff;border-color:rgba(255,255,255,.5)}
   .vq-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;transition:.15s}
   .vq-card:hover{border-color:rgba(0,242,234,.35)}
   .vq-card-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px;gap:8px}
@@ -794,6 +796,12 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     </div>
   </div>
 
+  <!-- Section tabs: Videos | Podcast -->
+  <div class="vp-section-tabs" id="vp-section-tabs">
+    <button class="vp-stab active" id="vp-stab-videos" onclick="vpSwitchSection('videos')">Videos</button>
+    <button class="vp-stab" id="vp-stab-podcast" onclick="vpSwitchSection('podcast')">Podcast Management <span class="vp-stab-badge" id="vp-podcast-badge" style="display:none">0</span></button>
+  </div>
+
   <!-- 1000-video progress tracker -->
   <div class="vp-tracker" id="vp-tracker">
     <div class="vp-tracker-header">
@@ -827,12 +835,6 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
         <div style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.07em;margin-top:2px">To Goal</div>
       </div>
     </div>
-  </div>
-
-  <!-- Section tabs: Videos | Podcast -->
-  <div class="vp-section-tabs" id="vp-section-tabs">
-    <button class="vp-stab active" id="vp-stab-videos" onclick="vpSwitchSection('videos')">Videos</button>
-    <button class="vp-stab" id="vp-stab-podcast" onclick="vpSwitchSection('podcast')">Podcast Management <span class="vp-stab-badge" id="vp-podcast-badge" style="display:none">0</span></button>
   </div>
 
   <!-- VIDEOS SECTION -->
@@ -878,32 +880,84 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     </div>
   </div>
 
+  <!-- Gilbert earnings ledger (admin only) -->
+  <div id="vq-gilbert-ledger" style="display:none;background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.2);border-radius:10px;padding:14px 18px;margin-bottom:14px;align-items:center;gap:24px;flex-wrap:wrap">
+    <div style="font-size:12px;font-weight:700;color:#a78bfa;text-transform:uppercase;letter-spacing:.07em">Gilbert Earnings</div>
+    <div style="display:flex;gap:24px;flex-wrap:wrap">
+      <div style="text-align:center">
+        <div style="font-size:22px;font-weight:800;color:#fff" id="vq-gilbert-count">0</div>
+        <div style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.07em;margin-top:2px">Videos Posted</div>
+      </div>
+      <div style="text-align:center">
+        <div style="font-size:22px;font-weight:800;color:#a78bfa" id="vq-gilbert-earnings">$0</div>
+        <div style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.07em;margin-top:2px">Total Earned</div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);margin-left:auto">$15 per posted video</div>
+  </div>
+
   <div class="vq-cols-5" id="vq-queue-wrap">
     <div>
-      <div class="vq-col-hdr" style="color:#00f2ea">Submitted <span class="vq-col-count" id="vq-cnt-pending">0</span></div>
+      <div class="vq-col-hdr" style="color:#00f2ea;display:flex;align-items:center;gap:6px">Submitted <span class="vq-col-count" id="vq-cnt-pending">0</span><button class="vq-add-btn" onclick="vqOpenAddModal('pending')" title="Add card">+</button></div>
       <div id="vq-col-pending"></div>
     </div>
     <div>
-      <div class="vq-col-hdr" style="color:#f59e0b">Editing <span class="vq-col-count" id="vq-cnt-inprogress">0</span></div>
+      <div class="vq-col-hdr" style="color:#f59e0b;display:flex;align-items:center;gap:6px">Editing <span class="vq-col-count" id="vq-cnt-inprogress">0</span><button class="vq-add-btn" onclick="vqOpenAddModal('in-progress')" title="Add card">+</button></div>
       <div id="vq-col-inprogress"></div>
     </div>
     <div>
-      <div class="vq-col-hdr" style="color:#ff0050">For Review <span class="vq-col-count" id="vq-cnt-done">0</span></div>
+      <div class="vq-col-hdr" style="color:#ff0050;display:flex;align-items:center;gap:6px">For Review <span class="vq-col-count" id="vq-cnt-done">0</span><button class="vq-add-btn" onclick="vqOpenAddModal('done')" title="Add card">+</button></div>
       <div id="vq-col-done"></div>
     </div>
     <div>
-      <div class="vq-col-hdr" style="color:#3b82f6">Scheduled <span class="vq-col-count" id="vq-cnt-scheduled">0</span></div>
+      <div class="vq-col-hdr" style="color:#3b82f6;display:flex;align-items:center;gap:6px">Scheduled <span class="vq-col-count" id="vq-cnt-scheduled">0</span><button class="vq-add-btn" onclick="vqOpenAddModal('approved')" title="Add card">+</button></div>
       <div id="vq-col-scheduled"></div>
     </div>
     <div>
       <div class="vq-col-hdr" style="color:#a78bfa;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <span>Posted <span class="vq-col-count" id="vq-cnt-posted">0</span></span>
+        <span style="display:flex;align-items:center;gap:6px">Posted <span class="vq-col-count" id="vq-cnt-posted">0</span><button class="vq-add-btn" onclick="vqOpenAddModal('posted')" title="Add card">+</button></span>
         <span style="margin-left:auto;display:flex;gap:4px">
           <button id="vq-sort-views" onclick="vqSetSort('views')" style="font-size:10px;padding:2px 7px;background:rgba(167,139,250,.15);border:1px solid rgba(167,139,250,.3);border-radius:4px;color:#a78bfa;cursor:pointer">👁 Views</button>
           <button id="vq-sort-date" onclick="vqSetSort('date')" style="font-size:10px;padding:2px 7px;background:none;border:1px solid rgba(255,255,255,.1);border-radius:4px;color:var(--muted);cursor:pointer">📅 Date</button>
         </span>
       </div>
       <div id="vq-col-posted"></div>
+    </div>
+  </div>
+
+  <!-- Add card modal -->
+  <div id="vq-add-modal" class="vq-modal-overlay" style="display:none" onclick="if(event.target===this)vqCloseAddModal()">
+    <div class="vq-modal">
+      <h3 id="vq-add-modal-title">Add Card</h3>
+      <div class="fg" style="margin-bottom:12px">
+        <label>Title <span style="color:#ff0050">*</span></label>
+        <input type="text" id="vq-add-title" placeholder="Video title…"/>
+      </div>
+      <div class="fg" style="margin-bottom:12px" id="vq-add-desc-wrap">
+        <label>Notes <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+        <textarea id="vq-add-desc" style="min-height:55px" placeholder="Direction, context, notes…"></textarea>
+      </div>
+      <div class="fg" style="margin-bottom:12px" id="vq-add-drive-wrap">
+        <label>Footage Link <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+        <input type="url" id="vq-add-drive" placeholder="https://drive.google.com/…"/>
+      </div>
+      <div class="fg" style="margin-bottom:12px" id="vq-add-draft-wrap" style="display:none">
+        <label>Draft Video URL</label>
+        <input type="url" id="vq-add-draft" placeholder="https://…"/>
+      </div>
+      <div class="fg" style="margin-bottom:12px" id="vq-add-scheduled-wrap" style="display:none">
+        <label>Scheduled Date/Time</label>
+        <input type="datetime-local" id="vq-add-scheduled"/>
+      </div>
+      <div class="fg" style="margin-bottom:12px" id="vq-add-posturl-wrap" style="display:none">
+        <label>Post URL <span style="font-weight:400;color:var(--muted)">(optional)</span></label>
+        <input type="url" id="vq-add-posturl" placeholder="https://www.tiktok.com/…"/>
+      </div>
+      <div id="vq-add-err" class="err" style="display:none;margin-bottom:8px"></div>
+      <div class="vq-modal-actions">
+        <button class="btn" onclick="vqCloseAddModal()" style="background:none">Cancel</button>
+        <button class="btn" id="vq-add-submit-btn" onclick="vqSubmitAddModal()">Add Card</button>
+      </div>
     </div>
   </div>
 
@@ -2700,6 +2754,7 @@ function loadVideoQueue(){
 
 function renderVideoQueue(){
   vqUpdateTracker();
+  vqUpdateGilbertLedger();
   var pending=VQ_DATA.filter(function(r){return r.status==='pending';});
   var inprog=VQ_DATA.filter(function(r){return r.status==='in-progress';});
   var done=VQ_DATA.filter(function(r){return r.status==='done';});
@@ -2747,6 +2802,79 @@ function vqUpdateTracker(){
   document.getElementById('vp-stat-views').textContent=totalViews.toLocaleString();
   document.getElementById('vp-stat-posts').textContent=totalChannelPosts.toLocaleString();
   document.getElementById('vp-stat-pct').textContent=pct+'%';
+}
+
+function vqUpdateGilbertLedger(){
+  if(!VQ_IS_ADMIN) return;
+  var ledger=document.getElementById('vq-gilbert-ledger');
+  if(!ledger) return;
+  ledger.style.display='flex';
+  ledger.style.flexWrap='wrap';
+  var postedCount=VQ_DATA.filter(function(r){return r.status==='posted';}).length;
+  var earnings=postedCount*15;
+  document.getElementById('vq-gilbert-count').textContent=postedCount;
+  document.getElementById('vq-gilbert-earnings').textContent='$'+earnings.toLocaleString();
+}
+
+var VQ_ADD_MODAL_STATUS='pending';
+function vqOpenAddModal(status){
+  VQ_ADD_MODAL_STATUS=status;
+  var labels={pending:'Add to Submitted','in-progress':'Add to Editing',done:'Add to For Review',approved:'Add to Scheduled',posted:'Add to Posted'};
+  document.getElementById('vq-add-modal-title').textContent=labels[status]||'Add Card';
+  document.getElementById('vq-add-title').value='';
+  document.getElementById('vq-add-desc').value='';
+  document.getElementById('vq-add-drive').value='';
+  if(document.getElementById('vq-add-draft')) document.getElementById('vq-add-draft').value='';
+  if(document.getElementById('vq-add-scheduled')) document.getElementById('vq-add-scheduled').value='';
+  if(document.getElementById('vq-add-posturl')) document.getElementById('vq-add-posturl').value='';
+  document.getElementById('vq-add-err').style.display='none';
+  // Show/hide context-appropriate fields
+  var showDrive=status==='pending'||status==='in-progress';
+  var showDraft=status==='done';
+  var showScheduled=status==='approved';
+  var showPostUrl=status==='posted';
+  document.getElementById('vq-add-drive-wrap').style.display=showDrive?'':'none';
+  document.getElementById('vq-add-draft-wrap').style.display=showDraft?'':'none';
+  document.getElementById('vq-add-scheduled-wrap').style.display=showScheduled?'':'none';
+  document.getElementById('vq-add-posturl-wrap').style.display=showPostUrl?'':'none';
+  document.getElementById('vq-add-modal').style.display='flex';
+  setTimeout(function(){document.getElementById('vq-add-title').focus();},80);
+}
+function vqCloseAddModal(){
+  document.getElementById('vq-add-modal').style.display='none';
+}
+function vqSubmitAddModal(){
+  var title=(document.getElementById('vq-add-title').value||'').trim();
+  if(!title){
+    var err=document.getElementById('vq-add-err');
+    err.textContent='Title is required.';
+    err.style.display='block';
+    return;
+  }
+  var btn=document.getElementById('vq-add-submit-btn');
+  btn.disabled=true;
+  btn.textContent='Adding…';
+  var body={
+    title:title,
+    description:(document.getElementById('vq-add-desc').value||'').trim(),
+    driveUrl:(document.getElementById('vq-add-drive-wrap').style.display!=='none'?(document.getElementById('vq-add-drive').value||'').trim():''),
+    draftUrl:(document.getElementById('vq-add-draft-wrap').style.display!=='none'?(document.getElementById('vq-add-draft').value||'').trim():''),
+    scheduledAt:(document.getElementById('vq-add-scheduled-wrap').style.display!=='none'?(document.getElementById('vq-add-scheduled').value||''):''),
+    postUrl:(document.getElementById('vq-add-posturl-wrap').style.display!=='none'?(document.getElementById('vq-add-posturl').value||'').trim():''),
+    initialStatus:VQ_ADD_MODAL_STATUS,
+  };
+  fetch('/api/video-requests',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})
+    .then(function(r){return r.json();})
+    .then(function(d){
+      btn.disabled=false; btn.textContent='Add Card';
+      if(d.error){var err=document.getElementById('vq-add-err');err.textContent=d.error;err.style.display='block';return;}
+      vqCloseAddModal();
+      loadVideoQueue();
+    })
+    .catch(function(e){
+      btn.disabled=false; btn.textContent='Add Card';
+      var err=document.getElementById('vq-add-err');err.textContent='Network error — try again.';err.style.display='block';
+    });
 }
 
 function renderVqList(){
@@ -6587,10 +6715,14 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
         'becca@cultcontent.cc':'Becca', 'jenna@cultcontent.cc':'Jenna',
         'gourab@cultcontent.cc':'Gourab', 'tommy@cultcontent.cc':'Tommy',
         'claude@cultcontent.cc':'Claude' };
-      const { brand, title, description, script, driveUrl, priority, dueDate, quantity, clientBrandId, source, shoppable } = req.body || {};
+      const { brand, title, description, script, driveUrl, draftUrl, postUrl, scheduledAt, priority, dueDate, quantity, clientBrandId, source, shoppable, initialStatus } = req.body || {};
       if (!title || !title.trim()) return res.status(400).json({ error: 'Title is required' });
       // Portal agent submittedBy should be the brand login email, not claude@
       const resolvedEmail = (isAgent && req.body.submittedBy) ? req.body.submittedBy : email;
+      // Allow admin to create cards directly into any stage
+      const isAdminCaller = ADMIN_EMAILS.has(email);
+      const validStatuses = ['pending','in-progress','done','approved','posted'];
+      const resolvedStatus = (isAdminCaller && initialStatus && validStatuses.includes(initialStatus)) ? initialStatus : 'pending';
       const all = readJsonFile(VR_FILE, []);
       const id = 'vr_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7);
       all.push({
@@ -6598,7 +6730,10 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
         submittedAt: Date.now(), brand: (brand || '').trim(),
         title: title.trim(), description: (description || '').trim(),
         script: (script || '').trim(), driveUrl: (driveUrl || '').trim(),
-        priority: priority || 'normal', dueDate: dueDate || '', status: 'pending',
+        ...(draftUrl ? { draftUrl: draftUrl.trim() } : {}),
+        ...(postUrl ? { postedLinks: [{ url: postUrl.trim() }] } : {}),
+        ...(scheduledAt ? { scheduledAt: scheduledAt ? new Date(scheduledAt).getTime() : null } : {}),
+        priority: priority || 'normal', dueDate: dueDate || '', status: resolvedStatus,
         quantity: Math.min(Math.max(parseInt(quantity, 10) || 1, 1), 10),
         ...(shoppable ? { shoppable: true } : {}),
         ...(clientBrandId ? { clientBrandId: clientBrandId.trim() } : {}),
