@@ -880,22 +880,6 @@ const MY_TASKS_HTML = `<!DOCTYPE html>
     </div>
   </div>
 
-  <!-- Gilbert earnings ledger (admin only) -->
-  <div id="vq-gilbert-ledger" style="display:none;background:rgba(167,139,250,.08);border:1px solid rgba(167,139,250,.2);border-radius:10px;padding:14px 18px;margin-bottom:14px;align-items:center;gap:24px;flex-wrap:wrap">
-    <div style="font-size:12px;font-weight:700;color:#a78bfa;text-transform:uppercase;letter-spacing:.07em">Gilbert Earnings</div>
-    <div style="display:flex;gap:24px;flex-wrap:wrap">
-      <div style="text-align:center">
-        <div style="font-size:22px;font-weight:800;color:#fff" id="vq-gilbert-count">0</div>
-        <div style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.07em;margin-top:2px">Videos Posted</div>
-      </div>
-      <div style="text-align:center">
-        <div style="font-size:22px;font-weight:800;color:#a78bfa" id="vq-gilbert-earnings">$0</div>
-        <div style="font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.07em;margin-top:2px">Total Earned</div>
-      </div>
-    </div>
-    <div style="font-size:11px;color:var(--muted);margin-left:auto">$15 per posted video</div>
-  </div>
-
   <div class="vq-cols-5" id="vq-queue-wrap">
     <div>
       <div class="vq-col-hdr" style="color:#00f2ea;display:flex;align-items:center;gap:6px">Submitted <span class="vq-col-count" id="vq-cnt-pending">0</span><button class="vq-add-btn" onclick="vqOpenAddModal('pending')" title="Add card">+</button></div>
@@ -2087,7 +2071,8 @@ function renderTeamSummaryBanner(d){
     var mMax=Math.round(ns*(m.maxPct||0));
     var mCurr=Math.round(m.bonusDollars||0);
     var prog=mMax>0?Math.min(100,Math.round(mCurr/mMax*100)):0;
-    html+='<div class="tp-member">';
+    var memberId=(m.name||'').toLowerCase()==='gilbert'?' id="tp-member-gilbert"':'';
+    html+='<div class="tp-member"'+memberId+'>';
     html+='<div class="tp-member-name">'+esc(m.name)+'</div>';
     html+='<div class="tp-member-bar-bg"><div class="tp-member-bar-fill" style="width:'+prog+'%"></div></div>';
     html+='<div class="tp-member-amt">$'+mCurr.toLocaleString()+'</div>';
@@ -2100,7 +2085,7 @@ function renderTeamSummaryBanner(d){
   html+='</div>';
   el.style.display='none';
   var tmPay=document.getElementById('tm-payroll-section');
-  if(tmPay)tmPay.innerHTML=html;
+  if(tmPay){tmPay.innerHTML=html;vqAugmentGilbertPayroll();}
 }
 
 function wrPrevWeekRange(){
@@ -2754,7 +2739,7 @@ function loadVideoQueue(){
 
 function renderVideoQueue(){
   vqUpdateTracker();
-  vqUpdateGilbertLedger();
+  vqAugmentGilbertPayroll();
   var pending=VQ_DATA.filter(function(r){return r.status==='pending';});
   var inprog=VQ_DATA.filter(function(r){return r.status==='in-progress';});
   var done=VQ_DATA.filter(function(r){return r.status==='done';});
@@ -2804,16 +2789,29 @@ function vqUpdateTracker(){
   document.getElementById('vp-stat-pct').textContent=pct+'%';
 }
 
-function vqUpdateGilbertLedger(){
+function vqAugmentGilbertPayroll(){
   if(!VQ_IS_ADMIN) return;
-  var ledger=document.getElementById('vq-gilbert-ledger');
-  if(!ledger) return;
-  ledger.style.display='flex';
-  ledger.style.flexWrap='wrap';
-  var postedCount=VQ_DATA.filter(function(r){return r.status==='posted';}).length;
-  var earnings=postedCount*15;
-  document.getElementById('vq-gilbert-count').textContent=postedCount;
-  document.getElementById('vq-gilbert-earnings').textContent='$'+earnings.toLocaleString();
+  var card=document.getElementById('tp-member-gilbert');
+  if(!card) return;
+  var now=new Date();
+  var monthStart=new Date(now.getFullYear(),now.getMonth(),1).getTime();
+  var monthEnd=new Date(now.getFullYear(),now.getMonth()+1,1).getTime();
+  var posted=VQ_DATA.filter(function(r){
+    if(r.status!=='posted') return false;
+    var ts=r.postedAt||r.updatedAt||0;
+    return ts>=monthStart&&ts<monthEnd;
+  });
+  var count=posted.length;
+  var earnings=count*15;
+  var existing=card.querySelector('.tp-gilbert-video');
+  if(existing) existing.remove();
+  var div=document.createElement('div');
+  div.className='tp-gilbert-video';
+  div.style.cssText='margin-top:6px;padding-top:6px;border-top:1px solid rgba(255,255,255,.07);font-size:11px;color:var(--muted);display:flex;gap:12px;align-items:center';
+  div.innerHTML='<span style="color:#a78bfa;font-weight:700">🎬 '+count+' videos</span>'
+    +'<span style="color:#a78bfa;font-weight:800">+$'+earnings.toLocaleString()+'</span>'
+    +'<span style="opacity:.5">this month</span>';
+  card.appendChild(div);
 }
 
 var VQ_ADD_MODAL_STATUS='pending';
@@ -6734,6 +6732,7 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
         ...(postUrl ? { postedLinks: [{ url: postUrl.trim() }] } : {}),
         ...(scheduledAt ? { scheduledAt: scheduledAt ? new Date(scheduledAt).getTime() : null } : {}),
         priority: priority || 'normal', dueDate: dueDate || '', status: resolvedStatus,
+        ...(resolvedStatus === 'posted' ? { postedAt: Date.now() } : {}),
         quantity: Math.min(Math.max(parseInt(quantity, 10) || 1, 1), 10),
         ...(shoppable ? { shoppable: true } : {}),
         ...(clientBrandId ? { clientBrandId: clientBrandId.trim() } : {}),
@@ -6813,7 +6812,10 @@ Produce 4-8 tasks split across relevant sections. Keep task titles short and act
           all.push(copy);
         }
       } else {
-        if (status) r.status = status;
+        if (status) {
+          if (status === 'posted' && r.status !== 'posted') r.postedAt = Date.now();
+          r.status = status;
+        }
         all[idx] = r;
         // Revision: move card to front of the array so it appears at top of editing stack
         if (status === 'in-progress' && revisionsRequested) {
